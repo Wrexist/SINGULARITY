@@ -1,0 +1,40 @@
+import { describe, it, expect } from "vitest";
+import { serialize, deserialize, migrate } from "./save";
+import { createInitialState, SAVE_VERSION } from "./state";
+import { Big } from "./math/Big";
+
+describe("save/load", () => {
+  it("round-trips state losslessly", () => {
+    const s = createInitialState();
+    s.resources.compute = Big.of("123456789.5");
+    s.resources.data = Big.of(42);
+    s.resources.money = Big.of("9.99e20");
+    s.upgrades = { rack_basic: 7, overclock: 3 };
+    s.research = ["backprop", "curated_data"];
+    s.prestige = { legacyWeights: Big.of(15), ships: 2 };
+    s.lifetimeMoney = Big.of("1e7");
+
+    const restored = deserialize(serialize(s));
+    expect(restored.resources.compute.eq(s.resources.compute)).toBe(true);
+    expect(restored.resources.money.eq(s.resources.money)).toBe(true);
+    expect(restored.upgrades).toEqual(s.upgrades);
+    expect(restored.research).toEqual(s.research);
+    expect(restored.prestige.legacyWeights.eq(15)).toBe(true);
+    expect(restored.prestige.ships).toBe(2);
+    expect(restored.lifetimeMoney.eq(s.lifetimeMoney)).toBe(true);
+    expect(restored.version).toBe(SAVE_VERSION);
+  });
+
+  it("migrates a pre-versioning (v0) save", () => {
+    const v0 = {
+      resources: { compute: "100", data: "5", money: "50" },
+      upgrades: { rack_basic: 1 },
+      research: [],
+      run: { active: false, progress: 0, readyToClaim: false },
+      prestige: { legacyWeights: "0", ships: 0 },
+    };
+    const migrated = migrate(v0);
+    expect(migrated.version).toBe(1);
+    expect(migrated.lifetimeMoney).toBe("50"); // backfilled from money
+  });
+});
