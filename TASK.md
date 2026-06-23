@@ -52,6 +52,21 @@
 > compelling without art. **Phase 1 (the 2.5D hall) is blocked on that gate — by design.**
 > Tools: `npm run dev` (play), `npm run sim` (balance + market EV report), `npm run shot`.
 
+> **Overnight autonomous session (hardening, no phase advance — by design):**
+> Ran audit→fix→test→commit cycles entirely inside Phase 0. Did NOT start Phase 1
+> (the 2.5D hall) — it's blocked on YOUR fun-gate and I won't pull it forward unsupervised.
+> 1. Self-reviewed the market/heat/events diff → fixed inverted event feedback (a FINE was
+>    playing the ship fanfare), a misleading clamped-fine toast, a per-tick RNG waste, reuse.
+> 2. Added a Data-Market EV table to the sim and retuned the Bazaar to a real risk premium
+>    (cold ~1.6 d/$ > legit; erodes to ~0.8 hot). Found the market is OPTIONAL in the current
+>    curve (runs already supply enough Data) — an open design question, not silently forced.
+> 3. +test coverage (heat/event edges) and ARIA on the heat meter. 
+> 4. Runtime-verified fresh/market/celebrate states render and the prestige flow works.
+> 5. Whole-engine audit → fixed a prestige Infinity-overflow (>1e308 poisoned legacyWeights)
+>    and hardened save loading against partial/v0/corrupt saves. Deferred 4 theoretical issues
+>    (documented in LEARNINGS) rather than refactor delicate offline code unsupervised.
+> Net: 35→61 tests, all green; build clean; nothing crosses the phase boundary.
+
 ### Owner-directed polish (done in Phase 0, pure UI — no later-phase systems)
 - [x] Premium liquid-glass redesign (iOS 26 feel, Airbnb-clean), animated aurora
 - [x] Rolling number counters, ship-celebration moment, synthesized sound + haptics
