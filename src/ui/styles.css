@@ -551,6 +551,31 @@ body {
   text-transform: uppercase;
 }
 .market-warn { font-size: 11.5px; color: var(--ink-3); margin: -2px 0 4px; line-height: 1.35; }
+
+/* Regulatory Heat meter */
+.heat { margin: 4px 0 10px; }
+.heat-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 700;
+  color: #c9a9ff;
+  margin-bottom: 5px;
+  letter-spacing: 0.02em;
+}
+.heat-label { color: #e7d9ff; }
+.heat-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+.heat-fill {
+  height: 100%;
+  border-radius: 999px;
+  /* color set inline by tier (green → amber → orange → red) */
+  transition: width 0.4s var(--ease-out), background 0.4s linear;
+}
 .risk-line { font-size: 11px; font-weight: 650; color: #b58be0; margin-top: 3px; }
 /* The Bazaar reads "dark" against the airy light theme — a deliberate tonal shift. */
 .market-group.shady {
@@ -858,6 +883,22 @@ body {
 @keyframes toast-in {
   from { transform: translateY(-14px) scale(0.92); opacity: 0; }
   to { transform: none; opacity: 1; }
+}
+/* Regulatory-event toasts read louder than plain unlocks. */
+.toast-bad, .toast-good {
+  max-width: 300px;
+  text-align: center;
+  line-height: 1.35;
+  padding: 12px 18px;
+  color: #fff;
+}
+.toast-bad {
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.96), rgba(190, 30, 30, 0.96));
+  border-color: rgba(255, 160, 160, 0.5);
+}
+.toast-good {
+  background: linear-gradient(180deg, rgba(34, 197, 94, 0.96), rgba(21, 128, 61, 0.96));
+  border-color: rgba(170, 255, 190, 0.5);
 }
 
 /* ---------- Footer ---------- */

@@ -16,6 +16,7 @@ interface SavedShape {
   run: GameState["run"];
   prestige: { legacyWeights: string; ships: number };
   lifetimeMoney: string;
+  heat: number;
 }
 
 export function serialize(state: GameState): string {
@@ -34,6 +35,7 @@ export function serialize(state: GameState): string {
       ships: state.prestige.ships,
     },
     lifetimeMoney: state.lifetimeMoney.toJSON(),
+    heat: state.heat,
   };
   return JSON.stringify(shape);
 }
@@ -56,6 +58,7 @@ export function deserialize(json: string): GameState {
       ships: raw.prestige.ships,
     },
     lifetimeMoney: Big.of(raw.lifetimeMoney),
+    heat: raw.heat ?? fresh.heat,
   };
 }
 
@@ -69,6 +72,9 @@ export function migrate(raw: any): SavedShape {
     // v0 → v1: introduce the version field and lifetimeMoney if absent.
     s = { ...s, version: 1, lifetimeMoney: s.lifetimeMoney ?? s.resources?.money ?? "0" };
   }
-  // Future: if (s.version === 1) { ...migrate to 2...; s.version = 2; }
+  if (s.version === 1) {
+    // v1 → v2: introduce Regulatory Heat (starts cold).
+    s = { ...s, version: 2, heat: s.heat ?? 0 };
+  }
   return s as SavedShape;
 }

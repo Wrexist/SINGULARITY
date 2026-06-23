@@ -94,13 +94,14 @@ try {
           lifetimeMoney: "100000000",
         }
       : {
-          version: 1,
+          version: 2,
           resources: { compute: "850", data: "140", money: "2600" },
-          upgrades: { rack_basic: 6, rack_server: 1, overclock: 1, data_pipeline: 2, monetize: 1 },
+          upgrades: { rack_basic: 6, rack_server: 1, overclock: 1, data_pipeline: 2, monetize: 1, web_scraper: 3 },
           research: ["backprop", "curated_data"],
           run: { active: true, progress: 0.64, readyToClaim: false },
           prestige: { legacyWeights: "0", ships: 0 },
           lifetimeMoney: "4200",
+          heat: 58,
         };
     await page.addInitScript(
       ([save, lastSeen]) => {

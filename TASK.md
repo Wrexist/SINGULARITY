@@ -72,6 +72,20 @@
 - [x] Engine deterministic: risk roll passed in (Math.random lives in the store), unit-tested
 - [x] Revealed after first research (progressive disclosure); satirical, fictional framing
 
+### Regulatory Heat + events (OWNER SIGN-OFF to pull forward — flagged events/heat per CLAUDE.md)
+- [x] Heat (0..100) on GameState; save v1→v2 migration (cold by default)
+- [x] Shady buys add Heat; dark-web tools add Heat; Heat cools passively in tick()
+- [x] Raid chance ramps with Heat (effectiveRaidChance, shown live on cards); a raid cools you off
+- [x] Heat-driven regulatory events (audit/subpoena/whistleblower/lobbyist), weighted; fire
+      probabilistically as Heat rises. Randomness in the store (Math.random), engine stays pure
+- [x] Heat meter UI in the Bazaar (tiered color) + weighty event toasts (bad/good tones)
+- [x] 2 new vendors (Readit legit tier, Leaked Model Weights dark-web top tier); balance tuning pass
+- [x] Heat resets on prestige (clean slate). 52 tests pass; sim shows core curve intact (~15.5m to first ship)
+
+> NOTE: Heat + events are normally deferred past the Phase 0 fun-gate. The owner explicitly
+> signed off on building them, scoped tightly to the existing Bazaar (consequence layer, not the
+> general event framework). No hall/art pulled forward; still numbers-only.
+
 ---
 
 ## Backlog (Phase 1+ — DO NOT START, parked for visibility)

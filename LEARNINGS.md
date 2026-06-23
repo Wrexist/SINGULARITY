@@ -91,6 +91,20 @@
 - **Clamp money sinks that can exceed balance.** A raid fine can be larger than the player's money;
   clamp the deduction so resources never go negative (affordability only checked the base cost).
 
+### Time-driven random events without breaking determinism
+- **The engine must stay deterministic, but events need to fire randomly over time.** Resolution:
+  the per-frame `advance()` in the STORE rolls `Math.random()` and calls a pure engine fn
+  (`maybeHeatEvent(state, seconds, fireRoll, pickRoll)`); the engine only ever consumes the rolls
+  passed in. Same boundary as the wall clock and the data-market roll.
+- **Don't fire events during the offline catch-up tick.** Offline goes through one big
+  `applyOffline` tick, not `advance`, so events naturally only happen during live play — which is
+  what you want (no "you were raided while away" surprise on a returning load).
+- **Scale per-frame event probability by elapsed seconds and CAP it.** A tab-refocus can hand you
+  a multi-second frame; without a cap, `chance = rate*seconds` can approach 1 and an event becomes
+  near-certain in one frame. `balance.heat.eventChanceCap` guards this.
+- **Surfacing a store event to React:** keep a `{ key, ... }` on the store and bump `key` each
+  fire; the UI effect depends on `event?.key` so even a repeat of the same event re-triggers.
+
 ### Hydration vs. "on-unlock" UI (toasts, reveals)
 - **The store boots with `createInitialState()` (empty), then `init()` hydrates the save in an
   effect AFTER first paint.** So any "fire on transition false→true" UI (unlock toasts,

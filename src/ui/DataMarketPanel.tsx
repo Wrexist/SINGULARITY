@@ -1,8 +1,26 @@
 import { balance } from "../engine/balance/config";
-import { canBuyDataOffer, canBuyUpgrade, upgradeCost } from "../engine/actions";
+import { canBuyDataOffer, canBuyUpgrade, upgradeCost, effectiveRaidChance } from "../engine/actions";
 import { Big } from "../engine/math/Big";
 import type { GameState } from "../engine/types";
 import { fmt } from "./format";
+
+function HeatMeter({ heat }: { heat: number }) {
+  const pct = Math.min(100, (heat / balance.heat.max) * 100);
+  const tier = heat < 25 ? 0 : heat < 55 ? 1 : heat < 80 ? 2 : 3;
+  const label = ["Cold", "Warm", "Hot", "Blazing"][tier];
+  const color = ["#22c55e", "#eab308", "#f97316", "#ef4444"][tier];
+  return (
+    <div className="heat">
+      <div className="heat-head">
+        <span>Regulatory Heat</span>
+        <span className="heat-label" style={{ color }}>{label} · {Math.round(pct)}%</span>
+      </div>
+      <div className="heat-bar">
+        <div className="heat-fill" style={{ width: `${pct}%`, background: color }} />
+      </div>
+    </div>
+  );
+}
 
 interface Props {
   game: GameState;
@@ -52,9 +70,11 @@ export function DataMarketPanel({ game, onBuyData, onBuyTool }: Props) {
           The Data Bazaar <span className="shady-badge">dark web</span>
         </h3>
         <p className="market-warn">Cheaper data. Caveat emptor — batches can be poisoned, or raided.</p>
+        <HeatMeter heat={game.heat} />
         {shady.map((o) => {
           const affordable = canBuyDataOffer(game, o.id);
           const risk = o.risk!;
+          const raidPct = Math.round(effectiveRaidChance(game, o.id) * 100);
           return (
             <button
               key={o.id}
@@ -69,7 +89,7 @@ export function DataMarketPanel({ game, onBuyData, onBuyTool }: Props) {
                 </span>
                 <span className="card-desc">{o.desc}</span>
                 <span className="risk-line">
-                  ☠️ {Math.round(risk.poisonChance * 100)}% poison · 🚨 {Math.round(risk.raidChance * 100)}% raid
+                  ☠️ {Math.round(risk.poisonChance * 100)}% poison · 🚨 {raidPct}% raid · +{o.heat} heat
                 </span>
               </div>
               <div className="card-cost">

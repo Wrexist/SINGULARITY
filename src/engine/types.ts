@@ -34,6 +34,8 @@ export interface GameState {
   prestige: PrestigeState;
   /** Lifetime money earned this run — feeds the prestige capability gate. */
   lifetimeMoney: Big;
+  /** Regulatory Heat (0..100). Rises with dark-web use, cools over time. */
+  heat: number;
 }
 
 /** Everything the sim and UI read each frame, folded from upgrades + research + prestige. */

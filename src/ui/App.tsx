@@ -27,6 +27,7 @@ export function App() {
   const game = useGame((s) => s.game);
   const offline = useGame((s) => s.offline);
   const initialized = useGame((s) => s.initialized);
+  const event = useGame((s) => s.event);
   const { doStartRun, doClaim, doBuyUpgrade, doResearch, doBuyData, doPrestige, dismissOffline, hardReset } =
     useGame.getState();
 
@@ -51,10 +52,10 @@ export function App() {
   // Transient unlock toasts.
   const [toasts, setToasts] = useState<ToastData[]>([]);
   const toastId = useRef(0);
-  const pushToast = (text: string) => {
+  const pushToast = (text: string, tone: ToastData["tone"] = "neutral") => {
     toastId.current += 1;
     const id = toastId.current;
-    setToasts((ts) => [...ts, { id, text }]);
+    setToasts((ts) => [...ts, { id, text, tone }]);
   };
   const dropToast = (id: number) => setToasts((ts) => ts.filter((t) => t.id !== id));
   const seenResearch = useRef(showResearch);
@@ -83,6 +84,15 @@ export function App() {
     seenMarket.current = showMarket;
     seenShipReady.current = shipReady;
   }, [initialized, showResearch, showPrestige, showMarket, shipReady]);
+
+  // Regulatory events (heat-driven) surface as weighty toasts with feedback.
+  useEffect(() => {
+    if (!event) return;
+    pushToast(event.message, event.tone);
+    if (event.tone === "bad") { haptics.celebrate(); sound.ship(); }
+    else { haptics.success(); sound.success(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event?.key]);
 
   useEffect(() => {
     if (game.prestige.ships > prevShips.current) {

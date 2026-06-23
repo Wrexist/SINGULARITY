@@ -1,7 +1,9 @@
 import { Big } from "./math/Big";
-import { balance, type UpgradeDef, type ResearchDef, type DataOffer } from "./balance/config";
+import { balance, type UpgradeDef, type ResearchDef, type DataOffer, type HeatEvent } from "./balance/config";
 import { derive } from "./derive";
 import type { GameState } from "./types";
+
+const clampHeat = (h: number) => Math.max(0, Math.min(balance.heat.max, h));
 
 /**
  * Pure state transitions for player actions. Each returns a NEW state (or the
@@ -69,6 +71,8 @@ export function buyUpgrade(state: GameState, id: string): GameState {
   const def = UPGRADE_BY_ID[id]!;
   const owned = state.upgrades[id] ?? 0;
   const cost = upgradeCost(def, owned);
+  // Buying dark-web tools puts you on a list — a little heat each time.
+  const heat = def.market === "darkweb" ? clampHeat(state.heat + balance.heat.toolBuyHeat) : state.heat;
   return {
     ...state,
     resources: {
@@ -76,6 +80,7 @@ export function buyUpgrade(state: GameState, id: string): GameState {
       [def.cost.resource]: state.resources[def.cost.resource].sub(cost),
     },
     upgrades: { ...state.upgrades, [id]: owned + 1 },
+    heat,
   };
 }
 
@@ -133,10 +138,23 @@ export function canBuyDataOffer(state: GameState, id: string): boolean {
 }
 
 /**
+ * The actual raid chance for a shady offer at the current Heat. Base chance
+ * plus a linear ramp up to `raidScaleAtMax` at full Heat, clamped so the
+ * raid+poison split never exceeds 1. Exported so the UI shows live odds.
+ */
+export function effectiveRaidChance(state: GameState, id: string): number {
+  const def = OFFER_BY_ID[id];
+  if (!def?.risk) return 0;
+  const ramp = (state.heat / balance.heat.max) * balance.heat.raidScaleAtMax;
+  const raw = def.risk.raidChance + ramp;
+  return Math.min(raw, 1 - def.risk.poisonChance);
+}
+
+/**
  * Buy a data batch. Deterministic: the caller passes `roll` in [0,1) (like we
  * pass time into tick) so the engine stays pure and the risk is unit-testable.
- * Legit offers ignore the roll. Returns the next state and an outcome the UI
- * narrates as a reveal beat.
+ * Legit offers ignore the roll. Shady buys add Heat (and a raid cools you off —
+ * you lay low after getting caught). Returns the next state and an outcome.
  */
 export function buyDataOffer(
   state: GameState,
@@ -149,13 +167,17 @@ export function buyDataOffer(
   let moneyLost = Big.of(def.cost);
   let kind: MarketOutcomeKind = "clean";
   let message = `Clean batch from ${def.vendor}. +${dataGained.format()} data.`;
+  let heat = state.heat;
 
   if (def.risk) {
-    const { raidChance, fine, raidDataFactor, poisonChance, poisonDataFactor } = def.risk;
+    heat = clampHeat(state.heat + (def.heat ?? 0));
+    const raidChance = effectiveRaidChance(state, id);
+    const { fine, raidDataFactor, poisonChance, poisonDataFactor } = def.risk;
     if (roll < raidChance) {
       kind = "raid";
       dataGained = dataGained.mul(raidDataFactor);
       moneyLost = moneyLost.add(fine);
+      heat = clampHeat(state.heat * 0.4); // caught → lay low
       message = `🚨 Raided! Regulators kicked the door in. Fined $${Big.of(fine).format()}.`;
     } else if (roll < raidChance + poisonChance) {
       kind = "poisoned";
@@ -176,6 +198,67 @@ export function buyDataOffer(
       money: available.sub(moneyLost),
       data: state.resources.data.add(dataGained),
     },
+    heat,
   };
   return { state: next, outcome: { kind, dataGained, moneyLost, message } };
+}
+
+// ---------- Regulatory Heat events ----------
+
+export interface HeatEventResult {
+  id: string;
+  message: string;
+  tone: "bad" | "good";
+}
+
+const HEAT_EVENTS = balance.heatEvents as HeatEvent[];
+const TOTAL_EVENT_WEIGHT = HEAT_EVENTS.reduce((sum, e) => sum + e.weight, 0);
+
+/** Pick a weighted heat event from a roll in [0,1). Pure/testable. */
+export function pickHeatEvent(pickRoll: number): HeatEvent {
+  let target = pickRoll * TOTAL_EVENT_WEIGHT;
+  for (const e of HEAT_EVENTS) {
+    if (target < e.weight) return e;
+    target -= e.weight;
+  }
+  return HEAT_EVENTS[HEAT_EVENTS.length - 1]!;
+}
+
+/** Apply a heat event's effect to state. Pure given the event id. */
+export function applyHeatEvent(state: GameState, eventId: string): { state: GameState; event: HeatEventResult } {
+  const def = HEAT_EVENTS.find((e) => e.id === eventId) ?? HEAT_EVENTS[0]!;
+  const { fineFraction, dataFraction, heatMul, heatAdd, heatSet } = def.effect;
+  let money = state.resources.money;
+  let data = state.resources.data;
+  let heat = state.heat;
+  if (fineFraction) money = money.mul(1 - fineFraction);
+  if (dataFraction) data = data.mul(1 - dataFraction);
+  if (heatMul !== undefined) heat = heat * heatMul;
+  if (heatAdd !== undefined) heat = heat + heatAdd;
+  if (heatSet !== undefined) heat = heatSet;
+  return {
+    state: { ...state, resources: { ...state.resources, money, data }, heat: clampHeat(heat) },
+    event: { id: def.id, message: def.message, tone: def.tone },
+  };
+}
+
+/**
+ * Roll for a regulatory event this frame. Probability scales linearly with Heat
+ * (zero when cold). Two rolls passed in (fire, pick) keep the engine pure — the
+ * store supplies Math.random(), mirroring how the wall clock lives in the store.
+ */
+export function maybeHeatEvent(
+  state: GameState,
+  seconds: number,
+  fireRoll: number,
+  pickRoll: number,
+): { state: GameState; event: HeatEventResult } | null {
+  if (state.heat <= 0) return null;
+  const heatFrac = state.heat / balance.heat.max;
+  const chance = Math.min(
+    heatFrac * balance.heat.eventChancePerSecAtMax * seconds,
+    balance.heat.eventChanceCap,
+  );
+  if (fireRoll >= chance) return null;
+  return applyHeatEvent(state, pickHeatEvent(pickRoll).id);
 }

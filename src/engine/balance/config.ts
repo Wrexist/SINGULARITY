@@ -40,14 +40,36 @@ export interface DataOffer {
   /** Base Data delivered on a clean purchase. */
   data: number;
   shady: boolean;
+  /** Regulatory Heat added by a shady purchase (0 for legit vendors). */
+  heat?: number;
   risk?: {
-    /** P(raided): pay a fine, get a fraction of the data. */
+    /** Base P(raided): pay a fine, get a fraction of the data. Rises with Heat. */
     raidChance: number;
     fine: number;
     raidDataFactor: number;
     /** P(poisoned): get a fraction of the data, no fine. */
     poisonChance: number;
     poisonDataFactor: number;
+  };
+}
+
+/** A regulatory event, fired probabilistically as Heat rises (Bazaar-scoped). */
+export interface HeatEvent {
+  id: string;
+  weight: number;
+  tone: "bad" | "good";
+  message: string;
+  effect: {
+    /** Lose this fraction of current Money. */
+    fineFraction?: number;
+    /** Lose this fraction of current Data. */
+    dataFraction?: number;
+    /** Multiply Heat by this (e.g. 0.3 = lay low after a raid). */
+    heatMul?: number;
+    /** Add this much Heat. */
+    heatAdd?: number;
+    /** Set Heat to this absolute value. */
+    heatSet?: number;
   };
 }
 
@@ -205,7 +227,59 @@ export const balance = {
     },
   ] satisfies UpgradeDef[],
 
-  /** Money → Data marketplace. Legit (safe, pricey) vs. dark web (cheap, risky). */
+  /**
+   * Regulatory Heat (0..100). Rises with dark-web buys, cools passively, and
+   * scales the raid chance. At high Heat, random audit EVENTS fire. This is the
+   * Bazaar's risk pressure-valve — go shady for cheap data, but manage the heat.
+   * Values are a provisional first pass; tune against playtest, not in the abstract.
+   */
+  heat: {
+    max: 100,
+    /** Heat lost per second when you're not buying shady data (~3.5 min to fully cool). */
+    coolPerSec: 0.45,
+    /** Added to a shady offer's raid chance at MAX heat (linear in heat). */
+    raidScaleAtMax: 0.4,
+    /** Per-second chance of a regulatory event AT MAX heat (linear in heat). */
+    eventChancePerSecAtMax: 0.03,
+    /** Don't let one big elapsed frame (tab refocus) make an event near-certain. */
+    eventChanceCap: 0.5,
+    /** Heat added when buying a dark-web tool (scraper/botnet — you're on a list now). */
+    toolBuyHeat: 5,
+  },
+
+  /** Regulatory events, weighted. Picked when an event fires (see actions). */
+  heatEvents: [
+    {
+      id: "audit",
+      weight: 4,
+      tone: "bad",
+      message: "🚨 Surprise audit! Regulators want their cut. Fined 25% of your cash.",
+      effect: { fineFraction: 0.25, heatMul: 0.3 },
+    },
+    {
+      id: "subpoena",
+      weight: 3,
+      tone: "bad",
+      message: "📑 Data subpoena — a chunk of your dataset is seized as evidence.",
+      effect: { dataFraction: 0.2, heatMul: 0.5 },
+    },
+    {
+      id: "whistleblower",
+      weight: 2,
+      tone: "bad",
+      message: "📰 A whistleblower leaks your sourcing. The heat is on.",
+      effect: { heatAdd: 25 },
+    },
+    {
+      id: "lobbyist",
+      weight: 1,
+      tone: "good",
+      message: "🤝 A friendly lobbyist makes it all go away. Heat cleared.",
+      effect: { heatSet: 0 },
+    },
+  ] satisfies HeatEvent[],
+
+  /** Money → Data marketplace. Legit (safe, pricey) vs. dark web (cheap, risky, hot). */
   dataMarket: [
     {
       id: "meta_dump",
@@ -213,7 +287,7 @@ export const balance = {
       name: "Public Posts Bundle",
       desc: "A decade of vacation photos and arguments. Fully licensed™.",
       cost: 200,
-      data: 180,
+      data: 150,
       shady: false,
     },
     {
@@ -222,7 +296,16 @@ export const balance = {
       name: "Search Logs (Anonymized)",
       desc: "What everyone secretly asks at 3am. 'Anonymized.'",
       cost: 1500,
-      data: 1500,
+      data: 1300,
+      shady: false,
+    },
+    {
+      id: "readit_firehose",
+      vendor: "Readit",
+      name: "Forum Firehose",
+      desc: "Ten billion hot takes and one actually useful comment.",
+      cost: 6000,
+      data: 6000,
       shady: false,
     },
     {
@@ -230,8 +313,8 @@ export const balance = {
       vendor: "ClosedAI",
       name: "Synthetic Dataset",
       desc: "Premium model-generated data. Best ratio at scale, naturally.",
-      cost: 12000,
-      data: 16000,
+      cost: 20000,
+      data: 24000,
       shady: false,
     },
     {
@@ -240,14 +323,15 @@ export const balance = {
       name: "Scraped Data Pack",
       desc: "'Ethically sourced.' Cheaper per byte. No refunds, no questions.",
       cost: 120,
-      data: 220,
+      data: 165,
       shady: true,
+      heat: 6,
       risk: {
-        raidChance: 0.12,
-        fine: 300,
+        raidChance: 0.08,
+        fine: 250,
         raidDataFactor: 0.4,
-        poisonChance: 0.28,
-        poisonDataFactor: 0.12,
+        poisonChance: 0.25,
+        poisonDataFactor: 0.15,
       },
     },
     {
@@ -256,11 +340,29 @@ export const balance = {
       name: "Bulk Corporate Leak",
       desc: "A whole company's data 'fell off a truck.' Huge if it's clean.",
       cost: 2000,
-      data: 4200,
+      data: 3400,
       shady: true,
+      heat: 14,
       risk: {
-        raidChance: 0.2,
-        fine: 4000,
+        raidChance: 0.12,
+        fine: 3500,
+        raidDataFactor: 0.35,
+        poisonChance: 0.28,
+        poisonDataFactor: 0.12,
+      },
+    },
+    {
+      id: "bazaar_weights",
+      vendor: "ShadyByte Bazaar",
+      name: "Leaked Model Weights",
+      desc: "A competitor's whole model 'fell off a GPU.' Outrageously hot.",
+      cost: 15000,
+      data: 32000,
+      shady: true,
+      heat: 28,
+      risk: {
+        raidChance: 0.18,
+        fine: 30000,
         raidDataFactor: 0.3,
         poisonChance: 0.3,
         poisonDataFactor: 0.1,

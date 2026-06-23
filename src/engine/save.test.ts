@@ -25,7 +25,7 @@ describe("save/load", () => {
     expect(restored.version).toBe(SAVE_VERSION);
   });
 
-  it("migrates a pre-versioning (v0) save", () => {
+  it("migrates a pre-versioning (v0) save up to the current version", () => {
     const v0 = {
       resources: { compute: "100", data: "5", money: "50" },
       upgrades: { rack_basic: 1 },
@@ -34,7 +34,29 @@ describe("save/load", () => {
       prestige: { legacyWeights: "0", ships: 0 },
     };
     const migrated = migrate(v0);
-    expect(migrated.version).toBe(1);
-    expect(migrated.lifetimeMoney).toBe("50"); // backfilled from money
+    expect(migrated.version).toBe(SAVE_VERSION);
+    expect(migrated.lifetimeMoney).toBe("50"); // backfilled from money (v0→v1)
+    expect(migrated.heat).toBe(0); // backfilled (v1→v2)
+  });
+
+  it("migrates a v1 save by adding cold Heat", () => {
+    const v1 = {
+      version: 1,
+      resources: { compute: "100", data: "5", money: "50" },
+      upgrades: {},
+      research: [],
+      run: { active: false, progress: 0, readyToClaim: false },
+      prestige: { legacyWeights: "0", ships: 0 },
+      lifetimeMoney: "50",
+    };
+    const migrated = migrate(v1);
+    expect(migrated.version).toBe(2);
+    expect(migrated.heat).toBe(0);
+  });
+
+  it("preserves Heat through a round-trip", () => {
+    const s = createInitialState();
+    s.heat = 42;
+    expect(deserialize(serialize(s)).heat).toBe(42);
   });
 });

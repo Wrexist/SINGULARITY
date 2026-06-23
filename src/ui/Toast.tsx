@@ -3,16 +3,19 @@ import { useEffect } from "react";
 export interface ToastData {
   id: number;
   text: string;
+  /** Visual weight: plain unlock vs. a regulatory event. */
+  tone?: "neutral" | "bad" | "good";
 }
 
 function Toast({ toast, onDone }: { toast: ToastData; onDone: (id: number) => void }) {
+  const lasting = toast.tone === "bad" || toast.tone === "good";
   useEffect(() => {
-    const t = window.setTimeout(() => onDone(toast.id), 2800);
+    const t = window.setTimeout(() => onDone(toast.id), lasting ? 4200 : 2800);
     return () => window.clearTimeout(t);
-  }, [toast.id, onDone]);
+  }, [toast.id, onDone, lasting]);
 
   return (
-    <div className="toast" onClick={() => onDone(toast.id)}>
+    <div className={`toast toast-${toast.tone ?? "neutral"}`} onClick={() => onDone(toast.id)}>
       {toast.text}
     </div>
   );

@@ -2,7 +2,15 @@ import { create } from "zustand";
 import type { GameState } from "../engine/types";
 import { createInitialState } from "../engine/state";
 import { tick } from "../engine/tick";
-import { startRun, claimRun, buyUpgrade, buyResearch, buyDataOffer, type MarketOutcome } from "../engine/actions";
+import {
+  startRun,
+  claimRun,
+  buyUpgrade,
+  buyResearch,
+  buyDataOffer,
+  maybeHeatEvent,
+  type MarketOutcome,
+} from "../engine/actions";
 import { prestige } from "../engine/prestige";
 import { applyOffline, type OfflineSummary } from "../engine/offline";
 import { serialize, deserialize } from "../engine/save";
@@ -15,11 +23,20 @@ const TIME_KEY = "singularity.lastSeen.v1";
  * state in the store, derive UI values with selectors). The wall clock lives
  * HERE, not in the engine — we read Date.now() and pass elapsed time into tick.
  */
+/** A fired regulatory event, surfaced to the UI (key bumps so repeats re-toast). */
+export interface FiredEvent {
+  key: number;
+  message: string;
+  tone: "bad" | "good";
+}
+
 interface GameStore {
   game: GameState;
   offline: OfflineSummary | null;
   /** True once the save has been loaded/hydrated (guards first-load toasts). */
   initialized: boolean;
+  /** Most recent regulatory event (heat-driven), or null. */
+  event: FiredEvent | null;
   // lifecycle
   init: () => void;
   advance: (elapsedMs: number) => void;
@@ -39,10 +56,13 @@ function now(): number {
   return Date.now();
 }
 
+let eventKey = 0;
+
 export const useGame = create<GameStore>((set, get) => ({
   game: createInitialState(),
   offline: null,
   initialized: false,
+  event: null,
 
   init: () => {
     let game = createInitialState();
@@ -68,7 +88,17 @@ export const useGame = create<GameStore>((set, get) => ({
     localStorage.setItem(TIME_KEY, String(now()));
   },
 
-  advance: (elapsedMs) => set((s) => ({ game: tick(s.game, elapsedMs) })),
+  advance: (elapsedMs) =>
+    set((s) => {
+      const game = tick(s.game, elapsedMs);
+      // Roll for a heat-driven regulatory event (randomness stays in the store).
+      const res = maybeHeatEvent(game, elapsedMs / 1000, Math.random(), Math.random());
+      if (res) {
+        eventKey += 1;
+        return { game: res.state, event: { key: eventKey, message: res.event.message, tone: res.event.tone } };
+      }
+      return { game };
+    }),
 
   save: () => {
     try {

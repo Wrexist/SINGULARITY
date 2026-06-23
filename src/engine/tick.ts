@@ -1,4 +1,5 @@
 import { Big } from "./math/Big";
+import { balance } from "./balance/config";
 import { derive } from "./derive";
 import type { Derived, GameState } from "./types";
 
@@ -61,11 +62,15 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     run = { active: true, progress: 0, readyToClaim: false };
   }
 
+  // Regulatory Heat cools passively when you're not buying shady data.
+  const heat = Math.max(0, state.heat - balance.heat.coolPerSec * seconds);
+
   return {
     ...state,
     resources: { compute, data, money },
     lifetimeMoney,
     run,
+    heat,
   };
 }
 
