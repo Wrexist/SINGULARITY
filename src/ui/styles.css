@@ -559,6 +559,96 @@ body {
 }
 .wiwa-row b { color: var(--c); font-size: 16px; font-weight: 750; }
 
+/* ---------- Ship celebration (tentpole moment) ---------- */
+.celebrate {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: radial-gradient(120% 80% at 50% 0%, rgba(255, 90, 60, 0.28), rgba(20, 24, 35, 0.5));
+  backdrop-filter: blur(10px) saturate(160%);
+  -webkit-backdrop-filter: blur(10px) saturate(160%);
+  animation: fade 0.3s ease;
+  overflow: hidden;
+}
+.confetti {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.confetti span {
+  position: absolute;
+  top: -12px;
+  width: 9px;
+  height: 14px;
+  border-radius: 2px;
+  opacity: 0;
+  animation: confetti-fall 2.8s var(--ease-out) forwards;
+  animation-delay: var(--d);
+}
+@keyframes confetti-fall {
+  0% { transform: translateY(-10vh) translateX(0) rotate(0); opacity: 1; }
+  100% {
+    transform: translateY(105vh) translateX(calc(var(--x) * 22vw)) rotate(var(--r));
+    opacity: 0;
+  }
+}
+.celebrate-card {
+  position: relative;
+  text-align: center;
+  max-width: 360px;
+  width: 100%;
+  padding: 30px 26px;
+  border-radius: var(--radius);
+  background: var(--glass-strong);
+  backdrop-filter: blur(var(--blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(180%);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  animation: rise-modal 0.5s var(--spring);
+}
+.celebrate-rocket {
+  font-size: 52px;
+  animation: launch 0.9s var(--spring);
+}
+@keyframes launch {
+  0% { transform: translateY(16px) scale(0.6); opacity: 0; }
+  60% { transform: translateY(-6px) scale(1.1); opacity: 1; }
+  100% { transform: none; }
+}
+.celebrate-card h2 {
+  margin: 6px 0 4px;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.celebrate-sub { font-size: 13px; color: var(--ink-2); margin: 0 0 18px; line-height: 1.45; }
+.celebrate-weights {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 40px;
+  font-weight: 850;
+  letter-spacing: -0.03em;
+  background: linear-gradient(135deg, var(--ship), var(--coral));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 6px;
+}
+.celebrate-weights span {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  -webkit-text-fill-color: var(--ink-3);
+}
+.celebrate-total { font-size: 12.5px; color: var(--ink-2); margin: 0 0 20px; }
+
 /* ---------- Footer ---------- */
 .footer { display: flex; justify-content: center; padding: 22px 0 6px; }
 .link-btn {

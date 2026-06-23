@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Big } from "../engine/math/Big";
 import { fmt, fmtRate } from "./format";
+import { useEasedBig } from "./useEasedBig";
 import { ComputeIcon, DataIcon, MoneyIcon } from "./Icons";
 
 interface ResourceProps {
@@ -29,13 +30,17 @@ function Resource({ label, cssVar, icon, value, rate }: ResourceProps) {
     prev.current = value;
   }, [value]);
 
+  // Roll the displayed number toward its target for a premium odometer feel;
+  // the pop/delta logic above still uses the exact value.
+  const display = useEasedBig(value);
+
   return (
     <div className="resource" style={{ ["--c" as string]: `var(${cssVar})` }}>
       <div className="resource-icon">{icon}</div>
       <div className="resource-body">
         <div className="resource-label">{label}</div>
         <div className="resource-value">
-          {fmt(value)}
+          {fmt(display)}
           {pop && (
             <span key={pop.id} className="pop" onAnimationEnd={() => setPop(null)}>
               {pop.text}

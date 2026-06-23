@@ -49,6 +49,10 @@ export class Big {
     return new Big(this.d.pow(v));
   }
 
+  abs(): Big {
+    return new Big(this.d.abs());
+  }
+
   gte(v: BigSource): boolean {
     return this.d.gte(Big.of(v).d);
   }
