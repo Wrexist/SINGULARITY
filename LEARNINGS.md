@@ -58,6 +58,21 @@
   no walls. Later-gen weight gains diminish (45 → +14 → +12) — fine for Phase 0; Phase 1 eras
   extend each run. Re-run `npm run sim` after any balance edit before committing.
 
+### Premium / liquid-glass UI (owner-directed visual pass)
+- **Owner explicitly authorized art polish in Phase 0** (CLAUDE.md normally defers it). It's a
+  pure reskin of the existing loop — no new game systems — so it doesn't breach the phase
+  boundary that matters (no hall/events/staff pulled forward).
+- **Liquid glass = `backdrop-filter: blur() saturate()` + translucent white + a specular top
+  edge** (the `::before` padding+mask border trick) + soft layered shadows + an animated aurora
+  behind it for the blur to refract. Light/airy palette (Airbnb-clean); brand CTA uses Airbnb
+  coral (#ff385c).
+- **Kept it pure CSS — no framer-motion / animation lib** to protect the Capacitor bundle
+  (CSS is 3.4kb gzip). Spring feel via `cubic-bezier(0.34,1.56,0.64,1)`; entrance stagger via
+  `nth-child` animation-delay; progress sheen + pulse-glow via keyframes.
+- **`@media (prefers-reduced-motion)` disables all motion** — accessibility is part of "premium".
+- `color-mix(in srgb, …)` used for accent tints; needs a modern engine (fine for iOS/WebKit
+  and the Chromium screenshot tool).
+
 ### Screenshots for the owner
 - `npm run shot` → seeded mid-game capture (phone viewport) into `screenshots/`.
 - Flags: `--fresh` (empty new lab), `--full` (full-page incl. research+prestige),

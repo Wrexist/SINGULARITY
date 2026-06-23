@@ -19,9 +19,18 @@ export function App() {
 
   return (
     <div className="app">
+      <div className="aurora" aria-hidden="true">
+        <span className="blob blob-a" />
+        <span className="blob blob-b" />
+        <span className="blob blob-c" />
+      </div>
+
       <header className="topbar">
-        <h1>SINGULARITY INC.</h1>
-        <span className="phase-tag">Phase 0 · prototype</span>
+        <div className="brand">
+          <span className="brand-mark" />
+          <h1>Singularity Inc.</h1>
+        </div>
+        <span className="phase-tag">prototype</span>
       </header>
 
       <ResourceBar

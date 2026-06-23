@@ -1,16 +1,18 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Big } from "../engine/math/Big";
 import { fmt, fmtRate } from "./format";
+import { ComputeIcon, DataIcon, MoneyIcon } from "./Icons";
 
 interface ResourceProps {
   label: string;
   cssVar: string;
+  icon: ReactNode;
   value: Big;
   rate?: Big | undefined;
 }
 
 /** A single resource readout with a number-pop on increase (micro-feedback, §7). */
-function Resource({ label, cssVar, value, rate }: ResourceProps) {
+function Resource({ label, cssVar, icon, value, rate }: ResourceProps) {
   const prev = useRef<Big>(value);
   const [pop, setPop] = useState<{ id: number; text: string } | null>(null);
   const popId = useRef(0);
@@ -29,16 +31,19 @@ function Resource({ label, cssVar, value, rate }: ResourceProps) {
 
   return (
     <div className="resource" style={{ ["--c" as string]: `var(${cssVar})` }}>
-      <div className="resource-label">{label}</div>
-      <div className="resource-value">
-        {fmt(value)}
-        {pop && (
-          <span key={pop.id} className="pop" onAnimationEnd={() => setPop(null)}>
-            {pop.text}
-          </span>
-        )}
+      <div className="resource-icon">{icon}</div>
+      <div className="resource-body">
+        <div className="resource-label">{label}</div>
+        <div className="resource-value">
+          {fmt(value)}
+          {pop && (
+            <span key={pop.id} className="pop" onAnimationEnd={() => setPop(null)}>
+              {pop.text}
+            </span>
+          )}
+        </div>
+        {rate && <div className="resource-rate">{fmtRate(rate)}</div>}
       </div>
-      {rate && <div className="resource-rate">{fmtRate(rate)}</div>}
     </div>
   );
 }
@@ -54,9 +59,15 @@ interface BarProps {
 export function ResourceBar({ compute, data, money, computeRate, moneyRate }: BarProps) {
   return (
     <div className="resource-bar">
-      <Resource label="Compute" cssVar="--compute" value={compute} rate={computeRate} />
-      <Resource label="Data" cssVar="--data" value={data} />
-      <Resource label="Money" cssVar="--money" value={money} rate={moneyRate.gt(0) ? moneyRate : undefined} />
+      <Resource label="Compute" cssVar="--compute" icon={<ComputeIcon />} value={compute} rate={computeRate} />
+      <Resource label="Data" cssVar="--data" icon={<DataIcon />} value={data} />
+      <Resource
+        label="Money"
+        cssVar="--money"
+        icon={<MoneyIcon />}
+        value={money}
+        rate={moneyRate.gt(0) ? moneyRate : undefined}
+      />
     </div>
   );
 }
