@@ -43,6 +43,21 @@
 - **Wall clock lives in the UI/state layer only.** `Date.now()` is in `store.ts`/`useGameLoop.ts`;
   the engine stays pure so the guardrail passes and offline = "one big tick".
 
+### Balance (Step 0.11)
+- **The sim earns its keep immediately.** First `npm run sim` run exposed a design bug a
+  spreadsheet would've hidden: Money was decoupled from Compute (fixed 10-compute runs with
+  fixed payout), so Compute scaling to 24M left Money stuck at ~15K forever — prestige
+  unreachable. Fix: run cost AND payout scale with Compute production (`costSeconds`,
+  `dataPerCompute`, `moneyPerCompute` in balance). The three-resource triangle only works
+  if the resources are actually coupled.
+- **Prestige gate = capability, not a money number.** Gating "Ship the Model" on lifetime
+  Money let the player hit the wall *before* researching the capstone (Inference API). Gating
+  on the capability research (`prestige.capabilityResearch`) guarantees the arc: climb tree →
+  deploy → ship. Legacy Weights still scale off lifetime Money for the payout size.
+- **Current Phase 0 pacing (first pass):** Gen1 ~12.5m, Gen2 ~1.5m (×3.25 from 45 weights),
+  no walls. Later-gen weight gains diminish (45 → +14 → +12) — fine for Phase 0; Phase 1 eras
+  extend each run. Re-run `npm run sim` after any balance edit before committing.
+
 ### Screenshots for the owner
 - `npm run shot` → seeded mid-game capture (phone viewport) into `screenshots/`.
 - Flags: `--fresh` (empty new lab), `--full` (full-page incl. research+prestige),

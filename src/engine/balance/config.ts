@@ -40,16 +40,27 @@ export const balance = {
   baseComputePerSec: 1,
 
   run: {
-    computeCost: 10,
+    /**
+     * A run invests `costSeconds` worth of current Compute *production* (floored
+     * at minCompute early game), then pays out Data/Money proportional to the
+     * Compute invested. This couples money to the size of your operation — the
+     * whole point of the three-resource triangle (GDD §2.1).
+     */
+    costSeconds: 2,
+    minCompute: 10,
     durationSec: 5,
-    dataYield: 3,
-    moneyYield: 5,
+    dataPerCompute: 0.35,
+    moneyPerCompute: 0.6,
   },
 
   prestige: {
-    /** Lifetime Money needed before you can Ship the Model. */
-    requirement: 1e6,
-    /** legacyWeightsGained = floor((lifetimeMoney / scale) ^ exponent). */
+    /**
+     * You can Ship once you've built a deployable model — i.e. researched this
+     * capability (GDD §4: "reach a capability threshold"). This guarantees the
+     * player climbs the research tree to its payoff before learning the reset.
+     */
+    capabilityResearch: "inference_api",
+    /** legacyWeightsGained = max(1, floor((lifetimeMoney / scale) ^ exponent)). */
     scale: 1e4,
     exponent: 0.5,
     /** Each Legacy Weight grants this much permanent global production. */
@@ -172,10 +183,11 @@ export const balance = {
     {
       id: "inference_api",
       name: "Ship: Inference API",
-      desc: "Deploy the model as a product. Passive Money, forever.",
+      desc: "Deploy the model as a product. Passive Money that scales with Compute.",
       requires: ["distillation"],
       cost: { compute: 40000, data: 2500 },
-      effect: { kind: "unlockPassiveMoney", perSec: 25 },
+      // Money/sec per unit of Compute/sec — a fraction of throughput becomes revenue.
+      effect: { kind: "unlockPassiveMoney", perSec: 0.3 },
     },
   ] satisfies ResearchDef[],
 };

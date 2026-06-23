@@ -77,17 +77,24 @@ export function derive(state: GameState): Derived {
   moneyMult = moneyMult.mul(legacyMult);
   passiveMoneyPerSec = passiveMoneyPerSec.mul(legacyMult);
 
+  const computePerSec = computeFlat.mul(computeMult);
+  // Run cost scales with compute production (floored early game) so payouts
+  // scale with the operation. Yields are proportional to compute invested.
+  const runComputeCost = computePerSec
+    .mul(balance.run.costSeconds)
+    .max(balance.run.minCompute);
+
   return {
-    computePerSec: computeFlat.mul(computeMult),
+    computePerSec,
     dataMult,
     moneyMult,
     runDurationSec: Math.max(0.5, runDurationSec),
-    passiveMoneyPerSec,
+    passiveMoneyPerSec: passiveMoneyPerSec.mul(computePerSec),
     autoClaim,
     autoTrain,
-    runComputeCost: Big.of(balance.run.computeCost),
-    runDataYield: Big.of(balance.run.dataYield).mul(dataMult),
-    runMoneyYield: Big.of(balance.run.moneyYield).mul(moneyMult),
+    runComputeCost,
+    runDataYield: runComputeCost.mul(balance.run.dataPerCompute).mul(dataMult),
+    runMoneyYield: runComputeCost.mul(balance.run.moneyPerCompute).mul(moneyMult),
     legacyMult,
   };
 }

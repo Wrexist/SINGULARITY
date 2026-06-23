@@ -7,19 +7,20 @@ import { balance } from "./balance/config";
 import { Big } from "./math/Big";
 
 describe("prestige", () => {
-  it("is gated until lifetime money meets the requirement", () => {
+  it("is gated until the Inference API capability is researched", () => {
     const s = createInitialState();
+    s.lifetimeMoney = Big.of(1e9);
     expect(canPrestige(s)).toBe(false);
-    s.lifetimeMoney = Big.of(balance.prestige.requirement);
+    s.research = [balance.prestige.capabilityResearch];
     expect(canPrestige(s)).toBe(true);
   });
 
   it("grants Legacy Weights per the formula and resets the run", () => {
     const s = createInitialState();
-    s.lifetimeMoney = Big.of(balance.prestige.requirement);
-    s.resources.money = Big.of(balance.prestige.requirement);
+    s.research = [balance.prestige.capabilityResearch, "backprop"];
+    s.lifetimeMoney = Big.of(1e6);
+    s.resources.money = Big.of(1e6);
     s.upgrades = { rack_basic: 10 };
-    s.research = ["backprop"];
     const gain = legacyWeightsGain(s);
     expect(gain.gt(0)).toBe(true);
 

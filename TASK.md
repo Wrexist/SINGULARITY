@@ -36,13 +36,20 @@
 - [x] "While you were away" screen on load
 
 ### Balance pass (IN PROGRESS — the remaining Phase 0 work)
-- [ ] Build a tiny spreadsheet/sim of the cost/yield curve (consider a Claude-in-artifact balance simulator)
-- [ ] Tune so first prestige lands at a satisfying point, not too early/late
-- [ ] First-session playtest by owner → FUN GATE
+- [x] Build a balance sim of the cost/yield curve (`npm run sim` — drives the real
+      engine with a greedy auto-player; reports milestone timeline, resource curve,
+      meta-loop generation times, and longest wall)
+- [x] Fix the money/compute decoupling the sim exposed (run cost + payout now scale
+      with Compute production — the GDD triangle actually works)
+- [x] Re-gate prestige on the Inference API capability (climb research → deploy → ship)
+- [x] Tune so first prestige lands at a satisfying point (~12.5m), meta-loop compounds
+      (Gen 2 ships in ~1.5m via ×3.25 boost), no walls (longest 0m55s)
+- [ ] **First-session playtest by owner → FUN GATE** (owner's call — not Claude's)
 
-> **Status:** the full Phase 0 loop is built, tested (35 passing), and playable in
-> flat UI. Next: balance the curve (current values are first-draft guesses) and run
-> the owner fun-gate. Run `npm run dev` to play, or `npm run shot` for a screenshot.
+> **Status:** Phase 0 is feature-complete and balanced to a defensible first pass.
+> 35 tests pass; build clean. The ONLY remaining Phase 0 item is the owner fun-gate:
+> play it (`npm run dev`) and decide if the loop is compelling without art.
+> Tools: `npm run dev` (play), `npm run sim` (balance report), `npm run shot` (screenshot).
 
 ---
 

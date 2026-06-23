@@ -15,10 +15,8 @@ export function PrestigePanel({ game, onPrestige }: Props) {
   const ready = canPrestige(game);
   const gain = legacyWeightsGain(game);
   const have = game.prestige.legacyWeights;
-  const progress = Math.min(
-    100,
-    (game.lifetimeMoney.toNumber() / balance.prestige.requirement) * 100,
-  );
+  const researchedCount = balance.research.filter((r) => game.research.includes(r.id)).length;
+  const progress = Math.min(100, (researchedCount / balance.research.length) * 100);
 
   return (
     <section className="panel prestige">
@@ -37,14 +35,14 @@ export function PrestigePanel({ game, onPrestige }: Props) {
         <div className="progress small">
           <div className="progress-fill money" style={{ width: `${progress}%` }} />
           <span className="progress-label">
-            {fmt(game.lifetimeMoney)} / {fmt(Big.of(balance.prestige.requirement))} lifetime money
+            Research {researchedCount}/{balance.research.length} — build the Inference API to ship
           </span>
         </div>
       )}
 
       {!confirming ? (
         <button className="btn btn-ship" disabled={!ready} onClick={() => setConfirming(true)}>
-          {ready ? `Ship — gain ${fmt(gain)} weights` : "Locked"}
+          {ready ? `Ship — gain ${fmt(gain)} weights` : "Locked — deploy a model first"}
         </button>
       ) : (
         <div className="confirm">

@@ -10,16 +10,16 @@ import type { GameState } from "./types";
  * tuned against the sim, never hand-guessed.
  */
 
-/** Can the player ship yet? Gated on lifetime Money this run. */
+/** Can the player ship yet? Gated on having built a deployable model. */
 export function canPrestige(state: GameState): boolean {
-  return state.lifetimeMoney.gte(balance.prestige.requirement);
+  return state.research.includes(balance.prestige.capabilityResearch);
 }
 
-/** Legacy Weights that shipping right now would grant: floor((money/scale)^exp). */
+/** Legacy Weights shipping now would grant: max(1, floor((money/scale)^exp)). */
 export function legacyWeightsGain(state: GameState): Big {
-  if (state.lifetimeMoney.lt(balance.prestige.requirement)) return Big.ZERO;
+  if (!canPrestige(state)) return Big.ZERO;
   const ratio = state.lifetimeMoney.div(balance.prestige.scale).toNumber();
-  return Big.of(Math.floor(Math.pow(ratio, balance.prestige.exponent)));
+  return Big.of(Math.max(1, Math.floor(Math.pow(ratio, balance.prestige.exponent))));
 }
 
 /**

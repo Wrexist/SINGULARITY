@@ -11,15 +11,17 @@ import {
 } from "./actions";
 import { createInitialState } from "./state";
 import { balance } from "./balance/config";
+import { derive } from "./derive";
 import { Big } from "./math/Big";
 
 describe("training run actions", () => {
   it("startRun spends compute and activates a run when affordable", () => {
     const s = createInitialState();
     s.resources.compute = Big.of(100);
+    const cost = derive(s).runComputeCost;
     const next = startRun(s);
     expect(next.run.active).toBe(true);
-    expect(next.resources.compute.eq(100 - balance.run.computeCost)).toBe(true);
+    expect(next.resources.compute.eq(Big.of(100).sub(cost))).toBe(true);
   });
 
   it("startRun is a no-op when compute is insufficient", () => {
@@ -30,9 +32,10 @@ describe("training run actions", () => {
   it("claimRun pays out Data and Money and resets the run", () => {
     const s = createInitialState();
     s.run = { active: false, progress: 1, readyToClaim: true };
+    const d = derive(s);
     const next = claimRun(s);
-    expect(next.resources.data.eq(balance.run.dataYield)).toBe(true);
-    expect(next.resources.money.eq(balance.run.moneyYield)).toBe(true);
+    expect(next.resources.data.eq(d.runDataYield)).toBe(true);
+    expect(next.resources.money.eq(d.runMoneyYield)).toBe(true);
     expect(next.run.readyToClaim).toBe(false);
   });
 
