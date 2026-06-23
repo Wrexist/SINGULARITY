@@ -2,7 +2,7 @@ import { balance } from "../engine/balance/config";
 import { canBuyDataOffer, canBuyUpgrade, upgradeCost, effectiveRaidChance } from "../engine/actions";
 import { Big } from "../engine/math/Big";
 import type { GameState } from "../engine/types";
-import { fmt } from "./format";
+import { fmt, fmtMoney } from "./format";
 
 function HeatMeter({ heat }: { heat: number }) {
   const pct = Math.min(100, (heat / balance.heat.max) * 100);
@@ -58,7 +58,7 @@ export function DataMarketPanel({ game, onBuyData, onBuyTool }: Props) {
               </div>
               <div className="card-cost">
                 <span style={{ color: "var(--data)" }}>+{fmt(Big.of(o.data))} data</span>
-                <span className="cost-sub">${fmt(Big.of(o.cost))}</span>
+                <span className="cost-sub">{fmtMoney(Big.of(o.cost))}</span>
               </div>
             </button>
           );
@@ -94,7 +94,7 @@ export function DataMarketPanel({ game, onBuyData, onBuyTool }: Props) {
               </div>
               <div className="card-cost">
                 <span style={{ color: "var(--data)" }}>~+{fmt(Big.of(o.data))} data</span>
-                <span className="cost-sub">${fmt(Big.of(o.cost))}</span>
+                <span className="cost-sub">{fmtMoney(Big.of(o.cost))}</span>
               </div>
             </button>
           );
@@ -120,7 +120,7 @@ export function DataMarketPanel({ game, onBuyData, onBuyTool }: Props) {
                 <span className="card-desc">{def.desc}</span>
               </div>
               <div className="card-cost">
-                <span style={{ color: "var(--money)" }}>${fmt(cost)}</span>
+                <span style={{ color: "var(--money)" }}>{fmtMoney(cost)}</span>
               </div>
             </button>
           );

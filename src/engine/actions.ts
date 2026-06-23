@@ -169,16 +169,17 @@ export function buyDataOffer(
   let message = `Clean batch from ${def.vendor}. +${dataGained.format()} data.`;
   let heat = state.heat;
 
+  let raided = false;
   if (def.risk) {
     heat = clampHeat(state.heat + (def.heat ?? 0));
     const raidChance = effectiveRaidChance(state, id);
     const { fine, raidDataFactor, poisonChance, poisonDataFactor } = def.risk;
     if (roll < raidChance) {
       kind = "raid";
+      raided = true;
       dataGained = dataGained.mul(raidDataFactor);
       moneyLost = moneyLost.add(fine);
       heat = clampHeat(state.heat * 0.4); // caught → lay low
-      message = `🚨 Raided! Regulators kicked the door in. Fined $${Big.of(fine).format()}.`;
     } else if (roll < raidChance + poisonChance) {
       kind = "poisoned";
       dataGained = dataGained.mul(poisonDataFactor);
@@ -191,6 +192,12 @@ export function buyDataOffer(
   // A raid fine can exceed your balance — clamp so money never goes negative.
   const available = state.resources.money;
   if (moneyLost.gt(available)) moneyLost = available;
+  if (raided) {
+    // Report the fine ACTUALLY charged (cost is always affordable; the fine is
+    // what the clamp may have trimmed) so the toast never overstates the hit.
+    const finePaid = moneyLost.sub(def.cost).max(0);
+    message = `🚨 Raided! Regulators kicked the door in. Fined $${finePaid.format()}.`;
+  }
   const next: GameState = {
     ...state,
     resources: {

@@ -64,13 +64,15 @@ describe("data market — dark web risk (deterministic via passed-in roll)", () 
     expect(state.resources.money.eq(Big.of(10000 - 370))).toBe(true);
   });
 
-  it("clamps the fine so money never goes negative", () => {
+  it("clamps the fine so money never goes negative, and reports the fine actually charged", () => {
     const s = createInitialState();
     s.resources.money = Big.of(120); // exactly the cost; fine would overrun
     const { state, outcome } = buyDataOffer(s, "bazaar_pack", 0.0);
     expect(outcome?.kind).toBe("raid");
-    expect(state.resources.money.gte(Big.ZERO)).toBe(true);
     expect(state.resources.money.eq(Big.ZERO)).toBe(true);
+    // The whole $120 went to the batch cost; $0 of fine was actually charged.
+    expect(outcome?.moneyLost.eq(Big.of(120))).toBe(true);
+    expect(outcome?.message).toContain("$0");
   });
 });
 

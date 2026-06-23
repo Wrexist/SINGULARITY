@@ -91,11 +91,14 @@ export const useGame = create<GameStore>((set, get) => ({
   advance: (elapsedMs) =>
     set((s) => {
       const game = tick(s.game, elapsedMs);
-      // Roll for a heat-driven regulatory event (randomness stays in the store).
-      const res = maybeHeatEvent(game, elapsedMs / 1000, Math.random(), Math.random());
-      if (res) {
-        eventKey += 1;
-        return { game: res.state, event: { key: eventKey, message: res.event.message, tone: res.event.tone } };
+      // Only roll for events when there's heat to drive them — keeps the hot
+      // path (the common cold state) free of per-frame RNG and object churn.
+      if (game.heat > 0) {
+        const res = maybeHeatEvent(game, elapsedMs / 1000, Math.random(), Math.random());
+        if (res) {
+          eventKey += 1;
+          return { game: res.state, event: { key: eventKey, message: res.event.message, tone: res.event.tone } };
+        }
       }
       return { game };
     }),

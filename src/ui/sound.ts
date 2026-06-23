@@ -57,4 +57,10 @@ export const sound = {
     if (!on()) return;
     [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, i * 0.09, 0.32, "sine", 0.06));
   },
+  /** Negative beat (a raid, a fine) — a harsh descending two-tone "uh-oh". */
+  alert: () => {
+    if (!on()) return;
+    tone(311.13, 0, 0.16, "sawtooth", 0.05);
+    tone(207.65, 0.12, 0.24, "square", 0.045);
+  },
 };

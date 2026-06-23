@@ -89,8 +89,9 @@ export function App() {
   useEffect(() => {
     if (!event) return;
     pushToast(event.message, event.tone);
-    if (event.tone === "bad") { haptics.celebrate(); sound.ship(); }
-    else { haptics.success(); sound.success(); }
+    // A fine/raid must FEEL bad — never the celebratory ship fanfare.
+    if (event.tone === "bad") { haptics.warn(); sound.alert(); }
+    else { haptics.celebrate(); sound.success(); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event?.key]);
 
@@ -113,10 +114,16 @@ export function App() {
   const onBuyData = (id: string) => {
     const outcome = doBuyData(id);
     if (!outcome) return;
-    pushToast(outcome.message);
     // The reveal IS the dopamine: reward clean hauls, sting the bad rolls.
-    if (outcome.kind === "clean") { haptics.success(); sound.success(); }
-    else { haptics.tap(); sound.tap(); }
+    if (outcome.kind === "clean") {
+      pushToast(outcome.message, "neutral");
+      haptics.success();
+      sound.success();
+    } else {
+      pushToast(outcome.message, "bad");
+      haptics.warn();
+      sound.alert();
+    }
   };
 
   return (
