@@ -9,35 +9,40 @@
 ## Phase 0 tasks (the only tasks that exist right now)
 
 ### Setup
-- [ ] Scaffold Vite + React 18 + TS (strict) project
-- [ ] Add Zustand, set up `src/engine/` (no React) and `src/ui/` split
-- [ ] Add a BigNumber abstraction wrapper in `src/engine/math/`
-- [ ] Set up Vitest; write the first engine test before the first engine feature
-- [ ] Create `src/engine/balance/` with tunables as data
-- [ ] Git init, first commit, push to repo
+- [x] Scaffold Vite + React 18 + TS (strict) project
+- [x] Add Zustand, set up `src/engine/` (no React) and `src/ui/` split
+- [x] Add a BigNumber abstraction wrapper in `src/engine/math/`
+- [x] Set up Vitest; write the first engine test before the first engine feature
+- [x] Create `src/engine/balance/` with tunables as data
+- [x] Git init, first commit, push to repo
+- [x] Screenshot tooling (`npm run shot`) so the owner can see builds easily
 
 ### Core engine (pure TS, deterministic, tested)
-- [ ] Resource model: Compute, Data, Money (with BigNumber)
-- [ ] `tick(state, elapsedMs)` pure function — passive Compute generation
-- [ ] Manual action: assign Compute to a training run → yields Data/Money on completion
-- [ ] Upgrade model: ~10 upgrades (rack tiers, yield multipliers, one automation)
-- [ ] Offline progress: compute accrued resources from elapsed time on load
-- [ ] One research branch (~5 nodes) gating a capability unlock
-- [ ] Prestige: "Ship the Model" — reset + Legacy Weights meta-currency + one permanent multiplier
-- [ ] Save/load: serialize store, versioned, with a v0→v1 migration stub
+- [x] Resource model: Compute, Data, Money (with BigNumber)
+- [x] `tick(state, elapsedMs)` pure function — passive Compute generation
+- [x] Manual action: assign Compute to a training run → yields Data/Money on completion
+- [x] Upgrade model: ~10 upgrades (rack tiers, yield multipliers, two automations)
+- [x] Offline progress: compute accrued resources from elapsed time on load
+- [x] One research branch (5 nodes) gating a capability unlock (passive-money Inference API)
+- [x] Prestige: "Ship the Model" — reset + Legacy Weights meta-currency + permanent multiplier
+- [x] Save/load: serialize store, versioned, with a v0→v1 migration stub
 
 ### Minimal flat UI (deliberately ugly — no art, no hall)
-- [ ] Resource counters (Compute / Data / Money) with number-pop on change
-- [ ] Action dock: claim / assign training run
-- [ ] Upgrade list (buy buttons, costs, owned counts)
-- [ ] Research panel (the 5-node branch)
-- [ ] Prestige button + confirmation + "what you keep" summary
-- [ ] "While you were away" screen on load
+- [x] Resource counters (Compute / Data / Money) with number-pop on change
+- [x] Action dock: claim / assign training run
+- [x] Upgrade list (buy buttons, costs, owned counts)
+- [x] Research panel (the 5-node branch)
+- [x] Prestige button + confirmation + "what you keep" summary
+- [x] "While you were away" screen on load
 
-### Balance pass
+### Balance pass (IN PROGRESS — the remaining Phase 0 work)
 - [ ] Build a tiny spreadsheet/sim of the cost/yield curve (consider a Claude-in-artifact balance simulator)
 - [ ] Tune so first prestige lands at a satisfying point, not too early/late
 - [ ] First-session playtest by owner → FUN GATE
+
+> **Status:** the full Phase 0 loop is built, tested (35 passing), and playable in
+> flat UI. Next: balance the curve (current values are first-draft guesses) and run
+> the owner fun-gate. Run `npm run dev` to play, or `npm run shot` for a screenshot.
 
 ---
 

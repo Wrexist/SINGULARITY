@@ -66,10 +66,30 @@ try {
     viewport: wide ? { width: 1280, height: 800 } : { width: 390, height: 844 },
     deviceScaleFactor: 2,
   });
+  // By default, seed a representative mid-game save so the UI looks alive.
+  // Pass --fresh for an empty new-lab capture.
+  if (!has("fresh")) {
+    const seed = {
+      version: 1,
+      resources: { compute: "850", data: "140", money: "2600" },
+      upgrades: { rack_basic: 6, rack_server: 1, overclock: 1, data_pipeline: 2, monetize: 1 },
+      research: ["backprop", "curated_data"],
+      run: { active: true, progress: 0.64, readyToClaim: false },
+      prestige: { legacyWeights: "0", ships: 0 },
+      lifetimeMoney: "4200",
+    };
+    await page.addInitScript(
+      ([save, now]) => {
+        localStorage.setItem("singularity.save.v1", save);
+        localStorage.setItem("singularity.lastSeen.v1", now);
+      },
+      [JSON.stringify(seed), String(Date.now())],
+    );
+  }
   await page.goto(`http://localhost:${port}/`, { waitUntil: "networkidle" });
-  await sleep(600);
+  await sleep(900);
   const out = `screenshots/${name}.png`;
-  await page.screenshot({ path: out });
+  await page.screenshot({ path: out, fullPage: has("full") });
   console.log(`Saved ${out}`);
 } finally {
   if (browser) await browser.close();

@@ -26,4 +26,24 @@
 ---
 
 ## Project gotchas (append as discovered)
-*(empty — add dated entries as you hit and solve real problems)*
+
+### 2026-06-23 — Phase 0 build
+- **`exactOptionalPropertyTypes: true` is on.** Passing an explicit `undefined` to an
+  optional prop fails typecheck. Declare such props `foo?: T | undefined`, or omit them.
+- **break_infinity.js vs raw JS multiply drift.** `Big.of(15).mul(1.15)` is not bit-identical
+  to `15 * 1.15`. Don't assert `.eq()` on derived costs in tests — use `toBeCloseTo` on
+  `.toNumber()` or compare formatted strings.
+- **Guardrail test greps for the literal `Date.now(`** in `src/engine`. Even a *comment*
+  mentioning it trips the test (working as intended). Reword comments to "reads the wall clock".
+- **Playwright CDN is blocked by the sandbox network policy** (403 on cdn.playwright.dev).
+  Don't `playwright install`. There's a pre-installed Chromium at `/opt/pw-browsers/.../chrome`;
+  `scripts/screenshot.mjs` auto-detects it via `executablePath`. Launch with `--no-sandbox`.
+- **Number-pop juice:** only pop on discrete jumps (claims/buys), not the per-tick trickle,
+  or the counter flickers every frame. Threshold: delta > 2% of previous value (see ResourceBar).
+- **Wall clock lives in the UI/state layer only.** `Date.now()` is in `store.ts`/`useGameLoop.ts`;
+  the engine stays pure so the guardrail passes and offline = "one big tick".
+
+### Screenshots for the owner
+- `npm run shot` → seeded mid-game capture (phone viewport) into `screenshots/`.
+- Flags: `--fresh` (empty new lab), `--full` (full-page incl. research+prestige),
+  `--wide` (desktop viewport), `--name foo` (output name). Just ask "screenshot" and I'll run it.
