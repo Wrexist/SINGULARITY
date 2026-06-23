@@ -91,6 +91,19 @@
 - **Clamp money sinks that can exceed balance.** A raid fine can be larger than the player's money;
   clamp the deduction so resources never go negative (affordability only checked the base cost).
 
+### Balancing the Data Market (use the sim's EV table, not vibes)
+- `npm run sim` now prints a **Data Market EV table**: clean data-per-$ and *expected* data-per-$
+  for shady offers at Heat 0/50/100 (folding in poison/raid chance + the fine). This is how the
+  Bazaar was tuned — analytically, not by guessing rolls.
+- **Design target:** the Bazaar should BEAT the best legit ratio when cold (risk premium ≈ +35%,
+  ~1.6 d/$ vs ClosedAI's 1.2), reach parity around mid Heat, and fall BELOW legit at max Heat
+  (~0.8). The poison chance is the dominant EV drag — small changes there swing EV a lot.
+- **Evidence finding (open design question, NOT yet acted on):** the market is currently *optional*
+  for an engaged player — the sim's market-using policy hits the SAME first-prestige time as
+  baseline because runs already supply enough Data; research is never data-bottlenecked. If we
+  want the market to feel necessary rather than a catch-up/convenience tool, that's a deliberate
+  research-cost rebalance for the owner to greenlight — don't force it silently.
+
 ### Time-driven random events without breaking determinism
 - **The engine must stay deterministic, but events need to fire randomly over time.** Resolution:
   the per-frame `advance()` in the STORE rolls `Math.random()` and calls a pure engine fn

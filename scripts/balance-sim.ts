@@ -26,6 +26,8 @@ import {
   upgradeCost,
   buyResearch,
   canBuyResearch,
+  researchAvailable,
+  buyDataOffer,
 } from "../src/engine/actions";
 import { canPrestige, legacyWeightsGain, prestige } from "../src/engine/prestige";
 import { balance } from "../src/engine/balance/config";
@@ -47,9 +49,84 @@ function fmtClock(ms: number): string {
   return `${m}m${String(s % 60).padStart(2, "0")}s`;
 }
 
-function autoBuy(state: GameState): { state: GameState; bought: string[] } {
+/**
+ * Analytical view of the Data Market — the cleanest way to judge the risk
+ * premium without rolling dice. For each offer, expected Data and expected
+ * cost (shady offers include the raid fine and the heat-scaled raid chance),
+ * then Data-per-$. The Bazaar SHOULD beat legit on EV when cold, and the
+ * advantage SHOULD erode as Heat climbs — that's the whole tension.
+ */
+function analyzeMarket(): void {
+  console.log("\n=== DATA MARKET — expected value (data per $) ===");
+  const heatLevels = [0, 50, 100];
+  const ramp = (h: number) => (h / balance.heat.max) * balance.heat.raidScaleAtMax;
+  console.log("  vendor / offer                         | clean d/$ | EV d/$ @heat 0/50/100");
+  for (const o of balance.dataMarket) {
+    const cleanRatio = o.data / o.cost;
+    let evCol: string;
+    if (!o.risk) {
+      evCol = `${cleanRatio.toFixed(2)} (safe)`;
+    } else {
+      const r = o.risk;
+      const evs = heatLevels.map((h) => {
+        const raid = Math.min(r.raidChance + ramp(h), 1 - r.poisonChance);
+        const poison = r.poisonChance;
+        const clean = 1 - raid - poison;
+        const evData = o.data * (clean + poison * r.poisonDataFactor + raid * r.raidDataFactor);
+        const evCost = o.cost + raid * r.fine;
+        return (evData / evCost).toFixed(2);
+      });
+      evCol = evs.join(" / ");
+    }
+    const name = `${o.vendor} — ${o.name}`.padEnd(38);
+    console.log(`  ${name} | ${cleanRatio.toFixed(2).padStart(9)} | ${evCol}`);
+  }
+}
+
+/**
+ * When data is the ONLY thing blocking the next reachable research node, an
+ * engaged player buys legit data to unblock it. Models the market's intended
+ * role (a money→data accelerator) using only safe vendors (deterministic).
+ */
+function maybeBuyData(state: GameState): { state: GameState; bought: string[] } {
   let s = state;
   const bought: string[] = [];
+  // Find a node whose requirements are met and whose compute cost is covered,
+  // but which is blocked on data.
+  const blocked = balance.research.find(
+    (def) =>
+      researchAvailable(s, def.id) &&
+      s.resources.compute.gte(def.cost.compute) &&
+      s.resources.data.lt(def.cost.data),
+  );
+  if (!blocked) return { state: s, bought };
+
+  const legit = balance.dataMarket.filter((o) => !o.shady).sort((a, b) => a.cost - b.cost);
+  let guard = 0;
+  while (guard++ < 500 && s.resources.data.lt(blocked.cost.data)) {
+    // Best data-per-$ legit offer we can afford while keeping a money reserve.
+    const affordable = legit
+      .filter((o) => s.resources.money.gte(o.cost))
+      .sort((a, b) => b.data / b.cost - a.data / a.cost)[0];
+    if (!affordable) break;
+    const { state: next } = buyDataOffer(s, affordable.id, 0.99); // clean (legit ignores roll)
+    if (next === s) break;
+    s = next;
+    bought.push(`buy-data:${affordable.id}`);
+  }
+  return { state: s, bought };
+}
+
+function autoBuy(state: GameState, useMarket: boolean): { state: GameState; bought: string[] } {
+  let s = state;
+  const bought: string[] = [];
+
+  // 1. If enabled, buy legit data to unblock a data-gated research node.
+  if (useMarket) {
+    const r = maybeBuyData(s);
+    s = r.state;
+    bought.push(...r.bought);
+  }
 
   // 2. Automations first (data-gated, huge QoL).
   for (const id of ["auto_claim", "auto_train"]) {
@@ -95,7 +172,7 @@ function autoBuy(state: GameState): { state: GameState; bought: string[] } {
   return { state: s, bought };
 }
 
-function run() {
+function run(useMarket = false) {
   let state = createInitialState();
   const events: Event[] = [];
   const seen = new Set<string>();
@@ -126,7 +203,7 @@ function run() {
       if (started !== state) state = started;
     }
 
-    const { state: afterBuy, bought } = autoBuy(state);
+    const { state: afterBuy, bought } = autoBuy(state, useMarket);
     state = afterBuy;
     if (bought.length > 0) {
       // Only measure walls during the first generation (the learning run).
@@ -171,8 +248,8 @@ function run() {
   }
 
   // ---- Report ----
-  console.log("\n=== SINGULARITY INC — BALANCE SIM ===");
-  console.log(`Policy: greedy engaged player, ${STEP_MS}ms steps, cap ${MAX_MINUTES}m\n`);
+  console.log(`\n=== SINGULARITY INC — BALANCE SIM ${useMarket ? "(market player)" : "(baseline)"} ===`);
+  console.log(`Policy: greedy engaged player${useMarket ? " + buys legit data when data-blocked" : ""}, ${STEP_MS}ms steps, cap ${MAX_MINUTES}m\n`);
 
   console.log("Milestone timeline:");
   for (const e of events) console.log(`  ${fmtClock(e.atMs).padStart(7)}  ${e.label}`);
@@ -202,4 +279,6 @@ function run() {
   console.log("");
 }
 
-run();
+run(false);
+run(true);
+analyzeMarket();

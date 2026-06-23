@@ -41,27 +41,27 @@ describe("data market — dark web risk (deterministic via passed-in roll)", () 
     return s;
   };
 
-  // At heat 0: raid 0.08, poison 0.25 (clean above 0.33). Data 165, fine 250.
+  // At heat 0: raid 0.05, poison 0.15 (clean above 0.20). Data 240, fine 120.
   it("clean haul on a high roll", () => {
     const { state, outcome } = buyDataOffer(fresh(), "bazaar_pack", 0.99);
     expect(outcome?.kind).toBe("clean");
-    expect(state.resources.data.eq(Big.of(165))).toBe(true);
+    expect(state.resources.data.eq(Big.of(240))).toBe(true);
     expect(state.resources.money.eq(Big.of(10000 - 120))).toBe(true);
   });
 
   it("poisoned batch on a mid roll", () => {
-    const { state, outcome } = buyDataOffer(fresh(), "bazaar_pack", 0.2);
+    const { state, outcome } = buyDataOffer(fresh(), "bazaar_pack", 0.1);
     expect(outcome?.kind).toBe("poisoned");
-    expect(state.resources.data.eq(Big.of(165).mul(0.15))).toBe(true);
+    expect(state.resources.data.eq(Big.of(240).mul(0.3))).toBe(true);
     expect(state.resources.money.eq(Big.of(10000 - 120))).toBe(true);
   });
 
   it("raided on a low roll: pays a fine and gets reduced data", () => {
     const { state, outcome } = buyDataOffer(fresh(), "bazaar_pack", 0.02);
     expect(outcome?.kind).toBe("raid");
-    expect(state.resources.data.eq(Big.of(165).mul(0.4))).toBe(true);
-    // cost 120 + fine 250 = 370
-    expect(state.resources.money.eq(Big.of(10000 - 370))).toBe(true);
+    expect(state.resources.data.eq(Big.of(240).mul(0.4))).toBe(true);
+    // cost 120 + fine 120 = 240
+    expect(state.resources.money.eq(Big.of(10000 - 240))).toBe(true);
   });
 
   it("clamps the fine so money never goes negative, and reports the fine actually charged", () => {
