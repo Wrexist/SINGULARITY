@@ -2,7 +2,7 @@ import { create } from "zustand";
 import type { GameState } from "../engine/types";
 import { createInitialState } from "../engine/state";
 import { tick } from "../engine/tick";
-import { startRun, claimRun, buyUpgrade, buyResearch } from "../engine/actions";
+import { startRun, claimRun, buyUpgrade, buyResearch, buyDataOffer, type MarketOutcome } from "../engine/actions";
 import { prestige } from "../engine/prestige";
 import { applyOffline, type OfflineSummary } from "../engine/offline";
 import { serialize, deserialize } from "../engine/save";
@@ -30,6 +30,7 @@ interface GameStore {
   doClaim: () => void;
   doBuyUpgrade: (id: string) => void;
   doResearch: (id: string) => void;
+  doBuyData: (id: string) => MarketOutcome | null;
   doPrestige: () => void;
   hardReset: () => void;
 }
@@ -84,6 +85,13 @@ export const useGame = create<GameStore>((set, get) => ({
   doClaim: () => set((s) => ({ game: claimRun(s.game) })),
   doBuyUpgrade: (id) => set((s) => ({ game: buyUpgrade(s.game, id) })),
   doResearch: (id) => set((s) => ({ game: buyResearch(s.game, id) })),
+  // The wall clock isn't the only nondeterminism we keep out of the engine —
+  // the risk roll lives here too and is passed in, mirroring how we pass time.
+  doBuyData: (id) => {
+    const { state: next, outcome } = buyDataOffer(get().game, id, Math.random());
+    if (outcome) set({ game: next });
+    return outcome;
+  },
   doPrestige: () => set((s) => ({ game: prestige(s.game) })),
 
   hardReset: () => {

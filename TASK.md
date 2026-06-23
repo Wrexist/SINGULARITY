@@ -63,6 +63,15 @@
 - [x] More satirical microcopy (taglines, footer, reset confirm, WIWA tips)
 - [x] Fix: unlock toasts no longer re-fire on returning-player load (hydration guard)
 
+### Data Market (owner-directed economy expansion — Money→Data, 3 resources intact)
+- [x] Licensed vendors (Meta / Goggle / ClosedAI): safe, pricey Money→Data buys
+- [x] Dark-web Bazaar: cheaper data with a passed-in risk roll → clean / poisoned / raided
+- [x] Dark-web tools as a new `dataPerSec` upgrade effect (Web Scraper, Captcha Farm, Botnet)
+- [x] Passive Data/sec wired through derive + tick; shown in ResourceBar + Lab Stats
+- [x] DataMarketPanel with a deliberate dark tonal shift for the Bazaar; outcome toasts
+- [x] Engine deterministic: risk roll passed in (Math.random lives in the store), unit-tested
+- [x] Revealed after first research (progressive disclosure); satirical, fictional framing
+
 ---
 
 ## Backlog (Phase 1+ — DO NOT START, parked for visibility)

@@ -59,14 +59,21 @@ interface BarProps {
   data: Big;
   money: Big;
   computeRate: Big;
+  dataRate: Big;
   moneyRate: Big;
 }
 
-export function ResourceBar({ compute, data, money, computeRate, moneyRate }: BarProps) {
+export function ResourceBar({ compute, data, money, computeRate, dataRate, moneyRate }: BarProps) {
   return (
     <div className="resource-bar">
       <Resource label="Compute" cssVar="--compute" icon={<ComputeIcon />} value={compute} rate={computeRate} />
-      <Resource label="Data" cssVar="--data" icon={<DataIcon />} value={data} />
+      <Resource
+        label="Data"
+        cssVar="--data"
+        icon={<DataIcon />}
+        value={data}
+        rate={dataRate.gt(0) ? dataRate : undefined}
+      />
       <Resource
         label="$"
         cssVar="--money"

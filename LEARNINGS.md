@@ -80,6 +80,17 @@
   (WIWA screen, 2h away), `--stats` (expand Lab Stats), `--settings`, `--celebrate`,
   `--name foo` (output name). Just ask "screenshot" and I'll run it.
 
+### Randomness in a deterministic engine (data-market risk rolls)
+- **Same rule as the wall clock: keep nondeterminism OUT of the engine — pass it in.** The dark-web
+  data buys have a clean/poisoned/raided outcome; the engine fn takes `roll: number` in [0,1) as a
+  parameter, the store supplies `Math.random()`, and tests pass exact rolls to hit each branch
+  deterministically. Never call `Math.random()` inside `src/engine/`.
+- **Big math is exact; JS float isn't.** `Big.of(220).mul(0.12)` ≠ `Big.of(220 * 0.12)` (the latter
+  is 26.4000…02). In tests, compute the expected value the *same way the engine does* (`.mul(0.12)`),
+  not with native float arithmetic.
+- **Clamp money sinks that can exceed balance.** A raid fine can be larger than the player's money;
+  clamp the deduction so resources never go negative (affordability only checked the base cost).
+
 ### Hydration vs. "on-unlock" UI (toasts, reveals)
 - **The store boots with `createInitialState()` (empty), then `init()` hydrates the save in an
   effect AFTER first paint.** So any "fire on transition false→true" UI (unlock toasts,

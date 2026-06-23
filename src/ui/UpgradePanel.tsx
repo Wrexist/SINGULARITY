@@ -19,7 +19,7 @@ export function UpgradePanel({ game, onBuy }: Props) {
     <section className="panel">
       <h2 className="panel-title">Hardware &amp; Upgrades</h2>
       <div className="list">
-        {balance.upgrades.map((def) => {
+        {balance.upgrades.filter((def) => def.market !== "darkweb").map((def) => {
           const owned = game.upgrades[def.id] ?? 0;
           const maxed = owned >= def.max;
           const cost = upgradeCost(def, owned);

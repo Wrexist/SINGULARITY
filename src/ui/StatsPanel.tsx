@@ -13,6 +13,7 @@ export function StatsPanel({ game, derived }: Props) {
 
   const rows: { label: string; value: string }[] = [
     { label: "Compute / sec", value: fmt(derived.computePerSec) },
+    { label: "Data / sec", value: fmt(derived.dataPerSec) },
     { label: "Data multiplier", value: `×${fmt(derived.dataMult)}` },
     { label: "$ multiplier", value: `×${fmt(derived.moneyMult)}` },
     { label: "Legacy boost", value: `×${fmt(derived.legacyMult)}` },

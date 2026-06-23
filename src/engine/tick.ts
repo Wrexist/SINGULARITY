@@ -15,7 +15,7 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   const d = derive(state);
 
   let compute = state.resources.compute.add(d.computePerSec.mul(seconds));
-  let data = state.resources.data;
+  let data = state.resources.data.add(d.dataPerSec.mul(seconds));
   let money = state.resources.money.add(d.passiveMoneyPerSec.mul(seconds));
   let lifetimeMoney = state.lifetimeMoney.add(d.passiveMoneyPerSec.mul(seconds));
 

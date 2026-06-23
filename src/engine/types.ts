@@ -43,6 +43,8 @@ export interface Derived {
   moneyMult: Big;
   runDurationSec: number;
   passiveMoneyPerSec: Big;
+  /** Passive Data/sec from dark-web tools (web scrapers, botnets…). */
+  dataPerSec: Big;
   autoClaim: boolean;
   autoTrain: boolean;
   /** Compute cost to start one training run. */

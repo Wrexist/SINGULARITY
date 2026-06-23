@@ -1,5 +1,5 @@
 import { Big } from "./math/Big";
-import { balance, type UpgradeDef, type ResearchDef } from "./balance/config";
+import { balance, type UpgradeDef, type ResearchDef, type DataOffer } from "./balance/config";
 import { derive } from "./derive";
 import type { GameState } from "./types";
 
@@ -14,6 +14,9 @@ const UPGRADE_BY_ID: Record<string, UpgradeDef> = Object.fromEntries(
 );
 const RESEARCH_BY_ID: Record<string, ResearchDef> = Object.fromEntries(
   balance.research.map((r) => [r.id, r]),
+);
+const OFFER_BY_ID: Record<string, DataOffer> = Object.fromEntries(
+  balance.dataMarket.map((o) => [o.id, o]),
 );
 
 // ---------- Training run ----------
@@ -106,4 +109,73 @@ export function buyResearch(state: GameState, id: string): GameState {
     },
     research: [...state.research, id],
   };
+}
+
+// ---------- Data market (Money → Data) ----------
+
+export type MarketOutcomeKind = "clean" | "poisoned" | "raid";
+
+export interface MarketOutcome {
+  kind: MarketOutcomeKind;
+  dataGained: Big;
+  moneyLost: Big;
+  message: string;
+}
+
+export function dataOfferById(id: string): DataOffer | undefined {
+  return OFFER_BY_ID[id];
+}
+
+export function canBuyDataOffer(state: GameState, id: string): boolean {
+  const def = OFFER_BY_ID[id];
+  if (!def) return false;
+  return state.resources.money.gte(def.cost);
+}
+
+/**
+ * Buy a data batch. Deterministic: the caller passes `roll` in [0,1) (like we
+ * pass time into tick) so the engine stays pure and the risk is unit-testable.
+ * Legit offers ignore the roll. Returns the next state and an outcome the UI
+ * narrates as a reveal beat.
+ */
+export function buyDataOffer(
+  state: GameState,
+  id: string,
+  roll: number,
+): { state: GameState; outcome: MarketOutcome | null } {
+  if (!canBuyDataOffer(state, id)) return { state, outcome: null };
+  const def = OFFER_BY_ID[id]!;
+  let dataGained = Big.of(def.data);
+  let moneyLost = Big.of(def.cost);
+  let kind: MarketOutcomeKind = "clean";
+  let message = `Clean batch from ${def.vendor}. +${dataGained.format()} data.`;
+
+  if (def.risk) {
+    const { raidChance, fine, raidDataFactor, poisonChance, poisonDataFactor } = def.risk;
+    if (roll < raidChance) {
+      kind = "raid";
+      dataGained = dataGained.mul(raidDataFactor);
+      moneyLost = moneyLost.add(fine);
+      message = `🚨 Raided! Regulators kicked the door in. Fined $${Big.of(fine).format()}.`;
+    } else if (roll < raidChance + poisonChance) {
+      kind = "poisoned";
+      dataGained = dataGained.mul(poisonDataFactor);
+      message = `☠️ Poisoned batch — mostly raccoon photos. Only +${dataGained.format()} data.`;
+    } else {
+      message = `✅ Clean haul from the Bazaar. +${dataGained.format()} data.`;
+    }
+  }
+
+  // A raid fine can exceed your balance — clamp so money never goes negative.
+  const available = state.resources.money;
+  if (moneyLost.gt(available)) moneyLost = available;
+  const next: GameState = {
+    ...state,
+    resources: {
+      ...state.resources,
+      money: available.sub(moneyLost),
+      data: state.resources.data.add(dataGained),
+    },
+  };
+  return { state: next, outcome: { kind, dataGained, moneyLost, message } };
 }

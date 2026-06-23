@@ -14,6 +14,7 @@ export function derive(state: GameState): Derived {
   let moneyMult = Big.ONE;
   let runDurationSec = balance.run.durationSec;
   let passiveMoneyPerSec = Big.ZERO;
+  let dataPerSecFlat = Big.ZERO;
   let autoClaim = false;
   let autoTrain = false;
 
@@ -36,6 +37,9 @@ export function derive(state: GameState): Derived {
         break;
       case "runSpeedMult":
         runDurationSec *= Math.pow(1 - def.effect.perLevel, level);
+        break;
+      case "dataPerSec":
+        dataPerSecFlat = dataPerSecFlat.add(def.effect.perLevel * level);
         break;
       case "autoClaim":
         autoClaim = true;
@@ -76,6 +80,9 @@ export function derive(state: GameState): Derived {
   dataMult = dataMult.mul(legacyMult);
   moneyMult = moneyMult.mul(legacyMult);
   passiveMoneyPerSec = passiveMoneyPerSec.mul(legacyMult);
+  // Scraper output rides the global Legacy boost (kept separate from the
+  // per-run dataMult lane so the two data sources stay legible).
+  const dataPerSec = dataPerSecFlat.mul(legacyMult);
 
   const computePerSec = computeFlat.mul(computeMult);
   // Run cost scales with compute production (floored early game) so payouts
@@ -90,6 +97,7 @@ export function derive(state: GameState): Derived {
     moneyMult,
     runDurationSec: Math.max(0.5, runDurationSec),
     passiveMoneyPerSec: passiveMoneyPerSec.mul(computePerSec),
+    dataPerSec,
     autoClaim,
     autoTrain,
     runComputeCost,

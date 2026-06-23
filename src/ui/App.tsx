@@ -19,6 +19,7 @@ import { ToastStack, type ToastData } from "./Toast";
 import { StatsPanel } from "./StatsPanel";
 import { Tagline } from "./Tagline";
 import { Onboarding } from "./Onboarding";
+import { DataMarketPanel } from "./DataMarketPanel";
 import { canPrestige } from "../engine/prestige";
 
 export function App() {
@@ -26,7 +27,7 @@ export function App() {
   const game = useGame((s) => s.game);
   const offline = useGame((s) => s.offline);
   const initialized = useGame((s) => s.initialized);
-  const { doStartRun, doClaim, doBuyUpgrade, doResearch, doPrestige, dismissOffline, hardReset } =
+  const { doStartRun, doClaim, doBuyUpgrade, doResearch, doBuyData, doPrestige, dismissOffline, hardReset } =
     useGame.getState();
 
   const d = derive(game);
@@ -44,6 +45,7 @@ export function App() {
   // your first payout (you need Data to research); Prestige once you're on the path.
   const showResearch = game.resources.data.gt(0) || game.research.length > 0;
   const showPrestige = game.research.length > 0;
+  const showMarket = game.research.length > 0;
   const shipReady = canPrestige(game);
 
   // Transient unlock toasts.
@@ -57,6 +59,7 @@ export function App() {
   const dropToast = (id: number) => setToasts((ts) => ts.filter((t) => t.id !== id));
   const seenResearch = useRef(showResearch);
   const seenPrestige = useRef(showPrestige);
+  const seenMarket = useRef(showMarket);
   const seenShipReady = useRef(shipReady);
   const syncedToSave = useRef(false);
   useEffect(() => {
@@ -66,17 +69,20 @@ export function App() {
     if (!syncedToSave.current) {
       seenResearch.current = showResearch;
       seenPrestige.current = showPrestige;
+      seenMarket.current = showMarket;
       seenShipReady.current = shipReady;
       syncedToSave.current = true;
       return;
     }
     if (showResearch && !seenResearch.current) pushToast("🔬 Research unlocked");
+    if (showMarket && !seenMarket.current) pushToast("🛒 Data Market unlocked");
     if (showPrestige && !seenPrestige.current) pushToast("🚀 The path to shipping is open");
     if (shipReady && !seenShipReady.current) pushToast("✨ You can Ship the Model!");
     seenResearch.current = showResearch;
     seenPrestige.current = showPrestige;
+    seenMarket.current = showMarket;
     seenShipReady.current = shipReady;
-  }, [initialized, showResearch, showPrestige, shipReady]);
+  }, [initialized, showResearch, showPrestige, showMarket, shipReady]);
 
   useEffect(() => {
     if (game.prestige.ships > prevShips.current) {
@@ -94,6 +100,14 @@ export function App() {
   const onClaim = () => { haptics.success(); sound.success(); doClaim(); };
   const onBuy = (id: string) => { haptics.tap(); sound.purchase(); doBuyUpgrade(id); };
   const onResearch = (id: string) => { haptics.tap(); sound.purchase(); doResearch(id); };
+  const onBuyData = (id: string) => {
+    const outcome = doBuyData(id);
+    if (!outcome) return;
+    pushToast(outcome.message);
+    // The reveal IS the dopamine: reward clean hauls, sting the bad rolls.
+    if (outcome.kind === "clean") { haptics.success(); sound.success(); }
+    else { haptics.tap(); sound.tap(); }
+  };
 
   return (
     <div className={`app${reducedMotion ? " reduce-motion" : ""}`}>
@@ -121,6 +135,7 @@ export function App() {
         data={game.resources.data}
         money={game.resources.money}
         computeRate={d.computePerSec}
+        dataRate={d.dataPerSec}
         moneyRate={d.passiveMoneyPerSec}
       />
 
@@ -128,6 +143,7 @@ export function App() {
         <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} />
         <UpgradePanel game={game} onBuy={onBuy} />
         {showResearch && <ResearchPanel game={game} onResearch={onResearch} />}
+        {showMarket && <DataMarketPanel game={game} onBuyData={onBuyData} onBuyTool={onBuy} />}
         {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} />}
         <StatsPanel game={game} derived={d} />
 

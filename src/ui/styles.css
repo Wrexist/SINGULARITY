@@ -511,8 +511,63 @@ body {
   border-radius: 999px;
 }
 .card-desc { font-size: 12px; color: var(--ink-2); line-height: 1.35; }
-.card-cost { font-size: 13px; font-weight: 750; white-space: nowrap; text-align: right; }
+.card-cost { font-size: 13px; font-weight: 750; white-space: nowrap; text-align: right; display: flex; flex-direction: column; gap: 2px; align-items: flex-end; }
 .cost-max { color: var(--ship); }
+.cost-sub { font-size: 11px; font-weight: 700; color: var(--money); }
+
+/* ---------- Data Market ---------- */
+.market-group { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.market-group + .market-group { margin-top: 18px; }
+.market-head {
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 2px 0 2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.market-head.tools-head { margin-top: 8px; }
+.vendor-tag {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-2);
+  background: rgba(17, 24, 39, 0.06);
+  padding: 1px 7px;
+  border-radius: 999px;
+}
+.vendor-tag.shady { color: #d6b3ff; background: rgba(124, 58, 237, 0.18); }
+.shady-badge {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #c9a9ff;
+  background: rgba(124, 58, 237, 0.16);
+  border: 1px solid rgba(124, 58, 237, 0.35);
+  padding: 1px 6px;
+  border-radius: 6px;
+  text-transform: uppercase;
+}
+.market-warn { font-size: 11.5px; color: var(--ink-3); margin: -2px 0 4px; line-height: 1.35; }
+.risk-line { font-size: 11px; font-weight: 650; color: #b58be0; margin-top: 3px; }
+/* The Bazaar reads "dark" against the airy light theme — a deliberate tonal shift. */
+.market-group.shady {
+  background: linear-gradient(180deg, rgba(40, 20, 60, 0.55), rgba(24, 14, 38, 0.7));
+  border: 1px solid rgba(124, 58, 237, 0.28);
+  border-radius: var(--radius);
+  padding: 14px 13px;
+}
+.market-group.shady .market-head { color: #c9a9ff; }
+.market-group.shady .market-warn { color: #a98fce; }
+.card.shady-card {
+  background: rgba(124, 58, 237, 0.08);
+  border-color: rgba(124, 58, 237, 0.22);
+}
+.card.shady-card .card-name { color: #f3ecff; }
+.card.shady-card .card-desc { color: #b9a9d6; }
+.card.shady-card.affordable { border-color: rgba(124, 58, 237, 0.6); background: rgba(124, 58, 237, 0.16); }
 
 /* ---------- Research ---------- */
 .research-track { display: flex; flex-direction: column; gap: 10px; }

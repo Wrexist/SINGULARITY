@@ -11,14 +11,44 @@ export interface UpgradeDef {
   cost: { resource: "money" | "data" | "compute"; base: number; growth: number };
   /** Max purchasable levels (automations are one-shot → 1). */
   max: number;
+  /** Where this shows in the UI. Dark-web tools live in the Data Bazaar. */
+  market?: "hardware" | "darkweb";
   effect:
     | { kind: "computeFlat"; perLevel: number }
     | { kind: "computeMult"; perLevel: number }
     | { kind: "dataMult"; perLevel: number }
     | { kind: "moneyMult"; perLevel: number }
     | { kind: "runSpeedMult"; perLevel: number }
+    | { kind: "dataPerSec"; perLevel: number }
     | { kind: "autoClaim" }
     | { kind: "autoTrain" };
+}
+
+/**
+ * A repeatable Money → Data purchase. Legit vendors are safe but pricey; the
+ * dark-web Bazaar is cheaper but carries a `risk` profile — a passed-in roll
+ * decides whether the batch is clean, poisoned (mostly garbage), or raided
+ * (you eat a fine). Satire, not instruction: the comedy IS the risk.
+ */
+export interface DataOffer {
+  id: string;
+  vendor: string;
+  name: string;
+  desc: string;
+  /** Money cost per purchase (flat — it's a market, buy as much as you like). */
+  cost: number;
+  /** Base Data delivered on a clean purchase. */
+  data: number;
+  shady: boolean;
+  risk?: {
+    /** P(raided): pay a fine, get a fraction of the data. */
+    raidChance: number;
+    fine: number;
+    raidDataFactor: number;
+    /** P(poisoned): get a fraction of the data, no fine. */
+    poisonChance: number;
+    poisonDataFactor: number;
+  };
 }
 
 export interface ResearchDef {
@@ -145,7 +175,98 @@ export const balance = {
       max: 1,
       effect: { kind: "autoTrain" },
     },
+    // --- Dark-web tools (sold in the Data Bazaar, not the hardware shelf) ---
+    {
+      id: "web_scraper",
+      name: "Web Scraper Bot",
+      desc: "+1 Data/sec. Reads the whole internet. Doesn't ask first.",
+      cost: { resource: "money", base: 400, growth: 1.25 },
+      max: Infinity,
+      market: "darkweb",
+      effect: { kind: "dataPerSec", perLevel: 1 },
+    },
+    {
+      id: "captcha_farm",
+      name: "Captcha Farm",
+      desc: "+4 Data/sec. Definitely real humans clicking traffic lights.",
+      cost: { resource: "money", base: 2600, growth: 1.28 },
+      max: Infinity,
+      market: "darkweb",
+      effect: { kind: "dataPerSec", perLevel: 4 },
+    },
+    {
+      id: "botnet",
+      name: "Botnet Cluster",
+      desc: "+18 Data/sec. A 'distributed crowdsourcing network.' Ahem.",
+      cost: { resource: "money", base: 18000, growth: 1.3 },
+      max: Infinity,
+      market: "darkweb",
+      effect: { kind: "dataPerSec", perLevel: 18 },
+    },
   ] satisfies UpgradeDef[],
+
+  /** Money → Data marketplace. Legit (safe, pricey) vs. dark web (cheap, risky). */
+  dataMarket: [
+    {
+      id: "meta_dump",
+      vendor: "Meta",
+      name: "Public Posts Bundle",
+      desc: "A decade of vacation photos and arguments. Fully licensed™.",
+      cost: 200,
+      data: 180,
+      shady: false,
+    },
+    {
+      id: "goggle_logs",
+      vendor: "Goggle",
+      name: "Search Logs (Anonymized)",
+      desc: "What everyone secretly asks at 3am. 'Anonymized.'",
+      cost: 1500,
+      data: 1500,
+      shady: false,
+    },
+    {
+      id: "closedai_synth",
+      vendor: "ClosedAI",
+      name: "Synthetic Dataset",
+      desc: "Premium model-generated data. Best ratio at scale, naturally.",
+      cost: 12000,
+      data: 16000,
+      shady: false,
+    },
+    {
+      id: "bazaar_pack",
+      vendor: "ShadyByte Bazaar",
+      name: "Scraped Data Pack",
+      desc: "'Ethically sourced.' Cheaper per byte. No refunds, no questions.",
+      cost: 120,
+      data: 220,
+      shady: true,
+      risk: {
+        raidChance: 0.12,
+        fine: 300,
+        raidDataFactor: 0.4,
+        poisonChance: 0.28,
+        poisonDataFactor: 0.12,
+      },
+    },
+    {
+      id: "bazaar_leak",
+      vendor: "ShadyByte Bazaar",
+      name: "Bulk Corporate Leak",
+      desc: "A whole company's data 'fell off a truck.' Huge if it's clean.",
+      cost: 2000,
+      data: 4200,
+      shady: true,
+      risk: {
+        raidChance: 0.2,
+        fine: 4000,
+        raidDataFactor: 0.3,
+        poisonChance: 0.3,
+        poisonDataFactor: 0.1,
+      },
+    },
+  ] satisfies DataOffer[],
 
   research: [
     {
