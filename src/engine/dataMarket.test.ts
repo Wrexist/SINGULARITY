@@ -6,6 +6,7 @@ import {
   effectiveRaidChance,
   applyHeatEvent,
   maybeHeatEvent,
+  pickHeatEvent,
 } from "./actions";
 import { createInitialState } from "./state";
 import { derive } from "./derive";
@@ -96,6 +97,16 @@ describe("dark-web tools — passive data per second", () => {
     s = buyUpgrade(s, "web_scraper");
     expect(s.heat).toBe(balance.heat.toolBuyHeat);
   });
+
+  it("passive Data/sec rides the Legacy multiplier", () => {
+    let s = createInitialState();
+    s.resources.money = Big.of(100000);
+    s = buyUpgrade(s, "web_scraper"); // +1/sec base
+    const base = derive(s).dataPerSec;
+    s.prestige.legacyWeights = Big.of(10); // legacyMult = 1 + 10*perPoint
+    const boosted = derive(s).dataPerSec;
+    expect(boosted.gt(base)).toBe(true);
+  });
 });
 
 describe("regulatory Heat", () => {
@@ -114,6 +125,14 @@ describe("regulatory Heat", () => {
     expect(effectiveRaidChance(hot, "bazaar_pack")).toBeGreaterThan(
       effectiveRaidChance(cold, "bazaar_pack"),
     );
+  });
+
+  it("raid chance never overlaps the poison band (clamped to 1 - poison)", () => {
+    // Force an absurd heat far past max; raid must still leave room for poison.
+    const insane = { ...createInitialState(), heat: 100000 };
+    const raid = effectiveRaidChance(insane, "bazaar_pack");
+    const poison = 0.15; // bazaar_pack poisonChance
+    expect(raid).toBeLessThanOrEqual(1 - poison + 1e-9);
   });
 
   it("a raid cools you off (lay low) rather than heating further", () => {
@@ -136,6 +155,20 @@ describe("heat events", () => {
     expect(res).not.toBeNull();
   });
 
+  it("does not fire when the fire-roll exceeds the (capped) chance", () => {
+    const s = { ...createInitialState(), heat: balance.heat.max };
+    // A huge elapsed would make chance certain without the cap; the cap holds it
+    // at eventChanceCap, so a fire-roll above the cap must NOT fire.
+    const justAboveCap = balance.heat.eventChanceCap + 0.01;
+    expect(maybeHeatEvent(s, 100000, justAboveCap, 0)).toBeNull();
+  });
+
+  it("event probability is capped on huge frames (tab refocus can't guarantee one)", () => {
+    const s = { ...createInitialState(), heat: balance.heat.max };
+    // fireRoll exactly at the cap boundary should be the no-fire edge.
+    expect(maybeHeatEvent(s, 1e9, balance.heat.eventChanceCap, 0)).toBeNull();
+  });
+
   it("audit fines a fraction of money and cools heat", () => {
     const s = { ...createInitialState(), heat: 80, resources: { ...createInitialState().resources, money: Big.of(1000) } };
     const { state, event } = applyHeatEvent(s, "audit");
@@ -148,5 +181,20 @@ describe("heat events", () => {
     const s = { ...createInitialState(), heat: 90 };
     const { state } = applyHeatEvent(s, "lobbyist");
     expect(state.heat).toBe(0);
+  });
+
+  it("subpoena seizes a fraction of data", () => {
+    const s = { ...createInitialState(), heat: 60, resources: { ...createInitialState().resources, data: Big.of(1000) } };
+    const { state } = applyHeatEvent(s, "subpoena");
+    expect(state.resources.data.eq(Big.of(800))).toBe(true); // -20%
+  });
+
+  it("pickHeatEvent spans the weighted table across the roll range", () => {
+    // roll 0 → first event; roll just under 1 → last event; all valid ids.
+    expect(pickHeatEvent(0).id).toBe("audit");
+    expect(pickHeatEvent(0.999).id).toBe("lobbyist");
+    for (const r of [0, 0.2, 0.45, 0.7, 0.95, 0.999]) {
+      expect(typeof pickHeatEvent(r).id).toBe("string");
+    }
   });
 });

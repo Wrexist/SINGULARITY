@@ -15,7 +15,15 @@ function HeatMeter({ heat }: { heat: number }) {
         <span>Regulatory Heat</span>
         <span className="heat-label" style={{ color }}>{label} · {Math.round(pct)}%</span>
       </div>
-      <div className="heat-bar">
+      <div
+        className="heat-bar"
+        role="progressbar"
+        aria-label="Regulatory heat"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(pct)}
+        aria-valuetext={`${label}, ${Math.round(pct)} percent`}
+      >
         <div className="heat-fill" style={{ width: `${pct}%`, background: color }} />
       </div>
     </div>
