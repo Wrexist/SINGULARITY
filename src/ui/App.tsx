@@ -16,6 +16,8 @@ import { OfflineModal } from "./OfflineModal";
 import { Celebration } from "./Celebration";
 import { SettingsSheet } from "./SettingsSheet";
 import { ToastStack, type ToastData } from "./Toast";
+import { StatsPanel } from "./StatsPanel";
+import { Tagline } from "./Tagline";
 import { canPrestige } from "../engine/prestige";
 
 export function App() {
@@ -89,7 +91,10 @@ export function App() {
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark" />
-          <h1>Singularity Inc.</h1>
+          <div className="brand-text">
+            <h1>Singularity Inc.</h1>
+            <Tagline />
+          </div>
         </div>
         <button className="icon-btn" onClick={() => setShowSettings(true)} aria-label="Settings">
           <GearIcon />
@@ -109,6 +114,7 @@ export function App() {
         <UpgradePanel game={game} onBuy={onBuy} />
         {showResearch && <ResearchPanel game={game} onResearch={onResearch} />}
         {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} />}
+        <StatsPanel game={game} derived={d} />
 
         <footer className="footer">
           <button className="link-btn" onClick={() => { if (confirm("Wipe save and restart?")) hardReset(); }}>

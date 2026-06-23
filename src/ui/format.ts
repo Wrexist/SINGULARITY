@@ -5,6 +5,11 @@ export function fmt(v: Big): string {
   return v.format();
 }
 
+/** Money is shown as currency: $1.2K, $58, etc. */
+export function fmtMoney(v: Big): string {
+  return `$${v.format()}`;
+}
+
 /** Format a per-second rate, trimming to the Big formatter. */
 export function fmtRate(v: Big): string {
   return `${v.format()}/s`;

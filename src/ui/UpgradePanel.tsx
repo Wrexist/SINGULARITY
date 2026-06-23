@@ -44,7 +44,7 @@ export function UpgradePanel({ game, onBuy }: Props) {
                   <span className="cost-max">MAX</span>
                 ) : (
                   <span style={{ color: `var(${RESOURCE_VAR[def.cost.resource]})` }}>
-                    {fmt(cost)} {def.cost.resource}
+                    {def.cost.resource === "money" ? `$${fmt(cost)}` : `${fmt(cost)} ${def.cost.resource}`}
                   </span>
                 )}
               </div>

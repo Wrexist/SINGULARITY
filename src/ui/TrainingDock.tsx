@@ -1,5 +1,5 @@
 import type { Derived, GameState } from "../engine/types";
-import { fmt } from "./format";
+import { fmt, fmtMoney } from "./format";
 
 interface Props {
   game: GameState;
@@ -29,7 +29,7 @@ export function TrainingDock({ game, derived, onStart, onClaim }: Props) {
       <div className="dock-head">
         <span className="dock-title">Training Run</span>
         <span className="dock-sub">
-          cost {fmt(derived.runComputeCost)} compute → {fmt(derived.runDataYield)} data · {fmt(derived.runMoneyYield)} money
+          cost {fmt(derived.runComputeCost)} compute → {fmt(derived.runDataYield)} data · {fmtMoney(derived.runMoneyYield)}
         </span>
       </div>
 

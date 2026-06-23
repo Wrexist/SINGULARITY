@@ -111,6 +111,11 @@ try {
     await sleep(500);
   }
 
+  if (has("stats")) {
+    await page.getByRole("button", { name: /Lab Stats/ }).click();
+    await sleep(400);
+  }
+
   const out = `screenshots/${name}.png`;
   await page.screenshot({ path: out, fullPage: has("full") });
   console.log(`Saved ${out}`);

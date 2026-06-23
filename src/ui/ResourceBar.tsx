@@ -67,7 +67,7 @@ export function ResourceBar({ compute, data, money, computeRate, moneyRate }: Ba
       <Resource label="Compute" cssVar="--compute" icon={<ComputeIcon />} value={compute} rate={computeRate} />
       <Resource label="Data" cssVar="--data" icon={<DataIcon />} value={data} />
       <Resource
-        label="Money"
+        label="$"
         cssVar="--money"
         icon={<MoneyIcon />}
         value={money}

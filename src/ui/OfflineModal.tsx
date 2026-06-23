@@ -27,7 +27,7 @@ export function OfflineModal({ summary, onClose }: Props) {
             <b>+{fmt(gained.data)}</b>
           </div>
           <div className="wiwa-row" style={{ ["--c" as string]: "var(--money)" }}>
-            <span>Money</span>
+            <span>$</span>
             <b>+{fmt(gained.money)}</b>
           </div>
         </div>

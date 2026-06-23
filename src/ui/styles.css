@@ -141,11 +141,29 @@ body {
   background: linear-gradient(135deg, var(--compute), var(--data));
   box-shadow: 0 4px 12px -2px rgba(47, 123, 246, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
 .topbar h1 {
   font-size: 19px;
   font-weight: 700;
   letter-spacing: -0.02em;
   margin: 0;
+  line-height: 1.1;
+}
+.tagline {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-3);
+  letter-spacing: -0.01em;
+  animation: tagline-in 0.6s var(--ease-out);
+}
+@keyframes tagline-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: none; }
 }
 .phase-tag {
   font-size: 11px;
@@ -538,6 +556,41 @@ body {
 .node-tag { font-size: 11px; font-weight: 600; color: var(--ink-2); white-space: nowrap; }
 .node-desc { font-size: 12px; color: var(--ink-2); line-height: 1.35; }
 .node-cost { font-size: 12px; font-weight: 700; margin-top: 3px; }
+
+/* ---------- Lab Stats (collapsible) ---------- */
+.stats { padding: 6px 18px; }
+.stats.open { padding-bottom: 16px; }
+.stats-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 14px 0;
+  cursor: pointer;
+  color: var(--ink-3);
+}
+.chevron { font-size: 10px; color: var(--ink-3); }
+.stats-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border-radius: 12px;
+  overflow: hidden;
+  animation: rise 0.4s var(--ease-out) both;
+}
+.stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--glass);
+  font-size: 13px;
+}
+.stat-label { color: var(--ink-2); }
+.stat-value { font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 
 /* ---------- Prestige ---------- */
 .prestige {

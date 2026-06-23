@@ -47,7 +47,7 @@ export function PrestigePanel({ game, onPrestige }: Props) {
       ) : (
         <div className="confirm">
           <p>
-            Reset Compute, Data, Money, racks and research. <b>Keep</b> {fmt(gain)} new Legacy
+            Reset Compute, Data, $, racks and research. <b>Keep</b> {fmt(gain)} new Legacy
             Weights (total {fmt(have.add(gain))}). Sure?
           </p>
           <div className="confirm-row">
