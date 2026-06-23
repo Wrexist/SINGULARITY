@@ -18,12 +18,14 @@ import { SettingsSheet } from "./SettingsSheet";
 import { ToastStack, type ToastData } from "./Toast";
 import { StatsPanel } from "./StatsPanel";
 import { Tagline } from "./Tagline";
+import { Onboarding } from "./Onboarding";
 import { canPrestige } from "../engine/prestige";
 
 export function App() {
   useGameLoop();
   const game = useGame((s) => s.game);
   const offline = useGame((s) => s.offline);
+  const initialized = useGame((s) => s.initialized);
   const { doStartRun, doClaim, doBuyUpgrade, doResearch, doPrestige, dismissOffline, hardReset } =
     useGame.getState();
 
@@ -35,6 +37,8 @@ export function App() {
   const [celebration, setCelebration] = useState<{ gained: Big; total: Big } | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const reducedMotion = useSettings((s) => s.reducedMotion);
+  const onboarded = useSettings((s) => s.onboarded);
+  const completeOnboarding = useSettings((s) => s.completeOnboarding);
 
   // Progressive disclosure (reveal depth in waves — GDD): Research appears after
   // your first payout (you need Data to research); Prestige once you're on the path.
@@ -54,14 +58,25 @@ export function App() {
   const seenResearch = useRef(showResearch);
   const seenPrestige = useRef(showPrestige);
   const seenShipReady = useRef(shipReady);
+  const syncedToSave = useRef(false);
   useEffect(() => {
+    // Wait for the save to hydrate, then sync the "seen" baseline once so we
+    // don't toast unlocks the player already had on a returning load.
+    if (!initialized) return;
+    if (!syncedToSave.current) {
+      seenResearch.current = showResearch;
+      seenPrestige.current = showPrestige;
+      seenShipReady.current = shipReady;
+      syncedToSave.current = true;
+      return;
+    }
     if (showResearch && !seenResearch.current) pushToast("🔬 Research unlocked");
     if (showPrestige && !seenPrestige.current) pushToast("🚀 The path to shipping is open");
     if (shipReady && !seenShipReady.current) pushToast("✨ You can Ship the Model!");
     seenResearch.current = showResearch;
     seenPrestige.current = showPrestige;
     seenShipReady.current = shipReady;
-  }, [showResearch, showPrestige, shipReady]);
+  }, [initialized, showResearch, showPrestige, shipReady]);
 
   useEffect(() => {
     if (game.prestige.ships > prevShips.current) {
@@ -117,9 +132,13 @@ export function App() {
         <StatsPanel game={game} derived={d} />
 
         <footer className="footer">
-          <button className="link-btn" onClick={() => { if (confirm("Wipe save and restart?")) hardReset(); }}>
+          <button
+            className="link-btn"
+            onClick={() => { if (confirm("Wipe the save and start over? The investors will understand.")) hardReset(); }}
+          >
             reset save
           </button>
+          <span className="footer-flavor">Singularity Inc. — disrupting disruption since today.</span>
         </footer>
       </main>
 
@@ -132,6 +151,7 @@ export function App() {
         />
       )}
       {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} />}
+      {!onboarded && !offline && <Onboarding onDone={completeOnboarding} />}
       <ToastStack toasts={toasts} onDone={dropToast} />
     </div>
   );

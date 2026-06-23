@@ -10,10 +10,11 @@ interface ResourceProps {
   icon: ReactNode;
   value: Big;
   rate?: Big | undefined;
+  ratePrefix?: string;
 }
 
 /** A single resource readout with a number-pop on increase (micro-feedback, §7). */
-function Resource({ label, cssVar, icon, value, rate }: ResourceProps) {
+function Resource({ label, cssVar, icon, value, rate, ratePrefix = "" }: ResourceProps) {
   const prev = useRef<Big>(value);
   const [pop, setPop] = useState<{ id: number; text: string } | null>(null);
   const popId = useRef(0);
@@ -47,7 +48,7 @@ function Resource({ label, cssVar, icon, value, rate }: ResourceProps) {
             </span>
           )}
         </div>
-        {rate && <div className="resource-rate">{fmtRate(rate)}</div>}
+        {rate && <div className="resource-rate">{ratePrefix}{fmtRate(rate)}</div>}
       </div>
     </div>
   );
@@ -72,6 +73,7 @@ export function ResourceBar({ compute, data, money, computeRate, moneyRate }: Ba
         icon={<MoneyIcon />}
         value={money}
         rate={moneyRate.gt(0) ? moneyRate : undefined}
+        ratePrefix="$"
       />
     </div>
   );

@@ -57,6 +57,11 @@
 - [x] Settings sheet (Sound / Haptics / Reduced-motion), persisted
 - [x] Progressive disclosure (Research after first payout, Prestige after first research)
 - [x] Unlock toasts + first-run coaching + newly-affordable pulse (clarity + anticipation)
+- [x] First-run onboarding overlay (3-resource loop intro, shown once, satirical)
+- [x] Offline-earnings projection on the WIWA screen (per-hour rates + flavor tip)
+- [x] Richer number formatting ($ on money rate, /hr projections)
+- [x] More satirical microcopy (taglines, footer, reset confirm, WIWA tips)
+- [x] Fix: unlock toasts no longer re-fire on returning-player load (hydration guard)
 
 ---
 

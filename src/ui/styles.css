@@ -650,6 +650,37 @@ body {
   font-weight: 600;
 }
 .wiwa-row b { color: var(--c); font-size: 16px; font-weight: 750; }
+.wiwa-amount { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+.wiwa-amount small { font-size: 10.5px; font-weight: 600; color: var(--ink-3); }
+.wiwa-tip { font-size: 12px; color: var(--ink-3); text-align: center; margin: 0 0 18px; line-height: 1.4; }
+
+/* ---------- Onboarding ---------- */
+.modal.onboard { max-width: 380px; }
+.onboard-steps { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.onboard-step {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 12px 14px;
+  background: var(--glass-strong);
+  border-radius: 14px;
+  border: 1px solid var(--glass-hairline);
+}
+.onboard-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  color: #fff;
+  background: var(--c);
+}
+.onboard-icon svg { width: 18px; height: 18px; }
+.onboard-step b { display: block; font-size: 14px; font-weight: 750; color: var(--c); }
+.onboard-step span { font-size: 12.5px; color: var(--ink-2); line-height: 1.35; }
+.onboard-foot { font-size: 12.5px; color: var(--ink-2); line-height: 1.5; margin: 0 0 20px; }
+.onboard-foot b { color: var(--ink); }
 
 /* ---------- Ship celebration (tentpole moment) ---------- */
 .celebrate {
@@ -775,7 +806,8 @@ body {
 }
 
 /* ---------- Footer ---------- */
-.footer { display: flex; justify-content: center; padding: 22px 0 6px; }
+.footer { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 22px 0 6px; }
+.footer-flavor { font-size: 10.5px; color: var(--ink-3); opacity: 0.7; letter-spacing: 0.01em; }
 .link-btn {
   background: none;
   border: none;

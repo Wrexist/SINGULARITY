@@ -18,6 +18,8 @@ const TIME_KEY = "singularity.lastSeen.v1";
 interface GameStore {
   game: GameState;
   offline: OfflineSummary | null;
+  /** True once the save has been loaded/hydrated (guards first-load toasts). */
+  initialized: boolean;
   // lifecycle
   init: () => void;
   advance: (elapsedMs: number) => void;
@@ -39,6 +41,7 @@ function now(): number {
 export const useGame = create<GameStore>((set, get) => ({
   game: createInitialState(),
   offline: null,
+  initialized: false,
 
   init: () => {
     let game = createInitialState();
@@ -60,7 +63,7 @@ export const useGame = create<GameStore>((set, get) => ({
       console.warn("Save load failed, starting fresh:", err);
       game = createInitialState();
     }
-    set({ game, offline });
+    set({ game, offline, initialized: true });
     localStorage.setItem(TIME_KEY, String(now()));
   },
 

@@ -76,4 +76,17 @@
 ### Screenshots for the owner
 - `npm run shot` → seeded mid-game capture (phone viewport) into `screenshots/`.
 - Flags: `--fresh` (empty new lab), `--full` (full-page incl. research+prestige),
-  `--wide` (desktop viewport), `--name foo` (output name). Just ask "screenshot" and I'll run it.
+  `--wide` (desktop viewport), `--onboard` (first-run welcome overlay), `--offline`
+  (WIWA screen, 2h away), `--stats` (expand Lab Stats), `--settings`, `--celebrate`,
+  `--name foo` (output name). Just ask "screenshot" and I'll run it.
+
+### Hydration vs. "on-unlock" UI (toasts, reveals)
+- **The store boots with `createInitialState()` (empty), then `init()` hydrates the save in an
+  effect AFTER first paint.** So any "fire on transition false→true" UI (unlock toasts,
+  progressive-reveal animations) will spuriously fire on the empty→loaded hydration for a
+  RETURNING player — they'd see "Research unlocked" every reload.
+- **Fix pattern:** store exposes an `initialized` flag (set true in `init()`); the effect waits
+  for it, then on the first settled pass syncs its "seen" refs to the loaded state WITHOUT
+  firing, and only reacts to genuine in-play transitions after that. See `App.tsx` toast effect.
+- The `--offline` screenshot mode is the quickest way to catch this class of bug (it loads a
+  populated save just like a returning player).

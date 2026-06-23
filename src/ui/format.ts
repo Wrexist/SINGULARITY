@@ -15,6 +15,11 @@ export function fmtRate(v: Big): string {
   return `${v.format()}/s`;
 }
 
+/** A per-hour projection (used by the "while you were away" screen). */
+export function fmtPerHour(v: Big, prefix = ""): string {
+  return `${prefix}${v.format()}/hr`;
+}
+
 export function fmtTime(ms: number): string {
   const s = Math.floor(ms / 1000);
   if (s < 60) return `${s}s`;

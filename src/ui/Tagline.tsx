@@ -13,6 +13,10 @@ const TAGLINES = [
   "Disrupting disruption.",
   "Ethically sourced gradients.",
   "The model is the moat.",
+  "Raising a Series ∞.",
+  "Our roadmap is a vibe.",
+  "Compute go brrr.",
+  "Aligned, probably.",
 ];
 
 export function Tagline() {

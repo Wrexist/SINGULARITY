@@ -66,6 +66,20 @@ try {
     viewport: wide ? { width: 1280, height: 800 } : { width: 390, height: 844 },
     deviceScaleFactor: 2,
   });
+  // Mark onboarding as seen by default so it doesn't cover other captures;
+  // --onboard skips this to show the first-run welcome overlay.
+  if (!has("onboard")) {
+    await page.addInitScript(() => {
+      localStorage.setItem(
+        "singularity.settings.v1",
+        JSON.stringify({ sound: true, haptics: true, reducedMotion: false, onboarded: true }),
+      );
+    });
+  }
+
+  // --offline: seed a mid-game save last seen 2h ago to trigger the WIWA screen.
+  const offlineMs = has("offline") ? 2 * 3600 * 1000 : 0;
+
   // By default, seed a representative mid-game save so the UI looks alive.
   // --fresh: empty new lab. --celebrate: ready-to-ship state (then click Ship).
   if (!has("fresh")) {
@@ -89,11 +103,11 @@ try {
           lifetimeMoney: "4200",
         };
     await page.addInitScript(
-      ([save, now]) => {
+      ([save, lastSeen]) => {
         localStorage.setItem("singularity.save.v1", save);
-        localStorage.setItem("singularity.lastSeen.v1", now);
+        localStorage.setItem("singularity.lastSeen.v1", lastSeen);
       },
-      [JSON.stringify(seed), String(Date.now())],
+      [JSON.stringify(seed), String(Date.now() - offlineMs)],
     );
   }
   await page.goto(`http://localhost:${port}/`, { waitUntil: "networkidle" });
