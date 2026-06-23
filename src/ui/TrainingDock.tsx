@@ -14,6 +14,16 @@ export function TrainingDock({ game, derived, onStart, onClaim }: Props) {
   const canStart = !run.active && !run.readyToClaim && game.resources.compute.gte(derived.runComputeCost);
   const pct = Math.min(100, run.progress * 100);
 
+  // Coach the very first run, then get out of the way (clean-to-play).
+  const firstRun = game.lifetimeMoney.eq(0) && game.prestige.ships === 0;
+  let hint: string | null = null;
+  if (firstRun) {
+    if (run.readyToClaim) hint = "Done! Claim your first Data + Money 🎉";
+    else if (run.active) hint = "Training… payouts land when the bar fills.";
+    else if (canStart) hint = "Ready — start your first training run 👇";
+    else hint = "Your server closet is making Compute. Start a run when you can afford it.";
+  }
+
   return (
     <div className="dock">
       <div className="dock-head">
@@ -35,10 +45,12 @@ export function TrainingDock({ game, derived, onStart, onClaim }: Props) {
           Claim payout
         </button>
       ) : (
-        <button className="btn btn-primary" disabled={!canStart} onClick={onStart}>
+        <button className={`btn btn-primary ${canStart && firstRun ? "nudge" : ""}`} disabled={!canStart} onClick={onStart}>
           {run.active ? "Training…" : "Start training run"}
         </button>
       )}
+
+      {hint && <p className="coach">{hint}</p>}
     </div>
   );
 }

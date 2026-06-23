@@ -51,6 +51,13 @@
 > play it (`npm run dev`) and decide if the loop is compelling without art.
 > Tools: `npm run dev` (play), `npm run sim` (balance report), `npm run shot` (screenshot).
 
+### Owner-directed polish (done in Phase 0, pure UI — no later-phase systems)
+- [x] Premium liquid-glass redesign (iOS 26 feel, Airbnb-clean), animated aurora
+- [x] Rolling number counters, ship-celebration moment, synthesized sound + haptics
+- [x] Settings sheet (Sound / Haptics / Reduced-motion), persisted
+- [x] Progressive disclosure (Research after first payout, Prestige after first research)
+- [x] Unlock toasts + first-run coaching + newly-affordable pulse (clarity + anticipation)
+
 ---
 
 ## Backlog (Phase 1+ — DO NOT START, parked for visibility)

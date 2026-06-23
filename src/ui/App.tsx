@@ -15,6 +15,8 @@ import { PrestigePanel } from "./PrestigePanel";
 import { OfflineModal } from "./OfflineModal";
 import { Celebration } from "./Celebration";
 import { SettingsSheet } from "./SettingsSheet";
+import { ToastStack, type ToastData } from "./Toast";
+import { canPrestige } from "../engine/prestige";
 
 export function App() {
   useGameLoop();
@@ -31,6 +33,34 @@ export function App() {
   const [celebration, setCelebration] = useState<{ gained: Big; total: Big } | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const reducedMotion = useSettings((s) => s.reducedMotion);
+
+  // Progressive disclosure (reveal depth in waves — GDD): Research appears after
+  // your first payout (you need Data to research); Prestige once you're on the path.
+  const showResearch = game.resources.data.gt(0) || game.research.length > 0;
+  const showPrestige = game.research.length > 0;
+  const shipReady = canPrestige(game);
+
+  // Transient unlock toasts.
+  const [toasts, setToasts] = useState<ToastData[]>([]);
+  const toastId = useRef(0);
+  const pushToast = (text: string) => {
+    toastId.current += 1;
+    const id = toastId.current;
+    setToasts((ts) => [...ts, { id, text }]);
+  };
+  const dropToast = (id: number) => setToasts((ts) => ts.filter((t) => t.id !== id));
+  const seenResearch = useRef(showResearch);
+  const seenPrestige = useRef(showPrestige);
+  const seenShipReady = useRef(shipReady);
+  useEffect(() => {
+    if (showResearch && !seenResearch.current) pushToast("🔬 Research unlocked");
+    if (showPrestige && !seenPrestige.current) pushToast("🚀 The path to shipping is open");
+    if (shipReady && !seenShipReady.current) pushToast("✨ You can Ship the Model!");
+    seenResearch.current = showResearch;
+    seenPrestige.current = showPrestige;
+    seenShipReady.current = shipReady;
+  }, [showResearch, showPrestige, shipReady]);
+
   useEffect(() => {
     if (game.prestige.ships > prevShips.current) {
       const gained = game.prestige.legacyWeights.sub(prevWeights.current);
@@ -77,8 +107,8 @@ export function App() {
       <main className="stage">
         <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} />
         <UpgradePanel game={game} onBuy={onBuy} />
-        <ResearchPanel game={game} onResearch={onResearch} />
-        <PrestigePanel game={game} onPrestige={doPrestige} />
+        {showResearch && <ResearchPanel game={game} onResearch={onResearch} />}
+        {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} />}
 
         <footer className="footer">
           <button className="link-btn" onClick={() => { if (confirm("Wipe save and restart?")) hardReset(); }}>
@@ -96,6 +126,7 @@ export function App() {
         />
       )}
       {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} />}
+      <ToastStack toasts={toasts} onDone={dropToast} />
     </div>
   );
 }
