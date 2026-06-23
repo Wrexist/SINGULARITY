@@ -91,6 +91,30 @@
 - **Clamp money sinks that can exceed balance.** A raid fine can be larger than the player's money;
   clamp the deduction so resources never go negative (affordability only checked the base cost).
 
+### Engine audit (whole-engine pass) — fixed + deliberately deferred
+Fixed (real, low-risk):
+- **`legacyWeightsGain` must be Big-native.** It used `.toNumber()` then `Math.pow`/`Math.floor`,
+  which returns `Infinity` once `lifetimeMoney` exceeds ~1e308 — permanently poisoning
+  `legacyWeights` and every derived multiplier. Now `ratio.pow(exp).floor().max(1)` on Big. This
+  is THE reason the Big abstraction exists; never round-trip resources through `toNumber()` for
+  anything but UI ratios. (Added `Big.floor()`.)
+- **`deserialize` hardened against partial/v0 saves.** It dereferenced `raw.resources.*` and
+  `raw.prestige.*` blindly, but `migrate` only backfills `lifetimeMoney`/`heat` — so a true v0
+  save (no `prestige`/`version`) threw, and `store.init`'s catch then WIPED the save. Now every
+  field defaults from a fresh state, so partial/corrupt saves degrade gracefully.
+
+Deferred on purpose (documented, not fixed unsupervised — current balance doesn't hit them):
+- **Offline auto-train credits the whole window's Compute up front** before the run loop spends it,
+  so offline run-count can differ from an equivalent live session. Harmless at current values
+  (run 5s, cost 2s); fixing it means interleaving accrual inside the delicate offline loop —
+  do it deliberately with the owner, not at 3am.
+- **`tick`'s `guard < 100000`** silently drops runs if the offline cap is ever raised enormously
+  (8h @ 5s = ~5760 iters today, safe). If the cap grows, derive the guard from it / carry remainder.
+- **`runSpeedMult` uses an unclamped `Math.pow(1-perLevel, level)`** — safe today (0.94^12), but a
+  future `perLevel >= 1` would zero/negate duration; the `Math.max(0.5,…)` clamp currently masks it.
+- **`migrate` doesn't reject `version > SAVE_VERSION`** — only matters across app downgrades, N/A
+  for a single-build prototype.
+
 ### Balancing the Data Market (use the sim's EV table, not vibes)
 - `npm run sim` now prints a **Data Market EV table**: clean data-per-$ and *expected* data-per-$
   for shady offers at Heat 0/50/100 (folding in poison/raid chance + the fine). This is how the

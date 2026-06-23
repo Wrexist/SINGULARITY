@@ -32,6 +32,27 @@ describe("prestige", () => {
     expect(next.research).toEqual([]);
   });
 
+  it("matches the formula exactly (Big-native, no float round-trip)", () => {
+    const s = createInitialState();
+    s.research = [balance.prestige.capabilityResearch];
+    s.lifetimeMoney = Big.of(1e8); // (1e8/1e4)^0.5 = sqrt(1e4) = 100
+    expect(legacyWeightsGain(s).eq(Big.of(100))).toBe(true);
+  });
+
+  it("does NOT overflow to Infinity past 1e308 (the whole point of Big)", () => {
+    const s = createInitialState();
+    s.research = [balance.prestige.capabilityResearch];
+    s.lifetimeMoney = Big.of("1e400"); // far beyond Number.MAX_VALUE
+    const gain = legacyWeightsGain(s);
+    // (1e400/1e4)^0.5 = 1e198 — a finite, enormous Big, not Infinity.
+    expect(gain.gt(Big.of("1e197"))).toBe(true);
+    expect(gain.lt(Big.of("1e199"))).toBe(true);
+    // And it must survive a prestige without poisoning the multiplier.
+    const next = prestige(s);
+    expect(derive(next).computePerSec.gt(0)).toBe(true);
+    expect(Number.isFinite(derive(next).legacyMult.toNumber())).toBe(true);
+  });
+
   it("makes the next run measurably faster (permanent multiplier applies)", () => {
     const base = createInitialState();
     const boosted = createInitialState();

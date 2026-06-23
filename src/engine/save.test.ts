@@ -59,4 +59,19 @@ describe("save/load", () => {
     s.heat = 42;
     expect(deserialize(serialize(s)).heat).toBe(42);
   });
+
+  it("loads a partial/legacy save without throwing (missing prestige/heat/run)", () => {
+    // A genuine pre-versioning save that predates several fields.
+    const partial = JSON.stringify({
+      resources: { compute: "100", data: "5", money: "50" },
+      upgrades: { rack_basic: 2 },
+    });
+    const state = deserialize(partial); // must not throw
+    expect(state.resources.compute.eq(100)).toBe(true);
+    expect(state.prestige.legacyWeights.eq(0)).toBe(true); // defaulted
+    expect(state.prestige.ships).toBe(0);
+    expect(state.heat).toBe(0);
+    expect(state.lifetimeMoney.eq(50)).toBe(true); // backfilled from money
+    expect(state.run.active).toBe(false);
+  });
 });

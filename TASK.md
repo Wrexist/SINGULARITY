@@ -46,10 +46,11 @@
       (Gen 2 ships in ~1.5m via ×3.25 boost), no walls (longest 0m55s)
 - [ ] **First-session playtest by owner → FUN GATE** (owner's call — not Claude's)
 
-> **Status:** Phase 0 is feature-complete and balanced to a defensible first pass.
-> 35 tests pass; build clean. The ONLY remaining Phase 0 item is the owner fun-gate:
-> play it (`npm run dev`) and decide if the loop is compelling without art.
-> Tools: `npm run dev` (play), `npm run sim` (balance report), `npm run shot` (screenshot).
+> **Status:** Phase 0 is feature-complete and hardened. 58 tests pass; build clean;
+> sim shows first prestige ~15.5m, all research, no walls. The ONLY remaining Phase 0
+> item is the owner FUN-GATE: play it (`npm run dev`) and decide if the loop is
+> compelling without art. **Phase 1 (the 2.5D hall) is blocked on that gate — by design.**
+> Tools: `npm run dev` (play), `npm run sim` (balance + market EV report), `npm run shot`.
 
 ### Owner-directed polish (done in Phase 0, pure UI — no later-phase systems)
 - [x] Premium liquid-glass redesign (iOS 26 feel, Airbnb-clean), animated aurora

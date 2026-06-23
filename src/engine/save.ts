@@ -41,23 +41,27 @@ export function serialize(state: GameState): string {
 }
 
 export function deserialize(json: string): GameState {
-  const raw = migrate(JSON.parse(json));
+  const raw = migrate(JSON.parse(json)) as Partial<SavedShape>;
   const fresh = createInitialState();
+  // Default every field defensively: a true v0 save (and any partial/corrupt
+  // one) may be missing whole sub-objects, so never dereference them blindly.
+  const res = (raw.resources ?? {}) as Partial<SavedShape["resources"]>;
+  const pres = (raw.prestige ?? {}) as Partial<SavedShape["prestige"]>;
   return {
     version: SAVE_VERSION,
     resources: {
-      compute: Big.of(raw.resources.compute),
-      data: Big.of(raw.resources.data),
-      money: Big.of(raw.resources.money),
+      compute: Big.of(res.compute ?? "0"),
+      data: Big.of(res.data ?? "0"),
+      money: Big.of(res.money ?? "0"),
     },
     upgrades: raw.upgrades ?? fresh.upgrades,
     research: raw.research ?? fresh.research,
     run: raw.run ?? fresh.run,
     prestige: {
-      legacyWeights: Big.of(raw.prestige.legacyWeights),
-      ships: raw.prestige.ships,
+      legacyWeights: Big.of(pres.legacyWeights ?? "0"),
+      ships: pres.ships ?? 0,
     },
-    lifetimeMoney: Big.of(raw.lifetimeMoney),
+    lifetimeMoney: Big.of(raw.lifetimeMoney ?? res.money ?? "0"),
     heat: raw.heat ?? fresh.heat,
   };
 }
