@@ -4,6 +4,9 @@ import { useGameLoop } from "../state/useGameLoop";
 import { derive } from "../engine/derive";
 import { Big } from "../engine/math/Big";
 import { haptics } from "./haptics";
+import { sound } from "./sound";
+import { useSettings } from "./settings";
+import { GearIcon } from "./Icons";
 import { ResourceBar } from "./ResourceBar";
 import { TrainingDock } from "./TrainingDock";
 import { UpgradePanel } from "./UpgradePanel";
@@ -11,6 +14,7 @@ import { ResearchPanel } from "./ResearchPanel";
 import { PrestigePanel } from "./PrestigePanel";
 import { OfflineModal } from "./OfflineModal";
 import { Celebration } from "./Celebration";
+import { SettingsSheet } from "./SettingsSheet";
 
 export function App() {
   useGameLoop();
@@ -25,24 +29,27 @@ export function App() {
   const prevShips = useRef(game.prestige.ships);
   const prevWeights = useRef<Big>(game.prestige.legacyWeights);
   const [celebration, setCelebration] = useState<{ gained: Big; total: Big } | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const reducedMotion = useSettings((s) => s.reducedMotion);
   useEffect(() => {
     if (game.prestige.ships > prevShips.current) {
       const gained = game.prestige.legacyWeights.sub(prevWeights.current);
       setCelebration({ gained, total: game.prestige.legacyWeights });
       haptics.celebrate();
+      sound.ship();
     }
     prevShips.current = game.prestige.ships;
     prevWeights.current = game.prestige.legacyWeights;
   }, [game.prestige.ships, game.prestige.legacyWeights]);
 
-  // Action handlers wrapped with tactile feedback.
-  const onStart = () => { haptics.tap(); doStartRun(); };
-  const onClaim = () => { haptics.success(); doClaim(); };
-  const onBuy = (id: string) => { haptics.tap(); doBuyUpgrade(id); };
-  const onResearch = (id: string) => { haptics.tap(); doResearch(id); };
+  // Action handlers wrapped with tactile + audio feedback.
+  const onStart = () => { haptics.tap(); sound.tap(); doStartRun(); };
+  const onClaim = () => { haptics.success(); sound.success(); doClaim(); };
+  const onBuy = (id: string) => { haptics.tap(); sound.purchase(); doBuyUpgrade(id); };
+  const onResearch = (id: string) => { haptics.tap(); sound.purchase(); doResearch(id); };
 
   return (
-    <div className="app">
+    <div className={`app${reducedMotion ? " reduce-motion" : ""}`}>
       <div className="aurora" aria-hidden="true">
         <span className="blob blob-a" />
         <span className="blob blob-b" />
@@ -54,7 +61,9 @@ export function App() {
           <span className="brand-mark" />
           <h1>Singularity Inc.</h1>
         </div>
-        <span className="phase-tag">prototype</span>
+        <button className="icon-btn" onClick={() => setShowSettings(true)} aria-label="Settings">
+          <GearIcon />
+        </button>
       </header>
 
       <ResourceBar
@@ -86,6 +95,7 @@ export function App() {
           onDone={() => setCelebration(null)}
         />
       )}
+      {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} />}
     </div>
   );
 }

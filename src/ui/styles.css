@@ -161,6 +161,23 @@ body {
   border: 1px solid var(--glass-edge);
 }
 
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  color: var(--ink-2);
+  background: var(--glass);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-edge);
+  cursor: pointer;
+  transition: transform 0.2s var(--spring), color 0.2s;
+}
+.icon-btn:hover { color: var(--ink); }
+.icon-btn:active { transform: scale(0.9) rotate(30deg); }
+
 /* ---------- Glass material (shared) ---------- */
 .glass,
 .resource,
@@ -661,6 +678,84 @@ body {
 }
 .link-btn:hover { color: var(--ink-2); text-decoration: underline; }
 
+/* ---------- Settings bottom sheet (iOS-style) ---------- */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(20, 24, 35, 0.35);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: fade 0.25s ease;
+}
+.sheet {
+  width: 100%;
+  max-width: 480px;
+  padding: 12px 18px calc(22px + env(safe-area-inset-bottom));
+  background: var(--glass-strong);
+  backdrop-filter: blur(var(--blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(180%);
+  border: 1px solid var(--glass-edge);
+  border-bottom: none;
+  border-radius: 28px 28px 0 0;
+  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  animation: sheet-up 0.42s var(--ease-out);
+}
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: none; }
+}
+.sheet-grip {
+  width: 40px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(17, 24, 39, 0.18);
+  margin: 2px auto 12px;
+}
+.sheet-title { margin: 0 0 14px; font-size: 20px; font-weight: 750; letter-spacing: -0.02em; }
+.set-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.set-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  text-align: left;
+  background: var(--glass);
+  border: 1px solid var(--glass-hairline);
+  border-radius: var(--radius-sm);
+  padding: 14px 15px;
+  cursor: pointer;
+  color: var(--ink);
+}
+.set-text { display: flex; flex-direction: column; gap: 2px; }
+.set-label { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+.set-hint { font-size: 12px; color: var(--ink-2); }
+.switch {
+  flex: none;
+  width: 50px;
+  height: 30px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.16);
+  position: relative;
+  transition: background 0.25s var(--ease-out);
+}
+.switch.on { background: var(--money); }
+.knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 5px rgba(16, 24, 40, 0.3);
+  transition: transform 0.25s var(--spring);
+}
+.switch.on .knob { transform: translateX(20px); }
+
 /* ---------- Accessibility: respect reduced motion (premium = considerate) ---------- */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -670,4 +765,12 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+}
+/* In-app toggle mirrors the OS preference. */
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
 }

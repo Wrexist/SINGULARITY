@@ -38,3 +38,12 @@ export function MoneyIcon() {
     </svg>
   );
 }
+
+export function GearIcon() {
+  return (
+    <svg {...base} width={20} height={20} aria-hidden="true">
+      <circle cx="12" cy="12" r="3.2" />
+      <path d="M12 2.5v2.4M12 19.1v2.4M21.5 12h-2.4M4.9 12H2.5M18.7 5.3l-1.7 1.7M7 17l-1.7 1.7M18.7 18.7L17 17M7 7L5.3 5.3" />
+    </svg>
+  );
+}

@@ -106,6 +106,11 @@ try {
     await sleep(700); // let confetti + card animate in
   }
 
+  if (has("settings")) {
+    await page.getByRole("button", { name: "Settings" }).click();
+    await sleep(500);
+  }
+
   const out = `screenshots/${name}.png`;
   await page.screenshot({ path: out, fullPage: has("full") });
   console.log(`Saved ${out}`);

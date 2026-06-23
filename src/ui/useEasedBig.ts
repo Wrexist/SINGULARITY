@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Big } from "../engine/math/Big";
+import { useSettings } from "./settings";
 
-const prefersReducedMotion =
+const osReducedMotion =
   typeof window !== "undefined" &&
   window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
@@ -14,6 +15,7 @@ const prefersReducedMotion =
  * Honors prefers-reduced-motion by tracking the target exactly.
  */
 export function useEasedBig(target: Big, smoothing = 0.16): Big {
+  const reduced = useSettings((s) => s.reducedMotion) || osReducedMotion;
   const targetRef = useRef(target);
   targetRef.current = target;
   const displayRef = useRef(target);
@@ -21,7 +23,10 @@ export function useEasedBig(target: Big, smoothing = 0.16): Big {
   const lastStr = useRef(target.format());
 
   useEffect(() => {
-    if (prefersReducedMotion) return;
+    if (reduced) {
+      displayRef.current = targetRef.current;
+      return;
+    }
     let raf = 0;
     const step = () => {
       const t = targetRef.current;
@@ -45,7 +50,7 @@ export function useEasedBig(target: Big, smoothing = 0.16): Big {
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [smoothing]);
+  }, [smoothing, reduced]);
 
-  return prefersReducedMotion ? target : displayRef.current;
+  return reduced ? target : displayRef.current;
 }

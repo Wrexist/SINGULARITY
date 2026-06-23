@@ -3,8 +3,11 @@
  * web). iOS Safari ignores it — in the Phase 1 Capacitor build this is the seam
  * to swap in @capacitor/haptics for real iOS taps. Always a safe no-op otherwise.
  */
+import { useSettings } from "./settings";
+
 function vibrate(pattern: number | number[]): void {
   try {
+    if (!useSettings.getState().haptics) return;
     if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
       navigator.vibrate(pattern);
     }
