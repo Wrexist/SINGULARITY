@@ -88,46 +88,50 @@ Run: `bundle exec fastlane beta`
 
 ---
 
-## 7. Building WITHOUT a Mac — GitHub Actions CI (the path we're using)
-The owner has no Mac, so the whole archive→sign→upload runs on GitHub's **macOS
-runners**. Implemented in `.github/workflows/ios-testflight.yml` + `fastlane/`.
+## 7. Building WITHOUT a Mac — the cheap CI path (what we're using)
+No Mac, so the archive→sign→upload runs on GitHub's **macOS runners**. We mirror
+the **Silicon Tech Tycoon** pipeline (proven on the owner's other app) and improve
+it. Implemented in `.github/workflows/ios-testflight.yml`. **No Fastlane, no Match,
+no cert repo** — the cheapest, simplest signing path:
 
-**Flow:** runner checks out → `npm ci` → `npm run build` → `npx cap add ios`
-(the `ios/` project is generated fresh each run; it's gitignored) → `cap sync` →
-`fastlane ios beta` (Match signs, ASC API key uploads to TestFlight).
+- **Xcode automatic (cloud-managed) signing** driven by the App Store Connect API
+  key (`xcodebuild -allowProvisioningUpdates -authenticationKey*`). Apple creates
+  and manages the distribution cert + profile for you — nothing to store or rotate.
+- Upload to TestFlight via `xcrun altool --upload-app` with the same API key.
+
+**Flow:** `npm ci` → `npm run build` → `cap add/sync ios` (the `ios/` project is
+generated fresh each run; gitignored) → set `ITSAppUsesNonExemptEncryption=false`
++ build number from the run number → `xcodebuild archive` → `exportArchive` → upload.
 
 **Trigger:** Actions tab → "iOS TestFlight" → *Run workflow*, OR push a tag
-`ios-v*` (e.g. `git tag ios-v0.1.0 && git push --tags`).
+`ios-v*` (`git tag ios-v0.1.0 && git push --tags`).
 
-### Secrets — what's set vs. still needed
-Already added (✓ in the repo Actions secrets):
+### Secrets — you already have everything needed
 | Secret | Used for |
 |---|---|
-| `APPLE_TEAM_ID` | Developer portal team / signing |
-| `ASC_ISSUER_ID`, `ASC_KEY_ID`, `ASC_KEY_P8` | App Store Connect API key (Match auth + TestFlight upload). Store `ASC_KEY_P8` as the **raw `.p8` file contents** (the `-----BEGIN PRIVATE KEY-----` block). |
-| `MATCH_PASSWORD` | Decrypts the Match certificate repo |
+| `APPLE_TEAM_ID` | `DEVELOPMENT_TEAM` for signing |
+| `ASC_KEY_ID`, `ASC_ISSUER_ID` | App Store Connect API key id + issuer |
+| `ASC_KEY_P8` | The API key — store the **raw `.p8` contents** (`-----BEGIN PRIVATE KEY-----` block) |
 
-**Still needed (2 more):**
-| Secret | Why |
-|---|---|
-| `MATCH_GIT_URL` | The private git repo where Match stores the encrypted cert + profile (the owner's existing Match repo). |
-| `MATCH_GIT_BASIC_AUTHORIZATION` | base64 of `username:personal_access_token` so the runner can clone that private Match repo over HTTPS. (`printf 'user:TOKEN' | base64`) Use a token scoped to just that repo. (SSH deploy key is an alternative — say the word and I'll switch the workflow to it.) |
+**No extra secrets required.** `MATCH_PASSWORD` (and the MATCH_GIT_* ones I'd
+previously asked for) are **not used** by this path — you can delete `MATCH_PASSWORD`
+if you like, or leave it.
 
 ### One-time prerequisites (Apple side — only you can do these)
-1. **Apple Developer Program** active (paid).
-2. **App record in App Store Connect** with bundle ID **`com.wrexist.singularityinc`** (must match `capacitor.config.ts`). Without it, the upload step fails.
-3. **Match repo seeded for this bundle ID.** The `beta` lane runs Match with `readonly: false`, so the **first** successful run will create + store the appstore cert/profile for this app in your Match repo automatically. (If you prefer, seed it from another machine first, then flip `readonly: true` in `fastlane/Fastfile`.)
-4. **Export compliance / encryption** question — answered in App Store Connect on the first build (HTTPS-only game → usually exempt).
+1. **Apple Developer Program** active (paid, $99/yr — the only unavoidable cost).
+2. **App record in App Store Connect** with bundle ID **`com.wrexist.singularityinc`**
+   (must equal `capacitor.config.ts`). The upload fails without it.
+3. The ASC API key role must be **Admin** or **App Manager** so cloud signing can
+   create the distribution cert/profile.
+
+### Cheapest-cost notes
+- macOS Actions minutes bill at 10× private-repo rate. Builds are infrequent (a
+  few per release, ~10–15 min each), so this fits a small budget. If you want it
+  **completely free**, make the repo public → unlimited Actions minutes.
+- No Match repo means one less private repo and zero cert maintenance.
 
 ### Honest status
-This pipeline is **scaffolded but unverified** — there's no Mac here to run it, so
-the first CI run will almost certainly need a fix or two (Xcode/SDK version on the
-runner, the Match repo seeding, signing identity names, or the app record). That's
-normal for first-time iOS CI. Push the 2 remaining secrets + create the app record,
-run the workflow, and paste me the log — I'll iterate on the workflow/Fastfile from
-the errors. **TestFlight is not "ready" until that first green run uploads a build.**
-
-### Xcode 26 note
-The workflow selects the newest Xcode on the runner. If GitHub's `macos-14` image
-doesn't yet carry Xcode 26 / iOS 26 SDK (mandatory for uploads), bump `runs-on` to
-the newest macOS image available (e.g. `macos-15`) — one-line change.
+**Scaffolded, not yet verified** — there's no Mac here to run it. The first CI run
+will likely need a tweak (runner Xcode version, the export `method` string, or the
+app record). Create the app record, run the workflow, and paste me the log — I'll
+iterate from the real errors. **TestFlight isn't "ready" until that first green run.**

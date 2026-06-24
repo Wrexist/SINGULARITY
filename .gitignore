@@ -10,11 +10,7 @@ screenshots/*.png
 # no Mac locally. Commit it later if/when you add custom native code.
 ios/
 
-# Fastlane / signing secrets and build artifacts (never commit these)
-fastlane/AuthKey*.p8
-fastlane/report.xml
-fastlane/README.md
-fastlane/test_output
+# iOS build artifacts (never commit these)
 *.ipa
-*.dSYM.zip
-vendor/bundle
+*.xcarchive
+build/
