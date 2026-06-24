@@ -23,6 +23,18 @@ export interface PrestigeState {
   ships: number;
 }
 
+export type ModifierTarget = "computeMult" | "dataMult" | "moneyMult";
+
+/** A time-limited global multiplier granted by a world event. Ticks down. */
+export interface ActiveModifier {
+  id: string;
+  target: ModifierTarget;
+  factor: number;
+  remainingSec: number;
+  label: string;
+  tone: "good" | "bad";
+}
+
 export interface GameState {
   version: number;
   resources: Resources;
@@ -36,6 +48,8 @@ export interface GameState {
   lifetimeMoney: Big;
   /** Regulatory Heat (0..100). Rises with dark-web use, cools over time. */
   heat: number;
+  /** Active time-limited modifiers from world events. */
+  modifiers: ActiveModifier[];
 }
 
 /** Everything the sim and UI read each frame, folded from upgrades + research + prestige. */

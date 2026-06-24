@@ -72,6 +72,14 @@ export function derive(state: GameState): Derived {
     }
   }
 
+  // World-event modifiers: time-limited global multipliers (buffs/debuffs).
+  for (const m of state.modifiers) {
+    if (m.remainingSec <= 0) continue;
+    if (m.target === "computeMult") computeMult = computeMult.mul(m.factor);
+    else if (m.target === "dataMult") dataMult = dataMult.mul(m.factor);
+    else if (m.target === "moneyMult") moneyMult = moneyMult.mul(m.factor);
+  }
+
   // Prestige: permanent global multiplier from Legacy Weights.
   const legacyMult = Big.ONE.add(
     state.prestige.legacyWeights.mul(balance.prestige.multiplierPerPoint),

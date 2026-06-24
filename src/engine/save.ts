@@ -1,6 +1,6 @@
 import { Big } from "./math/Big";
 import { SAVE_VERSION, createInitialState } from "./state";
-import type { GameState } from "./types";
+import type { ActiveModifier, GameState } from "./types";
 
 /**
  * Versioned save/load. Big values serialize to strings (Big.toJSON) so saves are
@@ -17,6 +17,7 @@ interface SavedShape {
   prestige: { legacyWeights: string; ships: number };
   lifetimeMoney: string;
   heat: number;
+  modifiers: ActiveModifier[];
 }
 
 export function serialize(state: GameState): string {
@@ -36,6 +37,7 @@ export function serialize(state: GameState): string {
     },
     lifetimeMoney: state.lifetimeMoney.toJSON(),
     heat: state.heat,
+    modifiers: state.modifiers,
   };
   return JSON.stringify(shape);
 }
@@ -63,6 +65,7 @@ export function deserialize(json: string): GameState {
     },
     lifetimeMoney: Big.of(raw.lifetimeMoney ?? res.money ?? "0"),
     heat: raw.heat ?? fresh.heat,
+    modifiers: Array.isArray(raw.modifiers) ? raw.modifiers : fresh.modifiers,
   };
 }
 
@@ -79,6 +82,10 @@ export function migrate(raw: any): SavedShape {
   if (s.version === 1) {
     // v1 → v2: introduce Regulatory Heat (starts cold).
     s = { ...s, version: 2, heat: s.heat ?? 0 };
+  }
+  if (s.version === 2) {
+    // v2 → v3: introduce world-event modifiers (none active to start).
+    s = { ...s, version: 3, modifiers: s.modifiers ?? [] };
   }
   return s as SavedShape;
 }

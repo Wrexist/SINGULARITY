@@ -9,7 +9,9 @@ import {
   buyResearch,
   buyDataOffer,
   maybeHeatEvent,
+  maybeWorldEvent,
   type MarketOutcome,
+  type WorldEventResult,
 } from "../engine/actions";
 import { prestige } from "../engine/prestige";
 import { applyOffline, type OfflineSummary } from "../engine/offline";
@@ -30,6 +32,8 @@ export interface FiredEvent {
   tone: "bad" | "good";
 }
 
+export type FiredWorldEvent = WorldEventResult & { key: number };
+
 interface GameStore {
   game: GameState;
   offline: OfflineSummary | null;
@@ -37,8 +41,11 @@ interface GameStore {
   initialized: boolean;
   /** Most recent regulatory event (heat-driven), or null. */
   event: FiredEvent | null;
+  /** Pending ambient world event (shown as a card), or null. */
+  worldEvent: FiredWorldEvent | null;
   // lifecycle
   init: () => void;
+  dismissWorldEvent: () => void;
   advance: (elapsedMs: number) => void;
   save: () => void;
   dismissOffline: () => void;
@@ -57,12 +64,15 @@ function now(): number {
 }
 
 let eventKey = 0;
+let worldKey = 0;
 
 export const useGame = create<GameStore>((set, get) => ({
   game: createInitialState(),
   offline: null,
   initialized: false,
   event: null,
+  worldEvent: null,
+  dismissWorldEvent: () => set({ worldEvent: null }),
 
   init: () => {
     let game = createInitialState();
@@ -90,17 +100,33 @@ export const useGame = create<GameStore>((set, get) => ({
 
   advance: (elapsedMs) =>
     set((s) => {
-      const game = tick(s.game, elapsedMs);
-      // Only roll for events when there's heat to drive them — keeps the hot
-      // path (the common cold state) free of per-frame RNG and object churn.
+      let game = tick(s.game, elapsedMs);
+      const secs = elapsedMs / 1000;
+      const patch: Partial<GameStore> = { game };
+
+      // Heat-driven regulatory event (only when there's heat to drive it).
       if (game.heat > 0) {
-        const res = maybeHeatEvent(game, elapsedMs / 1000, Math.random(), Math.random());
+        const res = maybeHeatEvent(game, secs, Math.random(), Math.random());
         if (res) {
+          game = res.state;
           eventKey += 1;
-          return { game: res.state, event: { key: eventKey, message: res.event.message, tone: res.event.tone } };
+          patch.game = game;
+          patch.event = { key: eventKey, message: res.event.message, tone: res.event.tone };
         }
       }
-      return { game };
+
+      // Ambient satirical world event — at most one pending card at a time.
+      if (!s.worldEvent) {
+        const wr = maybeWorldEvent(game, secs, Math.random(), Math.random());
+        if (wr) {
+          game = wr.state;
+          worldKey += 1;
+          patch.game = game;
+          patch.worldEvent = { key: worldKey, ...wr.event };
+        }
+      }
+
+      return patch;
     }),
 
   save: () => {
@@ -133,3 +159,8 @@ export const useGame = create<GameStore>((set, get) => ({
     set({ game: createInitialState(), offline: null });
   },
 }));
+
+// Debug/test handle (used by the screenshot harness; harmless in prod).
+if (typeof window !== "undefined") {
+  (window as unknown as { __SINGULARITY_STORE__?: typeof useGame }).__SINGULARITY_STORE__ = useGame;
+}

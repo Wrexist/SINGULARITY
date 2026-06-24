@@ -1,8 +1,9 @@
 # TASK.md — Singularity Inc.
 *Live task list. Claude Code updates this as work progresses. One source of truth for "what's next."*
 
-**Current phase:** PHASE 0 — flat-UI loop prototype (prove the loop is fun as numbers)
-**Phase 0 exit gate:** owner plays the flat-UI build and confirms the core loop is compelling WITHOUT any art. If not fun here, fix the loop or kill the project. Do not proceed to Phase 1 until this gate passes.
+**Current phase:** PHASE 1 — Shippable MVP (the 2.5D hall + manifestation). Owner passed the Phase 0
+fun-gate on 2026-06-25 and greenlit Phase 1. (Phase 0 history retained below for context.)
+**Phase 0 exit gate:** PASSED — owner confirmed the loop is fun without art.
 
 ---
 
@@ -118,11 +119,17 @@
 - [x] Era re-skin v1 (palette shifts: Garage Closet → Startup → Scale-Up) from research/ships.
 - [x] Integrated as the hero stage atop the existing UI; 5 model tests (66 total). Build clean.
 - [x] Era-transition tentpole moment (full-screen "press release" when you cross an era)
-- [ ] NEXT: richer manifestation (slide-in + power-on per rack),
-      data-mote flow on claim, cooling/era props, then lightweight events surfaced in the hall.
+- [x] Richer manifestation: power-on flash when a rack boots in.
+
+### Lightweight world events (the satire layer)
+- [x] 12 satirical ambient events (buffs/debuffs + immediate % swings), written in voice.
+- [x] Engine: timed modifiers on GameState (save v2→v3), folded into derive, decay in tick.
+      Deterministic — fire/pick rolls passed in; Math.random lives in the store; not fired offline.
+- [x] WorldEventCard (breaking-news modal) + live ModifierBar chips counting down. 9 event tests.
+
+- [ ] NEXT: data-mote flow on claim, cooling/fan props per era, then premium IAP + Capacitor build.
 
 ## Backlog (later Phase 1 + Phase 2+)
-- Lightweight satirical events (~12), surfaced as hall moments
 - Premium unlock IAP; Capacitor iOS build + TestFlight (see `DEPLOYMENT.md`)
 - [Phase 2+] power/heat, staff, factions, eras 4–6, multi-room hall, cosmetic store, Steam port
 

@@ -90,14 +90,16 @@ export function drawHall(ctx: CanvasRenderingContext2D, model: HallModel, o: Dra
     const c = iso(tile.gx + 0.5, tile.gy + 0.5);
 
     let scale = 1;
+    let powerOn = 0; // spawn flash: bright at appear, fades as it settles
     if (!o.reducedMotion && i >= o.spawnFrom && o.spawnT < 1) {
       scale = easeOut(Math.max(0.0001, o.spawnT)); // pop in
+      powerOn = 1 - o.spawnT;
     }
 
     // A working run makes racks pulse; idle racks breathe gently.
     const blink = o.reducedMotion ? 0.6 : 0.5 + 0.5 * Math.sin(t / 280 + i * 1.7);
     const workPulse = model.active && !o.reducedMotion ? 0.5 + 0.5 * Math.sin(t / 140 + i) : 0;
-    drawRack(ctx, c.x, c.y, tileW, tileH, rack.tier, rack.density, scale, blink, workPulse, model.active);
+    drawRack(ctx, c.x, c.y, tileW, tileH, rack.tier, rack.density, scale, blink, workPulse, model.active, powerOn);
   }
 
   // ---- Empty-state hint (the rented closet) ----
@@ -150,6 +152,7 @@ function drawRack(
   blink: number,
   workPulse: number,
   active: boolean,
+  powerOn: number,
 ): void {
   const style = TIER_STYLES[tier] ?? FALLBACK_STYLE;
   const hw = (tileW / 2) * 0.62 * scale; // footprint half-width
@@ -188,7 +191,8 @@ function drawRack(
     const lx = bBottom.x + (bRight.x - bBottom.x) * 0.5;
     const ly = bBottom.y - ph * f + (bRight.y - bBottom.y) * 0.5;
     const lit = ((blink + r * 0.33) % 1) > 0.45;
-    const a = active ? Math.max(blink, workPulse) : (lit ? 0.9 : 0.25);
+    let a = active ? Math.max(blink, workPulse) : (lit ? 0.9 : 0.25);
+    if (powerOn > 0) a = Math.max(a, powerOn); // racks light up as they boot
     ctx.fillStyle = withAlpha(style.light, a * scale);
     ctx.fillRect(lx - hw * 0.42, ly, hw * 0.7, Math.max(1, ph * 0.045));
   }
@@ -200,6 +204,18 @@ function drawRack(
     ctx.fillStyle = style.light;
     ctx.beginPath();
     ctx.ellipse(sx, sy - ph * 0.5, hw * 1.8, ph * 0.8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Power-on flash: a bright additive bloom the instant a rack manifests.
+  if (powerOn > 0) {
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.5 * powerOn;
+    ctx.fillStyle = style.light;
+    ctx.beginPath();
+    ctx.ellipse(sx, sy - ph * 0.55, hw * 2.4, ph * 1.0, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }

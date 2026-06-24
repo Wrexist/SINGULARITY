@@ -87,6 +87,117 @@ export interface ResearchDef {
     | { kind: "unlockPassiveMoney"; perSec: number };
 }
 
+/** An ambient satirical event. Effect is a timed buff or an immediate % swing. */
+export interface WorldEvent {
+  id: string;
+  weight: number;
+  tone: "good" | "bad";
+  headline: string;
+  body: string;
+  effect:
+    | { kind: "buff"; target: "computeMult" | "dataMult" | "moneyMult"; factor: number; durationSec: number }
+    | { kind: "grantPct"; resource: "compute" | "data" | "money"; pct: number };
+}
+
+const WORLD_EVENTS: WorldEvent[] = [
+  {
+    id: "breakthrough_paper",
+    weight: 3,
+    tone: "good",
+    headline: "Breakthrough Paper",
+    body: "An intern reproduces a 2017 result and calls it novel. The team believes. Compute ×1.5 for a while.",
+    effect: { kind: "buff", target: "computeMult", factor: 1.5, durationSec: 60 },
+  },
+  {
+    id: "viral_demo",
+    weight: 3,
+    tone: "good",
+    headline: "Your Demo Goes Viral",
+    body: "A cherry-picked clip trends. Nobody asks about the failure cases. Revenue ×2 while the hype lasts.",
+    effect: { kind: "buff", target: "moneyMult", factor: 2, durationSec: 45 },
+  },
+  {
+    id: "intern_refactor",
+    weight: 2,
+    tone: "good",
+    headline: "Intern Refactors the Pipeline",
+    body: "Unreviewed, undocumented, and somehow faster. Data yield ×1.6 for a while.",
+    effect: { kind: "buff", target: "dataMult", factor: 1.6, durationSec: 60 },
+  },
+  {
+    id: "compute_donation",
+    weight: 2,
+    tone: "good",
+    headline: "Anonymous Compute Donation",
+    body: "A crypto bro pivoted to AI and gifted you a warehouse of GPUs. Compute ×2, briefly.",
+    effect: { kind: "buff", target: "computeMult", factor: 2, durationSec: 35 },
+  },
+  {
+    id: "gov_grant",
+    weight: 2,
+    tone: "good",
+    headline: "Government AI Grant",
+    body: "A vague national 'AI strategy' showers you with money. Don't read the terms. +25% cash.",
+    effect: { kind: "grantPct", resource: "money", pct: 0.25 },
+  },
+  {
+    id: "opensource_dump",
+    weight: 2,
+    tone: "good",
+    headline: "A Rival Open-Sources Everything",
+    body: "A competitor rage-quits and dumps their dataset to spite their board. +30% data.",
+    effect: { kind: "grantPct", resource: "data", pct: 0.3 },
+  },
+  {
+    id: "influencer",
+    weight: 2,
+    tone: "good",
+    headline: "Tech Influencer Endorsement",
+    body: "'This changes everything,' says a man with a ring light and no technical background. Revenue ×1.8.",
+    effect: { kind: "buff", target: "moneyMult", factor: 1.8, durationSec: 40 },
+  },
+  {
+    id: "gpu_shortage",
+    weight: 3,
+    tone: "bad",
+    headline: "GPU Shortage",
+    body: "Nvidia quietly 'reallocates' your order to a bigger lab. Compute ×0.6 until it clears.",
+    effect: { kind: "buff", target: "computeMult", factor: 0.6, durationSec: 50 },
+  },
+  {
+    id: "heatwave",
+    weight: 2,
+    tone: "bad",
+    headline: "Heatwave",
+    body: "The AC surrenders. The racks throttle to avoid becoming a fire. Compute ×0.7 until it cools.",
+    effect: { kind: "buff", target: "computeMult", factor: 0.7, durationSec: 45 },
+  },
+  {
+    id: "market_crash",
+    weight: 2,
+    tone: "bad",
+    headline: "Market Correction",
+    body: "The bubble exhales. Your imaginary valuation meets reality. You lose 15% of your cash.",
+    effect: { kind: "grantPct", resource: "money", pct: -0.15 },
+  },
+  {
+    id: "data_breach",
+    weight: 2,
+    tone: "bad",
+    headline: "Data Breach",
+    body: "Turns out the storage bucket was public the whole time. 20% of your dataset walks out the door.",
+    effect: { kind: "grantPct", resource: "data", pct: -0.2 },
+  },
+  {
+    id: "lawsuit",
+    weight: 2,
+    tone: "bad",
+    headline: "Cease & Desist",
+    body: "An author found their novel verbatim in your training set. Lawyers are not cheap. -18% cash.",
+    effect: { kind: "grantPct", resource: "money", pct: -0.18 },
+  },
+];
+
 export const balance = {
   /** The rented server closet generates a trickle of Compute for free. */
   baseComputePerSec: 1,
@@ -303,6 +414,20 @@ export const balance = {
       effect: { heatSet: 0 },
     },
   ] satisfies HeatEvent[],
+
+  /**
+   * Ambient world events (GDD Phase 1: "a dozen, written with the satirical
+   * voice. Modifiers + jokes."). Distinct from the Bazaar's heat events — these
+   * fire on a slow ambient timer once the lab is established. Effects are either
+   * a timed global multiplier (buff/debuff) or an immediate +/- % of a resource.
+   */
+  worldEvents: {
+    /** Mean seconds between events during active play (Poisson-ish). */
+    meanIntervalSec: 150,
+    /** Don't begin firing until the player has done some research. */
+    minResearch: 1,
+    list: WORLD_EVENTS,
+  },
 
   /** Money → Data marketplace. Legit (safe, pricey) vs. dark web (cheap, risky, hot). */
   dataMarket: [

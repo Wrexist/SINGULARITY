@@ -93,6 +93,10 @@ try {
           prestige: { legacyWeights: "0", ships: 0 },
           lifetimeMoney: "100000000",
           heat: 30,
+          modifiers: [
+            { id: "viral_demo", target: "moneyMult", factor: 2, remainingSec: 32, label: "Revenue ×2", tone: "good" },
+            { id: "gpu_shortage", target: "computeMult", factor: 0.6, remainingSec: 18, label: "Compute ×0.6", tone: "bad" },
+          ],
         }
       : has("era")
       ? {
@@ -154,6 +158,24 @@ try {
     // Buy the second research node → cross into era 1 → fire the moment.
     await page.getByRole("button", { name: /Curated Dataset/ }).click();
     await sleep(700);
+  }
+
+  if (has("worldevent")) {
+    // Inject a representative world event via the debug store handle.
+    await page.evaluate(() => {
+      const store = (window).__SINGULARITY_STORE__;
+      store.setState({
+        worldEvent: {
+          key: 1,
+          id: "viral_demo",
+          headline: "Your Demo Goes Viral",
+          body: "A cherry-picked clip trends. Nobody asks about the failure cases. Revenue ×2 while the hype lasts.",
+          tone: "good",
+          summary: "Revenue ×2 · 45s",
+        },
+      });
+    });
+    await sleep(400);
   }
 
   const out = `screenshots/${name}.png`;

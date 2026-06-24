@@ -1,7 +1,14 @@
 import { Big } from "./math/Big";
-import { balance, type UpgradeDef, type ResearchDef, type DataOffer, type HeatEvent } from "./balance/config";
+import {
+  balance,
+  type UpgradeDef,
+  type ResearchDef,
+  type DataOffer,
+  type HeatEvent,
+  type WorldEvent,
+} from "./balance/config";
 import { derive } from "./derive";
-import type { GameState } from "./types";
+import type { ActiveModifier, GameState } from "./types";
 
 const clampHeat = (h: number) => Math.max(0, Math.min(balance.heat.max, h));
 
@@ -268,4 +275,83 @@ export function maybeHeatEvent(
   );
   if (fireRoll >= chance) return null;
   return applyHeatEvent(state, pickHeatEvent(pickRoll).id);
+}
+
+// ---------- Ambient world events (satire layer, GDD Phase 1) ----------
+
+export interface WorldEventResult {
+  id: string;
+  headline: string;
+  body: string;
+  tone: "good" | "bad";
+  /** Short effect summary for the card, e.g. "+25% $" or "Compute ×1.5 · 60s". */
+  summary: string;
+}
+
+const WORLD_EVENTS = balance.worldEvents.list as WorldEvent[];
+const TOTAL_WORLD_WEIGHT = WORLD_EVENTS.reduce((sum, e) => sum + e.weight, 0);
+
+export function pickWorldEvent(roll: number): WorldEvent {
+  let target = roll * TOTAL_WORLD_WEIGHT;
+  for (const e of WORLD_EVENTS) {
+    if (target < e.weight) return e;
+    target -= e.weight;
+  }
+  return WORLD_EVENTS[WORLD_EVENTS.length - 1]!;
+}
+
+const TARGET_LABEL: Record<string, string> = {
+  computeMult: "Compute",
+  dataMult: "Data",
+  moneyMult: "Revenue",
+};
+const RES_LABEL: Record<string, string> = { compute: "compute", data: "data", money: "$" };
+
+/** Apply a world event's effect. Pure given the event id. */
+export function applyWorldEvent(state: GameState, eventId: string): { state: GameState; event: WorldEventResult } {
+  const def = WORLD_EVENTS.find((e) => e.id === eventId) ?? WORLD_EVENTS[0]!;
+  let resources = state.resources;
+  let modifiers = state.modifiers;
+  let summary = "";
+
+  if (def.effect.kind === "grantPct") {
+    const { resource, pct } = def.effect;
+    resources = { ...resources, [resource]: resources[resource].mul(1 + pct) };
+    const sign = pct > 0 ? "+" : "";
+    summary = `${sign}${Math.round(pct * 100)}% ${RES_LABEL[resource]}`;
+  } else {
+    const { target, factor, durationSec } = def.effect;
+    const mod: ActiveModifier = {
+      id: def.id,
+      target,
+      factor,
+      remainingSec: durationSec,
+      label: `${TARGET_LABEL[target]} ×${factor}`,
+      tone: def.tone,
+    };
+    // Refresh rather than stack a repeat of the same event.
+    modifiers = [...modifiers.filter((m) => m.id !== def.id), mod];
+    summary = `${TARGET_LABEL[target]} ×${factor} · ${durationSec}s`;
+  }
+
+  return {
+    state: { ...state, resources, modifiers },
+    event: { id: def.id, headline: def.headline, body: def.body, tone: def.tone, summary },
+  };
+}
+
+/**
+ * Roll for an ambient world event this frame. Slow Poisson-ish rate, gated until
+ * the lab is established. Two rolls passed in (fire, pick) keep the engine pure.
+ */
+export function maybeWorldEvent(
+  state: GameState,
+  seconds: number,
+  fireRoll: number,
+  pickRoll: number,
+): { state: GameState; event: WorldEventResult } | null {
+  if (state.research.length < balance.worldEvents.minResearch) return null;
+  const chance = Math.min(seconds / balance.worldEvents.meanIntervalSec, 0.4);
+  if (fireRoll >= chance) return null;
+  return applyWorldEvent(state, pickWorldEvent(pickRoll).id);
 }

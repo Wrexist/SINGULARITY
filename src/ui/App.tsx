@@ -22,6 +22,8 @@ import { Onboarding } from "./Onboarding";
 import { DataMarketPanel } from "./DataMarketPanel";
 import { HallCanvas } from "./HallCanvas";
 import { EraTransition } from "./EraTransition";
+import { WorldEventCard } from "./WorldEventCard";
+import { ModifierBar } from "./ModifierBar";
 import { canPrestige } from "../engine/prestige";
 import { currentEra } from "../engine/eras";
 
@@ -31,7 +33,8 @@ export function App() {
   const offline = useGame((s) => s.offline);
   const initialized = useGame((s) => s.initialized);
   const event = useGame((s) => s.event);
-  const { doStartRun, doClaim, doBuyUpgrade, doResearch, doBuyData, doPrestige, dismissOffline, hardReset } =
+  const worldEvent = useGame((s) => s.worldEvent);
+  const { doStartRun, doClaim, doBuyUpgrade, doResearch, doBuyData, doPrestige, dismissOffline, dismissWorldEvent, hardReset } =
     useGame.getState();
 
   const d = derive(game);
@@ -100,6 +103,14 @@ export function App() {
     if (era > seenEra.current) { setEraMoment(era); haptics.celebrate(); sound.ship(); }
     seenEra.current = era;
   }, [initialized, era]);
+
+  // Ambient world events: feedback when a new card appears.
+  useEffect(() => {
+    if (!worldEvent) return;
+    if (worldEvent.tone === "good") { haptics.success(); sound.success(); }
+    else { haptics.warn(); sound.alert(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [worldEvent?.key]);
 
   // Regulatory events (heat-driven) surface as weighty toasts with feedback.
   useEffect(() => {
@@ -171,6 +182,7 @@ export function App() {
         dataRate={d.dataPerSec}
         moneyRate={d.passiveMoneyPerSec}
       />
+      <ModifierBar modifiers={game.modifiers} />
 
       <main className="stage">
         <HallCanvas />
@@ -202,6 +214,7 @@ export function App() {
       )}
       {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} />}
       {eraMoment !== null && <EraTransition era={eraMoment} onDone={() => setEraMoment(null)} />}
+      {worldEvent && <WorldEventCard event={worldEvent} onDismiss={dismissWorldEvent} />}
       {!onboarded && !offline && <Onboarding onDone={completeOnboarding} />}
       <ToastStack toasts={toasts} onDone={dropToast} />
     </div>

@@ -65,12 +65,21 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   // Regulatory Heat cools passively when you're not buying shady data.
   const heat = Math.max(0, state.heat - balance.heat.coolPerSec * seconds);
 
+  // World-event modifiers tick down; expired ones drop off.
+  let modifiers = state.modifiers;
+  if (modifiers.length > 0) {
+    modifiers = modifiers
+      .map((m) => ({ ...m, remainingSec: m.remainingSec - seconds }))
+      .filter((m) => m.remainingSec > 0);
+  }
+
   return {
     ...state,
     resources: { compute, data, money },
     lifetimeMoney,
     run,
     heat,
+    modifiers,
   };
 }
 

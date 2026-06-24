@@ -50,8 +50,9 @@ describe("save/load", () => {
       lifetimeMoney: "50",
     };
     const migrated = migrate(v1);
-    expect(migrated.version).toBe(2);
+    expect(migrated.version).toBe(SAVE_VERSION);
     expect(migrated.heat).toBe(0);
+    expect(migrated.modifiers).toEqual([]); // v2→v3 backfill
   });
 
   it("preserves Heat through a round-trip", () => {
