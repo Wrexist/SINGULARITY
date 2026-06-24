@@ -16,6 +16,11 @@ concurrency:
   group: ios-testflight
   cancel-in-progress: true
 
+# Least privilege: this release job only reads the repo (it uploads to
+# TestFlight via the ASC API key, not the GITHUB_TOKEN).
+permissions:
+  contents: read
+
 jobs:
   testflight:
     runs-on: macos-26 # carries Xcode 26 / iOS 26 SDK (mandatory for uploads)
@@ -26,9 +31,13 @@ jobs:
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
     steps:
-      - uses: actions/checkout@v4
+      # Actions pinned to immutable commit SHAs (supply-chain hardening); the
+      # trailing comment tracks the human-readable version.
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 20
           cache: npm
@@ -42,9 +51,11 @@ jobs:
           printf '%s' "${{ secrets.ASC_KEY_P8 }}" > "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
 
       # Generate the native iOS project fresh (gitignored — no Mac locally).
+      # The ios/ dir never exists on a clean runner, so add it only when missing
+      # rather than swallowing real failures from `cap add` with `|| true`.
       - name: Generate & sync Capacitor iOS
         run: |
-          npx cap add ios || true
+          if [ ! -d ios ]; then npx cap add ios; fi
           npx cap sync ios
 
       # Auto-pass export compliance (no custom crypto) + a unique, rising build number.
