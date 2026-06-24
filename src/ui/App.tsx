@@ -20,6 +20,7 @@ import { StatsPanel } from "./StatsPanel";
 import { Tagline } from "./Tagline";
 import { Onboarding } from "./Onboarding";
 import { DataMarketPanel } from "./DataMarketPanel";
+import { HallCanvas } from "./HallCanvas";
 import { canPrestige } from "../engine/prestige";
 
 export function App() {
@@ -157,6 +158,7 @@ export function App() {
       />
 
       <main className="stage">
+        <HallCanvas />
         <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} />
         <UpgradePanel game={game} onBuy={onBuy} />
         {showResearch && <ResearchPanel game={game} onResearch={onResearch} />}

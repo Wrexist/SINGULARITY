@@ -14,8 +14,12 @@ An AI compute tycoon (idle/incremental + management) with a 2.5D data-center hal
 5. Humor lives in writing/events; systems stay clean.
 
 ## The current phase (UPDATE THIS LINE EVERY SESSION)
-> **PHASE 0 — flat-UI loop prototype. No 3D hall yet. No art polish. Prove the loop is fun as numbers.**
-> Do not build the 2.5D hall, events, staff, or power/heat until the owner confirms Phase 0 passed its fun-gate.
+> **PHASE 1 — Shippable MVP. Owner passed the Phase 0 fun-gate (2026-06-25) and greenlit Phase 1.**
+> Building the 2.5D data-center hall with the **manifestation rule** (every purchasable thing that can
+> be physical appears in the hall). Rendering: **Canvas 2D isometric** (parametric boxes/lights, no
+> image assets, lean bundle), wrapped behind a render module so a WebGL swap stays possible.
+> In scope now: hall + rack manifestation, then era re-skins, lightweight events, era-transition moments.
+> Still hard rules: 3 resources only; engine stays pure/deterministic; humor in writing not math.
 
 If a request would pull work forward from a later phase, STOP and flag it. Scope drift is this project's #1 documented risk. Protecting the phase boundary is part of your job.
 

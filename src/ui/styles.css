@@ -637,6 +637,43 @@ body {
 .node-desc { font-size: 12px; color: var(--ink-2); line-height: 1.35; }
 .node-cost { font-size: 12px; font-weight: 700; margin-top: 3px; }
 
+/* ---------- The 2.5D Hall (Phase 1) ---------- */
+.hall {
+  position: relative;
+  height: 230px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  animation: rise 0.5s var(--ease-out) both;
+}
+.hall-canvas { display: block; width: 100%; height: 100%; }
+/* Soft vignette so the glowing racks read against the room. */
+.hall::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 28%, transparent 55%, rgba(0, 0, 0, 0.32) 100%);
+}
+.hall-tag {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(10, 14, 28, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  z-index: 2;
+}
+.hall-era { font-size: 12px; font-weight: 750; color: #fff; letter-spacing: -0.01em; }
+.hall-count { font-size: 11px; font-weight: 650; color: rgba(255, 255, 255, 0.65); }
+
 /* ---------- Lab Stats (collapsible) ---------- */
 .stats { padding: 6px 18px; }
 .stats.open { padding-bottom: 16px; }

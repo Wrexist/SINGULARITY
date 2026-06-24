@@ -104,14 +104,26 @@
 
 ---
 
-## Backlog (Phase 1+ — DO NOT START, parked for visibility)
-- 2.5D hall + manifestation rule (racks appear on purchase)
-- Eras 1–3 full research trees
-- Lightweight satirical events (~12)
-- Milestone era-transition moments
-- Premium unlock IAP
-- Capacitor iOS build + TestFlight (see `DEPLOYMENT.md`)
-- [Phase 2+] power/heat, staff, factions, eras 4–6, cosmetic store, Steam port
+## PHASE 1 — Shippable MVP (STARTED 2026-06-25, owner passed fun-gate)
+### The 2.5D hall (the defining pillar)
+- [x] Rendering decision: **Canvas 2D isometric** (parametric boxes/lights, no image assets,
+      zero deps → lean Capacitor bundle). Wrapped behind a render module for a future WebGL swap.
+- [x] Pure render module: `src/render/hallModel.ts` (view-model from game state) +
+      `hallRenderer.ts` (iso floor + tiered rack boxes + blinking lights). No React, no engine import-cycle.
+- [x] `src/ui/HallCanvas.tsx`: self-driving rAF loop (reads store directly, no React churn),
+      DPR-aware, ResizeObserver, pauses on tab-hide, honors reduced-motion.
+- [x] **Manifestation rule v1**: rack count per tier → boxes in the room; buying a rack pops it in
+      (spawn animation). Caps drawn boxes per tier (1000 GPUs ≠ 1000 objects).
+- [x] Active-run work pulse (racks glow while training); empty-state "rented closet" hint.
+- [x] Era re-skin v1 (palette shifts: Garage Closet → Startup → Scale-Up) from research/ships.
+- [x] Integrated as the hero stage atop the existing UI; 5 model tests (66 total). Build clean.
+- [ ] NEXT: richer manifestation (slide-in + power-on per rack), era-transition tentpole moment,
+      data-mote flow on claim, cooling/era props, then lightweight events surfaced in the hall.
+
+## Backlog (later Phase 1 + Phase 2+)
+- Lightweight satirical events (~12), surfaced as hall moments
+- Premium unlock IAP; Capacitor iOS build + TestFlight (see `DEPLOYMENT.md`)
+- [Phase 2+] power/heat, staff, factions, eras 4–6, multi-room hall, cosmetic store, Steam port
 
 ---
 

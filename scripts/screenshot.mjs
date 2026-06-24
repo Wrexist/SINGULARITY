@@ -83,15 +83,16 @@ try {
   // By default, seed a representative mid-game save so the UI looks alive.
   // --fresh: empty new lab. --celebrate: ready-to-ship state (then click Ship).
   if (!has("fresh")) {
-    const seed = has("celebrate")
+    const seed = has("celebrate") || has("rich")
       ? {
-          version: 1,
+          version: 2,
           resources: { compute: "120000", data: "8000", money: "5000000" },
-          upgrades: { rack_basic: 12, rack_server: 4, rack_tpu: 1, overclock: 6, data_pipeline: 6, monetize: 6, auto_claim: 1, auto_train: 1 },
+          upgrades: { rack_basic: 16, rack_server: 10, rack_tpu: 6, overclock: 6, data_pipeline: 6, monetize: 6, auto_claim: 1, auto_train: 1 },
           research: ["backprop", "curated_data", "distributed", "distillation", "inference_api"],
           run: { active: true, progress: 0.4, readyToClaim: false },
           prestige: { legacyWeights: "0", ships: 0 },
           lifetimeMoney: "100000000",
+          heat: 30,
         }
       : {
           version: 2,
