@@ -19,11 +19,11 @@ describe("hall layout + markers (pure geometry)", () => {
     expect(big.tileW).toBeGreaterThan(0);
   });
 
-  it("produces four side markers with non-degenerate quads", () => {
+  it("produces a marker for each open side, with non-degenerate quads", () => {
     const s = createInitialState();
     s.resources.money = Big.of(1e9);
     const markers = expansionMarkers(buildHallModel(s), 390, 230);
-    expect(markers).toHaveLength(4);
+    expect(markers).toHaveLength(2); // only the two open (wall-free) sides
     for (const m of markers) {
       expect(m.quad).toHaveLength(4);
       // The centroid lies inside its own quad.

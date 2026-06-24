@@ -31,7 +31,7 @@ describe("hall view-model", () => {
     expect(m.racks.every((r) => r.density === 1)).toBe(true); // packed → max density
   });
 
-  it("per-side expansions grow the room directionally and let more racks fit", () => {
+  it("open-side expansions grow the room and let more racks fit (walls anchor the back)", () => {
     const base = createInitialState();
     const d0 = hallDims(base);
     expect(d0.cols).toBe(balance.hall.baseCols);
@@ -40,24 +40,24 @@ describe("hall view-model", () => {
     expect(d0.gyMin).toBe(0);
 
     const expanded = createInitialState();
-    expanded.upgrades = { expand_e: 1, expand_w: 1, expand_n: 1 }; // +2+2 cols, +2 rows
+    expanded.upgrades = { expand_e: 2, expand_s: 1 }; // +4 cols, +2 rows
     const d2 = hallDims(expanded);
     expect(d2.cols).toBe(balance.hall.baseCols + 4);
     expect(d2.rows).toBe(balance.hall.baseRows + 2);
-    expect(d2.gxMin).toBe(-2); // west pushed the floor 2 tiles left
-    expect(d2.gyMin).toBe(-2); // north pushed it 2 tiles back
+    expect(d2.gxMin).toBe(0); // back stays anchored at the walls
+    expect(d2.gyMin).toBe(0);
 
     const racks = { rack_basic: 200 };
     const small = buildHallModel({ ...base, upgrades: racks });
-    const big = buildHallModel({ ...expanded, upgrades: { ...racks, expand_e: 1, expand_w: 1, expand_n: 1 } });
+    const big = buildHallModel({ ...expanded, upgrades: { ...racks, expand_e: 2, expand_s: 1 } });
     expect(big.total).toBeGreaterThan(small.total);
   });
 
-  it("exposes a buyable marker for each of the four sides", () => {
+  it("exposes a buyable marker for each of the two open sides only", () => {
     const s = createInitialState();
     s.resources.money = Big.of(1e9);
     const m = buildHallModel(s);
-    expect(m.sides.map((x) => x.dir).sort()).toEqual(["e", "n", "s", "w"]);
+    expect(m.sides.map((x) => x.dir).sort()).toEqual(["e", "s"]);
     expect(m.sides.every((x) => x.cost > 0)).toBe(true);
     expect(m.sides.every((x) => x.affordable)).toBe(true); // rich → all affordable
   });

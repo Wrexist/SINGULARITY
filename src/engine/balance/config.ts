@@ -415,38 +415,22 @@ export const balance = {
       max: 1,
       effect: { kind: "autoTrain" },
     },
-    // --- Hall expansions: buy floor space on each side so more racks fit.
-    //     Bought by clicking the side markers IN the hall (see render/hallModel).
+    // --- Hall expansions: the back two sides have walls, so you can only expand
+    //     the two OPEN sides. Bought by tapping the markers in the hall.
     {
       id: "expand_e",
-      name: "East Wing",
-      desc: "Lease the unit to the east and knock through. +2 floor columns.",
+      name: "Right Expansion",
+      desc: "Lease the open bay to your right. +2 floor columns.",
       cost: { resource: "money", base: 5000, growth: 2.0 },
-      max: 3,
+      max: 4,
       effect: { kind: "floorCols", perLevel: 2 },
-    },
-    {
-      id: "expand_w",
-      name: "West Wing",
-      desc: "Annex the west side. +2 floor columns.",
-      cost: { resource: "money", base: 5000, growth: 2.0 },
-      max: 3,
-      effect: { kind: "floorCols", perLevel: 2 },
-    },
-    {
-      id: "expand_n",
-      name: "North Annex",
-      desc: "Take over the lot out back. +2 floor rows.",
-      cost: { resource: "money", base: 7000, growth: 2.0 },
-      max: 3,
-      effect: { kind: "floorRows", perLevel: 2 },
     },
     {
       id: "expand_s",
-      name: "South Annex",
-      desc: "Expand toward the street. +2 floor rows.",
+      name: "Front Expansion",
+      desc: "Pour more slab toward the entrance. +2 floor rows.",
       cost: { resource: "money", base: 7000, growth: 2.0 },
-      max: 3,
+      max: 4,
       effect: { kind: "floorRows", perLevel: 2 },
     },
     // --- Dark-web tools (sold in the Data Bazaar, not the hardware shelf) ---

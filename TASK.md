@@ -124,10 +124,10 @@ fun-gate on 2026-06-25 and greenlit Phase 1. (Phase 0 history retained below for
       floor light-spill, lit room (back walls + ceiling), depth-faded grid, data-mote particles.
 - [x] Mote burst (green $ + violet data) when a payout is claimed.
 - [x] Per-era hall props: wall-mounted cooling units (spinning fans, scale w/ era) + floor cable tray.
-- [x] Buyable hall EXPANSIONS on each of the 4 SIDES (N/S/E/W), bought by TAPPING a glowing
-      "+$cost" marker in the hall itself. The floor grows in that direction (grid origin offset);
-      capacity-based proportional rack layout; renderer auto-fits + flat-shades big halls for perf.
-      Canvas hit-testing + hover cursor; markers pulse green when affordable. Also in the panel.
+- [x] Buyable hall EXPANSIONS on the two OPEN (wall-free) sides, bought by TAPPING a glowing
+      "+$cost" marker in the hall (the back two edges have walls, so they're not expandable).
+      The floor grows front/right; capacity-based proportional rack layout; renderer auto-fits +
+      flat-shades big halls for perf. Canvas hit-testing + hover cursor; markers pulse when affordable.
 
 ### Lightweight world events (the satire layer)
 - [x] 12 satirical ambient events (buffs/debuffs + immediate % swings), written in voice.

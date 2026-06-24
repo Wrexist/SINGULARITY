@@ -45,16 +45,16 @@ export interface HallModel {
 }
 
 const RACK_IDS = ["rack_basic", "rack_server", "rack_tpu"];
+// Only the two OPEN sides are expandable — the back-left and back-right edges
+// have walls (see drawRoom). So no north/west expansion.
 const SIDE_DEFS: { dir: Dir; id: string }[] = [
-  { dir: "n", id: "expand_n" },
   { dir: "s", id: "expand_s" },
   { dir: "e", id: "expand_e" },
-  { dir: "w", id: "expand_w" },
 ];
 
 const upgById = (id: string) => balance.upgrades.find((u) => u.id === id)!;
 
-/** Tiles added on each side from that side's expansion level. */
+/** Tiles added on each open side from that side's expansion level. */
 export function hallExpansion(game: GameState): Record<Dir, number> {
   const tiles = (id: string): number => {
     const def = upgById(id);
@@ -62,17 +62,17 @@ export function hallExpansion(game: GameState): Record<Dir, number> {
     const per = def.effect.kind === "floorCols" || def.effect.kind === "floorRows" ? def.effect.perLevel : 0;
     return lvl * per;
   };
-  return { n: tiles("expand_n"), s: tiles("expand_s"), e: tiles("expand_e"), w: tiles("expand_w") };
+  return { n: 0, w: 0, s: tiles("expand_s"), e: tiles("expand_e") };
 }
 
-/** Floor size + grid origin from base + per-side expansions. Pure. */
+/** Floor size + grid origin from base + open-side expansions. Pure. */
 export function hallDims(game: GameState): { cols: number; rows: number; gxMin: number; gyMin: number } {
   const ex = hallExpansion(game);
   return {
-    cols: balance.hall.baseCols + ex.e + ex.w,
-    rows: balance.hall.baseRows + ex.n + ex.s,
-    gxMin: ex.w ? -ex.w : 0, // west tiles extend into negative gx (floor grows left)
-    gyMin: ex.n ? -ex.n : 0, // north tiles extend into negative gy (floor grows back)
+    cols: balance.hall.baseCols + ex.e,
+    rows: balance.hall.baseRows + ex.s,
+    gxMin: 0, // walls anchor the back-left/back-right; the floor grows front/right
+    gyMin: 0,
   };
 }
 
