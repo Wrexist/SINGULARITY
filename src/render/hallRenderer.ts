@@ -1,10 +1,11 @@
 import type { HallModel } from "./hallModel";
 
 /**
- * Pure Canvas 2D renderer for the 2.5D hall. No React, no DOM beyond the passed
- * 2D context. Parametric boxes + lights (no image assets) on an isometric floor.
- * Deterministic given (model, opts) so it's easy to reason about and cheap to
- * batch — racks are capped upstream, so this draws a few dozen boxes per frame.
+ * Pure Canvas 2D renderer for the 2.5D hall. No React, no image assets — every
+ * pixel is parametric (CLAUDE.md hard rule + GDD §5). Quality comes from
+ * gradient-shaded faces, server-unit detail, rim lighting, floor light-spill,
+ * a depth-faded grid, and drifting data motes — not textures. Deterministic
+ * given (model, opts); racks are capped upstream so this stays cheap to batch.
  */
 
 export interface DrawOpts {
@@ -21,32 +22,38 @@ export interface DrawOpts {
 const COLS = 8;
 const ROWS = 6;
 
-interface TierStyle {
-  top: string;
-  left: string;
-  right: string;
-  light: string;
-}
+type Pt = { x: number; y: number };
+type RGB = [number, number, number];
 
-const TIER_STYLES: TierStyle[] = [
-  { top: "#6ee7a8", left: "#3fb579", right: "#2b8a5b", light: "#d6ffe9" }, // consumer
-  { top: "#7db4ff", left: "#3f86f0", right: "#2b60c0", light: "#dcebff" }, // server
-  { top: "#c79bff", left: "#9b51e0", right: "#7636bd", light: "#f0e2ff" }, // TPU
+// One base hue per hardware tier; all face shades are derived from it.
+const TIER_BASE: RGB[] = [
+  [52, 210, 126], // consumer GPU — green
+  [63, 134, 240], // server GPU — blue
+  [155, 81, 224], // TPU pod — violet
 ];
 
 // Era palettes tint the room so it visibly evolves (re-skin).
 const ERA_BG: [string, string][] = [
   ["#0d1124", "#11162e"], // garage closet — cool, dim
-  ["#0c1430", "#102046"], // startup — bluer
-  ["#141029", "#241a44"], // scale-up — warmer violet
+  ["#0b1430", "#0f2148"], // startup — bluer
+  ["#150f2b", "#251b46"], // scale-up — warmer violet
 ];
-const ERA_FLOOR = ["#1a2140", "#1b2750", "#241d49"];
+const ERA_FLOOR: RGB[] = [
+  [26, 33, 64],
+  [27, 39, 80],
+  [36, 29, 73],
+];
 
-const FALLBACK_STYLE = TIER_STYLES[0]!;
-const eraBg = (era: number): [string, string] => ERA_BG[era] ?? ERA_BG[0]!;
-const eraFloor = (era: number): string => ERA_FLOOR[era] ?? ERA_FLOOR[0]!;
-
+const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+const lerp = (a: Pt, b: Pt, t: number): Pt => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+const shade = (c: RGB, f: number): RGB => [clamp(c[0] * f, 0, 255), clamp(c[1] * f, 0, 255), clamp(c[2] * f, 0, 255)];
+const rgb = (c: RGB) => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
+const rgba = (c: RGB, a: number) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${clamp(a, 0, 1)})`;
+
+const tierBase = (tier: number): RGB => TIER_BASE[tier] ?? TIER_BASE[0]!;
+const eraBg = (era: number): [string, string] => ERA_BG[era] ?? ERA_BG[0]!;
+const eraFloor = (era: number): RGB => ERA_FLOOR[era] ?? ERA_FLOOR[0]!;
 
 export function drawHall(ctx: CanvasRenderingContext2D, model: HallModel, o: DrawOpts): void {
   const { width: W, height: H } = o;
@@ -60,49 +67,45 @@ export function drawHall(ctx: CanvasRenderingContext2D, model: HallModel, o: Dra
   ctx.fillRect(0, 0, W, H);
 
   // ---- Isometric layout ----
-  // Fit the floor diamond comfortably in the card with headroom for rack height.
-  const tileW = Math.min(W / (COLS + ROWS) * 1.7, 64);
+  const tileW = Math.min((W / (COLS + ROWS)) * 1.7, 64);
   const tileH = tileW / 2;
   const originX = W / 2;
   const originY = H * 0.34;
-
-  const iso = (gx: number, gy: number) => ({
+  const iso = (gx: number, gy: number): Pt => ({
     x: originX + (gx - gy) * (tileW / 2),
     y: originY + (gx + gy) * (tileH / 2),
   });
 
-  // ---- Floor ----
   drawFloor(ctx, iso, model.era);
 
-  // ---- Place racks in orderly rows, back-to-front ----
-  // Row-major with both axes ascending is a valid iso painter's order (every
-  // tile that can occlude another is drawn after it), so no sort is needed and
-  // racks read as tidy data-center rows rather than a diagonal pile.
-  const tiles: { gx: number; gy: number }[] = [];
+  // Atmosphere behind the racks (subtle), then racks, then foreground motes.
+  drawMotes(ctx, W, H, originY, o.timeMs, model.active, model.total, o.reducedMotion, 0.6);
+
+  // ---- Place racks in orderly rows, back-to-front (valid iso paint order) ----
+  const tiles: Pt[] = [];
   for (let gy = 0; gy < ROWS; gy++) {
-    for (let gx = 0; gx < COLS; gx++) tiles.push({ gx, gy });
+    for (let gx = 0; gx < COLS; gx++) tiles.push(iso(gx + 0.5, gy + 0.5));
   }
 
   const t = o.timeMs;
   for (let i = 0; i < model.racks.length && i < tiles.length; i++) {
     const rack = model.racks[i]!;
-    const tile = tiles[i]!;
-    const c = iso(tile.gx + 0.5, tile.gy + 0.5);
-
+    const c = tiles[i]!;
     let scale = 1;
-    let powerOn = 0; // spawn flash: bright at appear, fades as it settles
+    let powerOn = 0;
     if (!o.reducedMotion && i >= o.spawnFrom && o.spawnT < 1) {
-      scale = easeOut(Math.max(0.0001, o.spawnT)); // pop in
+      scale = easeOut(Math.max(0.0001, o.spawnT));
       powerOn = 1 - o.spawnT;
     }
-
-    // A working run makes racks pulse; idle racks breathe gently.
     const blink = o.reducedMotion ? 0.6 : 0.5 + 0.5 * Math.sin(t / 280 + i * 1.7);
-    const workPulse = model.active && !o.reducedMotion ? 0.5 + 0.5 * Math.sin(t / 140 + i) : 0;
+    const workPulse = model.active && !o.reducedMotion ? 0.5 + 0.5 * Math.sin(t / 150 + i) : 0;
     drawRack(ctx, c.x, c.y, tileW, tileH, rack.tier, rack.density, scale, blink, workPulse, model.active, powerOn);
   }
 
-  // ---- Empty-state hint (the rented closet) ----
+  if (model.active || o.reducedMotion === false) {
+    drawMotes(ctx, W, H, originY, o.timeMs, model.active, model.total, o.reducedMotion, 1);
+  }
+
   if (model.total === 0) {
     ctx.fillStyle = "rgba(255,255,255,0.5)";
     ctx.font = "600 13px -apple-system, system-ui, sans-serif";
@@ -111,109 +114,141 @@ export function drawHall(ctx: CanvasRenderingContext2D, model: HallModel, o: Dra
   }
 }
 
-function drawFloor(
-  ctx: CanvasRenderingContext2D,
-  iso: (gx: number, gy: number) => { x: number; y: number },
-  era: number,
-): void {
-  // Floor slab
+function drawFloor(ctx: CanvasRenderingContext2D, iso: (gx: number, gy: number) => Pt, era: number): void {
   const a = iso(0, 0), b = iso(COLS, 0), c = iso(COLS, ROWS), d = iso(0, ROWS);
+  const base = eraFloor(era);
+
+  // Slab with a soft front-to-back gradient (darker toward the viewer).
+  const g = ctx.createLinearGradient(0, a.y, 0, c.y);
+  g.addColorStop(0, rgb(shade(base, 1.15)));
+  g.addColorStop(1, rgb(shade(base, 0.7)));
   ctx.beginPath();
-  ctx.moveTo(a.x, a.y);
-  ctx.lineTo(b.x, b.y);
-  ctx.lineTo(c.x, c.y);
-  ctx.lineTo(d.x, d.y);
+  ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(d.x, d.y);
   ctx.closePath();
-  ctx.fillStyle = eraFloor(era);
+  ctx.fillStyle = g;
   ctx.fill();
 
-  // Grid lines
-  ctx.strokeStyle = "rgba(255,255,255,0.06)";
+  // Center glow pool so the room feels lit from within.
+  const cx = (a.x + c.x) / 2, cy = (a.y + c.y) / 2;
+  const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, (c.y - a.y) * 0.9);
+  glow.addColorStop(0, rgba(shade(base, 1.7), 0.35));
+  glow.addColorStop(1, rgba(base, 0));
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(d.x, d.y);
+  ctx.closePath();
+  ctx.fill();
+
+  // Grid lines, fading with depth (brighter at the front).
   ctx.lineWidth = 1;
   for (let gx = 0; gx <= COLS; gx++) {
     const p0 = iso(gx, 0), p1 = iso(gx, ROWS);
+    ctx.strokeStyle = `rgba(255,255,255,0.07)`;
     ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.stroke();
   }
   for (let gy = 0; gy <= ROWS; gy++) {
     const p0 = iso(0, gy), p1 = iso(COLS, gy);
+    ctx.strokeStyle = `rgba(255,255,255,${0.04 + 0.06 * (gy / ROWS)})`;
     ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.stroke();
   }
+
+  // Bright front edge of the slab catches the room light.
+  ctx.strokeStyle = "rgba(255,255,255,0.16)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(c.x, c.y); ctx.stroke();
 }
 
 function drawRack(
   ctx: CanvasRenderingContext2D,
-  sx: number,
-  sy: number,
-  tileW: number,
-  tileH: number,
-  tier: number,
-  density: number,
-  scale: number,
-  blink: number,
-  workPulse: number,
-  active: boolean,
-  powerOn: number,
+  sx: number, sy: number, tileW: number, tileH: number,
+  tier: number, density: number, scale: number,
+  blink: number, workPulse: number, active: boolean, powerOn: number,
 ): void {
-  const style = TIER_STYLES[tier] ?? FALLBACK_STYLE;
-  const hw = (tileW / 2) * 0.62 * scale; // footprint half-width
-  const hh = (tileH / 2) * 0.62 * scale;
-  // Height grows with tier and density (bigger hardware = taller cabinet).
-  const baseH = tileH * (1.1 + tier * 0.5);
-  const ph = baseH * (0.7 + 0.3 * density) * scale;
+  const base = tierBase(tier);
+  const led = shade(base, 2.0);
+  const hw = (tileW / 2) * 0.64 * scale;
+  const hh = (tileH / 2) * 0.64 * scale;
+  const ph = tileH * (1.1 + tier * 0.5) * (0.72 + 0.28 * density) * scale;
+  const detail = hw > 8.5;
 
-  // Base diamond corners (on floor) — back corner is hidden, so not drawn.
-  const bRight = { x: sx + hw, y: sy };
-  const bBottom = { x: sx, y: sy + hh };
-  const bLeft = { x: sx - hw, y: sy };
-  // Raised top corners
-  const tTop = { x: sx, y: sy - hh - ph };
-  const tRight = { x: sx + hw, y: sy - ph };
-  const tBottom = { x: sx, y: sy + hh - ph };
-  const tLeft = { x: sx - hw, y: sy - ph };
+  // Corners (back corner hidden).
+  const bRight: Pt = { x: sx + hw, y: sy };
+  const bBottom: Pt = { x: sx, y: sy + hh };
+  const bLeft: Pt = { x: sx - hw, y: sy };
+  const tTop: Pt = { x: sx, y: sy - hh - ph };
+  const tRight: Pt = { x: sx + hw, y: sy - ph };
+  const tBottom: Pt = { x: sx, y: sy + hh - ph };
+  const tLeft: Pt = { x: sx - hw, y: sy - ph };
 
-  // Contact shadow
-  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  // Floor light-spill pool (tinted, stronger when working / booting).
+  const spill = (active ? 0.18 : 0.08) + 0.5 * powerOn + 0.12 * workPulse;
+  const pool = ctx.createRadialGradient(sx, sy + hh * 0.2, 0, sx, sy + hh * 0.2, hw * 2.2);
+  pool.addColorStop(0, rgba(led, clamp(spill, 0, 0.6)));
+  pool.addColorStop(1, rgba(base, 0));
+  ctx.fillStyle = pool;
   ctx.beginPath();
-  ctx.ellipse(sx, sy + hh * 0.3, hw * 1.15, hh * 1.1, 0, 0, Math.PI * 2);
+  ctx.ellipse(sx, sy + hh * 0.2, hw * 2.2, hh * 2.0, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Left face (front-left)
-  quad(ctx, bLeft, bBottom, tBottom, tLeft, style.left);
-  // Right face (front-right)
-  quad(ctx, bBottom, bRight, tRight, tBottom, style.right);
-  // Top face
-  quad(ctx, tLeft, tTop, tRight, tBottom, style.top);
+  // Contact shadow.
+  ctx.fillStyle = "rgba(0,0,0,0.30)";
+  ctx.beginPath();
+  ctx.ellipse(sx, sy + hh * 0.32, hw * 1.05, hh * 1.0, 0, 0, Math.PI * 2);
+  ctx.fill();
 
-  // Server lights on the right face — small glowing rungs that blink.
-  const rows = 3 + tier;
-  for (let r = 0; r < rows; r++) {
-    const f = (r + 1) / (rows + 1);
-    const lx = bBottom.x + (bRight.x - bBottom.x) * 0.5;
-    const ly = bBottom.y - ph * f + (bRight.y - bBottom.y) * 0.5;
-    const lit = ((blink + r * 0.33) % 1) > 0.45;
-    let a = active ? Math.max(blink, workPulse) : (lit ? 0.9 : 0.25);
-    if (powerOn > 0) a = Math.max(a, powerOn); // racks light up as they boot
-    ctx.fillStyle = withAlpha(style.light, a * scale);
-    ctx.fillRect(lx - hw * 0.42, ly, hw * 0.7, Math.max(1, ph * 0.045));
+  // ---- Faces (vertical gradient for form) ----
+  gradFace(ctx, bLeft, bBottom, ph, shade(base, 0.92), shade(base, 0.5));   // left
+  gradFace(ctx, bBottom, bRight, ph, shade(base, 0.64), shade(base, 0.34)); // right (front)
+  // Top face — flat gradient across the diamond.
+  const topG = ctx.createLinearGradient(tTop.x, tTop.y, tBottom.x, tBottom.y);
+  topG.addColorStop(0, rgb(shade(base, 1.42)));
+  topG.addColorStop(1, rgb(shade(base, 1.08)));
+  poly(ctx, [tLeft, tTop, tRight, tBottom], topG);
+
+  // ---- Front-face server detail (the right face) ----
+  const rfp = (u: number, v: number): Pt => ({
+    x: bBottom.x + (bRight.x - bBottom.x) * u,
+    y: bBottom.y + (bRight.y - bBottom.y) * u - v * ph,
+  });
+  if (detail) {
+    const units = clamp(3 + tier * 2 + Math.round(density * 2), 3, 9);
+    for (let r = 0; r < units; r++) {
+      const v0 = r / units;
+      // unit separator (slight dark seam)
+      stroke(ctx, rfp(0.06, v0), rfp(0.94, v0), "rgba(0,0,0,0.22)", 1);
+      // a status LED per unit, blinking out of phase
+      const lit = (blink + r * 0.37) % 1 > 0.4;
+      const a = active ? Math.max(0.5, workPulse) : lit ? 0.95 : 0.22;
+      const p = rfp(0.2, v0 + 0.5 / units);
+      ctx.fillStyle = rgba(led, Math.max(a, powerOn));
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, Math.max(0.8, hw * 0.07), Math.max(0.8, hw * 0.07), 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Glowing power column down the right edge of the face.
+    const colA = rfp(0.82, 0.06), colB = rfp(0.82, 0.94);
+    const pcol = (active ? 0.55 : 0.3) + 0.4 * workPulse + 0.4 * powerOn;
+    stroke(ctx, colA, colB, rgba(led, clamp(pcol, 0, 1)), Math.max(1, hw * 0.08));
+  } else {
+    // Tiny far racks: one bright pip so the room still twinkles.
+    const p = rfp(0.5, 0.5);
+    ctx.fillStyle = rgba(led, active ? Math.max(0.5, workPulse) : 0.6);
+    ctx.fillRect(p.x - 1, p.y - 1, 2, 2);
   }
 
-  // Active glow halo
-  if (active && workPulse > 0) {
-    ctx.save();
-    ctx.globalAlpha = 0.10 + 0.12 * workPulse;
-    ctx.fillStyle = style.light;
-    ctx.beginPath();
-    ctx.ellipse(sx, sy - ph * 0.5, hw * 1.8, ph * 0.8, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
+  // ---- Rim light: bright top ridges catch the room light ----
+  stroke(ctx, tLeft, tTop, "rgba(255,255,255,0.28)", 1);
+  stroke(ctx, tTop, tRight, "rgba(255,255,255,0.18)", 1);
+  stroke(ctx, tLeft, tBottom, rgba(shade(base, 1.7), 0.5), 1); // front-left top edge
+  stroke(ctx, tRight, tBottom, rgba(shade(base, 1.3), 0.4), 1); // front-right top edge
+  stroke(ctx, bBottom, tBottom, rgba(shade(base, 1.4), 0.35), 1); // front vertical edge
 
-  // Power-on flash: a bright additive bloom the instant a rack manifests.
+  // ---- Power-on bloom ----
   if (powerOn > 0) {
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
     ctx.globalAlpha = 0.5 * powerOn;
-    ctx.fillStyle = style.light;
+    ctx.fillStyle = rgb(led);
     ctx.beginPath();
     ctx.ellipse(sx, sy - ph * 0.55, hw * 2.4, ph * 1.0, 0, 0, Math.PI * 2);
     ctx.fill();
@@ -221,26 +256,64 @@ function drawRack(
   }
 }
 
-function quad(
-  ctx: CanvasRenderingContext2D,
-  p0: { x: number; y: number },
-  p1: { x: number; y: number },
-  p2: { x: number; y: number },
-  p3: { x: number; y: number },
-  fill: string,
-): void {
+/** Draw a vertical extruded face (base edge BL→BR, raised by ph) with a gradient. */
+function gradFace(ctx: CanvasRenderingContext2D, BL: Pt, BR: Pt, ph: number, top: RGB, bot: RGB): void {
+  const tl: Pt = { x: BL.x, y: BL.y - ph };
+  const tr: Pt = { x: BR.x, y: BR.y - ph };
+  const midTop: Pt = lerp(tl, tr, 0.5);
+  const midBot: Pt = lerp(BL, BR, 0.5);
+  const g = ctx.createLinearGradient(midTop.x, midTop.y, midBot.x, midBot.y);
+  g.addColorStop(0, rgb(top));
+  g.addColorStop(1, rgb(bot));
+  poly(ctx, [BL, BR, tr, tl], g);
+}
+
+function poly(ctx: CanvasRenderingContext2D, pts: Pt[], fill: string | CanvasGradient): void {
   ctx.beginPath();
-  ctx.moveTo(p0.x, p0.y);
-  ctx.lineTo(p1.x, p1.y);
-  ctx.lineTo(p2.x, p2.y);
-  ctx.lineTo(p3.x, p3.y);
+  ctx.moveTo(pts[0]!.x, pts[0]!.y);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i]!.x, pts[i]!.y);
   ctx.closePath();
   ctx.fillStyle = fill;
   ctx.fill();
 }
 
-function withAlpha(hex: string, a: number): string {
-  const n = parseInt(hex.slice(1), 16);
-  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
-  return `rgba(${r},${g},${b},${Math.max(0, Math.min(1, a))})`;
+function stroke(ctx: CanvasRenderingContext2D, a: Pt, b: Pt, color: string, w: number): void {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = w;
+  ctx.beginPath();
+  ctx.moveTo(a.x, a.y);
+  ctx.lineTo(b.x, b.y);
+  ctx.stroke();
+}
+
+/**
+ * Drifting "data motes" — additive particles rising from the floor, more when a
+ * run is active. Stateless: each mote's position is a pure function of time and
+ * its index (hash-seeded), so no per-frame particle bookkeeping is needed.
+ */
+function drawMotes(
+  ctx: CanvasRenderingContext2D, W: number, H: number, originY: number,
+  t: number, active: boolean, total: number, reducedMotion: boolean, layer: number,
+): void {
+  if (reducedMotion || total === 0) return;
+  const n = Math.round((active ? 22 : 10) * layer);
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (let i = 0; i < n; i++) {
+    const seed = ((i * 2654435761) % 1000) / 1000;
+    const seed2 = ((i * 40503) % 997) / 997;
+    const speed = 5200 + seed * 5200;
+    const prog = ((t / speed) + seed2) % 1;
+    const x = W * 0.5 + (seed - 0.5) * W * 0.7;
+    const y = originY + H * 0.16 - prog * H * 0.42;
+    const a = Math.sin(prog * Math.PI) * (active ? 0.5 : 0.3) * layer;
+    if (a <= 0.01) continue;
+    const col: RGB = i % 2 === 0 ? [155, 120, 255] : [120, 180, 255];
+    const sz = 0.8 + seed2 * 1.6;
+    ctx.fillStyle = rgba(col, a);
+    ctx.beginPath();
+    ctx.arc(x, y, sz, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
 }
