@@ -14,7 +14,7 @@ An AI compute tycoon (idle/incremental + management) with a 2.5D data-center hal
 5. Humor lives in writing/events; systems stay clean.
 
 ## The current phase (UPDATE THIS LINE EVERY SESSION)
-> **PHASE 1 — Shippable MVP. Owner passed the Phase 0 fun-gate (2026-06-25) and greenlit Phase 1.**
+> **PHASE 1 — Shippable MVP. Owner passed the Phase 0 fun-gate (2026-06-24) and greenlit Phase 1.**
 > Building the 2.5D data-center hall with the **manifestation rule** (every purchasable thing that can
 > be physical appears in the hall). Rendering: **Canvas 2D isometric** (parametric boxes/lights, no
 > image assets, lean bundle), wrapped behind a render module so a WebGL swap stays possible.

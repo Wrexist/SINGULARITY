@@ -107,6 +107,7 @@ generated fresh each run; gitignored) → set `ITSAppUsesNonExemptEncryption=fal
 `ios-v*` (`git tag ios-v0.1.0 && git push --tags`).
 
 ### Secrets — you already have everything needed
+
 | Secret | Used for |
 |---|---|
 | `APPLE_TEAM_ID` | `DEVELOPMENT_TEAM` for signing |

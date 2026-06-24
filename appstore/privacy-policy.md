@@ -1,5 +1,5 @@
 # Privacy Policy — Singularity Inc.
-*Last updated: 2026-06-25*
+*Last updated: 2026-06-24*
 
 Singularity Inc. ("the app") is a single-player, offline game. We designed it to collect **nothing**.
 

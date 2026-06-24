@@ -2,7 +2,7 @@
 *Live task list. Claude Code updates this as work progresses. One source of truth for "what's next."*
 
 **Current phase:** PHASE 1 — Shippable MVP (the 2.5D hall + manifestation). Owner passed the Phase 0
-fun-gate on 2026-06-25 and greenlit Phase 1. (Phase 0 history retained below for context.)
+fun-gate on 2026-06-24 and greenlit Phase 1. (Phase 0 history retained below for context.)
 **Phase 0 exit gate:** PASSED — owner confirmed the loop is fun without art.
 
 ---
@@ -52,7 +52,7 @@ fun-gate on 2026-06-25 and greenlit Phase 1. (Phase 0 history retained below for
 > item is the owner FUN-GATE: play it (`npm run dev`) and decide if the loop is
 > compelling without art. **Phase 1 (the 2.5D hall) is blocked on that gate — by design.**
 > Tools: `npm run dev` (play), `npm run sim` (balance + market EV report), `npm run shot`.
-
+>
 > **Overnight autonomous session (hardening, no phase advance — by design):**
 > Ran audit→fix→test→commit cycles entirely inside Phase 0. Did NOT start Phase 1
 > (the 2.5D hall) — it's blocked on YOUR fun-gate and I won't pull it forward unsupervised.
@@ -105,7 +105,7 @@ fun-gate on 2026-06-25 and greenlit Phase 1. (Phase 0 history retained below for
 
 ---
 
-## PHASE 1 — Shippable MVP (STARTED 2026-06-25, owner passed fun-gate)
+## PHASE 1 — Shippable MVP (STARTED 2026-06-24, owner passed fun-gate)
 ### Content + balance
 - [x] Deepened research tree: 5 → 11 nodes, branching across the 3 eras (mixed_precision, data_aug,
       rlhf, KV cache, MoE, scaling_laws), with a proper capability gate (inference_api needs

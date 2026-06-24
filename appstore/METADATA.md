@@ -50,6 +50,7 @@ All "Frequency" answers below; everything not listed = **None**.
   and point both the App Privacy field and the in-app Settings link at it.
 
 ## 5. URLs
+
 | Field | Value (host on GitHub Pages — reuse the Silicon setup) |
 |---|---|
 | Privacy Policy URL | `https://wrexist.github.io/singularity/privacy` |
