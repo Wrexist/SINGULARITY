@@ -198,7 +198,11 @@ fun-gate on 2026-06-24 and greenlit Phase 1. (Phase 0 history retained below for
       (`hallCapacity`/`totalRacks`/`floorFull`, shared by engine + renderer to avoid a cycle);
       `canBuyUpgrade` blocks racks when full; UpgradePanel shows a "Floor space: n/cap" meter and a
       "Floor full" reason on blocked rack cards. 5 new tests (95 total).
-- [x] **Difficulty pass:** steeper rack/upgrade cost growth and tighter run payout ratios
-      (dataPerCompute 0.35→0.28, moneyPerCompute 0.6→0.45). Tunable in `balance/config.ts`.
-- [ ] FOLLOW-UP (owner): re-run `npm run sim` to confirm the new curve has no walls and a sane
-      time-to-first-ship now that racks are floor-capped + costs are steeper — balance is provisional.
+- [x] **Difficulty pass (verified via `npm run sim`):** the floor cap IS the difficulty lever.
+      First experiment also nerfed payouts + cost growth → sim showed first-prestige UNREACHABLE in
+      240m (hard wall), so those economy nerfs were REVERTED. Floor cap alone moves first-ship from
+      ~10.5m → ~14.8m (≈40% longer) + adds strategic floor management, with longest wall 0m55s and a
+      compounding meta-loop (Gen1 15m → Gen2 43s → Gen3 29s). Beatable + smooth + harder.
+- [x] Updated `scripts/balance-sim.ts` to model the floor cap: the greedy player now BUYS hall
+      expansions when the floor fills and prefers the highest-tier affordable rack (filling permanent
+      slots with cheap consumer cards was tanking the modeled income and faking a wall).

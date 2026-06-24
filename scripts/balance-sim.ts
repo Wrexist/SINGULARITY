@@ -148,17 +148,29 @@ function autoBuy(state: GameState, useMarket: boolean): { state: GameState; boug
 
   // 4. Spend spare resources on the cheapest affordable production upgrade.
   //    Reserve enough compute to keep launching runs. Loop until nothing cheap.
+  //    Hall expansions ARE included now: racks are floor-capped, so an engaged
+  //    player buys floor space to unblock more racks once the room fills.
   let guard = 0;
   while (guard++ < 200) {
+    // A reasonable player buys the BEST rack they can afford, not the cheapest —
+    // wasting permanent floor slots on consumer cards is a rookie mistake. So
+    // when several rack tiers are affordable, only consider the highest tier.
+    const affordableRacks = balance.upgrades.filter(
+      (d) => d.effect.kind === "computeFlat" && canBuyUpgrade(s, d.id),
+    );
+    const bestRackPerLevel = affordableRacks.reduce(
+      (m, d) => Math.max(m, d.effect.kind === "computeFlat" ? d.effect.perLevel : 0),
+      0,
+    );
     const candidates = balance.upgrades
       .filter(
         (d) =>
           d.effect.kind !== "autoClaim" &&
-          d.effect.kind !== "autoTrain" &&
-          d.effect.kind !== "floorCols" && // hall expansions are cosmetic capacity, not production
-          d.effect.kind !== "floorRows",
+          d.effect.kind !== "autoTrain",
       )
       .filter((d) => canBuyUpgrade(s, d.id))
+      // Drop lower-tier racks when a better one is affordable.
+      .filter((d) => d.effect.kind !== "computeFlat" || d.effect.perLevel >= bestRackPerLevel)
       .map((d) => ({ d, cost: upgradeCost(d, s.upgrades[d.id] ?? 0) }))
       // Don't spend compute we need to run training; keep a buffer.
       .filter(({ d, cost }) => {
