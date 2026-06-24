@@ -70,7 +70,7 @@ All "Frequency" answers below; everything not listed = **None**.
 ---
 
 ## 7. Screenshots (bake them from the game — GDD §8)
-Required: **6.7" iPhone** (1290×2796). Recommended also **6.5"** (1242×2688). Add **iPad 12.9"**
+Required: **6.7"/6.5" iPhone** (1284×2778 — accepted for both display slots). Add **iPad 12.9"**
 only if you ship universal. Use `npm run shot` states as the source frames, add a short bold caption
 band per shot. Order = the conversion funnel (hook → depth → payoff):
 
