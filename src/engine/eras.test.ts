@@ -28,6 +28,16 @@ describe("eras", () => {
     expect(currentEra(s)).toBe(2);
   });
 
+  it("reaches the endgame eras (Frontier, Hyperscaler) by ship count", () => {
+    const s = createInitialState();
+    s.prestige.ships = 2;
+    expect(currentEra(s)).toBe(3); // Frontier Lab
+    s.prestige.ships = 5;
+    expect(currentEra(s)).toBe(4); // Hyperscaler
+    s.prestige.ships = 100;
+    expect(currentEra(s)).toBe(4); // caps at the last era
+  });
+
   it("exposes a name for every era index", () => {
     for (let i = 0; i < ERA_COUNT; i++) expect(eraName(i).length).toBeGreaterThan(0);
   });

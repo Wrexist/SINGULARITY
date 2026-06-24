@@ -329,11 +329,24 @@ export const balance = {
         blurb:
           "The Verge — “Singularity Inc. ships its first model.” The valuation is, sources confirm, ‘definitely not a bubble.’ The closet is now a floor.",
       },
+      {
+        name: "Frontier Lab",
+        blurb:
+          "Bloomberg — “Singularity Inc. declares itself a ‘frontier lab,’ a term it also coined.” Badge access now has tiers. There is a second beanbag, and a waitlist for it.",
+      },
+      {
+        name: "Hyperscaler",
+        blurb:
+          "WSJ — “Singularity Inc. is now a ‘hyperscaler,’ and has reportedly bought a power plant ‘for latency reasons.’” Analysts remain confused, but bullish.",
+      },
     ],
     /** Reach era 1 once this many research nodes are owned. */
     startupAtResearchCount: 3,
     /** Reach era 2 once this capability is researched (or you've ever shipped). */
     scaleUpAtResearch: "inference_api",
+    /** Eras 4–5 are endgame spectacle, gated by how many times you've shipped. */
+    frontierAtShips: 2,
+    hyperscalerAtShips: 5,
   },
 
   /** The 2.5D hall floor. Expansions (below) grow it so more racks fit. */

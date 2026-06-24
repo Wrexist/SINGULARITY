@@ -47,14 +47,18 @@ const TIER_BASE: RGB[] = [
 // near-black navy that read as a "dark blue spot"; these slate tones keep enough
 // depth for the glowing racks to pop while sitting comfortably in the light app.
 const ERA_BG: [string, string][] = [
-  ["#2a3046", "#343c56"],
-  ["#283454", "#33426c"],
-  ["#322a4d", "#403962"],
+  ["#2a3046", "#343c56"], // 0 Garage Closet — slate
+  ["#283454", "#33426c"], // 1 Funded Startup — blue
+  ["#322a4d", "#403962"], // 2 Scale-Up Lab — violet
+  ["#1f3a42", "#27525c"], // 3 Frontier Lab — teal
+  ["#2b2a55", "#3a3a78"], // 4 Hyperscaler — royal indigo
 ];
 const ERA_FLOOR: RGB[] = [
   [56, 64, 92],
   [54, 70, 110],
   [70, 60, 104],
+  [48, 92, 104], // 3 teal
+  [64, 64, 124], // 4 indigo
 ];
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));

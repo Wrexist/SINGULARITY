@@ -115,7 +115,20 @@ is real but fair (sim-verified), panel is legible. ~1 milestone.
 
 ---
 
-## P2-C — Eras 4–5 + multi-room hall
+## P2-C — Eras 4–5 + multi-room hall — 🟡 ERAS DONE, multi-room deferred
+
+> Shipped: eras 4–5 — **Frontier Lab** (teal) + **Hyperscaler** (royal indigo) —
+> as data + renderer palettes (`ERA_BG`/`ERA_FLOOR` indices 3–4) + satirical
+> press-release blurbs. `currentEra` generalized: eras 3–4 gate on ship count
+> (`frontierAtShips: 2`, `hyperscalerAtShips: 5`); eras 0–2 logic unchanged. The
+> tentpole era-transition moment fires for them automatically. 1 new era test
+> (109 total). Verified both reskins on screenshot.
+>
+> DEFERRED (risky renderer work, best done focused): the true **multi-room hall**
+> (overflow into a second room past a size threshold) + per-phone camera framing.
+> The single room + expansions + reskins already carry the Phase-1/2 scale, so
+> this is spectacle, not a blocker.
+
 
 **Design intent (GDD §3):** Frontier Lab → Hyperscaler. The hall's next visual
 leap: more than one room as you outgrow the floor.
