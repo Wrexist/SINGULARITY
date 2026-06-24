@@ -173,6 +173,18 @@ fun-gate on 2026-06-24 and greenlit Phase 1. (Phase 0 history retained below for
 - [~] PENDING (owner): enable GitHub Pages (Settings → Pages → Deploy from branch → main, `/docs`) so
       the privacy/support/marketing URLs go live; render `icon.svg` → 1024 PNG; create the ASC app record.
 
+## PHASE 2 — Depth wave (STARTED 2026-06-24, owner go-ahead post-launch-prep)
+*Plan: `PHASE2_PLAN.md`. Each system ships behind a `balance.<system>.enabled` flag.*
+- [x] **P2-A Power & Heat (LIVE):** racks draw power; over-subscribe → Compute throttles
+      (soft cap, floored at 25%). 3 capacity upgrades (PSU/cooling/substation), a Power meter in
+      the Hardware panel, power-aware sim. First ship 12m48s, no wall. 6 tests.
+- [x] **P2-B Staff & Payroll (LIVE):** Researcher/Engineer/Ops multiply a lane, cost Money/sec
+      payroll (over-hire tension). No save migration (counts in upgrades map). Staff panel revealed
+      after first research. Opt-in — sim unchanged. 5 tests.
+- [ ] **P2-C Eras 4–5 + multi-room hall** (renderer-heavy; next).
+- [ ] **P2-D Factions + full event engine** (two-choice events, alignment axis).
+- [ ] Cosmetic IAP store (themes/skins/lab name) — after the systems land, if retention justifies.
+
 ## Backlog (later Phase 1 + Phase 2+)
 - [Phase 2+] power/heat, staff, factions, eras 4–6, multi-room hall, cosmetic store, Steam port
 
