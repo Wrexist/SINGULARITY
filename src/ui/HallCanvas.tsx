@@ -3,8 +3,7 @@ import { useGame } from "../state/store";
 import { useSettings } from "./settings";
 import { buildHallModel } from "../render/hallModel";
 import { drawHall } from "../render/hallRenderer";
-
-const ERA_NAMES = ["Garage Closet", "Startup", "Scale-Up"];
+import { currentEra, eraName } from "../engine/eras";
 
 /**
  * The 2.5D hall (Phase 1 pillar). A self-driving canvas: an rAF loop reads game
@@ -23,13 +22,7 @@ export function HallCanvas() {
       (s.game.upgrades.rack_server ?? 0) +
       (s.game.upgrades.rack_tpu ?? 0),
   );
-  const era = useGame((s) =>
-    s.game.prestige.ships > 0 || s.game.research.includes("inference_api")
-      ? 2
-      : s.game.research.length >= 2
-        ? 1
-        : 0,
-  );
+  const era = useGame((s) => currentEra(s.game));
 
   useEffect(() => {
     const canvas = canvasRef.current!;
@@ -96,7 +89,7 @@ export function HallCanvas() {
     <div className="hall" ref={wrapRef}>
       <canvas ref={canvasRef} className="hall-canvas" aria-hidden="true" />
       <div className="hall-tag">
-        <span className="hall-era">{ERA_NAMES[era]}</span>
+        <span className="hall-era">{eraName(era)}</span>
         <span className="hall-count">{rackCount} {rackCount === 1 ? "rack" : "racks"}</span>
       </div>
     </div>

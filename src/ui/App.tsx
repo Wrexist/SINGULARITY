@@ -21,7 +21,9 @@ import { Tagline } from "./Tagline";
 import { Onboarding } from "./Onboarding";
 import { DataMarketPanel } from "./DataMarketPanel";
 import { HallCanvas } from "./HallCanvas";
+import { EraTransition } from "./EraTransition";
 import { canPrestige } from "../engine/prestige";
+import { currentEra } from "../engine/eras";
 
 export function App() {
   useGameLoop();
@@ -38,6 +40,7 @@ export function App() {
   const prevShips = useRef(game.prestige.ships);
   const prevWeights = useRef<Big>(game.prestige.legacyWeights);
   const [celebration, setCelebration] = useState<{ gained: Big; total: Big } | null>(null);
+  const [eraMoment, setEraMoment] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const reducedMotion = useSettings((s) => s.reducedMotion);
   const onboarded = useSettings((s) => s.onboarded);
@@ -49,6 +52,7 @@ export function App() {
   const showPrestige = game.research.length > 0;
   const showMarket = game.research.length > 0;
   const shipReady = canPrestige(game);
+  const era = currentEra(game);
 
   // Transient unlock toasts.
   const [toasts, setToasts] = useState<ToastData[]>([]);
@@ -85,6 +89,17 @@ export function App() {
     seenMarket.current = showMarket;
     seenShipReady.current = shipReady;
   }, [initialized, showResearch, showPrestige, showMarket, shipReady]);
+
+  // Era transitions: a full-screen tentpole moment when the lab crosses an era.
+  // Guarded by the same hydration sync so it never fires on a returning load.
+  const seenEra = useRef(era);
+  const syncedEra = useRef(false);
+  useEffect(() => {
+    if (!initialized) return;
+    if (!syncedEra.current) { seenEra.current = era; syncedEra.current = true; return; }
+    if (era > seenEra.current) { setEraMoment(era); haptics.celebrate(); sound.ship(); }
+    seenEra.current = era;
+  }, [initialized, era]);
 
   // Regulatory events (heat-driven) surface as weighty toasts with feedback.
   useEffect(() => {
@@ -186,6 +201,7 @@ export function App() {
         />
       )}
       {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} />}
+      {eraMoment !== null && <EraTransition era={eraMoment} onDone={() => setEraMoment(null)} />}
       {!onboarded && !offline && <Onboarding onDone={completeOnboarding} />}
       <ToastStack toasts={toasts} onDone={dropToast} />
     </div>

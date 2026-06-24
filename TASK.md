@@ -117,7 +117,8 @@
 - [x] Active-run work pulse (racks glow while training); empty-state "rented closet" hint.
 - [x] Era re-skin v1 (palette shifts: Garage Closet → Startup → Scale-Up) from research/ships.
 - [x] Integrated as the hero stage atop the existing UI; 5 model tests (66 total). Build clean.
-- [ ] NEXT: richer manifestation (slide-in + power-on per rack), era-transition tentpole moment,
+- [x] Era-transition tentpole moment (full-screen "press release" when you cross an era)
+- [ ] NEXT: richer manifestation (slide-in + power-on per rack),
       data-mote flow on claim, cooling/era props, then lightweight events surfaced in the hall.
 
 ## Backlog (later Phase 1 + Phase 2+)

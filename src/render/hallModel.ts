@@ -1,4 +1,5 @@
 import type { GameState } from "../engine/types";
+import { currentEra } from "../engine/eras";
 
 /**
  * The hall VIEW-MODEL: a pure description of what to draw, derived from game
@@ -45,17 +46,12 @@ export function buildHallModel(game: GameState): HallModel {
     for (let i = 0; i < drawn; i++) racks.push({ tier, density });
   });
 
-  // Era re-skin: a coarse read of progress so the room visibly evolves.
-  let era = 0;
-  if (game.prestige.ships > 0 || game.research.includes("inference_api")) era = 2;
-  else if (game.research.length >= 2) era = 1;
-
   return {
     racks,
     active: game.run.active,
     readyToClaim: game.run.readyToClaim,
     progress: game.run.progress,
-    era,
+    era: currentEra(game),
     total: racks.length,
   };
 }

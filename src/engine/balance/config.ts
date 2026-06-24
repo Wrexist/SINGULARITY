@@ -105,6 +105,31 @@ export const balance = {
     moneyPerCompute: 0.6,
   },
 
+  /**
+   * Eras re-skin the hall and fire a tentpole "press release" moment as the lab
+   * grows (GDD §3/§5). Phase 1 ships eras 0–2. Gate thresholds are tunable data
+   * here; the gating LOGIC lives in engine/eras.ts; palettes live in the renderer.
+   */
+  eras: {
+    list: [
+      { name: "Garage Closet", blurb: "" },
+      {
+        name: "Funded Startup",
+        blurb:
+          "TechCrunch — “Stealth AI lab emerges from a literal server closet, raises a seed round to ‘reinvent compute.’” There is a beanbag now. The intern designed a logo.",
+      },
+      {
+        name: "Scale-Up Lab",
+        blurb:
+          "The Verge — “Singularity Inc. ships its first model.” The valuation is, sources confirm, ‘definitely not a bubble.’ The closet is now a floor.",
+      },
+    ],
+    /** Reach era 1 once this many research nodes are owned. */
+    startupAtResearchCount: 2,
+    /** Reach era 2 once this capability is researched (or you've ever shipped). */
+    scaleUpAtResearch: "inference_api",
+  },
+
   prestige: {
     /**
      * You can Ship once you've built a deployable model — i.e. researched this

@@ -94,6 +94,19 @@ try {
           lifetimeMoney: "100000000",
           heat: 30,
         }
+      : has("era")
+      ? {
+          // One research short of era 1 (needs 2 nodes); clicking the next one
+          // crosses the boundary live and fires the era-transition moment.
+          version: 2,
+          resources: { compute: "3000", data: "400", money: "1500" },
+          upgrades: { rack_basic: 5, rack_server: 2 },
+          research: ["backprop"],
+          run: { active: false, progress: 0, readyToClaim: false },
+          prestige: { legacyWeights: "0", ships: 0 },
+          lifetimeMoney: "1500",
+          heat: 0,
+        }
       : {
           version: 2,
           resources: { compute: "850", data: "140", money: "2600" },
@@ -135,6 +148,12 @@ try {
   if (has("market")) {
     await page.getByText("The Data Bazaar").scrollIntoViewIfNeeded();
     await sleep(400);
+  }
+
+  if (has("era")) {
+    // Buy the second research node → cross into era 1 → fire the moment.
+    await page.getByRole("button", { name: /Curated Dataset/ }).click();
+    await sleep(700);
   }
 
   const out = `screenshots/${name}.png`;
