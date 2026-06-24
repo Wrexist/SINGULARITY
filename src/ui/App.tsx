@@ -124,7 +124,17 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event?.key]);
 
+  const syncedShips = useRef(false);
   useEffect(() => {
+    // Guard against the empty→loaded hydration: a returning player with ships>0
+    // must NOT see a "Model Shipped" celebration on every launch.
+    if (!initialized) return;
+    if (!syncedShips.current) {
+      prevShips.current = game.prestige.ships;
+      prevWeights.current = game.prestige.legacyWeights;
+      syncedShips.current = true;
+      return;
+    }
     if (game.prestige.ships > prevShips.current) {
       const gained = game.prestige.legacyWeights.sub(prevWeights.current);
       setCelebration({ gained, total: game.prestige.legacyWeights });
@@ -133,7 +143,7 @@ export function App() {
     }
     prevShips.current = game.prestige.ships;
     prevWeights.current = game.prestige.legacyWeights;
-  }, [game.prestige.ships, game.prestige.legacyWeights]);
+  }, [initialized, game.prestige.ships, game.prestige.legacyWeights]);
 
   // Action handlers wrapped with tactile + audio feedback.
   const onStart = () => { haptics.tap(); sound.tap(); doStartRun(); };

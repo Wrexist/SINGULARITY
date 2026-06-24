@@ -4,6 +4,7 @@ dist-ssr
 *.local
 .DS_Store
 screenshots/*.png
+!appstore/screenshots/*.png
 .vite
 
 # Capacitor iOS native project — regenerated in CI (`cap add ios`) since there's
