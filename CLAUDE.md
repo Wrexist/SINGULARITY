@@ -60,56 +60,39 @@ If a request would pull work forward from a later phase, STOP and flag it. Scope
 4. Commit per logical change.
 5. Before ending: update `TASK.md`, append any new gotcha to `LEARNINGS.md`.
 
-## iOS TestFlight Deployment (shared pipeline)
+## iOS TestFlight Deployment (self-contained)
 
-This repo deploys to TestFlight through the **reusable pipeline in
-`Wrexist/ios-certificates`** (see its `TESTFLIGHT.md` for the full runbook).
-The local `.github/workflows/ios-testflight.yml` is only a thin caller that
-sets this project's parameters; build, signing (fastlane match) and upload
-logic all live in the shared kit.
+This repo ships to TestFlight via its **own** workflow,
+`.github/workflows/ios-testflight.yml`. It is deliberately **self-contained**:
+a GitHub macOS runner builds the Capacitor app and signs it with Xcode
+**automatic (cloud-managed) signing** driven by an App Store Connect API key,
+then uploads via `altool`. There is **no** Fastlane Match and **no** dependency
+on the `Wrexist/ios-certificates` repo — that kit was evaluated and rejected
+here because it requires changing/operating that repo (its secrets + an
+onboarding run that writes certs into it), which is out of scope for this app.
 
 - **Bundle ID:** `com.wrexist.singularityinc`
-- **Trigger:** Actions tab → **iOS TestFlight** → Run workflow.
-  Leave `marketing_version` blank to ship as the `default_version` pinned in
-  `.github/workflows/ios-testflight.yml` (bump it there for a new version —
-  it plays the role package.json.version has in dynasty-manager), or type a
-  version in the box to override for that run. Lower-than-TestFlight
-  versions are refused; re-shipping the same version is fine.
-- **Build number** = the GitHub Actions run number.
-- **Secrets:** `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8`, `MATCH_GIT_URL`,
-  `MATCH_PASSWORD`, `MATCH_SSH_PRIVATE_KEY` (+ optional `APP_ENV` with
-  KEY=VALUE lines for app-specific build secrets). Same values across all
-  new iOS repos.
-- **Signing isolation:** certs live on the **`new-apps`** branch of
-  `Wrexist/ios-certificates`. dynasty-manager and Peptide-ai keep their certs
-  on the default branch and are never touched. `MATCH_PASSWORD` here is the
-  new-apps passphrase, not dynasty/Peptide's.
-- **Project hooks (optional):** `scripts/testflight-prebuild.sh` runs before
-  the build, `scripts/testflight-postsync.sh` after project
-  generation/sync — both only when the file exists.
+- **Trigger:** Actions tab → **iOS TestFlight** → Run workflow (also runs on
+  pushing an `ios-v*` tag).
+- **Build number** = the GitHub Actions run number (always rising).
+- **Secrets (4, all on THIS repo only):** `APPLE_TEAM_ID`, `ASC_KEY_ID`,
+  `ASC_ISSUER_ID`, `ASC_KEY_P8`.
+- **`ios/` is gitignored** and regenerated on the runner (`cap add ios`); the
+  workflow handles this inline, so nothing native is committed.
 
 ### ⚠️ Merging ≠ Shipping to TestFlight
 
-The TestFlight workflow is `workflow_dispatch` only — it does **not** run on
-push. Merging a fix into `main` does not change the binary on anyone's
-phone. After merging a user-visible fix, always tell the user:
+Merging a fix into `main` does not change the binary on anyone's phone — you
+must run the workflow. After merging a user-visible fix, tell the user:
 
 > The fix is on `main`, but your phone still runs the previous TestFlight
-> build. To deploy: Actions → **iOS TestFlight** → Run workflow (leave
-> version blank) → wait ~15 min for the build + Apple processing → update
-> from the TestFlight app.
+> build. To deploy: Actions → **iOS TestFlight** → Run workflow → wait ~15 min
+> for the build + Apple processing → update from the TestFlight app.
 
-### ⚠️ `ASC_KEY_P8` format (the trap that caused the first failure)
+### ⚠️ `ASC_KEY_P8` format (the trap that caused the original failure)
 
-Store `ASC_KEY_P8` as **either** the raw `AuthKey_XXXX.p8` contents
-(including the `-----BEGIN PRIVATE KEY-----` / `END` lines) **or** its base64
-(`base64 -i AuthKey_XXXX.p8`). No trailing newline/space. A truncated or
-wrong-file paste shows up as an "invalid .p8 key" / signing-auth failure.
-
-### Version rules (enforced by the pipeline)
-
-- The shared Fastfile refuses to upload a marketing version **≤ the highest
-  version already on TestFlight** (builds sort by marketing version; a lower
-  version would be invisible to testers).
-- Re-running a *failed* run reuses the same build number. If a run failed
-  **after** the upload step, trigger a fresh run instead of re-running.
+Store `ASC_KEY_P8` as **either** the raw `AuthKey_XXXX.p8` contents (including
+the `-----BEGIN PRIVATE KEY-----` / `END` lines) **or** its base64
+(`base64 -i AuthKey_XXXX.p8`). No trailing newline/space, and don't paste the
+Key ID / Issuer ID by mistake. A truncated or wrong value shows up as
+"ASC_KEY_P8 is not a valid App Store Connect .p8 key".
