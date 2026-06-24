@@ -156,7 +156,12 @@ fun-gate on 2026-06-24 and greenlit Phase 1. (Phase 0 history retained below for
       STUB that grants instantly until StoreKit is wired.
 - [~] PENDING (owner): create the App Store Connect app record (bundle com.wrexist.singularityinc),
       then run the workflow. No extra secrets needed. First run UNVERIFIED — will need iteration.
-- [ ] Wire the real StoreKit purchase + create the premium product once the app record exists in ASC.
+- [x] Wire the real StoreKit purchase: `cordova-plugin-purchase` (CdvPurchase v13), self-contained
+      on-device (no billing backend), behind the existing `iap.ts` interface; web/dev keeps the stub
+      so tests/QA still run. Build + 97 tests green. ⚠️ Native path needs DEVICE verification once the
+      ASC product exists — runbook added to DEPLOYMENT.md §5b.
+- [~] PENDING (owner): create the `com.wrexist.singularityinc.premium` non-consumable in ASC +
+      Paid Apps agreement, then device-test the purchase/restore with a sandbox tester.
 - [x] App Store metadata package (`appstore/`): ASO-optimized name/subtitle/keywords (counts verified),
       promo + 4000-char description, release notes, categories, 12+ age-rating answers, "Data Not
       Collected" privacy + hostable privacy policy, IAP listing, screenshot plan, review notes, and a
