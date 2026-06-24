@@ -45,10 +45,29 @@ jobs:
       - run: npm run build
 
       # Place the ASC API key where both xcodebuild and altool auto-discover it.
+      # The secret may hold the raw .p8 PEM OR its base64 — base64 is the robust
+      # form, since GitHub secrets / shells can mangle the PEM's newlines, which
+      # surfaces later as CryptoKit "invalidPEMDocument" at archive time. Accept
+      # both, normalize CRLF, and fail fast with a clear message if it's neither.
       - name: Install App Store Connect API key
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
         run: |
           mkdir -p ~/private_keys
-          printf '%s' "${{ secrets.ASC_KEY_P8 }}" > "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+          KEY_PATH="$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_KEY_P8" | tr -d '\r' > "$KEY_PATH.in"
+          if grep -q "BEGIN PRIVATE KEY" "$KEY_PATH.in"; then
+            mv "$KEY_PATH.in" "$KEY_PATH"        # already a PEM — use as-is
+          else
+            tr -d ' \t\r\n' < "$KEY_PATH.in" | openssl base64 -d -A > "$KEY_PATH"
+            rm -f "$KEY_PATH.in"                 # was base64 — decode to PEM
+          fi
+          if ! grep -q "BEGIN PRIVATE KEY" "$KEY_PATH"; then
+            echo "::error::ASC_KEY_P8 is not a valid App Store Connect .p8 key. Store either the raw AuthKey_XXXX.p8 contents (including the BEGIN/END lines) or its base64 (\`base64 -i AuthKey_XXXX.p8\`)."
+            exit 1
+          fi
+          chmod 600 "$KEY_PATH"
+          echo "API key installed."
 
       # Generate the native iOS project fresh (gitignored — no Mac locally).
       # The ios/ dir never exists on a clean runner, so add it only when missing

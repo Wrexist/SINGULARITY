@@ -112,7 +112,7 @@ generated fresh each run; gitignored) → set `ITSAppUsesNonExemptEncryption=fal
 |---|---|
 | `APPLE_TEAM_ID` | `DEVELOPMENT_TEAM` for signing |
 | `ASC_KEY_ID`, `ASC_ISSUER_ID` | App Store Connect API key id + issuer |
-| `ASC_KEY_P8` | The API key — store the **raw `.p8` contents** (`-----BEGIN PRIVATE KEY-----` block) |
+| `ASC_KEY_P8` | The API key. **Preferred: base64** — `base64 -i AuthKey_XXXX.p8 \| pbcopy`, then paste that (sidesteps the newline-mangling that causes CryptoKit `invalidPEMDocument` at archive time). The raw `-----BEGIN PRIVATE KEY-----` block is also accepted — the workflow auto-detects which form you pasted. |
 
 **No extra secrets required.** `MATCH_PASSWORD` (and the MATCH_GIT_* ones I'd
 previously asked for) are **not used** by this path — you can delete `MATCH_PASSWORD`
