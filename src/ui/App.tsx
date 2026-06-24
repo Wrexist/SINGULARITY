@@ -21,6 +21,7 @@ import { Tagline } from "./Tagline";
 import { Onboarding } from "./Onboarding";
 import { DataMarketPanel } from "./DataMarketPanel";
 import { HallCanvas } from "./HallCanvas";
+import { ExpandConfirm } from "./ExpandConfirm";
 import { EraTransition } from "./EraTransition";
 import { WorldEventCard } from "./WorldEventCard";
 import { ModifierBar } from "./ModifierBar";
@@ -44,6 +45,7 @@ export function App() {
   const prevWeights = useRef<Big>(game.prestige.legacyWeights);
   const [celebration, setCelebration] = useState<{ gained: Big; total: Big } | null>(null);
   const [eraMoment, setEraMoment] = useState<number | null>(null);
+  const [pendingExpansion, setPendingExpansion] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const reducedMotion = useSettings((s) => s.reducedMotion);
   const onboarded = useSettings((s) => s.onboarded);
@@ -185,7 +187,7 @@ export function App() {
       <ModifierBar modifiers={game.modifiers} />
 
       <main className="stage">
-        <HallCanvas />
+        <HallCanvas onExpand={setPendingExpansion} />
         <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} />
         <UpgradePanel game={game} onBuy={onBuy} />
         {showResearch && <ResearchPanel game={game} onResearch={onResearch} />}
@@ -213,6 +215,13 @@ export function App() {
         />
       )}
       {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} />}
+      {pendingExpansion && (
+        <ExpandConfirm
+          id={pendingExpansion}
+          onConfirm={() => { onBuy(pendingExpansion); setPendingExpansion(null); }}
+          onDecline={() => setPendingExpansion(null)}
+        />
+      )}
       {eraMoment !== null && <EraTransition era={eraMoment} onDone={() => setEraMoment(null)} />}
       {worldEvent && <WorldEventCard event={worldEvent} onDismiss={dismissWorldEvent} />}
       {!onboarded && !offline && <Onboarding onDone={completeOnboarding} />}

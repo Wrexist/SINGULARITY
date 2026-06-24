@@ -128,6 +128,8 @@ fun-gate on 2026-06-25 and greenlit Phase 1. (Phase 0 history retained below for
       "+$cost" marker in the hall (the back two edges have walls, so they're not expandable).
       The floor grows front/right; capacity-based proportional rack layout; renderer auto-fits +
       flat-shades big halls for perf. Canvas hit-testing + hover cursor; markers pulse when affordable.
+- [x] Tapping a marker opens a CONFIRM/DECLINE popup (name, what it adds, cost, affordability)
+      before spending — no accidental purchases from touching the floor.
 
 ### Lightweight world events (the satire layer)
 - [x] 12 satirical ambient events (buffs/debuffs + immediate % swings), written in voice.

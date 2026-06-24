@@ -799,6 +799,26 @@ body {
 .onboard-foot { font-size: 12.5px; color: var(--ink-2); line-height: 1.5; margin: 0 0 20px; }
 .onboard-foot b { color: var(--ink); }
 
+/* ---------- Expansion confirm popup ---------- */
+.confirm-modal { max-width: 340px; }
+.confirm-kicker { font-size: 11px; font-weight: 800; letter-spacing: 0.18em; color: var(--compute); margin-bottom: 6px; }
+.confirm-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 11px 14px;
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-hairline);
+  border-radius: 12px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.confirm-row b { color: var(--ink); font-size: 15px; font-weight: 750; }
+.confirm-unaff { color: var(--coral) !important; }
+.confirm-actions { display: flex; gap: 10px; margin-top: 12px; }
+.confirm-actions .btn { flex: 1; }
+
 /* ---------- World events (satire layer) ---------- */
 .world-modal { text-align: left; max-width: 380px; border-top: 4px solid var(--ink-3); }
 .world-modal.world-good { border-top-color: var(--money); }

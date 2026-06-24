@@ -13,9 +13,12 @@ import { currentEra, eraName } from "../engine/eras";
  * the room. Buying a rack manifests it here — the load-bearing dopamine (GDD §5).
  * DPR-aware, pauses when the tab is hidden, and honors reduced-motion.
  */
-export function HallCanvas() {
+export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // Keep the latest callback reachable from the (mount-only) pointer handler.
+  const onExpandRef = useRef(onExpand);
+  onExpandRef.current = onExpand;
 
   // Lightweight label state (re-renders only when these change, not per frame).
   const rackCount = useGame(
@@ -47,6 +50,7 @@ export function HallCanvas() {
     // it so we don't rebuild ~46 objects every animation frame (mobile GC).
     let modelSig = "";
     let model = buildHallModel(useGame.getState().game);
+    let markers = expansionMarkers(model, 1, 1); // current frame's side markers
 
     const resize = () => {
       const rect = wrap.getBoundingClientRect();
@@ -94,6 +98,9 @@ export function HallCanvas() {
         reducedMotion: useSettings.getState().reducedMotion,
         spawnFrom, spawnT, burst, dpr,
       });
+      // Debug/test aid (screenshot harness reads marker centroids); harmless.
+      markers = expansionMarkers(model, cssW, cssH);
+      (window as unknown as { __HALL_MARKERS__?: typeof markers }).__HALL_MARKERS__ = markers;
       raf = requestAnimationFrame(frame);
     };
 
@@ -117,14 +124,16 @@ export function HallCanvas() {
     const markerAt = (ev: PointerEvent) => {
       const rect = canvas.getBoundingClientRect();
       const px = ev.clientX - rect.left, py = ev.clientY - rect.top;
-      return expansionMarkers(model, cssW, cssH).find((mk) => !mk.maxed && pointInPoly(px, py, mk.quad));
+      return markers.find((mk) => !mk.maxed && pointInPoly(px, py, mk.quad));
     };
     const onDown = (ev: PointerEvent) => {
       const hit = markerAt(ev);
       if (!hit) return;
       ev.preventDefault();
-      if (hit.affordable) { useGame.getState().doBuyUpgrade(hit.id); haptics.tap(); sound.purchase(); }
-      else haptics.warn();
+      // Don't buy on tap — ask for confirmation first (App shows the popup).
+      haptics.tap();
+      sound.tap();
+      onExpandRef.current(hit.id);
     };
     const onMove = (ev: PointerEvent) => {
       canvas.style.cursor = markerAt(ev) ? "pointer" : "default";

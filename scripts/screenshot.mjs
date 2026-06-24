@@ -110,6 +110,18 @@ try {
           heat: 0,
           modifiers: [],
         }
+      : has("expand")
+      ? {
+          version: 3,
+          resources: { compute: "4000", data: "300", money: "12000" },
+          upgrades: { rack_basic: 7, rack_server: 2 },
+          research: ["backprop", "curated_data"],
+          run: { active: true, progress: 0.5, readyToClaim: false },
+          prestige: { legacyWeights: "0", ships: 0 },
+          lifetimeMoney: "12000",
+          heat: 0,
+          modifiers: [],
+        }
       : has("era")
       ? {
           // One research short of era 1 (needs 2 nodes); clicking the next one
@@ -183,6 +195,21 @@ try {
     // The claim button bobs (infinite animation), so bypass the stability wait.
     await page.getByRole("button", { name: /Claim payout/ }).click({ force: true });
     await sleep(230); // catch the burst mid-rise
+  }
+
+  if (has("expand")) {
+    // Tap an open-side expansion marker to bring up the confirm popup.
+    const target = await page.evaluate(() => {
+      const canvas = document.querySelector("canvas.hall-canvas");
+      const r = canvas.getBoundingClientRect();
+      const ms = window.__HALL_MARKERS__ || [];
+      const m = ms.find((x) => !x.maxed);
+      return m ? { x: r.left + m.centroid.x, y: r.top + m.centroid.y } : null;
+    });
+    if (target) {
+      await page.mouse.click(target.x, target.y);
+      await sleep(400);
+    }
   }
 
   if (has("worldevent")) {
