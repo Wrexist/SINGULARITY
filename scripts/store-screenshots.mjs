@@ -1,7 +1,7 @@
 // App Store marketing screenshots — premium, Liquid-Glass framed.
-// Captures the running game at 3x, then composites each scene into a 1290×2796
-// (6.7") marketing shot: aurora-gradient background, a bold caption, and the app
-// screen in a frosted-glass device frame. Output → appstore/screenshots/.
+// Captures the running game at 3x, then composites each scene into a 1284×2778
+// (6.5"/6.7") marketing shot: aurora-gradient background, a bold caption, and the
+// app screen in a frosted-glass device frame. Output → appstore/screenshots/.
 //
 // Run: node scripts/store-screenshots.mjs
 import { spawn, execSync } from "node:child_process";
@@ -90,8 +90,8 @@ const SCENES = [
 
 const frameHtml = (scene, b64) => `<!doctype html><html><head><meta charset="utf-8"><style>
 *{margin:0;box-sizing:border-box}
-html,body{width:1290px;height:2796px}
-.stage{width:1290px;height:2796px;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;
+html,body{width:1284px;height:2778px}
+.stage{width:1284px;height:2778px;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;
   font-family:-apple-system,"SF Pro Display","Segoe UI",system-ui,sans-serif;
   background:linear-gradient(165deg,${scene.grad[0]},${scene.grad[1]})}
 .blob{position:absolute;width:760px;height:760px;border-radius:50%;filter:blur(130px);opacity:.5}
@@ -164,8 +164,8 @@ async function run() {
       const raw = await app.screenshot();
       await app.close();
 
-      // 2) composite into the marketing frame at exact 1290×2796
-      const framePage = await browser.newPage({ viewport: { width: 1290, height: 2796 }, deviceScaleFactor: 1 });
+      // 2) composite into the marketing frame at exact 1284×2778
+      const framePage = await browser.newPage({ viewport: { width: 1284, height: 2778 }, deviceScaleFactor: 1 });
       await framePage.setContent(frameHtml(scene, raw.toString("base64")), { waitUntil: "networkidle" });
       await sleep(250);
       await framePage.screenshot({ path: `${OUT}/${scene.name}.png` });

@@ -161,7 +161,7 @@ fun-gate on 2026-06-24 and greenlit Phase 1. (Phase 0 history retained below for
       promo + 4000-char description, release notes, categories, 12+ age-rating answers, "Data Not
       Collected" privacy + hostable privacy policy, IAP listing, screenshot plan, review notes, and a
       parametric app-icon concept (`icon-concept.svg`). Paste-ready + Fastlane-deliver layout.
-- [x] Marketing screenshots: `scripts/store-screenshots.mjs` → six 1290×2796 Liquid-Glass framed shots
+- [x] Marketing screenshots: `scripts/store-screenshots.mjs` → six 1284×2778 Liquid-Glass framed shots
       (`appstore/screenshots/`), curated to show an abundant, aspirational lab.
 - [x] GitHub Pages marketing site (`docs/`): Liquid-Glass landing + privacy + support, animated aurora,
       glass cards, screenshot gallery, scroll reveals (fail-safe). Serves the privacy/support URLs.
