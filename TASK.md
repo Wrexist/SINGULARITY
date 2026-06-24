@@ -181,8 +181,10 @@ fun-gate on 2026-06-24 and greenlit Phase 1. (Phase 0 history retained below for
 - [x] **P2-B Staff & Payroll (LIVE):** Researcher/Engineer/Ops multiply a lane, cost Money/sec
       payroll (over-hire tension). No save migration (counts in upgrades map). Staff panel revealed
       after first research. Opt-in — sim unchanged. 5 tests.
-- [ ] **P2-C Eras 4–5 + multi-room hall** (renderer-heavy; next).
-- [ ] **P2-D Factions + full event engine** (two-choice events, alignment axis).
+- [x] **P2-C Eras 4–5 (LIVE):** Frontier Lab (teal) + Hyperscaler (indigo) reskins, ship-gated
+      (frontierAtShips 2, hyperscalerAtShips 5). Multi-room hall deferred (focused renderer follow-up).
+- [x] **P2-D Factions + event engine (LIVE):** persisted alignment (−1..1, save v3→v4), two-choice
+      faction events (effect applied on pick + alignment shift), alignment in Lab Stats. 5 events.
 - [ ] Cosmetic IAP store (themes/skins/lab name) — after the systems land, if retention justifies.
 
 ## Backlog (later Phase 1 + Phase 2+)

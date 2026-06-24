@@ -11,6 +11,7 @@ import {
   buyDataOffer,
   maybeHeatEvent,
   maybeWorldEvent,
+  applyWorldEventChoice,
   type MarketOutcome,
   type WorldEventResult,
 } from "../engine/actions";
@@ -51,6 +52,7 @@ interface GameStore {
   // lifecycle
   init: () => void;
   dismissWorldEvent: () => void;
+  chooseWorldEvent: (choiceIndex: number) => void;
   advance: (elapsedMs: number) => void;
   save: () => void;
   dismissOffline: () => void;
@@ -81,6 +83,12 @@ export const useGame = create<GameStore>((set, get) => ({
   worldEvent: null,
   claimBurst: 0,
   dismissWorldEvent: () => set({ worldEvent: null }),
+  chooseWorldEvent: (choiceIndex) =>
+    set((s) => {
+      if (!s.worldEvent) return {};
+      const { state } = applyWorldEventChoice(s.game, s.worldEvent.id, choiceIndex);
+      return { game: state, worldEvent: null };
+    }),
 
   init: () => {
     let game = createInitialState();

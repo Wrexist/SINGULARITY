@@ -157,7 +157,17 @@ cleanly on a phone, transitions land. ~1–2 milestones (renderer-heavy).
 
 ---
 
-## P2-D — Factions + full event engine
+## P2-D — Factions + full event engine — ✅ DONE & LIVE
+
+> Shipped: a persisted `alignment` scalar (−1 doomer … +1 accel; save v3→v4
+> migration). World events extended with optional two-`choices` branches — the
+> engine defers their effect until the player picks (`applyWorldEventChoice`),
+> which applies that branch's effect AND shifts alignment (clamped). 5 faction
+> events written in voice; WorldEventCard renders the two branches (and blocks
+> backdrop-dismiss so a choice is required); alignment shown in Lab Stats. 4
+> faction tests + a save-migration test (114 total). Sim unchanged. Future:
+> gate some unlocks on alignment + more events (data-only).
+
 
 **Design intent:** doomers vs accelerationists — a reputation axis that colors
 events and unlocks; deepen the existing lightweight event engine.

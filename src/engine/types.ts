@@ -50,6 +50,8 @@ export interface GameState {
   heat: number;
   /** Active time-limited modifiers from world events. */
   modifiers: ActiveModifier[];
+  /** Faction stance (Phase 2): −1 doomer … +1 accelerationist. Moved by event choices. */
+  alignment: number;
 }
 
 /** Everything the sim and UI read each frame, folded from upgrades + research + prestige. */

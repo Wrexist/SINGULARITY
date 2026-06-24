@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { applyWorldEvent, pickWorldEvent, maybeWorldEvent } from "./actions";
+import { applyWorldEvent, applyWorldEventChoice, pickWorldEvent, maybeWorldEvent } from "./actions";
 import { createInitialState } from "./state";
 import { derive } from "./derive";
 import { tick } from "./tick";
@@ -71,6 +71,40 @@ describe("world events — timed modifiers", () => {
     const after = tick(s, 600_000);
     expect(after.resources.compute.toNumber()).toBeCloseTo(1.5 * 5 + 595, 1); // 602.5
     expect(after.modifiers).toHaveLength(0);
+  });
+});
+
+describe("world events — faction choices (Phase 2)", () => {
+  it("a choice event does NOT apply anything until the player picks", () => {
+    const s = createInitialState();
+    s.resources.data = Big.of(1000);
+    const { state, event } = applyWorldEvent(s, "choice_opensource");
+    expect(state).toBe(s); // unchanged on fire
+    expect(event.choices).toHaveLength(2);
+    expect(event.choices![0]!.summary.length).toBeGreaterThan(0);
+  });
+
+  it("picking a branch applies its effect and shifts alignment", () => {
+    const s = createInitialState();
+    s.resources.data = Big.of(1000);
+    // Branch 0 of choice_opensource: +30% data, alignment +0.34.
+    const { state } = applyWorldEventChoice(s, "choice_opensource", 0);
+    expect(state.resources.data.eq(Big.of(1300))).toBe(true);
+    expect(state.alignment).toBeCloseTo(0.34, 6);
+  });
+
+  it("the other branch moves alignment the other way", () => {
+    const s = createInitialState();
+    s.resources.money = Big.of(1000);
+    const { state } = applyWorldEventChoice(s, "choice_opensource", 1); // keep closed: +25% $, -0.34
+    expect(state.resources.money.eq(Big.of(1250))).toBe(true);
+    expect(state.alignment).toBeCloseTo(-0.34, 6);
+  });
+
+  it("alignment clamps to [-1, 1]", () => {
+    let s = createInitialState();
+    for (let i = 0; i < 10; i++) s = applyWorldEventChoice(s, "choice_opensource", 0).state;
+    expect(s.alignment).toBe(1);
   });
 });
 

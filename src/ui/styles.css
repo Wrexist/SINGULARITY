@@ -915,6 +915,20 @@ body {
 .world-effect.good { color: #0b7a43; background: rgba(22, 179, 100, 0.14); }
 .world-effect.bad { color: #b3243f; background: rgba(255, 56, 92, 0.12); }
 
+/* Faction event choices (Phase 2): two stacked branch buttons */
+.world-choices { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.world-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  text-align: left;
+  padding: 13px 15px;
+  width: 100%;
+}
+.world-choice-label { font-size: 14px; font-weight: 750; letter-spacing: -0.01em; color: var(--ink); }
+.world-choice-effect { font-size: 12px; font-weight: 650; color: var(--ink-2); }
+
 /* Active-modifier chips under the resource bar */
 .modbar { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 18px; margin-top: -4px; margin-bottom: 4px; }
 .modchip {

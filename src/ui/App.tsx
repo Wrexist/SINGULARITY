@@ -37,7 +37,7 @@ export function App() {
   const initialized = useGame((s) => s.initialized);
   const event = useGame((s) => s.event);
   const worldEvent = useGame((s) => s.worldEvent);
-  const { doStartRun, doClaim, doBuyUpgrade, doHireStaff, doResearch, doBuyData, doPrestige, dismissOffline, dismissWorldEvent, hardReset } =
+  const { doStartRun, doClaim, doBuyUpgrade, doHireStaff, doResearch, doBuyData, doPrestige, dismissOffline, dismissWorldEvent, chooseWorldEvent, hardReset } =
     useGame.getState();
 
   const d = derive(game);
@@ -241,7 +241,13 @@ export function App() {
         />
       )}
       {eraMoment !== null && <EraTransition era={eraMoment} onDone={() => setEraMoment(null)} />}
-      {worldEvent && <WorldEventCard event={worldEvent} onDismiss={dismissWorldEvent} />}
+      {worldEvent && (
+        <WorldEventCard
+          event={worldEvent}
+          onDismiss={dismissWorldEvent}
+          onChoose={(i) => { haptics.tap(); sound.tap(); chooseWorldEvent(i); }}
+        />
+      )}
       {!onboarded && !offline && <Onboarding onDone={completeOnboarding} />}
       <ToastStack toasts={toasts} onDone={dropToast} />
     </div>

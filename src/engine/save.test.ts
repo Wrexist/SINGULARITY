@@ -61,6 +61,21 @@ describe("save/load", () => {
     expect(deserialize(serialize(s)).heat).toBe(42);
   });
 
+  it("preserves faction alignment through a round-trip, and backfills it on a v3 save", () => {
+    const s = createInitialState();
+    s.alignment = -0.5;
+    expect(deserialize(serialize(s)).alignment).toBe(-0.5);
+    const v3 = {
+      version: 3,
+      resources: { compute: "1", data: "1", money: "1" },
+      upgrades: {}, research: [],
+      run: { active: false, progress: 0, readyToClaim: false },
+      prestige: { legacyWeights: "0", ships: 0 },
+      lifetimeMoney: "1", heat: 0, modifiers: [],
+    };
+    expect(migrate(v3).alignment).toBe(0); // v3 → v4 backfill
+  });
+
   it("round-trips active modifiers", () => {
     const s = createInitialState();
     s.modifiers = [

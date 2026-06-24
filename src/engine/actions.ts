@@ -6,6 +6,7 @@ import {
   type DataOffer,
   type HeatEvent,
   type WorldEvent,
+  type WorldEventEffect,
   type StaffRole,
 } from "./balance/config";
 import { derive } from "./derive";
@@ -329,6 +330,8 @@ export interface WorldEventResult {
   tone: "good" | "bad";
   /** Short effect summary for the card, e.g. "+25% $" or "Compute ×1.5 · 60s". */
   summary: string;
+  /** Present for faction events: the two branches to render as buttons. */
+  choices?: { label: string; summary: string }[];
 }
 
 const WORLD_EVENTS = balance.worldEvents.list as WorldEvent[];
@@ -350,37 +353,68 @@ const TARGET_LABEL: Record<string, string> = {
 };
 const RES_LABEL: Record<string, string> = { compute: "compute", data: "data", money: "$" };
 
-/** Apply a world event's effect. Pure given the event id. */
+function effectSummary(effect: WorldEventEffect): string {
+  if (effect.kind === "grantPct") {
+    const sign = effect.pct > 0 ? "+" : "";
+    return `${sign}${Math.round(effect.pct * 100)}% ${RES_LABEL[effect.resource]}`;
+  }
+  return `${TARGET_LABEL[effect.target]} ×${effect.factor} · ${effect.durationSec}s`;
+}
+
+/** Apply one effect (immediate % swing or a timed modifier), keyed to an id for refresh. */
+function applyEffect(state: GameState, effect: WorldEventEffect, id: string, tone: "good" | "bad"): GameState {
+  if (effect.kind === "grantPct") {
+    const { resource, pct } = effect;
+    return { ...state, resources: { ...state.resources, [resource]: state.resources[resource].mul(1 + pct) } };
+  }
+  const mod: ActiveModifier = {
+    id,
+    target: effect.target,
+    factor: effect.factor,
+    remainingSec: effect.durationSec,
+    label: `${TARGET_LABEL[effect.target]} ×${effect.factor}`,
+    tone,
+  };
+  // Refresh rather than stack a repeat of the same event.
+  return { ...state, modifiers: [...state.modifiers.filter((m) => m.id !== id), mod] };
+}
+
+/**
+ * Fire a world event. Simple events apply their effect immediately. Faction
+ * events (with `choices`) do NOT apply anything here — they wait for the player's
+ * pick via applyWorldEventChoice — but surface their branches for the card.
+ */
 export function applyWorldEvent(state: GameState, eventId: string): { state: GameState; event: WorldEventResult } {
   const def = WORLD_EVENTS.find((e) => e.id === eventId) ?? WORLD_EVENTS[0]!;
-  let resources = state.resources;
-  let modifiers = state.modifiers;
-  let summary = "";
+  const base = { id: def.id, headline: def.headline, body: def.body, tone: def.tone };
 
-  if (def.effect.kind === "grantPct") {
-    const { resource, pct } = def.effect;
-    resources = { ...resources, [resource]: resources[resource].mul(1 + pct) };
-    const sign = pct > 0 ? "+" : "";
-    summary = `${sign}${Math.round(pct * 100)}% ${RES_LABEL[resource]}`;
-  } else {
-    const { target, factor, durationSec } = def.effect;
-    const mod: ActiveModifier = {
-      id: def.id,
-      target,
-      factor,
-      remainingSec: durationSec,
-      label: `${TARGET_LABEL[target]} ×${factor}`,
-      tone: def.tone,
+  if (def.choices && def.choices.length > 0) {
+    return {
+      state, // unchanged until the player chooses
+      event: { ...base, summary: "", choices: def.choices.map((c) => ({ label: c.label, summary: effectSummary(c.effect) })) },
     };
-    // Refresh rather than stack a repeat of the same event.
-    modifiers = [...modifiers.filter((m) => m.id !== def.id), mod];
-    summary = `${TARGET_LABEL[target]} ×${factor} · ${durationSec}s`;
   }
 
+  const effect = def.effect!;
   return {
-    state: { ...state, resources, modifiers },
-    event: { id: def.id, headline: def.headline, body: def.body, tone: def.tone, summary },
+    state: applyEffect(state, effect, def.id, def.tone),
+    event: { ...base, summary: effectSummary(effect) },
   };
+}
+
+/** Apply a chosen branch of a faction event: its effect + an alignment shift. */
+export function applyWorldEventChoice(
+  state: GameState,
+  eventId: string,
+  choiceIndex: number,
+): { state: GameState; event: WorldEventResult } {
+  const def = WORLD_EVENTS.find((e) => e.id === eventId) ?? WORLD_EVENTS[0]!;
+  const choice = def.choices?.[choiceIndex];
+  const base = { id: def.id, headline: def.headline, body: def.body, tone: def.tone, summary: "" };
+  if (!choice) return { state, event: base };
+  const next = applyEffect(state, choice.effect, def.id, def.tone);
+  const alignment = Math.max(-1, Math.min(1, state.alignment + choice.alignment));
+  return { state: { ...next, alignment }, event: { ...base, summary: effectSummary(choice.effect) } };
 }
 
 /**

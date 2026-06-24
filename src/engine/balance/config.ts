@@ -108,16 +108,32 @@ export interface ResearchDef {
     | { kind: "unlockPassiveMoney"; perSec: number };
 }
 
-/** An ambient satirical event. Effect is a timed buff or an immediate % swing. */
+/** A world-event effect: a timed global buff/debuff or an immediate % swing. */
+export type WorldEventEffect =
+  | { kind: "buff"; target: "computeMult" | "dataMult" | "moneyMult"; factor: number; durationSec: number }
+  | { kind: "grantPct"; resource: "compute" | "data" | "money"; pct: number };
+
+/** One branch of a faction event: a label, its effect, and how it moves alignment. */
+export interface WorldEventChoice {
+  label: string;
+  effect: WorldEventEffect;
+  /** Alignment nudge: negative = doomer, positive = accelerationist. */
+  alignment: number;
+}
+
+/**
+ * An ambient satirical event. Either a simple event with an immediate `effect`,
+ * OR a faction event with two `choices` (the effect is applied on the player's
+ * pick, which also shifts their alignment).
+ */
 export interface WorldEvent {
   id: string;
   weight: number;
   tone: "good" | "bad";
   headline: string;
   body: string;
-  effect:
-    | { kind: "buff"; target: "computeMult" | "dataMult" | "moneyMult"; factor: number; durationSec: number }
-    | { kind: "grantPct"; resource: "compute" | "data" | "money"; pct: number };
+  effect?: WorldEventEffect;
+  choices?: WorldEventChoice[];
 }
 
 const WORLD_EVENTS: WorldEvent[] = [
@@ -288,6 +304,63 @@ const WORLD_EVENTS: WorldEvent[] = [
     headline: "Open Letter to Pause AI",
     body: "Ten thousand signatories demand you stop. You frame it and keep going, but optics force a 'safety review.' Compute ×0.8.",
     effect: { kind: "buff", target: "computeMult", factor: 0.8, durationSec: 40 },
+  },
+
+  // --- Faction events (Phase 2): two choices, diverging effects + alignment. ---
+  {
+    id: "choice_opensource",
+    weight: 3,
+    tone: "good",
+    headline: "Open-Source the Model?",
+    body: "The community is begging for the weights. Marketing is begging you not to. Someone has to decide, and everyone's looking at you.",
+    choices: [
+      { label: "Open-source it (+30% data)", effect: { kind: "grantPct", resource: "data", pct: 0.3 }, alignment: 0.34 },
+      { label: "Keep it closed (+25% cash)", effect: { kind: "grantPct", resource: "money", pct: 0.25 }, alignment: -0.34 },
+    ],
+  },
+  {
+    id: "choice_safety_review",
+    weight: 3,
+    tone: "bad",
+    headline: "Safety Team Demands a Slowdown",
+    body: "Your safety lead wants a six-week eval freeze. Your investors want a demo on Tuesday. Both cc'd the whole company.",
+    choices: [
+      { label: "Slow down (Revenue ×1.6, PR win)", effect: { kind: "buff", target: "moneyMult", factor: 1.6, durationSec: 50 }, alignment: -0.3 },
+      { label: "Full speed ahead (Compute ×1.8)", effect: { kind: "buff", target: "computeMult", factor: 1.8, durationSec: 50 }, alignment: 0.3 },
+    ],
+  },
+  {
+    id: "choice_regulator_deal",
+    weight: 2,
+    tone: "good",
+    headline: "A Regulator Offers a Deal",
+    body: "Quiet cooperation now, or aggressive lobbying later. Your General Counsel has prepared two very different press releases.",
+    choices: [
+      { label: "Cooperate (−10% cash, clean hands)", effect: { kind: "grantPct", resource: "money", pct: -0.1 }, alignment: -0.3 },
+      { label: "Lobby hard (+35% cash)", effect: { kind: "grantPct", resource: "money", pct: 0.35 }, alignment: 0.3 },
+    ],
+  },
+  {
+    id: "choice_scaling_bet",
+    weight: 2,
+    tone: "good",
+    headline: "The Big Scaling Bet",
+    body: "A researcher swears the next 10× run cracks it. The safety crowd swears it's reckless. The GPUs are, notably, already warming up.",
+    choices: [
+      { label: "Hold the line (+30% data, careful)", effect: { kind: "grantPct", resource: "data", pct: 0.3 }, alignment: -0.28 },
+      { label: "Send it (Compute ×2 briefly)", effect: { kind: "buff", target: "computeMult", factor: 2, durationSec: 40 }, alignment: 0.32 },
+    ],
+  },
+  {
+    id: "choice_whistleblower",
+    weight: 2,
+    tone: "bad",
+    headline: "A Whistleblower Approaches",
+    body: "An engineer wants to go public about the data sourcing. You can support them, or 'manage the narrative.' HR is sweating.",
+    choices: [
+      { label: "Back them (−12% cash, integrity)", effect: { kind: "grantPct", resource: "money", pct: -0.12 }, alignment: -0.32 },
+      { label: "Spin it (Revenue ×1.7)", effect: { kind: "buff", target: "moneyMult", factor: 1.7, durationSec: 45 }, alignment: 0.28 },
+    ],
   },
 ];
 
