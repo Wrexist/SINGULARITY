@@ -6,9 +6,7 @@ import { fmt, fmtMoney } from "./format";
 
 function HeatMeter({ heat }: { heat: number }) {
   const pct = Math.min(100, (heat / balance.heat.max) * 100);
-  const tier = heat < 25 ? 0 : heat < 55 ? 1 : heat < 80 ? 2 : 3;
-  const label = ["Cold", "Warm", "Hot", "Blazing"][tier];
-  const color = ["#22c55e", "#eab308", "#f97316", "#ef4444"][tier];
+  const { label, color } = balance.heat.tiers.find((t) => heat < t.upTo) ?? balance.heat.tiers[balance.heat.tiers.length - 1]!;
   return (
     <div className="heat">
       <div className="heat-head">

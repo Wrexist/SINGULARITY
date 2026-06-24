@@ -3,6 +3,7 @@ import { useSettings } from "./settings";
 import { iap, PREMIUM_PRICE } from "./iap";
 import { haptics as hpt } from "./haptics";
 import { sound as snd } from "./sound";
+import { balance } from "../engine/balance/config";
 
 type ToggleKey = "sound" | "haptics" | "reducedMotion";
 
@@ -44,15 +45,21 @@ export function SettingsSheet({ onClose }: Props) {
   const [busy, setBusy] = useState(false);
   const buy = async () => {
     setBusy(true);
-    const ok = await iap.purchasePremium();
-    setBusy(false);
-    if (ok) { setPremiumState(true); hpt.celebrate(); snd.ship(); }
+    try {
+      const ok = await iap.purchasePremium();
+      if (ok) { setPremiumState(true); hpt.celebrate(); snd.ship(); }
+    } finally {
+      setBusy(false);
+    }
   };
   const restore = async () => {
     setBusy(true);
-    const ok = await iap.restore();
-    setBusy(false);
-    setPremiumState(ok);
+    try {
+      const ok = await iap.restore();
+      setPremiumState(ok);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -68,7 +75,7 @@ export function SettingsSheet({ onClose }: Props) {
             {!premium && <span className="premium-price">{PREMIUM_PRICE}</span>}
           </div>
           <ul className="premium-perks">
-            <li>24-hour offline cap (up from 8h)</li>
+            <li>{balance.offline.premiumMaxHours}-hour offline cap (up from {balance.offline.maxHours}h)</li>
             <li>“Founder” status &amp; future hall themes</li>
             <li>One-time unlock — no ads, ever, no pay-to-win</li>
           </ul>

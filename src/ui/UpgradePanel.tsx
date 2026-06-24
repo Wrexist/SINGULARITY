@@ -19,7 +19,7 @@ export function UpgradePanel({ game, onBuy }: Props) {
   // when the closet starts to fill, rather than cluttering the first session.
   const totalRacks =
     (game.upgrades.rack_basic ?? 0) + (game.upgrades.rack_server ?? 0) + (game.upgrades.rack_tpu ?? 0);
-  const showExpansions = totalRacks >= 5;
+  const showExpansions = totalRacks >= balance.hall.expansionRevealRacks;
   const isExpansion = (k: string) => k === "floorCols" || k === "floorRows";
 
   return (

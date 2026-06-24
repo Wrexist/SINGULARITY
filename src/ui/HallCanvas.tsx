@@ -51,6 +51,9 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
     let modelSig = "";
     let model = buildHallModel(useGame.getState().game);
     let markers = expansionMarkers(model, 1, 1); // current frame's side markers
+    // Seed from the hydrated hall so a saved lab doesn't replay the whole
+    // spawn animation as if every owned rack were brand-new on first open.
+    prevTotal = model.total;
 
     const resize = () => {
       const rect = wrap.getBoundingClientRect();

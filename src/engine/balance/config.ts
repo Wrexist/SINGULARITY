@@ -321,6 +321,8 @@ export const balance = {
     baseRows: 5,
     /** Hard cap on drawn rack boxes (perf); beyond this, density represents more. */
     maxDrawnRacks: 120,
+    /** Reveal floor expansions once the closet starts to fill (progression rule). */
+    expansionRevealRacks: 5,
   },
 
   prestige: {
@@ -483,6 +485,13 @@ export const balance = {
     eventChanceCap: 0.5,
     /** Heat added when buying a dark-web tool (scraper/botnet — you're on a list now). */
     toolBuyHeat: 5,
+    /** UI meter tiers: label + color, picked by the lowest `upTo` heat value the meter is under. */
+    tiers: [
+      { upTo: 25, label: "Cold", color: "#22c55e" },
+      { upTo: 55, label: "Warm", color: "#eab308" },
+      { upTo: 80, label: "Hot", color: "#f97316" },
+      { upTo: Infinity, label: "Blazing", color: "#ef4444" },
+    ],
   },
 
   /** Regulatory events, weighted. Picked when an event fires (see actions). */
