@@ -1,6 +1,26 @@
 import { Big } from "./math/Big";
 import { SAVE_VERSION, createInitialState } from "./state";
-import type { ActiveModifier, GameState } from "./types";
+import type { ActiveModifier, GameState, ModifierTarget } from "./types";
+
+const MODIFIER_TARGETS: ModifierTarget[] = ["computeMult", "dataMult", "moneyMult"];
+
+/** Loaded saves are untrusted input: a NaN heat or malformed modifier would
+ * flow straight into tick()/derive() and poison or crash the run. Validate. */
+function isWellFormedModifier(m: unknown): m is ActiveModifier {
+  const mod = m as Partial<ActiveModifier>;
+  return (
+    !!mod &&
+    typeof mod.id === "string" &&
+    MODIFIER_TARGETS.includes(mod.target as ModifierTarget) &&
+    typeof mod.factor === "number" &&
+    Number.isFinite(mod.factor) &&
+    typeof mod.remainingSec === "number" &&
+    Number.isFinite(mod.remainingSec) &&
+    mod.remainingSec > 0 &&
+    typeof mod.label === "string" &&
+    (mod.tone === "good" || mod.tone === "bad")
+  );
+}
 
 /**
  * Versioned save/load. Big values serialize to strings (Big.toJSON) so saves are
@@ -49,6 +69,13 @@ export function deserialize(json: string): GameState {
   // one) may be missing whole sub-objects, so never dereference them blindly.
   const res = (raw.resources ?? {}) as Partial<SavedShape["resources"]>;
   const pres = (raw.prestige ?? {}) as Partial<SavedShape["prestige"]>;
+  const heat =
+    typeof raw.heat === "number" && Number.isFinite(raw.heat)
+      ? Math.max(0, Math.min(100, raw.heat))
+      : fresh.heat;
+  const modifiers = Array.isArray(raw.modifiers)
+    ? raw.modifiers.filter(isWellFormedModifier)
+    : fresh.modifiers;
   return {
     version: SAVE_VERSION,
     resources: {
@@ -64,8 +91,8 @@ export function deserialize(json: string): GameState {
       ships: pres.ships ?? 0,
     },
     lifetimeMoney: Big.of(raw.lifetimeMoney ?? res.money ?? "0"),
-    heat: raw.heat ?? fresh.heat,
-    modifiers: Array.isArray(raw.modifiers) ? raw.modifiers : fresh.modifiers,
+    heat,
+    modifiers,
   };
 }
 

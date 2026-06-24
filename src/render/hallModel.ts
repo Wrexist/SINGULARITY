@@ -99,11 +99,29 @@ export function buildHallModel(game: GameState): HallModel {
   const fits = totalOwned <= capacity;
   const density = totalOwned > 0 ? Math.max(0.45, Math.min(1, totalOwned / Math.max(1, capacity))) : 0;
 
+  // Per-tier draw counts. When oversubscribed we downsample proportionally, but
+  // flooring each tier independently can leave the floor under-filled (e.g.
+  // owned [1,1,100], capacity 10 → [0,0,9]). Distribute the floored-away
+  // remainder by largest fractional part so all `capacity` slots are used.
+  const drawCounts = fits
+    ? [...owned]
+    : owned.map((count) => Math.floor((capacity * count) / totalOwned));
+  if (!fits) {
+    let leftover = capacity - drawCounts.reduce((sum, c) => sum + c, 0);
+    const byFraction = owned
+      .map((count, tier) => ({ tier, frac: (capacity * count) / totalOwned - drawCounts[tier]! }))
+      .sort((a, b) => b.frac - a.frac);
+    for (const { tier } of byFraction) {
+      if (leftover <= 0) break;
+      drawCounts[tier]! += 1;
+      leftover--;
+    }
+  }
+
   const racks: HallRack[] = [];
   let remaining = capacity;
-  for (let tier = 0; tier < owned.length && remaining > 0; tier++) {
-    const want = fits ? owned[tier]! : Math.floor((capacity * owned[tier]!) / totalOwned);
-    const draw = Math.min(want, remaining);
+  for (let tier = 0; tier < drawCounts.length && remaining > 0; tier++) {
+    const draw = Math.min(drawCounts[tier]!, remaining);
     for (let i = 0; i < draw; i++) racks.push({ tier, density });
     remaining -= draw;
   }

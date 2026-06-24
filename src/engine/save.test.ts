@@ -61,6 +61,36 @@ describe("save/load", () => {
     expect(deserialize(serialize(s)).heat).toBe(42);
   });
 
+  it("round-trips active modifiers", () => {
+    const s = createInitialState();
+    s.modifiers = [
+      { id: "viral_demo", target: "moneyMult", factor: 2, remainingSec: 30, label: "Viral Demo", tone: "good" },
+    ];
+    expect(deserialize(serialize(s)).modifiers).toEqual(s.modifiers);
+  });
+
+  it("drops malformed modifiers and clamps out-of-range Heat on load", () => {
+    const raw = JSON.stringify({
+      version: SAVE_VERSION,
+      resources: { compute: "0", data: "0", money: "0" },
+      upgrades: {},
+      research: [],
+      run: { active: false, progress: 0, readyToClaim: false },
+      prestige: { legacyWeights: "0", ships: 0 },
+      lifetimeMoney: "0",
+      heat: 999, // out of range → clamped to 100
+      modifiers: [
+        { id: "ok", target: "dataMult", factor: 1.5, remainingSec: 10, label: "Good", tone: "good" },
+        { id: "bad", target: "notATarget", factor: 1, remainingSec: 10, label: "X", tone: "good" }, // dropped
+        { id: "expired", target: "dataMult", factor: 1.5, remainingSec: 0, label: "X", tone: "good" }, // dropped
+      ],
+    });
+    const state = deserialize(raw);
+    expect(state.heat).toBe(100);
+    expect(state.modifiers).toHaveLength(1);
+    expect(state.modifiers[0]!.id).toBe("ok");
+  });
+
   it("loads a partial/legacy save without throwing (missing prestige/heat/run)", () => {
     // A genuine pre-versioning save that predates several fields.
     const partial = JSON.stringify({
@@ -72,6 +102,7 @@ describe("save/load", () => {
     expect(state.prestige.legacyWeights.eq(0)).toBe(true); // defaulted
     expect(state.prestige.ships).toBe(0);
     expect(state.heat).toBe(0);
+    expect(state.modifiers).toEqual([]); // defaulted when missing
     expect(state.lifetimeMoney.eq(50)).toBe(true); // backfilled from money
     expect(state.run.active).toBe(false);
   });

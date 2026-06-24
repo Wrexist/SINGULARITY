@@ -3,6 +3,7 @@ import { applyWorldEvent, pickWorldEvent, maybeWorldEvent } from "./actions";
 import { createInitialState } from "./state";
 import { derive } from "./derive";
 import { tick } from "./tick";
+import { prestige } from "./prestige";
 import { balance } from "./balance/config";
 import { Big } from "./math/Big";
 
@@ -53,9 +54,14 @@ describe("world events — timed modifiers", () => {
   });
 
   it("modifiers are cleared by a prestige reset", () => {
-    // (prestige spreads a fresh state, which has modifiers: [])
-    const fresh = createInitialState();
-    expect(fresh.modifiers).toEqual([]);
+    // Seed an active modifier, then ship — the reset must drop it.
+    let s = applyWorldEvent(createInitialState(), "breakthrough_paper").state;
+    s.research = [...s.research, balance.prestige.capabilityResearch]; // make shippable
+    s.lifetimeMoney = Big.of("1e8");
+    expect(s.modifiers).toHaveLength(1);
+    const after = prestige(s);
+    expect(after.modifiers).toEqual([]);
+    expect(after.prestige.ships).toBe(1);
   });
 
   it("a near-expired buff does NOT apply to a whole large tick (no offline windfall)", () => {

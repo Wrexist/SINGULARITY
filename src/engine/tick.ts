@@ -18,9 +18,16 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   // (tab-resume) or an offline catch-up would apply an about-to-expire buff to
   // the WHOLE window — e.g. a buff with 5s left doubling 8h of offline output.
   if (state.modifiers.length > 0) {
+    // Drop already-expired (or malformed) modifiers first. Otherwise minRem
+    // could be <= 0, making firstMs <= 0 and the recursive split spin without
+    // ever making progress.
+    const active = state.modifiers.filter((m) => Number.isFinite(m.remainingSec) && m.remainingSec > 0);
+    if (active.length !== state.modifiers.length) {
+      return tick({ ...state, modifiers: active }, elapsedMs);
+    }
     let minRem = Infinity;
-    for (const m of state.modifiers) if (m.remainingSec < minRem) minRem = m.remainingSec;
-    if (minRem < seconds) {
+    for (const m of active) if (m.remainingSec < minRem) minRem = m.remainingSec;
+    if (minRem > 0 && minRem < seconds) {
       const firstMs = minRem * 1000;
       return tick(tick(state, firstMs), elapsedMs - firstMs);
     }

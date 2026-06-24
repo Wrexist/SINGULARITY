@@ -169,7 +169,9 @@ export const useGame = create<GameStore>((set, get) => ({
   hardReset: () => {
     localStorage.removeItem(SAVE_KEY);
     localStorage.removeItem(TIME_KEY);
-    set({ game: createInitialState(), offline: null });
+    // Clear transient UI state too, or a stale world-event card / claim burst
+    // could survive into the fresh run.
+    set({ game: createInitialState(), offline: null, event: null, worldEvent: null, claimBurst: 0 });
   },
 }));
 
