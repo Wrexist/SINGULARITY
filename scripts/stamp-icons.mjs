@@ -15,6 +15,16 @@ const SPLASH_SRC = "assets/splash.png"; // 2732×2732, dark #0d1124 bg
 const ICONSET = "ios/App/App/Assets.xcassets/AppIcon.appiconset";
 const SPLASHSET = "ios/App/App/Assets.xcassets/Splash.imageset";
 
+/**
+ * Overwrite every PNG placeholder in a Capacitor asset set with a single
+ * pre-rendered source image.
+ *
+ * @param {string} dir   Path to the .appiconset / .imageset directory (must
+ *                       already exist — i.e. after `cap add ios`).
+ * @param {string} src   Path to the opaque source PNG to copy in.
+ * @param {string} label Human-readable name used in log/error output.
+ * @returns {void} Exits the process with code 1 if a path is missing.
+ */
 function stamp(dir, src, label) {
   if (!existsSync(dir)) {
     console.error(`✗ ${label}: ${dir} not found — run \`npx cap add ios\` first.`);
