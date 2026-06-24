@@ -62,9 +62,10 @@ All "Frequency" answers below; everything not listed = **None**.
 - **Reference Name (internal):** Premium Unlock
 - **Display Name (≤30):** `Premium Unlock`
 - **Description (≤45):** `24h offline cap, Founder status & themes`
-- **Price tier:** ~$6.99 (Tier 7). Cosmetic/QoL only — **must not** confer gameplay power (App Store
-  is fine with this; it's also the GDD promise). Provide a screenshot of the Settings premium card
-  for IAP review.
+- **Price tier:** ~$6.99 (Tier 7). Quality-of-life + cosmetic: a longer offline-earnings cap, Founder
+  status, future hall themes. No consumables and nothing competitive/pay-to-win — the offline cap is a
+  convenience that extends idle accrual, not a way to buy resources or progress directly (App Store is
+  fine with this; it's also the GDD promise). Provide a screenshot of the Settings premium card for IAP review.
 
 ---
 
