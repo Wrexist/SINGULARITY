@@ -201,6 +201,7 @@ try {
     // Tap an open-side expansion marker to bring up the confirm popup.
     const target = await page.evaluate(() => {
       const canvas = document.querySelector("canvas.hall-canvas");
+      if (!canvas) return null; // canvas not mounted yet — skip cleanly
       const r = canvas.getBoundingClientRect();
       const ms = window.__HALL_MARKERS__ || [];
       const m = ms.find((x) => !x.maxed);

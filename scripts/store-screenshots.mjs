@@ -29,6 +29,20 @@ const PORT = 4318;
 const OUT = "appstore/screenshots";
 mkdirSync(OUT, { recursive: true });
 
+// Poll the preview server until it answers, instead of guessing with a fixed
+// sleep (flaky on slow machines: goto() could hit a dead port).
+async function waitForServer(url, timeoutMs = 30000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const r = await fetch(url);
+      if (r.ok) return;
+    } catch { /* not up yet */ }
+    await sleep(200);
+  }
+  throw new Error(`Preview server never became ready at ${url}`);
+}
+
 // ---- Seeds (curated to show an abundant, aspirational, satisfying lab) ----
 const RICH = {
   version: 3,
@@ -102,7 +116,7 @@ async function run() {
   const server = spawn("npx", ["vite", "preview", "--port", String(PORT), "--strictPort"], { stdio: "ignore" });
   let browser;
   try {
-    await sleep(1500);
+    await waitForServer(`http://localhost:${PORT}/`);
     const executablePath = findChrome();
     browser = await chromium.launch({ ...(executablePath ? { executablePath } : {}), args: ["--no-sandbox", "--disable-dev-shm-usage"] });
 
@@ -115,13 +129,18 @@ async function run() {
         localStorage.setItem("singularity.lastSeen.v1", now);
       }, [JSON.stringify(scene.seed), String(Date.now())]);
       await app.goto(`http://localhost:${PORT}/`, { waitUntil: "networkidle" });
-      await sleep(800);
+      // Wait for the hall canvas (and its marker bridge) rather than a blind sleep.
+      await app.waitForSelector("canvas.hall-canvas", { timeout: 10000 }).catch(() => {});
+      await sleep(300);
       const collect = app.getByRole("button", { name: "Collect" });
       if (await collect.isVisible().catch(() => false)) await collect.click().catch(() => {});
 
       if (scene.interact === "expand") {
+        await app.waitForFunction(() => Array.isArray(window.__HALL_MARKERS__) && window.__HALL_MARKERS__.length > 0, { timeout: 5000 }).catch(() => {});
         const t = await app.evaluate(() => {
-          const c = document.querySelector("canvas.hall-canvas"); const r = c.getBoundingClientRect();
+          const c = document.querySelector("canvas.hall-canvas");
+          if (!c) return null;
+          const r = c.getBoundingClientRect();
           const m = (window.__HALL_MARKERS__ || []).find((x) => !x.maxed);
           return m ? { x: r.left + m.centroid.x, y: r.top + m.centroid.y } : null;
         });

@@ -104,9 +104,11 @@ function maybeBuyData(state: GameState): { state: GameState; bought: string[] } 
   const legit = balance.dataMarket.filter((o) => !o.shady).sort((a, b) => a.cost - b.cost);
   let guard = 0;
   while (guard++ < 500 && s.resources.data.lt(blocked.cost.data)) {
-    // Best data-per-$ legit offer we can afford while keeping a money reserve.
+    // Best data-per-$ legit offer we can afford while keeping a money reserve
+    // (spend at most 60% of the bankroll on any single data buy).
+    const spendCap = s.resources.money.mul(0.6);
     const affordable = legit
-      .filter((o) => s.resources.money.gte(o.cost))
+      .filter((o) => spendCap.gte(o.cost))
       .sort((a, b) => b.data / b.cost - a.data / a.cost)[0];
     if (!affordable) break;
     const { state: next } = buyDataOffer(s, affordable.id, 0.99); // clean (legit ignores roll)
