@@ -1,0 +1,7 @@
+# App identity. Must match capacitor.config.ts `appId` and the App Store Connect
+# app record. Team ID comes from the APPLE_TEAM_ID CI secret.
+app_identifier("com.wrexist.singularityinc")
+team_id(ENV["APPLE_TEAM_ID"])
+
+# Authentication is via the App Store Connect API key (see Fastfile), so no
+# Apple ID / 2FA is needed in CI.

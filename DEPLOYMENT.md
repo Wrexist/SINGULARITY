@@ -85,3 +85,49 @@ Run: `bundle exec fastlane beta`
 - **Build never appears** → wait for the processing email; check the Activity tab in App Store Connect for errors.
 - **Third-party SDK breaks on iOS 26 SDK** → update packages (`File > Packages > Update`). A local-only idle game should have minimal deps, which is an advantage — keep it that way.
 - **External testers can't install** → build still in Beta App Review, or export compliance not completed.
+
+---
+
+## 7. Building WITHOUT a Mac — GitHub Actions CI (the path we're using)
+The owner has no Mac, so the whole archive→sign→upload runs on GitHub's **macOS
+runners**. Implemented in `.github/workflows/ios-testflight.yml` + `fastlane/`.
+
+**Flow:** runner checks out → `npm ci` → `npm run build` → `npx cap add ios`
+(the `ios/` project is generated fresh each run; it's gitignored) → `cap sync` →
+`fastlane ios beta` (Match signs, ASC API key uploads to TestFlight).
+
+**Trigger:** Actions tab → "iOS TestFlight" → *Run workflow*, OR push a tag
+`ios-v*` (e.g. `git tag ios-v0.1.0 && git push --tags`).
+
+### Secrets — what's set vs. still needed
+Already added (✓ in the repo Actions secrets):
+| Secret | Used for |
+|---|---|
+| `APPLE_TEAM_ID` | Developer portal team / signing |
+| `ASC_ISSUER_ID`, `ASC_KEY_ID`, `ASC_KEY_P8` | App Store Connect API key (Match auth + TestFlight upload). Store `ASC_KEY_P8` as the **raw `.p8` file contents** (the `-----BEGIN PRIVATE KEY-----` block). |
+| `MATCH_PASSWORD` | Decrypts the Match certificate repo |
+
+**Still needed (2 more):**
+| Secret | Why |
+|---|---|
+| `MATCH_GIT_URL` | The private git repo where Match stores the encrypted cert + profile (the owner's existing Match repo). |
+| `MATCH_GIT_BASIC_AUTHORIZATION` | base64 of `username:personal_access_token` so the runner can clone that private Match repo over HTTPS. (`printf 'user:TOKEN' | base64`) Use a token scoped to just that repo. (SSH deploy key is an alternative — say the word and I'll switch the workflow to it.) |
+
+### One-time prerequisites (Apple side — only you can do these)
+1. **Apple Developer Program** active (paid).
+2. **App record in App Store Connect** with bundle ID **`com.wrexist.singularityinc`** (must match `capacitor.config.ts`). Without it, the upload step fails.
+3. **Match repo seeded for this bundle ID.** The `beta` lane runs Match with `readonly: false`, so the **first** successful run will create + store the appstore cert/profile for this app in your Match repo automatically. (If you prefer, seed it from another machine first, then flip `readonly: true` in `fastlane/Fastfile`.)
+4. **Export compliance / encryption** question — answered in App Store Connect on the first build (HTTPS-only game → usually exempt).
+
+### Honest status
+This pipeline is **scaffolded but unverified** — there's no Mac here to run it, so
+the first CI run will almost certainly need a fix or two (Xcode/SDK version on the
+runner, the Match repo seeding, signing identity names, or the app record). That's
+normal for first-time iOS CI. Push the 2 remaining secrets + create the app record,
+run the workflow, and paste me the log — I'll iterate on the workflow/Fastfile from
+the errors. **TestFlight is not "ready" until that first green run uploads a build.**
+
+### Xcode 26 note
+The workflow selects the newest Xcode on the runner. If GitHub's `macos-14` image
+doesn't yet carry Xcode 26 / iOS 26 SDK (mandatory for uploads), bump `runs-on` to
+the newest macOS image available (e.g. `macos-15`) — one-line change.

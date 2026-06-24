@@ -145,10 +145,16 @@ fun-gate on 2026-06-25 and greenlit Phase 1. (Phase 0 history retained below for
       Deterministic — fire/pick rolls passed in; Math.random lives in the store; not fired offline.
 - [x] WorldEventCard (breaking-news modal) + live ModifierBar chips counting down. 9 event tests.
 
-- [ ] NEXT: data-mote flow on claim, cooling/fan props per era, then premium IAP + Capacitor build.
+### Shipping (Capacitor → TestFlight, Mac-less via CI)
+- [x] Capacitor added (@capacitor/core/cli/ios) + `capacitor.config.ts` (appId com.wrexist.singularityinc).
+- [x] GitHub Actions `ios-testflight.yml` (macOS runner): build web → `cap add/sync ios` →
+      Fastlane Match sign → upload to TestFlight via ASC API key. Fastfile/Appfile/Matchfile/Gemfile.
+- [x] IAP plumbing stub (`src/ui/iap.ts`) behind a stable interface (StoreKit wired later).
+- [~] PENDING (owner): add 2 secrets (MATCH_GIT_URL, MATCH_GIT_BASIC_AUTHORIZATION), create the
+      App Store Connect app record, then run the workflow. First run is UNVERIFIED — will need iteration.
+- [ ] Wire the real StoreKit purchase + a premium-unlock UI once the IAP product exists in ASC.
 
 ## Backlog (later Phase 1 + Phase 2+)
-- Premium unlock IAP; Capacitor iOS build + TestFlight (see `DEPLOYMENT.md`)
 - [Phase 2+] power/heat, staff, factions, eras 4–6, multi-room hall, cosmetic store, Steam port
 
 ---

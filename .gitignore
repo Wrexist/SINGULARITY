@@ -5,3 +5,16 @@ dist-ssr
 .DS_Store
 screenshots/*.png
 .vite
+
+# Capacitor iOS native project — regenerated in CI (`cap add ios`) since there's
+# no Mac locally. Commit it later if/when you add custom native code.
+ios/
+
+# Fastlane / signing secrets and build artifacts (never commit these)
+fastlane/AuthKey*.p8
+fastlane/report.xml
+fastlane/README.md
+fastlane/test_output
+*.ipa
+*.dSYM.zip
+vendor/bundle

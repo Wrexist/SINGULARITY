@@ -1,0 +1,61 @@
+name: iOS TestFlight
+
+# Mac-less iOS release: GitHub's macOS runners build the Capacitor app, sign it
+# with Fastlane Match, and upload to TestFlight via the App Store Connect API.
+# Trigger manually from the Actions tab, or by pushing an `ios-v*` tag.
+on:
+  workflow_dispatch:
+  push:
+    tags: ["ios-v*"]
+
+jobs:
+  testflight:
+    runs-on: macos-14
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      # iOS 26 SDK is required for App Store uploads (DEPLOYMENT.md §0). Pick the
+      # newest Xcode the runner has; bump the runner image if it lacks Xcode 26.
+      - name: Select latest Xcode
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)/Contents/Developer"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+
+      - name: Build web app
+        run: npm run build
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+
+      # Generate the native iOS project fresh (it's gitignored — no Mac locally).
+      - name: Add & sync Capacitor iOS
+        run: |
+          npx cap add ios || npx cap sync ios
+          npx cap sync ios
+
+      - name: Write App Store Connect API key
+        run: |
+          mkdir -p fastlane
+          printf '%s' "${{ secrets.ASC_KEY_P8 }}" > fastlane/AuthKey.p8
+
+      - name: Build & upload to TestFlight
+        run: bundle exec fastlane ios beta
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+          # base64 of "username:personal_access_token" so CI can read the private Match repo
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+          # arbitrary; just unlocks the temporary CI keychain
+          MATCH_KEYCHAIN_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          BUILD_NUMBER: ${{ github.run_number }}
+          FASTLANE_DISABLE_COLORS: "1"

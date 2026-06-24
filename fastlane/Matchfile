@@ -1,0 +1,11 @@
+# Fastlane Match — stores the distribution certificate + App Store provisioning
+# profile in a private git repo, encrypted with MATCH_PASSWORD. Reuse the owner's
+# existing Match repo (see DEPLOYMENT.md §1.3); just add this bundle ID to it.
+#
+# Required CI secrets: MATCH_GIT_URL, MATCH_PASSWORD, and repo access via
+# MATCH_GIT_BASIC_AUTHORIZATION (base64 "user:personal_access_token") — passed in
+# the workflow. Auth to Apple is the ASC API key (set in the Fastfile).
+git_url(ENV["MATCH_GIT_URL"])
+storage_mode("git")
+type("appstore")
+app_identifier(["com.wrexist.singularityinc"])
