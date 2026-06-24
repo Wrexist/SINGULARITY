@@ -86,10 +86,20 @@ App Preview video (optional, big conversion lift): 15–30s screen capture of th
 manifesting → an era transition. Portrait, ≤500MB.
 
 ## 8. App icon (1024×1024, no alpha, square — Apple masks the corners)
-Starter concept in `appstore/icon-concept.svg` (parametric, on-brand): a glowing isometric server
-rack on the dark "hall" gradient with the coral accent spark. Render it to a 1024 PNG (e.g.
-`rsvg-convert`/Figma/any SVG→PNG) and refine. Keep it **simple and legible at 60px** — one bold
-shape, high contrast, no text. (Generate the full icon set with `npx capacitor-assets generate`.)
+**Shipped icon: `appstore/AppIcon-1024.png`, rendered from `appstore/Logo_1.png`** (the glowing
+isometric server rack on the dark hall gradient). Chosen over the other two candidates:
+- **Logo_1 — server rack ✅ (winner):** *is* the GDD's signature object (the rack you manifest in
+  the hall), one bold silhouette that stays legible at 60px, and it differentiates from the sea of
+  chip/brain AI icons. Exactly the `icon-concept.svg` direction, realized.
+- **Logo_2 — neon circuit chip:** generic "AI = chip"; blends into the category and its fine
+  pin/trace detail muddies when masked small.
+- **Logo_3 — glowing atom:** the prettiest, but reads as physics/energy (wrong genre) and the
+  particle haze dissolves at icon sizes.
+
+The 1024 master is opaque (RGB, no alpha) — paste-ready for App Store Connect. The native iOS app
+icon + launch splash are stamped from `assets/icon.png` / `assets/splash.png` into the freshly
+scaffolded `ios/` project at CI time by `scripts/stamp-icons.mjs` (no `capacitor-assets`/`sharp`
+toolchain — see the iOS TestFlight workflow). Web favicons / PWA icons live in `public/`.
 
 ## 9. App Review notes (paste into "Notes for Review")
 > Singularity Inc. is a single-player, offline idle/tycoon game. **No login or account is required**
