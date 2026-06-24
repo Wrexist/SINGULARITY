@@ -551,6 +551,31 @@ body {
   text-transform: uppercase;
 }
 .market-warn { font-size: 11.5px; color: var(--ink-3); margin: -2px 0 4px; line-height: 1.35; }
+
+/* Regulatory Heat meter */
+.heat { margin: 4px 0 10px; }
+.heat-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 700;
+  color: #c9a9ff;
+  margin-bottom: 5px;
+  letter-spacing: 0.02em;
+}
+.heat-label { color: #e7d9ff; }
+.heat-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+.heat-fill {
+  height: 100%;
+  border-radius: 999px;
+  /* color set inline by tier (green → amber → orange → red) */
+  transition: width 0.4s var(--ease-out), background 0.4s linear;
+}
 .risk-line { font-size: 11px; font-weight: 650; color: #b58be0; margin-top: 3px; }
 /* The Bazaar reads "dark" against the airy light theme — a deliberate tonal shift. */
 .market-group.shady {
@@ -611,6 +636,43 @@ body {
 .node-tag { font-size: 11px; font-weight: 600; color: var(--ink-2); white-space: nowrap; }
 .node-desc { font-size: 12px; color: var(--ink-2); line-height: 1.35; }
 .node-cost { font-size: 12px; font-weight: 700; margin-top: 3px; }
+
+/* ---------- The 2.5D Hall (Phase 1) ---------- */
+.hall {
+  position: relative;
+  height: 230px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  animation: rise 0.5s var(--ease-out) both;
+}
+.hall-canvas { display: block; width: 100%; height: 100%; }
+/* Soft vignette so the glowing racks read against the room. */
+.hall::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 28%, transparent 55%, rgba(0, 0, 0, 0.32) 100%);
+}
+.hall-tag {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(10, 14, 28, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  z-index: 2;
+}
+.hall-era { font-size: 12px; font-weight: 750; color: #fff; letter-spacing: -0.01em; }
+.hall-count { font-size: 11px; font-weight: 650; color: rgba(255, 255, 255, 0.65); }
 
 /* ---------- Lab Stats (collapsible) ---------- */
 .stats { padding: 6px 18px; }
@@ -737,6 +799,120 @@ body {
 .onboard-foot { font-size: 12.5px; color: var(--ink-2); line-height: 1.5; margin: 0 0 20px; }
 .onboard-foot b { color: var(--ink); }
 
+/* ---------- Premium card (Settings) ---------- */
+.premium-card {
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  background: linear-gradient(135deg, rgba(255, 56, 92, 0.10), rgba(47, 123, 246, 0.10));
+  border: 1px solid var(--glass-hairline);
+}
+.premium-card.owned { background: linear-gradient(135deg, rgba(22, 179, 100, 0.12), rgba(47, 123, 246, 0.08)); }
+.premium-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.premium-title { font-size: 15px; font-weight: 800; letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px; }
+.premium-badge {
+  font-size: 9.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+  color: #b8860b; background: rgba(255, 196, 0, 0.18); border: 1px solid rgba(255, 196, 0, 0.5);
+  padding: 1px 7px; border-radius: 999px;
+}
+.premium-price { font-size: 14px; font-weight: 750; color: var(--ink); }
+.premium-perks { margin: 0 0 12px; padding-left: 18px; }
+.premium-perks li { font-size: 12.5px; color: var(--ink-2); line-height: 1.5; }
+.premium-actions { display: flex; align-items: center; gap: 12px; }
+.premium-actions .btn { flex: 1; }
+.premium-owned-tag { font-size: 13px; font-weight: 700; color: var(--money); }
+
+/* ---------- Expansion confirm popup ---------- */
+.confirm-modal { max-width: 340px; }
+.confirm-kicker { font-size: 11px; font-weight: 800; letter-spacing: 0.18em; color: var(--compute); margin-bottom: 6px; }
+.confirm-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 11px 14px;
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-hairline);
+  border-radius: 12px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.confirm-row b { color: var(--ink); font-size: 15px; font-weight: 750; }
+.confirm-unaff { color: var(--coral) !important; }
+.confirm-actions { display: flex; gap: 10px; margin-top: 12px; }
+.confirm-actions .btn { flex: 1; }
+
+/* ---------- World events (satire layer) ---------- */
+.world-modal { text-align: left; max-width: 380px; border-top: 4px solid var(--ink-3); }
+.world-modal.world-good { border-top-color: var(--money); }
+.world-modal.world-bad { border-top-color: var(--coral); }
+.world-kicker { font-size: 11px; font-weight: 800; letter-spacing: 0.16em; color: var(--ink-3); margin-bottom: 6px; }
+.world-headline { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 10px; }
+.world-body { font-size: 14px; line-height: 1.5; color: var(--ink-2); margin: 0 0 16px; }
+.world-effect {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 750;
+  padding: 6px 12px;
+  border-radius: 999px;
+  margin-bottom: 20px;
+}
+.world-effect.good { color: #0b7a43; background: rgba(22, 179, 100, 0.14); }
+.world-effect.bad { color: #b3243f; background: rgba(255, 56, 92, 0.12); }
+
+/* Active-modifier chips under the resource bar */
+.modbar { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 18px; margin-top: -4px; margin-bottom: 4px; }
+.modchip {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  animation: rise 0.4s var(--ease-out) both;
+}
+.modchip em { font-style: normal; font-variant-numeric: tabular-nums; opacity: 0.7; }
+.modchip.good { color: #0b7a43; background: rgba(22, 179, 100, 0.12); border-color: rgba(22, 179, 100, 0.3); }
+.modchip.bad { color: #b3243f; background: rgba(255, 56, 92, 0.1); border-color: rgba(255, 56, 92, 0.28); }
+
+/* ---------- Era transition (tentpole moment) ---------- */
+.era-backdrop { z-index: 85; }
+.era-modal { text-align: center; max-width: 380px; }
+.era-kicker {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  color: var(--coral);
+  margin-bottom: 6px;
+}
+.era-title {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 18px;
+  background: linear-gradient(120deg, var(--compute), var(--data) 60%, var(--coral));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.era-press {
+  text-align: left;
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-hairline);
+  border-left: 3px solid var(--coral);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+.era-press-tag {
+  display: inline-block;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--ink-3);
+  margin-bottom: 6px;
+}
+.era-press p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--ink); font-style: italic; }
+
 /* ---------- Ship celebration (tentpole moment) ---------- */
 .celebrate {
   position: fixed;
@@ -858,6 +1034,22 @@ body {
 @keyframes toast-in {
   from { transform: translateY(-14px) scale(0.92); opacity: 0; }
   to { transform: none; opacity: 1; }
+}
+/* Regulatory-event toasts read louder than plain unlocks. */
+.toast-bad, .toast-good {
+  max-width: 300px;
+  text-align: center;
+  line-height: 1.35;
+  padding: 12px 18px;
+  color: #fff;
+}
+.toast-bad {
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.96), rgba(190, 30, 30, 0.96));
+  border-color: rgba(255, 160, 160, 0.5);
+}
+.toast-good {
+  background: linear-gradient(180deg, rgba(34, 197, 94, 0.96), rgba(21, 128, 61, 0.96));
+  border-color: rgba(170, 255, 190, 0.5);
 }
 
 /* ---------- Footer ---------- */

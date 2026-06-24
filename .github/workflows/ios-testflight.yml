@@ -1,0 +1,106 @@
+name: iOS TestFlight
+
+# Mac-less, cheap iOS release — mirrors the Silicon Tech Tycoon pipeline and
+# improves on it. NO Fastlane Match / cert repo: GitHub's macOS runner builds
+# the Capacitor app and signs it with Xcode AUTOMATIC (cloud-managed) signing
+# driven by the App Store Connect API key, then uploads to TestFlight via altool.
+#
+# Secrets needed (only these — no MATCH_* anymore):
+#   APPLE_TEAM_ID, ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 (raw .p8 contents)
+on:
+  workflow_dispatch:
+  push:
+    tags: ["ios-v*"]
+
+concurrency:
+  group: ios-testflight
+  cancel-in-progress: true
+
+# Least privilege: this release job only reads the repo (it uploads to
+# TestFlight via the ASC API key, not the GITHUB_TOKEN).
+permissions:
+  contents: read
+
+jobs:
+  testflight:
+    runs-on: macos-26 # carries Xcode 26 / iOS 26 SDK (mandatory for uploads)
+    timeout-minutes: 45
+    env:
+      BUNDLE_ID: com.wrexist.singularityinc
+      TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+    steps:
+      # Actions pinned to immutable commit SHAs (supply-chain hardening); the
+      # trailing comment tracks the human-readable version.
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+      # Place the ASC API key where both xcodebuild and altool auto-discover it.
+      - name: Install App Store Connect API key
+        run: |
+          mkdir -p ~/private_keys
+          printf '%s' "${{ secrets.ASC_KEY_P8 }}" > "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+
+      # Generate the native iOS project fresh (gitignored — no Mac locally).
+      # The ios/ dir never exists on a clean runner, so add it only when missing
+      # rather than swallowing real failures from `cap add` with `|| true`.
+      - name: Generate & sync Capacitor iOS
+        run: |
+          if [ ! -d ios ]; then npx cap add ios; fi
+          npx cap sync ios
+
+      # Auto-pass export compliance (no custom crypto) + a unique, rising build number.
+      - name: Configure Info.plist
+        run: |
+          PLIST=ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :ITSAppUsesNonExemptEncryption false" "$PLIST" \
+            || /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ github.run_number }}" "$PLIST"
+
+      - name: Archive (automatic signing via ASC API key)
+        run: |
+          xcodebuild -workspace ios/App/App.xcworkspace -scheme App \
+            -configuration Release -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            clean archive
+
+      - name: Export IPA
+        run: |
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>teamID</key><string>${TEAM_ID}</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>destination</key><string>export</string>
+          </dict></plist>
+          EOF
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$RUNNER_TEMP/ipa" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+      - name: Upload to TestFlight
+        run: |
+          xcrun altool --upload-app -t ios \
+            -f "$RUNNER_TEMP"/ipa/*.ipa \
+            --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"

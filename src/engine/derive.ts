@@ -41,6 +41,10 @@ export function derive(state: GameState): Derived {
       case "dataPerSec":
         dataPerSecFlat = dataPerSecFlat.add(def.effect.perLevel * level);
         break;
+      case "floorCols":
+      case "floorRows":
+        // Hall geometry only — affects the rendered floor, not production.
+        break;
       case "autoClaim":
         autoClaim = true;
         break;
@@ -70,6 +74,14 @@ export function derive(state: GameState): Derived {
         passiveMoneyPerSec = passiveMoneyPerSec.add(def.effect.perSec);
         break;
     }
+  }
+
+  // World-event modifiers: time-limited global multipliers (buffs/debuffs).
+  for (const m of state.modifiers) {
+    if (m.remainingSec <= 0) continue;
+    if (m.target === "computeMult") computeMult = computeMult.mul(m.factor);
+    else if (m.target === "dataMult") dataMult = dataMult.mul(m.factor);
+    else if (m.target === "moneyMult") moneyMult = moneyMult.mul(m.factor);
   }
 
   // Prestige: permanent global multiplier from Legacy Weights.

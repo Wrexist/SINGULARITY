@@ -20,14 +20,22 @@ import { StatsPanel } from "./StatsPanel";
 import { Tagline } from "./Tagline";
 import { Onboarding } from "./Onboarding";
 import { DataMarketPanel } from "./DataMarketPanel";
+import { HallCanvas } from "./HallCanvas";
+import { ExpandConfirm } from "./ExpandConfirm";
+import { EraTransition } from "./EraTransition";
+import { WorldEventCard } from "./WorldEventCard";
+import { ModifierBar } from "./ModifierBar";
 import { canPrestige } from "../engine/prestige";
+import { currentEra } from "../engine/eras";
 
 export function App() {
   useGameLoop();
   const game = useGame((s) => s.game);
   const offline = useGame((s) => s.offline);
   const initialized = useGame((s) => s.initialized);
-  const { doStartRun, doClaim, doBuyUpgrade, doResearch, doBuyData, doPrestige, dismissOffline, hardReset } =
+  const event = useGame((s) => s.event);
+  const worldEvent = useGame((s) => s.worldEvent);
+  const { doStartRun, doClaim, doBuyUpgrade, doResearch, doBuyData, doPrestige, dismissOffline, dismissWorldEvent, hardReset } =
     useGame.getState();
 
   const d = derive(game);
@@ -36,6 +44,8 @@ export function App() {
   const prevShips = useRef(game.prestige.ships);
   const prevWeights = useRef<Big>(game.prestige.legacyWeights);
   const [celebration, setCelebration] = useState<{ gained: Big; total: Big } | null>(null);
+  const [eraMoment, setEraMoment] = useState<number | null>(null);
+  const [pendingExpansion, setPendingExpansion] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const reducedMotion = useSettings((s) => s.reducedMotion);
   const onboarded = useSettings((s) => s.onboarded);
@@ -47,14 +57,15 @@ export function App() {
   const showPrestige = game.research.length > 0;
   const showMarket = game.research.length > 0;
   const shipReady = canPrestige(game);
+  const era = currentEra(game);
 
   // Transient unlock toasts.
   const [toasts, setToasts] = useState<ToastData[]>([]);
   const toastId = useRef(0);
-  const pushToast = (text: string) => {
+  const pushToast = (text: string, tone: ToastData["tone"] = "neutral") => {
     toastId.current += 1;
     const id = toastId.current;
-    setToasts((ts) => [...ts, { id, text }]);
+    setToasts((ts) => [...ts, { id, text, tone }]);
   };
   const dropToast = (id: number) => setToasts((ts) => ts.filter((t) => t.id !== id));
   const seenResearch = useRef(showResearch);
@@ -84,7 +95,46 @@ export function App() {
     seenShipReady.current = shipReady;
   }, [initialized, showResearch, showPrestige, showMarket, shipReady]);
 
+  // Era transitions: a full-screen tentpole moment when the lab crosses an era.
+  // Guarded by the same hydration sync so it never fires on a returning load.
+  const seenEra = useRef(era);
+  const syncedEra = useRef(false);
   useEffect(() => {
+    if (!initialized) return;
+    if (!syncedEra.current) { seenEra.current = era; syncedEra.current = true; return; }
+    if (era > seenEra.current) { setEraMoment(era); haptics.celebrate(); sound.ship(); }
+    seenEra.current = era;
+  }, [initialized, era]);
+
+  // Ambient world events: feedback when a new card appears.
+  useEffect(() => {
+    if (!worldEvent) return;
+    if (worldEvent.tone === "good") { haptics.success(); sound.success(); }
+    else { haptics.warn(); sound.alert(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [worldEvent?.key]);
+
+  // Regulatory events (heat-driven) surface as weighty toasts with feedback.
+  useEffect(() => {
+    if (!event) return;
+    pushToast(event.message, event.tone);
+    // A fine/raid must FEEL bad — never the celebratory ship fanfare.
+    if (event.tone === "bad") { haptics.warn(); sound.alert(); }
+    else { haptics.celebrate(); sound.success(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event?.key]);
+
+  const syncedShips = useRef(false);
+  useEffect(() => {
+    // Guard against the empty→loaded hydration: a returning player with ships>0
+    // must NOT see a "Model Shipped" celebration on every launch.
+    if (!initialized) return;
+    if (!syncedShips.current) {
+      prevShips.current = game.prestige.ships;
+      prevWeights.current = game.prestige.legacyWeights;
+      syncedShips.current = true;
+      return;
+    }
     if (game.prestige.ships > prevShips.current) {
       const gained = game.prestige.legacyWeights.sub(prevWeights.current);
       setCelebration({ gained, total: game.prestige.legacyWeights });
@@ -93,7 +143,7 @@ export function App() {
     }
     prevShips.current = game.prestige.ships;
     prevWeights.current = game.prestige.legacyWeights;
-  }, [game.prestige.ships, game.prestige.legacyWeights]);
+  }, [initialized, game.prestige.ships, game.prestige.legacyWeights]);
 
   // Action handlers wrapped with tactile + audio feedback.
   const onStart = () => { haptics.tap(); sound.tap(); doStartRun(); };
@@ -103,10 +153,16 @@ export function App() {
   const onBuyData = (id: string) => {
     const outcome = doBuyData(id);
     if (!outcome) return;
-    pushToast(outcome.message);
     // The reveal IS the dopamine: reward clean hauls, sting the bad rolls.
-    if (outcome.kind === "clean") { haptics.success(); sound.success(); }
-    else { haptics.tap(); sound.tap(); }
+    if (outcome.kind === "clean") {
+      pushToast(outcome.message, "neutral");
+      haptics.success();
+      sound.success();
+    } else {
+      pushToast(outcome.message, "bad");
+      haptics.warn();
+      sound.alert();
+    }
   };
 
   return (
@@ -138,8 +194,10 @@ export function App() {
         dataRate={d.dataPerSec}
         moneyRate={d.passiveMoneyPerSec}
       />
+      <ModifierBar modifiers={game.modifiers} />
 
       <main className="stage">
+        <HallCanvas onExpand={setPendingExpansion} />
         <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} />
         <UpgradePanel game={game} onBuy={onBuy} />
         {showResearch && <ResearchPanel game={game} onResearch={onResearch} />}
@@ -167,6 +225,15 @@ export function App() {
         />
       )}
       {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} />}
+      {pendingExpansion && (
+        <ExpandConfirm
+          id={pendingExpansion}
+          onConfirm={() => { onBuy(pendingExpansion); setPendingExpansion(null); }}
+          onDecline={() => setPendingExpansion(null)}
+        />
+      )}
+      {eraMoment !== null && <EraTransition era={eraMoment} onDone={() => setEraMoment(null)} />}
+      {worldEvent && <WorldEventCard event={worldEvent} onDismiss={dismissWorldEvent} />}
       {!onboarded && !offline && <Onboarding onDone={completeOnboarding} />}
       <ToastStack toasts={toasts} onDone={dropToast} />
     </div>

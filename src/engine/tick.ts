@@ -1,4 +1,5 @@
 import { Big } from "./math/Big";
+import { balance } from "./balance/config";
 import { derive } from "./derive";
 import type { Derived, GameState } from "./types";
 
@@ -12,6 +13,26 @@ import type { Derived, GameState } from "./types";
 export function tick(state: GameState, elapsedMs: number): GameState {
   if (elapsedMs <= 0) return state;
   const seconds = elapsedMs / 1000;
+
+  // Segment the window at the next modifier expiry. Otherwise a large frame
+  // (tab-resume) or an offline catch-up would apply an about-to-expire buff to
+  // the WHOLE window — e.g. a buff with 5s left doubling 8h of offline output.
+  if (state.modifiers.length > 0) {
+    // Drop already-expired (or malformed) modifiers first. Otherwise minRem
+    // could be <= 0, making firstMs <= 0 and the recursive split spin without
+    // ever making progress.
+    const active = state.modifiers.filter((m) => Number.isFinite(m.remainingSec) && m.remainingSec > 0);
+    if (active.length !== state.modifiers.length) {
+      return tick({ ...state, modifiers: active }, elapsedMs);
+    }
+    let minRem = Infinity;
+    for (const m of active) if (m.remainingSec < minRem) minRem = m.remainingSec;
+    if (minRem > 0 && minRem < seconds) {
+      const firstMs = minRem * 1000;
+      return tick(tick(state, firstMs), elapsedMs - firstMs);
+    }
+  }
+
   const d = derive(state);
 
   let compute = state.resources.compute.add(d.computePerSec.mul(seconds));
@@ -61,11 +82,24 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     run = { active: true, progress: 0, readyToClaim: false };
   }
 
+  // Regulatory Heat cools passively when you're not buying shady data.
+  const heat = Math.max(0, state.heat - balance.heat.coolPerSec * seconds);
+
+  // World-event modifiers tick down; expired ones drop off.
+  let modifiers = state.modifiers;
+  if (modifiers.length > 0) {
+    modifiers = modifiers
+      .map((m) => ({ ...m, remainingSec: m.remainingSec - seconds }))
+      .filter((m) => m.remainingSec > 0);
+  }
+
   return {
     ...state,
     resources: { compute, data, money },
     lifetimeMoney,
     run,
+    heat,
+    modifiers,
   };
 }
 

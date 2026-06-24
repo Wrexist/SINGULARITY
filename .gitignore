@@ -4,4 +4,14 @@ dist-ssr
 *.local
 .DS_Store
 screenshots/*.png
+!appstore/screenshots/*.png
 .vite
+
+# Capacitor iOS native project — regenerated in CI (`cap add ios`) since there's
+# no Mac locally. Commit it later if/when you add custom native code.
+ios/
+
+# iOS build artifacts (never commit these)
+*.ipa
+*.xcarchive
+build/

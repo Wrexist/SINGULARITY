@@ -83,24 +83,67 @@ try {
   // By default, seed a representative mid-game save so the UI looks alive.
   // --fresh: empty new lab. --celebrate: ready-to-ship state (then click Ship).
   if (!has("fresh")) {
-    const seed = has("celebrate")
+    const seed = has("celebrate") || has("rich")
       ? {
-          version: 1,
+          version: 2,
           resources: { compute: "120000", data: "8000", money: "5000000" },
-          upgrades: { rack_basic: 12, rack_server: 4, rack_tpu: 1, overclock: 6, data_pipeline: 6, monetize: 6, auto_claim: 1, auto_train: 1 },
+          upgrades: { rack_basic: 50, rack_server: 30, rack_tpu: 16, overclock: 6, data_pipeline: 6, monetize: 6, auto_claim: 1, auto_train: 1, expand_e: 3, expand_s: 3 },
           research: ["backprop", "curated_data", "distributed", "distillation", "inference_api"],
           run: { active: true, progress: 0.4, readyToClaim: false },
           prestige: { legacyWeights: "0", ships: 0 },
           lifetimeMoney: "100000000",
+          heat: 30,
+          modifiers: [
+            { id: "viral_demo", target: "moneyMult", factor: 2, remainingSec: 32, label: "Revenue ×2", tone: "good" },
+            { id: "gpu_shortage", target: "computeMult", factor: 0.6, remainingSec: 18, label: "Compute ×0.6", tone: "bad" },
+          ],
+        }
+      : has("claim")
+      ? {
+          version: 3,
+          resources: { compute: "5000", data: "600", money: "3000" },
+          upgrades: { rack_basic: 8, rack_server: 3, rack_tpu: 1 },
+          research: ["backprop", "curated_data", "distributed"],
+          run: { active: false, progress: 1, readyToClaim: true },
+          prestige: { legacyWeights: "0", ships: 0 },
+          lifetimeMoney: "5000",
+          heat: 0,
+          modifiers: [],
+        }
+      : has("expand")
+      ? {
+          version: 3,
+          resources: { compute: "4000", data: "300", money: "12000" },
+          upgrades: { rack_basic: 7, rack_server: 2 },
+          research: ["backprop", "curated_data"],
+          run: { active: true, progress: 0.5, readyToClaim: false },
+          prestige: { legacyWeights: "0", ships: 0 },
+          lifetimeMoney: "12000",
+          heat: 0,
+          modifiers: [],
+        }
+      : has("era")
+      ? {
+          // One research short of era 1 (needs 2 nodes); clicking the next one
+          // crosses the boundary live and fires the era-transition moment.
+          version: 2,
+          resources: { compute: "3000", data: "400", money: "1500" },
+          upgrades: { rack_basic: 5, rack_server: 2 },
+          research: ["backprop"],
+          run: { active: false, progress: 0, readyToClaim: false },
+          prestige: { legacyWeights: "0", ships: 0 },
+          lifetimeMoney: "1500",
+          heat: 0,
         }
       : {
-          version: 1,
+          version: 2,
           resources: { compute: "850", data: "140", money: "2600" },
-          upgrades: { rack_basic: 6, rack_server: 1, overclock: 1, data_pipeline: 2, monetize: 1 },
+          upgrades: { rack_basic: 6, rack_server: 1, overclock: 1, data_pipeline: 2, monetize: 1, web_scraper: 3 },
           research: ["backprop", "curated_data"],
           run: { active: true, progress: 0.64, readyToClaim: false },
           prestige: { legacyWeights: "0", ships: 0 },
           lifetimeMoney: "4200",
+          heat: 58,
         };
     await page.addInitScript(
       ([save, lastSeen]) => {
@@ -112,6 +155,13 @@ try {
   }
   await page.goto(`http://localhost:${port}/`, { waitUntil: "networkidle" });
   await sleep(900);
+
+  // Page-load latency can trip the "while you were away" modal; dismiss it so it
+  // doesn't cover interactive elements (unless we're capturing it deliberately).
+  if (!has("offline")) {
+    const collect = page.getByRole("button", { name: "Collect" });
+    if (await collect.isVisible().catch(() => false)) await collect.click().catch(() => {});
+  }
 
   if (has("celebrate")) {
     // Drive the prestige flow to trigger the celebration overlay.
@@ -132,6 +182,52 @@ try {
 
   if (has("market")) {
     await page.getByText("The Data Bazaar").scrollIntoViewIfNeeded();
+    await sleep(400);
+  }
+
+  if (has("era")) {
+    // Buy the second research node → cross into era 1 → fire the moment.
+    await page.getByRole("button", { name: /Curated Dataset/ }).click();
+    await sleep(700);
+  }
+
+  if (has("claim")) {
+    // The claim button bobs (infinite animation), so bypass the stability wait.
+    await page.getByRole("button", { name: /Claim payout/ }).click({ force: true });
+    await sleep(230); // catch the burst mid-rise
+  }
+
+  if (has("expand")) {
+    // Tap an open-side expansion marker to bring up the confirm popup.
+    const target = await page.evaluate(() => {
+      const canvas = document.querySelector("canvas.hall-canvas");
+      if (!canvas) return null; // canvas not mounted yet — skip cleanly
+      const r = canvas.getBoundingClientRect();
+      const ms = window.__HALL_MARKERS__ || [];
+      const m = ms.find((x) => !x.maxed);
+      return m ? { x: r.left + m.centroid.x, y: r.top + m.centroid.y } : null;
+    });
+    if (target) {
+      await page.mouse.click(target.x, target.y);
+      await sleep(400);
+    }
+  }
+
+  if (has("worldevent")) {
+    // Inject a representative world event via the debug store handle.
+    await page.evaluate(() => {
+      const store = (window).__SINGULARITY_STORE__;
+      store.setState({
+        worldEvent: {
+          key: 1,
+          id: "viral_demo",
+          headline: "Your Demo Goes Viral",
+          body: "A cherry-picked clip trends. Nobody asks about the failure cases. Revenue ×2 while the hype lasts.",
+          tone: "good",
+          summary: "Revenue ×2 · 45s",
+        },
+      });
+    });
     await sleep(400);
   }
 

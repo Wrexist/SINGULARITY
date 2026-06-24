@@ -10,11 +10,19 @@ interface Props {
 }
 
 export function ResearchPanel({ game, onResearch }: Props) {
+  const isOwned = (id: string) => game.research.includes(id);
+  // Reveal in waves (GDD): show owned/available nodes and the NEXT wave (locked
+  // nodes whose prerequisites are owned or already available) — not the whole tree.
+  const visible = balance.research.filter((def) => {
+    if (isOwned(def.id) || researchAvailable(game, def.id)) return true;
+    return def.requires.every((r) => isOwned(r) || researchAvailable(game, r));
+  });
+
   return (
     <section className="panel">
       <h2 className="panel-title">Research</h2>
       <div className="research-track">
-        {balance.research.map((def) => {
+        {visible.map((def) => {
           const owned = game.research.includes(def.id);
           const available = researchAvailable(game, def.id);
           const affordable = canBuyResearch(game, def.id);

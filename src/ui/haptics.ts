@@ -23,4 +23,6 @@ export const haptics = {
   success: () => vibrate([10, 30, 14]),
   /** Big moment (Ship the Model). */
   celebrate: () => vibrate([16, 40, 24, 40, 40]),
+  /** Something went wrong (a raid, a fine) — a heavier, blunter buzz. */
+  warn: () => vibrate([40, 30, 40]),
 };

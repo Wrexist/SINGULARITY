@@ -1,0 +1,92 @@
+import { describe, it, expect } from "vitest";
+import { buildHallModel, hallDims } from "./hallModel";
+import { createInitialState } from "../engine/state";
+import { balance } from "../engine/balance/config";
+import { Big } from "../engine/math/Big";
+
+describe("hall view-model", () => {
+  it("an empty lab has no racks and reads as era 0", () => {
+    const m = buildHallModel(createInitialState());
+    expect(m.total).toBe(0);
+    expect(m.racks).toHaveLength(0);
+    expect(m.era).toBe(0);
+  });
+
+  it("maps owned hardware to racks of the right tier (manifestation rule)", () => {
+    const s = createInitialState();
+    s.upgrades = { rack_basic: 3, rack_server: 2, rack_tpu: 1 };
+    const m = buildHallModel(s);
+    expect(m.total).toBe(6);
+    expect(m.racks.filter((r) => r.tier === 0)).toHaveLength(3);
+    expect(m.racks.filter((r) => r.tier === 1)).toHaveLength(2);
+    expect(m.racks.filter((r) => r.tier === 2)).toHaveLength(1);
+  });
+
+  it("caps drawn boxes at floor capacity (1000 GPUs ≠ 1000 boxes); a full room reads dense", () => {
+    const s = createInitialState();
+    s.upgrades = { rack_basic: 9999 };
+    const m = buildHallModel(s);
+    const cap = balance.hall.baseCols * balance.hall.baseRows;
+    expect(m.total).toBeLessThanOrEqual(cap);
+    expect(m.racks.every((r) => r.density === 1)).toBe(true); // packed → max density
+  });
+
+  it("open-side expansions grow the room and let more racks fit (walls anchor the back)", () => {
+    const base = createInitialState();
+    const d0 = hallDims(base);
+    expect(d0.cols).toBe(balance.hall.baseCols);
+    expect(d0.rows).toBe(balance.hall.baseRows);
+    expect(d0.gxMin).toBe(0);
+    expect(d0.gyMin).toBe(0);
+
+    const expanded = createInitialState();
+    expanded.upgrades = { expand_e: 2, expand_s: 1 }; // +4 cols, +2 rows
+    const d2 = hallDims(expanded);
+    expect(d2.cols).toBe(balance.hall.baseCols + 4);
+    expect(d2.rows).toBe(balance.hall.baseRows + 2);
+    expect(d2.gxMin).toBe(0); // back stays anchored at the walls
+    expect(d2.gyMin).toBe(0);
+
+    const racks = { rack_basic: 200 };
+    const small = buildHallModel({ ...base, upgrades: racks });
+    const big = buildHallModel({ ...expanded, upgrades: { ...racks, expand_e: 2, expand_s: 1 } });
+    expect(big.total).toBeGreaterThan(small.total);
+  });
+
+  it("exposes a buyable marker for each of the two open sides only", () => {
+    const s = createInitialState();
+    s.resources.money = Big.of(1e9);
+    const m = buildHallModel(s);
+    expect(m.sides.map((x) => x.dir).sort()).toEqual(["e", "s"]);
+    expect(m.sides.every((x) => x.cost > 0)).toBe(true);
+    expect(m.sides.every((x) => x.affordable)).toBe(true); // rich → all affordable
+  });
+
+  it("over capacity, keeps the tier mix visible (proportional, not all-of-one-tier)", () => {
+    const s = createInitialState();
+    s.upgrades = { rack_basic: 300, rack_server: 200, rack_tpu: 100 }; // 600 owned >> capacity
+    const m = buildHallModel(s);
+    expect(m.racks.some((r) => r.tier === 0)).toBe(true);
+    expect(m.racks.some((r) => r.tier === 1)).toBe(true);
+    expect(m.racks.some((r) => r.tier === 2)).toBe(true);
+  });
+
+  it("re-skins the era as the lab progresses", () => {
+    const s = createInitialState();
+    s.research = ["backprop", "curated_data", "mixed_precision"];
+    expect(buildHallModel(s).era).toBe(1);
+    s.research = [...s.research, "inference_api"];
+    expect(buildHallModel(s).era).toBe(2);
+    const shipped = createInitialState();
+    shipped.prestige.ships = 1;
+    expect(buildHallModel(shipped).era).toBe(2);
+  });
+
+  it("passes the run state through for the work pulse", () => {
+    const s = createInitialState();
+    s.run = { active: true, progress: 0.5, readyToClaim: false };
+    const m = buildHallModel(s);
+    expect(m.active).toBe(true);
+    expect(m.progress).toBe(0.5);
+  });
+});

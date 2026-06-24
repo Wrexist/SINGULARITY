@@ -49,6 +49,10 @@ export class Big {
     return new Big(this.d.pow(v));
   }
 
+  floor(): Big {
+    return new Big(this.d.floor());
+  }
+
   abs(): Big {
     return new Big(this.d.abs());
   }

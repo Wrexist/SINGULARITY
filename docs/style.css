@@ -1,0 +1,113 @@
+/* Singularity Inc. — marketing site. Apple "Liquid Glass" aesthetic: frosted
+   translucent panels with a specular edge, over a living aurora gradient. */
+:root {
+  --ink: #0d1124;
+  --glass: rgba(255, 255, 255, 0.10);
+  --glass-strong: rgba(255, 255, 255, 0.16);
+  --edge: rgba(255, 255, 255, 0.45);
+  --hair: rgba(255, 255, 255, 0.14);
+  --coral: #ff5a5f;
+  --radius: 26px;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+* { margin: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Inter, system-ui, sans-serif;
+  color: #fff;
+  background: #0b1030;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+/* Living aurora background */
+.aurora { position: fixed; inset: 0; z-index: -1; overflow: hidden; background: linear-gradient(165deg, #141a4d 0%, #2a1f64 55%, #15265e 100%); }
+.aurora span { position: absolute; width: 60vw; height: 60vw; border-radius: 50%; filter: blur(120px); opacity: 0.55; animation: drift 22s var(--ease) infinite alternate; }
+.aurora .a { background: #3f86f0; left: -10vw; top: -8vw; }
+.aurora .b { background: #9b51e0; right: -12vw; top: 18vh; animation-delay: -7s; }
+.aurora .c { background: #16b364; left: 18vw; bottom: -20vw; animation-delay: -13s; }
+.aurora .d { background: #ff5a5f; right: 6vw; bottom: -16vw; animation-delay: -4s; opacity: 0.4; }
+@keyframes drift { to { transform: translate3d(6vw, 4vh, 0) scale(1.15); } }
+
+a { color: inherit; text-decoration: none; }
+.wrap { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+/* Glass material */
+.glass {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  backdrop-filter: blur(22px) saturate(180%);
+  border: 1px solid var(--hair);
+  box-shadow: 0 18px 50px -20px rgba(0, 0, 0, 0.5), inset 0 1px 0 var(--edge);
+  border-radius: var(--radius);
+}
+
+/* Nav */
+nav { position: sticky; top: 0; z-index: 50; padding: 12px 0; }
+nav .bar { display: flex; align-items: center; gap: 14px; padding: 10px 16px; border-radius: 999px; }
+nav img { width: 34px; height: 34px; border-radius: 9px; }
+nav .name { font-weight: 800; letter-spacing: -0.02em; font-size: 17px; }
+nav .spacer { flex: 1; }
+.btn { display: inline-block; font-weight: 700; font-size: 15px; padding: 11px 20px; border-radius: 999px; border: 1px solid var(--edge); background: var(--glass-strong); transition: transform 0.3s var(--spring), background 0.3s; }
+.btn:hover { transform: translateY(-2px); background: rgba(255, 255, 255, 0.26); }
+.btn.cta { background: linear-gradient(120deg, var(--coral), #ff8a5c); border: none; box-shadow: 0 12px 30px -10px rgba(255, 90, 95, 0.7); }
+
+/* Hero */
+header.hero { text-align: center; padding: 80px 0 40px; }
+.hero .badge { display: inline-block; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; color: rgba(255,255,255,0.8); padding: 7px 14px; border-radius: 999px; margin-bottom: 26px; }
+.hero h1 { font-size: clamp(44px, 8vw, 86px); line-height: 0.98; font-weight: 800; letter-spacing: -0.04em; }
+.hero .grad { background: linear-gradient(110deg, #8fd0ff, #c9a9ff 55%, #ffb1b4); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.hero p.sub { font-size: clamp(17px, 2.6vw, 22px); color: rgba(255, 255, 255, 0.82); max-width: 620px; margin: 24px auto 0; line-height: 1.5; }
+.hero .actions { margin-top: 34px; display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+.hero .note { margin-top: 16px; font-size: 13px; color: rgba(255,255,255,0.6); }
+.hero-shot { margin: 56px auto 0; max-width: 320px; }
+.hero-shot img { width: 100%; display: block; border-radius: 38px; box-shadow: 0 50px 90px -28px rgba(0, 0, 0, 0.65); border: 1px solid var(--hair); }
+
+/* Sections */
+section { padding: 60px 0; }
+h2.title { font-size: clamp(30px, 5vw, 46px); font-weight: 800; letter-spacing: -0.03em; text-align: center; }
+.lead { text-align: center; color: rgba(255,255,255,0.75); max-width: 600px; margin: 14px auto 0; font-size: 17px; line-height: 1.5; }
+
+.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; margin-top: 44px; }
+.feature { padding: 26px; }
+.feature .ic { font-size: 30px; }
+.feature h3 { margin-top: 14px; font-size: 19px; font-weight: 750; letter-spacing: -0.01em; }
+.feature p { margin-top: 8px; color: rgba(255, 255, 255, 0.72); font-size: 14.5px; line-height: 1.55; }
+
+/* Screenshot gallery */
+.shots { display: flex; gap: 18px; overflow-x: auto; padding: 44px 24px 10px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+.shots::-webkit-scrollbar { height: 8px; }
+.shots::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 99px; }
+.shots img { height: 560px; border-radius: 30px; scroll-snap-align: center; border: 1px solid var(--hair); box-shadow: 0 30px 60px -24px rgba(0,0,0,0.6); flex: 0 0 auto; }
+
+/* Honest band */
+.honest { text-align: center; padding: 46px 30px; margin: 20px 0; }
+.honest .row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 26px; }
+.honest .chip { padding: 12px 20px; border-radius: 999px; font-weight: 700; font-size: 15px; }
+
+/* Content pages (privacy/support) */
+.page { padding: 40px 0 80px; }
+.doc { padding: 40px 38px; }
+.doc h1 { font-size: 38px; font-weight: 800; letter-spacing: -0.03em; }
+.doc h2 { font-size: 20px; margin-top: 28px; font-weight: 750; }
+.doc p, .doc li { color: rgba(255, 255, 255, 0.82); line-height: 1.65; margin-top: 12px; font-size: 16px; }
+.doc ul { padding-left: 20px; }
+.doc .meta { color: rgba(255,255,255,0.55); font-size: 14px; margin-top: 6px; }
+.doc a { color: #9fd0ff; text-decoration: underline; }
+
+footer { text-align: center; padding: 50px 0 60px; color: rgba(255,255,255,0.6); font-size: 14px; }
+footer .links { display: flex; gap: 22px; justify-content: center; margin-bottom: 16px; }
+footer .links a { font-weight: 600; color: rgba(255,255,255,0.85); }
+footer .tag { font-size: 12.5px; opacity: 0.6; margin-top: 8px; }
+
+/* Reveal on scroll — only hide when JS is present (progressive enhancement, so
+   content is never permanently invisible if the observer doesn't fire). */
+.js .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.7s var(--ease), transform 0.7s var(--ease); }
+.js .reveal.in { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora span { animation: none; }
+  .reveal { opacity: 1; transform: none; transition: none; }
+  html { scroll-behavior: auto; }
+}

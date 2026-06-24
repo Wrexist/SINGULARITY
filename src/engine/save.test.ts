@@ -25,7 +25,7 @@ describe("save/load", () => {
     expect(restored.version).toBe(SAVE_VERSION);
   });
 
-  it("migrates a pre-versioning (v0) save", () => {
+  it("migrates a pre-versioning (v0) save up to the current version", () => {
     const v0 = {
       resources: { compute: "100", data: "5", money: "50" },
       upgrades: { rack_basic: 1 },
@@ -34,7 +34,76 @@ describe("save/load", () => {
       prestige: { legacyWeights: "0", ships: 0 },
     };
     const migrated = migrate(v0);
-    expect(migrated.version).toBe(1);
-    expect(migrated.lifetimeMoney).toBe("50"); // backfilled from money
+    expect(migrated.version).toBe(SAVE_VERSION);
+    expect(migrated.lifetimeMoney).toBe("50"); // backfilled from money (v0→v1)
+    expect(migrated.heat).toBe(0); // backfilled (v1→v2)
+  });
+
+  it("migrates a v1 save by adding cold Heat", () => {
+    const v1 = {
+      version: 1,
+      resources: { compute: "100", data: "5", money: "50" },
+      upgrades: {},
+      research: [],
+      run: { active: false, progress: 0, readyToClaim: false },
+      prestige: { legacyWeights: "0", ships: 0 },
+      lifetimeMoney: "50",
+    };
+    const migrated = migrate(v1);
+    expect(migrated.version).toBe(SAVE_VERSION);
+    expect(migrated.heat).toBe(0);
+    expect(migrated.modifiers).toEqual([]); // v2→v3 backfill
+  });
+
+  it("preserves Heat through a round-trip", () => {
+    const s = createInitialState();
+    s.heat = 42;
+    expect(deserialize(serialize(s)).heat).toBe(42);
+  });
+
+  it("round-trips active modifiers", () => {
+    const s = createInitialState();
+    s.modifiers = [
+      { id: "viral_demo", target: "moneyMult", factor: 2, remainingSec: 30, label: "Viral Demo", tone: "good" },
+    ];
+    expect(deserialize(serialize(s)).modifiers).toEqual(s.modifiers);
+  });
+
+  it("drops malformed modifiers and clamps out-of-range Heat on load", () => {
+    const raw = JSON.stringify({
+      version: SAVE_VERSION,
+      resources: { compute: "0", data: "0", money: "0" },
+      upgrades: {},
+      research: [],
+      run: { active: false, progress: 0, readyToClaim: false },
+      prestige: { legacyWeights: "0", ships: 0 },
+      lifetimeMoney: "0",
+      heat: 999, // out of range → clamped to 100
+      modifiers: [
+        { id: "ok", target: "dataMult", factor: 1.5, remainingSec: 10, label: "Good", tone: "good" },
+        { id: "bad", target: "notATarget", factor: 1, remainingSec: 10, label: "X", tone: "good" }, // dropped
+        { id: "expired", target: "dataMult", factor: 1.5, remainingSec: 0, label: "X", tone: "good" }, // dropped
+      ],
+    });
+    const state = deserialize(raw);
+    expect(state.heat).toBe(100);
+    expect(state.modifiers).toHaveLength(1);
+    expect(state.modifiers[0]!.id).toBe("ok");
+  });
+
+  it("loads a partial/legacy save without throwing (missing prestige/heat/run)", () => {
+    // A genuine pre-versioning save that predates several fields.
+    const partial = JSON.stringify({
+      resources: { compute: "100", data: "5", money: "50" },
+      upgrades: { rack_basic: 2 },
+    });
+    const state = deserialize(partial); // must not throw
+    expect(state.resources.compute.eq(100)).toBe(true);
+    expect(state.prestige.legacyWeights.eq(0)).toBe(true); // defaulted
+    expect(state.prestige.ships).toBe(0);
+    expect(state.heat).toBe(0);
+    expect(state.modifiers).toEqual([]); // defaulted when missing
+    expect(state.lifetimeMoney.eq(50)).toBe(true); // backfilled from money
+    expect(state.run.active).toBe(false);
   });
 });

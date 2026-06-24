@@ -1,7 +1,7 @@
 import { Big } from "./math/Big";
 import type { GameState } from "./types";
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 3;
 
 /** A fresh lab: empty closet, a trickle of free Compute, nothing owned. */
 export function createInitialState(): GameState {
@@ -17,5 +17,7 @@ export function createInitialState(): GameState {
     run: { active: false, progress: 0, readyToClaim: false },
     prestige: { legacyWeights: Big.ZERO, ships: 0 },
     lifetimeMoney: Big.ZERO,
+    heat: 0,
+    modifiers: [],
   };
 }

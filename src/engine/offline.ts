@@ -22,11 +22,15 @@ export interface OfflineSummary {
  * (LEARNINGS) — clamp the window so returning is a reward, not an exploit, and
  * return a summary the "while you were away" screen renders as a designed beat.
  */
-export function applyOffline(state: GameState, elapsedMs: number): {
+export function applyOffline(
+  state: GameState,
+  elapsedMs: number,
+  capHours: number = balance.offline.maxHours,
+): {
   state: GameState;
   summary: OfflineSummary;
 } {
-  const capMs = balance.offline.maxHours * 3600 * 1000;
+  const capMs = capHours * 3600 * 1000;
   const appliedMs = Math.max(0, Math.min(elapsedMs, capMs));
   const before = state.resources;
   const next = tick(state, appliedMs);

@@ -15,11 +15,16 @@ export function canPrestige(state: GameState): boolean {
   return state.research.includes(balance.prestige.capabilityResearch);
 }
 
-/** Legacy Weights shipping now would grant: max(1, floor((money/scale)^exp)). */
+/**
+ * Legacy Weights shipping now would grant: max(1, floor((money/scale)^exp)).
+ * Computed Big-native (no .toNumber() round-trip) so it never overflows to
+ * Infinity past ~1e308 and poisons the permanent multiplier — the entire reason
+ * the Big abstraction exists (LEARNINGS: idle curves hit 1e308 within hours).
+ */
 export function legacyWeightsGain(state: GameState): Big {
   if (!canPrestige(state)) return Big.ZERO;
-  const ratio = state.lifetimeMoney.div(balance.prestige.scale).toNumber();
-  return Big.of(Math.max(1, Math.floor(Math.pow(ratio, balance.prestige.exponent))));
+  const ratio = state.lifetimeMoney.div(balance.prestige.scale);
+  return ratio.pow(balance.prestige.exponent).floor().max(1);
 }
 
 /**

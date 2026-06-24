@@ -1,8 +1,32 @@
 import { balance } from "../engine/balance/config";
-import { canBuyDataOffer, canBuyUpgrade, upgradeCost } from "../engine/actions";
+import { canBuyDataOffer, canBuyUpgrade, upgradeCost, effectiveRaidChance } from "../engine/actions";
 import { Big } from "../engine/math/Big";
 import type { GameState } from "../engine/types";
-import { fmt } from "./format";
+import { fmt, fmtMoney } from "./format";
+
+function HeatMeter({ heat }: { heat: number }) {
+  const pct = Math.min(100, (heat / balance.heat.max) * 100);
+  const { label, color } = balance.heat.tiers.find((t) => heat < t.upTo) ?? balance.heat.tiers[balance.heat.tiers.length - 1]!;
+  return (
+    <div className="heat">
+      <div className="heat-head">
+        <span>Regulatory Heat</span>
+        <span className="heat-label" style={{ color }}>{label} · {Math.round(pct)}%</span>
+      </div>
+      <div
+        className="heat-bar"
+        role="progressbar"
+        aria-label="Regulatory heat"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(pct)}
+        aria-valuetext={`${label}, ${Math.round(pct)} percent`}
+      >
+        <div className="heat-fill" style={{ width: `${pct}%`, background: color }} />
+      </div>
+    </div>
+  );
+}
 
 interface Props {
   game: GameState;
@@ -40,7 +64,7 @@ export function DataMarketPanel({ game, onBuyData, onBuyTool }: Props) {
               </div>
               <div className="card-cost">
                 <span style={{ color: "var(--data)" }}>+{fmt(Big.of(o.data))} data</span>
-                <span className="cost-sub">${fmt(Big.of(o.cost))}</span>
+                <span className="cost-sub">{fmtMoney(Big.of(o.cost))}</span>
               </div>
             </button>
           );
@@ -52,9 +76,11 @@ export function DataMarketPanel({ game, onBuyData, onBuyTool }: Props) {
           The Data Bazaar <span className="shady-badge">dark web</span>
         </h3>
         <p className="market-warn">Cheaper data. Caveat emptor — batches can be poisoned, or raided.</p>
+        <HeatMeter heat={game.heat} />
         {shady.map((o) => {
           const affordable = canBuyDataOffer(game, o.id);
           const risk = o.risk!;
+          const raidPct = Math.round(effectiveRaidChance(game, o.id) * 100);
           return (
             <button
               key={o.id}
@@ -69,12 +95,12 @@ export function DataMarketPanel({ game, onBuyData, onBuyTool }: Props) {
                 </span>
                 <span className="card-desc">{o.desc}</span>
                 <span className="risk-line">
-                  ☠️ {Math.round(risk.poisonChance * 100)}% poison · 🚨 {Math.round(risk.raidChance * 100)}% raid
+                  ☠️ {Math.round(risk.poisonChance * 100)}% poison · 🚨 {raidPct}% raid · +{o.heat} heat
                 </span>
               </div>
               <div className="card-cost">
                 <span style={{ color: "var(--data)" }}>~+{fmt(Big.of(o.data))} data</span>
-                <span className="cost-sub">${fmt(Big.of(o.cost))}</span>
+                <span className="cost-sub">{fmtMoney(Big.of(o.cost))}</span>
               </div>
             </button>
           );
@@ -100,7 +126,7 @@ export function DataMarketPanel({ game, onBuyData, onBuyTool }: Props) {
                 <span className="card-desc">{def.desc}</span>
               </div>
               <div className="card-cost">
-                <span style={{ color: "var(--money)" }}>${fmt(cost)}</span>
+                <span style={{ color: "var(--money)" }}>{fmtMoney(cost)}</span>
               </div>
             </button>
           );

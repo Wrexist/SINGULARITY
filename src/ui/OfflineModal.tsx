@@ -45,7 +45,7 @@ export function OfflineModal({ summary, onClose }: Props) {
         </div>
         <p className="wiwa-tip">
           {summary.capped
-            ? "Offline earnings cap at 8h — even robots need a weekend."
+            ? "Offline earnings are capped — even robots need a weekend."
             : "The lab keeps running while you're gone. No standups required."}
         </p>
         <button className="btn btn-primary" onClick={onClose}>
