@@ -76,6 +76,7 @@ export function drawHall(ctx: CanvasRenderingContext2D, model: HallModel, o: Dra
     y: originY + (gx + gy) * (tileH / 2),
   });
 
+  drawRoom(ctx, iso, model.era, H);
   drawFloor(ctx, iso, model.era);
 
   // Atmosphere behind the racks (subtle), then racks, then foreground motes.
@@ -112,6 +113,34 @@ export function drawHall(ctx: CanvasRenderingContext2D, model: HallModel, o: Dra
     ctx.textAlign = "center";
     ctx.fillText("Your empty server closet. Buy a rack to fill it.", W / 2, H - 16);
   }
+}
+
+/** Two back walls + a ceiling light strip — turns the floor into a lit room. */
+function drawRoom(ctx: CanvasRenderingContext2D, iso: (gx: number, gy: number) => Pt, era: number, H: number): void {
+  const a = iso(0, 0), b = iso(COLS, 0), d = iso(0, ROWS);
+  const base = eraFloor(era);
+  const wallH = H * 0.24;
+  const up = (p: Pt): Pt => ({ x: p.x, y: p.y - wallH });
+
+  // Right-back wall (a→b) and left-back wall (a→d), subtle dark gradients.
+  for (const [p0, p1, lit] of [[a, b, 1.05] as const, [a, d, 0.78] as const]) {
+    const g = ctx.createLinearGradient(0, up(a).y, 0, a.y);
+    g.addColorStop(0, rgb(shade(base, 0.62 * lit)));
+    g.addColorStop(1, rgb(shade(base, 0.32 * lit)));
+    poly(ctx, [p0, p1, up(p1), up(p0)], g);
+  }
+
+  // Ceiling light strip along the top ridge — the room's apparent light source.
+  const ceil = shade(base, 2.4);
+  const ga = up(a), gb = up(b), gd = up(d);
+  stroke(ctx, ga, gb, rgba(ceil, 0.55), 2);
+  stroke(ctx, ga, gd, rgba(ceil, 0.4), 2);
+  // Soft bloom hanging below the ceiling line.
+  const bloom = ctx.createLinearGradient(0, ga.y, 0, ga.y + wallH * 0.5);
+  bloom.addColorStop(0, rgba(ceil, 0.22));
+  bloom.addColorStop(1, rgba(base, 0));
+  poly(ctx, [ga, gb, { x: gb.x, y: gb.y + wallH * 0.5 }, { x: ga.x, y: ga.y + wallH * 0.5 }], bloom);
+  poly(ctx, [ga, gd, { x: gd.x, y: gd.y + wallH * 0.5 }, { x: ga.x, y: ga.y + wallH * 0.5 }], bloom);
 }
 
 function drawFloor(ctx: CanvasRenderingContext2D, iso: (gx: number, gy: number) => Pt, era: number): void {
