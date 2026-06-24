@@ -1,5 +1,6 @@
 import { Big } from "./math/Big";
 import { balance } from "./balance/config";
+import { powerStats } from "./power";
 import type { Derived, GameState } from "./types";
 
 /**
@@ -96,7 +97,12 @@ export function derive(state: GameState): Derived {
   // per-run dataMult lane so the two data sources stay legible).
   const dataPerSec = dataPerSecFlat.mul(legacyMult);
 
-  const computePerSec = computeFlat.mul(computeMult);
+  let computePerSec = computeFlat.mul(computeMult);
+  // PHASE 2 (flagged off): power/heat soft-cap throttles Compute when the racks
+  // draw more than your capacity. Dormant until balance.power.enabled is true.
+  if (balance.power.enabled) {
+    computePerSec = computePerSec.mul(powerStats(state).thermalFactor);
+  }
   // Run cost scales with compute production (floored early game) so payouts
   // scale with the operation. Yields are proportional to compute invested.
   const runComputeCost = computePerSec

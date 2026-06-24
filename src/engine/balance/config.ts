@@ -327,6 +327,23 @@ export const balance = {
     expansionRevealRacks: 5,
   },
 
+  /**
+   * PHASE 2 — Power & Heat (GAMEPLAN §5, PHASE2_PLAN §P2-A). A soft cap: racks
+   * draw power; over-subscribe your capacity and Compute throttles (never a hard
+   * wall — floored at `throttleFloor`). Disabled by default so it's dark-launched
+   * with zero effect on the shippable Phase 1 game until balanced + UI'd. Power
+   * is a DERIVED constraint shown as a meter, NOT a 4th resource (legibility).
+   */
+  power: {
+    enabled: false,
+    /** Free power budget before any capacity upgrades (kW). */
+    baseCapacityKw: 50,
+    /** Draw per rack by tier [consumer, server, TPU] (kW). */
+    drawPerRackKw: [0.5, 2, 8],
+    /** Compute never throttles below this fraction, however over-subscribed. */
+    throttleFloor: 0.25,
+  },
+
   prestige: {
     /**
      * You can Ship once you've built a deployable model — i.e. researched this
