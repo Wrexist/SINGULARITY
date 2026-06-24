@@ -98,6 +98,18 @@ try {
             { id: "gpu_shortage", target: "computeMult", factor: 0.6, remainingSec: 18, label: "Compute ×0.6", tone: "bad" },
           ],
         }
+      : has("claim")
+      ? {
+          version: 3,
+          resources: { compute: "5000", data: "600", money: "3000" },
+          upgrades: { rack_basic: 8, rack_server: 3, rack_tpu: 1 },
+          research: ["backprop", "curated_data", "distributed"],
+          run: { active: false, progress: 1, readyToClaim: true },
+          prestige: { legacyWeights: "0", ships: 0 },
+          lifetimeMoney: "5000",
+          heat: 0,
+          modifiers: [],
+        }
       : has("era")
       ? {
           // One research short of era 1 (needs 2 nodes); clicking the next one
@@ -132,6 +144,13 @@ try {
   await page.goto(`http://localhost:${port}/`, { waitUntil: "networkidle" });
   await sleep(900);
 
+  // Page-load latency can trip the "while you were away" modal; dismiss it so it
+  // doesn't cover interactive elements (unless we're capturing it deliberately).
+  if (!has("offline")) {
+    const collect = page.getByRole("button", { name: "Collect" });
+    if (await collect.isVisible().catch(() => false)) await collect.click().catch(() => {});
+  }
+
   if (has("celebrate")) {
     // Drive the prestige flow to trigger the celebration overlay.
     await page.getByRole("button", { name: /^Ship —/ }).click();
@@ -158,6 +177,12 @@ try {
     // Buy the second research node → cross into era 1 → fire the moment.
     await page.getByRole("button", { name: /Curated Dataset/ }).click();
     await sleep(700);
+  }
+
+  if (has("claim")) {
+    // The claim button bobs (infinite animation), so bypass the stability wait.
+    await page.getByRole("button", { name: /Claim payout/ }).click({ force: true });
+    await sleep(230); // catch the burst mid-rise
   }
 
   if (has("worldevent")) {

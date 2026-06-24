@@ -16,6 +16,8 @@ export interface DrawOpts {
   /** Racks at index >= spawnFrom animate in (scale up) over spawnT. */
   spawnFrom: number;
   spawnT: number; // 0..1
+  /** 1 just after a payout is claimed → 0; drives the celebratory mote burst. */
+  burst: number;
   dpr: number;
 }
 
@@ -105,6 +107,11 @@ export function drawHall(ctx: CanvasRenderingContext2D, model: HallModel, o: Dra
 
   if (model.active || o.reducedMotion === false) {
     drawMotes(ctx, W, H, originY, o.timeMs, model.active, model.total, o.reducedMotion, 1);
+  }
+
+  // Celebratory burst of Data (purple) + Money (green) motes on a claim.
+  if (o.burst > 0 && !o.reducedMotion) {
+    drawClaimBurst(ctx, W, H, originY, o.burst);
   }
 
   if (model.total === 0) {
@@ -283,6 +290,28 @@ function drawRack(
     ctx.fill();
     ctx.restore();
   }
+}
+
+/** A quick upward shower of green ($) + violet (data) motes when a payout lands. */
+function drawClaimBurst(ctx: CanvasRenderingContext2D, W: number, H: number, originY: number, burst: number): void {
+  const n = 30;
+  const progress = 1 - burst; // 0 at the moment of claim → 1 as it fades
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (let i = 0; i < n; i++) {
+    const seed = ((i * 2654435761) % 1000) / 1000;
+    const seed2 = ((i * 40503) % 997) / 997;
+    const x = W * 0.5 + (seed - 0.5) * W * 0.6;
+    const y = originY + H * 0.22 - progress * H * 0.55 * (0.6 + seed2 * 0.8);
+    const a = burst * 0.95 * (1 - seed2 * 0.25);
+    const col: RGB = i % 2 === 0 ? [50, 230, 145] : [185, 135, 255]; // money / data
+    const sz = 1.6 + seed * 2.2;
+    ctx.fillStyle = rgba(col, a);
+    ctx.beginPath();
+    ctx.arc(x, y, sz, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 /** Draw a vertical extruded face (base edge BL→BR, raised by ph) with a gradient. */

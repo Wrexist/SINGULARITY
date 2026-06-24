@@ -43,6 +43,8 @@ interface GameStore {
   event: FiredEvent | null;
   /** Pending ambient world event (shown as a card), or null. */
   worldEvent: FiredWorldEvent | null;
+  /** Bumps each time a payout is claimed (drives the hall's mote burst). */
+  claimBurst: number;
   // lifecycle
   init: () => void;
   dismissWorldEvent: () => void;
@@ -65,6 +67,7 @@ function now(): number {
 
 let eventKey = 0;
 let worldKey = 0;
+let claimKey = 0;
 
 export const useGame = create<GameStore>((set, get) => ({
   game: createInitialState(),
@@ -72,6 +75,7 @@ export const useGame = create<GameStore>((set, get) => ({
   initialized: false,
   event: null,
   worldEvent: null,
+  claimBurst: 0,
   dismissWorldEvent: () => set({ worldEvent: null }),
 
   init: () => {
@@ -141,7 +145,12 @@ export const useGame = create<GameStore>((set, get) => ({
   dismissOffline: () => set({ offline: null }),
 
   doStartRun: () => set((s) => ({ game: startRun(s.game) })),
-  doClaim: () => set((s) => ({ game: claimRun(s.game) })),
+  doClaim: () =>
+    set((s) => {
+      if (!s.game.run.readyToClaim) return {};
+      claimKey += 1;
+      return { game: claimRun(s.game), claimBurst: claimKey };
+    }),
   doBuyUpgrade: (id) => set((s) => ({ game: buyUpgrade(s.game, id) })),
   doResearch: (id) => set((s) => ({ game: buyResearch(s.game, id) })),
   // The wall clock isn't the only nondeterminism we keep out of the engine —

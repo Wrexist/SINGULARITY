@@ -37,6 +37,9 @@ export function HallCanvas() {
     let spawnFrom = 0;
     let spawnStart = -1e9;
     const SPAWN_MS = 440;
+    let prevClaim = useGame.getState().claimBurst;
+    let burstStart = -1e9;
+    const BURST_MS = 950;
 
     // The model only changes when rack counts / run-active / era change — cache
     // it so we don't rebuild ~46 objects every animation frame (mobile GC).
@@ -59,7 +62,10 @@ export function HallCanvas() {
 
     const frame = (timeMs: number) => {
       if (!running) return; // a stray queued callback after stop() is a no-op
-      const game = useGame.getState().game;
+      const st = useGame.getState();
+      const game = st.game;
+      if (st.claimBurst !== prevClaim) { prevClaim = st.claimBurst; burstStart = timeMs; }
+      const burst = timeMs - burstStart < BURST_MS ? 1 - (timeMs - burstStart) / BURST_MS : 0;
       // Cheap signature of render-affecting fields (run.progress is excluded —
       // the renderer animates from the clock, not from progress).
       const u = game.upgrades;
@@ -80,7 +86,7 @@ export function HallCanvas() {
       drawHall(ctx, model, {
         width: cssW, height: cssH, timeMs,
         reducedMotion: useSettings.getState().reducedMotion,
-        spawnFrom, spawnT, dpr,
+        spawnFrom, spawnT, burst, dpr,
       });
       raf = requestAnimationFrame(frame);
     };
