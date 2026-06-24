@@ -31,11 +31,17 @@ export function HallCanvas() {
     if (!ctx) return;
 
     let raf = 0;
+    let running = false;
     let cssW = 1, cssH = 1, dpr = 1;
     let prevTotal = 0;
     let spawnFrom = 0;
     let spawnStart = -1e9;
     const SPAWN_MS = 440;
+
+    // The model only changes when rack counts / run-active / era change — cache
+    // it so we don't rebuild ~46 objects every animation frame (mobile GC).
+    let modelSig = "";
+    let model = buildHallModel(useGame.getState().game);
 
     const resize = () => {
       const rect = wrap.getBoundingClientRect();
@@ -52,8 +58,16 @@ export function HallCanvas() {
     ro.observe(wrap);
 
     const frame = (timeMs: number) => {
-      const model = buildHallModel(useGame.getState().game);
-      const reducedMotion = useSettings.getState().reducedMotion;
+      if (!running) return; // a stray queued callback after stop() is a no-op
+      const game = useGame.getState().game;
+      // Cheap signature of render-affecting fields (run.progress is excluded —
+      // the renderer animates from the clock, not from progress).
+      const u = game.upgrades;
+      const sig = `${u.rack_basic ?? 0}|${u.rack_server ?? 0}|${u.rack_tpu ?? 0}|${game.run.active ? 1 : 0}|${currentEra(game)}`;
+      if (sig !== modelSig) {
+        modelSig = sig;
+        model = buildHallModel(game);
+      }
 
       if (model.total > prevTotal) {
         spawnFrom = prevTotal;
@@ -63,23 +77,32 @@ export function HallCanvas() {
       const spawnT = Math.min(1, (timeMs - spawnStart) / SPAWN_MS);
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      drawHall(ctx, model, { width: cssW, height: cssH, timeMs, reducedMotion, spawnFrom, spawnT, dpr });
+      drawHall(ctx, model, {
+        width: cssW, height: cssH, timeMs,
+        reducedMotion: useSettings.getState().reducedMotion,
+        spawnFrom, spawnT, dpr,
+      });
       raf = requestAnimationFrame(frame);
     };
-    raf = requestAnimationFrame(frame);
+
+    const start = () => {
+      if (running) return; // idempotent — never spawn a second loop
+      running = true;
+      raf = requestAnimationFrame(frame);
+    };
+    const stop = () => {
+      running = false;
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+    };
+    start();
 
     // Pause the loop when the tab is hidden (battery on mobile).
-    const onVis = () => {
-      if (document.visibilityState === "hidden") {
-        if (raf) { cancelAnimationFrame(raf); raf = 0; }
-      } else if (!raf) {
-        raf = requestAnimationFrame(frame);
-      }
-    };
+    const onVis = () => (document.visibilityState === "hidden" ? stop() : start());
     document.addEventListener("visibilitychange", onVis);
 
     return () => {
-      if (raf) cancelAnimationFrame(raf);
+      stop();
       ro.disconnect();
       document.removeEventListener("visibilitychange", onVis);
     };

@@ -57,6 +57,15 @@ describe("world events — timed modifiers", () => {
     const fresh = createInitialState();
     expect(fresh.modifiers).toEqual([]);
   });
+
+  it("a near-expired buff does NOT apply to a whole large tick (no offline windfall)", () => {
+    const s = applyWorldEvent(createInitialState(), "breakthrough_paper").state; // ×1.5 compute
+    s.modifiers[0]!.remainingSec = 5; // only 5s left
+    // Fresh compute rate is 1/s. Over 600s: 5s boosted (×1.5) + 595s normal.
+    const after = tick(s, 600_000);
+    expect(after.resources.compute.toNumber()).toBeCloseTo(1.5 * 5 + 595, 1); // 602.5
+    expect(after.modifiers).toHaveLength(0);
+  });
 });
 
 describe("world events — firing & gating", () => {

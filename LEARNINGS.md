@@ -128,6 +128,34 @@ Deferred on purpose (documented, not fixed unsupervised — current balance does
   want the market to feel necessary rather than a catch-up/convenience tool, that's a deliberate
   research-cost rebalance for the owner to greenlight — don't force it silently.
 
+### The 2.5D hall (Canvas 2D, parametric, no assets)
+- **Assets are a hard no** (CLAUDE.md): no PNG/sprite/3D files — they bloat the Capacitor bundle and
+  break the art direction. Quality comes from *better parametric rendering*: gradient-shaded faces,
+  server-unit detail, rim lighting, floor light-spill, room enclosure, and additive particles. All
+  in `src/render/hallRenderer.ts`, zero deps.
+- **Keep the renderer pure** (`drawHall(ctx, model, opts)`); a React wrapper (`HallCanvas.tsx`) owns
+  the canvas/rAF. The view-model (`buildHallModel`) is derived from game state and is the only thing
+  the renderer reads — engine never imports render.
+- **rAF lifecycle footgun:** guard the loop with a `running` flag and make start()/stop() idempotent.
+  A naive `if (!raf)` check can spawn a second loop because a queued frame callback can run once
+  after the tab hides and reassign `raf`. The visibilitychange handler just calls start()/stop().
+- **Don't rebuild the model every frame.** Cache it behind a cheap signature of render-affecting
+  fields (rack counts, run.active, era) — `run.progress` is excluded because the renderer animates
+  from the clock, not progress. Saves ~46 object allocs/frame.
+- **Particles are stateless:** each mote's position is a pure function of (index, time) via a hash
+  seed, so there's no per-frame particle bookkeeping and it's deterministic.
+- **DEFERRED perf path (do if profiling shows jank on low-end Android):** pre-render each
+  (tier, size/density bucket) static rack body — faces + seams + power column — to an offscreen
+  canvas ONCE, then each frame blit it and draw only the dynamic overlays (blinking LEDs, work glow,
+  power-on bloom, light-spill). Eliminates the ~180 gradient objects/frame a full hall creates.
+  iOS handles the current load fine, so this isn't done yet.
+
+### Modifiers + large ticks: segment at expiry
+- A timed buff folded into `derive()` as a flat multiplier will over-apply if a single `tick` window
+  is longer than the buff's remaining time (a buff with 5s left would double an 8h offline catch-up).
+  Fix: at the top of `tick`, if any modifier expires within the window, split the tick at the
+  earliest expiry and recurse. Recursion depth is bounded by the number of distinct expiries.
+
 ### Time-driven random events without breaking determinism
 - **The engine must stay deterministic, but events need to fire randomly over time.** Resolution:
   the per-frame `advance()` in the STORE rolls `Math.random()` and calls a pure engine fn

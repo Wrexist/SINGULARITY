@@ -13,6 +13,19 @@ import type { Derived, GameState } from "./types";
 export function tick(state: GameState, elapsedMs: number): GameState {
   if (elapsedMs <= 0) return state;
   const seconds = elapsedMs / 1000;
+
+  // Segment the window at the next modifier expiry. Otherwise a large frame
+  // (tab-resume) or an offline catch-up would apply an about-to-expire buff to
+  // the WHOLE window — e.g. a buff with 5s left doubling 8h of offline output.
+  if (state.modifiers.length > 0) {
+    let minRem = Infinity;
+    for (const m of state.modifiers) if (m.remainingSec < minRem) minRem = m.remainingSec;
+    if (minRem < seconds) {
+      const firstMs = minRem * 1000;
+      return tick(tick(state, firstMs), elapsedMs - firstMs);
+    }
+  }
+
   const d = derive(state);
 
   let compute = state.resources.compute.add(d.computePerSec.mul(seconds));
