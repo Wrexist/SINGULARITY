@@ -20,6 +20,8 @@ export interface UpgradeDef {
     | { kind: "moneyMult"; perLevel: number }
     | { kind: "runSpeedMult"; perLevel: number }
     | { kind: "dataPerSec"; perLevel: number }
+    | { kind: "floorCols"; perLevel: number }
+    | { kind: "floorRows"; perLevel: number }
     | { kind: "autoClaim" }
     | { kind: "autoTrain" };
 }
@@ -313,6 +315,14 @@ export const balance = {
     scaleUpAtResearch: "inference_api",
   },
 
+  /** The 2.5D hall floor. Expansions (below) grow it so more racks fit. */
+  hall: {
+    baseCols: 6,
+    baseRows: 5,
+    /** Hard cap on drawn rack boxes (perf); beyond this, density represents more. */
+    maxDrawnRacks: 120,
+  },
+
   prestige: {
     /**
      * You can Ship once you've built a deployable model — i.e. researched this
@@ -404,6 +414,23 @@ export const balance = {
       cost: { resource: "data", base: 800, growth: 1 },
       max: 1,
       effect: { kind: "autoTrain" },
+    },
+    // --- Hall expansions: buy floor space so more racks physically fit ---
+    {
+      id: "expand_wing",
+      name: "Wing Expansion",
+      desc: "Lease the unit next door and knock through the wall. +2 floor columns.",
+      cost: { resource: "money", base: 5000, growth: 1.9 },
+      max: 5,
+      effect: { kind: "floorCols", perLevel: 2 },
+    },
+    {
+      id: "expand_annex",
+      name: "Annex Expansion",
+      desc: "Annex the loading dock out back. +2 floor rows of racks.",
+      cost: { resource: "money", base: 8000, growth: 1.9 },
+      max: 4,
+      effect: { kind: "floorRows", perLevel: 2 },
     },
     // --- Dark-web tools (sold in the Data Bazaar, not the hardware shelf) ---
     {

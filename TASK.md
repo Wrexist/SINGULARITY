@@ -124,6 +124,9 @@ fun-gate on 2026-06-25 and greenlit Phase 1. (Phase 0 history retained below for
       floor light-spill, lit room (back walls + ceiling), depth-faded grid, data-mote particles.
 - [x] Mote burst (green $ + violet data) when a payout is claimed.
 - [x] Per-era hall props: wall-mounted cooling units (spinning fans, scale w/ era) + floor cable tray.
+- [x] Buyable hall EXPANSIONS (Wing = +columns, Annex = +rows): the floor physically grows so more
+      racks fit. Capacity-based rack layout (proportional tier mix when packed); renderer auto-fits
+      the floor + drops to flat shading on big halls for perf. Money sink. Revealed once you own racks.
 
 ### Lightweight world events (the satire layer)
 - [x] 12 satirical ambient events (buffs/debuffs + immediate % swings), written in voice.

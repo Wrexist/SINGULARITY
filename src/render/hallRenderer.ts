@@ -21,9 +21,6 @@ export interface DrawOpts {
   dpr: number;
 }
 
-const COLS = 8;
-const ROWS = 6;
-
 type Pt = { x: number; y: number };
 type RGB = [number, number, number];
 
@@ -69,7 +66,11 @@ export function drawHall(ctx: CanvasRenderingContext2D, model: HallModel, o: Dra
   ctx.fillRect(0, 0, W, H);
 
   // ---- Isometric layout ----
-  const tileW = Math.min((W / (COLS + ROWS)) * 1.7, 64);
+  // The floor grows with expansions; size tiles to always fit the card (the
+  // y-extent stays ~constant at 0.5H, so the room just gets denser as it grows).
+  const cols = model.cols, rows = model.rows;
+  const span = cols + rows;
+  const tileW = Math.min((1.84 * W) / span, (2 * H) / span, 64);
   const tileH = tileW / 2;
   const originX = W / 2;
   const originY = H * 0.34;
@@ -78,16 +79,16 @@ export function drawHall(ctx: CanvasRenderingContext2D, model: HallModel, o: Dra
     y: originY + (gx + gy) * (tileH / 2),
   });
 
-  drawRoom(ctx, iso, model.era, H, o.timeMs, o.reducedMotion);
-  drawFloor(ctx, iso, model.era);
+  drawRoom(ctx, iso, model.era, H, o.timeMs, o.reducedMotion, cols, rows);
+  drawFloor(ctx, iso, model.era, cols, rows);
 
   // Atmosphere behind the racks (subtle), then racks, then foreground motes.
   drawMotes(ctx, W, H, originY, o.timeMs, model.active, model.total, o.reducedMotion, 0.6);
 
   // ---- Place racks in orderly rows, back-to-front (valid iso paint order) ----
   const tiles: Pt[] = [];
-  for (let gy = 0; gy < ROWS; gy++) {
-    for (let gx = 0; gx < COLS; gx++) tiles.push(iso(gx + 0.5, gy + 0.5));
+  for (let gy = 0; gy < rows; gy++) {
+    for (let gx = 0; gx < cols; gx++) tiles.push(iso(gx + 0.5, gy + 0.5));
   }
 
   const t = o.timeMs;
@@ -125,9 +126,9 @@ export function drawHall(ctx: CanvasRenderingContext2D, model: HallModel, o: Dra
 /** Two back walls + ceiling light + era-scaled wall props (cooling units). */
 function drawRoom(
   ctx: CanvasRenderingContext2D, iso: (gx: number, gy: number) => Pt,
-  era: number, H: number, t: number, reducedMotion: boolean,
+  era: number, H: number, t: number, reducedMotion: boolean, cols: number, rows: number,
 ): void {
-  const a = iso(0, 0), b = iso(COLS, 0), d = iso(0, ROWS);
+  const a = iso(0, 0), b = iso(cols, 0), d = iso(0, rows);
   const base = eraFloor(era);
   const wallH = H * 0.24;
   const up = (p: Pt): Pt => ({ x: p.x, y: p.y - wallH });
@@ -199,8 +200,8 @@ function drawCoolingUnit(ctx: CanvasRenderingContext2D, topL: Pt, topR: Pt, h: n
   ctx.fill();
 }
 
-function drawFloor(ctx: CanvasRenderingContext2D, iso: (gx: number, gy: number) => Pt, era: number): void {
-  const a = iso(0, 0), b = iso(COLS, 0), c = iso(COLS, ROWS), d = iso(0, ROWS);
+function drawFloor(ctx: CanvasRenderingContext2D, iso: (gx: number, gy: number) => Pt, era: number, cols: number, rows: number): void {
+  const a = iso(0, 0), b = iso(cols, 0), c = iso(cols, rows), d = iso(0, rows);
   const base = eraFloor(era);
 
   // Slab with a soft front-to-back gradient (darker toward the viewer).
@@ -226,14 +227,14 @@ function drawFloor(ctx: CanvasRenderingContext2D, iso: (gx: number, gy: number) 
 
   // Grid lines, fading with depth (brighter at the front).
   ctx.lineWidth = 1;
-  for (let gx = 0; gx <= COLS; gx++) {
-    const p0 = iso(gx, 0), p1 = iso(gx, ROWS);
+  for (let gx = 0; gx <= cols; gx++) {
+    const p0 = iso(gx, 0), p1 = iso(gx, rows);
     ctx.strokeStyle = `rgba(255,255,255,0.07)`;
     ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.stroke();
   }
-  for (let gy = 0; gy <= ROWS; gy++) {
-    const p0 = iso(0, gy), p1 = iso(COLS, gy);
-    ctx.strokeStyle = `rgba(255,255,255,${0.04 + 0.06 * (gy / ROWS)})`;
+  for (let gy = 0; gy <= rows; gy++) {
+    const p0 = iso(0, gy), p1 = iso(cols, gy);
+    ctx.strokeStyle = `rgba(255,255,255,${0.04 + 0.06 * (gy / rows)})`;
     ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.stroke();
   }
 
@@ -246,11 +247,11 @@ function drawFloor(ctx: CanvasRenderingContext2D, iso: (gx: number, gy: number) 
   // with periodic junction nodes — the room's "infrastructure" reads as data.
   if (era >= 1) {
     const cable: RGB = [90, 210, 255];
-    const e0 = iso(0, ROWS - 0.12), e1 = iso(COLS, ROWS - 0.12);
+    const e0 = iso(0, rows - 0.12), e1 = iso(cols, rows - 0.12);
     stroke(ctx, e0, e1, rgba(cable, 0.28), 4);
     stroke(ctx, e0, e1, rgba(cable, 0.6), 1.5);
-    for (let gx = 1; gx < COLS; gx++) {
-      const p = iso(gx, ROWS - 0.12);
+    for (let gx = 1; gx < cols; gx++) {
+      const p = iso(gx, rows - 0.12);
       ctx.fillStyle = rgba(cable, 0.8);
       ctx.beginPath();
       ctx.arc(p.x, p.y, 1.6, 0, Math.PI * 2);
@@ -281,15 +282,17 @@ function drawRack(
   const tBottom: Pt = { x: sx, y: sy + hh - ph };
   const tLeft: Pt = { x: sx - hw, y: sy - ph };
 
-  // Floor light-spill pool (tinted, stronger when working / booting).
-  const spill = (active ? 0.18 : 0.08) + 0.5 * powerOn + 0.12 * workPulse;
-  const pool = ctx.createRadialGradient(sx, sy + hh * 0.2, 0, sx, sy + hh * 0.2, hw * 2.2);
-  pool.addColorStop(0, rgba(led, clamp(spill, 0, 0.6)));
-  pool.addColorStop(1, rgba(base, 0));
-  ctx.fillStyle = pool;
-  ctx.beginPath();
-  ctx.ellipse(sx, sy + hh * 0.2, hw * 2.2, hh * 2.0, 0, 0, Math.PI * 2);
-  ctx.fill();
+  // Floor light-spill pool — a gradient, so only on detailed (few, large) racks.
+  if (detail) {
+    const spill = (active ? 0.18 : 0.08) + 0.5 * powerOn + 0.12 * workPulse;
+    const pool = ctx.createRadialGradient(sx, sy + hh * 0.2, 0, sx, sy + hh * 0.2, hw * 2.2);
+    pool.addColorStop(0, rgba(led, clamp(spill, 0, 0.6)));
+    pool.addColorStop(1, rgba(base, 0));
+    ctx.fillStyle = pool;
+    ctx.beginPath();
+    ctx.ellipse(sx, sy + hh * 0.2, hw * 2.2, hh * 2.0, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   // Contact shadow.
   ctx.fillStyle = "rgba(0,0,0,0.30)";
@@ -297,14 +300,20 @@ function drawRack(
   ctx.ellipse(sx, sy + hh * 0.32, hw * 1.05, hh * 1.0, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // ---- Faces (vertical gradient for form) ----
-  gradFace(ctx, bLeft, bBottom, ph, shade(base, 0.92), shade(base, 0.5));   // left
-  gradFace(ctx, bBottom, bRight, ph, shade(base, 0.64), shade(base, 0.34)); // right (front)
-  // Top face — flat gradient across the diamond.
-  const topG = ctx.createLinearGradient(tTop.x, tTop.y, tBottom.x, tBottom.y);
-  topG.addColorStop(0, rgb(shade(base, 1.42)));
-  topG.addColorStop(1, rgb(shade(base, 1.08)));
-  poly(ctx, [tLeft, tTop, tRight, tBottom], topG);
+  // ---- Faces ---- Gradients give form on big racks; on small/dense floors use
+  // flat shaded fills (no gradient allocation) so huge expanded halls stay smooth.
+  if (detail) {
+    gradFace(ctx, bLeft, bBottom, ph, shade(base, 0.92), shade(base, 0.5));   // left
+    gradFace(ctx, bBottom, bRight, ph, shade(base, 0.64), shade(base, 0.34)); // right (front)
+    const topG = ctx.createLinearGradient(tTop.x, tTop.y, tBottom.x, tBottom.y);
+    topG.addColorStop(0, rgb(shade(base, 1.42)));
+    topG.addColorStop(1, rgb(shade(base, 1.08)));
+    poly(ctx, [tLeft, tTop, tRight, tBottom], topG);
+  } else {
+    poly(ctx, [bLeft, bBottom, { x: bBottom.x, y: bBottom.y - ph }, { x: bLeft.x, y: bLeft.y - ph }], rgb(shade(base, 0.7)));
+    poly(ctx, [bBottom, bRight, { x: bRight.x, y: bRight.y - ph }, { x: bBottom.x, y: bBottom.y - ph }], rgb(shade(base, 0.48)));
+    poly(ctx, [tLeft, tTop, tRight, tBottom], rgb(shade(base, 1.25)));
+  }
 
   // ---- Front-face server detail (the right face) ----
   const rfp = (u: number, v: number): Pt => ({

@@ -41,6 +41,10 @@ export function derive(state: GameState): Derived {
       case "dataPerSec":
         dataPerSecFlat = dataPerSecFlat.add(def.effect.perLevel * level);
         break;
+      case "floorCols":
+      case "floorRows":
+        // Hall geometry only — affects the rendered floor, not production.
+        break;
       case "autoClaim":
         autoClaim = true;
         break;

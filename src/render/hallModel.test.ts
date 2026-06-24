@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { buildHallModel } from "./hallModel";
+import { buildHallModel, hallDims } from "./hallModel";
 import { createInitialState } from "../engine/state";
+import { balance } from "../engine/balance/config";
 
 describe("hall view-model", () => {
   it("an empty lab has no racks and reads as era 0", () => {
@@ -20,12 +21,40 @@ describe("hall view-model", () => {
     expect(m.racks.filter((r) => r.tier === 2)).toHaveLength(1);
   });
 
-  it("caps drawn racks per tier (1000 GPUs ≠ 1000 boxes) but keeps density at 1", () => {
+  it("caps drawn boxes at floor capacity (1000 GPUs ≠ 1000 boxes); a full room reads dense", () => {
     const s = createInitialState();
     s.upgrades = { rack_basic: 9999 };
     const m = buildHallModel(s);
-    expect(m.total).toBeLessThanOrEqual(18); // rack_basic cap
-    expect(m.racks.every((r) => r.density === 1)).toBe(true);
+    const cap = balance.hall.baseCols * balance.hall.baseRows;
+    expect(m.total).toBeLessThanOrEqual(cap);
+    expect(m.racks.every((r) => r.density === 1)).toBe(true); // packed → max density
+  });
+
+  it("floor expansions grow the room and let more racks fit", () => {
+    const base = createInitialState();
+    expect(hallDims(base)).toEqual({ cols: balance.hall.baseCols, rows: balance.hall.baseRows });
+
+    const expanded = createInitialState();
+    expanded.upgrades = { expand_wing: 2, expand_annex: 1 }; // +4 cols, +2 rows
+    expect(hallDims(expanded)).toEqual({
+      cols: balance.hall.baseCols + 4,
+      rows: balance.hall.baseRows + 2,
+    });
+
+    // With the same (over-capacity) hardware, a bigger floor shows more boxes.
+    const racks = { rack_basic: 200 };
+    const small = buildHallModel({ ...base, upgrades: racks });
+    const big = buildHallModel({ ...expanded, upgrades: { ...racks, expand_wing: 2, expand_annex: 1 } });
+    expect(big.total).toBeGreaterThan(small.total);
+  });
+
+  it("over capacity, keeps the tier mix visible (proportional, not all-of-one-tier)", () => {
+    const s = createInitialState();
+    s.upgrades = { rack_basic: 300, rack_server: 200, rack_tpu: 100 }; // 600 owned >> capacity
+    const m = buildHallModel(s);
+    expect(m.racks.some((r) => r.tier === 0)).toBe(true);
+    expect(m.racks.some((r) => r.tier === 1)).toBe(true);
+    expect(m.racks.some((r) => r.tier === 2)).toBe(true);
   });
 
   it("re-skins the era as the lab progresses", () => {

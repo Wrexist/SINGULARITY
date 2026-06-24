@@ -15,11 +15,21 @@ const RESOURCE_VAR: Record<string, string> = {
 };
 
 export function UpgradePanel({ game, onBuy }: Props) {
+  // Hall expansions only matter once you have hardware to house — reveal them
+  // when the closet starts to fill, rather than cluttering the first session.
+  const totalRacks =
+    (game.upgrades.rack_basic ?? 0) + (game.upgrades.rack_server ?? 0) + (game.upgrades.rack_tpu ?? 0);
+  const showExpansions = totalRacks >= 5;
+  const isExpansion = (k: string) => k === "floorCols" || k === "floorRows";
+
   return (
     <section className="panel">
       <h2 className="panel-title">Hardware &amp; Upgrades</h2>
       <div className="list">
-        {balance.upgrades.filter((def) => def.market !== "darkweb").map((def) => {
+        {balance.upgrades
+          .filter((def) => def.market !== "darkweb")
+          .filter((def) => showExpansions || !isExpansion(def.effect.kind))
+          .map((def) => {
           const owned = game.upgrades[def.id] ?? 0;
           const maxed = owned >= def.max;
           const cost = upgradeCost(def, owned);
