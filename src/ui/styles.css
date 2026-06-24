@@ -8,9 +8,9 @@
   /* Surfaces */
   --bg: #eef1f8;
   --bg-2: #e7ebf5;
-  --ink: #16181d;
-  --ink-2: #5b6170;
-  --ink-3: #8b93a3;
+  --ink: #14161b;
+  --ink-2: #454b59;
+  --ink-3: #69707f;
 
   /* Glass material */
   --glass: rgba(255, 255, 255, 0.55);
@@ -75,11 +75,13 @@ body {
 }
 .blob {
   position: absolute;
-  width: 60vmax;
-  height: 60vmax;
+  width: 56vmax;
+  height: 56vmax;
   border-radius: 50%;
-  filter: blur(60px);
-  opacity: 0.5;
+  filter: blur(80px);
+  /* Dialed well down — the background should read as a clean light surface,
+     not a field of coloured spotlights bleeding through the glass. */
+  opacity: 0.22;
   will-change: transform;
 }
 .blob-a {
@@ -514,6 +516,19 @@ body {
 .card-cost { font-size: 13px; font-weight: 750; white-space: nowrap; text-align: right; display: flex; flex-direction: column; gap: 2px; align-items: flex-end; }
 .cost-max { color: var(--ship); }
 .cost-sub { font-size: 11px; font-weight: 700; color: var(--money); }
+.cost-blocked { color: var(--coral); font-size: 12px; font-weight: 750; }
+
+/* Floor-capacity readout above the hardware list (rack purchases are gated by it). */
+.floor-meter {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  margin: -6px 0 12px;
+  line-height: 1.4;
+}
+.floor-meter b { color: var(--ink); font-weight: 750; }
+.floor-meter.full { color: var(--coral); }
+.floor-meter.full b { color: var(--coral); }
 
 /* ---------- Data Market ---------- */
 .market-group { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
@@ -538,13 +553,13 @@ body {
   padding: 1px 7px;
   border-radius: 999px;
 }
-.vendor-tag.shady { color: #d6b3ff; background: rgba(124, 58, 237, 0.18); }
+.vendor-tag.shady { color: #6d28d9; background: rgba(124, 58, 237, 0.12); }
 .shady-badge {
   font-size: 9.5px;
   font-weight: 800;
   letter-spacing: 0.04em;
-  color: #c9a9ff;
-  background: rgba(124, 58, 237, 0.16);
+  color: #6d28d9;
+  background: rgba(124, 58, 237, 0.12);
   border: 1px solid rgba(124, 58, 237, 0.35);
   padding: 1px 6px;
   border-radius: 6px;
@@ -559,15 +574,15 @@ body {
   justify-content: space-between;
   font-size: 11px;
   font-weight: 700;
-  color: #c9a9ff;
+  color: #7c3aed;
   margin-bottom: 5px;
   letter-spacing: 0.02em;
 }
-.heat-label { color: #e7d9ff; }
+.heat-label { color: #6d28d9; }
 .heat-bar {
   height: 8px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(17, 24, 39, 0.08);
   overflow: hidden;
 }
 .heat-fill {
@@ -576,23 +591,27 @@ body {
   /* color set inline by tier (green → amber → orange → red) */
   transition: width 0.4s var(--ease-out), background 0.4s linear;
 }
-.risk-line { font-size: 11px; font-weight: 650; color: #b58be0; margin-top: 3px; }
-/* The Bazaar reads "dark" against the airy light theme — a deliberate tonal shift. */
+.risk-line { font-size: 11px; font-weight: 650; color: #7c3aed; margin-top: 3px; }
+/* The Bazaar keeps a violet identity but now sits in the light theme — a soft
+   lavender card instead of a dark block, so its text stays readable. */
 .market-group.shady {
-  background: linear-gradient(180deg, rgba(40, 20, 60, 0.55), rgba(24, 14, 38, 0.7));
-  border: 1px solid rgba(124, 58, 237, 0.28);
+  background: linear-gradient(180deg, rgba(124, 58, 237, 0.10), rgba(124, 58, 237, 0.04));
+  border: 1px solid rgba(124, 58, 237, 0.26);
   border-radius: var(--radius);
   padding: 14px 13px;
 }
-.market-group.shady .market-head { color: #c9a9ff; }
-.market-group.shady .market-warn { color: #a98fce; }
+.market-group.shady .market-head { color: #6d28d9; }
+.market-group.shady .market-warn { color: var(--ink-2); }
 .card.shady-card {
-  background: rgba(124, 58, 237, 0.08);
+  background: var(--glass-strong);
   border-color: rgba(124, 58, 237, 0.22);
 }
-.card.shady-card .card-name { color: #f3ecff; }
-.card.shady-card .card-desc { color: #b9a9d6; }
-.card.shady-card.affordable { border-color: rgba(124, 58, 237, 0.6); background: rgba(124, 58, 237, 0.16); }
+.card.shady-card .card-name { color: var(--ink); }
+.card.shady-card .card-desc { color: var(--ink-2); }
+.card.shady-card.affordable {
+  border-color: rgba(124, 58, 237, 0.5);
+  background: linear-gradient(180deg, rgba(124, 58, 237, 0.10), var(--glass-strong));
+}
 
 /* ---------- Research ---------- */
 .research-track { display: flex; flex-direction: column; gap: 10px; }
@@ -654,7 +673,7 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(120% 90% at 50% 28%, transparent 55%, rgba(0, 0, 0, 0.32) 100%);
+  background: radial-gradient(125% 95% at 50% 32%, transparent 68%, rgba(0, 0, 0, 0.15) 100%);
 }
 .hall-tag {
   position: absolute;
@@ -731,9 +750,10 @@ body {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(20, 24, 35, 0.35);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  /* Neutral charcoal scrim (no blue cast) + a soft frost — clean, not murky. */
+  background: rgba(28, 30, 36, 0.28);
+  backdrop-filter: blur(8px) saturate(120%);
+  -webkit-backdrop-filter: blur(8px) saturate(120%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -922,7 +942,7 @@ body {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: radial-gradient(120% 80% at 50% 0%, rgba(255, 90, 60, 0.28), rgba(20, 24, 35, 0.5));
+  background: radial-gradient(120% 80% at 50% 0%, rgba(255, 90, 60, 0.26), rgba(28, 30, 36, 0.45));
   backdrop-filter: blur(10px) saturate(160%);
   -webkit-backdrop-filter: blur(10px) saturate(160%);
   animation: fade 0.3s ease;
@@ -1009,7 +1029,9 @@ body {
   top: calc(72px + env(safe-area-inset-top));
   left: 0;
   right: 0;
-  z-index: 70;
+  /* Below modal/sheet backdrops (50/60) so an open pop-up covers toasts rather
+     than toasts piling on top of the card the player is reading. */
+  z-index: 45;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1070,9 +1092,9 @@ body {
   position: fixed;
   inset: 0;
   z-index: 60;
-  background: rgba(20, 24, 35, 0.35);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(28, 30, 36, 0.28);
+  backdrop-filter: blur(8px) saturate(120%);
+  -webkit-backdrop-filter: blur(8px) saturate(120%);
   display: flex;
   align-items: flex-end;
   justify-content: center;

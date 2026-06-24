@@ -8,6 +8,7 @@ import {
   type WorldEvent,
 } from "./balance/config";
 import { derive } from "./derive";
+import { hallCapacity, totalRacks, isRackId } from "./hall";
 import type { ActiveModifier, GameState } from "./types";
 
 const clampHeat = (h: number) => Math.max(0, Math.min(balance.heat.max, h));
@@ -70,6 +71,9 @@ export function canBuyUpgrade(state: GameState, id: string): boolean {
   if (!def) return false;
   const owned = state.upgrades[id] ?? 0;
   if (owned >= def.max) return false;
+  // Racks need a free floor tile. You must expand the hall to fit more — the
+  // floor is the hard constraint on how big your operation can grow.
+  if (isRackId(id) && totalRacks(state) >= hallCapacity(state)) return false;
   return state.resources[def.cost.resource].gte(upgradeCost(def, owned));
 }
 

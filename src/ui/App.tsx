@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useGame } from "../state/store";
 import { useGameLoop } from "../state/useGameLoop";
 import { derive } from "../engine/derive";
@@ -62,12 +62,15 @@ export function App() {
   // Transient unlock toasts.
   const [toasts, setToasts] = useState<ToastData[]>([]);
   const toastId = useRef(0);
-  const pushToast = (text: string, tone: ToastData["tone"] = "neutral") => {
+  // Cap the stack so a burst of simultaneous unlocks can't bury the screen
+  // (keep the most recent few). Stable identities so child timers don't reset.
+  const MAX_TOASTS = 3;
+  const pushToast = useCallback((text: string, tone: ToastData["tone"] = "neutral") => {
     toastId.current += 1;
     const id = toastId.current;
-    setToasts((ts) => [...ts, { id, text, tone }]);
-  };
-  const dropToast = (id: number) => setToasts((ts) => ts.filter((t) => t.id !== id));
+    setToasts((ts) => [...ts, { id, text, tone }].slice(-MAX_TOASTS));
+  }, []);
+  const dropToast = useCallback((id: number) => setToasts((ts) => ts.filter((t) => t.id !== id)), []);
   const seenResearch = useRef(showResearch);
   const seenPrestige = useRef(showPrestige);
   const seenMarket = useRef(showMarket);

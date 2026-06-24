@@ -43,15 +43,18 @@ const TIER_BASE: RGB[] = [
   [155, 81, 224], // TPU pod — violet
 ];
 
+// Lightened, de-saturated room palettes (visibility pass). The hall used to be
+// near-black navy that read as a "dark blue spot"; these slate tones keep enough
+// depth for the glowing racks to pop while sitting comfortably in the light app.
 const ERA_BG: [string, string][] = [
-  ["#0d1124", "#11162e"],
-  ["#0b1430", "#0f2148"],
-  ["#150f2b", "#251b46"],
+  ["#2a3046", "#343c56"],
+  ["#283454", "#33426c"],
+  ["#322a4d", "#403962"],
 ];
 const ERA_FLOOR: RGB[] = [
-  [26, 33, 64],
-  [27, 39, 80],
-  [36, 29, 73],
+  [56, 64, 92],
+  [54, 70, 110],
+  [70, 60, 104],
 ];
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
@@ -109,9 +112,14 @@ export function pointInPoly(x: number, y: number, poly: Pt[]): boolean {
   return inside;
 }
 
-export function drawHall(ctx: CanvasRenderingContext2D, model: HallModel, o: DrawOpts): void {
-  const { width: W, height: H } = o;
-
+/**
+ * The STATIC layer: sky, room shell, and floor. These depend only on the room
+ * size + era, not on the animation clock or rack count — so HallCanvas paints
+ * this once into an offscreen buffer and blits it each frame instead of
+ * rebuilding ~a dozen gradients and the whole floor grid 30–60×/sec (the main
+ * source of the reported jank on mobile).
+ */
+export function drawHallStatic(ctx: CanvasRenderingContext2D, model: HallModel, W: number, H: number): void {
   const [bg0, bg1] = eraBg(model.era);
   const sky = ctx.createLinearGradient(0, 0, 0, H);
   sky.addColorStop(0, bg0);
@@ -120,10 +128,24 @@ export function drawHall(ctx: CanvasRenderingContext2D, model: HallModel, o: Dra
   ctx.fillRect(0, 0, W, H);
 
   const L = computeLayout(model.cols, model.rows, model.gxMin, model.gyMin, W, H);
+  // Fans are frozen in the cached layer (a tiny detail); the room itself is static.
+  drawRoom(ctx, L, model.era, H, 0, true);
+  drawFloor(ctx, L, model.era);
+}
+
+/** The full hall (static + animated) in one pass. Kept for any non-cached use. */
+export function drawHall(ctx: CanvasRenderingContext2D, model: HallModel, o: DrawOpts): void {
+  drawHallStatic(ctx, model, o.width, o.height);
+  drawHallDynamic(ctx, model, o);
+}
+
+/** The ANIMATED layer: drifting motes, racks, claim burst, expansion markers. */
+export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel, o: DrawOpts): void {
+  const { width: W, height: H } = o;
+
+  const L = computeLayout(model.cols, model.rows, model.gxMin, model.gyMin, W, H);
   const { iso, tileW, tileH, originY, gxMin, gyMin, gxMax, gyMax } = L;
 
-  drawRoom(ctx, L, model.era, H, o.timeMs, o.reducedMotion);
-  drawFloor(ctx, L, model.era);
   drawMotes(ctx, W, H, originY, o.timeMs, model.active, model.total, o.reducedMotion, 0.6);
 
   // Place racks in orderly rows, back-to-front (valid iso paint order).

@@ -175,3 +175,30 @@ fun-gate on 2026-06-24 and greenlit Phase 1. (Phase 0 history retained below for
 
 ## Done log
 *(append completed items with date as you go — keeps session handoff clean)*
+
+### 2026-06-24 — UI visibility/glitch + difficulty pass (owner-directed, from TestFlight screenshots)
+- [x] **Fixed stuck toasts** (the "pop-ups never leave the screen" bug). Root cause: the game
+      re-renders ~10×/sec (10 Hz tick) and `Toast`'s dismiss-timer effect depended on the parent's
+      `onDone` identity, which changed every render → the timeout was cleared+restarted forever and
+      never fired. Fix: hold `onDone` in a ref so the timer keys only off the toast id; also made
+      `pushToast`/`dropToast` stable with `useCallback` and capped the stack to the latest 3.
+- [x] Toast stack z-index dropped below modal/sheet backdrops so an open pop-up covers toasts
+      instead of them piling on top of the card you're reading.
+- [x] **Dark-blue cleanup (all four, owner-confirmed):** neutralized the modal/sheet/celebration
+      backdrops (charcoal scrim, no navy cast); lightened + de-saturated the hall room palette
+      (`ERA_BG`/`ERA_FLOOR`) and softened the hall edge vignette; dialed the aurora blobs down
+      (0.5→0.22 opacity); relit the dark Data Bazaar into a light lavender card and fixed all its
+      light-on-dark text (heat meter, vendor/shady tags, risk lines) for the light theme.
+- [x] **Readability:** darkened secondary ink tokens (`--ink-2`/`--ink-3`) for contrast on glass.
+- [x] **Hall perf:** cached the static room (sky+walls+floor) to an offscreen buffer (blitted each
+      frame instead of rebuilding ~a dozen gradients + the whole floor grid 60×/sec) and capped the
+      canvas to ~30fps. Split `drawHall` → `drawHallStatic` + `drawHallDynamic`.
+- [x] **Rack capacity = floor space (new rule):** racks (all tiers, shared) are now gated by the
+      2.5D floor's tile count — you must expand the hall to buy more. New pure `src/engine/hall.ts`
+      (`hallCapacity`/`totalRacks`/`floorFull`, shared by engine + renderer to avoid a cycle);
+      `canBuyUpgrade` blocks racks when full; UpgradePanel shows a "Floor space: n/cap" meter and a
+      "Floor full" reason on blocked rack cards. 5 new tests (95 total).
+- [x] **Difficulty pass:** steeper rack/upgrade cost growth and tighter run payout ratios
+      (dataPerCompute 0.35→0.28, moneyPerCompute 0.6→0.45). Tunable in `balance/config.ts`.
+- [ ] FOLLOW-UP (owner): re-run `npm run sim` to confirm the new curve has no walls and a sane
+      time-to-first-ship now that racks are floor-capped + costs are steeper — balance is provisional.
