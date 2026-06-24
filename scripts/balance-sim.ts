@@ -30,6 +30,7 @@ import {
   buyDataOffer,
 } from "../src/engine/actions";
 import { canPrestige, legacyWeightsGain, prestige } from "../src/engine/prestige";
+import { powerStats } from "../src/engine/power";
 import { balance } from "../src/engine/balance/config";
 import type { GameState } from "../src/engine/types";
 
@@ -128,6 +129,22 @@ function autoBuy(state: GameState, useMarket: boolean): { state: GameState; boug
     const r = maybeBuyData(s);
     s = r.state;
     bought.push(...r.bought);
+  }
+
+  // 1b. If power is throttling Compute, buy the cheapest affordable capacity
+  //     upgrade to clear it (a real player fixes a throttle before it bites).
+  if (balance.power.enabled) {
+    let guard = 0;
+    while (guard++ < 50 && powerStats(s).throttled) {
+      const cap = balance.upgrades
+        .filter((d) => d.effect.kind === "powerCapacity" && canBuyUpgrade(s, d.id))
+        .map((d) => ({ d, cost: upgradeCost(d, s.upgrades[d.id] ?? 0) }))
+        .filter(({ cost }) => s.resources.money.gte(cost))
+        .sort((a, b) => (a.cost.gt(b.cost) ? 1 : -1))[0];
+      if (!cap) break;
+      s = buyUpgrade(s, cap.d.id);
+      bought.push(cap.d.id);
+    }
   }
 
   // 2. Automations first (data-gated, huge QoL).

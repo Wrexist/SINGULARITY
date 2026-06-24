@@ -22,6 +22,7 @@ export interface UpgradeDef {
     | { kind: "dataPerSec"; perLevel: number }
     | { kind: "floorCols"; perLevel: number }
     | { kind: "floorRows"; perLevel: number }
+    | { kind: "powerCapacity"; perLevel: number }
     | { kind: "autoClaim" }
     | { kind: "autoTrain" };
 }
@@ -335,13 +336,15 @@ export const balance = {
    * is a DERIVED constraint shown as a meter, NOT a 4th resource (legibility).
    */
   power: {
-    enabled: false,
+    enabled: true,
     /** Free power budget before any capacity upgrades (kW). */
     baseCapacityKw: 50,
     /** Draw per rack by tier [consumer, server, TPU] (kW). */
     drawPerRackKw: [0.5, 2, 8],
     /** Compute never throttles below this fraction, however over-subscribed. */
     throttleFloor: 0.25,
+    /** Show the power meter / nudge once the lab actually draws something. */
+    revealAtDrawKw: 1,
   },
 
   prestige: {
@@ -455,6 +458,31 @@ export const balance = {
       cost: { resource: "money", base: 7000, growth: 2.0 },
       max: 4,
       effect: { kind: "floorRows", perLevel: 2 },
+    },
+    // --- Power & Cooling (Phase 2: raise capacity so racks don't throttle) ---
+    {
+      id: "psu_bay",
+      name: "PSU Bay",
+      desc: "+40 kW power capacity. More racks run before they throttle.",
+      cost: { resource: "money", base: 800, growth: 1.4 },
+      max: Infinity,
+      effect: { kind: "powerCapacity", perLevel: 40 },
+    },
+    {
+      id: "cooling_loop",
+      name: "Liquid Cooling Loop",
+      desc: "+150 kW. Keeps the racks cool enough to run flat out.",
+      cost: { resource: "money", base: 6000, growth: 1.45 },
+      max: Infinity,
+      effect: { kind: "powerCapacity", perLevel: 150 },
+    },
+    {
+      id: "substation",
+      name: "On-Site Substation",
+      desc: "+600 kW. Industrial power for an industrial lab.",
+      cost: { resource: "money", base: 50000, growth: 1.5 },
+      max: Infinity,
+      effect: { kind: "powerCapacity", perLevel: 600 },
     },
     // --- Dark-web tools (sold in the Data Bazaar, not the hardware shelf) ---
     {

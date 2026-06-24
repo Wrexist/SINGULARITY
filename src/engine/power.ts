@@ -30,7 +30,12 @@ export function powerStats(game: GameState): PowerStats {
   for (let tier = 0; tier < RACK_IDS.length; tier++) {
     drawKw += (game.upgrades[RACK_IDS[tier]!] ?? 0) * (p.drawPerRackKw[tier] ?? 0);
   }
-  const capacityKw = p.baseCapacityKw; // + power-capacity upgrades when content lands
+  let capacityKw = p.baseCapacityKw;
+  for (const u of balance.upgrades) {
+    if (u.effect.kind === "powerCapacity") {
+      capacityKw += (game.upgrades[u.id] ?? 0) * u.effect.perLevel;
+    }
+  }
   const thermalFactor = drawKw <= capacityKw ? 1 : Math.max(p.throttleFloor, capacityKw / drawKw);
   return { drawKw, capacityKw, thermalFactor, throttled: drawKw > capacityKw };
 }

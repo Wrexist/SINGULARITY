@@ -46,6 +46,9 @@ export function derive(state: GameState): Derived {
       case "floorRows":
         // Hall geometry only — affects the rendered floor, not production.
         break;
+      case "powerCapacity":
+        // Phase 2 power capacity — consumed by powerStats(), not production here.
+        break;
       case "autoClaim":
         autoClaim = true;
         break;

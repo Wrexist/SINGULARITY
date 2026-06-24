@@ -24,7 +24,16 @@ pure & deterministic & tested, humor in writing not math, no dark patterns.
 
 ---
 
-## P2-A — Power & Heat (the soft cap you engineer around)
+## P2-A — Power & Heat (the soft cap you engineer around) — ✅ DONE & LIVE
+
+> Shipped: pure `power.ts` (draw/capacity/thermalFactor), wired into `derive()`,
+> `balance.power.enabled = true`, three capacity upgrades (PSU Bay / Liquid
+> Cooling Loop / On-Site Substation), a Power meter in the Hardware panel
+> (revealed once the lab draws power, red "⚡ throttled −X%" warning), and a
+> power-aware balance sim. Sim: first ship 12m48s, longest wall 1m05s, no wall.
+> 6 power tests. Power-capacity upgrades currently raise a flat budget; future
+> polish can tie cooling to the hall's animated cooling units.
+
 
 **Design intent (GDD §2.2):** racks draw power and emit heat; you buy power +
 cooling capacity to keep them running at full tilt. Over-subscribe and compute

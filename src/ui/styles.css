@@ -541,6 +541,30 @@ body {
 .floor-meter.full { color: var(--coral); }
 .floor-meter.full b { color: var(--coral); }
 
+/* Power soft-cap meter (Phase 2) */
+.power { margin: -2px 0 14px; }
+.power-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-2);
+  margin-bottom: 5px;
+  letter-spacing: 0.02em;
+}
+.power-stat { font-variant-numeric: tabular-nums; }
+.power-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.08);
+  overflow: hidden;
+}
+.power-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s var(--ease-out), background 0.4s linear;
+}
+
 /* ---------- Data Market ---------- */
 .market-group { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
 .market-group + .market-group { margin-top: 18px; }
