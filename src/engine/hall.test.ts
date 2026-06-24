@@ -21,13 +21,12 @@ describe("hall capacity (racks are gated by floor space)", () => {
     expect(totalRacks(s)).toBe(6);
   });
 
-  it("blocks buying a rack when the floor is full, even with money to spare", () => {
+  it("blocks buying the SAME tier when the floor is full (no lower tier to evict)", () => {
     const s = createInitialState();
     s.resources.money = Big.of(1e12);
-    s.upgrades = { rack_basic: baseCap }; // floor exactly full
+    s.upgrades = { rack_basic: baseCap }; // floor exactly full of the lowest tier
     expect(floorFull(s)).toBe(true);
-    expect(canBuyUpgrade(s, "rack_basic")).toBe(false);
-    expect(canBuyUpgrade(s, "rack_server")).toBe(false);
+    expect(canBuyUpgrade(s, "rack_basic")).toBe(false); // can't evict an equal tier
     expect(buyUpgrade(s, "rack_basic")).toBe(s); // no-op
   });
 
@@ -45,5 +44,25 @@ describe("hall capacity (racks are gated by floor space)", () => {
     s.resources.money = Big.of(1e12);
     s.upgrades = { rack_basic: baseCap }; // floor full
     expect(canBuyUpgrade(s, "overclock")).toBe(true);
+  });
+
+  it("on a full floor, a higher tier upgrades in place by evicting a lower one", () => {
+    const s = createInitialState();
+    s.resources.money = Big.of(1e12);
+    s.upgrades = { rack_basic: baseCap }; // floor full of consumer racks
+    expect(canBuyUpgrade(s, "rack_server")).toBe(true);
+    const next = buyUpgrade(s, "rack_server");
+    expect(next.upgrades.rack_server).toBe(1);
+    expect(next.upgrades.rack_basic).toBe(baseCap - 1); // one consumer evicted
+    expect(totalRacks(next)).toBe(baseCap); // net count unchanged — still full, not over
+  });
+
+  it("cannot replace when the floor is full of equal-or-higher tiers (must expand)", () => {
+    const s = createInitialState();
+    s.resources.money = Big.of(1e12);
+    s.upgrades = { rack_tpu: baseCap }; // full of the top tier
+    expect(canBuyUpgrade(s, "rack_server")).toBe(false); // nothing lower to evict
+    expect(canBuyUpgrade(s, "rack_basic")).toBe(false);
+    expect(buyUpgrade(s, "rack_server")).toBe(s); // no-op
   });
 });

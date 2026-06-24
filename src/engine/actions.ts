@@ -8,7 +8,7 @@ import {
   type WorldEvent,
 } from "./balance/config";
 import { derive } from "./derive";
-import { hallCapacity, totalRacks, isRackId } from "./hall";
+import { isRackId, floorFull, evictableRackFor } from "./hall";
 import type { ActiveModifier, GameState } from "./types";
 
 const clampHeat = (h: number) => Math.max(0, Math.min(balance.heat.max, h));
@@ -71,9 +71,10 @@ export function canBuyUpgrade(state: GameState, id: string): boolean {
   if (!def) return false;
   const owned = state.upgrades[id] ?? 0;
   if (owned >= def.max) return false;
-  // Racks need a free floor tile. You must expand the hall to fit more — the
-  // floor is the hard constraint on how big your operation can grow.
-  if (isRackId(id) && totalRacks(state) >= hallCapacity(state)) return false;
+  // Racks are bound by floor space. On a full floor a higher tier can still be
+  // bought by replacing a lower-tier rack in place; only when there's nothing
+  // lower to evict must you expand the hall.
+  if (isRackId(id) && floorFull(state) && !evictableRackFor(state, id)) return false;
   return state.resources[def.cost.resource].gte(upgradeCost(def, owned));
 }
 
@@ -84,13 +85,20 @@ export function buyUpgrade(state: GameState, id: string): GameState {
   const cost = upgradeCost(def, owned);
   // Buying dark-web tools puts you on a list — a little heat each time.
   const heat = def.market === "darkweb" ? clampHeat(state.heat + balance.heat.toolBuyHeat) : state.heat;
+  const upgrades = { ...state.upgrades, [id]: owned + 1 };
+  // Full floor + a higher-tier rack → upgrade in place: evict the lowest
+  // lower-tier rack to free its slot (canBuyUpgrade guaranteed one exists).
+  if (isRackId(id) && floorFull(state)) {
+    const evict = evictableRackFor(state, id)!;
+    upgrades[evict] = (upgrades[evict] ?? 0) - 1;
+  }
   return {
     ...state,
     resources: {
       ...state.resources,
       [def.cost.resource]: state.resources[def.cost.resource].sub(cost),
     },
-    upgrades: { ...state.upgrades, [id]: owned + 1 },
+    upgrades,
     heat,
   };
 }

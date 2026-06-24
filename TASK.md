@@ -198,11 +198,20 @@ fun-gate on 2026-06-24 and greenlit Phase 1. (Phase 0 history retained below for
       (`hallCapacity`/`totalRacks`/`floorFull`, shared by engine + renderer to avoid a cycle);
       `canBuyUpgrade` blocks racks when full; UpgradePanel shows a "Floor space: n/cap" meter and a
       "Floor full" reason on blocked rack cards. 5 new tests (95 total).
+- [x] **Rack auto-replace (anti-softlock):** on a FULL floor, buying a higher-tier rack upgrades
+      in place by evicting the lowest lower-tier rack you own (no money refund — the evicted tier's
+      count just drops, making its rebuy cheaper). You're only hard-blocked (must expand) when the
+      floor is full of equal-or-higher tiers. Cards show "↑ replaces a lower-tier rack" upfront so
+      it's never a silent surprise. Chosen over a sell button: zero extra taps, no UI clutter, no
+      softlock, no exploit. Engine: `evictableRackFor`/`rackTier` in `hall.ts`; 2 new tests.
 - [x] **Difficulty pass (verified via `npm run sim`):** the floor cap IS the difficulty lever.
       First experiment also nerfed payouts + cost growth → sim showed first-prestige UNREACHABLE in
       240m (hard wall), so those economy nerfs were REVERTED. Floor cap alone moves first-ship from
       ~10.5m → ~14.8m (≈40% longer) + adds strategic floor management, with longest wall 0m55s and a
-      compounding meta-loop (Gen1 15m → Gen2 43s → Gen3 29s). Beatable + smooth + harder.
+      compounding meta-loop. Beatable + smooth + harder. NOTE: after adding rack auto-replace
+      (which softens the cap — the optimal player keeps a full best-tier floor), re-tuned payouts to
+      dataPerCompute 0.28 / moneyPerCompute 0.45 to restore the difficulty: sim now first-ships
+      ~12m11s with longest wall 1m05s and a healthy meta-loop (Gen2 ~1m, Gen3 ~55s).
 - [x] Updated `scripts/balance-sim.ts` to model the floor cap: the greedy player now BUYS hall
       expansions when the floor fills and prefers the highest-tier affordable rack (filling permanent
       slots with cheap consumer cards was tanking the modeled income and faking a wall).

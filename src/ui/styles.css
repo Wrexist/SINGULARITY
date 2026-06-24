@@ -523,6 +523,7 @@ body {
   border-radius: 999px;
 }
 .card-desc { font-size: 12px; color: var(--ink-2); line-height: 1.35; }
+.card-note { font-size: 11px; font-weight: 700; color: var(--compute); margin-top: 2px; }
 .card-cost { font-size: 13px; font-weight: 750; white-space: nowrap; text-align: right; display: flex; flex-direction: column; gap: 2px; align-items: flex-end; }
 .cost-max { color: var(--ship); }
 .cost-sub { font-size: 11px; font-weight: 700; color: var(--money); }

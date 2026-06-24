@@ -286,8 +286,10 @@ export const balance = {
     costSeconds: 2,
     minCompute: 10,
     durationSec: 5,
-    dataPerCompute: 0.35,
-    moneyPerCompute: 0.6,
+    // Difficulty pass: leaner run payouts so scaling the operation (more/better
+    // racks + expansions) matters more. Tuned against the sim to stay wall-free.
+    dataPerCompute: 0.28,
+    moneyPerCompute: 0.45,
   },
 
   /**

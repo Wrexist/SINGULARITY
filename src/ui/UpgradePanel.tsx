@@ -1,6 +1,6 @@
 import { balance } from "../engine/balance/config";
 import { upgradeCost, canBuyUpgrade } from "../engine/actions";
-import { hallCapacity, totalRacks, isRackId } from "../engine/hall";
+import { hallCapacity, totalRacks, isRackId, evictableRackFor } from "../engine/hall";
 import type { GameState } from "../engine/types";
 import { fmt } from "./format";
 
@@ -40,9 +40,11 @@ export function UpgradePanel({ game, onBuy }: Props) {
           const maxed = owned >= def.max;
           const cost = upgradeCost(def, owned);
           const affordable = canBuyUpgrade(game, def.id);
-          // A rack you could otherwise afford but can't buy because the floor is
-          // full: tell the player to expand rather than leaving a dead button.
-          const blockedByFloor = isRackId(def.id) && floorFull && !maxed;
+          // On a full floor a higher-tier rack upgrades in place (evicts a lower
+          // one); only a rack with nothing lower to replace is truly blocked.
+          const rack = isRackId(def.id);
+          const willReplace = rack && floorFull && !maxed && !!evictableRackFor(game, def.id);
+          const blockedByFloor = rack && floorFull && !maxed && !willReplace;
           return (
             <button
               key={def.id}
@@ -57,6 +59,7 @@ export function UpgradePanel({ game, onBuy }: Props) {
                   {def.max === Infinity && owned > 0 && <span className="card-owned">×{owned}</span>}
                 </span>
                 <span className="card-desc">{def.desc}</span>
+                {willReplace && <span className="card-note">↑ replaces a lower-tier rack</span>}
               </div>
               <div className="card-cost">
                 {maxed ? (

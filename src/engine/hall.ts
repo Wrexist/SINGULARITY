@@ -61,3 +61,23 @@ export function totalRacks(game: GameState): number {
 export function floorFull(game: GameState): boolean {
   return totalRacks(game) >= hallCapacity(game);
 }
+
+/** Tier rank of a rack id (0 = consumer, 1 = server, 2 = TPU); -1 if not a rack. */
+export function rackTier(id: string): number {
+  return (RACK_IDS as readonly string[]).indexOf(id);
+}
+
+/**
+ * When the floor is full, a higher-tier rack upgrades in place by evicting the
+ * lowest lower-tier rack you own. Returns that rack's id, or null if there's
+ * nothing lower to replace (then you genuinely must expand the hall).
+ */
+export function evictableRackFor(game: GameState, id: string): string | null {
+  const tier = rackTier(id);
+  if (tier <= 0) return null; // not a rack, or the lowest tier (nothing below it)
+  for (let t = 0; t < tier; t++) {
+    const rid = RACK_IDS[t]!;
+    if ((game.upgrades[rid] ?? 0) > 0) return rid;
+  }
+  return null;
+}
