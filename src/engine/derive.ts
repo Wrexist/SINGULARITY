@@ -80,6 +80,20 @@ export function derive(state: GameState): Derived {
     }
   }
 
+  // Staff (Phase 2): each hire multiplies a lane; payroll is summed for tick().
+  let payrollPerSec = Big.ZERO;
+  if (balance.staff.enabled) {
+    for (const role of balance.staff.roles) {
+      const n = state.upgrades[role.id] ?? 0;
+      if (n <= 0) continue;
+      payrollPerSec = payrollPerSec.add(role.payroll * n);
+      const f = 1 + role.effect.perLevel * n;
+      if (role.effect.lane === "computeMult") computeMult = computeMult.mul(f);
+      else if (role.effect.lane === "dataMult") dataMult = dataMult.mul(f);
+      else if (role.effect.lane === "moneyMult") moneyMult = moneyMult.mul(f);
+    }
+  }
+
   // World-event modifiers: time-limited global multipliers (buffs/debuffs).
   for (const m of state.modifiers) {
     if (m.remainingSec <= 0) continue;
@@ -125,5 +139,6 @@ export function derive(state: GameState): Derived {
     runDataYield: runComputeCost.mul(balance.run.dataPerCompute).mul(dataMult),
     runMoneyYield: runComputeCost.mul(balance.run.moneyPerCompute).mul(moneyMult),
     legacyMult,
+    payrollPerSec,
   };
 }

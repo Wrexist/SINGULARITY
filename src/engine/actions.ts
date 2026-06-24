@@ -6,6 +6,7 @@ import {
   type DataOffer,
   type HeatEvent,
   type WorldEvent,
+  type StaffRole,
 } from "./balance/config";
 import { derive } from "./derive";
 import { isRackId, floorFull, evictableRackFor } from "./hall";
@@ -100,6 +101,36 @@ export function buyUpgrade(state: GameState, id: string): GameState {
     },
     upgrades,
     heat,
+  };
+}
+
+// ---------- Staff (Phase 2) ----------
+
+const STAFF_BY_ID: Record<string, StaffRole> = Object.fromEntries(
+  balance.staff.roles.map((r) => [r.id, r]),
+);
+
+/** Cost to hire the next of a role: base * growth^owned. */
+export function staffHireCost(role: StaffRole, owned: number): Big {
+  return Big.of(role.hire.base).mul(Math.pow(role.hire.growth, owned));
+}
+
+export function canHireStaff(state: GameState, id: string): boolean {
+  const role = STAFF_BY_ID[id];
+  if (!role || !balance.staff.enabled) return false;
+  return state.resources.money.gte(staffHireCost(role, state.upgrades[id] ?? 0));
+}
+
+/** Hire one of a role. No-op if unaffordable. Counts live in the upgrades map. */
+export function hireStaff(state: GameState, id: string): GameState {
+  if (!canHireStaff(state, id)) return state;
+  const role = STAFF_BY_ID[id]!;
+  const owned = state.upgrades[id] ?? 0;
+  const cost = staffHireCost(role, owned);
+  return {
+    ...state,
+    resources: { ...state.resources, money: state.resources.money.sub(cost) },
+    upgrades: { ...state.upgrades, [id]: owned + 1 },
   };
 }
 

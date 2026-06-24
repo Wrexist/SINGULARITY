@@ -6,6 +6,7 @@ import {
   startRun,
   claimRun,
   buyUpgrade,
+  hireStaff,
   buyResearch,
   buyDataOffer,
   maybeHeatEvent,
@@ -57,6 +58,7 @@ interface GameStore {
   doStartRun: () => void;
   doClaim: () => void;
   doBuyUpgrade: (id: string) => void;
+  doHireStaff: (id: string) => void;
   doResearch: (id: string) => void;
   doBuyData: (id: string) => MarketOutcome | null;
   doPrestige: () => void;
@@ -156,6 +158,7 @@ export const useGame = create<GameStore>((set, get) => ({
       return { game: claimRun(s.game), claimBurst: claimKey };
     }),
   doBuyUpgrade: (id) => set((s) => ({ game: buyUpgrade(s.game, id) })),
+  doHireStaff: (id) => set((s) => ({ game: hireStaff(s.game, id) })),
   doResearch: (id) => set((s) => ({ game: buyResearch(s.game, id) })),
   // The wall clock isn't the only nondeterminism we keep out of the engine —
   // the risk roll lives here too and is passed in, mirroring how we pass time.

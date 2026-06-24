@@ -74,7 +74,17 @@ sim shows no wall, and the meter reads clean. ~1 milestone.
 
 ---
 
-## P2-B — Staff (researchers / engineers / ops)
+## P2-B — Staff (researchers / engineers / ops) — ✅ DONE & LIVE
+
+> Shipped: `balance.staff` (Researcher +8% Data, Engineer +6% Compute, Ops Lead
+> +8% Money; each with a hire-cost curve + Money/sec payroll). Counts live in the
+> shared `upgrades` map (NO save migration); derive() folds multipliers into the
+> existing lanes and sums payroll; tick() drains payroll from Money (floored at 0,
+> never touches lifetimeMoney). `hireStaff`/`canHireStaff` actions + store wiring +
+> a Staff & Payroll panel (revealed after first research; headline is live
+> payroll). Prestige resets staff via createInitialState. Opt-in depth — sim still
+> first-ships 12m48s (no wall). 5 staff tests (108 total).
+
 
 **Design intent:** hireable specialists you assign to roles; payroll is an ongoing
 Money sink that deepens the economy and interacts with the other systems.

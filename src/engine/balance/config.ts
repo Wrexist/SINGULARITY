@@ -76,6 +76,24 @@ export interface HeatEvent {
   };
 }
 
+/**
+ * PHASE 2 — Staff (PHASE2_PLAN §P2-B). Hireable specialists that multiply a
+ * production lane but cost ongoing payroll (a Money sink → a real over-hire vs.
+ * growth tension). NOT a new resource. Counts live in the shared `upgrades` map
+ * so no save migration is needed; payroll is drained in tick(), multipliers fold
+ * into the existing derive lanes.
+ */
+export interface StaffRole {
+  id: string;
+  name: string;
+  desc: string;
+  /** Money cost to hire the next one: base * growth^owned. */
+  hire: { base: number; growth: number };
+  /** Ongoing Money/sec per hire. */
+  payroll: number;
+  effect: { lane: "computeMult" | "dataMult" | "moneyMult"; perLevel: number };
+}
+
 export interface ResearchDef {
   id: string;
   name: string;
@@ -345,6 +363,39 @@ export const balance = {
     throttleFloor: 0.25,
     /** Show the power meter / nudge once the lab actually draws something. */
     revealAtDrawKw: 1,
+  },
+
+  /** PHASE 2 — Staff. Opt-in depth: hire to multiply a lane, pay payroll forever. */
+  staff: {
+    enabled: true,
+    /** Reveal the panel once the lab is established (after the first research). */
+    revealAtResearch: 1,
+    roles: [
+      {
+        id: "staff_researcher",
+        name: "Researcher",
+        desc: "+8% Data per run, each. Mostly reads arXiv and drinks cold brew.",
+        hire: { base: 300, growth: 1.5 },
+        payroll: 2,
+        effect: { lane: "dataMult", perLevel: 0.08 },
+      },
+      {
+        id: "staff_engineer",
+        name: "Engineer",
+        desc: "+6% Compute, each. Keeps the racks alive and the YAML valid.",
+        hire: { base: 500, growth: 1.5 },
+        payroll: 3,
+        effect: { lane: "computeMult", perLevel: 0.06 },
+      },
+      {
+        id: "staff_ops",
+        name: "Ops Lead",
+        desc: "+8% Money per run, each. Monetizes things you didn't know you had.",
+        hire: { base: 700, growth: 1.5 },
+        payroll: 4,
+        effect: { lane: "moneyMult", perLevel: 0.08 },
+      },
+    ] satisfies StaffRole[],
   },
 
   prestige: {

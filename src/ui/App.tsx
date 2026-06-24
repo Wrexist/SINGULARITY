@@ -20,6 +20,8 @@ import { StatsPanel } from "./StatsPanel";
 import { Tagline } from "./Tagline";
 import { Onboarding } from "./Onboarding";
 import { DataMarketPanel } from "./DataMarketPanel";
+import { StaffPanel } from "./StaffPanel";
+import { balance } from "../engine/balance/config";
 import { HallCanvas } from "./HallCanvas";
 import { ExpandConfirm } from "./ExpandConfirm";
 import { EraTransition } from "./EraTransition";
@@ -35,7 +37,7 @@ export function App() {
   const initialized = useGame((s) => s.initialized);
   const event = useGame((s) => s.event);
   const worldEvent = useGame((s) => s.worldEvent);
-  const { doStartRun, doClaim, doBuyUpgrade, doResearch, doBuyData, doPrestige, dismissOffline, dismissWorldEvent, hardReset } =
+  const { doStartRun, doClaim, doBuyUpgrade, doHireStaff, doResearch, doBuyData, doPrestige, dismissOffline, dismissWorldEvent, hardReset } =
     useGame.getState();
 
   const d = derive(game);
@@ -56,6 +58,7 @@ export function App() {
   const showResearch = game.resources.data.gt(0) || game.research.length > 0;
   const showPrestige = game.research.length > 0;
   const showMarket = game.research.length > 0;
+  const showStaff = balance.staff.enabled && game.research.length >= balance.staff.revealAtResearch;
   const shipReady = canPrestige(game);
   const era = currentEra(game);
 
@@ -152,6 +155,7 @@ export function App() {
   const onStart = () => { haptics.tap(); sound.tap(); doStartRun(); };
   const onClaim = () => { haptics.success(); sound.success(); doClaim(); };
   const onBuy = (id: string) => { haptics.tap(); sound.purchase(); doBuyUpgrade(id); };
+  const onHire = (id: string) => { haptics.tap(); sound.purchase(); doHireStaff(id); };
   const onResearch = (id: string) => { haptics.tap(); sound.purchase(); doResearch(id); };
   const onBuyData = (id: string) => {
     const outcome = doBuyData(id);
@@ -204,6 +208,7 @@ export function App() {
         <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} />
         <UpgradePanel game={game} onBuy={onBuy} />
         {showResearch && <ResearchPanel game={game} onResearch={onResearch} />}
+        {showStaff && <StaffPanel game={game} derived={d} onHire={onHire} />}
         {showMarket && <DataMarketPanel game={game} onBuyData={onBuyData} onBuyTool={onBuy} />}
         {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} />}
         <StatsPanel game={game} derived={d} />

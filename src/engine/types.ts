@@ -70,4 +70,6 @@ export interface Derived {
   runMoneyYield: Big;
   /** Global multiplier from Legacy Weights (1 + weights * perPoint). */
   legacyMult: Big;
+  /** Ongoing staff payroll drained from Money each second (Phase 2). */
+  payrollPerSec: Big;
 }
