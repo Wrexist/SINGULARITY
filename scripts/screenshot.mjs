@@ -87,7 +87,7 @@ try {
       ? {
           version: 2,
           resources: { compute: "120000", data: "8000", money: "5000000" },
-          upgrades: { rack_basic: 50, rack_server: 30, rack_tpu: 16, overclock: 6, data_pipeline: 6, monetize: 6, auto_claim: 1, auto_train: 1, expand_wing: 3, expand_annex: 2 },
+          upgrades: { rack_basic: 50, rack_server: 30, rack_tpu: 16, overclock: 6, data_pipeline: 6, monetize: 6, auto_claim: 1, auto_train: 1, expand_e: 2, expand_w: 1, expand_n: 1, expand_s: 1 },
           research: ["backprop", "curated_data", "distributed", "distillation", "inference_api"],
           run: { active: true, progress: 0.4, readyToClaim: false },
           prestige: { legacyWeights: "0", ships: 0 },

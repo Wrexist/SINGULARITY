@@ -1,8 +1,10 @@
 import { useEffect, useRef } from "react";
 import { useGame } from "../state/store";
 import { useSettings } from "./settings";
+import { haptics } from "./haptics";
+import { sound } from "./sound";
 import { buildHallModel } from "../render/hallModel";
-import { drawHall } from "../render/hallRenderer";
+import { drawHall, expansionMarkers, pointInPoly } from "../render/hallRenderer";
 import { currentEra, eraName } from "../engine/eras";
 
 /**
@@ -69,11 +71,15 @@ export function HallCanvas() {
       // Cheap signature of render-affecting fields (run.progress is excluded —
       // the renderer animates from the clock, not from progress).
       const u = game.upgrades;
-      const sig = `${u.rack_basic ?? 0}|${u.rack_server ?? 0}|${u.rack_tpu ?? 0}|${game.run.active ? 1 : 0}|${currentEra(game)}`;
+      const sig = `${u.rack_basic ?? 0}|${u.rack_server ?? 0}|${u.rack_tpu ?? 0}|${u.expand_n ?? 0}|${u.expand_s ?? 0}|${u.expand_e ?? 0}|${u.expand_w ?? 0}|${game.run.active ? 1 : 0}|${currentEra(game)}`;
       if (sig !== modelSig) {
         modelSig = sig;
         model = buildHallModel(game);
       }
+      // Money isn't in the signature (it changes every tick), so refresh the
+      // expansion markers' affordability cheaply here so they light up live.
+      const money = game.resources.money;
+      for (const s of model.sides) s.affordable = !s.maxed && money.gte(s.cost);
 
       if (model.total > prevTotal) {
         spawnFrom = prevTotal;
@@ -107,10 +113,31 @@ export function HallCanvas() {
     const onVis = () => (document.visibilityState === "hidden" ? stop() : start());
     document.addEventListener("visibilitychange", onVis);
 
+    // Tap a side marker to buy that expansion (the in-hall affordance).
+    const markerAt = (ev: PointerEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const px = ev.clientX - rect.left, py = ev.clientY - rect.top;
+      return expansionMarkers(model, cssW, cssH).find((mk) => !mk.maxed && pointInPoly(px, py, mk.quad));
+    };
+    const onDown = (ev: PointerEvent) => {
+      const hit = markerAt(ev);
+      if (!hit) return;
+      ev.preventDefault();
+      if (hit.affordable) { useGame.getState().doBuyUpgrade(hit.id); haptics.tap(); sound.purchase(); }
+      else haptics.warn();
+    };
+    const onMove = (ev: PointerEvent) => {
+      canvas.style.cursor = markerAt(ev) ? "pointer" : "default";
+    };
+    canvas.addEventListener("pointerdown", onDown);
+    canvas.addEventListener("pointermove", onMove);
+
     return () => {
       stop();
       ro.disconnect();
       document.removeEventListener("visibilitychange", onVis);
+      canvas.removeEventListener("pointerdown", onDown);
+      canvas.removeEventListener("pointermove", onMove);
     };
   }, []);
 

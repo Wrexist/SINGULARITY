@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { buildHallModel, hallDims } from "./hallModel";
 import { createInitialState } from "../engine/state";
 import { balance } from "../engine/balance/config";
+import { Big } from "../engine/math/Big";
 
 describe("hall view-model", () => {
   it("an empty lab has no racks and reads as era 0", () => {
@@ -30,22 +31,35 @@ describe("hall view-model", () => {
     expect(m.racks.every((r) => r.density === 1)).toBe(true); // packed → max density
   });
 
-  it("floor expansions grow the room and let more racks fit", () => {
+  it("per-side expansions grow the room directionally and let more racks fit", () => {
     const base = createInitialState();
-    expect(hallDims(base)).toEqual({ cols: balance.hall.baseCols, rows: balance.hall.baseRows });
+    const d0 = hallDims(base);
+    expect(d0.cols).toBe(balance.hall.baseCols);
+    expect(d0.rows).toBe(balance.hall.baseRows);
+    expect(d0.gxMin).toBe(0);
+    expect(d0.gyMin).toBe(0);
 
     const expanded = createInitialState();
-    expanded.upgrades = { expand_wing: 2, expand_annex: 1 }; // +4 cols, +2 rows
-    expect(hallDims(expanded)).toEqual({
-      cols: balance.hall.baseCols + 4,
-      rows: balance.hall.baseRows + 2,
-    });
+    expanded.upgrades = { expand_e: 1, expand_w: 1, expand_n: 1 }; // +2+2 cols, +2 rows
+    const d2 = hallDims(expanded);
+    expect(d2.cols).toBe(balance.hall.baseCols + 4);
+    expect(d2.rows).toBe(balance.hall.baseRows + 2);
+    expect(d2.gxMin).toBe(-2); // west pushed the floor 2 tiles left
+    expect(d2.gyMin).toBe(-2); // north pushed it 2 tiles back
 
-    // With the same (over-capacity) hardware, a bigger floor shows more boxes.
     const racks = { rack_basic: 200 };
     const small = buildHallModel({ ...base, upgrades: racks });
-    const big = buildHallModel({ ...expanded, upgrades: { ...racks, expand_wing: 2, expand_annex: 1 } });
+    const big = buildHallModel({ ...expanded, upgrades: { ...racks, expand_e: 1, expand_w: 1, expand_n: 1 } });
     expect(big.total).toBeGreaterThan(small.total);
+  });
+
+  it("exposes a buyable marker for each of the four sides", () => {
+    const s = createInitialState();
+    s.resources.money = Big.of(1e9);
+    const m = buildHallModel(s);
+    expect(m.sides.map((x) => x.dir).sort()).toEqual(["e", "n", "s", "w"]);
+    expect(m.sides.every((x) => x.cost > 0)).toBe(true);
+    expect(m.sides.every((x) => x.affordable)).toBe(true); // rich → all affordable
   });
 
   it("over capacity, keeps the tier mix visible (proportional, not all-of-one-tier)", () => {
