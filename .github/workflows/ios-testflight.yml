@@ -75,6 +75,9 @@ jobs:
       - name: Generate & sync Capacitor iOS
         run: |
           if [ ! -d ios ]; then npx cap add ios; fi
+          # Stamp the app icon (Logo 1 — server rack) + launch splash into the
+          # freshly-scaffolded native project from assets/icon.png & splash.png.
+          node scripts/stamp-icons.mjs
           npx cap sync ios
 
       # Auto-pass export compliance (no custom crypto) + a unique, rising build number.
