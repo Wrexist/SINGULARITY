@@ -161,6 +161,12 @@ fun-gate on 2026-06-25 and greenlit Phase 1. (Phase 0 history retained below for
       promo + 4000-char description, release notes, categories, 12+ age-rating answers, "Data Not
       Collected" privacy + hostable privacy policy, IAP listing, screenshot plan, review notes, and a
       parametric app-icon concept (`icon-concept.svg`). Paste-ready + Fastlane-deliver layout.
+- [x] Marketing screenshots: `scripts/store-screenshots.mjs` → six 1290×2796 Liquid-Glass framed shots
+      (`appstore/screenshots/`), curated to show an abundant, aspirational lab.
+- [x] GitHub Pages marketing site (`docs/`): Liquid-Glass landing + privacy + support, animated aurora,
+      glass cards, screenshot gallery, scroll reveals (fail-safe). Serves the privacy/support URLs.
+- [~] PENDING (owner): enable GitHub Pages (Settings → Pages → Deploy from branch → main, `/docs`) so
+      the privacy/support/marketing URLs go live; render `icon.svg` → 1024 PNG; create the ASC app record.
 
 ## Backlog (later Phase 1 + Phase 2+)
 - [Phase 2+] power/heat, staff, factions, eras 4–6, multi-room hall, cosmetic store, Steam port
