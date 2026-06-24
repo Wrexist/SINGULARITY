@@ -120,6 +120,10 @@ fun-gate on 2026-06-25 and greenlit Phase 1. (Phase 0 history retained below for
 - [x] Integrated as the hero stage atop the existing UI; 5 model tests (66 total). Build clean.
 - [x] Era-transition tentpole moment (full-screen "press release" when you cross an era)
 - [x] Richer manifestation: power-on flash when a rack boots in.
+- [x] HQ parametric pass: gradient-shaded racks w/ server-unit LEDs + power column + rim light,
+      floor light-spill, lit room (back walls + ceiling), depth-faded grid, data-mote particles.
+- [x] Mote burst (green $ + violet data) when a payout is claimed.
+- [x] Per-era hall props: wall-mounted cooling units (spinning fans, scale w/ era) + floor cable tray.
 
 ### Lightweight world events (the satire layer)
 - [x] 12 satirical ambient events (buffs/debuffs + immediate % swings), written in voice.

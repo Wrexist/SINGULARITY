@@ -78,7 +78,7 @@ export function drawHall(ctx: CanvasRenderingContext2D, model: HallModel, o: Dra
     y: originY + (gx + gy) * (tileH / 2),
   });
 
-  drawRoom(ctx, iso, model.era, H);
+  drawRoom(ctx, iso, model.era, H, o.timeMs, o.reducedMotion);
   drawFloor(ctx, iso, model.era);
 
   // Atmosphere behind the racks (subtle), then racks, then foreground motes.
@@ -122,8 +122,11 @@ export function drawHall(ctx: CanvasRenderingContext2D, model: HallModel, o: Dra
   }
 }
 
-/** Two back walls + a ceiling light strip — turns the floor into a lit room. */
-function drawRoom(ctx: CanvasRenderingContext2D, iso: (gx: number, gy: number) => Pt, era: number, H: number): void {
+/** Two back walls + ceiling light + era-scaled wall props (cooling units). */
+function drawRoom(
+  ctx: CanvasRenderingContext2D, iso: (gx: number, gy: number) => Pt,
+  era: number, H: number, t: number, reducedMotion: boolean,
+): void {
   const a = iso(0, 0), b = iso(COLS, 0), d = iso(0, ROWS);
   const base = eraFloor(era);
   const wallH = H * 0.24;
@@ -142,12 +145,58 @@ function drawRoom(ctx: CanvasRenderingContext2D, iso: (gx: number, gy: number) =
   const ga = up(a), gb = up(b), gd = up(d);
   stroke(ctx, ga, gb, rgba(ceil, 0.55), 2);
   stroke(ctx, ga, gd, rgba(ceil, 0.4), 2);
-  // Soft bloom hanging below the ceiling line.
   const bloom = ctx.createLinearGradient(0, ga.y, 0, ga.y + wallH * 0.5);
   bloom.addColorStop(0, rgba(ceil, 0.22));
   bloom.addColorStop(1, rgba(base, 0));
   poly(ctx, [ga, gb, { x: gb.x, y: gb.y + wallH * 0.5 }, { x: ga.x, y: ga.y + wallH * 0.5 }], bloom);
   poly(ctx, [ga, gd, { x: gd.x, y: gd.y + wallH * 0.5 }, { x: ga.x, y: ga.y + wallH * 0.5 }], bloom);
+
+  // Wall-mounted cooling units — the room gets more "infrastructure" each era.
+  const units = era >= 2 ? 2 : era >= 1 ? 1 : 0;
+  const wallPt = (p0: Pt, p1: Pt, u: number, v: number): Pt => {
+    const bp = lerp(p0, p1, u);
+    return { x: bp.x, y: bp.y - v * wallH };
+  };
+  for (const [p0, p1] of [[a, b] as const, [a, d] as const]) {
+    for (let k = 0; k < units; k++) {
+      const u = units === 1 ? 0.5 : 0.32 + k * 0.36;
+      drawCoolingUnit(ctx, wallPt(p0, p1, u - 0.07, 0.66), wallPt(p0, p1, u + 0.07, 0.66), wallH * 0.3, t, reducedMotion);
+    }
+  }
+}
+
+/** A vented cooling unit on a wall: a panel, a spinning fan, and louvres. */
+function drawCoolingUnit(ctx: CanvasRenderingContext2D, topL: Pt, topR: Pt, h: number, t: number, reducedMotion: boolean): void {
+  const bl: Pt = { x: topL.x, y: topL.y + h };
+  const br: Pt = { x: topR.x, y: topR.y + h };
+  const g = ctx.createLinearGradient(0, topL.y, 0, bl.y);
+  g.addColorStop(0, "rgb(70,78,96)");
+  g.addColorStop(1, "rgb(40,46,60)");
+  poly(ctx, [topL, topR, br, bl], g);
+  stroke(ctx, topL, topR, "rgba(255,255,255,0.18)", 1);
+
+  const cx = (topL.x + br.x) / 2, cy = (topL.y + br.y) / 2;
+  const r = Math.min(Math.abs(topR.x - topL.x), h) * 0.32;
+  // Fan housing
+  ctx.strokeStyle = "rgba(255,255,255,0.25)";
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+  // Blades (rotating unless reduced motion)
+  const rot = reducedMotion ? 0 : (t / 240) % (Math.PI * 2);
+  ctx.strokeStyle = "rgba(180,210,255,0.55)";
+  ctx.lineWidth = Math.max(1, r * 0.18);
+  for (let i = 0; i < 3; i++) {
+    const ang = rot + (i * Math.PI * 2) / 3;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(ang) * r * 0.82, cy + Math.sin(ang) * r * 0.82);
+    ctx.stroke();
+  }
+  // Status LED
+  ctx.fillStyle = "rgba(120,255,180,0.85)";
+  ctx.beginPath();
+  ctx.arc(topL.x + (br.x - topL.x) * 0.16, topL.y + h * 0.22, Math.max(0.8, r * 0.12), 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function drawFloor(ctx: CanvasRenderingContext2D, iso: (gx: number, gy: number) => Pt, era: number): void {
@@ -192,6 +241,22 @@ function drawFloor(ctx: CanvasRenderingContext2D, iso: (gx: number, gy: number) 
   ctx.strokeStyle = "rgba(255,255,255,0.16)";
   ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(c.x, c.y); ctx.stroke();
+
+  // Cable tray running along the front of the floor (era 1+). Glowing trunk
+  // with periodic junction nodes — the room's "infrastructure" reads as data.
+  if (era >= 1) {
+    const cable: RGB = [90, 210, 255];
+    const e0 = iso(0, ROWS - 0.12), e1 = iso(COLS, ROWS - 0.12);
+    stroke(ctx, e0, e1, rgba(cable, 0.28), 4);
+    stroke(ctx, e0, e1, rgba(cable, 0.6), 1.5);
+    for (let gx = 1; gx < COLS; gx++) {
+      const p = iso(gx, ROWS - 0.12);
+      ctx.fillStyle = rgba(cable, 0.8);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
 }
 
 function drawRack(
