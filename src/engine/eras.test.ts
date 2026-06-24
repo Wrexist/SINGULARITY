@@ -9,9 +9,9 @@ describe("eras", () => {
 
   it("reaches era 1 once enough research is owned", () => {
     const s = createInitialState();
-    s.research = ["backprop"];
-    expect(currentEra(s)).toBe(0);
     s.research = ["backprop", "curated_data"];
+    expect(currentEra(s)).toBe(0); // below the startup threshold
+    s.research = ["backprop", "curated_data", "mixed_precision"];
     expect(currentEra(s)).toBe(1);
   });
 

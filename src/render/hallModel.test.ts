@@ -73,7 +73,7 @@ describe("hall view-model", () => {
 
   it("re-skins the era as the lab progresses", () => {
     const s = createInitialState();
-    s.research = ["backprop", "curated_data"];
+    s.research = ["backprop", "curated_data", "mixed_precision"];
     expect(buildHallModel(s).era).toBe(1);
     s.research = [...s.research, "inference_api"];
     expect(buildHallModel(s).era).toBe(2);

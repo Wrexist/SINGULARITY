@@ -115,6 +115,20 @@ Deferred on purpose (documented, not fixed unsupervised — current balance does
 - **`migrate` doesn't reject `version > SAVE_VERSION`** — only matters across app downgrades, N/A
   for a single-build prototype.
 
+### Deepening the research tree shifts the WHOLE curve (re-sim after)
+- Adding parallel **multiplier** nodes (extra ×compute/×data/×money) compounds the snowball, so a
+  deeper tree makes the first prestige *earlier*, not later, even though there are more nodes to buy.
+  Deepening from 5→11 nodes pulled first-ship from ~15m to ~8.5m until the late-gate costs were
+  raised to bring it back to ~10.5m. Always re-run `npm run sim` after touching research.
+- **Reveal in waves** in the UI: ResearchPanel shows owned/available nodes plus the *next* wave
+  (locked nodes whose prereqs are owned-or-available), not the whole tree — keeps a deep tree from
+  dumping (GDD spine #3). The branching `requires` is what makes "waves" meaningful.
+- Sim hygiene: exclude non-production upgrades (automations, hall expansions) from the greedy
+  "buy cheapest production upgrade" loop, or the sim wastes money on them and skews the curve.
+- Current healthy curve: first ship ~10.5m, longest wall 0m55s, meta-loop compounds (gen 2–3 < 1m),
+  ~72 Legacy Weights on first ship. `scaling_laws` is intentionally an optional post-ship power node,
+  so "all research before prestige" is correctly NO.
+
 ### Balancing the Data Market (use the sim's EV table, not vibes)
 - `npm run sim` now prints a **Data Market EV table**: clean data-per-$ and *expected* data-per-$
   for shady offers at Heat 0/50/100 (folding in poison/raid chance + the fine). This is how the

@@ -106,6 +106,14 @@ fun-gate on 2026-06-25 and greenlit Phase 1. (Phase 0 history retained below for
 ---
 
 ## PHASE 1 — Shippable MVP (STARTED 2026-06-25, owner passed fun-gate)
+### Content + balance
+- [x] Deepened research tree: 5 → 11 nodes, branching across the 3 eras (mixed_precision, data_aug,
+      rlhf, KV cache, MoE, scaling_laws), with a proper capability gate (inference_api needs
+      distillation + rlhf) and an optional post-ship power branch. Panel reveals in waves.
+- [x] Era-1 threshold bumped to 3 research nodes.
+- [x] Balance pass via `npm run sim`: re-tuned late-gate costs after the deeper tree sped the
+      snowball; first ship ~10.5m, no walls (0m55s), meta-loop compounds, Bazaar EV premium intact.
+
 ### The 2.5D hall (the defining pillar)
 - [x] Rendering decision: **Canvas 2D isometric** (parametric boxes/lights, no image assets,
       zero deps → lean Capacitor bundle). Wrapped behind a render module for a future WebGL swap.

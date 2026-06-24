@@ -149,7 +149,13 @@ function autoBuy(state: GameState, useMarket: boolean): { state: GameState; boug
   let guard = 0;
   while (guard++ < 200) {
     const candidates = balance.upgrades
-      .filter((d) => d.effect.kind !== "autoClaim" && d.effect.kind !== "autoTrain")
+      .filter(
+        (d) =>
+          d.effect.kind !== "autoClaim" &&
+          d.effect.kind !== "autoTrain" &&
+          d.effect.kind !== "floorCols" && // hall expansions are cosmetic capacity, not production
+          d.effect.kind !== "floorRows",
+      )
       .filter((d) => canBuyUpgrade(s, d.id))
       .map((d) => ({ d, cost: upgradeCost(d, s.upgrades[d.id] ?? 0) }))
       // Don't spend compute we need to run training; keep a buffer.
