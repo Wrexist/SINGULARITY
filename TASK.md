@@ -157,6 +157,10 @@ fun-gate on 2026-06-25 and greenlit Phase 1. (Phase 0 history retained below for
 - [~] PENDING (owner): create the App Store Connect app record (bundle com.wrexist.singularityinc),
       then run the workflow. No extra secrets needed. First run UNVERIFIED — will need iteration.
 - [ ] Wire the real StoreKit purchase + create the premium product once the app record exists in ASC.
+- [x] App Store metadata package (`appstore/`): ASO-optimized name/subtitle/keywords (counts verified),
+      promo + 4000-char description, release notes, categories, 12+ age-rating answers, "Data Not
+      Collected" privacy + hostable privacy policy, IAP listing, screenshot plan, review notes, and a
+      parametric app-icon concept (`icon-concept.svg`). Paste-ready + Fastlane-deliver layout.
 
 ## Backlog (later Phase 1 + Phase 2+)
 - [Phase 2+] power/heat, staff, factions, eras 4–6, multi-room hall, cosmetic store, Steam port
