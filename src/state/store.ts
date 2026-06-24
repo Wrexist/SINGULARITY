@@ -16,6 +16,8 @@ import {
 import { prestige } from "../engine/prestige";
 import { applyOffline, type OfflineSummary } from "../engine/offline";
 import { serialize, deserialize } from "../engine/save";
+import { isPremium } from "./premium";
+import { balance } from "../engine/balance/config";
 
 const SAVE_KEY = "singularity.save.v1";
 const TIME_KEY = "singularity.lastSeen.v1";
@@ -88,7 +90,9 @@ export const useGame = create<GameStore>((set, get) => ({
         const last = Number(localStorage.getItem(TIME_KEY) ?? "0");
         if (last > 0) {
           const elapsed = now() - last;
-          const result = applyOffline(game, elapsed);
+          // Premium grants a longer offline cap (QoL perk, not power).
+          const capHours = isPremium() ? balance.offline.premiumMaxHours : balance.offline.maxHours;
+          const result = applyOffline(game, elapsed, capHours);
           game = result.state;
           // Only surface the WIWA screen if something meaningful accrued.
           if (result.summary.appliedMs > 1000) offline = result.summary;

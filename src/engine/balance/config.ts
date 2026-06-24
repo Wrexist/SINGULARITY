@@ -340,6 +340,8 @@ export const balance = {
   offline: {
     /** Cap accrued offline time so it's a reward, not an exploit (LEARNINGS). */
     maxHours: 8,
+    /** Premium QoL perk: a longer offline cap (GDD-sanctioned, not pay-for-power). */
+    premiumMaxHours: 24,
   },
 
   upgrades: [

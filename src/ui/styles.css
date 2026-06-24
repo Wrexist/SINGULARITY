@@ -799,6 +799,29 @@ body {
 .onboard-foot { font-size: 12.5px; color: var(--ink-2); line-height: 1.5; margin: 0 0 20px; }
 .onboard-foot b { color: var(--ink); }
 
+/* ---------- Premium card (Settings) ---------- */
+.premium-card {
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  background: linear-gradient(135deg, rgba(255, 56, 92, 0.10), rgba(47, 123, 246, 0.10));
+  border: 1px solid var(--glass-hairline);
+}
+.premium-card.owned { background: linear-gradient(135deg, rgba(22, 179, 100, 0.12), rgba(47, 123, 246, 0.08)); }
+.premium-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.premium-title { font-size: 15px; font-weight: 800; letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px; }
+.premium-badge {
+  font-size: 9.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+  color: #b8860b; background: rgba(255, 196, 0, 0.18); border: 1px solid rgba(255, 196, 0, 0.5);
+  padding: 1px 7px; border-radius: 999px;
+}
+.premium-price { font-size: 14px; font-weight: 750; color: var(--ink); }
+.premium-perks { margin: 0 0 12px; padding-left: 18px; }
+.premium-perks li { font-size: 12.5px; color: var(--ink-2); line-height: 1.5; }
+.premium-actions { display: flex; align-items: center; gap: 12px; }
+.premium-actions .btn { flex: 1; }
+.premium-owned-tag { font-size: 13px; font-weight: 700; color: var(--money); }
+
 /* ---------- Expansion confirm popup ---------- */
 .confirm-modal { max-width: 340px; }
 .confirm-kicker { font-size: 11px; font-weight: 800; letter-spacing: 0.18em; color: var(--compute); margin-bottom: 6px; }

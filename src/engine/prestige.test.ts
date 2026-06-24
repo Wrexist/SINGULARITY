@@ -82,4 +82,12 @@ describe("offline progress", () => {
     expect(summary.capped).toBe(true);
     expect(summary.appliedMs).toBe(balance.offline.maxHours * 3600 * 1000);
   });
+
+  it("honors a larger offline cap (the premium QoL perk)", () => {
+    const s = createInitialState();
+    const tenDaysMs = 10 * 24 * 3600 * 1000;
+    const { summary } = applyOffline(s, tenDaysMs, balance.offline.premiumMaxHours);
+    expect(summary.appliedMs).toBe(balance.offline.premiumMaxHours * 3600 * 1000);
+    expect(balance.offline.premiumMaxHours).toBeGreaterThan(balance.offline.maxHours);
+  });
 });

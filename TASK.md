@@ -150,10 +150,13 @@ fun-gate on 2026-06-25 and greenlit Phase 1. (Phase 0 history retained below for
 - [x] GitHub Actions `ios-testflight.yml` (macos-26): build web → `cap add/sync ios` → xcodebuild
       AUTOMATIC (cloud) signing via ASC API key → altool upload. NO Fastlane/Match (cheaper, simpler).
       Improvements over Silicon: team id from secret, auto export-compliance + build-number, tag trigger.
-- [x] IAP plumbing stub (`src/ui/iap.ts`) behind a stable interface (StoreKit wired later).
+- [x] IAP plumbing (`src/ui/iap.ts` + `src/state/premium.ts`) behind a stable interface.
+- [x] Premium unlock UI in Settings (one-time, cosmetic/QoL only — GDD §9): perk = 24h offline cap
+      (engine stays pure; applyOffline takes capHours), Founder badge, Restore. Purchase is a local
+      STUB that grants instantly until StoreKit is wired.
 - [~] PENDING (owner): create the App Store Connect app record (bundle com.wrexist.singularityinc),
       then run the workflow. No extra secrets needed. First run UNVERIFIED — will need iteration.
-- [ ] Wire the real StoreKit purchase once the IAP product exists in ASC.
+- [ ] Wire the real StoreKit purchase + create the premium product once the app record exists in ASC.
 
 ## Backlog (later Phase 1 + Phase 2+)
 - [Phase 2+] power/heat, staff, factions, eras 4–6, multi-room hall, cosmetic store, Steam port

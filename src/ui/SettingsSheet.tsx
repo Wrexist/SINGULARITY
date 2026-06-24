@@ -1,4 +1,8 @@
+import { useState } from "react";
 import { useSettings } from "./settings";
+import { iap, PREMIUM_PRICE } from "./iap";
+import { haptics as hpt } from "./haptics";
+import { sound as snd } from "./sound";
 
 type ToggleKey = "sound" | "haptics" | "reducedMotion";
 
@@ -36,11 +40,52 @@ export function SettingsSheet({ onClose }: Props) {
     { key: "reducedMotion", label: "Reduced motion", hint: "Calm the animations", value: reducedMotion },
   ];
 
+  const [premium, setPremiumState] = useState(iap.isPremium());
+  const [busy, setBusy] = useState(false);
+  const buy = async () => {
+    setBusy(true);
+    const ok = await iap.purchasePremium();
+    setBusy(false);
+    if (ok) { setPremiumState(true); hpt.celebrate(); snd.ship(); }
+  };
+  const restore = async () => {
+    setBusy(true);
+    const ok = await iap.restore();
+    setBusy(false);
+    setPremiumState(ok);
+  };
+
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-grip" />
         <h2 className="sheet-title">Settings</h2>
+
+        {/* Premium: one generous, cosmetic/QoL unlock (GDD §9 — never power). */}
+        <div className={`premium-card ${premium ? "owned" : ""}`}>
+          <div className="premium-head">
+            <span className="premium-title">✦ Premium {premium && <span className="premium-badge">Founder</span>}</span>
+            {!premium && <span className="premium-price">{PREMIUM_PRICE}</span>}
+          </div>
+          <ul className="premium-perks">
+            <li>24-hour offline cap (up from 8h)</li>
+            <li>“Founder” status &amp; future hall themes</li>
+            <li>One-time unlock — no ads, ever, no pay-to-win</li>
+          </ul>
+          {premium ? (
+            <div className="premium-owned-tag">Unlocked — thank you 💚</div>
+          ) : (
+            <div className="premium-actions">
+              <button className="btn btn-primary" disabled={busy} onClick={buy}>
+                {busy ? "…" : `Unlock ${PREMIUM_PRICE}`}
+              </button>
+              <button className="link-btn" disabled={busy} onClick={restore}>
+                Restore
+              </button>
+            </div>
+          )}
+        </div>
+
         <div className="set-list">
           {rows.map((r) => (
             <ToggleRow
