@@ -171,6 +171,9 @@ export function deserialize(json: string): GameState {
     active: loadedProducts.active.map((p) => ({ ...p, upgrade: sanitizeUpgrade((p as ProductState).upgrade) })),
     drafts: sanitizeDrafts((loadedProducts as ProductsState).drafts),
     sold: typeof loadedProducts.sold === "number" && Number.isFinite(loadedProducts.sold) ? loadedProducts.sold : 0,
+    milestones: Array.isArray((loadedProducts as ProductsState).milestones)
+      ? (loadedProducts as ProductsState).milestones.filter((m): m is string => typeof m === "string")
+      : [],
   };
   return {
     version: SAVE_VERSION,
@@ -226,10 +229,10 @@ export function migrate(raw: any): SavedShape {
     s = { ...s, version: 6, products: s.products ?? { active: [], frontier: PRODUCTS.frontierStart } };
   }
   if (s.version === 6) {
-    // v6 → v7: drafts (raw models from shipping) + per-product timed upgrades. The
-    // deserializer defaults/sanitizes both, so this just stamps the version.
+    // v6 → v7: drafts (raw models from shipping), per-product timed upgrades, and
+    // product milestones. The deserializer defaults/sanitizes them; stamp + default.
     const prev = s.products ?? { active: [], frontier: PRODUCTS.frontierStart };
-    s = { ...s, version: 7, products: { ...prev, drafts: prev.drafts ?? [] } };
+    s = { ...s, version: 7, products: { ...prev, drafts: prev.drafts ?? [], milestones: prev.milestones ?? [] } };
   }
   return s as SavedShape;
 }

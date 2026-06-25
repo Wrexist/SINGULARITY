@@ -1,7 +1,7 @@
 import { Big } from "./math/Big";
 import { balance } from "./balance/config";
 import { derive } from "./derive";
-import { simulateProducts, advanceUpgrades } from "./products";
+import { simulateProducts, advanceUpgrades, applyMilestones } from "./products";
 import type { Derived, GameState } from "./types";
 
 /**
@@ -129,7 +129,9 @@ export function tick(state: GameState, elapsedMs: number): GameState {
       .filter((m) => m.remainingSec > 0);
   }
 
-  return {
+  // Award any newly-reached product milestones (one-time Money rewards). Folded in
+  // last so it sees this tick's fresh user/MRR/version totals.
+  const ms = applyMilestones({
     ...state,
     resources: { compute, data, money },
     lifetimeMoney,
@@ -137,7 +139,8 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     heat,
     modifiers,
     products,
-  };
+  });
+  return ms.state;
 }
 
 function claimInto(d: Derived, data: Big, money: Big, lifetimeMoney: Big) {

@@ -5,6 +5,7 @@ import {
   simulateProducts, productMetrics, versionCost,
   churnReason, maybeChurnFlavor,
   canLaunchDraft, launchDraft, canStartUpgrade, startUpgrade, advanceUpgrades, upgradeDurationSec,
+  applyMilestones, milestoneValue,
 } from "./products";
 import { applyWorldEvent } from "./actions";
 import { tick } from "./tick";
@@ -193,7 +194,7 @@ describe("products — churn-reason flavor", () => {
 
   it("fires a flavor quip naming a materially-bleeding product", () => {
     const stale = { ...settled(), quality: 1, priceMult: 1, paid: 500 };
-    const ps = { active: [stale], frontier: 51, sold: 0, drafts: [] };
+    const ps = { active: [stale], frontier: 51, sold: 0, drafts: [], milestones: [] };
     const res = maybeChurnFlavor(ps, 10, 0, 0, 0); // rollFire 0 → fires
     expect(res).not.toBeNull();
     expect(res!.reason).toBe("stale");
@@ -202,19 +203,19 @@ describe("products — churn-reason flavor", () => {
 
   it("stays silent on the dice when the fire roll misses", () => {
     const stale = { ...settled(), quality: 1, priceMult: 1, paid: 500 };
-    const ps = { active: [stale], frontier: 51, sold: 0, drafts: [] };
+    const ps = { active: [stale], frontier: 51, sold: 0, drafts: [], milestones: [] };
     expect(maybeChurnFlavor(ps, 0.1, 0.99, 0, 0)).toBeNull(); // tiny window, high roll
   });
 
   it("won't quip about a product with no real subscriber base", () => {
     const tiny = { ...settled(), quality: 1, priceMult: 1, paid: 5 }; // below flavor.minPaid
-    const ps = { active: [tiny], frontier: 51, sold: 0, drafts: [] };
+    const ps = { active: [tiny], frontier: 51, sold: 0, drafts: [], milestones: [] };
     expect(maybeChurnFlavor(ps, 10, 0, 0, 0)).toBeNull();
   });
 
   it("won't quip about a healthy portfolio", () => {
     const healthy = { ...settled(), quality: 50, priceMult: 1, paid: 500 };
-    const ps = { active: [healthy], frontier: 50, sold: 0, drafts: [] };
+    const ps = { active: [healthy], frontier: 50, sold: 0, drafts: [], milestones: [] };
     expect(maybeChurnFlavor(ps, 10, 0, 0, 0)).toBeNull();
   });
 });
@@ -366,6 +367,27 @@ describe("products — employee (staff) buffs", () => {
     // Same wall-time at 1× speed would NOT finish.
     const slow = advanceUpgrades(s.products, 1e9, 1e9, total / 2);
     expect(slow.products.active[0]!.upgrade).not.toBeNull();
+  });
+});
+
+describe("products — milestones", () => {
+  it("awards a milestone once when crossed, pays its reward, and is idempotent", () => {
+    const s = release(); // launching a product crosses the 'first_launch' (live ≥ 1) milestone
+    expect(milestoneValue(s, "live")).toBe(1);
+    const before = s.resources.money;
+    const r = applyMilestones(s);
+    expect(r.achieved.some((a) => a.def.id === "first_launch")).toBe(true);
+    expect(r.state.products.milestones).toContain("first_launch");
+    expect(r.state.resources.money.gt(before)).toBe(true); // reward paid
+    // Re-running grants nothing new.
+    expect(applyMilestones(r.state).achieved).toHaveLength(0);
+  });
+
+  it("surfaces milestones through tick as users grow", () => {
+    let s = release();
+    s = { ...s, products: { ...s.products, active: [{ ...s.products.active[0]!, mau: 200_000, paid: 1000 }] } };
+    const next = tick(s, 1000);
+    expect(next.products.milestones).toContain("users_100k");
   });
 });
 

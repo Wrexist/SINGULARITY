@@ -1,4 +1,6 @@
-import { products as B, type ProductTypeId, type ProductTypeDef } from "./balance/products";
+import {
+  products as B, productMilestones, type ProductTypeId, type ProductTypeDef, type MilestoneDef,
+} from "./balance/products";
 import type { GameState, ProductMods, ProductState, ProductsState, UpgradeState } from "./types";
 
 /** No employees hired → no product buffs. */
@@ -125,6 +127,47 @@ export function productMetrics(p: ProductState, frontier: number): ProductMetric
     margin: mrr - serve - p.marketingPerSec,
     gap, churnPerMin: churnPerSec * 60,
     qf: clamp(p.quality / Math.max(frontier, 1e-9), 0, 1),
+  };
+}
+
+// ---------- Milestones (a chase ladder; pure) ----------
+
+/** Current value of a milestone metric across the portfolio (totals / peaks). */
+export function milestoneValue(state: GameState, metric: MilestoneDef["metric"]): number {
+  const ps = state.products;
+  switch (metric) {
+    case "users": return ps.active.reduce((s, p) => s + p.mau, 0);
+    case "paid": return ps.active.reduce((s, p) => s + p.paid, 0);
+    case "mrr": return ps.active.reduce((s, p) => s + productMetrics(p, ps.frontier).mrr, 0);
+    case "version": return ps.active.reduce((m, p) => Math.max(m, p.version), 0);
+    case "qf": return ps.active.reduce((m, p) => Math.max(m, productMetrics(p, ps.frontier).qf), 0);
+    case "live": return ps.active.length;
+    case "sold": return ps.sold;
+  }
+}
+
+export interface MilestoneAchievement { def: MilestoneDef; reward: number; }
+
+/** Award any newly-reached milestones: append their ids and pay the one-time Money
+ *  reward. Pure & idempotent (an already-achieved milestone is skipped). Returns the
+ *  fresh achievements so the UI can celebrate them. */
+export function applyMilestones(state: GameState): { state: GameState; achieved: MilestoneAchievement[] } {
+  const have = new Set(state.products.milestones);
+  const achieved: MilestoneAchievement[] = [];
+  for (const def of productMilestones) {
+    if (have.has(def.id)) continue;
+    if (milestoneValue(state, def.metric) >= def.threshold) achieved.push({ def, reward: def.reward });
+  }
+  if (achieved.length === 0) return { state, achieved };
+  const reward = achieved.reduce((s, a) => s + a.reward, 0);
+  return {
+    state: {
+      ...state,
+      resources: { ...state.resources, money: state.resources.money.add(reward) },
+      lifetimeMoney: state.lifetimeMoney.add(reward),
+      products: { ...state.products, milestones: [...state.products.milestones, ...achieved.map((a) => a.def.id)] },
+    },
+    achieved,
   };
 }
 

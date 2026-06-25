@@ -179,3 +179,35 @@ export const products = {
 };
 
 export type ProductsBalance = typeof products;
+
+/** A metric a milestone is measured against (evaluated in the engine). */
+export type MilestoneMetric = "users" | "paid" | "mrr" | "version" | "qf" | "live" | "sold";
+
+export interface MilestoneDef {
+  id: string;
+  label: string;
+  desc: string;
+  metric: MilestoneMetric;
+  /** Achieved once the metric reaches this value. */
+  threshold: number;
+  /** One-time Money reward (a satisfying pop; the badge is the real draw). */
+  reward: number;
+}
+
+/** Per-business milestones — a chase ladder that rewards growing & perfecting the
+ *  portfolio. Evaluated against portfolio totals/peaks; one-time, persisted across
+ *  prestige (a collection). Thresholds are first-pass, tunable. */
+export const productMilestones: MilestoneDef[] = [
+  { id: "first_launch", label: "Hello, World", desc: "Launch your first product", metric: "live", threshold: 1, reward: 5_000 },
+  { id: "users_100k", label: "Going Viral", desc: "100K total monthly users", metric: "users", threshold: 100_000, reward: 25_000 },
+  { id: "users_1m", label: "Household Name", desc: "1M total monthly users", metric: "users", threshold: 1_000_000, reward: 150_000 },
+  { id: "users_10m", label: "Ubiquity", desc: "10M total monthly users", metric: "users", threshold: 10_000_000, reward: 1_000_000 },
+  { id: "paid_100k", label: "Real Revenue", desc: "100K paying subscribers", metric: "paid", threshold: 100_000, reward: 200_000 },
+  { id: "mrr_1k", label: "Ramen Profitable", desc: "$1K/s total MRR", metric: "mrr", threshold: 1_000, reward: 50_000 },
+  { id: "mrr_50k", label: "Hypergrowth", desc: "$50K/s total MRR", metric: "mrr", threshold: 50_000, reward: 750_000 },
+  { id: "version_5", label: "Iterating", desc: "Take a product to v5", metric: "version", threshold: 5, reward: 100_000 },
+  { id: "version_10", label: "Never Stale", desc: "Take a product to v10", metric: "version", threshold: 10, reward: 600_000 },
+  { id: "dominant", label: "Market Leader", desc: "A product at 99% competitiveness", metric: "qf", threshold: 0.99, reward: 120_000 },
+  { id: "full_house", label: "Conglomerate", desc: "Run 3 products at once", metric: "live", threshold: 3, reward: 300_000 },
+  { id: "flipper", label: "Serial Founder", desc: "Sell 5 products", metric: "sold", threshold: 5, reward: 250_000 },
+];

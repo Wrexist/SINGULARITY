@@ -1,9 +1,10 @@
 import { useState } from "react";
 import type { GameState } from "../engine/types";
 import { products as B, type ProductTypeId } from "../engine/balance/products";
+import { productMilestones } from "../engine/balance/products";
 import {
   typeDef, productMetrics, canLaunchDraft, canStartUpgrade, versionCost,
-  upgradeDurationSec, upgradeProgress, retirePayout,
+  upgradeDurationSec, upgradeProgress, retirePayout, milestoneValue,
 } from "../engine/products";
 import { Big } from "../engine/math/Big";
 import { fmt, fmtMoney } from "./format";
@@ -185,6 +186,31 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
           );
         })}
       </div>
+
+      {ps.active.length + ps.milestones.length > 0 && (
+        <div className="prod-milestones">
+          <div className="prod-ms-head">
+            🏆 Milestones <span className="prod-ms-count">{ps.milestones.length}/{productMilestones.length}</span>
+          </div>
+          <div className="prod-ms-grid">
+            {productMilestones.map((mDef) => {
+              const done = ps.milestones.includes(mDef.id);
+              const val = milestoneValue(game, mDef.metric);
+              const pct = Math.max(0, Math.min(1, val / mDef.threshold));
+              return (
+                <div className={`prod-ms ${done ? "done" : ""}`} key={mDef.id} title={mDef.desc}>
+                  <div className="prod-ms-top">
+                    <span className="prod-ms-name">{done ? "✓ " : ""}{mDef.label}</span>
+                    <span className="prod-ms-reward">+{m$(mDef.reward)}</span>
+                  </div>
+                  <div className="prod-ms-desc">{mDef.desc}</div>
+                  {!done && <div className="prod-bar prod-ms-bar"><div className="prod-bar-fill" style={{ width: `${pct * 100}%`, background: "var(--data)" }} /></div>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {detailId && (
         <ProductDetail

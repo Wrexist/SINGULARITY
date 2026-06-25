@@ -120,6 +120,8 @@ export interface ProductsState {
   frontier: number;
   /** Lifetime count of products sold/retired (a badge stat; survives prestige). */
   sold: number;
+  /** Ids of achieved product milestones (a collection; survives prestige). */
+  milestones: string[];
 }
 
 /** Everything the sim and UI read each frame, folded from upgrades + research + prestige. */

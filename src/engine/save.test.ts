@@ -128,6 +128,7 @@ describe("save/load", () => {
       frontier: 3,
       sold: 0,
       drafts: [],
+      milestones: [],
       active: [{ id: "prod-1", name: "Nimbus", type: "general", version: 1, quality: 2, priceMult: 1, marketingPerSec: 0, mau: 10, paid: 2, buzzSec: 0, upgrade: null }],
     };
     expect(deserialize(serialize(good)).products.active).toHaveLength(1);
@@ -147,6 +148,7 @@ describe("save/load", () => {
       frontier: 5,
       sold: 0,
       drafts: [{ id: "draft-2", quality: 4, ships: 2 }],
+      milestones: [],
       active: [{
         id: "prod-1", name: "Cortex", type: "code", version: 3, quality: 4,
         priceMult: 1, marketingPerSec: 0, mau: 100, paid: 20, buzzSec: 0,

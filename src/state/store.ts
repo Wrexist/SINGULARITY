@@ -29,7 +29,7 @@ import {
   canStartUpgrade,
   startUpgrade,
 } from "../engine/products";
-import type { ProductTypeId } from "../engine/balance/products";
+import { productMilestones as PRODUCT_MILESTONES, type ProductTypeId } from "../engine/balance/products";
 import { prestige } from "../engine/prestige";
 import { applyOffline, type OfflineSummary } from "../engine/offline";
 import { serialize, deserialize } from "../engine/save";
@@ -175,6 +175,18 @@ export const useGame = create<GameStore>((set, get) => ({
           message: `🚀 ${finished.name} v${finished.version} shipped — back at the frontier`,
           tone: "good",
         };
+      }
+
+      // A newly-reached product milestone is a headline win — surface it (and its
+      // reward) over an upgrade-ship if both land the same tick.
+      const before = new Set(s.game.products.milestones);
+      const newMs = game.products.milestones.find((id) => !before.has(id));
+      if (newMs) {
+        const def = PRODUCT_MILESTONES.find((m) => m.id === newMs);
+        if (def) {
+          noticeKey += 1;
+          patch.notice = { key: noticeKey, message: `🏆 ${def.label} — ${def.desc} (+$${def.reward.toLocaleString()})`, tone: "good" };
+        }
       }
 
       // Heat-driven regulatory event (only when there's heat to drive it).
