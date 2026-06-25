@@ -91,8 +91,19 @@ export interface StaffRole {
   hire: { base: number; growth: number };
   /** Ongoing Money/sec per hire. */
   payroll: number;
-  effect: { lane: "computeMult" | "dataMult" | "moneyMult"; perLevel: number };
+  /** Which team the role belongs to (for the Employees page grouping). */
+  team: "infra" | "product";
+  effect:
+    // Infrastructure team — multiplies a lab production lane (Phase 2).
+    | { kind: "lane"; lane: "computeMult" | "dataMult" | "moneyMult"; perLevel: number }
+    // Product team — buffs the live product business (Phase 3). Each is summed
+    // across hires into a single multiplier folded into the product sim.
+    | { kind: "product"; lane: ProductStaffLane; perLevel: number };
 }
+
+/** Product-team effect lanes. upgradeSpeed/acq are "+x% each"; serveCost/churn are
+ *  "−x% each" (reductions, floored so they can't go to zero or negative). */
+export type ProductStaffLane = "upgradeSpeed" | "serveCost" | "churn" | "acquisition";
 
 export interface ResearchDef {
   id: string;
@@ -484,7 +495,8 @@ export const balance = {
         desc: "+8% Data per run, each. Mostly reads arXiv and drinks cold brew.",
         hire: { base: 300, growth: 1.5 },
         payroll: 2,
-        effect: { lane: "dataMult", perLevel: 0.08 },
+        team: "infra",
+        effect: { kind: "lane", lane: "dataMult", perLevel: 0.08 },
       },
       {
         id: "staff_engineer",
@@ -492,7 +504,8 @@ export const balance = {
         desc: "+6% Compute, each. Keeps the racks alive and the YAML valid.",
         hire: { base: 500, growth: 1.5 },
         payroll: 3,
-        effect: { lane: "computeMult", perLevel: 0.06 },
+        team: "infra",
+        effect: { kind: "lane", lane: "computeMult", perLevel: 0.06 },
       },
       {
         id: "staff_ops",
@@ -500,7 +513,45 @@ export const balance = {
         desc: "+8% Money per run, each. Monetizes things you didn't know you had.",
         hire: { base: 700, growth: 1.5 },
         payroll: 4,
-        effect: { lane: "moneyMult", perLevel: 0.08 },
+        team: "infra",
+        effect: { kind: "lane", lane: "moneyMult", perLevel: 0.08 },
+      },
+      // ---- Product team (Phase 3) — buff the live product business. ----
+      {
+        id: "staff_ml",
+        name: "ML Scientist",
+        desc: "+12% version-research speed, each. Turns coffee into checkpoints.",
+        hire: { base: 4_000, growth: 1.55 },
+        payroll: 12,
+        team: "product",
+        effect: { kind: "product", lane: "upgradeSpeed", perLevel: 0.12 },
+      },
+      {
+        id: "staff_sre",
+        name: "SRE",
+        desc: "−5% product serving cost, each. Pages itself so you don't have to.",
+        hire: { base: 5_000, growth: 1.6 },
+        payroll: 14,
+        team: "product",
+        effect: { kind: "product", lane: "serveCost", perLevel: 0.05 },
+      },
+      {
+        id: "staff_success",
+        name: "Customer Success",
+        desc: "−5% churn across products, each. Professionally prevents goodbyes.",
+        hire: { base: 6_000, growth: 1.6 },
+        payroll: 16,
+        team: "product",
+        effect: { kind: "product", lane: "churn", perLevel: 0.05 },
+      },
+      {
+        id: "staff_growth",
+        name: "Growth Lead",
+        desc: "+8% user acquisition, each. Has a funnel for everything.",
+        hire: { base: 7_000, growth: 1.6 },
+        payroll: 18,
+        team: "product",
+        effect: { kind: "product", lane: "acquisition", perLevel: 0.08 },
       },
     ] satisfies StaffRole[],
   },

@@ -1,5 +1,8 @@
 import { products as B, type ProductTypeId, type ProductTypeDef } from "./balance/products";
-import type { GameState, ProductState, ProductsState, UpgradeState } from "./types";
+import type { GameState, ProductMods, ProductState, ProductsState, UpgradeState } from "./types";
+
+/** No employees hired → no product buffs. */
+export const NEUTRAL_MODS: ProductMods = { upgradeSpeed: 1, serveCost: 1, churn: 1, acq: 1 };
 
 /**
  * PHASE 3 — AI Product / Deployment engine. Pure & deterministic (time passed in,
@@ -41,7 +44,11 @@ export interface ProductsSimResult {
   heatDelta: number;
 }
 
-export function simulateProducts(ps: ProductsState, seconds: number): ProductsSimResult {
+export function simulateProducts(
+  ps: ProductsState,
+  seconds: number,
+  mods: ProductMods = NEUTRAL_MODS,
+): ProductsSimResult {
   if (ps.active.length === 0) {
     // Frontier still drifts so a future product launches against current state.
     return { products: { ...ps, frontier: ps.frontier + B.frontierGrowthPerSec * seconds }, moneyDelta: 0, heatDelta: 0 };
@@ -60,7 +67,7 @@ export function simulateProducts(ps: ProductsState, seconds: number): ProductsSi
     const cac = B.marketingCacBase * (1 + (p.mau / t.tam) * B.cacSaturation);
     const acqMkt = cac > 0 ? p.marketingPerSec / cac : 0;
     const acqViral = p.mau * t.virality * qf * sat * (buzz ? B.buzzAcqMult : 1);
-    const mau = clamp(p.mau + (acqMkt + acqViral) * seconds, 0, t.tam);
+    const mau = clamp(p.mau + (acqMkt + acqViral) * mods.acq * seconds, 0, t.tam);
 
     // Conversion target (pricier → fewer convert; less competitive → fewer convert).
     const convRate = clamp((t.baseConversion * qf) / p.priceMult, 0, 1);
@@ -68,7 +75,7 @@ export function simulateProducts(ps: ProductsState, seconds: number): ProductsSi
 
     // Churn rises with staleness (frontier gap) and price; buzz cuts it.
     const gap = Math.max(0, frontier - p.quality);
-    const churn = t.baseChurn * (1 + gap * B.stalenessChurn) * p.priceMult * (buzz ? B.buzzChurnMult : 1);
+    const churn = t.baseChurn * (1 + gap * B.stalenessChurn) * p.priceMult * (buzz ? B.buzzChurnMult : 1) * mods.churn;
 
     // Paid subscribers follow dp/dt = convSpeed·(target − p) − churn·p. We solve
     // that ODE in closed form over the window so it stays correct for ANY tick
@@ -89,7 +96,7 @@ export function simulateProducts(ps: ProductsState, seconds: number): ProductsSi
       : p.paid * seconds;
     const arpu = t.baseArpu * p.priceMult * p.quality;
     const mrr = paidIntegral * arpu;
-    const serve = paidIntegral * t.computePerUser * p.quality;
+    const serve = paidIntegral * t.computePerUser * p.quality * mods.serveCost;
     moneyDelta += mrr - serve - p.marketingPerSec * seconds;
     if (paid > 0) heatDelta += t.heatPerSec * seconds;
 
@@ -366,10 +373,13 @@ export function advanceUpgrades(
   computeAvail: number,
   dataAvail: number,
   seconds: number,
+  mods: ProductMods = NEUTRAL_MODS,
 ): UpgradeTickResult {
   if (seconds <= 0 || !ps.active.some((p) => p.upgrade)) {
     return { products: ps, computeSpent: 0, dataSpent: 0, completed: [] };
   }
+  // ML scientists make each real second count for more research progress.
+  const effSeconds = seconds * Math.max(0, mods.upgradeSpeed);
   let cAvail = computeAvail;
   let dAvail = dataAvail;
   let computeSpent = 0;
@@ -379,7 +389,7 @@ export function advanceUpgrades(
   const active = ps.active.map((p) => {
     const u = p.upgrade;
     if (!u) return p;
-    let adv = Math.min(seconds, u.remainingSec);
+    let adv = Math.min(effSeconds, u.remainingSec);
     const perSecC = u.remainingSec > 0 ? u.remainingCompute / u.remainingSec : 0;
     const perSecD = u.remainingSec > 0 ? u.remainingData / u.remainingSec : 0;
     // Scale the advance down to what the player can actually afford this tick.

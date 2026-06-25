@@ -20,7 +20,7 @@ import { StatsPanel } from "./StatsPanel";
 import { Tagline } from "./Tagline";
 import { Onboarding } from "./Onboarding";
 import { DataMarketPanel } from "./DataMarketPanel";
-import { StaffPanel } from "./StaffPanel";
+import { EmployeesPanel } from "./EmployeesPanel";
 import { ProductsPanel } from "./ProductsPanel";
 import { ProductLaunch } from "./ProductLaunch";
 import { productsUnlocked, productMetrics, typeDef, retirePayout } from "../engine/products";
@@ -74,7 +74,7 @@ export function App() {
   const showMarket = game.research.length > 0;
   const showStaff = balance.staff.enabled && game.research.length >= balance.staff.revealAtResearch;
   const showProducts = productsUnlocked(game);
-  const [tab, setTab] = useState<"lab" | "products">("lab");
+  const [tab, setTab] = useState<"lab" | "products" | "employees">("lab");
   const shipReady = canPrestige(game);
   const era = currentEra(game);
 
@@ -286,10 +286,11 @@ export function App() {
       />
       <ModifierBar modifiers={game.modifiers} />
 
-      {showProducts && (
+      {(showStaff || showProducts) && (
         <div className="tabs" role="tablist">
           <button className={`tab ${tab === "lab" ? "on" : ""}`} role="tab" aria-selected={tab === "lab"} onClick={() => setTab("lab")}>Lab</button>
-          <button className={`tab ${tab === "products" ? "on" : ""}`} role="tab" aria-selected={tab === "products"} onClick={() => setTab("products")}>Products</button>
+          {showProducts && <button className={`tab ${tab === "products" ? "on" : ""}`} role="tab" aria-selected={tab === "products"} onClick={() => setTab("products")}>Products</button>}
+          {showStaff && <button className={`tab ${tab === "employees" ? "on" : ""}`} role="tab" aria-selected={tab === "employees"} onClick={() => setTab("employees")}>Employees</button>}
         </div>
       )}
 
@@ -304,13 +305,14 @@ export function App() {
             onRename={doRenameProduct}
             onRetire={onRetireProductFx}
           />
+        ) : tab === "employees" && showStaff ? (
+          <EmployeesPanel game={game} derived={d} onHire={onHire} />
         ) : (
           <>
             <HallCanvas onExpand={setPendingExpansion} />
             <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} onSetFocus={setComputeFocus} />
             <UpgradePanel game={game} onBuy={onBuy} />
             {showResearch && <ResearchPanel game={game} onResearch={onResearch} />}
-            {showStaff && <StaffPanel game={game} derived={d} onHire={onHire} />}
             {showMarket && <DataMarketPanel game={game} onBuyData={onBuyData} onBuyTool={onBuy} />}
             {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} />}
             <StatsPanel game={game} derived={d} />

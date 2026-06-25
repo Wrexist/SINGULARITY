@@ -142,4 +142,18 @@ export interface Derived {
   legacyMult: Big;
   /** Ongoing staff payroll drained from Money each second (Phase 2). */
   payrollPerSec: Big;
+  /** Product-team staff buffs folded into the product sim (Phase 3). */
+  productMods: ProductMods;
+}
+
+/** Aggregate product-team multipliers from employees. Neutral = all 1. */
+export interface ProductMods {
+  /** Version-research speed (>1 = faster upgrades). */
+  upgradeSpeed: number;
+  /** Serving-cost multiplier (<1 = cheaper to serve). */
+  serveCost: number;
+  /** Churn multiplier (<1 = stickier). */
+  churn: number;
+  /** Acquisition multiplier (>1 = more users in). */
+  acq: number;
 }

@@ -343,6 +343,32 @@ describe("products — timed version upgrades", () => {
   });
 });
 
+describe("products — employee (staff) buffs", () => {
+  it("acquisition + churn buffs lift users and cut losses; serve buff raises margin", () => {
+    let s = release();
+    s = { ...s, products: { ...s.products, active: [{ ...s.products.active[0]!, mau: 50000, paid: 3000, marketingPerSec: 0, buzzSec: 0, quality: 5 }], frontier: 5 } };
+    const base = simulateProducts(s.products, 60);
+    const buffed = simulateProducts(s.products, 60, { upgradeSpeed: 1, acq: 1.5, churn: 0.5, serveCost: 0.5 });
+    expect(buffed.products.active[0]!.mau).toBeGreaterThan(base.products.active[0]!.mau); // more acquisition
+    expect(buffed.products.active[0]!.paid).toBeGreaterThan(base.products.active[0]!.paid); // less churn
+    expect(buffed.moneyDelta).toBeGreaterThan(base.moneyDelta); // cheaper to serve
+  });
+
+  it("research-speed buff completes an upgrade in fewer seconds", () => {
+    let s = release();
+    s = { ...s, products: { ...s.products, frontier: s.products.frontier + 10 } };
+    s.resources.compute = Big.of(1e9); s.resources.data = Big.of(1e9);
+    s = startUpgrade(s, "p1");
+    const total = s.products.active[0]!.upgrade!.totalSec;
+    // Half the real time, but 2× speed → completes.
+    const fast = advanceUpgrades(s.products, 1e9, 1e9, total / 2, { upgradeSpeed: 2, acq: 1, churn: 1, serveCost: 1 });
+    expect(fast.products.active[0]!.upgrade).toBeNull();
+    // Same wall-time at 1× speed would NOT finish.
+    const slow = advanceUpgrades(s.products, 1e9, 1e9, total / 2);
+    expect(slow.products.active[0]!.upgrade).not.toBeNull();
+  });
+});
+
 describe("products — rename + retire payout", () => {
   it("rename trims, caps length, and falls back to a default", () => {
     let s = release();

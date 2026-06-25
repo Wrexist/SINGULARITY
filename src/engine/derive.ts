@@ -80,19 +80,36 @@ export function derive(state: GameState): Derived {
     }
   }
 
-  // Staff (Phase 2): each hire multiplies a lane; payroll is summed for tick().
+  // Staff: each hire either multiplies a lab lane (infra) or buffs the product
+  // business (product). Payroll is summed for tick(); product buffs fold into
+  // productMods. Reductions (serveCost/churn) are floored so they can't zero out.
   let payrollPerSec = Big.ZERO;
+  let upSpeed = 1, acq = 1, serveCut = 0, churnCut = 0;
   if (balance.staff.enabled) {
     for (const role of balance.staff.roles) {
       const n = state.upgrades[role.id] ?? 0;
       if (n <= 0) continue;
       payrollPerSec = payrollPerSec.add(role.payroll * n);
-      const f = 1 + role.effect.perLevel * n;
-      if (role.effect.lane === "computeMult") computeMult = computeMult.mul(f);
-      else if (role.effect.lane === "dataMult") dataMult = dataMult.mul(f);
-      else if (role.effect.lane === "moneyMult") moneyMult = moneyMult.mul(f);
+      if (role.effect.kind === "lane") {
+        const f = 1 + role.effect.perLevel * n;
+        if (role.effect.lane === "computeMult") computeMult = computeMult.mul(f);
+        else if (role.effect.lane === "dataMult") dataMult = dataMult.mul(f);
+        else if (role.effect.lane === "moneyMult") moneyMult = moneyMult.mul(f);
+      } else {
+        const add = role.effect.perLevel * n;
+        if (role.effect.lane === "upgradeSpeed") upSpeed += add;
+        else if (role.effect.lane === "acquisition") acq += add;
+        else if (role.effect.lane === "serveCost") serveCut += add;
+        else if (role.effect.lane === "churn") churnCut += add;
+      }
     }
   }
+  const productMods = {
+    upgradeSpeed: upSpeed,
+    acq,
+    serveCost: Math.max(0.2, 1 - serveCut), // never below 20% of base serve cost
+    churn: Math.max(0.2, 1 - churnCut),     // never below 20% of base churn
+  };
 
   // World-event modifiers: time-limited global multipliers (buffs/debuffs).
   for (const m of state.modifiers) {
@@ -140,5 +157,6 @@ export function derive(state: GameState): Derived {
     runMoneyYield: runComputeCost.mul(balance.run.moneyPerCompute).mul(moneyMult),
     legacyMult,
     payrollPerSec,
+    productMods,
   };
 }

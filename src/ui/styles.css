@@ -1391,6 +1391,18 @@ body {
 .prod-draft-sub { font-size: 12px; color: var(--ink-2); line-height: 1.35; }
 .btn-sm { padding: 7px 14px; font-size: 13px; flex: 0 0 auto; white-space: nowrap; }
 
+/* ---------- Employees page ---------- */
+.emp-buffs {
+  font-size: 12.5px; font-weight: 650; color: var(--ink-2); margin: 2px 0 6px;
+  padding: 8px 12px; border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--money) 9%, var(--glass-strong));
+  border: 1px solid color-mix(in srgb, var(--money) 22%, transparent);
+}
+.emp-team-head {
+  font-size: 12px; font-weight: 750; color: var(--ink-2);
+  text-transform: uppercase; letter-spacing: 0.04em; margin: 14px 0 6px;
+}
+
 /* ---------- Timed version research (in-flight upgrade) ---------- */
 .prod-research { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
 .prod-research-head {
