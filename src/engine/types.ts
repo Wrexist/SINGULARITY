@@ -61,6 +61,25 @@ export interface GameState {
   computeFocus: number;
   /** Phase 3 — released AI products (persist across prestige). */
   products: ProductsState;
+  /** Phase 3 — individual employees (people, not counts). Persist across prestige. */
+  employees: Employee[];
+}
+
+/** An individual employee. roleId names a job (balance.staff.roles); the person's
+ *  output = that role's effect × their level × trait. Product-team people can be
+ *  assigned to one product (focus bonus); infra people always work on the lab. */
+export interface Employee {
+  id: string;
+  name: string;
+  roleId: string;
+  /** Seniority level (1 = junior). Raised by completing training. */
+  level: number;
+  /** Personality/specialty trait id, or null. */
+  trait: string | null;
+  /** Product this person is focused on, or null = global (bench/lab). */
+  assignedProductId: string | null;
+  /** In-progress timed training, or null. On completion: level + 1. */
+  training: { remainingSec: number; totalSec: number } | null;
 }
 
 /** A released AI product (Phase 3). Economic fields are plain numbers; net margin
@@ -71,23 +90,69 @@ export interface ProductState {
   type: ProductTypeId;
   version: number;
   quality: number;
-  /** Player pricing strategy (×ARPU; higher = more $/user, less conversion). */
+  /** Pro-tier pricing strategy (×ARPU; higher = more $/user, less conversion). */
   priceMult: number;
-  /** Player marketing budget, Money/sec. */
+  /** Whether the premium Enterprise tier is offered (unlocks with ship count). */
+  enterprise: boolean;
+  /** Enterprise-tier price dial (×, applied to its premium ARPU). */
+  enterprisePrice: number;
+  /** Player marketing budget, Money/sec (split across channels by channelMix). */
   marketingPerSec: number;
+  /** Relative budget weights per marketing channel (normalized in the sim). */
+  channelMix: Record<string, number>;
   /** Live monthly-active users and paying subscribers. */
   mau: number;
   paid: number;
   /** Remaining launch-buzz seconds (acquisition spike + churn cut). */
   buzzSec: number;
+  /** An in-progress timed version upgrade (research), or null. The model keeps
+   *  earning at its current quality until the upgrade completes. */
+  upgrade: UpgradeState | null;
+  /** Ids of purchased per-product features (perks that tune this product's economics). */
+  features: string[];
+}
+
+/** A version upgrade in flight: pay an upfront chunk to start, then it drains the
+ *  remainder of the Compute+Data cost over a research duration. On completion the
+ *  product jumps to the current frontier and fires launch buzz. Stalls (no progress)
+ *  on any tick the player can't afford the drain. */
+export interface UpgradeState {
+  /** Version the product becomes when this completes. */
+  targetVersion: number;
+  /** Compute still to be drained before completion. */
+  remainingCompute: number;
+  /** Data still to be drained before completion. */
+  remainingData: number;
+  /** Research seconds left (drives the progress bar + ETA). */
+  remainingSec: number;
+  /** Total research seconds (for the progress %). */
+  totalSec: number;
+}
+
+/** A "raw model" deposited in the Products tab each time you Ship the Model. The
+ *  player commercialises it (pick a type + name, pay the launch cost) → a product. */
+export interface DraftModel {
+  id: string;
+  /** Strength of the shipped model → the product's starting quality. */
+  quality: number;
+  /** Which ship produced it (flavor + ordering). */
+  ships: number;
 }
 
 export interface ProductsState {
   active: ProductState[];
+  /** Unlaunched "raw models" from shipping, awaiting commercialisation. */
+  drafts: DraftModel[];
   /** Global competitor capability; drifts up over time. */
   frontier: number;
   /** Lifetime count of products sold/retired (a badge stat; survives prestige). */
   sold: number;
+  /** Ids of achieved product milestones (a collection; survives prestige). */
+  milestones: string[];
+  /** Per-product employee assignments: productId → roleId → headcount focused there.
+   *  Assigned product-staff buff only that product (at a focus bonus); unassigned ones
+   *  buff every product at base rate. */
+  assignments: Record<string, Record<string, number>>;
 }
 
 /** Everything the sim and UI read each frame, folded from upgrades + research + prestige. */
@@ -110,4 +175,27 @@ export interface Derived {
   legacyMult: Big;
   /** Ongoing staff payroll drained from Money each second (Phase 2). */
   payrollPerSec: Big;
+  /** Global product-team buffs from UNASSIGNED staff (shown on the Employees page). */
+  productMods: ProductMods;
+  /** Effective per-product buffs (global unassigned + that product's focused assignees).
+   *  Keyed by product id; the sim reads this so each product can differ. */
+  productModsById: Record<string, ProductMods>;
+  /** Staff hire-cost multiplier from Recruiters (≤ 1; cheaper hires). */
+  hireDiscount: number;
+}
+
+/** Aggregate product-team multipliers from employees. Neutral = all 1. */
+export interface ProductMods {
+  /** Version-research speed (>1 = faster upgrades). */
+  upgradeSpeed: number;
+  /** Serving-cost multiplier (<1 = cheaper to serve). */
+  serveCost: number;
+  /** Churn multiplier (<1 = stickier). */
+  churn: number;
+  /** Acquisition multiplier (>1 = more users in). */
+  acq: number;
+  /** ARPU multiplier (>1 = more revenue per paying user). */
+  arpu: number;
+  /** Product Heat-generation multiplier (<1 = less Regulatory Heat). */
+  heat: number;
 }

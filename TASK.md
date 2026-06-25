@@ -220,6 +220,36 @@ fun-gate on 2026-06-24 and greenlit Phase 1. (Phase 0 history retained below for
       a real "cash out vs keep earning" call. Validated economics via `scripts/balance-sim.ts`
       `runProduct` scenarios. 18 product tests (140 total). typecheck + build clean.
 
+### 2026-06-25 — Phase 3 product BUSINESS expansion (ship→product→research)
+Owner-directed: make shipping start an AI product, deepen the Products page, add timed
+upgrades + a full Employees page. Built on branch `claude/phase3-product-business`.
+- [x] **Ship deposits a draft model.** Prestige drops a "raw model" in Products (quality =
+      frontier at ship). `launchDraft` commercialises it (pick market, pay) → product starts at
+      the shipped model's quality. Manual release replaced by the draft flow.
+- [x] **Timed version upgrades.** `startUpgrade` pays upfront; `advanceUpgrades` drains the rest
+      over a research window (escalates w/ version); stalls if broke; completes → frontier catch-up
+      + buzz. Offline-capable. UI: live progress bar + ETA; completion celebration.
+- [x] **Employees page.** Dedicated tab. Infra team (Compute/Data/Money lanes) + Product team
+      (ML=research speed, SRE=serve cost, Success=churn, Growth=acquisition) folded into the sim
+      via derive.productMods. Headcount + payroll + active buffs headline.
+- [x] **Product detail screen.** Tap "details ▸" → metric grid, penetration/competitiveness bars,
+      pricing/marketing workbench, version-research roadmap (3 deep), retire.
+- [x] **Milestones.** 12 portfolio goals w/ one-time Money rewards, persisted; grid UI + 🏆 toasts.
+- [x] **Ops events.** Per-product outage/viral/breach/press/price-war one-shots; 🎲 toasts w/ tone.
+- Save v6→v7 (drafts + upgrades + milestones). 174 tests; typecheck/build/sim clean.
+
+### 2026-06-25 — Phase 3 depth follow-ups (post-#10 merge)
+- [x] **Era-gated product types.** Not all 6 model types unlock at once — premium high-ARPU
+      types arrive as you ship (Ship 1: general/code/small · 2: multimodal · 3: reasoning ·
+      4: domain). `unlockAtShips` per type + `typeUnlocked()`; the picker shows 🔒 + "Unlocks
+      after shipping N models". Reinforces "hard early, compounds later".
+- [x] **Churn-reason flavor toasts (M4 juice).** When a product is materially shedding subs, an
+      occasional satirical quip names the dominant reason — **stale** (rivals pulled ahead) vs
+      **pricey** (the dial is cranked too high). Pure `churnReason()` + RNG-parameterized
+      `maybeChurnFlavor()` in the engine (deterministic, like `maybeHeatEvent`); cadence + rolls
+      live in the store's `notice` channel; App surfaces it with a light tap (not the heavy
+      regulatory warn). Makes "update or bleed" legible + funny. +9 tests (155 total).
+
 ### 2026-06-24 — UI visibility/glitch + difficulty pass (owner-directed, from TestFlight screenshots)
 - [x] **Fixed stuck toasts** (the "pop-ups never leave the screen" bug). Root cause: the game
       re-renders ~10×/sec (10 Hz tick) and `Toast`'s dismiss-timer effect depended on the parent's

@@ -1373,6 +1373,222 @@ body {
 .prod-type-name { font-size: 14px; font-weight: 750; }
 .prod-type-blurb { font-size: 12px; color: var(--ink-2); line-height: 1.35; }
 
+/* ---------- Drafts: raw models from Ship the Model, awaiting commercialisation ---------- */
+.prod-drafts {
+  display: flex; flex-direction: column; gap: 8px; margin: 6px 0 14px;
+  padding: 12px; border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--money) 8%, var(--glass-strong));
+  border: 1px solid color-mix(in srgb, var(--money) 28%, transparent);
+}
+.prod-drafts-head { font-size: 12px; font-weight: 750; color: var(--ink-2); }
+.prod-draft {
+  display: flex; flex-direction: column; gap: 8px;
+  background: var(--glass-strong); border: 1px solid var(--glass-hairline);
+  border-radius: var(--radius-sm); padding: 10px 12px;
+}
+.prod-draft-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.prod-draft-title { font-size: 14px; font-weight: 750; }
+.prod-draft-sub { font-size: 12px; color: var(--ink-2); line-height: 1.35; }
+.btn-sm { padding: 7px 14px; font-size: 13px; flex: 0 0 auto; white-space: nowrap; }
+
+/* ---------- Product milestones (the chase ladder) ---------- */
+.prod-milestones { margin-top: 18px; }
+.prod-ms-head { font-size: 13px; font-weight: 750; margin-bottom: 8px; }
+.prod-ms-count { color: var(--ink-2); font-weight: 650; }
+.prod-ms-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.prod-ms {
+  padding: 9px 11px; border-radius: var(--radius-sm);
+  background: var(--glass-strong); border: 1px solid var(--glass-hairline); opacity: 0.7;
+}
+.prod-ms.done {
+  opacity: 1;
+  background: color-mix(in srgb, var(--money) 12%, var(--glass-strong));
+  border-color: color-mix(in srgb, var(--money) 40%, transparent);
+}
+.prod-ms-top { display: flex; justify-content: space-between; gap: 6px; align-items: baseline; }
+.prod-ms-name { font-size: 13px; font-weight: 750; }
+.prod-ms-reward { font-size: 11px; font-weight: 700; color: var(--money); white-space: nowrap; }
+.prod-ms-desc { font-size: 11px; color: var(--ink-2); line-height: 1.3; margin-top: 1px; }
+.prod-ms-bar { margin-top: 6px; height: 5px; }
+
+/* ---------- Product detail screen ---------- */
+.prod-details { font-size: 12px; margin-left: auto; }
+.pd-modal { max-width: 420px; text-align: left; }
+.pd-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+
+/* Sub-tabs inside the detail modal — keep each pane focused (progressive disclosure). */
+.pd-tabs { display: flex; gap: 4px; margin: 12px 0 14px; background: var(--glass-strong); border-radius: 999px; padding: 4px; }
+.pd-tab {
+  flex: 1; padding: 7px 4px; border-radius: 999px; border: none; background: transparent;
+  font-size: 12.5px; font-weight: 700; color: var(--ink-2); cursor: pointer; transition: background 0.15s, color 0.15s;
+}
+.pd-tab.on { background: var(--surface, #fff); color: var(--ink); box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.12)); }
+.pd-pane { display: flex; flex-direction: column; gap: 10px; animation: fade 0.2s ease; }
+.pd-pane-tip { font-size: 12px; color: var(--ink-2); line-height: 1.4; margin: 0; }
+.pd-hint { font-size: 12px; color: var(--coral); font-weight: 600; margin: 0; }
+.pd-research-btn { display: flex; flex-direction: column; gap: 2px; align-items: center; }
+.pd-cta-sub { font-size: 11px; font-weight: 600; opacity: 0.85; }
+.pd-blurb { font-size: 12.5px; color: var(--ink-2); line-height: 1.4; margin: 4px 0 12px; }
+.pd-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 14px;
+}
+.pd-stat {
+  display: flex; flex-direction: column; gap: 1px; padding: 8px 10px;
+  background: var(--glass-strong); border: 1px solid var(--glass-hairline); border-radius: var(--radius-sm);
+}
+.pd-stat-v { font-size: 15px; font-weight: 750; }
+.pd-stat-v.pos { color: var(--money); }
+.pd-stat-v.neg { color: var(--coral); }
+.pd-stat-l { font-size: 11px; color: var(--ink-2); }
+.pd-section-head { font-size: 12px; font-weight: 750; color: var(--ink-2); margin: 14px 0 6px; }
+.pd-roadmap { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.pd-roadmap-row {
+  display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--ink-2);
+  padding: 5px 8px; background: var(--glass-strong); border-radius: 8px;
+}
+.pd-roadmap-row span:first-child { font-weight: 700; color: var(--ink); }
+.pd-team { display: flex; flex-direction: column; gap: 6px; margin-bottom: 4px; }
+.pd-team-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 11px; border-radius: var(--radius-sm);
+  background: var(--glass-strong); border: 1px solid var(--glass-hairline);
+}
+.pd-team-name { font-size: 13px; font-weight: 700; flex: 1; }
+.pd-team-pool { font-size: 11px; color: var(--ink-2); white-space: nowrap; }
+.pd-team-step { display: flex; align-items: center; gap: 10px; }
+.pd-team-step button {
+  width: 28px; height: 28px; border-radius: 8px; font-size: 16px; font-weight: 700;
+  border: 1px solid var(--glass-hairline); background: var(--glass-strong); cursor: pointer; color: var(--ink);
+}
+.pd-team-step button:disabled { opacity: 0.4; cursor: not-allowed; }
+.pd-team-step span { min-width: 14px; text-align: center; font-weight: 750; }
+
+.pd-channels { margin: 2px 0 4px; }
+.pd-ch-desc { color: var(--ink-2); font-weight: 500; font-size: 11px; }
+.pd-tier {
+  margin: 4px 0 8px; padding: 8px 10px; border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--money) 7%, var(--glass-strong)); border: 1px solid var(--glass-hairline);
+}
+.pd-tier-head { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.pd-tier-head input { width: 16px; height: 16px; }
+
+.pd-features { display: flex; flex-direction: column; gap: 6px; }
+.pd-feature {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left;
+  padding: 9px 11px; border-radius: var(--radius-sm);
+  background: var(--glass-strong); border: 1px solid var(--glass-hairline); cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s var(--ease-out);
+}
+.pd-feature:hover:not(:disabled) { border-color: color-mix(in srgb, var(--money) 40%, transparent); transform: translateY(-1px); }
+.pd-feature:disabled { cursor: default; }
+.pd-feature.owned { opacity: 1; background: color-mix(in srgb, var(--money) 10%, var(--glass-strong)); border-color: color-mix(in srgb, var(--money) 35%, transparent); }
+.pd-feature:disabled:not(.owned) { opacity: 0.5; }
+.pd-feature-main { display: flex; flex-direction: column; gap: 1px; }
+.pd-feature-name { font-size: 13px; font-weight: 750; }
+.pd-feature-desc { font-size: 11px; color: var(--ink-2); line-height: 1.3; }
+.pd-feature-fx { font-size: 11px; font-weight: 700; color: var(--data); margin-top: 1px; }
+.pd-feature-cost { font-size: 13px; font-weight: 750; color: var(--money); white-space: nowrap; flex: 0 0 auto; }
+.pd-foot { margin-top: 16px; text-align: center; }
+
+/* ---------- Employee assignment board (drag) ---------- */
+.emp-board { display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px; }
+.emp-zone {
+  border-radius: var(--radius-sm); padding: 8px 10px;
+  background: var(--glass-strong); border: 1px dashed var(--glass-hairline);
+  transition: border-color 0.15s, background 0.15s, transform 0.15s var(--ease-out);
+}
+.emp-zone.over {
+  border-color: color-mix(in srgb, var(--data) 70%, transparent);
+  background: color-mix(in srgb, var(--data) 12%, var(--glass-strong));
+  transform: scale(1.01);
+}
+.emp-zone-head { font-size: 11.5px; font-weight: 700; color: var(--ink-2); margin-bottom: 6px; }
+.emp-zone-n { color: var(--ink-3, var(--ink-2)); font-weight: 650; }
+.emp-zone-chips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 30px; align-items: center; }
+.emp-zone-empty { font-size: 11px; color: var(--ink-2); opacity: 0.6; padding-left: 2px; }
+.emp-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px 4px 4px;
+  border-radius: 999px; background: var(--glass); border: 1px solid var(--glass-hairline);
+  cursor: grab; user-select: none; font-size: 12px; font-weight: 650;
+  transition: box-shadow 0.15s, transform 0.1s;
+}
+.emp-chip:active { cursor: grabbing; }
+.emp-chip.sel { border-color: color-mix(in srgb, var(--data) 55%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--data) 25%, transparent); }
+.emp-chip.dragging { opacity: 0.35; }
+.emp-chip-av { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; }
+.emp-chip-name { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.emp-chip-lvl { font-size: 10px; color: var(--ink-2); font-weight: 700; }
+.emp-chip-train { font-size: 11px; }
+.emp-chip-dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
+.emp-drag-ghost {
+  position: fixed; z-index: 100; transform: translate(-50%, -50%);
+  width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 800; pointer-events: none; box-shadow: var(--shadow-lg);
+}
+.emp-selbar {
+  display: flex; align-items: center; gap: 10px; margin: 4px 0 10px; padding: 8px 10px;
+  border-radius: var(--radius-sm); background: color-mix(in srgb, var(--data) 9%, var(--glass-strong));
+  border: 1px solid color-mix(in srgb, var(--data) 30%, transparent);
+}
+.emp-selbar-main { flex: 1; min-width: 0; }
+.emp-selbar-tr { font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+
+/* ---------- Employees page (individual people) ---------- */
+.emp-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px; }
+.emp-card {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  background: var(--glass-strong); border: 1px solid var(--glass-hairline);
+}
+.emp-avatar {
+  flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 800; letter-spacing: -0.02em;
+}
+.emp-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.emp-name-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.emp-name { font-size: 14px; font-weight: 750; }
+.emp-lvl { font-size: 11px; font-weight: 700; color: var(--ink-2); flex: 0 0 auto; }
+.emp-role { font-size: 12px; color: var(--ink-2); }
+.emp-trait { font-weight: 700; }
+.emp-pay { font-size: 11px; color: var(--money); font-weight: 650; }
+.emp-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+.emp-assign {
+  font-size: 12px; padding: 4px 8px; border-radius: 8px;
+  border: 1px solid var(--glass-hairline); background: var(--glass); color: var(--ink); max-width: 160px;
+}
+.emp-lab { font-size: 12px; color: var(--ink-2); }
+.emp-fire { color: var(--coral); }
+.emp-training { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; font-size: 11px; color: var(--ink-2); }
+.pd-crew { display: flex; flex-wrap: wrap; gap: 6px; }
+.pd-crew-chip {
+  font-size: 12px; font-weight: 650; padding: 4px 9px; border-radius: 999px;
+  background: color-mix(in srgb, var(--data) 12%, var(--glass-strong)); border: 1px solid var(--glass-hairline);
+}
+
+/* ---------- Employees page ---------- */
+.emp-buffs {
+  font-size: 12.5px; font-weight: 650; color: var(--ink-2); margin: 2px 0 6px;
+  padding: 8px 12px; border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--money) 9%, var(--glass-strong));
+  border: 1px solid color-mix(in srgb, var(--money) 22%, transparent);
+}
+.emp-team-head {
+  font-size: 12px; font-weight: 750; color: var(--ink-2);
+  text-transform: uppercase; letter-spacing: 0.04em; margin: 14px 0 6px;
+}
+
+/* ---------- Timed version research (in-flight upgrade) ---------- */
+.prod-research { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
+.prod-research-head {
+  display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; color: var(--ink-2);
+}
+.prod-bar-research {
+  background: linear-gradient(90deg, var(--data), color-mix(in srgb, var(--data) 55%, #a855f7));
+  background-size: 200% 100%; animation: research-shimmer 1.6s linear infinite;
+}
+@keyframes research-shimmer { from { background-position: 200% 0; } to { background-position: 0 0; } }
+
 /* ---------- Accessibility: respect reduced motion (premium = considerate) ---------- */
 @media (prefers-reduced-motion: reduce) {
   *,

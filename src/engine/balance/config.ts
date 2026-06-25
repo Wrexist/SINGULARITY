@@ -91,7 +91,45 @@ export interface StaffRole {
   hire: { base: number; growth: number };
   /** Ongoing Money/sec per hire. */
   payroll: number;
-  effect: { lane: "computeMult" | "dataMult" | "moneyMult"; perLevel: number };
+  /** Which team the role belongs to (for the Employees page grouping). */
+  team: "infra" | "product";
+  effect:
+    // Infrastructure team — multiplies a lab production lane (Phase 2).
+    | { kind: "lane"; lane: "computeMult" | "dataMult" | "moneyMult"; perLevel: number }
+    // Product team — buffs the live product business (Phase 3). Each is summed
+    // across hires into a single multiplier folded into the product sim.
+    | { kind: "product"; lane: ProductStaffLane; perLevel: number }
+    // Meta — affects the company itself (e.g. cheaper hiring).
+    | { kind: "meta"; lane: "hireDiscount"; perLevel: number };
+}
+
+/** Product-team effect lanes. upgradeSpeed/acq/arpu are "+x% each"; serveCost/churn/
+ *  heat are "−x% each" (reductions, floored so they can't go to zero or negative). */
+export type ProductStaffLane = "upgradeSpeed" | "serveCost" | "churn" | "acquisition" | "arpu" | "heat";
+
+/** A personality/specialty trait an employee can have. effectMult/payrollMult scale
+ *  that person's output and salary; teamMorale (optional) nudges the whole company. */
+export interface StaffTrait {
+  id: string;
+  name: string;
+  desc: string;
+  effectMult: number;
+  payrollMult: number;
+  /** Added to the global morale multiplier while employed (e.g. Mentor +0.05). */
+  teamMorale?: number;
+  tone: "good" | "bad" | "mixed";
+}
+
+/** A one-time office perk: raises staff morale (output) and/or trims payroll. */
+export interface OfficePerk {
+  id: string;
+  name: string;
+  desc: string;
+  cost: number;
+  /** Added to the morale multiplier on ALL staff output (e.g. 0.1 = +10%). */
+  morale: number;
+  /** Multiplier on total payroll (≤ 1 trims it; 1 = no change). */
+  payrollMult: number;
 }
 
 export interface ResearchDef {
@@ -475,8 +513,35 @@ export const balance = {
   /** PHASE 2 — Staff. Opt-in depth: hire to multiply a lane, pay payroll forever. */
   staff: {
     enabled: true,
+    /** Assigned product-staff are this much more effective than unassigned, but only
+     *  on their one product (the spread-vs-concentrate trade-off). */
+    assignFocusMult: 2,
     /** Reveal the panel once the lab is established (after the first research). */
     revealAtResearch: 1,
+    /** Seniority levels (1 = junior). Each level above 1 multiplies a person's
+     *  output (+levelEffectStep) and salary (+levelPayrollStep). */
+    maxLevel: 4,
+    levelEffectStep: 0.5,
+    levelPayrollStep: 0.6,
+    /** Timed training to the NEXT level: duration grows per level; cost in Money. */
+    trainBaseSec: 120,
+    trainSecGrowth: 1.6,
+    trainCostMult: 6, // cost = role.hire.base × trainCostMult × level
+    /** Signing bonus to hire a candidate = role.hire.base × this. */
+    hireSigningMult: 1,
+    /** Personality/specialty traits rolled at hire. */
+    traits: [
+      { id: "tenx", name: "10×", desc: "Ships like ten people. Insufferable about it.", effectMult: 1.7, payrollMult: 1.3, tone: "good" },
+      { id: "workaholic", name: "Workaholic", desc: "Always online. Slightly pricey, very productive.", effectMult: 1.4, payrollMult: 1.1, tone: "good" },
+      { id: "steady", name: "Steady", desc: "Reliable, low drama, solid output.", effectMult: 1.1, payrollMult: 0.95, tone: "good" },
+      { id: "frugal", name: "Frugal", desc: "Works for equity and snacks. Cheap, a touch slower.", effectMult: 0.9, payrollMult: 0.5, tone: "good" },
+      { id: "mentor", name: "Mentor", desc: "Lifts the whole company (+morale), modest output.", effectMult: 1.0, payrollMult: 1.05, teamMorale: 0.06, tone: "good" },
+      { id: "greenhorn", name: "Greenhorn", desc: "Junior and cheap — train them up.", effectMult: 0.75, payrollMult: 0.6, tone: "mixed" },
+      { id: "prima_donna", name: "Prima Donna", desc: "Brilliant but expensive and high-maintenance.", effectMult: 1.5, payrollMult: 1.8, tone: "mixed" },
+      { id: "burned_out", name: "Burned Out", desc: "Coasting. A training sabbatical might revive them.", effectMult: 0.7, payrollMult: 1.0, tone: "bad" },
+    ] satisfies StaffTrait[],
+    firstNames: ["Ada", "Grace", "Alan", "Linus", "Margaret", "Dennis", "Ken", "Barbara", "Guido", "Bjarne", "Hedy", "Claude", "Geoffrey", "Yann", "Fei-Fei", "Demis", "Ilya", "Andrej", "Lena", "Omar", "Priya", "Mateo", "Noor", "Sora"],
+    lastNames: ["Lovelace", "Hopper", "Turing", "Torvalds", "Hamilton", "Ritchie", "Thompson", "Liskov", "Okafor", "Nakamura", "Kim", "Patel", "Santos", "Müller", "Rossi", "Haddad", "Ng", "Bengio", "Chen", "Volkov", "Ivanova", "Diallo", "Khan", "Reyes"],
     roles: [
       {
         id: "staff_researcher",
@@ -484,7 +549,8 @@ export const balance = {
         desc: "+8% Data per run, each. Mostly reads arXiv and drinks cold brew.",
         hire: { base: 300, growth: 1.5 },
         payroll: 2,
-        effect: { lane: "dataMult", perLevel: 0.08 },
+        team: "infra",
+        effect: { kind: "lane", lane: "dataMult", perLevel: 0.08 },
       },
       {
         id: "staff_engineer",
@@ -492,7 +558,8 @@ export const balance = {
         desc: "+6% Compute, each. Keeps the racks alive and the YAML valid.",
         hire: { base: 500, growth: 1.5 },
         payroll: 3,
-        effect: { lane: "computeMult", perLevel: 0.06 },
+        team: "infra",
+        effect: { kind: "lane", lane: "computeMult", perLevel: 0.06 },
       },
       {
         id: "staff_ops",
@@ -500,9 +567,99 @@ export const balance = {
         desc: "+8% Money per run, each. Monetizes things you didn't know you had.",
         hire: { base: 700, growth: 1.5 },
         payroll: 4,
-        effect: { lane: "moneyMult", perLevel: 0.08 },
+        team: "infra",
+        effect: { kind: "lane", lane: "moneyMult", perLevel: 0.08 },
+      },
+      // ---- Product team (Phase 3) — buff the live product business. ----
+      {
+        id: "staff_ml",
+        name: "ML Scientist",
+        desc: "+12% version-research speed, each. Turns coffee into checkpoints.",
+        hire: { base: 4_000, growth: 1.55 },
+        payroll: 12,
+        team: "product",
+        effect: { kind: "product", lane: "upgradeSpeed", perLevel: 0.12 },
+      },
+      {
+        id: "staff_sre",
+        name: "SRE",
+        desc: "−5% product serving cost, each. Pages itself so you don't have to.",
+        hire: { base: 5_000, growth: 1.6 },
+        payroll: 14,
+        team: "product",
+        effect: { kind: "product", lane: "serveCost", perLevel: 0.05 },
+      },
+      {
+        id: "staff_success",
+        name: "Customer Success",
+        desc: "−5% churn across products, each. Professionally prevents goodbyes.",
+        hire: { base: 6_000, growth: 1.6 },
+        payroll: 16,
+        team: "product",
+        effect: { kind: "product", lane: "churn", perLevel: 0.05 },
+      },
+      {
+        id: "staff_growth",
+        name: "Growth Lead",
+        desc: "+8% user acquisition, each. Has a funnel for everything.",
+        hire: { base: 7_000, growth: 1.6 },
+        payroll: 18,
+        team: "product",
+        effect: { kind: "product", lane: "acquisition", perLevel: 0.08 },
+      },
+      {
+        id: "staff_sales",
+        name: "Sales Exec",
+        desc: "+7% ARPU across products, each. Always be closing.",
+        hire: { base: 8_000, growth: 1.6 },
+        payroll: 20,
+        team: "product",
+        effect: { kind: "product", lane: "arpu", perLevel: 0.07 },
+      },
+      {
+        id: "staff_pr",
+        name: "PR & Legal",
+        desc: "−10% product Heat, each. Makes the lawsuits go quiet.",
+        hire: { base: 9_000, growth: 1.6 },
+        payroll: 22,
+        team: "product",
+        effect: { kind: "product", lane: "heat", perLevel: 0.1 },
+      },
+      // ---- Infrastructure additions ----
+      {
+        id: "staff_data_eng",
+        name: "Data Engineer",
+        desc: "+7% Data per run, each. Builds pipelines that mostly don't break.",
+        hire: { base: 1_200, growth: 1.5 },
+        payroll: 6,
+        team: "infra",
+        effect: { kind: "lane", lane: "dataMult", perLevel: 0.07 },
+      },
+      {
+        id: "staff_recruiter",
+        name: "Recruiter",
+        desc: "−6% on all future hire costs, each. Knows a guy who knows a guy.",
+        hire: { base: 6_500, growth: 1.7 },
+        payroll: 10,
+        team: "infra",
+        effect: { kind: "meta", lane: "hireDiscount", perLevel: 0.06 },
       },
     ] satisfies StaffRole[],
+  },
+
+  /** PHASE 3 — Office perks & morale. One-time Money investments that boost ALL
+   *  staff output (morale) or trim payroll. Counts live in the upgrades map (0/1
+   *  each), so no migration. */
+  office: {
+    enabled: true,
+    revealAtResearch: 1,
+    perks: [
+      { id: "perk_snacks", name: "Free Lunch & Snacks", desc: "+10% staff effectiveness. The cold brew flows.", cost: 60_000, morale: 0.10, payrollMult: 1 },
+      { id: "perk_remote", name: "Remote-First", desc: "−20% payroll. Goodbye, office lease.", cost: 90_000, morale: 0, payrollMult: 0.8 },
+      { id: "perk_equity", name: "Equity for All", desc: "+15% staff effectiveness. Everyone's an owner now.", cost: 250_000, morale: 0.15, payrollMult: 1 },
+      { id: "perk_ld", name: "L&D Budget", desc: "+15% staff effectiveness. Conf talks watched at 2×.", cost: 400_000, morale: 0.15, payrollMult: 1 },
+      { id: "perk_wellness", name: "Wellness Program", desc: "−15% payroll, fewer burnout re-hires.", cost: 350_000, morale: 0, payrollMult: 0.85 },
+    ] satisfies OfficePerk[],
   },
 
   prestige: {

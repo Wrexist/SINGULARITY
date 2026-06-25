@@ -70,6 +70,64 @@ export const products = {
   /** How fast paid count eases toward its conversion target (per second). */
   convSpeed: 0.05,
 
+  /** Drafts — each Ship the Model deposits a "raw model" you commercialise. Cap the
+   *  pile so it can't grow unbounded across many prestiges (oldest drops off). */
+  maxDrafts: 6,
+
+  /** Timed version upgrades ("research takes time"). Starting an upgrade pays an
+   *  upfront fraction of versionCost immediately; the remainder DRAINS over the
+   *  research duration (Compute+Data/sec). Progress stalls on any tick you can't
+   *  afford the drain. On completion the model jumps to the frontier + fires buzz. */
+  upgrade: {
+    /** Fraction of the version cost paid upfront to start (rest drains over time). */
+    upfrontFrac: 0.4,
+    /** Base research seconds for v1→v2; ×growth per version, capped. */
+    baseSec: 90,
+    secGrowth: 1.3,
+    maxSec: 1800,
+  },
+
+  /** Per-product ops events — occasional reactive moments that make running each
+   *  product feel alive (outages, viral spikes, breaches, press). One-shot nudges,
+   *  RNG/cadence in the store; only fire for products with a real user base. */
+  events: {
+    minMau: 5_000,
+    ratePerSec: 0.012, // ~ one per ~80s while a product is eligible
+    list: [
+      { id: "viral", tone: "good", message: "🔥 {name} is trending — signups are spiking!", mauMult: 1.18, buzz: true },
+      { id: "press_good", tone: "good", message: "📰 {name} got a glowing review — buzz incoming.", buzz: true },
+      { id: "enterprise_deal", tone: "good", message: "🤝 {name} landed a big enterprise contract.", paidMult: 1.12 },
+      { id: "outage", tone: "bad", message: "💥 {name} had an outage — some users bounced.", mauMult: 0.93, paidMult: 0.9 },
+      { id: "breach", tone: "bad", message: "🔓 {name} leaked some data — regulators are curious.", paidMult: 0.92, heat: 6 },
+      { id: "price_war", tone: "bad", message: "⚔️ A rival undercut {name} on price — churn ticked up.", paidMult: 0.9 },
+    ],
+  },
+
+  /** Pricing tiers. Free = the non-paying MAU funnel (implicit). Pro = the base
+   *  paid tier (the product's priceMult dial). Enterprise = a premium tier the
+   *  player can OPEN once they've shipped enough: a small slice of users at a much
+   *  higher ARPU (its own price dial). Blended into ARPU by conversion share. */
+  enterprise: {
+    unlockShips: 3,
+    convShare: 0.18, // enterprise converts ~18% as readily as Pro…
+    arpuMult: 7,     // …but pays ~7× the ARPU
+    priceMin: 0.5,
+    priceMax: 3,
+  },
+
+  /** Marketing channels. The product's total marketing budget is split across these
+   *  by the player's mix weights; each converts budget→users at its own CAC and
+   *  saturates differently. cacMult scales cost; satMult scales how fast CAC rises
+   *  with market penetration. Default mix is 100% Paid Ads (cacMult/satMult = 1), so
+   *  the baseline curve is unchanged. The play: shift from cheap-but-saturating
+   *  Organic toward scale-friendly Influencer/Events as you grow. */
+  channels: [
+    { id: "ads", name: "Paid Ads", desc: "The scalable workhorse — steady cost, steady reach.", cacMult: 1, satMult: 1 },
+    { id: "organic", name: "Organic / Social", desc: "Cheap per user, but saturates fast.", cacMult: 0.5, satMult: 3 },
+    { id: "influencer", name: "Influencers", desc: "Pricey, but keeps converting at scale.", cacMult: 1.6, satMult: 0.4 },
+    { id: "events", name: "Conferences", desc: "Expensive — shines only at massive scale.", cacMult: 2.2, satMult: 0.15 },
+  ],
+
   /** A fresh release / new version spikes acquisition + cuts churn briefly. */
   buzzDurationSec: 45,
   buzzAcqMult: 3,
@@ -84,6 +142,36 @@ export const products = {
    *  Kept tight so you can't simply buy your way to scale with a weak early model —
    *  the ceiling rises as quality (versions/frontier) climbs. */
   marketingCapPerQuality: 2000,
+
+  /** Churn-reason flavor toasts — the satire surface that makes "update or bleed"
+   *  LEGIBLE: when a product is materially shedding subscribers, an occasional
+   *  toast names the dominant reason (rivals pulled ahead, or the price stings).
+   *  Cadence/RNG live in the store; these only set the thresholds + the copy. */
+  flavor: {
+    /** Need a real subscriber base before "rivals are poaching them" reads true. */
+    minPaid: 50,
+    /** Staleness must add ≥ this fraction of churn to be the headline. */
+    staleMin: 0.5,
+    /** Pricing must add ≥ this fraction of churn to be the headline. */
+    priceMin: 0.4,
+    /** Per-second hazard while a product is bleeding (≈ one quip per ~50s eligible). */
+    ratePerSec: 0.02,
+    /** Satirical lines per reason; {name} is interpolated. Humor lives here. */
+    lines: {
+      stale: [
+        "📉 {name} users are wandering off to a rival's shinier demo. Ship a new version?",
+        "📉 A competitor just leapfrogged {name}. The fickle masses have noticed.",
+        "📉 {name} is starting to feel last-season. Churn is creeping up.",
+        "📉 \"Is {name} still being maintained?\" — an actual {name} user, leaving.",
+      ],
+      pricey: [
+        "💸 {name} subscribers are rage-canceling over the price. Too rich for their blood.",
+        "💸 \"{name} is great but I'm not made of money\" — a former {name} subscriber.",
+        "💸 Sticker shock is thinning {name}'s paid tier. The dial may be cranked too high.",
+        "💸 {name} churn is spiking — turns out people read the invoice.",
+      ],
+    },
+  },
 
   types: [
     {
@@ -132,3 +220,62 @@ export const products = {
 };
 
 export type ProductsBalance = typeof products;
+
+/** Per-product feature lanes — multipliers folded into that product's economics. */
+export type FeatureLane = "acq" | "arpu" | "conversion" | "churn" | "serveCost" | "tam" | "heat";
+
+export interface FeatureDef {
+  id: string;
+  name: string;
+  desc: string;
+  /** One-time Money investment to add this feature to a product. */
+  cost: number;
+  lane: FeatureLane;
+  /** Multiplier applied to the lane (>1 for boosts, <1 for reductions). */
+  factor: number;
+}
+
+/** Per-product feature catalog — buy these to differentiate & perfect each product.
+ *  One-time Money investments (revenue reinvested into the product). Tunable. */
+export const productFeatures: FeatureDef[] = [
+  { id: "onboarding", name: "Better Onboarding", desc: "Smoother signup flow → more free users convert.", cost: 40_000, lane: "conversion", factor: 1.25 },
+  { id: "mobile", name: "Mobile App", desc: "Native apps → wider reach & faster acquisition.", cost: 75_000, lane: "acq", factor: 1.3 },
+  { id: "support", name: "24/7 Support", desc: "Humans who answer → fewer cancellations.", cost: 120_000, lane: "churn", factor: 0.8 },
+  { id: "cdn", name: "Global CDN", desc: "Edge caching → cheaper to serve every user.", cost: 150_000, lane: "serveCost", factor: 0.75 },
+  { id: "sso", name: "Enterprise SSO", desc: "SAML & audit logs → unlock higher-paying accounts.", cost: 220_000, lane: "arpu", factor: 1.3 },
+  { id: "trust", name: "Trust & Safety", desc: "Moderation & compliance → much less Regulatory Heat.", cost: 180_000, lane: "heat", factor: 0.5 },
+  { id: "api", name: "Public API", desc: "Developers build on you → a bigger addressable market.", cost: 300_000, lane: "tam", factor: 1.4 },
+  { id: "referral", name: "Referral Program", desc: "Users invite users → a standing acquisition boost.", cost: 260_000, lane: "acq", factor: 1.35 },
+];
+
+/** A metric a milestone is measured against (evaluated in the engine). */
+export type MilestoneMetric = "users" | "paid" | "mrr" | "version" | "qf" | "live" | "sold";
+
+export interface MilestoneDef {
+  id: string;
+  label: string;
+  desc: string;
+  metric: MilestoneMetric;
+  /** Achieved once the metric reaches this value. */
+  threshold: number;
+  /** One-time Money reward (a satisfying pop; the badge is the real draw). */
+  reward: number;
+}
+
+/** Per-business milestones — a chase ladder that rewards growing & perfecting the
+ *  portfolio. Evaluated against portfolio totals/peaks; one-time, persisted across
+ *  prestige (a collection). Thresholds are first-pass, tunable. */
+export const productMilestones: MilestoneDef[] = [
+  { id: "first_launch", label: "Hello, World", desc: "Launch your first product", metric: "live", threshold: 1, reward: 5_000 },
+  { id: "users_100k", label: "Going Viral", desc: "100K total monthly users", metric: "users", threshold: 100_000, reward: 25_000 },
+  { id: "users_1m", label: "Household Name", desc: "1M total monthly users", metric: "users", threshold: 1_000_000, reward: 150_000 },
+  { id: "users_10m", label: "Ubiquity", desc: "10M total monthly users", metric: "users", threshold: 10_000_000, reward: 1_000_000 },
+  { id: "paid_100k", label: "Real Revenue", desc: "100K paying subscribers", metric: "paid", threshold: 100_000, reward: 200_000 },
+  { id: "mrr_1k", label: "Ramen Profitable", desc: "$1K/s total MRR", metric: "mrr", threshold: 1_000, reward: 50_000 },
+  { id: "mrr_50k", label: "Hypergrowth", desc: "$50K/s total MRR", metric: "mrr", threshold: 50_000, reward: 750_000 },
+  { id: "version_5", label: "Iterating", desc: "Take a product to v5", metric: "version", threshold: 5, reward: 100_000 },
+  { id: "version_10", label: "Never Stale", desc: "Take a product to v10", metric: "version", threshold: 10, reward: 600_000 },
+  { id: "dominant", label: "Market Leader", desc: "A product at 99% competitiveness", metric: "qf", threshold: 0.99, reward: 120_000 },
+  { id: "full_house", label: "Conglomerate", desc: "Run 3 products at once", metric: "live", threshold: 3, reward: 300_000 },
+  { id: "flipper", label: "Serial Founder", desc: "Sell 5 products", metric: "sold", threshold: 5, reward: 250_000 },
+];

@@ -1,7 +1,28 @@
 import { Big } from "./math/Big";
 import { balance } from "./balance/config";
+import { computeStaffEffects, teamMorale } from "./employees";
 import { powerStats } from "./power";
 import type { Derived, GameState } from "./types";
+
+/** Morale multiplier on all staff output from owned office perks (1 = baseline). */
+export function officeMorale(state: GameState): number {
+  if (!balance.office.enabled) return 1;
+  let m = 1;
+  for (const perk of balance.office.perks) {
+    if ((state.upgrades[perk.id] ?? 0) > 0) m += perk.morale;
+  }
+  return m;
+}
+
+/** Payroll multiplier from owned office perks (≤ 1 trims the wage bill). */
+export function officePayrollMult(state: GameState): number {
+  if (!balance.office.enabled) return 1;
+  let mult = 1;
+  for (const perk of balance.office.perks) {
+    if ((state.upgrades[perk.id] ?? 0) > 0) mult *= perk.payrollMult;
+  }
+  return mult;
+}
 
 /**
  * Fold owned upgrades, research, and prestige into the stats the sim and UI use.
@@ -80,19 +101,24 @@ export function derive(state: GameState): Derived {
     }
   }
 
-  // Staff (Phase 2): each hire multiplies a lane; payroll is summed for tick().
-  let payrollPerSec = Big.ZERO;
-  if (balance.staff.enabled) {
-    for (const role of balance.staff.roles) {
-      const n = state.upgrades[role.id] ?? 0;
-      if (n <= 0) continue;
-      payrollPerSec = payrollPerSec.add(role.payroll * n);
-      const f = 1 + role.effect.perLevel * n;
-      if (role.effect.lane === "computeMult") computeMult = computeMult.mul(f);
-      else if (role.effect.lane === "dataMult") dataMult = dataMult.mul(f);
-      else if (role.effect.lane === "moneyMult") moneyMult = moneyMult.mul(f);
-    }
-  }
+  // Staff are individual people now. Morale (office perks + Mentor traits) scales
+  // every person's output; office perks also trim payroll. computeStaffEffects folds
+  // the whole roster into lane multipliers, payroll, and per-product buffs (benched
+  // people buff all products at base rate; assigned ones focus on theirs at 2×).
+  const morale = officeMorale(state) + teamMorale(state.employees);
+  const fx = computeStaffEffects(
+    state.employees,
+    state.products.active.map((p) => p.id),
+    morale,
+    balance.staff.assignFocusMult,
+  );
+  computeMult = computeMult.mul(fx.computeMultF);
+  dataMult = dataMult.mul(fx.dataMultF);
+  moneyMult = moneyMult.mul(fx.moneyMultF);
+  const payrollPerSec = Big.of(fx.payroll).mul(officePayrollMult(state));
+  const productMods = fx.productMods;
+  const productModsById = fx.productModsById;
+  const hireDiscount = Math.max(0.25, 1 - fx.hireCut); // hires never cheaper than 25% of base
 
   // World-event modifiers: time-limited global multipliers (buffs/debuffs).
   for (const m of state.modifiers) {
@@ -140,5 +166,8 @@ export function derive(state: GameState): Derived {
     runMoneyYield: runComputeCost.mul(balance.run.moneyPerCompute).mul(moneyMult),
     legacyMult,
     payrollPerSec,
+    productMods,
+    productModsById,
+    hireDiscount,
   };
 }

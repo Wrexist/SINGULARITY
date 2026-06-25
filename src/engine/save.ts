@@ -1,7 +1,7 @@
 import { Big } from "./math/Big";
 import { SAVE_VERSION, createInitialState } from "./state";
 import { products as PRODUCTS } from "./balance/products";
-import type { ActiveModifier, GameState, ModifierTarget, ProductsState, ProductState } from "./types";
+import type { ActiveModifier, DraftModel, Employee, GameState, ModifierTarget, ProductsState, ProductState, UpgradeState } from "./types";
 
 const MODIFIER_TARGETS: ModifierTarget[] = ["computeMult", "dataMult", "moneyMult"];
 const PRODUCT_TYPE_IDS = PRODUCTS.types.map((t) => t.id);
@@ -32,6 +32,64 @@ function isWellFormedProduct(p: unknown): p is ProductState {
   );
 }
 
+/** An in-flight upgrade is untrusted: a NaN remaining would freeze the bar or feed
+ *  NaN into the resource drain. Drop a malformed one (the product just keeps its
+ *  current version) rather than crash. */
+function sanitizeUpgrade(u: unknown): UpgradeState | null {
+  const o = u as Partial<UpgradeState> | null;
+  if (!o || typeof o !== "object") return null;
+  const nums = [o.targetVersion, o.remainingCompute, o.remainingData, o.remainingSec, o.totalSec];
+  if (!nums.every((n) => typeof n === "number" && Number.isFinite(n))) return null;
+  if (o.targetVersion! < 2 || o.remainingSec! < 0 || o.totalSec! <= 0) return null;
+  if (o.remainingCompute! < 0 || o.remainingData! < 0) return null;
+  return {
+    targetVersion: o.targetVersion!,
+    remainingCompute: o.remainingCompute!,
+    remainingData: o.remainingData!,
+    remainingSec: o.remainingSec!,
+    totalSec: o.totalSec!,
+  };
+}
+
+/** Assignments are untrusted: keep only string→(string→finite non-negative number). */
+function sanitizeAssignments(a: unknown): Record<string, Record<string, number>> {
+  if (!a || typeof a !== "object") return {};
+  const out: Record<string, Record<string, number>> = {};
+  for (const [pid, roles] of Object.entries(a as Record<string, unknown>)) {
+    if (!roles || typeof roles !== "object") continue;
+    const inner: Record<string, number> = {};
+    for (const [rid, n] of Object.entries(roles as Record<string, unknown>)) {
+      if (typeof n === "number" && Number.isFinite(n) && n > 0) inner[rid] = Math.floor(n);
+    }
+    if (Object.keys(inner).length > 0) out[pid] = inner;
+  }
+  return out;
+}
+
+/** Channel-mix weights are untrusted; keep finite ≥0 numbers, default {ads:1}. */
+function sanitizeChannelMix(m: unknown): Record<string, number> {
+  if (!m || typeof m !== "object") return { ads: 1 };
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(m as Record<string, unknown>)) {
+    if (typeof v === "number" && Number.isFinite(v) && v >= 0) out[k] = v;
+  }
+  return Object.keys(out).length ? out : { ads: 1 };
+}
+
+/** Drafts are untrusted; keep only well-formed entries. */
+function sanitizeDrafts(d: unknown): DraftModel[] {
+  if (!Array.isArray(d)) return [];
+  return d
+    .filter(
+      (x): x is DraftModel =>
+        !!x &&
+        typeof x.id === "string" &&
+        typeof x.quality === "number" && Number.isFinite(x.quality) && x.quality >= 0 &&
+        typeof x.ships === "number" && Number.isFinite(x.ships),
+    )
+    .map((x) => ({ id: x.id, quality: x.quality, ships: x.ships }));
+}
+
 /** Loaded products are untrusted; guard the container AND each entry. */
 function isWellFormedProducts(p: unknown): p is ProductsState {
   const o = p as Partial<ProductsState> | null;
@@ -42,6 +100,29 @@ function isWellFormedProducts(p: unknown): p is ProductsState {
     typeof o.frontier === "number" &&
     Number.isFinite(o.frontier)
   );
+}
+
+/** Employees are untrusted; keep only well-formed people, sanitizing training. */
+function sanitizeEmployees(e: unknown): Employee[] {
+  if (!Array.isArray(e)) return [];
+  return e
+    .filter((x): x is Employee =>
+      !!x && typeof x.id === "string" && typeof x.name === "string" && typeof x.roleId === "string" &&
+      typeof x.level === "number" && Number.isFinite(x.level) && x.level >= 1)
+    .map((x) => ({
+      id: x.id,
+      name: x.name,
+      roleId: x.roleId,
+      level: Math.max(1, Math.floor(x.level)),
+      trait: typeof x.trait === "string" ? x.trait : null,
+      assignedProductId: typeof x.assignedProductId === "string" ? x.assignedProductId : null,
+      training:
+        x.training && typeof x.training.remainingSec === "number" && Number.isFinite(x.training.remainingSec) &&
+        typeof x.training.totalSec === "number" && Number.isFinite(x.training.totalSec) && x.training.totalSec > 0 &&
+        x.training.remainingSec > 0
+          ? { remainingSec: x.training.remainingSec, totalSec: x.training.totalSec }
+          : null,
+    }));
 }
 
 /** Loaded saves are untrusted input: a NaN heat or malformed modifier would
@@ -81,6 +162,7 @@ interface SavedShape {
   alignment: number;
   computeFocus: number;
   products: ProductsState;
+  employees: Employee[];
 }
 
 export function serialize(state: GameState): string {
@@ -104,6 +186,7 @@ export function serialize(state: GameState): string {
     alignment: state.alignment,
     computeFocus: state.computeFocus,
     products: state.products,
+    employees: state.employees,
   };
   return JSON.stringify(shape);
 }
@@ -131,10 +214,27 @@ export function deserialize(json: string): GameState {
       ? Math.max(0, Math.min(1, raw.computeFocus))
       : fresh.computeFocus;
   const loadedProducts = isWellFormedProducts(raw.products) ? raw.products : fresh.products;
-  // `sold` was added after v6 shipped; default it for saves that predate it.
+  // `sold` was added after v6 shipped, `drafts`/`upgrade` in v7; default them for
+  // saves that predate each, and sanitize the untrusted nested shapes.
   const products: ProductsState = {
     ...loadedProducts,
+    active: loadedProducts.active.map((p) => {
+      const o = p as ProductState;
+      return {
+        ...p,
+        upgrade: sanitizeUpgrade(o.upgrade),
+        features: Array.isArray(o.features) ? o.features.filter((s): s is string => typeof s === "string") : [],
+        enterprise: o.enterprise === true,
+        enterprisePrice: typeof o.enterprisePrice === "number" && Number.isFinite(o.enterprisePrice) && o.enterprisePrice > 0 ? o.enterprisePrice : 1,
+        channelMix: sanitizeChannelMix(o.channelMix),
+      };
+    }),
+    drafts: sanitizeDrafts((loadedProducts as ProductsState).drafts),
     sold: typeof loadedProducts.sold === "number" && Number.isFinite(loadedProducts.sold) ? loadedProducts.sold : 0,
+    milestones: Array.isArray((loadedProducts as ProductsState).milestones)
+      ? (loadedProducts as ProductsState).milestones.filter((m): m is string => typeof m === "string")
+      : [],
+    assignments: sanitizeAssignments((loadedProducts as ProductsState).assignments),
   };
   return {
     version: SAVE_VERSION,
@@ -156,6 +256,7 @@ export function deserialize(json: string): GameState {
     alignment,
     computeFocus,
     products,
+    employees: sanitizeEmployees(raw.employees),
   };
 }
 
@@ -188,6 +289,12 @@ export function migrate(raw: any): SavedShape {
   if (s.version === 5) {
     // v5 → v6: introduce released products (none yet; frontier at the start value).
     s = { ...s, version: 6, products: s.products ?? { active: [], frontier: PRODUCTS.frontierStart } };
+  }
+  if (s.version === 6) {
+    // v6 → v7: drafts (raw models from shipping), per-product timed upgrades, and
+    // product milestones. The deserializer defaults/sanitizes them; stamp + default.
+    const prev = s.products ?? { active: [], frontier: PRODUCTS.frontierStart };
+    s = { ...s, version: 7, products: { ...prev, drafts: prev.drafts ?? [], milestones: prev.milestones ?? [], assignments: prev.assignments ?? {} } };
   }
   return s as SavedShape;
 }

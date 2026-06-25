@@ -1,7 +1,8 @@
 import { Big } from "./math/Big";
 import { balance } from "./balance/config";
 import { derive } from "./derive";
-import { simulateProducts } from "./products";
+import { simulateProducts, advanceUpgrades, applyMilestones } from "./products";
+import { advanceTraining } from "./employees";
 import type { Derived, GameState } from "./types";
 
 /**
@@ -103,12 +104,22 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   // add Heat. Money-based, so they keep running across a prestige reset. We run
   // the simulator unconditionally: with no active products it still drifts the
   // frontier, so a future launch lands against an up-to-date competitive bar.
-  const sim = simulateProducts(state.products, seconds);
-  const products = sim.products;
+  const sim = simulateProducts(state.products, seconds, d.productModsById);
+  let products = sim.products;
   if (state.products.active.length > 0) {
     money = money.add(sim.moneyDelta).max(Big.ZERO);
     if (sim.moneyDelta > 0) lifetimeMoney = lifetimeMoney.add(sim.moneyDelta);
     heat = Math.max(0, Math.min(balance.heat.max, heat + sim.heatDelta));
+  }
+
+  // Timed version upgrades drain Compute+Data over their research window. Run after
+  // the economy sim (so completions catch up to the freshly-drifted frontier) and
+  // pass the live pools so an unaffordable tick just stalls that upgrade.
+  if (products.active.some((p) => p.upgrade)) {
+    const upg = advanceUpgrades(products, compute.toNumber(), data.toNumber(), seconds, d.productModsById);
+    products = upg.products;
+    if (upg.computeSpent > 0) compute = compute.sub(upg.computeSpent).max(Big.ZERO);
+    if (upg.dataSpent > 0) data = data.sub(upg.dataSpent).max(Big.ZERO);
   }
 
   // World-event modifiers tick down; expired ones drop off.
@@ -119,7 +130,12 @@ export function tick(state: GameState, elapsedMs: number): GameState {
       .filter((m) => m.remainingSec > 0);
   }
 
-  return {
+  // Employee training advances on the wall clock (completions level them up).
+  const trained = advanceTraining(state.employees, seconds);
+
+  // Award any newly-reached product milestones (one-time Money rewards). Folded in
+  // last so it sees this tick's fresh user/MRR/version totals.
+  const ms = applyMilestones({
     ...state,
     resources: { compute, data, money },
     lifetimeMoney,
@@ -127,7 +143,9 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     heat,
     modifiers,
     products,
-  };
+    employees: trained.employees,
+  });
+  return ms.state;
 }
 
 function claimInto(d: Derived, data: Big, money: Big, lifetimeMoney: Big) {

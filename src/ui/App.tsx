@@ -20,7 +20,7 @@ import { StatsPanel } from "./StatsPanel";
 import { Tagline } from "./Tagline";
 import { Onboarding } from "./Onboarding";
 import { DataMarketPanel } from "./DataMarketPanel";
-import { StaffPanel } from "./StaffPanel";
+import { EmployeesPanel } from "./EmployeesPanel";
 import { ProductsPanel } from "./ProductsPanel";
 import { ProductLaunch } from "./ProductLaunch";
 import { productsUnlocked, productMetrics, typeDef, retirePayout } from "../engine/products";
@@ -42,9 +42,12 @@ export function App() {
   const offline = useGame((s) => s.offline);
   const initialized = useGame((s) => s.initialized);
   const event = useGame((s) => s.event);
+  const notice = useGame((s) => s.notice);
   const worldEvent = useGame((s) => s.worldEvent);
-  const { doStartRun, doClaim, doBuyUpgrade, doHireStaff, doResearch, doBuyData, doPrestige, setComputeFocus,
-    doReleaseProduct, doPushVersion, doSetProductPrice, doSetProductMarketing, doRenameProduct, doRetireProduct,
+  const candidates = useGame((s) => s.candidates);
+  const { doStartRun, doClaim, doBuyUpgrade, doBuyOfficePerk, doResearch, doBuyData, doPrestige, setComputeFocus,
+    doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
+    doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
     dismissOffline, dismissWorldEvent, chooseWorldEvent, hardReset } =
     useGame.getState();
 
@@ -73,7 +76,7 @@ export function App() {
   const showMarket = game.research.length > 0;
   const showStaff = balance.staff.enabled && game.research.length >= balance.staff.revealAtResearch;
   const showProducts = productsUnlocked(game);
-  const [tab, setTab] = useState<"lab" | "products">("lab");
+  const [tab, setTab] = useState<"lab" | "products" | "employees">("lab");
   const shipReady = canPrestige(game);
   const era = currentEra(game);
 
@@ -145,6 +148,19 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event?.key]);
 
+  // Churn-reason flavor quips — satirical, low-weight. A light tap (NOT the heavy
+  // regulatory warn) keeps them feeling like ambient color, not an alarm.
+  useEffect(() => {
+    if (!notice) return;
+    pushToast(notice.message, notice.tone);
+    // A "good" notice is a win (version shipped, milestone, viral) — full beat. A
+    // "bad" ops event (outage/breach) feels bad. Neutral churn quips stay a light tap.
+    if (notice.tone === "good") { haptics.celebrate(); sound.success(); }
+    else if (notice.tone === "bad") { haptics.warn(); sound.alert(); }
+    else haptics.tap();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notice?.key]);
+
   // Staleness nudge: when a live product slips below ~50% competitiveness (rivals
   // pulled ahead since its last version), poke the player once to push an update.
   // Ref-tracked per product so it fires on the downward crossing, not every tick.
@@ -201,21 +217,25 @@ export function App() {
   const onStart = () => { haptics.tap(); sound.tap(); doStartRun(); };
   const onClaim = () => { haptics.success(); sound.success(); doClaim(); };
   const onBuy = (id: string) => { haptics.tap(); sound.purchase(); doBuyUpgrade(id); };
-  const onHire = (id: string) => { haptics.tap(); sound.purchase(); doHireStaff(id); };
-  const onRelease = (type: Parameters<typeof doReleaseProduct>[0], name: string) => {
-    // Only fire the tentpole moment if the release actually happened (a stale tap
+  const onHireCandidate = (i: number) => { haptics.celebrate(); sound.purchase(); doHireCandidate(i); };
+  const onTrain = (id: string) => { haptics.tap(); sound.tap(); doTrainEmployee(id); };
+  const onAssignEmp = (id: string, productId: string | null) => { haptics.tap(); doAssignEmployeeToProduct(id, productId); };
+  const onFire = (id: string) => { haptics.tap(); doFireEmployee(id); };
+  const onBuyPerk = (id: string) => { haptics.tap(); sound.purchase(); doBuyOfficePerk(id); };
+  const onLaunchDraft = (draftId: string, type: ProductTypeId, name: string) => {
+    // Only fire the tentpole moment if the launch actually happened (a stale tap
     // on a full/unaffordable portfolio must not celebrate a phantom product).
-    if (!doReleaseProduct(type, name)) { haptics.warn(); return; }
+    if (!doLaunchDraft(draftId, type, name)) { haptics.warn(); return; }
     haptics.celebrate(); sound.ship();
     setLaunch({ type, name });
   };
-  const onPushVersion = (id: string) => {
+  const onStartUpgrade = (id: string) => {
     const p = game.products.active.find((x) => x.id === id);
-    doPushVersion(id);
-    // Versioning is the core mid-loop "I caught back up to the frontier" win —
-    // give it a real beat (the competitiveness bar visibly snaps back to ~100%).
-    haptics.celebrate(); sound.success();
-    if (p) pushToast(`🚀 ${p.name} v${p.version + 1} shipped — back at the frontier`, "neutral");
+    doStartUpgrade(id);
+    // Kicking off research is a small commit beat; the big payoff lands when it
+    // COMPLETES (the store fires a "good" notice → celebration in the notice effect).
+    haptics.tap(); sound.tap();
+    if (p && !p.upgrade) pushToast(`🔬 ${p.name} — researching v${p.version + 1}…`, "neutral");
   };
   const onRetireProductFx = (id: string) => {
     const p = game.products.active.find((x) => x.id === id);
@@ -273,10 +293,11 @@ export function App() {
       />
       <ModifierBar modifiers={game.modifiers} />
 
-      {showProducts && (
+      {(showStaff || showProducts) && (
         <div className="tabs" role="tablist">
           <button className={`tab ${tab === "lab" ? "on" : ""}`} role="tab" aria-selected={tab === "lab"} onClick={() => setTab("lab")}>Lab</button>
-          <button className={`tab ${tab === "products" ? "on" : ""}`} role="tab" aria-selected={tab === "products"} onClick={() => setTab("products")}>Products</button>
+          {showProducts && <button className={`tab ${tab === "products" ? "on" : ""}`} role="tab" aria-selected={tab === "products"} onClick={() => setTab("products")}>Products</button>}
+          {showStaff && <button className={`tab ${tab === "employees" ? "on" : ""}`} role="tab" aria-selected={tab === "employees"} onClick={() => setTab("employees")}>Employees</button>}
         </div>
       )}
 
@@ -284,12 +305,28 @@ export function App() {
         {tab === "products" && showProducts ? (
           <ProductsPanel
             game={game}
-            onRelease={onRelease}
-            onPushVersion={onPushVersion}
+            onLaunchDraft={onLaunchDraft}
+            onStartUpgrade={onStartUpgrade}
             onSetPrice={doSetProductPrice}
             onSetMarketing={doSetProductMarketing}
+            onSetEnterprise={doSetEnterprise}
+            onSetEnterprisePrice={doSetEnterprisePrice}
+            onSetChannelMix={doSetChannelMix}
+            onBuyFeature={doBuyFeature}
             onRename={doRenameProduct}
             onRetire={onRetireProductFx}
+          />
+        ) : tab === "employees" && showStaff ? (
+          <EmployeesPanel
+            game={game} derived={d} candidates={candidates}
+            onRecruit={() => { haptics.tap(); sound.tap(); doRecruit(); }}
+            onRefresh={doRefreshCandidates}
+            onCloseRecruit={doCloseRecruit}
+            onHireCandidate={onHireCandidate}
+            onTrain={onTrain}
+            onAssign={onAssignEmp}
+            onFire={onFire}
+            onBuyPerk={onBuyPerk}
           />
         ) : (
           <>
@@ -297,7 +334,6 @@ export function App() {
             <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} onSetFocus={setComputeFocus} />
             <UpgradePanel game={game} onBuy={onBuy} />
             {showResearch && <ResearchPanel game={game} onResearch={onResearch} />}
-            {showStaff && <StaffPanel game={game} derived={d} onHire={onHire} />}
             {showMarket && <DataMarketPanel game={game} onBuyData={onBuyData} onBuyTool={onBuy} />}
             {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} />}
             <StatsPanel game={game} derived={d} />

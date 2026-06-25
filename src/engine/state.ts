@@ -2,7 +2,7 @@ import { Big } from "./math/Big";
 import { products as PRODUCTS } from "./balance/products";
 import type { GameState } from "./types";
 
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 
 /** A fresh lab: empty closet, a trickle of free Compute, nothing owned. */
 export function createInitialState(): GameState {
@@ -25,6 +25,7 @@ export function createInitialState(): GameState {
     // Auto-train focus (1 = full training; lower banks Compute for research).
     computeFocus: 1,
     // Phase 3 — released AI products (persist across prestige); none yet.
-    products: { active: [], frontier: PRODUCTS.frontierStart, sold: 0 },
+    products: { active: [], drafts: [], frontier: PRODUCTS.frontierStart, sold: 0, milestones: [], assignments: {} },
+    employees: [],
   };
 }

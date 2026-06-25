@@ -1,20 +1,27 @@
 import { useState } from "react";
 import type { GameState } from "../engine/types";
 import { products as B, type ProductTypeId } from "../engine/balance/products";
+import { productMilestones } from "../engine/balance/products";
 import {
-  typeDef, productMetrics, canReleaseProduct, canPushVersion, versionCost, retirePayout,
+  typeDef, productMetrics, canLaunchDraft, canStartUpgrade, versionCost,
+  upgradeDurationSec, upgradeProgress, retirePayout, milestoneValue,
 } from "../engine/products";
 import { Big } from "../engine/math/Big";
 import { fmt, fmtMoney } from "./format";
+import { ProductDetail } from "./ProductDetail";
 
 const FUN_NAMES = ["Nimbus", "Oracle", "Synthia", "Cortex", "Lumen", "Vertex", "Sage", "Atlas", "Echo", "Prism", "Nova", "Helix", "Quasar", "Mirage"];
 
 interface Props {
   game: GameState;
-  onRelease: (type: ProductTypeId, name: string) => void;
-  onPushVersion: (id: string) => void;
+  onLaunchDraft: (draftId: string, type: ProductTypeId, name: string) => void;
+  onStartUpgrade: (id: string) => void;
   onSetPrice: (id: string, v: number) => void;
   onSetMarketing: (id: string, v: number) => void;
+  onSetEnterprise: (id: string, on: boolean) => void;
+  onSetEnterprisePrice: (id: string, v: number) => void;
+  onSetChannelMix: (id: string, channelId: string, weight: number) => void;
+  onBuyFeature: (id: string, featureId: string) => void;
   onRename: (id: string, name: string) => void;
   onRetire: (id: string) => void;
 }
@@ -24,10 +31,23 @@ interface Props {
 const m$ = (n: number) => (n < 0 ? `-${fmtMoney(Big.of(Math.round(-n)))}` : fmtMoney(Big.of(Math.round(n))));
 const num = (n: number) => fmt(Big.of(Math.round(n)));
 
-/** Phase 3 — the Products tab: release AIs as products, market them, set pricing,
- *  push versions, and watch the dashboard. */
-export function ProductsPanel({ game, onRelease, onPushVersion, onSetPrice, onSetMarketing, onRename, onRetire }: Props) {
-  const [picking, setPicking] = useState(false);
+/** Short, human duration ("90s", "3m", "1h 5m") for research timers. */
+function fmtDur(sec: number): string {
+  const s = Math.max(0, Math.ceil(sec));
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return s % 60 ? `${m}m ${s % 60}s` : `${m}m`;
+  const h = Math.floor(m / 60);
+  return m % 60 ? `${h}h ${m % 60}m` : `${h}h`;
+}
+
+/** Phase 3 — the Products tab: commercialise the models you ship, market them, set
+ *  pricing, research new versions over time, and watch the dashboard. */
+export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onSetChannelMix, onBuyFeature, onRename, onRetire }: Props) {
+  // Which draft (by id) is currently showing the type-picker, if any.
+  const [picking, setPicking] = useState<string | null>(null);
+  // Which product's deep-management screen is open, if any.
+  const [detailId, setDetailId] = useState<string | null>(null);
   const ps = game.products;
   const frontier = ps.frontier;
   const slotsFull = ps.active.length >= B.maxActive;
@@ -42,12 +62,67 @@ export function ProductsPanel({ game, onRelease, onPushVersion, onSetPrice, onSe
         {ps.sold > 0 && <> · <span className="prod-sold-badge">🏷️ {ps.sold} sold</span></>}
       </p>
 
+      {/* Raw models from Ship the Model — commercialise them into products. */}
+      {ps.drafts.length > 0 && (
+        <div className="prod-drafts">
+          <div className="prod-drafts-head">🧪 Raw models — commercialise a model you shipped</div>
+          {ps.drafts.map((d) => (
+            <div className="prod-draft" key={d.id}>
+              <div className="prod-draft-row">
+                <div>
+                  <div className="prod-draft-title">Model from Ship #{d.ships}</div>
+                  <div className="prod-draft-sub">Starting quality {num(d.quality)} · pick a market to launch it</div>
+                </div>
+                {picking !== d.id && (
+                  <button className="btn btn-primary btn-sm" disabled={slotsFull}
+                    onClick={() => setPicking(d.id)}>
+                    {slotsFull ? "Slots full" : "Launch"}
+                  </button>
+                )}
+              </div>
+
+              {picking === d.id && (
+                <div className="prod-release">
+                  <div className="prod-release-head">
+                    <span>Pick a market for this model</span>
+                    <button className="link-btn" onClick={() => setPicking(null)}>cancel</button>
+                  </div>
+                  {B.types.map((t) => {
+                    const locked = game.prestige.ships < t.unlockAtShips;
+                    const afford = canLaunchDraft(game, d.id, t.id);
+                    return (
+                      <button key={t.id} className={`prod-type ${afford ? "" : "maxed"}`} disabled={!afford}
+                        onClick={() => { onLaunchDraft(d.id, t.id, FUN_NAMES[Math.floor(Math.random() * FUN_NAMES.length)]!); setPicking(null); }}>
+                        <span className="prod-type-name">{locked ? "🔒 " : ""}{t.name}</span>
+                        <span className="prod-type-blurb">
+                          {locked ? `Unlocks after shipping ${t.unlockAtShips} models (you've shipped ${game.prestige.ships}).` : t.blurb}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  <p className="market-warn">
+                    Launches v1 for {num(B.releaseCost.compute)} compute · {num(B.releaseCost.data)} data.
+                  </p>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {ps.active.length === 0 && ps.drafts.length === 0 && (
+        <p className="market-warn">Ship a model in the Lab to get a raw model you can turn into a product.</p>
+      )}
+
       <div className="list">
         {ps.active.map((p) => {
           const t = typeDef(p.type);
           const me = productMetrics(p, frontier);
+          const up = p.upgrade;
           const vc = versionCost(p.version);
-          const canVer = canPushVersion(game, p.id);
+          const upfrontC = vc.compute * B.upgrade.upfrontFrac;
+          const upfrontD = vc.data * B.upgrade.upfrontFrac;
+          const canVer = canStartUpgrade(game, p.id);
           const mktCap = Math.max(1, Math.round(p.quality * B.marketingCapPerQuality));
           const qfColor = me.qf > 0.66 ? "var(--money)" : me.qf > 0.33 ? "#f97316" : "var(--coral)";
           return (
@@ -65,6 +140,7 @@ export function ProductsPanel({ game, onRelease, onPushVersion, onSetPrice, onSe
               <div className="prod-sub">
                 <span className="prod-badge">{t.name}</span>
                 <span className="prod-ver">v{p.version}</span>
+                <button className="link-btn prod-details" onClick={() => setDetailId(p.id)}>details ▸</button>
               </div>
               <div className="prod-stats">
                 <span><b>{num(me.paid)}</b> subs</span>
@@ -92,44 +168,70 @@ export function ProductsPanel({ game, onRelease, onPushVersion, onSetPrice, onSe
                   value={Math.min(p.marketingPerSec, mktCap)} onChange={(e) => onSetMarketing(p.id, Number(e.target.value))} aria-label="Marketing budget" />
               </label>
 
-              <div className="prod-actions">
-                <button className="btn btn-ghost" disabled={!canVer} onClick={() => onPushVersion(p.id)}>
-                  Push v{p.version + 1} · {num(vc.compute)} cpu + {num(vc.data)} data
-                </button>
-                <button className="link-btn" onClick={() => onRetire(p.id)}>sell · {m$(retirePayout(game, p.id))}</button>
-              </div>
+              {up ? (
+                <div className="prod-research">
+                  <div className="prod-research-head">
+                    <span>🔬 Researching v{up.targetVersion}</span>
+                    <span>{Math.round(upgradeProgress(up) * 100)}% · ~{fmtDur(up.remainingSec)} left</span>
+                  </div>
+                  <div className="prod-bar">
+                    <div className="prod-bar-fill prod-bar-research" style={{ width: `${upgradeProgress(up) * 100}%` }} />
+                  </div>
+                </div>
+              ) : (
+                <div className="prod-actions">
+                  <button className="btn btn-ghost" disabled={!canVer} onClick={() => onStartUpgrade(p.id)}>
+                    Research v{p.version + 1} · {num(upfrontC)}+{num(upfrontD)} upfront · ~{fmtDur(upgradeDurationSec(p.version))}
+                  </button>
+                  <button className="link-btn" onClick={() => onRetire(p.id)}>sell · {m$(retirePayout(game, p.id))}</button>
+                </div>
+              )}
             </div>
           );
         })}
       </div>
 
-      {!slotsFull && (picking ? (
-        <div className="prod-release">
-          <div className="prod-release-head">
-            <span>Pick a model type</span>
-            <button className="link-btn" onClick={() => setPicking(false)}>cancel</button>
+      {ps.active.length + ps.milestones.length > 0 && (
+        <div className="prod-milestones">
+          <div className="prod-ms-head">
+            🏆 Milestones <span className="prod-ms-count">{ps.milestones.length}/{productMilestones.length}</span>
           </div>
-          {B.types.map((t) => {
-            const locked = game.prestige.ships < t.unlockAtShips;
-            const afford = canReleaseProduct(game, t.id);
-            return (
-              <button key={t.id} className={`prod-type ${afford ? "" : "maxed"}`} disabled={!afford}
-                onClick={() => { onRelease(t.id, FUN_NAMES[Math.floor(Math.random() * FUN_NAMES.length)]!); setPicking(false); }}>
-                <span className="prod-type-name">{locked ? "🔒 " : ""}{t.name}</span>
-                <span className="prod-type-blurb">
-                  {locked ? `Unlocks after shipping ${t.unlockAtShips} models (you've shipped ${game.prestige.ships}).` : t.blurb}
-                </span>
-              </button>
-            );
-          })}
-          <p className="market-warn">
-            Trains v1 for {num(B.releaseCost.compute)} compute · {num(B.releaseCost.data)} data.
-          </p>
+          <div className="prod-ms-grid">
+            {productMilestones.map((mDef) => {
+              const done = ps.milestones.includes(mDef.id);
+              const val = milestoneValue(game, mDef.metric);
+              const pct = Math.max(0, Math.min(1, val / mDef.threshold));
+              return (
+                <div className={`prod-ms ${done ? "done" : ""}`} key={mDef.id} title={mDef.desc}>
+                  <div className="prod-ms-top">
+                    <span className="prod-ms-name">{done ? "✓ " : ""}{mDef.label}</span>
+                    <span className="prod-ms-reward">+{m$(mDef.reward)}</span>
+                  </div>
+                  <div className="prod-ms-desc">{mDef.desc}</div>
+                  {!done && <div className="prod-bar prod-ms-bar"><div className="prod-bar-fill" style={{ width: `${pct * 100}%`, background: "var(--data)" }} /></div>}
+                </div>
+              );
+            })}
+          </div>
         </div>
-      ) : (
-        <button className="btn btn-primary" onClick={() => setPicking(true)}>+ Release new AI</button>
-      ))}
-      {slotsFull && <p className="market-warn">Portfolio full ({B.maxActive}). Retire one to release another.</p>}
+      )}
+
+      {detailId && (
+        <ProductDetail
+          game={game}
+          productId={detailId}
+          onClose={() => setDetailId(null)}
+          onStartUpgrade={onStartUpgrade}
+          onSetPrice={onSetPrice}
+          onSetMarketing={onSetMarketing}
+          onSetEnterprise={onSetEnterprise}
+          onSetEnterprisePrice={onSetEnterprisePrice}
+          onSetChannelMix={onSetChannelMix}
+          onBuyFeature={onBuyFeature}
+          onRename={onRename}
+          onRetire={onRetire}
+        />
+      )}
     </section>
   );
 }

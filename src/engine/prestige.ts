@@ -1,7 +1,8 @@
 import { Big } from "./math/Big";
 import { balance } from "./balance/config";
+import { products as P } from "./balance/products";
 import { createInitialState } from "./state";
-import type { GameState } from "./types";
+import type { DraftModel, GameState } from "./types";
 
 /**
  * "Ship the Model" — the retention engine (GDD §4). Reset the run, keep Legacy
@@ -36,14 +37,30 @@ export function prestige(state: GameState): GameState {
   if (!canPrestige(state)) return state;
   const gained = legacyWeightsGain(state);
   const fresh = createInitialState();
+  const ships = state.prestige.ships + 1;
+
+  // Shipping deposits the flagship you just trained as a "raw model" draft in the
+  // Products tab — the player commercialises it (pick a type + name, pay to launch)
+  // into a standing business. Its strength = the competitive frontier at ship time,
+  // so a longer run yields a stronger starting product. Oldest drafts drop off the cap.
+  const draft: DraftModel = {
+    id: `draft-${ships}`,
+    quality: Math.max(1, state.products.frontier),
+    ships,
+  };
+  const drafts = [...state.products.drafts, draft].slice(-P.maxDrafts);
+
   return {
     ...fresh,
     prestige: {
       legacyWeights: state.prestige.legacyWeights.add(gained),
-      ships: state.prestige.ships + 1,
+      ships,
     },
     // Phase 3 — released products are your standing business; they survive the
     // reset and keep earning Money into the next run (the meta-reward for shipping).
-    products: state.products,
+    products: { ...state.products, drafts },
+    // Your team stays with you across a ship (they're employed by the company,
+    // not the run) — but their product assignments reset since the lab is fresh.
+    employees: state.employees.map((e) => ({ ...e, assignedProductId: null })),
   };
 }
