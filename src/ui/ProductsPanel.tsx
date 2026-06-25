@@ -19,7 +19,9 @@ interface Props {
   onRetire: (id: string) => void;
 }
 
-const m$ = (n: number) => fmtMoney(Big.of(Math.round(n)));
+// Sign-aware: the magnitude goes through the K/M/B formatter and the sign sits
+// OUTSIDE the $ (−$5K, not the raw ungrouped "$-5000" that overflowed the card).
+const m$ = (n: number) => (n < 0 ? `-${fmtMoney(Big.of(Math.round(-n)))}` : fmtMoney(Big.of(Math.round(n))));
 const num = (n: number) => fmt(Big.of(Math.round(n)));
 
 /** Phase 3 — the Products tab: release AIs as products, market them, set pricing,

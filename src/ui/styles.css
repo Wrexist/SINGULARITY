@@ -599,6 +599,7 @@ body {
   color: var(--ink-2);
   margin: -6px 0 12px;
   line-height: 1.4;
+  overflow-wrap: anywhere; /* long money strings can't overflow the card on a 375px phone */
 }
 .floor-meter b { color: var(--ink); font-weight: 750; }
 .floor-meter.full { color: var(--coral); }

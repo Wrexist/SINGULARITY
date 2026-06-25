@@ -70,17 +70,27 @@ export function simulateProducts(ps: ProductsState, seconds: number): ProductsSi
     const gap = Math.max(0, frontier - p.quality);
     const churn = t.baseChurn * (1 + gap * B.stalenessChurn) * p.priceMult * (buzz ? B.buzzChurnMult : 1);
 
-    let paid = p.paid + (targetPaid - p.paid) * clamp(B.convSpeed * seconds, 0, 1) - p.paid * churn * seconds;
-    paid = clamp(paid, 0, mau);
+    // Paid subscribers follow dp/dt = convSpeed·(target − p) − churn·p. We solve
+    // that ODE in closed form over the window so it stays correct for ANY tick
+    // size — a big offline catch-up converges toward the steady state instead of
+    // the old linear `paid − paid·churn·seconds`, which over hours went hugely
+    // negative and wiped even ultra-sticky products to zero on every reopen.
+    const k = B.convSpeed + churn; // combined approach rate
+    const pStar = k > 0 ? (B.convSpeed * targetPaid) / k : targetPaid; // steady state
+    const decay = Math.exp(-k * seconds);
+    let paid = clamp(pStar + (p.paid - pStar) * decay, 0, mau);
 
-    // Economics: revenue − serving − marketing. Bill on the window-average paid
-    // (trapezoidal) so one large offline tick doesn't charge the whole window at
-    // the end-of-window subscriber rate.
-    const avgPaid = (p.paid + paid) / 2;
+    // Economics: bill on the exact time-integral of paid(t) over the window
+    // (∫ of the decay curve), so a long tick charges the real area under the
+    // subscriber curve, not the endpoint. Matches the old per-frame math for
+    // small ticks; only differs (correctly) for large offline windows.
+    const paidIntegral = k > 0
+      ? pStar * seconds + ((p.paid - pStar) * (1 - decay)) / k
+      : p.paid * seconds;
     const arpu = t.baseArpu * p.priceMult * p.quality;
-    const mrr = avgPaid * arpu;
-    const serve = avgPaid * t.computePerUser * p.quality;
-    moneyDelta += (mrr - serve - p.marketingPerSec) * seconds;
+    const mrr = paidIntegral * arpu;
+    const serve = paidIntegral * t.computePerUser * p.quality;
+    moneyDelta += mrr - serve - p.marketingPerSec * seconds;
     if (paid > 0) heatDelta += t.heatPerSec * seconds;
 
     return { ...p, mau, paid, buzzSec: Math.max(0, p.buzzSec - seconds) };
@@ -189,13 +199,21 @@ export function setProductPrice(state: GameState, id: string, priceMult: number)
   };
 }
 
+/** Marketing-dial ceiling for a product: scales with quality (game progress). */
+export function marketingCap(p: ProductState): number {
+  return Math.max(1, p.quality * B.marketingCapPerQuality);
+}
+
 export function setProductMarketing(state: GameState, id: string, perSec: number): GameState {
-  const m = Math.max(0, perSec);
   return {
     ...state,
     products: {
       ...state.products,
-      active: state.products.active.map((x) => (x.id === id ? { ...x, marketingPerSec: m } : x)),
+      // Clamp to [0, cap] at the source so state can't drift above the dial the
+      // UI shows (the cap shrinks/grows with quality).
+      active: state.products.active.map((x) =>
+        x.id === id ? { ...x, marketingPerSec: clamp(perSec, 0, marketingCap(x)) } : x,
+      ),
     },
   };
 }

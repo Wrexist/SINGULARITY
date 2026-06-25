@@ -23,7 +23,8 @@ import { DataMarketPanel } from "./DataMarketPanel";
 import { StaffPanel } from "./StaffPanel";
 import { ProductsPanel } from "./ProductsPanel";
 import { ProductLaunch } from "./ProductLaunch";
-import { productsUnlocked, productMetrics, typeDef } from "../engine/products";
+import { productsUnlocked, productMetrics, typeDef, retirePayout } from "../engine/products";
+import { fmtMoney } from "./format";
 import type { ProductTypeId } from "../engine/balance/products";
 import { iap } from "./iap";
 import { balance } from "../engine/balance/config";
@@ -148,6 +149,12 @@ export function App() {
   // pulled ahead since its last version), poke the player once to push an update.
   // Ref-tracked per product so it fires on the downward crossing, not every tick.
   const staleSeen = useRef<Record<string, boolean>>({});
+  // Cheap per-render signal so the effect only re-runs when a product crosses the
+  // staleness line (or the roster changes) — NOT every 10Hz tick, since
+  // `game.products` is a fresh object reference every frame.
+  const staleKey = game.products.active
+    .map((p) => `${p.id}:${productMetrics(p, game.products.frontier).qf < 0.5 ? 1 : 0}`)
+    .join("|");
   useEffect(() => {
     if (!initialized) return;
     const frontier = game.products.frontier;
@@ -167,7 +174,7 @@ export function App() {
       if (!live.has(id)) delete staleSeen.current[id];
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialized, game.products]);
+  }, [initialized, staleKey]);
 
   const syncedShips = useRef(false);
   useEffect(() => {
@@ -196,10 +203,29 @@ export function App() {
   const onBuy = (id: string) => { haptics.tap(); sound.purchase(); doBuyUpgrade(id); };
   const onHire = (id: string) => { haptics.tap(); sound.purchase(); doHireStaff(id); };
   const onRelease = (type: Parameters<typeof doReleaseProduct>[0], name: string) => {
-    haptics.celebrate(); sound.ship(); doReleaseProduct(type, name);
-    setLaunch({ type, name }); // tentpole "we shipped a product" moment
+    // Only fire the tentpole moment if the release actually happened (a stale tap
+    // on a full/unaffordable portfolio must not celebrate a phantom product).
+    if (!doReleaseProduct(type, name)) { haptics.warn(); return; }
+    haptics.celebrate(); sound.ship();
+    setLaunch({ type, name });
   };
-  const onPushVersion = (id: string) => { haptics.success(); sound.success(); doPushVersion(id); };
+  const onPushVersion = (id: string) => {
+    const p = game.products.active.find((x) => x.id === id);
+    doPushVersion(id);
+    // Versioning is the core mid-loop "I caught back up to the frontier" win —
+    // give it a real beat (the competitiveness bar visibly snaps back to ~100%).
+    haptics.celebrate(); sound.success();
+    if (p) pushToast(`🚀 ${p.name} v${p.version + 1} shipped — back at the frontier`, "neutral");
+  };
+  const onRetireProductFx = (id: string) => {
+    const p = game.products.active.find((x) => x.id === id);
+    if (!p) return;
+    const payout = retirePayout(game, id);
+    if (!window.confirm(`Sell ${p.name} for ${fmtMoney(Big.of(Math.round(payout)))}? This is permanent.`)) return;
+    doRetireProduct(id);
+    haptics.success(); sound.purchase();
+    pushToast(`🏷️ Sold ${p.name} for ${fmtMoney(Big.of(Math.round(payout)))}`, "neutral");
+  };
   const onResearch = (id: string) => { haptics.tap(); sound.purchase(); doResearch(id); };
   const onBuyData = (id: string) => {
     const outcome = doBuyData(id);
@@ -263,7 +289,7 @@ export function App() {
             onSetPrice={doSetProductPrice}
             onSetMarketing={doSetProductMarketing}
             onRename={doRenameProduct}
-            onRetire={doRetireProduct}
+            onRetire={onRetireProductFx}
           />
         ) : (
           <>

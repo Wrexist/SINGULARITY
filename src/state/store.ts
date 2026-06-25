@@ -16,6 +16,7 @@ import {
   type WorldEventResult,
 } from "../engine/actions";
 import {
+  canReleaseProduct,
   releaseProduct,
   pushVersion,
   setProductPrice,
@@ -71,7 +72,8 @@ interface GameStore {
   doBuyUpgrade: (id: string) => void;
   doHireStaff: (id: string) => void;
   setComputeFocus: (v: number) => void;
-  doReleaseProduct: (type: ProductTypeId, name: string) => void;
+  /** Returns true if the release succeeded (so the UI only celebrates on a real ship). */
+  doReleaseProduct: (type: ProductTypeId, name: string) => boolean;
   doPushVersion: (id: string) => void;
   doSetProductPrice: (id: string, priceMult: number) => void;
   doSetProductMarketing: (id: string, perSec: number) => void;
@@ -197,11 +199,13 @@ export const useGame = create<GameStore>((set, get) => ({
   setComputeFocus: (v) =>
     set((s) => ({ game: { ...s.game, computeFocus: Math.max(0, Math.min(1, v)) } })),
   // The store mints the product id (nondeterminism stays out of the engine).
-  doReleaseProduct: (type, name) =>
-    set((s) => {
-      productKey += 1;
-      return { game: releaseProduct(s.game, { type, name, id: `prod-${productKey}` }) };
-    }),
+  // Guard first so a stale/double tap can't burn an id or fake a celebration.
+  doReleaseProduct: (type, name) => {
+    if (!canReleaseProduct(get().game, type)) return false;
+    productKey += 1;
+    set((s) => ({ game: releaseProduct(s.game, { type, name, id: `prod-${productKey}` }) }));
+    return true;
+  },
   doPushVersion: (id) => set((s) => ({ game: pushVersion(s.game, id) })),
   doSetProductPrice: (id, v) => set((s) => ({ game: setProductPrice(s.game, id, v) })),
   doSetProductMarketing: (id, v) => set((s) => ({ game: setProductMarketing(s.game, id, v) })),

@@ -125,6 +125,28 @@ describe("products — simulation", () => {
     const m = productMetrics(s.products.active[0]!, s.products.frontier);
     expect(m.margin).toBeLessThan(0);
   });
+
+  it("a long offline tick does NOT wipe a still-competitive product's paid base (regression)", () => {
+    let s = release(shipped(), "code"); // the stickiest type
+    // Keep quality well above the frontier so it stays competitive across the
+    // window — this isolates the CHURN MODEL from (legit) staleness churn.
+    s = { ...s, products: { ...s.products, active: [{ ...s.products.active[0]!, quality: 1000, mau: 300000, paid: 50000 }] } };
+    // 8h in a single tick (the offline cap). The old linear churn term drove paid
+    // massively negative → clamped to 0, wiping the base on every reopen.
+    const sim = simulateProducts(s.products, 8 * 3600);
+    const p = sim.products.active[0]!;
+    expect(p.paid).toBeGreaterThan(10000); // retained (old model gave exactly 0)
+    expect(Number.isFinite(p.paid)).toBe(true);
+    expect(Number.isFinite(sim.moneyDelta)).toBe(true);
+    expect(sim.moneyDelta).toBeGreaterThan(0); // earned, not nonsense
+  });
+
+  it("marketing is clamped to the quality-gated cap at the engine", () => {
+    let s = release(); // quality = frontier = frontierStart (1)
+    s = setProductMarketing(s, "p1", 1e9);
+    const p = s.products.active[0]!;
+    expect(p.marketingPerSec).toBe(p.quality * B.marketingCapPerQuality);
+  });
 });
 
 describe("products — persistence", () => {

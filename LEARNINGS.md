@@ -238,3 +238,14 @@ Deferred on purpose (documented, not fixed unsupervised — current balance does
   use it. Putting it in `render/hallModel.ts` would have created an import cycle (actions ↔
   hallModel). `hall.ts` imports only `balance` + types, so no cycle. `buildHallModel` still
   downsamples for over-capacity (legacy/loaded saves) — the gate only blocks NEW purchases.
+- **Per-tick rates that decay/grow must NOT be linearized for big (offline) ticks.** The product
+  sim originally did `paid - paid*churn*seconds`; over an 8h offline catch-up (one ~28,800s tick)
+  that term dwarfs `paid` → clamps to 0, silently wiping the entire paying base (even "sticky"
+  products) on every reopen. Fix: solve the subscriber ODE in closed form —
+  `paid = pStar + (paid0 - pStar)*exp(-k*seconds)` with `k = convSpeed + churn`,
+  `pStar = convSpeed*target/k` — and bill revenue on the exact time-INTEGRAL of that curve, not the
+  endpoint or a trapezoid. This matches the old per-frame math for small ticks (so balance is
+  unchanged online) and converges sanely offline. Rule: anything of the form `x -= x*rate*dt` is a
+  bug waiting for a large `dt`; use `x *= exp(-rate*dt)` (bounded) instead. Also: format negative
+  money sign-OUTSIDE the unit (`-$5K`, not raw ungrouped `$-5000`) — `formatBig` only suffixes
+  values ≥1000 and assumed positivity, so losses overflowed the card.

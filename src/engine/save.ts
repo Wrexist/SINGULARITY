@@ -20,7 +20,15 @@ function isWellFormedProduct(p: unknown): p is ProductState {
     [o.version, o.quality, o.priceMult, o.marketingPerSec, o.mau, o.paid, o.buzzSec].every(
       (n) => typeof n === "number" && Number.isFinite(n),
     ) &&
-    o.priceMult! > 0
+    // No negative counts/quality (would stick qf at 0 / break versionCost), and
+    // a positive priceMult (0 divides by zero in convRate).
+    o.priceMult! > 0 &&
+    o.version! >= 1 &&
+    o.quality! >= 0 &&
+    o.marketingPerSec! >= 0 &&
+    o.mau! >= 0 &&
+    o.paid! >= 0 &&
+    o.buzzSec! >= 0
   );
 }
 
