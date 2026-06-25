@@ -110,11 +110,11 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
   );
   const pm = derived.productMods;
   const buffs: string[] = [];
-  if (pm.upgradeSpeed > 1) buffs.push(`+${Math.round((pm.upgradeSpeed - 1) * 100)}% research`);
-  if (pm.acq > 1) buffs.push(`+${Math.round((pm.acq - 1) * 100)}% acq`);
-  if (pm.arpu > 1) buffs.push(`+${Math.round((pm.arpu - 1) * 100)}% ARPU`);
-  if (pm.serveCost < 1) buffs.push(`−${Math.round((1 - pm.serveCost) * 100)}% serve`);
-  if (pm.churn < 1) buffs.push(`−${Math.round((1 - pm.churn) * 100)}% churn`);
+  if (pm.upgradeSpeed > 1) buffs.push(`+${Math.round((pm.upgradeSpeed - 1) * 100)}% research speed`);
+  if (pm.acq > 1) buffs.push(`+${Math.round((pm.acq - 1) * 100)}% new users`);
+  if (pm.arpu > 1) buffs.push(`+${Math.round((pm.arpu - 1) * 100)}% revenue/user`);
+  if (pm.serveCost < 1) buffs.push(`−${Math.round((1 - pm.serveCost) * 100)}% serving cost`);
+  if (pm.churn < 1) buffs.push(`−${Math.round((1 - pm.churn) * 100)}% users leaving`);
 
   return (
     <section className="panel">

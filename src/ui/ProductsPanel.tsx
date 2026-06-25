@@ -49,7 +49,7 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
     <section className="panel">
       <h2 className="panel-title">Products</h2>
       <p className="floor-meter">
-        Portfolio: <b>{m$(totalMrr)}/s MRR</b> · net {totalMargin >= 0 ? "+" : ""}{m$(totalMargin)}/s · {ps.active.length}/{B.maxActive} slots
+        Portfolio: <b>{m$(totalMrr)}/s</b> revenue · {totalMargin >= 0 ? "+" : ""}{m$(totalMargin)}/s profit · {ps.active.length}/{B.maxActive} slots
         {ps.sold > 0 && <> · <span className="prod-sold-badge">🏷️ {ps.sold} sold</span></>}
       </p>
 
@@ -128,10 +128,10 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
                 <button className="link-btn prod-details" onClick={() => setDetailId(p.id)}>details ▸</button>
               </div>
               <div className="prod-stats">
-                <span><b>{num(me.paid)}</b> subs</span>
+                <span><b>{num(me.paid)}</b> paying</span>
                 <span><b>{num(me.mau)}</b> users</span>
-                <span><b>{me.churnPerMin.toFixed(1)}%</b>/min churn</span>
-                <span className={me.margin >= 0 ? "pos" : "neg"}>{me.margin >= 0 ? "+" : ""}{m$(me.margin)}/s</span>
+                <span title="Share of users leaving per minute"><b>{me.churnPerMin.toFixed(1)}%</b>/min leaving</span>
+                <span className={me.margin >= 0 ? "pos" : "neg"} title="Profit per second (revenue − costs)">{me.margin >= 0 ? "+" : ""}{m$(me.margin)}/s</span>
               </div>
 
               <div className="prod-quality">

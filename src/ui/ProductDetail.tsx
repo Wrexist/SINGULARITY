@@ -10,7 +10,7 @@ import { EditableName } from "./EditableName";
 
 /** Short human label for a feature's effect lane. */
 const LANE_LABEL: Record<FeatureLane, string> = {
-  acq: "acquisition", arpu: "ARPU", conversion: "conversion", churn: "churn",
+  acq: "new users", arpu: "revenue/user", conversion: "conversion", churn: "users leaving",
   serveCost: "serve cost", tam: "market size", heat: "heat",
 };
 
@@ -99,10 +99,10 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
         {tab === "overview" && (
           <div className="pd-pane">
             <div className="pd-grid">
-              {stat("MRR", `${m$(me.mrr)}/s`)}
-              {stat("Net margin", `${me.margin >= 0 ? "+" : ""}${m$(me.margin)}/s`, me.margin >= 0 ? "pos" : "neg")}
-              {stat("Paying subs", num(me.paid))}
-              {stat("Monthly users", num(me.mau))}
+              {stat("Revenue/s", `${m$(me.mrr)}/s`)}
+              {stat("Profit/s", `${me.margin >= 0 ? "+" : ""}${m$(me.margin)}/s`, me.margin >= 0 ? "pos" : "neg")}
+              {stat("Paying users", num(me.paid))}
+              {stat("Total users", num(me.mau))}
             </div>
             {bar("Competitiveness vs rivals", me.qf * 100, qfColor, `${Math.round(me.qf * 100)}%`)}
             {bar(`Market share (of ${num(t.tam)})`, penetration * 100, "var(--data)", `${(penetration * 100).toFixed(penetration < 0.01 ? 2 : 1)}%`)}
@@ -133,7 +133,7 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
                 </label>
                 {p.enterprise && (
                   <label className="prod-ctl">
-                    <span>Enterprise price ×{p.enterprisePrice.toFixed(1)} — small slice, ~{B.enterprise.arpuMult}× ARPU</span>
+                    <span>Enterprise price ×{p.enterprisePrice.toFixed(1)} — small slice, ~{B.enterprise.arpuMult}× revenue/user</span>
                     <input type="range" min={Math.round(B.enterprise.priceMin * 10)} max={Math.round(B.enterprise.priceMax * 10)} step={1}
                       value={Math.round(p.enterprisePrice * 10)} onChange={(e) => onSetEnterprisePrice(p.id, Number(e.target.value) / 10)} aria-label="Enterprise pricing" />
                   </label>

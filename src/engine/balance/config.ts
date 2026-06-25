@@ -612,7 +612,7 @@ export const balance = {
       {
         id: "staff_success",
         name: "Customer Success",
-        desc: "−5% churn across products, each. Professionally prevents goodbyes.",
+        desc: "−5% users leaving, each. Professionally prevents goodbyes.",
         hire: { base: 6_000, growth: 1.6 },
         payroll: 16,
         team: "product",
@@ -630,7 +630,7 @@ export const balance = {
       {
         id: "staff_sales",
         name: "Sales Exec",
-        desc: "+7% ARPU across products, each. Always be closing.",
+        desc: "+7% revenue per user, each. Always be closing.",
         hire: { base: 8_000, growth: 1.6 },
         payroll: 20,
         team: "product",
