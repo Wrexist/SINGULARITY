@@ -63,6 +63,39 @@ export interface GameState {
   products: ProductsState;
   /** Phase 3 — individual employees (people, not counts). Persist across prestige. */
   employees: Employee[];
+  /** Phase 3 — lifetime stats that accumulate across ALL runs (survive prestige).
+   *  The data backbone for achievements, the AGI gate, and lab reputation. */
+  stats: LifetimeStats;
+}
+
+/**
+ * Cross-run, monotonic progress counters (Phase 3). Continuous fields (peaks,
+ * totals, playtime) accrue each tick; discrete counters bump at their event site
+ * (ship, launch, hire, event). Never decrease. Survive prestige and AGI ascension.
+ */
+export interface LifetimeStats {
+  /** Money earned across all runs (cumulative). */
+  totalMoney: Big;
+  /** Best Compute/sec ever reached. */
+  peakComputePerSec: Big;
+  /** Best total product MRR/s ever reached. */
+  peakMrr: number;
+  /** Best total product MAU ever reached. */
+  peakMau: number;
+  /** Most research nodes owned in a single run (research resets each run). */
+  peakResearchCount: number;
+  /** Models shipped (mirrors prestige.ships; kept here for symmetry + secrets). */
+  totalShips: number;
+  /** Total Legacy Weights ever gained. */
+  totalLegacy: Big;
+  /** Products launched across all runs. */
+  productsLaunched: number;
+  /** Employees hired across all runs. */
+  employeesHired: number;
+  /** World events resolved (a choice made). */
+  worldEventsResolved: number;
+  /** Total play time, seconds (accrued each tick). */
+  playtimeSec: number;
 }
 
 /** An individual employee. roleId names a job (balance.staff.roles); the person's

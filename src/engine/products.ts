@@ -495,6 +495,7 @@ export function launchDraft(
       active: [...state.products.active, product],
       drafts: state.products.drafts.filter((d) => d.id !== opts.draftId),
     },
+    stats: { ...state.stats, productsLaunched: state.stats.productsLaunched + 1 },
   };
 }
 

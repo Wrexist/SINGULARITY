@@ -1,8 +1,9 @@
 import { Big } from "./math/Big";
 import { products as PRODUCTS } from "./balance/products";
+import { initialStats } from "./stats";
 import type { GameState } from "./types";
 
-export const SAVE_VERSION = 8;
+export const SAVE_VERSION = 9;
 
 /** A fresh lab: empty closet, a trickle of free Compute, nothing owned. */
 export function createInitialState(): GameState {
@@ -27,5 +28,6 @@ export function createInitialState(): GameState {
     // Phase 3 — released AI products (persist across prestige); none yet.
     products: { active: [], drafts: [], frontier: PRODUCTS.frontierStart, sold: 0, milestones: [] },
     employees: [],
+    stats: initialStats(),
   };
 }

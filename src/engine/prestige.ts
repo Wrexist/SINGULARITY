@@ -62,5 +62,11 @@ export function prestige(state: GameState): GameState {
     // Your team stays with you across a ship (they're employed by the company,
     // not the run) — but their product assignments reset since the lab is fresh.
     employees: state.employees.map((e) => ({ ...e, assignedProductId: null })),
+    // Lifetime stats persist across the ship; the ship itself bumps its counters.
+    stats: {
+      ...state.stats,
+      totalShips: state.stats.totalShips + 1,
+      totalLegacy: state.stats.totalLegacy.add(gained),
+    },
   };
 }

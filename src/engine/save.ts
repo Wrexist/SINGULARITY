@@ -1,7 +1,8 @@
 import { Big } from "./math/Big";
 import { SAVE_VERSION, createInitialState } from "./state";
+import { initialStats } from "./stats";
 import { products as PRODUCTS } from "./balance/products";
-import type { ActiveModifier, DraftModel, Employee, GameState, ModifierTarget, ProductsState, ProductState, UpgradeState } from "./types";
+import type { ActiveModifier, DraftModel, Employee, GameState, LifetimeStats, ModifierTarget, ProductsState, ProductState, UpgradeState } from "./types";
 
 const MODIFIER_TARGETS: ModifierTarget[] = ["computeMult", "dataMult", "moneyMult"];
 const PRODUCT_TYPE_IDS = PRODUCTS.types.map((t) => t.id);
@@ -112,6 +113,31 @@ function sanitizeEmployees(e: unknown): Employee[] {
     }));
 }
 
+/** Lifetime stats are untrusted: coerce each field, default a zeroed stat block. */
+function sanitizeStats(s: unknown): LifetimeStats {
+  const d = initialStats();
+  if (!s || typeof s !== "object") return d;
+  const o = s as Record<string, unknown>;
+  const big = (v: unknown, fb: Big): Big => {
+    if (typeof v !== "string" && typeof v !== "number") return fb;
+    try { return Big.of(v); } catch { return fb; }
+  };
+  const numf = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : 0);
+  return {
+    totalMoney: big(o.totalMoney, d.totalMoney),
+    peakComputePerSec: big(o.peakComputePerSec, d.peakComputePerSec),
+    totalLegacy: big(o.totalLegacy, d.totalLegacy),
+    peakMrr: numf(o.peakMrr),
+    peakMau: numf(o.peakMau),
+    peakResearchCount: numf(o.peakResearchCount),
+    totalShips: numf(o.totalShips),
+    productsLaunched: numf(o.productsLaunched),
+    employeesHired: numf(o.employeesHired),
+    worldEventsResolved: numf(o.worldEventsResolved),
+    playtimeSec: numf(o.playtimeSec),
+  };
+}
+
 /** Loaded saves are untrusted input: a NaN heat or malformed modifier would
  * flow straight into tick()/derive() and poison or crash the run. Validate. */
 function isWellFormedModifier(m: unknown): m is ActiveModifier {
@@ -150,6 +176,8 @@ interface SavedShape {
   computeFocus: number;
   products: ProductsState;
   employees: Employee[];
+  /** Serialized lifetime stats (Big fields as strings). */
+  stats: Record<string, string | number>;
 }
 
 export function serialize(state: GameState): string {
@@ -174,6 +202,19 @@ export function serialize(state: GameState): string {
     computeFocus: state.computeFocus,
     products: state.products,
     employees: state.employees,
+    stats: {
+      totalMoney: state.stats.totalMoney.toJSON(),
+      peakComputePerSec: state.stats.peakComputePerSec.toJSON(),
+      totalLegacy: state.stats.totalLegacy.toJSON(),
+      peakMrr: state.stats.peakMrr,
+      peakMau: state.stats.peakMau,
+      peakResearchCount: state.stats.peakResearchCount,
+      totalShips: state.stats.totalShips,
+      productsLaunched: state.stats.productsLaunched,
+      employeesHired: state.stats.employeesHired,
+      worldEventsResolved: state.stats.worldEventsResolved,
+      playtimeSec: state.stats.playtimeSec,
+    },
   };
   return JSON.stringify(shape);
 }
@@ -243,6 +284,7 @@ export function deserialize(json: string): GameState {
     computeFocus,
     products,
     employees: sanitizeEmployees(raw.employees),
+    stats: sanitizeStats(raw.stats),
   };
 }
 
@@ -287,6 +329,24 @@ export function migrate(raw: any): SavedShape {
     // map (assignment now lives on each Employee). Drop the dead field.
     const { assignments: _dropped, ...products } = s.products ?? { active: [], frontier: PRODUCTS.frontierStart };
     s = { ...s, version: 8, products };
+  }
+  if (s.version === 8) {
+    // v8 → v9: lifetime stats store (Phase 3). Backfill from what the save already
+    // knows so a returning player's totals aren't all zero (ships/legacy/money seed
+    // their lifetime counterparts; the rest start fresh and climb from here).
+    s = { ...s, version: 9, stats: s.stats ?? {
+      totalMoney: s.lifetimeMoney ?? "0",
+      peakComputePerSec: "0",
+      totalLegacy: s.prestige?.legacyWeights ?? "0",
+      peakMrr: 0,
+      peakMau: 0,
+      peakResearchCount: Array.isArray(s.research) ? s.research.length : 0,
+      totalShips: s.prestige?.ships ?? 0,
+      productsLaunched: Array.isArray(s.products?.active) ? s.products.active.length : 0,
+      employeesHired: Array.isArray(s.employees) ? s.employees.length : 0,
+      worldEventsResolved: 0,
+      playtimeSec: 0,
+    } };
   }
   return s as SavedShape;
 }

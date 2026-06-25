@@ -102,7 +102,11 @@ export function fireEmployee(state: GameState, empId: string): GameState {
 }
 
 export function addEmployee(state: GameState, emp: Employee): GameState {
-  return { ...state, employees: [...state.employees, emp] };
+  return {
+    ...state,
+    employees: [...state.employees, emp],
+    stats: { ...state.stats, employeesHired: state.stats.employeesHired + 1 },
+  };
 }
 
 /** Hire signing-bonus cost for a candidate of a role. */

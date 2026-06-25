@@ -3,6 +3,7 @@ import { balance } from "./balance/config";
 import { derive } from "./derive";
 import { simulateProducts, advanceUpgrades, applyMilestones } from "./products";
 import { advanceTraining } from "./employees";
+import { accrueStats } from "./stats";
 import type { Derived, GameState } from "./types";
 
 /**
@@ -133,6 +134,13 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   // Employee training advances on the wall clock (completions level them up).
   const trained = advanceTraining(state.employees, seconds);
 
+  // Accrue lifetime stats (peaks/totals/playtime) from this tick's finished numbers.
+  // earnedThisTick = the run-money added to lifetimeMoney this tick (already ≥ 0).
+  const stats = accrueStats(
+    state.stats, products, state.research.length, d.computePerSec,
+    lifetimeMoney.sub(state.lifetimeMoney), seconds,
+  );
+
   // Award any newly-reached product milestones (one-time Money rewards). Folded in
   // last so it sees this tick's fresh user/MRR/version totals.
   const ms = applyMilestones({
@@ -144,6 +152,7 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     modifiers,
     products,
     employees: trained.employees,
+    stats,
   });
   return ms.state;
 }

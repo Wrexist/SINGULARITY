@@ -444,8 +444,9 @@ export function applyWorldEvent(state: GameState, eventId: string): { state: Gam
   }
 
   const effect = def.effect!;
+  const next = applyEffect(state, effect, def.id, def.tone);
   return {
-    state: applyEffect(state, effect, def.id, def.tone),
+    state: { ...next, stats: { ...next.stats, worldEventsResolved: next.stats.worldEventsResolved + 1 } },
     event: { ...base, summary: effectSummary(effect) },
   };
 }
@@ -463,7 +464,10 @@ export function applyWorldEventChoice(
   if (!choice) return { state, event: base };
   const next = applyEffect(state, choice.effect, def.id, def.tone);
   const alignment = Math.max(-1, Math.min(1, state.alignment + choice.alignment));
-  return { state: { ...next, alignment }, event: { ...base, summary: effectSummary(choice.effect) } };
+  return {
+    state: { ...next, alignment, stats: { ...next.stats, worldEventsResolved: next.stats.worldEventsResolved + 1 } },
+    event: { ...base, summary: effectSummary(choice.effect) },
+  };
 }
 
 /**
