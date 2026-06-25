@@ -60,9 +60,20 @@ describe("advisor", () => {
     s = releaseProduct(s, { type: "general", name: "Relic", id: "p1" });
     s.products.frontier = 100;
     s.products.active[0]!.quality = 1; // qf ≈ 0.01 → far behind
+    s.products.active[0]!.buzzSec = 0; // past the launch buzz window
     const counts = attentionCounts(s);
     expect(counts.products).toBeGreaterThanOrEqual(1);
     expect(advisorItems(s).some((i) => i.text.includes("behind rivals"))).toBe(true);
+  });
+
+  it("does NOT flag a stale product while it's still in its launch buzz window", () => {
+    let s = shipped();
+    s.research = [];
+    s = releaseProduct(s, { type: "general", name: "Fresh", id: "p1" }); // releaseProduct sets buzzSec > 0
+    s.products.frontier = 100;
+    s.products.active[0]!.quality = 1; // stale on arrival, but buzzed
+    expect(s.products.active[0]!.buzzSec).toBeGreaterThan(0);
+    expect(advisorItems(s).some((i) => i.text.includes("behind rivals"))).toBe(false);
   });
 
   it("nudges the first hire once staff is unlocked", () => {

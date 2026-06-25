@@ -202,15 +202,26 @@ export function computeStaffEffects(
   const globalUnits = emptyUnits();
   const focusUnits: Record<string, Record<ProductStaffLane, number>> = {};
   for (const id of activeProductIds) focusUnits[id] = emptyUnits();
-  // Rank each product lane across ALL its contributors (benched + assigned), dampen
-  // by rank, then route: assigned → its product's focus bucket (×focus), else global.
+  // Rank each product lane WITHIN each destination bucket — the benched/global pool
+  // and each product's focus pool are ranked independently — so a benched person's
+  // company-wide buff is never penalised by how many people are assigned elsewhere
+  // (those flow into a different bucket entirely), and vice versa.
   (Object.keys(prodLane) as ProductStaffLane[]).forEach((lane) => {
-    const entries = prodLane[lane].sort((a, b) => b.value - a.value);
-    entries.forEach((e, k) => {
-      const dv = e.value * decay(k);
-      if (e.bucket && focusUnits[e.bucket]) focusUnits[e.bucket]![lane] += dv * focus;
-      else globalUnits[lane] += dv;
-    });
+    const byBucket = new Map<string, number[]>();
+    for (const e of prodLane[lane]) {
+      const key = e.bucket && focusUnits[e.bucket] ? e.bucket : ""; // "" = benched/global
+      const list = byBucket.get(key) ?? [];
+      if (!byBucket.has(key)) byBucket.set(key, list);
+      list.push(e.value);
+    }
+    for (const [key, vals] of byBucket) {
+      vals.sort((a, b) => b - a);
+      vals.forEach((v, k) => {
+        const dv = v * decay(k);
+        if (key) focusUnits[key]![lane] += dv * focus;
+        else globalUnits[lane] += dv;
+      });
+    }
   });
 
   const productModsById: Record<string, ProductMods> = {};

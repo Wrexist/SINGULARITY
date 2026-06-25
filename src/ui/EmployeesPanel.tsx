@@ -88,6 +88,7 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
   const [tab, setTab] = useState<Tab>("team");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [labOpen, setLabOpen] = useState(false);
+  const [labAll, setLabAll] = useState(false); // expand the capped lab roster to all chips
   const team = game.employees;
   // Roster splits/sums only change on hire/fire/train/assign — not every 10Hz tick.
   const { infra, product, labPay, roleSummary } = useMemo(() => {
@@ -162,10 +163,14 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
               </button>
               {labOpen && (
                 <div className="emp-zone-chips emp-lab-chips">
-                  {infra.slice(0, LAB_CHIP_CAP).map((e) => (
+                  {(labAll ? infra : infra.slice(0, LAB_CHIP_CAP)).map((e) => (
                     <Chip key={e.id} emp={e} selected={selectedId === e.id} onTap={() => setSelectedId(e.id)} />
                   ))}
-                  {infra.length > LAB_CHIP_CAP && <span className="emp-zone-empty">+{infra.length - LAB_CHIP_CAP} more</span>}
+                  {infra.length > LAB_CHIP_CAP && (
+                    <button type="button" className="emp-zone-more" onClick={() => setLabAll((v) => !v)}>
+                      {labAll ? "show less" : `+${infra.length - LAB_CHIP_CAP} more`}
+                    </button>
+                  )}
                 </div>
               )}
             </div>

@@ -61,6 +61,20 @@ describe("staff (individual employees) — derive + payroll", () => {
     expect((six - 1) / 6).toBeLessThan(one - 1); // per-head contribution diminishes
   });
 
+  it("ranks diminishing returns per destination bucket (benched buff is independent of assigned staff)", () => {
+    // One benched Growth Lead buffs every product globally. Adding Growth Leads
+    // ASSIGNED to product "p" must NOT decay the benched person's global buff —
+    // they feed a different (focus) bucket and are ranked separately.
+    const benched = (id: string) => person("staff_growth", { id });
+    const assigned = (id: string) => person("staff_growth", { id, assignedProductId: "p" });
+    const aloneAcq = computeStaffEffects([benched("b")], ["p", "q"], 1, 2).productModsById["q"]!.acq;
+    const withAssigned = computeStaffEffects(
+      [benched("b"), assigned("a1"), assigned("a2"), assigned("a3")],
+      ["p", "q"], 1, 2,
+    ).productModsById["q"]!.acq; // product q has NO assignees → only the benched global buff
+    expect(withAssigned).toBeCloseTo(aloneAcq, 10);
+  });
+
   it("rewards seniority: one level-4 outproduces a same-size junior on its lane", () => {
     const senior = computeStaffEffects([person("staff_growth", { id: "s", level: 4 })], ["p"], 1, 1).productModsById["p"]!.acq;
     const junior = computeStaffEffects([person("staff_growth", { id: "j", level: 1 })], ["p"], 1, 1).productModsById["p"]!.acq;

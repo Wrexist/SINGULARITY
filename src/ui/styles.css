@@ -1538,6 +1538,10 @@ body {
 .emp-zone-n { color: var(--ink-3, var(--ink-2)); font-weight: 650; }
 .emp-zone-chips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 30px; align-items: center; }
 .emp-zone-empty { font-size: 11px; color: var(--ink-2); opacity: 0.6; padding-left: 2px; }
+.emp-zone-more {
+  font-size: 11px; font-weight: 700; color: var(--data); cursor: pointer;
+  background: none; border: none; padding: 4px 6px; align-self: center;
+}
 .emp-chip {
   display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px 4px 4px;
   border-radius: 999px; background: var(--glass); border: 1px solid var(--glass-hairline);

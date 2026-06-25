@@ -277,3 +277,17 @@ Deferred on purpose (documented, not fixed unsupervised — current balance does
   `{ ...loadedProducts, ... }` re-spreads it onto the loaded object at runtime. The fix is a real
   migration step (`v7→v8`) that deletes the key before deserialize spreads it, asserted with
   `expect("assignments" in load.products).toBe(false)`.
+
+- **Rank diminishing returns WITHIN each destination bucket, not across the whole roster.**
+  First cut of `computeStaffEffects` sorted every product-lane contributor together and decayed by a
+  single shared rank — so a benched person's company-wide (global) buff got penalised by how many
+  people were *assigned elsewhere*, even though assigned staff flow into a different (per-product
+  focus) bucket and never touch the global pool. Symptom: assigning staff to product P silently
+  weakened the buff on unrelated product Q. Fix: group contributions by destination bucket
+  (`"" = global`, else productId), then sort + decay each bucket independently. An adversarial
+  self-review caught this; the lesson is that a "rank then route" order is wrong when ranking is
+  supposed to be per-route — route first (or group), then rank.
+- **Keep advisory/nudge guards in sync with the flavor layer they claim to mirror.** The advisor's
+  "behind rivals" nudge fired on a just-launched product while `churnReason` (the toast layer) stayed
+  silent during the launch `buzzSec` window — two systems disagreeing about the same product on the
+  same tick. If a comment says "mirrors X", actually replicate X's guards (here, `p.buzzSec <= 0`).

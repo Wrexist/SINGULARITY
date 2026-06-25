@@ -53,8 +53,10 @@ export function advisorItems(state: GameState): AdvisorItem[] {
     for (const p of ps.active) {
       const m = productMetrics(p, ps.frontier);
       // Rivals have pulled ahead and no new version is in the works — the one
-      // unambiguous "this product needs you" signal (mirrors the staleness toast).
-      if (m.qf < 0.5 && !p.upgrade) {
+      // unambiguous "this product needs you" signal. Suppressed during the launch /
+      // new-version buzz window, matching churnReason's buzz guard, so a just-shipped
+      // (stale-on-arrival) draft isn't roasted before the player can react.
+      if (m.qf < 0.5 && !p.upgrade && p.buzzSec <= 0) {
         items.push({
           tab: "products",
           text: `${p.name} is behind rivals — ${canStartUpgrade(state, p.id) ? "research a new version" : "save up for a new version"}`,

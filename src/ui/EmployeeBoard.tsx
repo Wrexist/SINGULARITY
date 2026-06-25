@@ -24,6 +24,10 @@ function hue(name: string) { let h = 0; for (let i = 0; i < name.length; i++) h 
  *  finger and the hovered zone highlights. A tap (no movement) selects instead. */
 export function EmployeeBoard({ employees, products, onAssign, onSelect, selectedId }: Props) {
   const [drag, setDrag] = useState<{ id: string; x: number; y: number; over: string | null } | null>(null);
+  // Zones cap how many chips render (perf); a tapped "+N more" expands that zone so
+  // beyond-cap people stay reachable to tap/drag — matters after a prestige benches
+  // the whole product team at once.
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   // Latest props/handlers, read by the stable pointer handlers (avoids stale closures
   // when the parent re-renders at 10Hz mid-drag).
@@ -92,12 +96,14 @@ export function EmployeeBoard({ employees, products, onAssign, onSelect, selecte
     <div className="emp-board">
       {zones.map((z) => {
         const here = byZone[z.id] ?? [];
+        const isExpanded = expanded[z.id] ?? false;
+        const shown = isExpanded ? here : here.slice(0, ZONE_CAP);
         return (
           <div key={z.id} data-empzone={z.id} className={`emp-zone ${drag?.over === z.id ? "over" : ""}`}>
             <div className="emp-zone-head">{z.label} <span className="emp-zone-n">{here.length}</span></div>
             <div className="emp-zone-chips">
               {here.length === 0 && <span className="emp-zone-empty">drop here</span>}
-              {here.slice(0, ZONE_CAP).map((e) => {
+              {shown.map((e) => {
                 const trait = traitDef(e.trait);
                 return (
                   <button
@@ -114,7 +120,11 @@ export function EmployeeBoard({ employees, products, onAssign, onSelect, selecte
                   </button>
                 );
               })}
-              {here.length > ZONE_CAP && <span className="emp-zone-empty">+{here.length - ZONE_CAP} more</span>}
+              {here.length > ZONE_CAP && (
+                <button type="button" className="emp-zone-more" onClick={() => setExpanded((m) => ({ ...m, [z.id]: !isExpanded }))}>
+                  {isExpanded ? "show less" : `+${here.length - ZONE_CAP} more`}
+                </button>
+              )}
             </div>
           </div>
         );
