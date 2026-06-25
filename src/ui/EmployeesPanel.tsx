@@ -90,10 +90,16 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
   const [labOpen, setLabOpen] = useState(false);
   const team = game.employees;
   // Roster splits/sums only change on hire/fire/train/assign — not every 10Hz tick.
-  const { infra, product, labPay } = useMemo(() => {
+  const { infra, product, labPay, roleSummary } = useMemo(() => {
     const inf = team.filter((e) => roleDef(e.roleId)?.team === "infra");
     const prod = team.filter((e) => roleDef(e.roleId)?.team === "product");
-    return { infra: inf, product: prod, labPay: inf.reduce((s, e) => s + employeePayroll(e), 0) };
+    // Headcount per role (most-staffed first) — legibility for a big roster.
+    const counts = new Map<string, number>();
+    for (const e of team) counts.set(e.roleId, (counts.get(e.roleId) ?? 0) + 1);
+    const summary = [...counts.entries()]
+      .map(([roleId, n]) => ({ roleId, n, name: roleDef(roleId)?.name ?? roleId }))
+      .sort((a, b) => b.n - a.n);
+    return { infra: inf, product: prod, labPay: inf.reduce((s, e) => s + employeePayroll(e), 0), roleSummary: summary };
   }, [team]);
   const selected = selectedId ? team.find((e) => e.id === selectedId) ?? null : null;
 
@@ -127,6 +133,13 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
       {tab === "team" && (
         <div className="pd-pane">
           {team.length === 0 && <p className="market-warn">No employees yet — head to <b>Hire</b> to recruit your first.</p>}
+          {roleSummary.length > 0 && (
+            <div className="emp-rolesum">
+              {roleSummary.map((r) => (
+                <span className="emp-rolesum-chip" key={r.roleId}><b>{r.n}</b> {r.name}</span>
+              ))}
+            </div>
+          )}
           {buffs.length > 0 && <p className="emp-buffs-line">Bonuses: {buffs.join(" · ")}</p>}
           {selected && <ManageBar game={game} emp={selected} onTrain={onTrain} onFire={(id) => { onFire(id); setSelectedId(null); }} onClose={() => setSelectedId(null)} />}
 

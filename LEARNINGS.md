@@ -262,3 +262,18 @@ Deferred on purpose (documented, not fixed unsupervised — current balance does
   maxActive) launching is blocked, so the nudge pointed at a dead end. Gate every suggestion on the
   same predicate the button uses (free slot, can-afford, etc.) so the advisor never tells the player
   to do something the UI won't let them do.
+
+- **Diminishing returns belong on OUTPUT, not headcount, with payroll left linear.** To kill
+  zerg-hiring without a hard cap, `computeStaffEffects` ranks each lane's contributors by raw output
+  and weights the k-th at `1/(1 + k·perLaneRate)`; salary stays full per head. This naturally (a)
+  leaves 1–2 hires unchanged, (b) makes leveling/traits matter (the strongest sort first → full
+  weight, juniors decay), and (c) makes a 100-person mob pay 100 salaries for ~3× output. Rank
+  ACROSS buckets (benched + assigned) per lane, then route the decayed value to global vs focus —
+  so assigning concentrates+focuses talent rather than dodging the diminishing curve. Note the lab
+  `balance-sim` doesn't model staff at all, so staff-only balance changes can't be validated there —
+  verify them with a focused unit test + a hand-computed per-head curve instead.
+- **When removing a state field, the deserializer's `{...loadedProducts}` spread will leak it back.**
+  Dropping `products.assignments` from the type isn't enough — a v7 save still carries the key, and
+  `{ ...loadedProducts, ... }` re-spreads it onto the loaded object at runtime. The fix is a real
+  migration step (`v7→v8`) that deletes the key before deserialize spreads it, asserted with
+  `expect("assignments" in load.products).toBe(false)`.

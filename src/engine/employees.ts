@@ -145,17 +145,29 @@ const buildMods = (u: Record<ProductStaffLane, number>): ProductMods => ({
 });
 
 /** Fold the whole roster into lane multipliers, payroll, and product buffs. `morale`
- *  scales every person's output; `focus` is the assigned-vs-unassigned bonus. */
+ *  scales every person's output; `focus` is the assigned-vs-unassigned bonus.
+ *
+ *  Diminishing returns: within each lane, contributors are ranked by raw output and
+ *  the k-th (0-indexed) is weighted by 1/(1 + k·perLaneRate). This makes the first
+ *  few (and the highest-level / best-trait) people count most, while a wall of
+ *  juniors stacked on one lane pays full salary for steeply falling output —
+ *  rewarding a tight, trained team over zerg-hiring. Payroll is never diminished. */
 export function computeStaffEffects(
   employees: Employee[],
   activeProductIds: string[],
   morale: number,
   focus: number,
 ): StaffEffects {
-  let computeMultF = 1, dataMultF = 1, moneyMultF = 1, hireCut = 0, payroll = 0;
-  const globalUnits = emptyUnits();
-  const focusUnits: Record<string, Record<ProductStaffLane, number>> = {};
-  for (const id of activeProductIds) focusUnits[id] = emptyUnits();
+  let payroll = 0;
+  const activeSet = new Set(activeProductIds);
+  // Raw per-lane contributions, collected first so we can rank + dampen them.
+  const laneMult: Record<"computeMult" | "dataMult" | "moneyMult", number[]> = {
+    computeMult: [], dataMult: [], moneyMult: [],
+  };
+  const metaHire: number[] = [];
+  const emptyLaneList = (): Record<ProductStaffLane, { value: number; bucket: string }[]> =>
+    ({ upgradeSpeed: [], acquisition: [], arpu: [], serveCost: [], churn: [], heat: [] });
+  const prodLane = emptyLaneList();
 
   for (const e of employees) {
     const role = roleDef(e.roleId);
@@ -163,19 +175,43 @@ export function computeStaffEffects(
     payroll += employeePayroll(e);
     const eff = employeeEffectMult(e) * morale;
     if (role.effect.kind === "lane") {
-      const f = 1 + role.effect.perLevel * eff;
-      if (role.effect.lane === "computeMult") computeMultF *= f;
-      else if (role.effect.lane === "dataMult") dataMultF *= f;
-      else if (role.effect.lane === "moneyMult") moneyMultF *= f;
+      laneMult[role.effect.lane].push(role.effect.perLevel * eff);
     } else if (role.effect.kind === "meta") {
-      if (role.effect.lane === "hireDiscount") hireCut += role.effect.perLevel * employeeEffectMult(e);
+      if (role.effect.lane === "hireDiscount") metaHire.push(role.effect.perLevel * employeeEffectMult(e));
     } else {
-      const units = role.effect.perLevel * eff;
-      const focused = e.assignedProductId ? focusUnits[e.assignedProductId] : undefined;
-      if (focused) focused[role.effect.lane] += units * focus;
-      else globalUnits[role.effect.lane] += units; // benched → buffs every product at base rate
+      // Assigned to a LIVE product → that product's focus bucket; else benched (global).
+      const bucket = e.assignedProductId && activeSet.has(e.assignedProductId) ? e.assignedProductId : "";
+      prodLane[role.effect.lane].push({ value: role.effect.perLevel * eff, bucket });
     }
   }
+
+  const dimRate = S.diminishing.perLaneRate;
+  const decay = (rank: number) => 1 / (1 + rank * dimRate);
+  // Additive lanes: Σ value·decay(rank), strongest first.
+  const dampSum = (vals: number[]) =>
+    vals.sort((a, b) => b - a).reduce((s, v, k) => s + v * decay(k), 0);
+  // Multiplicative lanes: Π (1 + value·decay(rank)), strongest first.
+  const dampMult = (vals: number[]) =>
+    vals.sort((a, b) => b - a).reduce((m, v, k) => m * (1 + v * decay(k)), 1);
+
+  const computeMultF = dampMult(laneMult.computeMult);
+  const dataMultF = dampMult(laneMult.dataMult);
+  const moneyMultF = dampMult(laneMult.moneyMult);
+  const hireCut = dampSum(metaHire);
+
+  const globalUnits = emptyUnits();
+  const focusUnits: Record<string, Record<ProductStaffLane, number>> = {};
+  for (const id of activeProductIds) focusUnits[id] = emptyUnits();
+  // Rank each product lane across ALL its contributors (benched + assigned), dampen
+  // by rank, then route: assigned → its product's focus bucket (×focus), else global.
+  (Object.keys(prodLane) as ProductStaffLane[]).forEach((lane) => {
+    const entries = prodLane[lane].sort((a, b) => b.value - a.value);
+    entries.forEach((e, k) => {
+      const dv = e.value * decay(k);
+      if (e.bucket && focusUnits[e.bucket]) focusUnits[e.bucket]![lane] += dv * focus;
+      else globalUnits[lane] += dv;
+    });
+  });
 
   const productModsById: Record<string, ProductMods> = {};
   for (const id of activeProductIds) {

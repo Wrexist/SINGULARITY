@@ -91,6 +91,24 @@ describe("save/load", () => {
     expect(migrate(v3).alignment).toBe(0); // v3 → v4 backfill
   });
 
+  it("drops the dead per-product `assignments` map on a v7 save (v7 → v8)", () => {
+    const v7 = {
+      version: 7,
+      resources: { compute: "1", data: "1", money: "1" },
+      upgrades: {}, research: [],
+      run: { active: false, progress: 0, readyToClaim: false },
+      prestige: { legacyWeights: "0", ships: 0 },
+      lifetimeMoney: "1", heat: 0, modifiers: [], alignment: 0, computeFocus: 1,
+      products: { active: [], drafts: [], frontier: 1, sold: 0, milestones: [], assignments: { "prod-1": { staff_ml: 2 } } },
+      employees: [],
+    };
+    const migrated = migrate(v7) as any;
+    expect(migrated.version).toBe(SAVE_VERSION);
+    expect(migrated.products.assignments).toBeUndefined();
+    // And a full load yields a products object with no stray assignments key.
+    expect("assignments" in deserialize(JSON.stringify(v7)).products).toBe(false);
+  });
+
   it("round-trips active modifiers", () => {
     const s = createInitialState();
     s.modifiers = [
@@ -129,7 +147,6 @@ describe("save/load", () => {
       sold: 0,
       drafts: [],
       milestones: [],
-      assignments: {},
       active: [{ id: "prod-1", name: "Nimbus", type: "general", version: 1, quality: 2, priceMult: 1, marketingPerSec: 0, mau: 10, paid: 2, buzzSec: 0, upgrade: null, features: [], enterprise: false, enterprisePrice: 1, channelMix: { ads: 1 } }],
     };
     expect(deserialize(serialize(good)).products.active).toHaveLength(1);
@@ -150,7 +167,6 @@ describe("save/load", () => {
       sold: 0,
       drafts: [{ id: "draft-2", quality: 4, ships: 2 }],
       milestones: [],
-      assignments: {},
       active: [{
         id: "prod-1", name: "Cortex", type: "code", version: 3, quality: 4,
         priceMult: 1, marketingPerSec: 0, mau: 100, paid: 20, buzzSec: 0,

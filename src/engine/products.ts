@@ -114,6 +114,21 @@ function channelAcq(p: ProductState, tam: number): number {
   return acq;
 }
 
+/** Suggest a sensible channel split for a product right now: weight each channel
+ *  by its acquisition efficiency (1 / effective CAC) at the current market
+ *  penetration, normalised so the strongest channel sits at 1.0 (the slider max).
+ *  Cheap channels lead early; as they saturate, budget naturally shifts to the
+ *  ones that keep converting at scale — exactly the "diversify as you grow" advice
+ *  the tip gives, but computed. Pure. */
+export function suggestChannelMix(p: ProductState, t: ProductTypeDef): Record<string, number> {
+  const pen = t.tam > 0 ? clamp(p.mau / t.tam, 0, 1) : 0;
+  const eff = B.channels.map((c) => 1 / (c.cacMult * (1 + pen * B.cacSaturation * c.satMult)));
+  const max = Math.max(...eff, 1e-9);
+  const mix: Record<string, number> = {};
+  B.channels.forEach((c, i) => { mix[c.id] = Math.round((eff[i]! / max) * 100) / 100; });
+  return mix;
+}
+
 // ---------- Per-tick simulation (deterministic) ----------
 
 export interface ProductsSimResult {
@@ -696,16 +711,18 @@ export function retireProduct(state: GameState, id: string): GameState {
   const p = state.products.active.find((x) => x.id === id);
   if (!p) return state;
   const payout = productMetrics(p, state.products.frontier).mrr * B.retireValuationSec;
-  // Releasing the product frees any employees assigned to it back into the pool.
-  const { [id]: _dropped, ...assignments } = state.products.assignments;
+  // Releasing the product frees any employees assigned to it back to the bench.
+  const employees = state.employees.some((e) => e.assignedProductId === id)
+    ? state.employees.map((e) => (e.assignedProductId === id ? { ...e, assignedProductId: null } : e))
+    : state.employees;
   return {
     ...state,
     resources: { ...state.resources, money: state.resources.money.add(Math.max(0, payout)) },
     lifetimeMoney: state.lifetimeMoney.add(Math.max(0, payout)),
+    employees,
     products: {
       ...state.products,
       active: state.products.active.filter((x) => x.id !== id),
-      assignments,
       sold: state.products.sold + 1, // lifetime "products sold" badge (persists across prestige)
     },
   };

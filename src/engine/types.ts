@@ -149,10 +149,6 @@ export interface ProductsState {
   sold: number;
   /** Ids of achieved product milestones (a collection; survives prestige). */
   milestones: string[];
-  /** Per-product employee assignments: productId → roleId → headcount focused there.
-   *  Assigned product-staff buff only that product (at a focus bonus); unassigned ones
-   *  buff every product at base rate. */
-  assignments: Record<string, Record<string, number>>;
 }
 
 /** Everything the sim and UI read each frame, folded from upgrades + research + prestige. */

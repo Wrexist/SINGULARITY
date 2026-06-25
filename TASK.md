@@ -313,8 +313,19 @@ upgrades + a full Employees page. Built on branch `claude/phase3-product-busines
       deliberately conservative & unambiguous (draft waiting *with a free slot*, empty portfolio →
       ship, stale product, first hire). Tapping the nudge jumps to the right tab.
 
-### Deferred (need owner sign-off / next batch)
-- [ ] **B1 — diminishing-returns hiring** (BALANCE; needs sign-off): per-head output is linear, so
-      zerg-hiring is optimal. Propose per-role diminishing returns / soft headcount curve.
-- [ ] **B2** role-summary strip · **B5** "suggest mix" button · **C1** drop dead `products.assignments`
-      via a versioned save cleanup.
+### P2 batch (B1 / B2 / B5 / C1)
+- [x] **B1 — diminishing-returns hiring (BALANCE):** `computeStaffEffects` now ranks each lane's
+      contributors by raw output and weights the k-th at `1/(1 + k·perLaneRate)` (`balance.staff.
+      diminishing.perLaneRate = 0.18`). Output diminishes, payroll does NOT → a small, trained,
+      high-trait team beats a wall of juniors. 1–2 hires ≈ unchanged; at 80-on-one-lane acq is
+      ~2.25× (was 7.4× linear) while you still pay 80 salaries. `npm run sim` unchanged (first
+      prestige ~12m, longest wall 1m05s — the sim doesn't model staff, so the lab curve is intact).
+      3 new staff tests (diminishing, per-head falloff, seniority > headcount).
+- [x] **B2 — role-summary strip:** compact "N RoleName" chips on the Employees → Team pane (memoized),
+      so a big roster is legible at a glance.
+- [x] **B5 — suggest mix:** pure `suggestChannelMix(p, t)` weights channels by acquisition efficiency
+      (1/effective-CAC) at the current penetration; "✨ Suggest mix" button on the Marketing tab applies
+      it. Cheap channels lead early, budget shifts as they saturate. 2 new tests.
+- [x] **C1 — dead-field cleanup:** removed `products.assignments` (superseded by per-Employee
+      `assignedProductId`). Save v7→v8 migration strips it; retire now frees crew via their own
+      `assignedProductId`. 1 new migration test.

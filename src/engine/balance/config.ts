@@ -529,6 +529,11 @@ export const balance = {
     trainCostMult: 6, // cost = role.hire.base × trainCostMult × level
     /** Signing bonus to hire a candidate = role.hire.base × this. */
     hireSigningMult: 1,
+    /** Diminishing returns on stacking one lane. Contributors to a lane are ranked
+     *  by raw output; the k-th (0-indexed) counts at 1/(1 + k·perLaneRate). Output
+     *  diminishes but payroll does NOT — so a small, trained, high-trait team beats
+     *  zerg-hiring a wall of juniors. perLaneRate 0 = old linear behaviour. */
+    diminishing: { perLaneRate: 0.18 },
     /** Personality/specialty traits rolled at hire. */
     traits: [
       { id: "tenx", name: "10×", desc: "Ships like ten people. Insufferable about it.", effectMult: 1.7, payrollMult: 1.3, tone: "good" },

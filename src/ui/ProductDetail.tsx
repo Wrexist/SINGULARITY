@@ -3,7 +3,7 @@ import type { GameState } from "../engine/types";
 import { products as B, productFeatures, type FeatureLane } from "../engine/balance/products";
 import {
   typeDef, productMetrics, canStartUpgrade, canBuyFeature, versionCost,
-  upgradeDurationSec, upgradeProgress, retirePayout, enterpriseUnlocked,
+  upgradeDurationSec, upgradeProgress, retirePayout, enterpriseUnlocked, suggestChannelMix,
 } from "../engine/products";
 import { m$, numOf as num, fmtDur } from "./format";
 import { EditableName } from "./EditableName";
@@ -153,6 +153,12 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
               <input type="range" min={0} max={mktCap} step={Math.max(1, Math.round(mktCap / 50))}
                 value={Math.min(p.marketingPerSec, mktCap)} onChange={(e) => onSetMarketing(p.id, Number(e.target.value))} aria-label="Marketing budget" />
             </label>
+            <div className="pd-mix-head">
+              <span>Channel split</span>
+              <button className="link-btn" onClick={() => { const mix = suggestChannelMix(p, t); for (const c of B.channels) onSetChannelMix(p.id, c.id, mix[c.id] ?? 0); }}>
+                ✨ Suggest mix
+              </button>
+            </div>
             {(() => {
               const totalW = B.channels.reduce((s, c) => s + Math.max(0, p.channelMix[c.id] ?? 0), 0) || 1;
               return B.channels.map((c) => {

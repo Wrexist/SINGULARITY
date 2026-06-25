@@ -1453,6 +1453,10 @@ body {
 .pd-tab.on { background: var(--surface, #fff); color: var(--ink); box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.12)); }
 .pd-pane { display: flex; flex-direction: column; gap: 10px; animation: fade 0.2s ease; }
 .pd-pane-tip { font-size: 12px; color: var(--ink-2); line-height: 1.4; margin: 0; }
+.pd-mix-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 12px; font-weight: 750; color: var(--ink-2); margin-top: 4px;
+}
 .pd-hint { font-size: 12px; color: var(--coral); font-weight: 600; margin: 0; }
 .pd-research-btn { display: flex; flex-direction: column; gap: 2px; align-items: center; }
 .pd-cta-sub { font-size: 11px; font-weight: 600; opacity: 0.85; }
@@ -1563,6 +1567,12 @@ body {
 
 /* ---------- Employees page (clean, tabbed) ---------- */
 .emp-buffs-line { font-size: 12px; color: var(--ink-2); margin: 0 0 4px; }
+.emp-rolesum { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.emp-rolesum-chip {
+  font-size: 11.5px; color: var(--ink-2); background: var(--glass-strong);
+  border: 1px solid var(--glass-hairline); border-radius: 999px; padding: 3px 9px;
+}
+.emp-rolesum-chip b { color: var(--ink); font-weight: 800; }
 .emp-labsec { margin-top: 4px; }
 .emp-lab-head {
   width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
