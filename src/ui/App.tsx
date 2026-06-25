@@ -21,6 +21,7 @@ import { Tagline } from "./Tagline";
 import { Onboarding } from "./Onboarding";
 import { DataMarketPanel } from "./DataMarketPanel";
 import { StaffPanel } from "./StaffPanel";
+import { iap } from "./iap";
 import { balance } from "../engine/balance/config";
 import { HallCanvas } from "./HallCanvas";
 import { ExpandConfirm } from "./ExpandConfirm";
@@ -52,6 +53,10 @@ export function App() {
   const reducedMotion = useSettings((s) => s.reducedMotion);
   const onboarded = useSettings((s) => s.onboarded);
   const completeOnboarding = useSettings((s) => s.completeOnboarding);
+
+  // Re-validate the premium entitlement against StoreKit at launch (native only;
+  // no-op on web). Keeps the localStorage cache from being the source of truth.
+  useEffect(() => { void iap.refresh(); }, []);
 
   // Progressive disclosure (reveal depth in waves — GDD): Research appears after
   // your first payout (you need Data to research); Prestige once you're on the path.

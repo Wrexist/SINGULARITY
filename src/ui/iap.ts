@@ -98,7 +98,7 @@ const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
  * ownership via async approved/receiptUpdated callbacks, so reading owned()
  * immediately can miss a just-completed transaction. Poll briefly.
  */
-async function settleOwnership(store: CdvStore, timeoutMs = 2500): Promise<boolean> {
+async function settleOwnership(store: CdvStore, timeoutMs = 1500): Promise<boolean> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     if (store.owned(PREMIUM_PRODUCT_ID)) return true;
@@ -108,6 +108,16 @@ async function settleOwnership(store: CdvStore, timeoutMs = 2500): Promise<boole
 }
 
 export const iap = {
+  /**
+   * Re-sync ownership from StoreKit at app launch (native only). This makes the
+   * local entitlement cache non-authoritative: CdvPurchase auto-detects an owned
+   * non-consumable on init, so premium is restored after a reinstall / on a new
+   * device without the player having to tap Restore. No-op on web/dev.
+   */
+  async refresh(): Promise<void> {
+    await ensureInit();
+  },
+
   /** Is the premium unlock owned? */
   isPremium(): boolean {
     return isPremium();
