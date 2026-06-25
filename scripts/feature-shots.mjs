@@ -99,14 +99,14 @@ try {
   await sleep(500);
   const modal = page.locator(".pd-modal");
   await modal.screenshot({ path: "screenshots/feat-detail-top.png" });
-  // Scroll the modal to the team + features sections and shoot again.
-  await page.evaluate(() => {
-    const m = document.querySelector(".pd-modal");
-    if (m) m.scrollTop = m.scrollHeight;
-  });
-  await sleep(400);
+  // Each sub-tab is its own focused pane now — capture Marketing + Upgrades.
+  await page.getByRole("tab", { name: "Marketing" }).click();
+  await sleep(300);
+  await modal.screenshot({ path: "screenshots/feat-detail-marketing.png" });
+  await page.getByRole("tab", { name: "Upgrades" }).click();
+  await sleep(300);
   await modal.screenshot({ path: "screenshots/feat-detail-features.png" });
-  console.log("Saved feat-detail-top.png + feat-detail-features.png");
+  console.log("Saved feat-detail-top/marketing/features.png");
   // Close modal.
   await page.keyboard.press("Escape").catch(() => {});
   await page.mouse.click(8, 8).catch(() => {});
