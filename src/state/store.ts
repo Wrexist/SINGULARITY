@@ -29,6 +29,8 @@ import {
   canStartUpgrade,
   startUpgrade,
   maybeProductEvent,
+  canBuyFeature,
+  buyFeature,
 } from "../engine/products";
 import { productMilestones as PRODUCT_MILESTONES, type ProductTypeId } from "../engine/balance/products";
 import { prestige } from "../engine/prestige";
@@ -89,6 +91,8 @@ interface GameStore {
   doStartUpgrade: (id: string) => void;
   doSetProductPrice: (id: string, priceMult: number) => void;
   doSetProductMarketing: (id: string, perSec: number) => void;
+  /** Buy a one-time per-product feature (perk) with Money. */
+  doBuyFeature: (id: string, featureId: string) => void;
   doRenameProduct: (id: string, name: string) => void;
   doRetireProduct: (id: string) => void;
   doResearch: (id: string) => void;
@@ -282,6 +286,8 @@ export const useGame = create<GameStore>((set, get) => ({
     set((s) => (canStartUpgrade(s.game, id) ? { game: startUpgrade(s.game, id) } : {})),
   doSetProductPrice: (id, v) => set((s) => ({ game: setProductPrice(s.game, id, v) })),
   doSetProductMarketing: (id, v) => set((s) => ({ game: setProductMarketing(s.game, id, v) })),
+  doBuyFeature: (id, featureId) =>
+    set((s) => (canBuyFeature(s.game, id, featureId) ? { game: buyFeature(s.game, id, featureId) } : {})),
   doRenameProduct: (id, name) => set((s) => ({ game: renameProduct(s.game, id, name) })),
   doRetireProduct: (id) => set((s) => ({ game: retireProduct(s.game, id) })),
   doResearch: (id) => set((s) => ({ game: buyResearch(s.game, id) })),

@@ -1,5 +1,6 @@
 import {
-  products as B, productMilestones, type ProductTypeId, type ProductTypeDef, type MilestoneDef,
+  products as B, productMilestones, productFeatures,
+  type ProductTypeId, type ProductTypeDef, type MilestoneDef, type FeatureLane,
 } from "./balance/products";
 import type { GameState, ProductMods, ProductState, ProductsState, UpgradeState } from "./types";
 
@@ -17,6 +18,44 @@ const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n
 
 export function typeDef(id: ProductTypeId): ProductTypeDef {
   return B.types.find((t) => t.id === id) ?? B.types[0]!;
+}
+
+export type FeatureMods = Record<FeatureLane, number>;
+const NEUTRAL_FEATURES: FeatureMods = { acq: 1, arpu: 1, conversion: 1, churn: 1, serveCost: 1, tam: 1, heat: 1 };
+
+/** Combined multipliers from a product's purchased features (each lane is a product
+ *  of the owned features' factors). */
+export function featureMods(p: ProductState): FeatureMods {
+  if (!p.features || p.features.length === 0) return NEUTRAL_FEATURES;
+  const m: FeatureMods = { ...NEUTRAL_FEATURES };
+  for (const id of p.features) {
+    const def = productFeatures.find((f) => f.id === id);
+    if (def) m[def.lane] *= def.factor;
+  }
+  return m;
+}
+
+export function canBuyFeature(state: GameState, productId: string, featureId: string): boolean {
+  const p = state.products.active.find((x) => x.id === productId);
+  const def = productFeatures.find((f) => f.id === featureId);
+  if (!p || !def || p.features.includes(featureId)) return false;
+  return state.resources.money.gte(def.cost);
+}
+
+/** Invest Money into a one-time product feature (a perk that tunes its economics). */
+export function buyFeature(state: GameState, productId: string, featureId: string): GameState {
+  if (!canBuyFeature(state, productId, featureId)) return state;
+  const def = productFeatures.find((f) => f.id === featureId)!;
+  return {
+    ...state,
+    resources: { ...state.resources, money: state.resources.money.sub(def.cost) },
+    products: {
+      ...state.products,
+      active: state.products.active.map((x) =>
+        x.id === productId ? { ...x, features: [...x.features, featureId] } : x,
+      ),
+    },
+  };
 }
 
 /** Products unlock once you've shipped at least `unlockAtShips` models. */
@@ -61,23 +100,25 @@ export function simulateProducts(
 
   const active = ps.active.map((p) => {
     const t = typeDef(p.type);
+    const fm = featureMods(p); // per-product purchased features
     const buzz = p.buzzSec > 0;
     const qf = clamp(p.quality / Math.max(frontier, 1e-9), 0, 1); // how competitive you are
-    const sat = Math.max(0, 1 - p.mau / t.tam); // remaining TAM headroom
+    const tam = t.tam * fm.tam; // a Public API etc. enlarges the addressable market
+    const sat = Math.max(0, 1 - p.mau / tam); // remaining TAM headroom
 
     // Acquisition: paid marketing (CAC rises with saturation) + organic virality.
-    const cac = B.marketingCacBase * (1 + (p.mau / t.tam) * B.cacSaturation);
+    const cac = B.marketingCacBase * (1 + (p.mau / tam) * B.cacSaturation);
     const acqMkt = cac > 0 ? p.marketingPerSec / cac : 0;
     const acqViral = p.mau * t.virality * qf * sat * (buzz ? B.buzzAcqMult : 1);
-    const mau = clamp(p.mau + (acqMkt + acqViral) * mods.acq * seconds, 0, t.tam);
+    const mau = clamp(p.mau + (acqMkt + acqViral) * mods.acq * fm.acq * seconds, 0, tam);
 
     // Conversion target (pricier → fewer convert; less competitive → fewer convert).
-    const convRate = clamp((t.baseConversion * qf) / p.priceMult, 0, 1);
+    const convRate = clamp((t.baseConversion * qf * fm.conversion) / p.priceMult, 0, 1);
     const targetPaid = mau * convRate;
 
     // Churn rises with staleness (frontier gap) and price; buzz cuts it.
     const gap = Math.max(0, frontier - p.quality);
-    const churn = t.baseChurn * (1 + gap * B.stalenessChurn) * p.priceMult * (buzz ? B.buzzChurnMult : 1) * mods.churn;
+    const churn = t.baseChurn * (1 + gap * B.stalenessChurn) * p.priceMult * (buzz ? B.buzzChurnMult : 1) * mods.churn * fm.churn;
 
     // Paid subscribers follow dp/dt = convSpeed·(target − p) − churn·p. We solve
     // that ODE in closed form over the window so it stays correct for ANY tick
@@ -96,11 +137,11 @@ export function simulateProducts(
     const paidIntegral = k > 0
       ? pStar * seconds + ((p.paid - pStar) * (1 - decay)) / k
       : p.paid * seconds;
-    const arpu = t.baseArpu * p.priceMult * p.quality;
+    const arpu = t.baseArpu * p.priceMult * p.quality * fm.arpu;
     const mrr = paidIntegral * arpu;
-    const serve = paidIntegral * t.computePerUser * p.quality * mods.serveCost;
+    const serve = paidIntegral * t.computePerUser * p.quality * mods.serveCost * fm.serveCost;
     moneyDelta += mrr - serve - p.marketingPerSec * seconds;
-    if (paid > 0) heatDelta += t.heatPerSec * seconds;
+    if (paid > 0) heatDelta += t.heatPerSec * fm.heat * seconds;
 
     return { ...p, mau, paid, buzzSec: Math.max(0, p.buzzSec - seconds) };
   });
@@ -117,11 +158,12 @@ export interface ProductMetrics {
 
 export function productMetrics(p: ProductState, frontier: number): ProductMetrics {
   const t = typeDef(p.type);
-  const arpu = t.baseArpu * p.priceMult * p.quality;
+  const fm = featureMods(p);
+  const arpu = t.baseArpu * p.priceMult * p.quality * fm.arpu;
   const mrr = p.paid * arpu;
-  const serve = p.paid * t.computePerUser * p.quality;
+  const serve = p.paid * t.computePerUser * p.quality * fm.serveCost;
   const gap = Math.max(0, frontier - p.quality);
-  const churnPerSec = t.baseChurn * (1 + gap * B.stalenessChurn) * p.priceMult * (p.buzzSec > 0 ? B.buzzChurnMult : 1);
+  const churnPerSec = t.baseChurn * (1 + gap * B.stalenessChurn) * p.priceMult * (p.buzzSec > 0 ? B.buzzChurnMult : 1) * fm.churn;
   return {
     mau: p.mau, paid: p.paid, arpu, mrr, serve,
     margin: mrr - serve - p.marketingPerSec,
@@ -301,6 +343,7 @@ export function releaseProduct(
     paid: 0,
     buzzSec: B.buzzDurationSec,
     upgrade: null,
+    features: [],
   };
   return {
     ...state,
@@ -374,6 +417,7 @@ export function launchDraft(
     paid: 0,
     buzzSec: B.buzzDurationSec,
     upgrade: null,
+    features: [],
   };
   return {
     ...state,

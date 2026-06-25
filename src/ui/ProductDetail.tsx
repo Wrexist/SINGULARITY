@@ -1,10 +1,16 @@
 import type { GameState } from "../engine/types";
-import { products as B } from "../engine/balance/products";
+import { products as B, productFeatures, type FeatureLane } from "../engine/balance/products";
 import {
-  typeDef, productMetrics, canStartUpgrade, versionCost,
+  typeDef, productMetrics, canStartUpgrade, canBuyFeature, versionCost,
   upgradeDurationSec, upgradeProgress, retirePayout,
 } from "../engine/products";
 import { m$, numOf as num, fmtDur } from "./format";
+
+/** Short human label for a feature's effect lane. */
+const LANE_LABEL: Record<FeatureLane, string> = {
+  acq: "acquisition", arpu: "ARPU", conversion: "conversion", churn: "churn",
+  serveCost: "serve cost", tam: "market size", heat: "heat",
+};
 
 interface Props {
   game: GameState;
@@ -13,14 +19,22 @@ interface Props {
   onStartUpgrade: (id: string) => void;
   onSetPrice: (id: string, v: number) => void;
   onSetMarketing: (id: string, v: number) => void;
+  onBuyFeature: (id: string, featureId: string) => void;
   onRename: (id: string, name: string) => void;
   onRetire: (id: string) => void;
+}
+
+/** "+25% conversion", "−20% churn" — the human effect of a feature factor. */
+function featureEffect(lane: FeatureLane, factor: number): string {
+  const pct = Math.round(Math.abs(factor - 1) * 100);
+  const reduces = factor < 1;
+  return `${reduces ? "−" : "+"}${pct}% ${LANE_LABEL[lane]}`;
 }
 
 /** Phase 3 — the deep, per-product management dashboard. Opens from a portfolio
  *  card: full metric breakdown, market penetration, the pricing/marketing
  *  workbench, the version-research roadmap, and retire. */
-export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetPrice, onSetMarketing, onRename, onRetire }: Props) {
+export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetPrice, onSetMarketing, onBuyFeature, onRename, onRetire }: Props) {
   const p = game.products.active.find((x) => x.id === productId);
   if (!p) return null;
   const t = typeDef(p.type);
@@ -111,6 +125,25 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
               <span>~{fmtDur(r.sec)}</span>
             </div>
           ))}
+        </div>
+
+        <div className="pd-section-head">Features — invest Money to perfect this product</div>
+        <div className="pd-features">
+          {productFeatures.map((f) => {
+            const owned = p.features.includes(f.id);
+            const afford = canBuyFeature(game, p.id, f.id);
+            return (
+              <button key={f.id} className={`pd-feature ${owned ? "owned" : ""}`} disabled={owned || !afford}
+                onClick={() => onBuyFeature(p.id, f.id)}>
+                <div className="pd-feature-main">
+                  <span className="pd-feature-name">{owned ? "✓ " : ""}{f.name}</span>
+                  <span className="pd-feature-desc">{f.desc}</span>
+                  <span className="pd-feature-fx">{featureEffect(f.lane, f.factor)}</span>
+                </div>
+                <span className="pd-feature-cost">{owned ? "owned" : m$(f.cost)}</span>
+              </button>
+            );
+          })}
         </div>
 
         <div className="pd-foot">

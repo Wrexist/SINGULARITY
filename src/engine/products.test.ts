@@ -6,6 +6,7 @@ import {
   churnReason, maybeChurnFlavor,
   canLaunchDraft, launchDraft, canStartUpgrade, startUpgrade, advanceUpgrades, upgradeDurationSec,
   applyMilestones, milestoneValue, maybeProductEvent,
+  canBuyFeature, buyFeature, featureMods,
 } from "./products";
 import { applyWorldEvent } from "./actions";
 import { tick } from "./tick";
@@ -388,6 +389,37 @@ describe("products — milestones", () => {
     s = { ...s, products: { ...s.products, active: [{ ...s.products.active[0]!, mau: 200_000, paid: 1000 }] } };
     const next = tick(s, 1000);
     expect(next.products.milestones).toContain("users_100k");
+  });
+});
+
+describe("products — per-product features", () => {
+  it("buys a feature once, spending Money, and folds its effect into the sim", () => {
+    let s = release();
+    s.resources.money = Big.of(1e6);
+    expect(canBuyFeature(s, "p1", "cdn")).toBe(true);
+    const before = s.resources.money;
+    s = buyFeature(s, "p1", "cdn"); // −25% serve cost
+    expect(s.products.active[0]!.features).toContain("cdn");
+    expect(s.resources.money.lt(before)).toBe(true);
+    expect(featureMods(s.products.active[0]!).serveCost).toBeCloseTo(0.75, 5);
+    // Can't buy the same feature twice.
+    expect(canBuyFeature(s, "p1", "cdn")).toBe(false);
+    expect(buyFeature(s, "p1", "cdn")).toBe(s); // no-op
+  });
+
+  it("a CDN feature lowers serving cost → higher margin in the sim", () => {
+    let base = release();
+    base = { ...base, products: { ...base.products, active: [{ ...base.products.active[0]!, mau: 100000, paid: 8000, buzzSec: 0 }] } };
+    const withCdn = { ...base, products: { ...base.products, active: [{ ...base.products.active[0]!, features: ["cdn"] }] } };
+    const a = simulateProducts(base.products, 30).moneyDelta;
+    const b = simulateProducts(withCdn.products, 30).moneyDelta;
+    expect(b).toBeGreaterThan(a);
+  });
+
+  it("can't buy a feature you can't afford", () => {
+    const s = release(); // money = 1e6 from shipped(); drop it
+    s.resources.money = Big.of(10);
+    expect(canBuyFeature(s, "p1", "api")).toBe(false);
   });
 });
 

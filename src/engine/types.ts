@@ -83,6 +83,8 @@ export interface ProductState {
   /** An in-progress timed version upgrade (research), or null. The model keeps
    *  earning at its current quality until the upgrade completes. */
   upgrade: UpgradeState | null;
+  /** Ids of purchased per-product features (perks that tune this product's economics). */
+  features: string[];
 }
 
 /** A version upgrade in flight: pay an upfront chunk to start, then it drains the

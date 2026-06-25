@@ -45,7 +45,7 @@ export function App() {
   const notice = useGame((s) => s.notice);
   const worldEvent = useGame((s) => s.worldEvent);
   const { doStartRun, doClaim, doBuyUpgrade, doHireStaff, doResearch, doBuyData, doPrestige, setComputeFocus,
-    doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doRenameProduct, doRetireProduct,
+    doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doBuyFeature, doRenameProduct, doRetireProduct,
     dismissOffline, dismissWorldEvent, chooseWorldEvent, hardReset } =
     useGame.getState();
 
@@ -303,6 +303,7 @@ export function App() {
             onStartUpgrade={onStartUpgrade}
             onSetPrice={doSetProductPrice}
             onSetMarketing={doSetProductMarketing}
+            onBuyFeature={doBuyFeature}
             onRename={doRenameProduct}
             onRetire={onRetireProductFx}
           />

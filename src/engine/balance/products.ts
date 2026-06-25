@@ -196,6 +196,33 @@ export const products = {
 
 export type ProductsBalance = typeof products;
 
+/** Per-product feature lanes — multipliers folded into that product's economics. */
+export type FeatureLane = "acq" | "arpu" | "conversion" | "churn" | "serveCost" | "tam" | "heat";
+
+export interface FeatureDef {
+  id: string;
+  name: string;
+  desc: string;
+  /** One-time Money investment to add this feature to a product. */
+  cost: number;
+  lane: FeatureLane;
+  /** Multiplier applied to the lane (>1 for boosts, <1 for reductions). */
+  factor: number;
+}
+
+/** Per-product feature catalog — buy these to differentiate & perfect each product.
+ *  One-time Money investments (revenue reinvested into the product). Tunable. */
+export const productFeatures: FeatureDef[] = [
+  { id: "onboarding", name: "Better Onboarding", desc: "Smoother signup flow → more free users convert.", cost: 40_000, lane: "conversion", factor: 1.25 },
+  { id: "mobile", name: "Mobile App", desc: "Native apps → wider reach & faster acquisition.", cost: 75_000, lane: "acq", factor: 1.3 },
+  { id: "support", name: "24/7 Support", desc: "Humans who answer → fewer cancellations.", cost: 120_000, lane: "churn", factor: 0.8 },
+  { id: "cdn", name: "Global CDN", desc: "Edge caching → cheaper to serve every user.", cost: 150_000, lane: "serveCost", factor: 0.75 },
+  { id: "sso", name: "Enterprise SSO", desc: "SAML & audit logs → unlock higher-paying accounts.", cost: 220_000, lane: "arpu", factor: 1.3 },
+  { id: "trust", name: "Trust & Safety", desc: "Moderation & compliance → much less Regulatory Heat.", cost: 180_000, lane: "heat", factor: 0.5 },
+  { id: "api", name: "Public API", desc: "Developers build on you → a bigger addressable market.", cost: 300_000, lane: "tam", factor: 1.4 },
+  { id: "referral", name: "Referral Program", desc: "Users invite users → a standing acquisition boost.", cost: 260_000, lane: "acq", factor: 1.35 },
+];
+
 /** A metric a milestone is measured against (evaluated in the engine). */
 export type MilestoneMetric = "users" | "paid" | "mrr" | "version" | "qf" | "live" | "sold";
 

@@ -1434,6 +1434,22 @@ body {
   padding: 5px 8px; background: var(--glass-strong); border-radius: 8px;
 }
 .pd-roadmap-row span:first-child { font-weight: 700; color: var(--ink); }
+.pd-features { display: flex; flex-direction: column; gap: 6px; }
+.pd-feature {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left;
+  padding: 9px 11px; border-radius: var(--radius-sm);
+  background: var(--glass-strong); border: 1px solid var(--glass-hairline); cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s var(--ease-out);
+}
+.pd-feature:hover:not(:disabled) { border-color: color-mix(in srgb, var(--money) 40%, transparent); transform: translateY(-1px); }
+.pd-feature:disabled { cursor: default; }
+.pd-feature.owned { opacity: 1; background: color-mix(in srgb, var(--money) 10%, var(--glass-strong)); border-color: color-mix(in srgb, var(--money) 35%, transparent); }
+.pd-feature:disabled:not(.owned) { opacity: 0.5; }
+.pd-feature-main { display: flex; flex-direction: column; gap: 1px; }
+.pd-feature-name { font-size: 13px; font-weight: 750; }
+.pd-feature-desc { font-size: 11px; color: var(--ink-2); line-height: 1.3; }
+.pd-feature-fx { font-size: 11px; font-weight: 700; color: var(--data); margin-top: 1px; }
+.pd-feature-cost { font-size: 13px; font-weight: 750; color: var(--money); white-space: nowrap; flex: 0 0 auto; }
 .pd-foot { margin-top: 16px; text-align: center; }
 
 /* ---------- Employees page ---------- */
