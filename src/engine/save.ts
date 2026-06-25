@@ -1,14 +1,39 @@
 import { Big } from "./math/Big";
 import { SAVE_VERSION, createInitialState } from "./state";
 import { products as PRODUCTS } from "./balance/products";
-import type { ActiveModifier, GameState, ModifierTarget, ProductsState } from "./types";
+import type { ActiveModifier, GameState, ModifierTarget, ProductsState, ProductState } from "./types";
 
 const MODIFIER_TARGETS: ModifierTarget[] = ["computeMult", "dataMult", "moneyMult"];
+const PRODUCT_TYPE_IDS = PRODUCTS.types.map((t) => t.id);
 
-/** Loaded products are untrusted; guard the shape (entries are our own format). */
+/** Validate a single product entry. A corrupt/old entry with a missing or
+ *  non-finite numeric (or a zero priceMult → div-by-zero in convRate) would feed
+ *  NaN straight into simulateProducts → money, so drop it on load. */
+function isWellFormedProduct(p: unknown): p is ProductState {
+  const o = p as Partial<ProductState> | null;
+  return (
+    !!o &&
+    typeof o.id === "string" &&
+    typeof o.name === "string" &&
+    typeof o.type === "string" &&
+    (PRODUCT_TYPE_IDS as string[]).includes(o.type) &&
+    [o.version, o.quality, o.priceMult, o.marketingPerSec, o.mau, o.paid, o.buzzSec].every(
+      (n) => typeof n === "number" && Number.isFinite(n),
+    ) &&
+    o.priceMult! > 0
+  );
+}
+
+/** Loaded products are untrusted; guard the container AND each entry. */
 function isWellFormedProducts(p: unknown): p is ProductsState {
   const o = p as Partial<ProductsState> | null;
-  return !!o && Array.isArray(o.active) && typeof o.frontier === "number" && Number.isFinite(o.frontier);
+  return (
+    !!o &&
+    Array.isArray(o.active) &&
+    o.active.every(isWellFormedProduct) &&
+    typeof o.frontier === "number" &&
+    Number.isFinite(o.frontier)
+  );
 }
 
 /** Loaded saves are untrusted input: a NaN heat or malformed modifier would

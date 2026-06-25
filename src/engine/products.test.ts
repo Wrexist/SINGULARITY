@@ -74,6 +74,13 @@ describe("products — versioning", () => {
 });
 
 describe("products — simulation", () => {
+  it("drifts the frontier even with no active products (so a future launch is current)", () => {
+    const s = shipped(); // no products released yet
+    const before = s.products.frontier;
+    const next = tick(s, 60_000);
+    expect(next.products.frontier).toBeGreaterThan(before);
+  });
+
   it("marketing acquires users and converts some to paid", () => {
     let s = release();
     s = setProductMarketing(s, "p1", 100000);

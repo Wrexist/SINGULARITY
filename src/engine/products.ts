@@ -67,10 +67,13 @@ export function simulateProducts(ps: ProductsState, seconds: number): ProductsSi
     let paid = p.paid + (targetPaid - p.paid) * clamp(B.convSpeed * seconds, 0, 1) - p.paid * churn * seconds;
     paid = clamp(paid, 0, mau);
 
-    // Economics: revenue − serving − marketing.
+    // Economics: revenue − serving − marketing. Bill on the window-average paid
+    // (trapezoidal) so one large offline tick doesn't charge the whole window at
+    // the end-of-window subscriber rate.
+    const avgPaid = (p.paid + paid) / 2;
     const arpu = t.baseArpu * p.priceMult * p.quality;
-    const mrr = paid * arpu;
-    const serve = paid * t.computePerUser * p.quality;
+    const mrr = avgPaid * arpu;
+    const serve = avgPaid * t.computePerUser * p.quality;
     moneyDelta += (mrr - serve - p.marketingPerSec) * seconds;
     if (paid > 0) heatDelta += t.heatPerSec * seconds;
 

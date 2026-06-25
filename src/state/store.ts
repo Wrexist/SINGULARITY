@@ -92,6 +92,15 @@ let worldKey = 0;
 let claimKey = 0;
 let productKey = 0;
 
+/** Advance the product-id counter past every persisted `prod-N` id so the next
+ *  release can't collide with a saved product (ids are React keys + find() keys). */
+function seedProductKey(game: GameState): void {
+  for (const p of game.products.active) {
+    const n = Number(p.id.replace(/^prod-/, ""));
+    if (Number.isFinite(n) && n > productKey) productKey = n;
+  }
+}
+
 export const useGame = create<GameStore>((set, get) => ({
   game: createInitialState(),
   offline: null,
@@ -129,6 +138,7 @@ export const useGame = create<GameStore>((set, get) => ({
       console.warn("Save load failed, starting fresh:", err);
       game = createInitialState();
     }
+    seedProductKey(game);
     set({ game, offline, initialized: true });
     localStorage.setItem(TIME_KEY, String(now()));
   },

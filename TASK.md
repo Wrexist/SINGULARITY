@@ -190,12 +190,8 @@ fun-gate on 2026-06-24 and greenlit Phase 1. (Phase 0 history retained below for
 
 ## Backlog (later Phase 1 + Phase 2+)
 - [Phase 2+] power/heat, staff, factions, eras 4–6, multi-room hall, cosmetic store, Steam port
-- [Phase 3] **"Ship It" AI Product/Deployment system** — release shipped models as
-  managed products (type/specialization, marketing, subscription tiers, customers/
-  churn/MRR dashboard, version updates, competitor frontier). Parallel to prestige,
-  unlocks after first ship; deep SaaS sim; ≤3 concurrent products; persists across
-  prestige. Full design in `PHASE3_PRODUCTS_PLAN.md`. Owner decision: write plan now,
-  BUILD AFTER TestFlight launch.
+- [Phase 3] **"Ship It" AI Product/Deployment system** — ✅ **SHIPPED (M1→M4)**, see the
+  2026-06-25 done-log entry below. Design in `PHASE3_PRODUCTS_PLAN.md`.
 
 ---
 

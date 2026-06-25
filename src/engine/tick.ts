@@ -100,11 +100,12 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   let heat = Math.max(0, state.heat - balance.heat.coolPerSec * seconds);
 
   // Phase 3 — released products earn Money (subs − serving − marketing) and may
-  // add Heat. Money-based, so they keep running across a prestige reset.
-  let products = state.products;
-  if (products.active.length > 0) {
-    const sim = simulateProducts(products, seconds);
-    products = sim.products;
+  // add Heat. Money-based, so they keep running across a prestige reset. We run
+  // the simulator unconditionally: with no active products it still drifts the
+  // frontier, so a future launch lands against an up-to-date competitive bar.
+  const sim = simulateProducts(state.products, seconds);
+  const products = sim.products;
+  if (state.products.active.length > 0) {
     money = money.add(sim.moneyDelta).max(Big.ZERO);
     if (sim.moneyDelta > 0) lifetimeMoney = lifetimeMoney.add(sim.moneyDelta);
     heat = Math.max(0, Math.min(balance.heat.max, heat + sim.heatDelta));

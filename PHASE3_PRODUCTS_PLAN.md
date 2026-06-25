@@ -101,24 +101,28 @@ own conversion, ARPU, churn, and serving profile — that's the "deep sim."
 New module `src/engine/products.ts` + balance in `src/engine/balance/products.ts`.
 
 ### 4.1 State (save v5 → v6; persists across prestige)
+> **As shipped** — the implemented model is leaner than the early sketch: a single
+> price + marketing dial **per product** (not per-tier/segment tables), MAU/paid as
+> flat scalars, and unlock derived from `prestige.ships` rather than a stored flag.
 ```ts
 interface ProductState {
-  id: string; name: string; type: ProductType; version: number;
-  quality: number;              // capability score; raised by versions/research
-  tiers: Record<TierId, { price: number; enabled: boolean }>;  // player-set
-  segments: Record<SegmentId, { mau: number; paid: number }>;  // live customers
-  launchedAtMs?: number;        // for age/decay (pass time in; no Date.now in engine)
+  id: string; name: string; type: ProductTypeId; version: number;
+  quality: number;        // capability at last (re)launch; raised by pushing versions
+  priceMult: number;      // player-set pricing knob (B.priceMin..priceMax)
+  marketingPerSec: number;// ongoing Money spend the player dials in, per product
+  mau: number;            // live monthly-active users
+  paid: number;           // live paying subscribers (≤ mau)
+  buzzSec: number;        // remaining launch/version buzz window
 }
 interface ProductsState {
-  unlocked: boolean;            // true once prestige.ships ≥ 1
-  active: ProductState[];       // cap = balance.products.maxActive (≈3)
-  frontier: number;             // global competitor capability, rises over time
-  marketingBudgetPerSec: Money; // ongoing spend the player dials in
+  active: ProductState[]; // cap = balance.products.maxActive (≈3)
+  frontier: number;       // global competitor capability, rises over time
 }
 ```
 - Add `products: ProductsState` to `GameState`. Save migration v5→v6 defaults it
-  (unlocked=false, empty). **Prestige carries `products` over** (modify `prestige()`
-  to retain it, like Legacy Weights).
+  (`{ active: [], frontier: frontierStart }`). Unlock is derived
+  (`productsUnlocked()` = `prestige.ships ≥ unlockAtShips`), not stored.
+  **Prestige carries `products` over** (`prestige()` retains it, like Legacy Weights).
 
 ### 4.2 The per-tick simulation (folded into `tick()` / a `productsTick`)
 For each active product, per elapsed `seconds` (deterministic, time passed in):
