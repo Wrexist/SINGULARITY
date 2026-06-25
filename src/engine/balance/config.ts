@@ -500,6 +500,9 @@ export const balance = {
   /** PHASE 2 — Staff. Opt-in depth: hire to multiply a lane, pay payroll forever. */
   staff: {
     enabled: true,
+    /** Assigned product-staff are this much more effective than unassigned, but only
+     *  on their one product (the spread-vs-concentrate trade-off). */
+    assignFocusMult: 2,
     /** Reveal the panel once the lab is established (after the first research). */
     revealAtResearch: 1,
     roles: [

@@ -51,6 +51,21 @@ function sanitizeUpgrade(u: unknown): UpgradeState | null {
   };
 }
 
+/** Assignments are untrusted: keep only string→(string→finite non-negative number). */
+function sanitizeAssignments(a: unknown): Record<string, Record<string, number>> {
+  if (!a || typeof a !== "object") return {};
+  const out: Record<string, Record<string, number>> = {};
+  for (const [pid, roles] of Object.entries(a as Record<string, unknown>)) {
+    if (!roles || typeof roles !== "object") continue;
+    const inner: Record<string, number> = {};
+    for (const [rid, n] of Object.entries(roles as Record<string, unknown>)) {
+      if (typeof n === "number" && Number.isFinite(n) && n > 0) inner[rid] = Math.floor(n);
+    }
+    if (Object.keys(inner).length > 0) out[pid] = inner;
+  }
+  return out;
+}
+
 /** Drafts are untrusted; keep only well-formed entries. */
 function sanitizeDrafts(d: unknown): DraftModel[] {
   if (!Array.isArray(d)) return [];
@@ -180,6 +195,7 @@ export function deserialize(json: string): GameState {
     milestones: Array.isArray((loadedProducts as ProductsState).milestones)
       ? (loadedProducts as ProductsState).milestones.filter((m): m is string => typeof m === "string")
       : [],
+    assignments: sanitizeAssignments((loadedProducts as ProductsState).assignments),
   };
   return {
     version: SAVE_VERSION,
@@ -238,7 +254,7 @@ export function migrate(raw: any): SavedShape {
     // v6 → v7: drafts (raw models from shipping), per-product timed upgrades, and
     // product milestones. The deserializer defaults/sanitizes them; stamp + default.
     const prev = s.products ?? { active: [], frontier: PRODUCTS.frontierStart };
-    s = { ...s, version: 7, products: { ...prev, drafts: prev.drafts ?? [], milestones: prev.milestones ?? [] } };
+    s = { ...s, version: 7, products: { ...prev, drafts: prev.drafts ?? [], milestones: prev.milestones ?? [], assignments: prev.assignments ?? {} } };
   }
   return s as SavedShape;
 }

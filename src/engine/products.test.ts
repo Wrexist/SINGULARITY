@@ -7,8 +7,10 @@ import {
   canLaunchDraft, launchDraft, canStartUpgrade, startUpgrade, advanceUpgrades, upgradeDurationSec,
   applyMilestones, milestoneValue, maybeProductEvent,
   canBuyFeature, buyFeature, featureMods,
+  rolePool, assignEmployee,
 } from "./products";
 import { applyWorldEvent } from "./actions";
+import { derive } from "./derive";
 import { tick } from "./tick";
 import { prestige } from "./prestige";
 import { createInitialState } from "./state";
@@ -195,7 +197,7 @@ describe("products — churn-reason flavor", () => {
 
   it("fires a flavor quip naming a materially-bleeding product", () => {
     const stale = { ...settled(), quality: 1, priceMult: 1, paid: 500 };
-    const ps = { active: [stale], frontier: 51, sold: 0, drafts: [], milestones: [] };
+    const ps = { active: [stale], frontier: 51, sold: 0, drafts: [], milestones: [], assignments: {} };
     const res = maybeChurnFlavor(ps, 10, 0, 0, 0); // rollFire 0 → fires
     expect(res).not.toBeNull();
     expect(res!.reason).toBe("stale");
@@ -204,19 +206,19 @@ describe("products — churn-reason flavor", () => {
 
   it("stays silent on the dice when the fire roll misses", () => {
     const stale = { ...settled(), quality: 1, priceMult: 1, paid: 500 };
-    const ps = { active: [stale], frontier: 51, sold: 0, drafts: [], milestones: [] };
+    const ps = { active: [stale], frontier: 51, sold: 0, drafts: [], milestones: [], assignments: {} };
     expect(maybeChurnFlavor(ps, 0.1, 0.99, 0, 0)).toBeNull(); // tiny window, high roll
   });
 
   it("won't quip about a product with no real subscriber base", () => {
     const tiny = { ...settled(), quality: 1, priceMult: 1, paid: 5 }; // below flavor.minPaid
-    const ps = { active: [tiny], frontier: 51, sold: 0, drafts: [], milestones: [] };
+    const ps = { active: [tiny], frontier: 51, sold: 0, drafts: [], milestones: [], assignments: {} };
     expect(maybeChurnFlavor(ps, 10, 0, 0, 0)).toBeNull();
   });
 
   it("won't quip about a healthy portfolio", () => {
     const healthy = { ...settled(), quality: 50, priceMult: 1, paid: 500 };
-    const ps = { active: [healthy], frontier: 50, sold: 0, drafts: [], milestones: [] };
+    const ps = { active: [healthy], frontier: 50, sold: 0, drafts: [], milestones: [], assignments: {} };
     expect(maybeChurnFlavor(ps, 10, 0, 0, 0)).toBeNull();
   });
 });
@@ -350,7 +352,7 @@ describe("products — employee (staff) buffs", () => {
     let s = release();
     s = { ...s, products: { ...s.products, active: [{ ...s.products.active[0]!, mau: 50000, paid: 3000, marketingPerSec: 0, buzzSec: 0, quality: 5 }], frontier: 5 } };
     const base = simulateProducts(s.products, 60);
-    const buffed = simulateProducts(s.products, 60, { upgradeSpeed: 1, acq: 1.5, churn: 0.5, serveCost: 0.5, arpu: 1, heat: 1 });
+    const buffed = simulateProducts(s.products, 60, { p1: { upgradeSpeed: 1, acq: 1.5, churn: 0.5, serveCost: 0.5, arpu: 1, heat: 1 } });
     expect(buffed.products.active[0]!.mau).toBeGreaterThan(base.products.active[0]!.mau); // more acquisition
     expect(buffed.products.active[0]!.paid).toBeGreaterThan(base.products.active[0]!.paid); // less churn
     expect(buffed.moneyDelta).toBeGreaterThan(base.moneyDelta); // cheaper to serve
@@ -363,7 +365,7 @@ describe("products — employee (staff) buffs", () => {
     s = startUpgrade(s, "p1");
     const total = s.products.active[0]!.upgrade!.totalSec;
     // Half the real time, but 2× speed → completes.
-    const fast = advanceUpgrades(s.products, 1e9, 1e9, total / 2, { upgradeSpeed: 2, acq: 1, churn: 1, serveCost: 1, arpu: 1, heat: 1 });
+    const fast = advanceUpgrades(s.products, 1e9, 1e9, total / 2, { p1: { upgradeSpeed: 2, acq: 1, churn: 1, serveCost: 1, arpu: 1, heat: 1 } });
     expect(fast.products.active[0]!.upgrade).toBeNull();
     // Same wall-time at 1× speed would NOT finish.
     const slow = advanceUpgrades(s.products, 1e9, 1e9, total / 2);
@@ -420,6 +422,33 @@ describe("products — per-product features", () => {
     const s = release(); // money = 1e6 from shipped(); drop it
     s.resources.money = Big.of(10);
     expect(canBuyFeature(s, "p1", "api")).toBe(false);
+  });
+});
+
+describe("products — employee assignment", () => {
+  it("assigns from the pool, clamps to availability, and frees on retire", () => {
+    let s = release(); // product p1
+    s.upgrades = { staff_growth: 3 }; // 3 Growth Leads hired
+    expect(rolePool(s, "staff_growth")).toBe(3);
+    s = assignEmployee(s, "p1", "staff_growth", 2);
+    expect(s.products.assignments.p1!.staff_growth).toBe(2);
+    expect(rolePool(s, "staff_growth")).toBe(1);
+    // Can't assign more than the pool (only 1 free).
+    s = assignEmployee(s, "p1", "staff_growth", 5);
+    expect(s.products.assignments.p1!.staff_growth).toBe(3);
+    expect(rolePool(s, "staff_growth")).toBe(0);
+    // Retiring the product frees them all.
+    s = retireProduct(s, "p1");
+    expect(rolePool(s, "staff_growth")).toBe(3);
+  });
+
+  it("assigned employees buff their product MORE than leaving them global", () => {
+    const glob = release();
+    glob.upgrades = { staff_growth: 4 };
+    const focus = assignEmployee(glob, "p1", "staff_growth", 4);
+    const acqGlobal = derive(glob).productModsById["p1"]!.acq;
+    const acqFocus = derive(focus).productModsById["p1"]!.acq;
+    expect(acqFocus).toBeGreaterThan(acqGlobal); // 2× focus bonus
   });
 });
 

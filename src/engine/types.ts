@@ -124,6 +124,10 @@ export interface ProductsState {
   sold: number;
   /** Ids of achieved product milestones (a collection; survives prestige). */
   milestones: string[];
+  /** Per-product employee assignments: productId → roleId → headcount focused there.
+   *  Assigned product-staff buff only that product (at a focus bonus); unassigned ones
+   *  buff every product at base rate. */
+  assignments: Record<string, Record<string, number>>;
 }
 
 /** Everything the sim and UI read each frame, folded from upgrades + research + prestige. */
@@ -146,8 +150,11 @@ export interface Derived {
   legacyMult: Big;
   /** Ongoing staff payroll drained from Money each second (Phase 2). */
   payrollPerSec: Big;
-  /** Product-team staff buffs folded into the product sim (Phase 3). */
+  /** Global product-team buffs from UNASSIGNED staff (shown on the Employees page). */
   productMods: ProductMods;
+  /** Effective per-product buffs (global unassigned + that product's focused assignees).
+   *  Keyed by product id; the sim reads this so each product can differ. */
+  productModsById: Record<string, ProductMods>;
   /** Staff hire-cost multiplier from Recruiters (≤ 1; cheaper hires). */
   hireDiscount: number;
 }

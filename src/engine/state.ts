@@ -25,6 +25,6 @@ export function createInitialState(): GameState {
     // Auto-train focus (1 = full training; lower banks Compute for research).
     computeFocus: 1,
     // Phase 3 — released AI products (persist across prestige); none yet.
-    products: { active: [], drafts: [], frontier: PRODUCTS.frontierStart, sold: 0, milestones: [] },
+    products: { active: [], drafts: [], frontier: PRODUCTS.frontierStart, sold: 0, milestones: [], assignments: {} },
   };
 }

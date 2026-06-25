@@ -1,8 +1,9 @@
 import type { GameState } from "../engine/types";
 import { products as B, productFeatures, type FeatureLane } from "../engine/balance/products";
+import { balance } from "../engine/balance/config";
 import {
   typeDef, productMetrics, canStartUpgrade, canBuyFeature, versionCost,
-  upgradeDurationSec, upgradeProgress, retirePayout,
+  upgradeDurationSec, upgradeProgress, retirePayout, rolePool,
 } from "../engine/products";
 import { m$, numOf as num, fmtDur } from "./format";
 
@@ -20,6 +21,7 @@ interface Props {
   onSetPrice: (id: string, v: number) => void;
   onSetMarketing: (id: string, v: number) => void;
   onBuyFeature: (id: string, featureId: string) => void;
+  onAssign: (id: string, roleId: string, delta: number) => void;
   onRename: (id: string, name: string) => void;
   onRetire: (id: string) => void;
 }
@@ -34,7 +36,7 @@ function featureEffect(lane: FeatureLane, factor: number): string {
 /** Phase 3 — the deep, per-product management dashboard. Opens from a portfolio
  *  card: full metric breakdown, market penetration, the pricing/marketing
  *  workbench, the version-research roadmap, and retire. */
-export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetPrice, onSetMarketing, onBuyFeature, onRename, onRetire }: Props) {
+export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetPrice, onSetMarketing, onBuyFeature, onAssign, onRename, onRetire }: Props) {
   const p = game.products.active.find((x) => x.id === productId);
   if (!p) return null;
   const t = typeDef(p.type);
@@ -102,6 +104,34 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
           <input type="range" min={0} max={mktCap} step={Math.max(1, Math.round(mktCap / 50))}
             value={Math.min(p.marketingPerSec, mktCap)} onChange={(e) => onSetMarketing(p.id, Number(e.target.value))} aria-label="Marketing budget" />
         </label>
+
+        {(() => {
+          const roles = balance.staff.roles.filter((r) => r.effect.kind === "product");
+          const shown = roles.filter((r) => (game.upgrades[r.id] ?? 0) > 0);
+          if (shown.length === 0) return null;
+          return (
+            <>
+              <div className="pd-section-head">Assigned team — focused employees buff only this product (2×)</div>
+              <div className="pd-team">
+                {shown.map((r) => {
+                  const here = game.products.assignments[p.id]?.[r.id] ?? 0;
+                  const pool = rolePool(game, r.id);
+                  return (
+                    <div className="pd-team-row" key={r.id}>
+                      <span className="pd-team-name">{r.name}</span>
+                      <span className="pd-team-pool">{pool} free</span>
+                      <div className="pd-team-step">
+                        <button disabled={here <= 0} onClick={() => onAssign(p.id, r.id, -1)} aria-label={`Unassign ${r.name}`}>−</button>
+                        <span>{here}</span>
+                        <button disabled={pool <= 0} onClick={() => onAssign(p.id, r.id, 1)} aria-label={`Assign ${r.name}`}>+</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          );
+        })()}
 
         <div className="pd-section-head">Version research</div>
         {up ? (

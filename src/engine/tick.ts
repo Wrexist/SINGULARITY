@@ -103,7 +103,7 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   // add Heat. Money-based, so they keep running across a prestige reset. We run
   // the simulator unconditionally: with no active products it still drifts the
   // frontier, so a future launch lands against an up-to-date competitive bar.
-  const sim = simulateProducts(state.products, seconds, d.productMods);
+  const sim = simulateProducts(state.products, seconds, d.productModsById);
   let products = sim.products;
   if (state.products.active.length > 0) {
     money = money.add(sim.moneyDelta).max(Big.ZERO);
@@ -115,7 +115,7 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   // the economy sim (so completions catch up to the freshly-drifted frontier) and
   // pass the live pools so an unaffordable tick just stalls that upgrade.
   if (products.active.some((p) => p.upgrade)) {
-    const upg = advanceUpgrades(products, compute.toNumber(), data.toNumber(), seconds, d.productMods);
+    const upg = advanceUpgrades(products, compute.toNumber(), data.toNumber(), seconds, d.productModsById);
     products = upg.products;
     if (upg.computeSpent > 0) compute = compute.sub(upg.computeSpent).max(Big.ZERO);
     if (upg.dataSpent > 0) data = data.sub(upg.dataSpent).max(Big.ZERO);
