@@ -53,8 +53,10 @@ export const products = {
   /** Extra churn multiplier per unit of (frontier − quality) gap. */
   stalenessChurn: 0.6,
 
-  /** Marketing: users acquired ≈ spend / CAC; CAC rises as you saturate the TAM. */
-  marketingCacBase: 120,
+  /** Marketing: users acquired ≈ spend / CAC; CAC rises as you saturate the TAM.
+   *  Tuned so paid acquisition pays off for HIGH-ARPU types (code/reasoning/domain)
+   *  while low-ARPU consumer types (general/small) must grow virally. */
+  marketingCacBase: 25,
   cacSaturation: 5,
   /** How fast paid count eases toward its conversion target (per second). */
   convSpeed: 0.08,
@@ -67,43 +69,45 @@ export const products = {
   /** Player pricing strategy bounds (×ARPU; higher = more $/user, less conversion). */
   priceMin: 0.5,
   priceMax: 2,
+  /** Marketing-dial ceiling scales with quality (≈ game progress): cap = quality × this. */
+  marketingCapPerQuality: 5000,
 
   types: [
     {
       id: "general", name: "General Assistant",
-      blurb: "Mass-market chat. Huge reach, low ARPU, leaky bucket. Goes viral.",
-      segment: "consumer", tam: 1.0e7, baseArpu: 0.0006, baseChurn: 0.0009,
-      baseConversion: 0.03, computePerUser: 0.00012, virality: 0.025, hype: 1.0, heatPerSec: 0,
+      blurb: "Mass-market chat. Huge reach, low ARPU, leaky bucket. Grows virally.",
+      segment: "consumer", tam: 1.0e7, baseArpu: 0.005, baseChurn: 0.0009,
+      baseConversion: 0.03, computePerUser: 0.001, virality: 0.025, hype: 1.0, heatPerSec: 0,
     },
     {
       id: "code", name: "Code & Agentic",
       blurb: "Ships software for devs & teams. High ARPU, very sticky, pricey to serve.",
-      segment: "prosumer", tam: 6.0e5, baseArpu: 0.012, baseChurn: 0.00012,
-      baseConversion: 0.16, computePerUser: 0.0045, virality: 0.006, hype: 0.6, heatPerSec: 0,
+      segment: "prosumer", tam: 6.0e5, baseArpu: 0.1, baseChurn: 0.00012,
+      baseConversion: 0.16, computePerUser: 0.036, virality: 0.006, hype: 0.6, heatPerSec: 0,
     },
     {
       id: "reasoning", name: "Reasoning Engine",
       blurb: "Deep thinking for research/technical work. Premium price, heavy compute.",
-      segment: "prosumer", tam: 2.0e6, baseArpu: 0.009, baseChurn: 0.0004,
-      baseConversion: 0.09, computePerUser: 0.005, virality: 0.005, hype: 0.7, heatPerSec: 0,
+      segment: "prosumer", tam: 2.0e6, baseArpu: 0.075, baseChurn: 0.0004,
+      baseConversion: 0.09, computePerUser: 0.04, virality: 0.005, hype: 0.7, heatPerSec: 0,
     },
     {
       id: "multimodal", name: "Multimodal Studio",
       blurb: "Image/audio/video for creators. Trendy spikes, medium ARPU, heavy serve.",
-      segment: "consumer", tam: 5.0e6, baseArpu: 0.0035, baseChurn: 0.0007,
-      baseConversion: 0.05, computePerUser: 0.0018, virality: 0.03, hype: 1.5, heatPerSec: 0,
+      segment: "consumer", tam: 5.0e6, baseArpu: 0.03, baseChurn: 0.0007,
+      baseConversion: 0.05, computePerUser: 0.014, virality: 0.03, hype: 1.5, heatPerSec: 0,
     },
     {
       id: "small", name: "Fast & Cheap API",
       blurb: "Tiny, fast, high-volume. Massive scale, razor margins, price war.",
-      segment: "api", tam: 1.0e8, baseArpu: 0.00025, baseChurn: 0.0006,
-      baseConversion: 0.02, computePerUser: 0.00003, virality: 0.004, hype: 0.3, heatPerSec: 0,
+      segment: "api", tam: 1.0e8, baseArpu: 0.002, baseChurn: 0.0006,
+      baseConversion: 0.02, computePerUser: 0.00024, virality: 0.004, hype: 0.3, heatPerSec: 0,
     },
     {
       id: "domain", name: "Domain Expert (legal/med/fin)",
       blurb: "Vertical, compliance-grade. Very high ARPU, ultra-sticky — but raises Heat.",
-      segment: "enterprise", tam: 2.0e5, baseArpu: 0.06, baseChurn: 0.00005,
-      baseConversion: 0.26, computePerUser: 0.012, virality: 0.002, hype: 0.4, heatPerSec: 0.02,
+      segment: "enterprise", tam: 2.0e5, baseArpu: 0.5, baseChurn: 0.00005,
+      baseConversion: 0.26, computePerUser: 0.096, virality: 0.002, hype: 0.4, heatPerSec: 0.02,
     },
   ] satisfies ProductTypeDef[],
 };

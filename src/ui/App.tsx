@@ -21,6 +21,8 @@ import { Tagline } from "./Tagline";
 import { Onboarding } from "./Onboarding";
 import { DataMarketPanel } from "./DataMarketPanel";
 import { StaffPanel } from "./StaffPanel";
+import { ProductsPanel } from "./ProductsPanel";
+import { productsUnlocked } from "../engine/products";
 import { iap } from "./iap";
 import { balance } from "../engine/balance/config";
 import { HallCanvas } from "./HallCanvas";
@@ -38,7 +40,9 @@ export function App() {
   const initialized = useGame((s) => s.initialized);
   const event = useGame((s) => s.event);
   const worldEvent = useGame((s) => s.worldEvent);
-  const { doStartRun, doClaim, doBuyUpgrade, doHireStaff, doResearch, doBuyData, doPrestige, setComputeFocus, dismissOffline, dismissWorldEvent, chooseWorldEvent, hardReset } =
+  const { doStartRun, doClaim, doBuyUpgrade, doHireStaff, doResearch, doBuyData, doPrestige, setComputeFocus,
+    doReleaseProduct, doPushVersion, doSetProductPrice, doSetProductMarketing, doRetireProduct,
+    dismissOffline, dismissWorldEvent, chooseWorldEvent, hardReset } =
     useGame.getState();
 
   const d = derive(game);
@@ -64,6 +68,8 @@ export function App() {
   const showPrestige = game.research.length > 0;
   const showMarket = game.research.length > 0;
   const showStaff = balance.staff.enabled && game.research.length >= balance.staff.revealAtResearch;
+  const showProducts = productsUnlocked(game);
+  const [tab, setTab] = useState<"lab" | "products">("lab");
   const shipReady = canPrestige(game);
   const era = currentEra(game);
 
@@ -161,6 +167,10 @@ export function App() {
   const onClaim = () => { haptics.success(); sound.success(); doClaim(); };
   const onBuy = (id: string) => { haptics.tap(); sound.purchase(); doBuyUpgrade(id); };
   const onHire = (id: string) => { haptics.tap(); sound.purchase(); doHireStaff(id); };
+  const onRelease = (type: Parameters<typeof doReleaseProduct>[0], name: string) => {
+    haptics.celebrate(); sound.ship(); doReleaseProduct(type, name);
+  };
+  const onPushVersion = (id: string) => { haptics.success(); sound.success(); doPushVersion(id); };
   const onResearch = (id: string) => { haptics.tap(); sound.purchase(); doResearch(id); };
   const onBuyData = (id: string) => {
     const outcome = doBuyData(id);
@@ -208,15 +218,35 @@ export function App() {
       />
       <ModifierBar modifiers={game.modifiers} />
 
+      {showProducts && (
+        <div className="tabs" role="tablist">
+          <button className={`tab ${tab === "lab" ? "on" : ""}`} role="tab" aria-selected={tab === "lab"} onClick={() => setTab("lab")}>Lab</button>
+          <button className={`tab ${tab === "products" ? "on" : ""}`} role="tab" aria-selected={tab === "products"} onClick={() => setTab("products")}>Products</button>
+        </div>
+      )}
+
       <main className="stage">
-        <HallCanvas onExpand={setPendingExpansion} />
-        <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} onSetFocus={setComputeFocus} />
-        <UpgradePanel game={game} onBuy={onBuy} />
-        {showResearch && <ResearchPanel game={game} onResearch={onResearch} />}
-        {showStaff && <StaffPanel game={game} derived={d} onHire={onHire} />}
-        {showMarket && <DataMarketPanel game={game} onBuyData={onBuyData} onBuyTool={onBuy} />}
-        {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} />}
-        <StatsPanel game={game} derived={d} />
+        {tab === "products" && showProducts ? (
+          <ProductsPanel
+            game={game}
+            onRelease={onRelease}
+            onPushVersion={onPushVersion}
+            onSetPrice={doSetProductPrice}
+            onSetMarketing={doSetProductMarketing}
+            onRetire={doRetireProduct}
+          />
+        ) : (
+          <>
+            <HallCanvas onExpand={setPendingExpansion} />
+            <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} onSetFocus={setComputeFocus} />
+            <UpgradePanel game={game} onBuy={onBuy} />
+            {showResearch && <ResearchPanel game={game} onResearch={onResearch} />}
+            {showStaff && <StaffPanel game={game} derived={d} onHire={onHire} />}
+            {showMarket && <DataMarketPanel game={game} onBuyData={onBuyData} onBuyTool={onBuy} />}
+            {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} />}
+            <StatsPanel game={game} derived={d} />
+          </>
+        )}
 
         <footer className="footer">
           <button
