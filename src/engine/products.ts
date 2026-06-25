@@ -75,6 +75,25 @@ export function versionCost(version: number): { compute: number; data: number } 
   return { compute: B.versionCost.compute * g, data: B.versionCost.data * g };
 }
 
+/** Whether a state has shipped enough to OFFER the Enterprise tier. */
+export function enterpriseUnlocked(state: GameState): boolean {
+  return state.prestige.ships >= B.enterprise.unlockShips;
+}
+
+/** Blended conversion + ARPU across the Pro and (optional) Enterprise tiers. Free is
+ *  the non-paying MAU. ARPU is the conversion-weighted blend, so `paid` can stay a
+ *  single eased value. Returns pre-mods ARPU (callers apply staff mods.arpu). */
+function tierEconomics(p: ProductState, t: ProductTypeDef, qf: number, fm: FeatureMods) {
+  const base = t.baseConversion * qf * fm.conversion;
+  const proConv = base / p.priceMult;
+  const entConv = p.enterprise ? (base * B.enterprise.convShare) / Math.max(1e-9, p.enterprisePrice) : 0;
+  const proArpu = t.baseArpu * p.priceMult * p.quality * fm.arpu;
+  const entArpu = t.baseArpu * p.enterprisePrice * B.enterprise.arpuMult * p.quality * fm.arpu;
+  const total = proConv + entConv;
+  const arpu = total > 0 ? (proConv * proArpu + entConv * entArpu) / total : proArpu;
+  return { convRate: clamp(total, 0, 1), arpu, proConv, entConv, proArpu, entArpu };
+}
+
 // ---------- Per-tick simulation (deterministic) ----------
 
 export interface ProductsSimResult {
@@ -113,9 +132,10 @@ export function simulateProducts(
     const acqViral = p.mau * t.virality * qf * sat * (buzz ? B.buzzAcqMult : 1);
     const mau = clamp(p.mau + (acqMkt + acqViral) * mods.acq * fm.acq * seconds, 0, tam);
 
-    // Conversion target (pricier → fewer convert; less competitive → fewer convert).
-    const convRate = clamp((t.baseConversion * qf * fm.conversion) / p.priceMult, 0, 1);
-    const targetPaid = mau * convRate;
+    // Conversion target across tiers (pricier → fewer convert; Enterprise adds a
+    // small premium slice). Free is the non-paying remainder of MAU.
+    const econ = tierEconomics(p, t, qf, fm);
+    const targetPaid = mau * econ.convRate;
 
     // Churn rises with staleness (frontier gap) and price; buzz cuts it.
     const gap = Math.max(0, frontier - p.quality);
@@ -138,7 +158,7 @@ export function simulateProducts(
     const paidIntegral = k > 0
       ? pStar * seconds + ((p.paid - pStar) * (1 - decay)) / k
       : p.paid * seconds;
-    const arpu = t.baseArpu * p.priceMult * p.quality * fm.arpu * mods.arpu;
+    const arpu = econ.arpu * mods.arpu;
     const mrr = paidIntegral * arpu;
     const serve = paidIntegral * t.computePerUser * p.quality * mods.serveCost * fm.serveCost;
     moneyDelta += mrr - serve - p.marketingPerSec * seconds;
@@ -160,7 +180,8 @@ export interface ProductMetrics {
 export function productMetrics(p: ProductState, frontier: number): ProductMetrics {
   const t = typeDef(p.type);
   const fm = featureMods(p);
-  const arpu = t.baseArpu * p.priceMult * p.quality * fm.arpu;
+  const qf = clamp(p.quality / Math.max(frontier, 1e-9), 0, 1);
+  const arpu = tierEconomics(p, t, qf, fm).arpu; // blended across Pro + Enterprise
   const mrr = p.paid * arpu;
   const serve = p.paid * t.computePerUser * p.quality * fm.serveCost;
   const gap = Math.max(0, frontier - p.quality);
@@ -168,8 +189,7 @@ export function productMetrics(p: ProductState, frontier: number): ProductMetric
   return {
     mau: p.mau, paid: p.paid, arpu, mrr, serve,
     margin: mrr - serve - p.marketingPerSec,
-    gap, churnPerMin: churnPerSec * 60,
-    qf: clamp(p.quality / Math.max(frontier, 1e-9), 0, 1),
+    gap, churnPerMin: churnPerSec * 60, qf,
   };
 }
 
@@ -339,6 +359,8 @@ export function releaseProduct(
     version: 1,
     quality: state.products.frontier, // launch at the current frontier
     priceMult: 1,
+    enterprise: false,
+    enterprisePrice: 1,
     marketingPerSec: 0,
     mau: 0,
     paid: 0,
@@ -413,6 +435,8 @@ export function launchDraft(
     version: 1,
     quality: Math.max(1, draft.quality),
     priceMult: 1,
+    enterprise: false,
+    enterprisePrice: 1,
     marketingPerSec: 0,
     mau: 0,
     paid: 0,
@@ -570,6 +594,29 @@ export function setProductPrice(state: GameState, id: string, priceMult: number)
     products: {
       ...state.products,
       active: state.products.active.map((x) => (x.id === id ? { ...x, priceMult: price } : x)),
+    },
+  };
+}
+
+/** Open/close the Enterprise tier (no-op if not yet unlocked when opening). */
+export function setEnterprise(state: GameState, id: string, on: boolean): GameState {
+  if (on && !enterpriseUnlocked(state)) return state;
+  return {
+    ...state,
+    products: {
+      ...state.products,
+      active: state.products.active.map((x) => (x.id === id ? { ...x, enterprise: on } : x)),
+    },
+  };
+}
+
+export function setEnterprisePrice(state: GameState, id: string, price: number): GameState {
+  const p = clamp(price, B.enterprise.priceMin, B.enterprise.priceMax);
+  return {
+    ...state,
+    products: {
+      ...state.products,
+      active: state.products.active.map((x) => (x.id === id ? { ...x, enterprisePrice: p } : x)),
     },
   };
 }

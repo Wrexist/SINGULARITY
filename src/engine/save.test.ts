@@ -130,7 +130,7 @@ describe("save/load", () => {
       drafts: [],
       milestones: [],
       assignments: {},
-      active: [{ id: "prod-1", name: "Nimbus", type: "general", version: 1, quality: 2, priceMult: 1, marketingPerSec: 0, mau: 10, paid: 2, buzzSec: 0, upgrade: null, features: [] }],
+      active: [{ id: "prod-1", name: "Nimbus", type: "general", version: 1, quality: 2, priceMult: 1, marketingPerSec: 0, mau: 10, paid: 2, buzzSec: 0, upgrade: null, features: [], enterprise: false, enterprisePrice: 1 }],
     };
     expect(deserialize(serialize(good)).products.active).toHaveLength(1);
 
@@ -156,6 +156,7 @@ describe("save/load", () => {
         priceMult: 1, marketingPerSec: 0, mau: 100, paid: 20, buzzSec: 0,
         upgrade: { targetVersion: 4, remainingCompute: 1000, remainingData: 100, remainingSec: 30, totalSec: 90 },
         features: [],
+        enterprise: false, enterprisePrice: 1,
       }],
     };
     const back = deserialize(serialize(s)).products;

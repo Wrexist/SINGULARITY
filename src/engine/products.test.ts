@@ -7,6 +7,7 @@ import {
   canLaunchDraft, launchDraft, canStartUpgrade, startUpgrade, advanceUpgrades, upgradeDurationSec,
   applyMilestones, milestoneValue, maybeProductEvent,
   canBuyFeature, buyFeature, featureMods,
+  setEnterprise, enterpriseUnlocked,
 } from "./products";
 import { applyWorldEvent } from "./actions";
 import { tick } from "./tick";
@@ -420,6 +421,25 @@ describe("products — per-product features", () => {
     const s = release(); // money = 1e6 from shipped(); drop it
     s.resources.money = Big.of(10);
     expect(canBuyFeature(s, "p1", "api")).toBe(false);
+  });
+});
+
+describe("products — pricing tiers", () => {
+  it("Enterprise tier unlocks with ship count and is gated in setEnterprise", () => {
+    const s = release(); // ships = 1
+    expect(enterpriseUnlocked(s)).toBe(false);
+    expect(setEnterprise(s, "p1", true).products.active[0]!.enterprise).toBe(false); // locked
+    const vet = { ...s, prestige: { ...s.prestige, ships: 5 } };
+    expect(enterpriseUnlocked(vet)).toBe(true);
+    expect(setEnterprise(vet, "p1", true).products.active[0]!.enterprise).toBe(true);
+  });
+
+  it("opening Enterprise raises MRR via a premium high-ARPU slice", () => {
+    let s = release();
+    s = { ...s, products: { ...s.products, active: [{ ...s.products.active[0]!, mau: 200000, paid: 10000, buzzSec: 0 }] } };
+    const base = simulateProducts(s.products, 30).moneyDelta;
+    const ent = { ...s.products, active: [{ ...s.products.active[0]!, enterprise: true }] };
+    expect(simulateProducts(ent, 30).moneyDelta).toBeGreaterThan(base);
   });
 });
 

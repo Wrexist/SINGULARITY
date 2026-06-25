@@ -25,6 +25,8 @@ import {
   releaseProduct,
   pushVersion,
   setProductPrice,
+  setEnterprise,
+  setEnterprisePrice,
   setProductMarketing,
   renameProduct,
   retireProduct,
@@ -118,6 +120,9 @@ interface GameStore {
   doStartUpgrade: (id: string) => void;
   doSetProductPrice: (id: string, priceMult: number) => void;
   doSetProductMarketing: (id: string, perSec: number) => void;
+  /** Open/close the Enterprise tier for a product. */
+  doSetEnterprise: (id: string, on: boolean) => void;
+  doSetEnterprisePrice: (id: string, price: number) => void;
   /** Buy a one-time per-product feature (perk) with Money. */
   doBuyFeature: (id: string, featureId: string) => void;
   doRenameProduct: (id: string, name: string) => void;
@@ -386,6 +391,8 @@ export const useGame = create<GameStore>((set, get) => ({
     set((s) => (canStartUpgrade(s.game, id) ? { game: startUpgrade(s.game, id) } : {})),
   doSetProductPrice: (id, v) => set((s) => ({ game: setProductPrice(s.game, id, v) })),
   doSetProductMarketing: (id, v) => set((s) => ({ game: setProductMarketing(s.game, id, v) })),
+  doSetEnterprise: (id, on) => set((s) => ({ game: setEnterprise(s.game, id, on) })),
+  doSetEnterprisePrice: (id, v) => set((s) => ({ game: setEnterprisePrice(s.game, id, v) })),
   doBuyFeature: (id, featureId) =>
     set((s) => (canBuyFeature(s.game, id, featureId) ? { game: buyFeature(s.game, id, featureId) } : {})),
   doRenameProduct: (id, name) => set((s) => ({ game: renameProduct(s.game, id, name) })),

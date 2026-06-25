@@ -90,8 +90,12 @@ export interface ProductState {
   type: ProductTypeId;
   version: number;
   quality: number;
-  /** Player pricing strategy (×ARPU; higher = more $/user, less conversion). */
+  /** Pro-tier pricing strategy (×ARPU; higher = more $/user, less conversion). */
   priceMult: number;
+  /** Whether the premium Enterprise tier is offered (unlocks with ship count). */
+  enterprise: boolean;
+  /** Enterprise-tier price dial (×, applied to its premium ARPU). */
+  enterprisePrice: number;
   /** Player marketing budget, Money/sec. */
   marketingPerSec: number;
   /** Live monthly-active users and paying subscribers. */

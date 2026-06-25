@@ -2,7 +2,7 @@ import type { GameState } from "../engine/types";
 import { products as B, productFeatures, type FeatureLane } from "../engine/balance/products";
 import {
   typeDef, productMetrics, canStartUpgrade, canBuyFeature, versionCost,
-  upgradeDurationSec, upgradeProgress, retirePayout,
+  upgradeDurationSec, upgradeProgress, retirePayout, enterpriseUnlocked,
 } from "../engine/products";
 import { m$, numOf as num, fmtDur } from "./format";
 
@@ -19,6 +19,8 @@ interface Props {
   onStartUpgrade: (id: string) => void;
   onSetPrice: (id: string, v: number) => void;
   onSetMarketing: (id: string, v: number) => void;
+  onSetEnterprise: (id: string, on: boolean) => void;
+  onSetEnterprisePrice: (id: string, v: number) => void;
   onBuyFeature: (id: string, featureId: string) => void;
   onRename: (id: string, name: string) => void;
   onRetire: (id: string) => void;
@@ -34,7 +36,7 @@ function featureEffect(lane: FeatureLane, factor: number): string {
 /** Phase 3 — the deep, per-product management dashboard. Opens from a portfolio
  *  card: full metric breakdown, market penetration, the pricing/marketing
  *  workbench, the version-research roadmap, and retire. */
-export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetPrice, onSetMarketing, onBuyFeature, onRename, onRetire }: Props) {
+export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onBuyFeature, onRename, onRetire }: Props) {
   const p = game.products.active.find((x) => x.id === productId);
   if (!p) return null;
   const t = typeDef(p.type);
@@ -95,8 +97,27 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
         <label className="prod-ctl">
           <span>Pricing ×{p.priceMult.toFixed(1)}{p.priceMult > 1 ? " (premium — more $/user, fewer convert)" : p.priceMult < 1 ? " (value — cheaper, more convert)" : ""}</span>
           <input type="range" min={Math.round(B.priceMin * 10)} max={Math.round(B.priceMax * 10)} step={1}
-            value={Math.round(p.priceMult * 10)} onChange={(e) => onSetPrice(p.id, Number(e.target.value) / 10)} aria-label="Pricing" />
+            value={Math.round(p.priceMult * 10)} onChange={(e) => onSetPrice(p.id, Number(e.target.value) / 10)} aria-label="Pro pricing" />
         </label>
+
+        {/* Enterprise tier — a premium high-ARPU slice you can open once unlocked. */}
+        {enterpriseUnlocked(game) ? (
+          <div className="pd-tier">
+            <label className="pd-tier-head">
+              <input type="checkbox" checked={p.enterprise} onChange={(e) => onSetEnterprise(p.id, e.target.checked)} />
+              <span>Enterprise tier {p.enterprise ? "— open" : "— closed"}</span>
+            </label>
+            {p.enterprise && (
+              <label className="prod-ctl">
+                <span>Enterprise price ×{p.enterprisePrice.toFixed(1)} — small slice, ~{B.enterprise.arpuMult}× ARPU</span>
+                <input type="range" min={Math.round(B.enterprise.priceMin * 10)} max={Math.round(B.enterprise.priceMax * 10)} step={1}
+                  value={Math.round(p.enterprisePrice * 10)} onChange={(e) => onSetEnterprisePrice(p.id, Number(e.target.value) / 10)} aria-label="Enterprise pricing" />
+              </label>
+            )}
+          </div>
+        ) : (
+          <p className="market-warn">🔒 Enterprise tier unlocks after shipping {B.enterprise.unlockShips} models.</p>
+        )}
         <label className="prod-ctl">
           <span>Marketing {m$(p.marketingPerSec)}/s {p.marketingPerSec >= mktCap ? "(at quality cap)" : ""}</span>
           <input type="range" min={0} max={mktCap} step={Math.max(1, Math.round(mktCap / 50))}

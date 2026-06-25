@@ -208,13 +208,16 @@ export function deserialize(json: string): GameState {
   // saves that predate each, and sanitize the untrusted nested shapes.
   const products: ProductsState = {
     ...loadedProducts,
-    active: loadedProducts.active.map((p) => ({
-      ...p,
-      upgrade: sanitizeUpgrade((p as ProductState).upgrade),
-      features: Array.isArray((p as ProductState).features)
-        ? (p as ProductState).features.filter((s): s is string => typeof s === "string")
-        : [],
-    })),
+    active: loadedProducts.active.map((p) => {
+      const o = p as ProductState;
+      return {
+        ...p,
+        upgrade: sanitizeUpgrade(o.upgrade),
+        features: Array.isArray(o.features) ? o.features.filter((s): s is string => typeof s === "string") : [],
+        enterprise: o.enterprise === true,
+        enterprisePrice: typeof o.enterprisePrice === "number" && Number.isFinite(o.enterprisePrice) && o.enterprisePrice > 0 ? o.enterprisePrice : 1,
+      };
+    }),
     drafts: sanitizeDrafts((loadedProducts as ProductsState).drafts),
     sold: typeof loadedProducts.sold === "number" && Number.isFinite(loadedProducts.sold) ? loadedProducts.sold : 0,
     milestones: Array.isArray((loadedProducts as ProductsState).milestones)

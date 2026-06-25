@@ -103,6 +103,18 @@ export const products = {
     ],
   },
 
+  /** Pricing tiers. Free = the non-paying MAU funnel (implicit). Pro = the base
+   *  paid tier (the product's priceMult dial). Enterprise = a premium tier the
+   *  player can OPEN once they've shipped enough: a small slice of users at a much
+   *  higher ARPU (its own price dial). Blended into ARPU by conversion share. */
+  enterprise: {
+    unlockShips: 3,
+    convShare: 0.18, // enterprise converts ~18% as readily as Pro…
+    arpuMult: 7,     // …but pays ~7× the ARPU
+    priceMin: 0.5,
+    priceMax: 3,
+  },
+
   /** A fresh release / new version spikes acquisition + cuts churn briefly. */
   buzzDurationSec: 45,
   buzzAcqMult: 3,

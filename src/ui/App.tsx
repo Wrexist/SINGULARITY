@@ -47,7 +47,7 @@ export function App() {
   const candidates = useGame((s) => s.candidates);
   const { doStartRun, doClaim, doBuyUpgrade, doBuyOfficePerk, doResearch, doBuyData, doPrestige, setComputeFocus,
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
-    doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doBuyFeature, doRenameProduct, doRetireProduct,
+    doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doBuyFeature, doRenameProduct, doRetireProduct,
     dismissOffline, dismissWorldEvent, chooseWorldEvent, hardReset } =
     useGame.getState();
 
@@ -309,6 +309,8 @@ export function App() {
             onStartUpgrade={onStartUpgrade}
             onSetPrice={doSetProductPrice}
             onSetMarketing={doSetProductMarketing}
+            onSetEnterprise={doSetEnterprise}
+            onSetEnterprisePrice={doSetEnterprisePrice}
             onBuyFeature={doBuyFeature}
             onRename={doRenameProduct}
             onRetire={onRetireProductFx}
