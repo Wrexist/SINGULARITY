@@ -1330,6 +1330,7 @@ body {
 .prod-name:hover { color: #6d28d9; }
 .prod-rename { font-size: 11px; opacity: 0.45; }
 .prod-name:hover .prod-rename { opacity: 0.9; }
+.prod-sold-badge { font-weight: 700; color: #6d28d9; white-space: nowrap; }
 .prod-mrr { font-size: 15px; font-weight: 800; color: var(--money); font-variant-numeric: tabular-nums; }
 .prod-sub { display: flex; gap: 8px; align-items: center; margin-top: -4px; }
 .prod-badge {

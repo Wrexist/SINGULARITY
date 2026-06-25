@@ -122,7 +122,12 @@ export function deserialize(json: string): GameState {
     typeof raw.computeFocus === "number" && Number.isFinite(raw.computeFocus)
       ? Math.max(0, Math.min(1, raw.computeFocus))
       : fresh.computeFocus;
-  const products = isWellFormedProducts(raw.products) ? raw.products : fresh.products;
+  const loadedProducts = isWellFormedProducts(raw.products) ? raw.products : fresh.products;
+  // `sold` was added after v6 shipped; default it for saves that predate it.
+  const products: ProductsState = {
+    ...loadedProducts,
+    sold: typeof loadedProducts.sold === "number" && Number.isFinite(loadedProducts.sold) ? loadedProducts.sold : 0,
+  };
   return {
     version: SAVE_VERSION,
     resources: {

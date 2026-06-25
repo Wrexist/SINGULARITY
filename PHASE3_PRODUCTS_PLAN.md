@@ -246,12 +246,24 @@ backdrop (clean-to-play: never a hard context switch).
 
 ---
 
-## 10. Open questions to settle before M1 (not blocking the plan)
-- **Money-floor strength:** how much should persistent product income accelerate a
-  fresh run? (Needs sim; start conservative.)
-- **Naming:** tab name — "Products", "Deployments", "The Market", "Datacenter →
-  Storefront"? Product naming — auto-generated satirical names vs player-typed?
-- **API/usage billing** as a distinct mode (per-token) vs folded into an "API tier"
-  of the subscription model? (Plan assumes the latter for legibility; can deepen.)
-- **Retire payout:** does sunsetting a product give a one-time Money/Legacy bonus?
-- **Tab UI pattern:** bottom tab bar vs top segmented control (prototype both).
+## 10. Open questions — SETTLED (owner, 2026-06-25)
+- **Money-floor strength → "hard early, compounds later."** Owner: the first
+  customer and early scaling should be a *grind* (weak early models + entrenched
+  competition); momentum should only spin up once quality/upgrades compound.
+  Implemented via the products balance: high `marketingCacBase` (80) + faster
+  `cacSaturation` (8), slower `convSpeed` (0.05), and a tight quality-gated
+  marketing ceiling (`marketingCapPerQuality` 2000) that *opens as you progress*,
+  plus quicker frontier drift (0.005) so competition bites if you don't version.
+  Sim-verified: first-min subs ~190 (was ~1085), break-even ~min 10-11, then the
+  flywheel ramps hard once versions stack. See `scripts/balance-sim.ts` runProduct.
+- **Naming → keep.** Tab stays "Products"; release auto-suggests a satirical name
+  (Nimbus, Oracle…) that the player can rename (✎). No change.
+- **API/usage billing → distinct per-token mode, FUTURE.** Not folded in. A later
+  pass adds a usage-billed mode where revenue scales with compute *served* (not
+  seat count) — a second product economics model. Tracked in the backlog, not
+  built yet (keeps the current model legible).
+- **Retire payout → Money buyout + a lifetime "sold" badge.** Selling pays a
+  one-time Money buyout (~`retireValuationSec` of MRR) AND increments a persisted
+  `products.sold` counter shown in the portfolio header — a flip-and-track stat,
+  no power coupling to prestige. Implemented.
+- **Tab UI pattern → top segmented control** (Lab / Products). Shipped.

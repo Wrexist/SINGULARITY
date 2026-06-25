@@ -192,6 +192,10 @@ fun-gate on 2026-06-24 and greenlit Phase 1. (Phase 0 history retained below for
 - [Phase 2+] power/heat, staff, factions, eras 4–6, multi-room hall, cosmetic store, Steam port
 - [Phase 3] **"Ship It" AI Product/Deployment system** — ✅ **SHIPPED (M1→M4)**, see the
   2026-06-25 done-log entry below. Design in `PHASE3_PRODUCTS_PLAN.md`.
+- [Phase 3+] **Per-token / usage-billed product mode** (owner decision 2026-06-25):
+  a distinct revenue model where income scales with compute *served* rather than
+  seat count, sitting alongside the subscription model. Deferred to keep the
+  current model legible; build after launch if it adds depth without clutter.
 
 ---
 

@@ -35,7 +35,7 @@ import { floorFull } from "../src/engine/hall";
 import {
   releaseProduct, setProductMarketing, pushVersion, canPushVersion, productMetrics,
 } from "../src/engine/products";
-import type { ProductTypeId } from "../src/engine/balance/products";
+import { products as PRODUCTS, type ProductTypeId } from "../src/engine/balance/products";
 import { Big } from "../src/engine/math/Big";
 import { balance } from "../src/engine/balance/config";
 import type { GameState } from "../src/engine/types";
@@ -346,11 +346,16 @@ function runProduct(typeId: ProductTypeId, marketingPerSec: number, minutes = 30
   s = releaseProduct(s, { type: typeId, name: "Sim", id: "s1" });
   s = setProductMarketing(s, "s1", marketingPerSec);
 
-  console.log(`\n=== PRODUCT SIM: ${typeId} (marketing ${marketingPerSec}/s, +version/5m) ===`);
-  console.log("  min |     subs |       MRR/s |    margin/s | competitiveness");
+  console.log(`\n=== PRODUCT SIM: ${typeId} (marketing ≤${marketingPerSec}/s, gated by quality, +version/5m) ===`);
+  console.log("  min |     subs |       MRR/s |    margin/s | competitiveness | mkt/s");
   let t = 0;
   const STEP = 1000;
   while (t < minutes * 60000) {
+    // The marketing dial is capped by quality (game progress), so a weak early
+    // model literally can't spend the late-game budget — mirror that here.
+    const p0 = s.products.active[0]!;
+    const mktCap = Math.max(1, p0.quality * PRODUCTS.marketingCapPerQuality);
+    s = setProductMarketing(s, "s1", Math.min(marketingPerSec, mktCap));
     s = tick(s, STEP);
     if (t > 0 && t % 300000 === 0 && canPushVersion(s, "s1")) s = pushVersion(s, "s1");
     if (t % 60000 === 0) {
@@ -358,7 +363,7 @@ function runProduct(typeId: ProductTypeId, marketingPerSec: number, minutes = 30
       const m = productMetrics(p, s.products.frontier);
       console.log(
         `  ${String(t / 60000).padStart(3)} | ${String(Math.round(m.paid)).padStart(8)} | ` +
-        `${m.mrr.toFixed(0).padStart(11)} | ${(m.margin >= 0 ? "+" : "") + m.margin.toFixed(0).padStart(10)} | ${Math.round(m.qf * 100)}%`,
+        `${m.mrr.toFixed(0).padStart(11)} | ${(m.margin >= 0 ? "+" : "") + m.margin.toFixed(0).padStart(10)} | ${String(Math.round(m.qf * 100) + "%").padStart(14)} | ${Math.round(p.marketingPerSec)}`,
       );
     }
     t += STEP;

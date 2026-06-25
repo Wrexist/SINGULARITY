@@ -37,6 +37,7 @@ export function ProductsPanel({ game, onRelease, onPushVersion, onSetPrice, onSe
       <h2 className="panel-title">Products</h2>
       <p className="floor-meter">
         Portfolio: <b>{m$(totalMrr)}/s MRR</b> · net {totalMargin >= 0 ? "+" : ""}{m$(totalMargin)}/s · {ps.active.length}/{B.maxActive} slots
+        {ps.sold > 0 && <> · <span className="prod-sold-badge">🏷️ {ps.sold} sold</span></>}
       </p>
 
       <div className="list">

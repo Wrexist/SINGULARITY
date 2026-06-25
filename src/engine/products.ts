@@ -80,7 +80,7 @@ export function simulateProducts(ps: ProductsState, seconds: number): ProductsSi
     return { ...p, mau, paid, buzzSec: Math.max(0, p.buzzSec - seconds) };
   });
 
-  return { products: { active, frontier }, moneyDelta, heatDelta };
+  return { products: { ...ps, active, frontier }, moneyDelta, heatDelta };
 }
 
 // ---------- Derived metrics (for the dashboard) ----------
@@ -214,7 +214,11 @@ export function retireProduct(state: GameState, id: string): GameState {
     ...state,
     resources: { ...state.resources, money: state.resources.money.add(Math.max(0, payout)) },
     lifetimeMoney: state.lifetimeMoney.add(Math.max(0, payout)),
-    products: { ...state.products, active: state.products.active.filter((x) => x.id !== id) },
+    products: {
+      ...state.products,
+      active: state.products.active.filter((x) => x.id !== id),
+      sold: state.products.sold + 1, // lifetime "products sold" badge (persists across prestige)
+    },
   };
 }
 

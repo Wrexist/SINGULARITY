@@ -86,6 +86,8 @@ export interface ProductsState {
   active: ProductState[];
   /** Global competitor capability; drifts up over time. */
   frontier: number;
+  /** Lifetime count of products sold/retired (a badge stat; survives prestige). */
+  sold: number;
 }
 
 /** Everything the sim and UI read each frame, folded from upgrades + research + prestige. */

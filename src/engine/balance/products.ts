@@ -49,17 +49,23 @@ export const products = {
   /** Competitor capability drifts up over time; your quality is set to the
    *  frontier each time you release/version, then falls behind. */
   frontierStart: 1,
-  frontierGrowthPerSec: 0.004,
+  frontierGrowthPerSec: 0.005,
   /** Extra churn multiplier per unit of (frontier − quality) gap. */
   stalenessChurn: 0.6,
 
   /** Marketing: users acquired ≈ spend / CAC; CAC rises as you saturate the TAM.
-   *  Tuned so paid acquisition pays off for HIGH-ARPU types (code/reasoning/domain)
-   *  while low-ARPU consumer types (general/small) must grow virally. */
-  marketingCacBase: 25,
-  cacSaturation: 5,
+   *  Owner directive (2026-06-25): the FIRST customers should be a grind and early
+   *  scaling should be hard (weak early models + entrenched competition), with the
+   *  flywheel only spinning up once quality/upgrades compound. So CAC starts high
+   *  and saturates faster, conversion eases in slowly, and the marketing dial is
+   *  gated tight at low quality (see marketingCapPerQuality) — it opens as you
+   *  progress. High-ARPU types (code/reasoning/domain) still reward paid spend;
+   *  low-ARPU consumer types (general/small) lean on virality, which itself needs
+   *  an installed base to ignite. */
+  marketingCacBase: 80,
+  cacSaturation: 8,
   /** How fast paid count eases toward its conversion target (per second). */
-  convSpeed: 0.08,
+  convSpeed: 0.05,
 
   /** A fresh release / new version spikes acquisition + cuts churn briefly. */
   buzzDurationSec: 45,
@@ -71,8 +77,10 @@ export const products = {
   /** Player pricing strategy bounds (×ARPU; higher = more $/user, less conversion). */
   priceMin: 0.5,
   priceMax: 2,
-  /** Marketing-dial ceiling scales with quality (≈ game progress): cap = quality × this. */
-  marketingCapPerQuality: 5000,
+  /** Marketing-dial ceiling scales with quality (≈ game progress): cap = quality × this.
+   *  Kept tight so you can't simply buy your way to scale with a weak early model —
+   *  the ceiling rises as quality (versions/frontier) climbs. */
+  marketingCapPerQuality: 2000,
 
   types: [
     {

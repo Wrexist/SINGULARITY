@@ -126,6 +126,7 @@ describe("save/load", () => {
     const good = createInitialState();
     good.products = {
       frontier: 3,
+      sold: 0,
       active: [{ id: "prod-1", name: "Nimbus", type: "general", version: 1, quality: 2, priceMult: 1, marketingPerSec: 0, mau: 10, paid: 2, buzzSec: 0 }],
     };
     expect(deserialize(serialize(good)).products.active).toHaveLength(1);

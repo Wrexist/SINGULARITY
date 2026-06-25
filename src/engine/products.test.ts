@@ -101,7 +101,7 @@ describe("products — simulation", () => {
 
   it("a stale product (frontier far ahead) churns its users down", () => {
     let s = release();
-    s = { ...s, products: { active: [{ ...s.products.active[0]!, mau: 100000, paid: 5000, buzzSec: 0 }], frontier: s.products.frontier + 50 } };
+    s = { ...s, products: { ...s.products, active: [{ ...s.products.active[0]!, mau: 100000, paid: 5000, buzzSec: 0 }], frontier: s.products.frontier + 50 } };
     const sim = simulateProducts(s.products, 60);
     expect(sim.products.active[0]!.paid).toBeLessThan(5000); // bled subscribers
   });
@@ -165,6 +165,19 @@ describe("products — rename + retire payout", () => {
 
   it("retirePayout is 0 for an unknown product", () => {
     expect(retirePayout(release(), "nope")).toBe(0);
+  });
+
+  it("retiring increments the lifetime 'sold' badge, and it survives prestige", () => {
+    let s = release();
+    expect(s.products.sold).toBe(0);
+    s = retireProduct(s, "p1");
+    expect(s.products.sold).toBe(1);
+    // Carry it through a ship.
+    s = release(s, "code");
+    s.lifetimeMoney = Big.of("1e9");
+    s.research = ["inference_api"];
+    const after = prestige(retireProduct(s, "p1"));
+    expect(after.products.sold).toBe(2);
   });
 });
 
