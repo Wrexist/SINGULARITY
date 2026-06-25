@@ -1373,6 +1373,35 @@ body {
 .prod-type-name { font-size: 14px; font-weight: 750; }
 .prod-type-blurb { font-size: 12px; color: var(--ink-2); line-height: 1.35; }
 
+/* ---------- Drafts: raw models from Ship the Model, awaiting commercialisation ---------- */
+.prod-drafts {
+  display: flex; flex-direction: column; gap: 8px; margin: 6px 0 14px;
+  padding: 12px; border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--money) 8%, var(--glass-strong));
+  border: 1px solid color-mix(in srgb, var(--money) 28%, transparent);
+}
+.prod-drafts-head { font-size: 12px; font-weight: 750; color: var(--ink-2); }
+.prod-draft {
+  display: flex; flex-direction: column; gap: 8px;
+  background: var(--glass-strong); border: 1px solid var(--glass-hairline);
+  border-radius: var(--radius-sm); padding: 10px 12px;
+}
+.prod-draft-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.prod-draft-title { font-size: 14px; font-weight: 750; }
+.prod-draft-sub { font-size: 12px; color: var(--ink-2); line-height: 1.35; }
+.btn-sm { padding: 7px 14px; font-size: 13px; flex: 0 0 auto; white-space: nowrap; }
+
+/* ---------- Timed version research (in-flight upgrade) ---------- */
+.prod-research { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
+.prod-research-head {
+  display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; color: var(--ink-2);
+}
+.prod-bar-research {
+  background: linear-gradient(90deg, var(--data), color-mix(in srgb, var(--data) 55%, #a855f7));
+  background-size: 200% 100%; animation: research-shimmer 1.6s linear infinite;
+}
+@keyframes research-shimmer { from { background-position: 200% 0; } to { background-position: 0 0; } }
+
 /* ---------- Accessibility: respect reduced motion (premium = considerate) ---------- */
 @media (prefers-reduced-motion: reduce) {
   *,

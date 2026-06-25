@@ -24,6 +24,10 @@ import {
   renameProduct,
   retireProduct,
   maybeChurnFlavor,
+  canLaunchDraft,
+  launchDraft,
+  canStartUpgrade,
+  startUpgrade,
 } from "../engine/products";
 import type { ProductTypeId } from "../engine/balance/products";
 import { prestige } from "../engine/prestige";
@@ -77,7 +81,11 @@ interface GameStore {
   setComputeFocus: (v: number) => void;
   /** Returns true if the release succeeded (so the UI only celebrates on a real ship). */
   doReleaseProduct: (type: ProductTypeId, name: string) => boolean;
+  /** Commercialise a shipped draft model. Returns true on a real launch. */
+  doLaunchDraft: (draftId: string, type: ProductTypeId, name: string) => boolean;
   doPushVersion: (id: string) => void;
+  /** Begin a timed version upgrade (pay upfront, research over time). */
+  doStartUpgrade: (id: string) => void;
   doSetProductPrice: (id: string, priceMult: number) => void;
   doSetProductMarketing: (id: string, perSec: number) => void;
   doRenameProduct: (id: string, name: string) => void;
@@ -152,9 +160,22 @@ export const useGame = create<GameStore>((set, get) => ({
 
   advance: (elapsedMs) =>
     set((s) => {
+      // Snapshot which products are mid-upgrade so we can celebrate completions
+      // (the engine finishes them inside tick; we surface the moment to the UI).
+      const wasUpgrading = new Map(s.game.products.active.map((p) => [p.id, !!p.upgrade]));
       let game = tick(s.game, elapsedMs);
       const secs = elapsedMs / 1000;
       const patch: Partial<GameStore> = { game };
+
+      const finished = game.products.active.find((p) => wasUpgrading.get(p.id) && !p.upgrade);
+      if (finished) {
+        noticeKey += 1;
+        patch.notice = {
+          key: noticeKey,
+          message: `🚀 ${finished.name} v${finished.version} shipped — back at the frontier`,
+          tone: "good",
+        };
+      }
 
       // Heat-driven regulatory event (only when there's heat to drive it).
       if (game.heat > 0) {
@@ -179,8 +200,9 @@ export const useGame = create<GameStore>((set, get) => ({
       }
 
       // Churn-reason flavor quip — the satire surface for "update or bleed". Only
-      // when no heavier regulatory event already claimed this tick's toast slot.
-      if (!patch.event) {
+      // when nothing heavier (regulatory event or an upgrade-ship) already claimed
+      // this tick's toast slot.
+      if (!patch.event && !patch.notice) {
         const flavor = maybeChurnFlavor(
           game.products, secs, Math.random(), Math.random(), Math.random(),
         );
@@ -223,7 +245,15 @@ export const useGame = create<GameStore>((set, get) => ({
     set((s) => ({ game: releaseProduct(s.game, { type, name, id: `prod-${productKey}` }) }));
     return true;
   },
+  doLaunchDraft: (draftId, type, name) => {
+    if (!canLaunchDraft(get().game, draftId, type)) return false;
+    productKey += 1;
+    set((s) => ({ game: launchDraft(s.game, { draftId, type, name, id: `prod-${productKey}` }) }));
+    return true;
+  },
   doPushVersion: (id) => set((s) => ({ game: pushVersion(s.game, id) })),
+  doStartUpgrade: (id) =>
+    set((s) => (canStartUpgrade(s.game, id) ? { game: startUpgrade(s.game, id) } : {})),
   doSetProductPrice: (id, v) => set((s) => ({ game: setProductPrice(s.game, id, v) })),
   doSetProductMarketing: (id, v) => set((s) => ({ game: setProductMarketing(s.game, id, v) })),
   doRenameProduct: (id, name) => set((s) => ({ game: renameProduct(s.game, id, name) })),
