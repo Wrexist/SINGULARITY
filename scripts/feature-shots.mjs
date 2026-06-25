@@ -125,6 +125,15 @@ try {
   await sleep(400);
   await page.screenshot({ path: "screenshots/feat-recruit.png", fullPage: true });
   console.log("Saved feat-recruit.png");
+
+  // 5) Achievements modal (Phase 3).
+  await page.mouse.click(8, 8).catch(() => {});
+  await sleep(200);
+  await page.getByRole("button", { name: "Achievements" }).click();
+  await sleep(400);
+  const achModal = page.locator(".ach-modal");
+  await achModal.screenshot({ path: "screenshots/feat-achievements.png" });
+  console.log("Saved feat-achievements.png");
 } finally {
   if (browser) await browser.close();
   server.kill();

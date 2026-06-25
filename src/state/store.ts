@@ -41,6 +41,7 @@ import {
   buyFeature,
 } from "../engine/products";
 import { productMilestones as PRODUCT_MILESTONES, type ProductTypeId } from "../engine/balance/products";
+import { achievements as ACHIEVEMENT_DEFS } from "../engine/balance/achievements";
 import { prestige } from "../engine/prestige";
 import { applyOffline, type OfflineSummary } from "../engine/offline";
 import { serialize, deserialize } from "../engine/save";
@@ -278,6 +279,20 @@ export const useGame = create<GameStore>((set, get) => ({
         if (def) {
           noticeKey += 1;
           patch.notice = { key: noticeKey, message: `🏆 ${def.label} — ${def.desc} (+$${def.reward.toLocaleString()})`, tone: "good" };
+        }
+      }
+
+      // A newly-unlocked achievement is a collection win — surface it (unless a
+      // milestone already claimed this tick's notice slot).
+      if (!patch.notice) {
+        const had = new Set(s.game.achievements);
+        const newAch = game.achievements.find((id) => !had.has(id));
+        if (newAch) {
+          const def = ACHIEVEMENT_DEFS.find((a) => a.id === newAch);
+          if (def) {
+            noticeKey += 1;
+            patch.notice = { key: noticeKey, message: `🏅 Achievement: ${def.label} — ${def.desc}`, tone: "good" };
+          }
         }
       }
 

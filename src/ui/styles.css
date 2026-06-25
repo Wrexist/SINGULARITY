@@ -205,6 +205,38 @@ body {
 }
 .icon-btn:hover { color: var(--ink); }
 .icon-btn:active { transform: scale(0.9) rotate(30deg); }
+.topbar-actions { display: flex; gap: 8px; align-items: center; }
+.icon-btn { position: relative; font-size: 17px; }
+.icon-badge {
+  position: absolute; top: -5px; right: -5px; min-width: 16px; height: 16px;
+  padding: 0 4px; border-radius: 8px; background: var(--money); color: #fff;
+  font-size: 10px; font-weight: 800; display: grid; place-items: center;
+}
+
+/* ---------- Achievements ---------- */
+.ach-modal { max-width: 440px; }
+.ach-title { font-size: 17px; font-weight: 800; margin: 0; }
+.ach-count { font-size: 12px; color: var(--ink-2); font-weight: 650; margin-top: 2px; }
+.ach-progress-track { height: 6px; border-radius: 3px; background: var(--glass-strong); overflow: hidden; margin: 10px 0 4px; }
+.ach-progress-fill { height: 100%; background: linear-gradient(90deg, var(--data), var(--money)); transition: width 0.4s var(--ease-out); }
+.ach-cats { flex-wrap: wrap; }
+.ach-grid { display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto; padding-right: 2px; }
+.ach-card {
+  display: flex; align-items: center; gap: 11px; padding: 10px 12px;
+  border-radius: var(--radius-sm); background: var(--glass-strong);
+  border: 1px solid var(--glass-hairline); opacity: 0.72;
+}
+.ach-card.got { opacity: 1; border-color: color-mix(in srgb, var(--money) 35%, var(--glass-hairline)); }
+.ach-badge {
+  flex: 0 0 auto; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center;
+  font-size: 17px; background: var(--glass); color: var(--ink-2);
+}
+.ach-card-main { flex: 1; min-width: 0; }
+.ach-name { font-size: 13.5px; font-weight: 750; color: var(--ink); }
+.ach-desc { font-size: 11.5px; color: var(--ink-2); line-height: 1.35; }
+.ach-bar { height: 4px; border-radius: 2px; background: var(--glass); overflow: hidden; margin-top: 6px; }
+.ach-bar-fill { height: 100%; transition: width 0.3s var(--ease-out); }
+.ach-check { flex: 0 0 auto; color: var(--money); font-weight: 800; font-size: 16px; }
 
 /* ---------- Glass material (shared) ---------- */
 .glass,

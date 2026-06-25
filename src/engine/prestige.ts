@@ -68,5 +68,7 @@ export function prestige(state: GameState): GameState {
       totalShips: state.stats.totalShips + 1,
       totalLegacy: state.stats.totalLegacy.add(gained),
     },
+    // Achievements are a permanent collection — they survive the reset.
+    achievements: state.achievements,
   };
 }

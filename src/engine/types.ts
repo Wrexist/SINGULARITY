@@ -66,6 +66,8 @@ export interface GameState {
   /** Phase 3 — lifetime stats that accumulate across ALL runs (survive prestige).
    *  The data backbone for achievements, the AGI gate, and lab reputation. */
   stats: LifetimeStats;
+  /** Phase 3 — unlocked achievement ids (a collection; survives prestige). */
+  achievements: string[];
 }
 
 /**

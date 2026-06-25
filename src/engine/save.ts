@@ -178,6 +178,7 @@ interface SavedShape {
   employees: Employee[];
   /** Serialized lifetime stats (Big fields as strings). */
   stats: Record<string, string | number>;
+  achievements: string[];
 }
 
 export function serialize(state: GameState): string {
@@ -215,6 +216,7 @@ export function serialize(state: GameState): string {
       worldEventsResolved: state.stats.worldEventsResolved,
       playtimeSec: state.stats.playtimeSec,
     },
+    achievements: state.achievements,
   };
   return JSON.stringify(shape);
 }
@@ -285,6 +287,9 @@ export function deserialize(json: string): GameState {
     products,
     employees: sanitizeEmployees(raw.employees),
     stats: sanitizeStats(raw.stats),
+    achievements: Array.isArray(raw.achievements)
+      ? raw.achievements.filter((a): a is string => typeof a === "string")
+      : [],
   };
 }
 
@@ -347,6 +352,10 @@ export function migrate(raw: any): SavedShape {
       worldEventsResolved: 0,
       playtimeSec: 0,
     } };
+  }
+  if (s.version === 9) {
+    // v9 → v10: achievements collection (starts empty; unlocks evaluate on load).
+    s = { ...s, version: 10, achievements: s.achievements ?? [] };
   }
   return s as SavedShape;
 }

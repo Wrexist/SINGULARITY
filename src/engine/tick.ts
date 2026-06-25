@@ -4,6 +4,7 @@ import { derive } from "./derive";
 import { simulateProducts, advanceUpgrades, applyMilestones } from "./products";
 import { advanceTraining } from "./employees";
 import { accrueStats } from "./stats";
+import { applyAchievements } from "./achievements";
 import type { Derived, GameState } from "./types";
 
 /**
@@ -154,7 +155,9 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     employees: trained.employees,
     stats,
   });
-  return ms.state;
+  // Award any newly-unlocked achievements (reads the fresh stats above). Pure +
+  // idempotent; the store diffs achievements to surface a toast.
+  return applyAchievements(ms.state).state;
 }
 
 function claimInto(d: Derived, data: Big, money: Big, lifetimeMoney: Big) {

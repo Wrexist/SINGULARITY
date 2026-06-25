@@ -22,6 +22,7 @@ import { Onboarding } from "./Onboarding";
 import { DataMarketPanel } from "./DataMarketPanel";
 import { EmployeesPanel } from "./EmployeesPanel";
 import { ProductsPanel } from "./ProductsPanel";
+import { AchievementsModal } from "./AchievementsModal";
 import { ProductLaunch } from "./ProductLaunch";
 import { productsUnlocked, productMetrics, typeDef, retirePayout } from "../engine/products";
 import { nextAction, attentionCounts } from "../engine/advisor";
@@ -66,6 +67,7 @@ export function App() {
   const [launch, setLaunch] = useState<{ type: ProductTypeId; name: string } | null>(null);
   const [pendingExpansion, setPendingExpansion] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showAchievements, setShowAchievements] = useState(false);
   const reducedMotion = useSettings((s) => s.reducedMotion);
   const onboarded = useSettings((s) => s.onboarded);
   const completeOnboarding = useSettings((s) => s.completeOnboarding);
@@ -283,9 +285,14 @@ export function App() {
             <Tagline />
           </div>
         </div>
-        <button className="icon-btn" onClick={() => setShowSettings(true)} aria-label="Settings">
-          <GearIcon />
-        </button>
+        <div className="topbar-actions">
+          <button className="icon-btn" onClick={() => setShowAchievements(true)} aria-label="Achievements">
+            🏅{game.achievements.length > 0 && <span className="icon-badge">{game.achievements.length}</span>}
+          </button>
+          <button className="icon-btn" onClick={() => setShowSettings(true)} aria-label="Settings">
+            <GearIcon />
+          </button>
+        </div>
       </header>
 
       <ResourceBar
@@ -382,6 +389,7 @@ export function App() {
         />
       )}
       {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} />}
+      {showAchievements && <AchievementsModal game={game} onClose={() => setShowAchievements(false)} />}
       {pendingExpansion && (
         <ExpandConfirm
           id={pendingExpansion}
