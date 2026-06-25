@@ -30,6 +30,8 @@ import {
   buyDataOffer,
 } from "../src/engine/actions";
 import { canPrestige, legacyWeightsGain, prestige } from "../src/engine/prestige";
+import { powerStats } from "../src/engine/power";
+import { floorFull } from "../src/engine/hall";
 import { balance } from "../src/engine/balance/config";
 import type { GameState } from "../src/engine/types";
 
@@ -130,6 +132,22 @@ function autoBuy(state: GameState, useMarket: boolean): { state: GameState; boug
     bought.push(...r.bought);
   }
 
+  // 1b. If power is throttling Compute, buy the cheapest affordable capacity
+  //     upgrade to clear it (a real player fixes a throttle before it bites).
+  if (balance.power.enabled) {
+    let guard = 0;
+    while (guard++ < 50 && powerStats(s).throttled) {
+      const cap = balance.upgrades
+        .filter((d) => d.effect.kind === "powerCapacity" && canBuyUpgrade(s, d.id))
+        .map((d) => ({ d, cost: upgradeCost(d, s.upgrades[d.id] ?? 0) }))
+        .filter(({ cost }) => s.resources.money.gte(cost))
+        .sort((a, b) => (a.cost.gt(b.cost) ? 1 : -1))[0];
+      if (!cap) break;
+      s = buyUpgrade(s, cap.d.id);
+      bought.push(cap.d.id);
+    }
+  }
+
   // 2. Automations first (data-gated, huge QoL).
   for (const id of ["auto_claim", "auto_train"]) {
     if (canBuyUpgrade(s, id)) {
@@ -148,17 +166,34 @@ function autoBuy(state: GameState, useMarket: boolean): { state: GameState; boug
 
   // 4. Spend spare resources on the cheapest affordable production upgrade.
   //    Reserve enough compute to keep launching runs. Loop until nothing cheap.
+  //    Hall expansions ARE included now: racks are floor-capped, so an engaged
+  //    player buys floor space to unblock more racks once the room fills.
   let guard = 0;
   while (guard++ < 200) {
+    // A reasonable player buys the BEST rack they can afford, not the cheapest —
+    // wasting permanent floor slots on consumer cards is a rookie mistake. So
+    // when several rack tiers are affordable, only consider the highest tier.
+    const affordableRacks = balance.upgrades.filter(
+      (d) => d.effect.kind === "computeFlat" && canBuyUpgrade(s, d.id),
+    );
+    const bestRackPerLevel = affordableRacks.reduce(
+      (m, d) => Math.max(m, d.effect.kind === "computeFlat" ? d.effect.perLevel : 0),
+      0,
+    );
     const candidates = balance.upgrades
       .filter(
         (d) =>
           d.effect.kind !== "autoClaim" &&
-          d.effect.kind !== "autoTrain" &&
-          d.effect.kind !== "floorCols" && // hall expansions are cosmetic capacity, not production
-          d.effect.kind !== "floorRows",
+          d.effect.kind !== "autoTrain",
       )
       .filter((d) => canBuyUpgrade(s, d.id))
+      // Drop lower-tier racks when a better one is affordable.
+      .filter((d) => d.effect.kind !== "computeFlat" || d.effect.perLevel >= bestRackPerLevel)
+      // Only buy headroom when it's the ACTIVE constraint: power capacity when
+      // throttled, hall expansions when the floor is full. Otherwise the sim
+      // spends on spare capacity before it's needed and skews the baseline.
+      .filter((d) => d.effect.kind !== "powerCapacity" || powerStats(s).throttled)
+      .filter((d) => (d.effect.kind !== "floorCols" && d.effect.kind !== "floorRows") || floorFull(s))
       .map((d) => ({ d, cost: upgradeCost(d, s.upgrades[d.id] ?? 0) }))
       // Don't spend compute we need to run training; keep a buffer.
       .filter(({ d, cost }) => {

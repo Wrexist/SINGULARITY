@@ -82,6 +82,12 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     run = { active: true, progress: 0, readyToClaim: false };
   }
 
+  // Staff payroll (Phase 2): an ongoing Money drain, floored at zero so it never
+  // goes negative. Only Money is touched — lifetimeMoney tracks earnings, not net.
+  if (d.payrollPerSec.gt(0)) {
+    money = money.sub(d.payrollPerSec.mul(seconds)).max(Big.ZERO);
+  }
+
   // Regulatory Heat cools passively when you're not buying shady data.
   const heat = Math.max(0, state.heat - balance.heat.coolPerSec * seconds);
 

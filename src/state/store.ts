@@ -6,10 +6,12 @@ import {
   startRun,
   claimRun,
   buyUpgrade,
+  hireStaff,
   buyResearch,
   buyDataOffer,
   maybeHeatEvent,
   maybeWorldEvent,
+  applyWorldEventChoice,
   type MarketOutcome,
   type WorldEventResult,
 } from "../engine/actions";
@@ -50,6 +52,7 @@ interface GameStore {
   // lifecycle
   init: () => void;
   dismissWorldEvent: () => void;
+  chooseWorldEvent: (choiceIndex: number) => void;
   advance: (elapsedMs: number) => void;
   save: () => void;
   dismissOffline: () => void;
@@ -57,6 +60,7 @@ interface GameStore {
   doStartRun: () => void;
   doClaim: () => void;
   doBuyUpgrade: (id: string) => void;
+  doHireStaff: (id: string) => void;
   doResearch: (id: string) => void;
   doBuyData: (id: string) => MarketOutcome | null;
   doPrestige: () => void;
@@ -79,6 +83,12 @@ export const useGame = create<GameStore>((set, get) => ({
   worldEvent: null,
   claimBurst: 0,
   dismissWorldEvent: () => set({ worldEvent: null }),
+  chooseWorldEvent: (choiceIndex) =>
+    set((s) => {
+      if (!s.worldEvent) return {};
+      const { state } = applyWorldEventChoice(s.game, s.worldEvent.id, choiceIndex);
+      return { game: state, worldEvent: null };
+    }),
 
   init: () => {
     let game = createInitialState();
@@ -156,6 +166,7 @@ export const useGame = create<GameStore>((set, get) => ({
       return { game: claimRun(s.game), claimBurst: claimKey };
     }),
   doBuyUpgrade: (id) => set((s) => ({ game: buyUpgrade(s.game, id) })),
+  doHireStaff: (id) => set((s) => ({ game: hireStaff(s.game, id) })),
   doResearch: (id) => set((s) => ({ game: buyResearch(s.game, id) })),
   // The wall clock isn't the only nondeterminism we keep out of the engine —
   // the risk roll lives here too and is passed in, mirroring how we pass time.

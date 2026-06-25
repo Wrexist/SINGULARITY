@@ -4,8 +4,9 @@ import { useSettings } from "./settings";
 import { haptics } from "./haptics";
 import { sound } from "./sound";
 import { buildHallModel } from "../render/hallModel";
-import { drawHall, expansionMarkers, pointInPoly } from "../render/hallRenderer";
+import { drawHallStatic, drawHallDynamic, expansionMarkers, pointInPoly } from "../render/hallRenderer";
 import { currentEra, eraName } from "../engine/eras";
+import { hallRooms } from "../engine/hall";
 
 /**
  * The 2.5D hall (Phase 1 pillar). A self-driving canvas: an rAF loop reads game
@@ -28,6 +29,7 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       (s.game.upgrades.rack_tpu ?? 0),
   );
   const era = useGame((s) => currentEra(s.game));
+  const rooms = useGame((s) => hallRooms(s.game));
 
   useEffect(() => {
     const canvas = canvasRef.current!;
@@ -35,9 +37,21 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    // Offscreen buffer holding the static room (sky + walls + floor). Repainted
+    // only when the room size/era changes; blitted every frame. This is the big
+    // perf win — the floor grid + a dozen gradients no longer rebuild per frame.
+    const off = document.createElement("canvas");
+    const offCtx = off.getContext("2d");
+    if (!offCtx) return;
+    let staticSig = "";
+
     let raf = 0;
     let running = false;
     let cssW = 1, cssH = 1, dpr = 1;
+    // Cap the paint rate (~30fps). The animation reads from the clock, so motion
+    // stays smooth-looking while we roughly halve canvas work + battery draw.
+    const FRAME_MS = 1000 / 30;
+    let lastDraw = -1e9;
     let prevTotal = 0;
     let spawnFrom = 0;
     let spawnStart = -1e9;
@@ -71,6 +85,8 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
 
     const frame = (timeMs: number) => {
       if (!running) return; // a stray queued callback after stop() is a no-op
+      if (timeMs - lastDraw < FRAME_MS) { raf = requestAnimationFrame(frame); return; }
+      lastDraw = timeMs;
       const st = useGame.getState();
       const game = st.game;
       if (st.claimBurst !== prevClaim) { prevClaim = st.claimBurst; burstStart = timeMs; }
@@ -95,8 +111,22 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       prevTotal = model.total;
       const spawnT = Math.min(1, (timeMs - spawnStart) / SPAWN_MS);
 
+      // Repaint the cached static room only when its inputs change.
+      const ssig = `${model.cols}|${model.rows}|${model.era}|${cssW}|${cssH}|${dpr}`;
+      if (ssig !== staticSig) {
+        staticSig = ssig;
+        off.width = canvas.width;
+        off.height = canvas.height;
+        offCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        drawHallStatic(offCtx, model, cssW, cssH);
+      }
+
+      // Blit the opaque room (fully overwrites the previous frame), then paint
+      // the animated layer (racks/motes/markers/burst) on top.
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(off, 0, 0);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      drawHall(ctx, model, {
+      drawHallDynamic(ctx, model, {
         width: cssW, height: cssH, timeMs,
         reducedMotion: useSettings.getState().reducedMotion,
         spawnFrom, spawnT, burst, dpr,
@@ -158,7 +188,10 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       <canvas ref={canvasRef} className="hall-canvas" aria-hidden="true" />
       <div className="hall-tag">
         <span className="hall-era">{eraName(era)}</span>
-        <span className="hall-count">{rackCount} {rackCount === 1 ? "rack" : "racks"}</span>
+        <span className="hall-count">
+          {rackCount} {rackCount === 1 ? "rack" : "racks"}
+          {rooms > 1 && ` · ${rooms} rooms`}
+        </span>
       </div>
     </div>
   );

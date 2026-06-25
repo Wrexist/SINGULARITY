@@ -20,6 +20,7 @@
     "@capacitor/core": "^6.2.1",
     "@capacitor/ios": "^6.2.1",
     "break_infinity.js": "^2.0.0",
+    "cordova-plugin-purchase": "^13.17.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "zustand": "^4.5.5"

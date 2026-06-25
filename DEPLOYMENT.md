@@ -79,6 +79,37 @@ Run: `bundle exec fastlane beta`
 - [ ] Premium IAP configured in App Store Connect (if testing purchases) + sandbox tester ready
 - [ ] Screenshots: reuse the in-game era-transition "milestone moments" as source assets (per GDD §8 — don't repeat the Dynasty Manager UK-ASA screenshot thread that's still open; bake marketing assets out of the game)
 
+## 5b. In-app purchase (premium unlock) — StoreKit setup
+
+The premium unlock uses **`cordova-plugin-purchase` (CdvPurchase v13)** — a
+self-contained, on-device StoreKit integration (no third-party billing backend).
+Code lives in `src/ui/iap.ts` behind a stable interface; the entitlement flag is
+in `src/state/premium.ts`. On web/dev the purchase is a local stub (so the UI is
+testable); on a device it calls real StoreKit.
+
+**Product:** non-consumable, id `com.wrexist.singularityinc.premium`, ~$6.99.
+
+**One-time setup (do this once the app record exists):**
+1. App Store Connect → your app → **In-App Purchases** → **+** → **Non-Consumable**.
+   - Product ID: `com.wrexist.singularityinc.premium` (must match `PREMIUM_PRODUCT_ID`).
+   - Set price tier (~$6.99), display name, description, and a review screenshot.
+   - Submit it (a non-consumable can be reviewed alongside the first app build).
+2. Fill in the **Paid Apps agreement** + banking/tax in ASC, or IAPs won't load.
+3. The CI workflow already runs `cap sync`, which picks up the plugin's native
+   side from `package.json` — **no manual Xcode step** needed for the plugin.
+
+**Testing (device required — IAPs do NOT work in the simulator):**
+1. ASC → **Users and Access → Sandbox → Testers**: create a sandbox Apple ID.
+2. On the device, install the TestFlight build, open **Settings → App Store →
+   Sandbox Account** and sign in with the sandbox tester.
+3. In-app: Settings → **Unlock $6.99** → should show the real StoreKit sheet;
+   complete it → "Founder" status. Test **Restore** on a fresh install too.
+
+> ⚠️ The native path is written against the documented CdvPurchase v13 API but
+> can only be verified on a real device with the product live in ASC. Verify the
+> purchase + restore flow on device before the public release. The web stub is
+> what the automated tests/QA exercise.
+
 ## 6. Common failure modes (and the fix)
 - **Rejected at upload, SDK error** → not built with iOS 26 SDK. Open in Xcode 26, clean build.
 - **Code-signing failures** → refresh Match (`fastlane match appstore`), confirm the right team/profile in Xcode, confirm the bundle ID matches App Store Connect.

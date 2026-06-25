@@ -6,8 +6,11 @@ import {
   type DataOffer,
   type HeatEvent,
   type WorldEvent,
+  type WorldEventEffect,
+  type StaffRole,
 } from "./balance/config";
 import { derive } from "./derive";
+import { isRackId, floorFull, evictableRackFor } from "./hall";
 import type { ActiveModifier, GameState } from "./types";
 
 const clampHeat = (h: number) => Math.max(0, Math.min(balance.heat.max, h));
@@ -62,7 +65,7 @@ export function claimRun(state: GameState): GameState {
 
 /** Cost of the next level of an upgrade: base * growth^owned. */
 export function upgradeCost(def: UpgradeDef, owned: number): Big {
-  return Big.of(def.cost.base).mul(Math.pow(def.cost.growth, owned));
+  return Big.of(def.cost.base).mul(Big.of(def.cost.growth).pow(owned));
 }
 
 export function canBuyUpgrade(state: GameState, id: string): boolean {
@@ -70,6 +73,10 @@ export function canBuyUpgrade(state: GameState, id: string): boolean {
   if (!def) return false;
   const owned = state.upgrades[id] ?? 0;
   if (owned >= def.max) return false;
+  // Racks are bound by floor space. On a full floor a higher tier can still be
+  // bought by replacing a lower-tier rack in place; only when there's nothing
+  // lower to evict must you expand the hall.
+  if (isRackId(id) && floorFull(state) && !evictableRackFor(state, id)) return false;
   return state.resources[def.cost.resource].gte(upgradeCost(def, owned));
 }
 
@@ -80,14 +87,51 @@ export function buyUpgrade(state: GameState, id: string): GameState {
   const cost = upgradeCost(def, owned);
   // Buying dark-web tools puts you on a list — a little heat each time.
   const heat = def.market === "darkweb" ? clampHeat(state.heat + balance.heat.toolBuyHeat) : state.heat;
+  const upgrades = { ...state.upgrades, [id]: owned + 1 };
+  // Full floor + a higher-tier rack → upgrade in place: evict the lowest
+  // lower-tier rack to free its slot (canBuyUpgrade guaranteed one exists).
+  if (isRackId(id) && floorFull(state)) {
+    const evict = evictableRackFor(state, id)!;
+    upgrades[evict] = (upgrades[evict] ?? 0) - 1;
+  }
   return {
     ...state,
     resources: {
       ...state.resources,
       [def.cost.resource]: state.resources[def.cost.resource].sub(cost),
     },
-    upgrades: { ...state.upgrades, [id]: owned + 1 },
+    upgrades,
     heat,
+  };
+}
+
+// ---------- Staff (Phase 2) ----------
+
+const STAFF_BY_ID: Record<string, StaffRole> = Object.fromEntries(
+  balance.staff.roles.map((r) => [r.id, r]),
+);
+
+/** Cost to hire the next of a role: base * growth^owned. */
+export function staffHireCost(role: StaffRole, owned: number): Big {
+  return Big.of(role.hire.base).mul(Big.of(role.hire.growth).pow(owned));
+}
+
+export function canHireStaff(state: GameState, id: string): boolean {
+  const role = STAFF_BY_ID[id];
+  if (!role || !balance.staff.enabled) return false;
+  return state.resources.money.gte(staffHireCost(role, state.upgrades[id] ?? 0));
+}
+
+/** Hire one of a role. No-op if unaffordable. Counts live in the upgrades map. */
+export function hireStaff(state: GameState, id: string): GameState {
+  if (!canHireStaff(state, id)) return state;
+  const role = STAFF_BY_ID[id]!;
+  const owned = state.upgrades[id] ?? 0;
+  const cost = staffHireCost(role, owned);
+  return {
+    ...state,
+    resources: { ...state.resources, money: state.resources.money.sub(cost) },
+    upgrades: { ...state.upgrades, [id]: owned + 1 },
   };
 }
 
@@ -286,6 +330,8 @@ export interface WorldEventResult {
   tone: "good" | "bad";
   /** Short effect summary for the card, e.g. "+25% $" or "Compute ×1.5 · 60s". */
   summary: string;
+  /** Present for faction events: the two branches to render as buttons. */
+  choices?: { label: string; summary: string }[];
 }
 
 const WORLD_EVENTS = balance.worldEvents.list as WorldEvent[];
@@ -307,37 +353,71 @@ const TARGET_LABEL: Record<string, string> = {
 };
 const RES_LABEL: Record<string, string> = { compute: "compute", data: "data", money: "$" };
 
-/** Apply a world event's effect. Pure given the event id. */
-export function applyWorldEvent(state: GameState, eventId: string): { state: GameState; event: WorldEventResult } {
-  const def = WORLD_EVENTS.find((e) => e.id === eventId) ?? WORLD_EVENTS[0]!;
-  let resources = state.resources;
-  let modifiers = state.modifiers;
-  let summary = "";
+function effectSummary(effect: WorldEventEffect): string {
+  if (effect.kind === "grantPct") {
+    const sign = effect.pct > 0 ? "+" : "";
+    return `${sign}${Math.round(effect.pct * 100)}% ${RES_LABEL[effect.resource]}`;
+  }
+  return `${TARGET_LABEL[effect.target]} ×${effect.factor} · ${effect.durationSec}s`;
+}
 
-  if (def.effect.kind === "grantPct") {
-    const { resource, pct } = def.effect;
-    resources = { ...resources, [resource]: resources[resource].mul(1 + pct) };
-    const sign = pct > 0 ? "+" : "";
-    summary = `${sign}${Math.round(pct * 100)}% ${RES_LABEL[resource]}`;
-  } else {
-    const { target, factor, durationSec } = def.effect;
-    const mod: ActiveModifier = {
-      id: def.id,
-      target,
-      factor,
-      remainingSec: durationSec,
-      label: `${TARGET_LABEL[target]} ×${factor}`,
-      tone: def.tone,
+/** Apply one effect (immediate % swing or a timed modifier), keyed to an id for refresh. */
+function applyEffect(state: GameState, effect: WorldEventEffect, id: string, tone: "good" | "bad"): GameState {
+  if (effect.kind === "grantPct") {
+    const { resource, pct } = effect;
+    return { ...state, resources: { ...state.resources, [resource]: state.resources[resource].mul(1 + pct) } };
+  }
+  const mod: ActiveModifier = {
+    id,
+    target: effect.target,
+    factor: effect.factor,
+    remainingSec: effect.durationSec,
+    label: `${TARGET_LABEL[effect.target]} ×${effect.factor}`,
+    tone,
+  };
+  // Refresh rather than stack a repeat of the same event.
+  return { ...state, modifiers: [...state.modifiers.filter((m) => m.id !== id), mod] };
+}
+
+/**
+ * Fire a world event. Simple events apply their effect immediately. Faction
+ * events (with `choices`) do NOT apply anything here — they wait for the player's
+ * pick via applyWorldEventChoice — but surface their branches for the card.
+ */
+export function applyWorldEvent(state: GameState, eventId: string): { state: GameState; event: WorldEventResult } {
+  const def = WORLD_EVENTS.find((e) => e.id === eventId);
+  // Unknown id (stale save / typo): apply nothing rather than the wrong event.
+  if (!def) return { state, event: { id: eventId, headline: "", body: "", tone: "good", summary: "" } };
+  const base = { id: def.id, headline: def.headline, body: def.body, tone: def.tone };
+
+  if (def.choices && def.choices.length > 0) {
+    return {
+      state, // unchanged until the player chooses
+      event: { ...base, summary: "", choices: def.choices.map((c) => ({ label: c.label, summary: effectSummary(c.effect) })) },
     };
-    // Refresh rather than stack a repeat of the same event.
-    modifiers = [...modifiers.filter((m) => m.id !== def.id), mod];
-    summary = `${TARGET_LABEL[target]} ×${factor} · ${durationSec}s`;
   }
 
+  const effect = def.effect!;
   return {
-    state: { ...state, resources, modifiers },
-    event: { id: def.id, headline: def.headline, body: def.body, tone: def.tone, summary },
+    state: applyEffect(state, effect, def.id, def.tone),
+    event: { ...base, summary: effectSummary(effect) },
   };
+}
+
+/** Apply a chosen branch of a faction event: its effect + an alignment shift. */
+export function applyWorldEventChoice(
+  state: GameState,
+  eventId: string,
+  choiceIndex: number,
+): { state: GameState; event: WorldEventResult } {
+  const def = WORLD_EVENTS.find((e) => e.id === eventId);
+  if (!def) return { state, event: { id: eventId, headline: "", body: "", tone: "good", summary: "" } };
+  const choice = def.choices?.[choiceIndex];
+  const base = { id: def.id, headline: def.headline, body: def.body, tone: def.tone, summary: "" };
+  if (!choice) return { state, event: base };
+  const next = applyEffect(state, choice.effect, def.id, def.tone);
+  const alignment = Math.max(-1, Math.min(1, state.alignment + choice.alignment));
+  return { state: { ...next, alignment }, event: { ...base, summary: effectSummary(choice.effect) } };
 }
 
 /**

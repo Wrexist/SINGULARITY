@@ -156,7 +156,12 @@ fun-gate on 2026-06-24 and greenlit Phase 1. (Phase 0 history retained below for
       STUB that grants instantly until StoreKit is wired.
 - [~] PENDING (owner): create the App Store Connect app record (bundle com.wrexist.singularityinc),
       then run the workflow. No extra secrets needed. First run UNVERIFIED — will need iteration.
-- [ ] Wire the real StoreKit purchase + create the premium product once the app record exists in ASC.
+- [x] Wire the real StoreKit purchase: `cordova-plugin-purchase` (CdvPurchase v13), self-contained
+      on-device (no billing backend), behind the existing `iap.ts` interface; web/dev keeps the stub
+      so tests/QA still run. Build + 97 tests green. ⚠️ Native path needs DEVICE verification once the
+      ASC product exists — runbook added to DEPLOYMENT.md §5b.
+- [~] PENDING (owner): create the `com.wrexist.singularityinc.premium` non-consumable in ASC +
+      Paid Apps agreement, then device-test the purchase/restore with a sandbox tester.
 - [x] App Store metadata package (`appstore/`): ASO-optimized name/subtitle/keywords (counts verified),
       promo + 4000-char description, release notes, categories, 12+ age-rating answers, "Data Not
       Collected" privacy + hostable privacy policy, IAP listing, screenshot plan, review notes, and a
@@ -168,6 +173,21 @@ fun-gate on 2026-06-24 and greenlit Phase 1. (Phase 0 history retained below for
 - [~] PENDING (owner): enable GitHub Pages (Settings → Pages → Deploy from branch → main, `/docs`) so
       the privacy/support/marketing URLs go live; render `icon.svg` → 1024 PNG; create the ASC app record.
 
+## PHASE 2 — Depth wave (STARTED 2026-06-24, owner go-ahead post-launch-prep)
+*Plan: `PHASE2_PLAN.md`. Each system ships behind a `balance.<system>.enabled` flag.*
+- [x] **P2-A Power & Heat (LIVE):** racks draw power; over-subscribe → Compute throttles
+      (soft cap, floored at 25%). 3 capacity upgrades (PSU/cooling/substation), a Power meter in
+      the Hardware panel, power-aware sim. First ship 12m48s, no wall. 6 tests.
+- [x] **P2-B Staff & Payroll (LIVE):** Researcher/Engineer/Ops multiply a lane, cost Money/sec
+      payroll (over-hire tension). No save migration (counts in upgrades map). Staff panel revealed
+      after first research. Opt-in — sim unchanged. 5 tests.
+- [x] **P2-C Eras 4–5 + multi-room hall (LIVE):** Frontier Lab (teal) + Hyperscaler (indigo) reskins,
+      ship-gated. Multi-room: renderer splits the expanded floor into 2/4 rooms with glowing glass
+      partitions + lit walkways (pure-renderer, no engine/save change). Room count in the hall tag.
+- [x] **P2-D Factions + event engine (LIVE):** persisted alignment (−1..1, save v3→v4), two-choice
+      faction events (effect applied on pick + alignment shift), alignment in Lab Stats. 5 events.
+- [ ] Cosmetic IAP store (themes/skins/lab name) — after the systems land, if retention justifies.
+
 ## Backlog (later Phase 1 + Phase 2+)
 - [Phase 2+] power/heat, staff, factions, eras 4–6, multi-room hall, cosmetic store, Steam port
 
@@ -175,3 +195,43 @@ fun-gate on 2026-06-24 and greenlit Phase 1. (Phase 0 history retained below for
 
 ## Done log
 *(append completed items with date as you go — keeps session handoff clean)*
+
+### 2026-06-24 — UI visibility/glitch + difficulty pass (owner-directed, from TestFlight screenshots)
+- [x] **Fixed stuck toasts** (the "pop-ups never leave the screen" bug). Root cause: the game
+      re-renders ~10×/sec (10 Hz tick) and `Toast`'s dismiss-timer effect depended on the parent's
+      `onDone` identity, which changed every render → the timeout was cleared+restarted forever and
+      never fired. Fix: hold `onDone` in a ref so the timer keys only off the toast id; also made
+      `pushToast`/`dropToast` stable with `useCallback` and capped the stack to the latest 3.
+- [x] Toast stack z-index dropped below modal/sheet backdrops so an open pop-up covers toasts
+      instead of them piling on top of the card you're reading.
+- [x] **Dark-blue cleanup (all four, owner-confirmed):** neutralized the modal/sheet/celebration
+      backdrops (charcoal scrim, no navy cast); lightened + de-saturated the hall room palette
+      (`ERA_BG`/`ERA_FLOOR`) and softened the hall edge vignette; dialed the aurora blobs down
+      (0.5→0.22 opacity); relit the dark Data Bazaar into a light lavender card and fixed all its
+      light-on-dark text (heat meter, vendor/shady tags, risk lines) for the light theme.
+- [x] **Readability:** darkened secondary ink tokens (`--ink-2`/`--ink-3`) for contrast on glass.
+- [x] **Hall perf:** cached the static room (sky+walls+floor) to an offscreen buffer (blitted each
+      frame instead of rebuilding ~a dozen gradients + the whole floor grid 60×/sec) and capped the
+      canvas to ~30fps. Split `drawHall` → `drawHallStatic` + `drawHallDynamic`.
+- [x] **Rack capacity = floor space (new rule):** racks (all tiers, shared) are now gated by the
+      2.5D floor's tile count — you must expand the hall to buy more. New pure `src/engine/hall.ts`
+      (`hallCapacity`/`totalRacks`/`floorFull`, shared by engine + renderer to avoid a cycle);
+      `canBuyUpgrade` blocks racks when full; UpgradePanel shows a "Floor space: n/cap" meter and a
+      "Floor full" reason on blocked rack cards. 5 new tests (95 total).
+- [x] **Rack auto-replace (anti-softlock):** on a FULL floor, buying a higher-tier rack upgrades
+      in place by evicting the lowest lower-tier rack you own (no money refund — the evicted tier's
+      count just drops, making its rebuy cheaper). You're only hard-blocked (must expand) when the
+      floor is full of equal-or-higher tiers. Cards show "↑ replaces a lower-tier rack" upfront so
+      it's never a silent surprise. Chosen over a sell button: zero extra taps, no UI clutter, no
+      softlock, no exploit. Engine: `evictableRackFor`/`rackTier` in `hall.ts`; 2 new tests.
+- [x] **Difficulty pass (verified via `npm run sim`):** the floor cap IS the difficulty lever.
+      First experiment also nerfed payouts + cost growth → sim showed first-prestige UNREACHABLE in
+      240m (hard wall), so those economy nerfs were REVERTED. Floor cap alone moves first-ship from
+      ~10.5m → ~14.8m (≈40% longer) + adds strategic floor management, with longest wall 0m55s and a
+      compounding meta-loop. Beatable + smooth + harder. NOTE: after adding rack auto-replace
+      (which softens the cap — the optimal player keeps a full best-tier floor), re-tuned payouts to
+      dataPerCompute 0.28 / moneyPerCompute 0.45 to restore the difficulty: sim now first-ships
+      ~12m11s with longest wall 1m05s and a healthy meta-loop (Gen2 ~1m, Gen3 ~55s).
+- [x] Updated `scripts/balance-sim.ts` to model the floor cap: the greedy player now BUYS hall
+      expansions when the floor fills and prefers the highest-tier affordable rack (filling permanent
+      slots with cheap consumer cards was tanking the modeled income and faking a wall).

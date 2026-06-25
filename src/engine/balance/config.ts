@@ -22,6 +22,7 @@ export interface UpgradeDef {
     | { kind: "dataPerSec"; perLevel: number }
     | { kind: "floorCols"; perLevel: number }
     | { kind: "floorRows"; perLevel: number }
+    | { kind: "powerCapacity"; perLevel: number }
     | { kind: "autoClaim" }
     | { kind: "autoTrain" };
 }
@@ -75,6 +76,24 @@ export interface HeatEvent {
   };
 }
 
+/**
+ * PHASE 2 — Staff (PHASE2_PLAN §P2-B). Hireable specialists that multiply a
+ * production lane but cost ongoing payroll (a Money sink → a real over-hire vs.
+ * growth tension). NOT a new resource. Counts live in the shared `upgrades` map
+ * so no save migration is needed; payroll is drained in tick(), multipliers fold
+ * into the existing derive lanes.
+ */
+export interface StaffRole {
+  id: string;
+  name: string;
+  desc: string;
+  /** Money cost to hire the next one: base * growth^owned. */
+  hire: { base: number; growth: number };
+  /** Ongoing Money/sec per hire. */
+  payroll: number;
+  effect: { lane: "computeMult" | "dataMult" | "moneyMult"; perLevel: number };
+}
+
 export interface ResearchDef {
   id: string;
   name: string;
@@ -89,16 +108,32 @@ export interface ResearchDef {
     | { kind: "unlockPassiveMoney"; perSec: number };
 }
 
-/** An ambient satirical event. Effect is a timed buff or an immediate % swing. */
+/** A world-event effect: a timed global buff/debuff or an immediate % swing. */
+export type WorldEventEffect =
+  | { kind: "buff"; target: "computeMult" | "dataMult" | "moneyMult"; factor: number; durationSec: number }
+  | { kind: "grantPct"; resource: "compute" | "data" | "money"; pct: number };
+
+/** One branch of a faction event: a label, its effect, and how it moves alignment. */
+export interface WorldEventChoice {
+  label: string;
+  effect: WorldEventEffect;
+  /** Alignment nudge: negative = doomer, positive = accelerationist. */
+  alignment: number;
+}
+
+/**
+ * An ambient satirical event. Either a simple event with an immediate `effect`,
+ * OR a faction event with two `choices` (the effect is applied on the player's
+ * pick, which also shifts their alignment).
+ */
 export interface WorldEvent {
   id: string;
   weight: number;
   tone: "good" | "bad";
   headline: string;
   body: string;
-  effect:
-    | { kind: "buff"; target: "computeMult" | "dataMult" | "moneyMult"; factor: number; durationSec: number }
-    | { kind: "grantPct"; resource: "compute" | "data" | "money"; pct: number };
+  effect?: WorldEventEffect;
+  choices?: WorldEventChoice[];
 }
 
 const WORLD_EVENTS: WorldEvent[] = [
@@ -270,6 +305,63 @@ const WORLD_EVENTS: WorldEvent[] = [
     body: "Ten thousand signatories demand you stop. You frame it and keep going, but optics force a 'safety review.' Compute ×0.8.",
     effect: { kind: "buff", target: "computeMult", factor: 0.8, durationSec: 40 },
   },
+
+  // --- Faction events (Phase 2): two choices, diverging effects + alignment. ---
+  {
+    id: "choice_opensource",
+    weight: 3,
+    tone: "good",
+    headline: "Open-Source the Model?",
+    body: "The community is begging for the weights. Marketing is begging you not to. Someone has to decide, and everyone's looking at you.",
+    choices: [
+      { label: "Open-source it (+30% data)", effect: { kind: "grantPct", resource: "data", pct: 0.3 }, alignment: 0.34 },
+      { label: "Keep it closed (+25% cash)", effect: { kind: "grantPct", resource: "money", pct: 0.25 }, alignment: -0.34 },
+    ],
+  },
+  {
+    id: "choice_safety_review",
+    weight: 3,
+    tone: "bad",
+    headline: "Safety Team Demands a Slowdown",
+    body: "Your safety lead wants a six-week eval freeze. Your investors want a demo on Tuesday. Both cc'd the whole company.",
+    choices: [
+      { label: "Slow down (Revenue ×1.6, PR win)", effect: { kind: "buff", target: "moneyMult", factor: 1.6, durationSec: 50 }, alignment: -0.3 },
+      { label: "Full speed ahead (Compute ×1.8)", effect: { kind: "buff", target: "computeMult", factor: 1.8, durationSec: 50 }, alignment: 0.3 },
+    ],
+  },
+  {
+    id: "choice_regulator_deal",
+    weight: 2,
+    tone: "good",
+    headline: "A Regulator Offers a Deal",
+    body: "Quiet cooperation now, or aggressive lobbying later. Your General Counsel has prepared two very different press releases.",
+    choices: [
+      { label: "Cooperate (−10% cash, clean hands)", effect: { kind: "grantPct", resource: "money", pct: -0.1 }, alignment: -0.3 },
+      { label: "Lobby hard (+35% cash)", effect: { kind: "grantPct", resource: "money", pct: 0.35 }, alignment: 0.3 },
+    ],
+  },
+  {
+    id: "choice_scaling_bet",
+    weight: 2,
+    tone: "good",
+    headline: "The Big Scaling Bet",
+    body: "A researcher swears the next 10× run cracks it. The safety crowd swears it's reckless. The GPUs are, notably, already warming up.",
+    choices: [
+      { label: "Hold the line (+30% data, careful)", effect: { kind: "grantPct", resource: "data", pct: 0.3 }, alignment: -0.28 },
+      { label: "Send it (Compute ×2 briefly)", effect: { kind: "buff", target: "computeMult", factor: 2, durationSec: 40 }, alignment: 0.32 },
+    ],
+  },
+  {
+    id: "choice_whistleblower",
+    weight: 2,
+    tone: "bad",
+    headline: "A Whistleblower Approaches",
+    body: "An engineer wants to go public about the data sourcing. You can support them, or 'manage the narrative.' HR is sweating.",
+    choices: [
+      { label: "Back them (−12% cash, integrity)", effect: { kind: "grantPct", resource: "money", pct: -0.12 }, alignment: -0.32 },
+      { label: "Spin it (Revenue ×1.7)", effect: { kind: "buff", target: "moneyMult", factor: 1.7, durationSec: 45 }, alignment: 0.28 },
+    ],
+  },
 ];
 
 export const balance = {
@@ -286,8 +378,10 @@ export const balance = {
     costSeconds: 2,
     minCompute: 10,
     durationSec: 5,
-    dataPerCompute: 0.35,
-    moneyPerCompute: 0.6,
+    // Difficulty pass: leaner run payouts so scaling the operation (more/better
+    // racks + expansions) matters more. Tuned against the sim to stay wall-free.
+    dataPerCompute: 0.28,
+    moneyPerCompute: 0.45,
   },
 
   /**
@@ -308,11 +402,24 @@ export const balance = {
         blurb:
           "The Verge — “Singularity Inc. ships its first model.” The valuation is, sources confirm, ‘definitely not a bubble.’ The closet is now a floor.",
       },
+      {
+        name: "Frontier Lab",
+        blurb:
+          "Bloomberg — “Singularity Inc. declares itself a ‘frontier lab,’ a term it also coined.” Badge access now has tiers. There is a second beanbag, and a waitlist for it.",
+      },
+      {
+        name: "Hyperscaler",
+        blurb:
+          "WSJ — “Singularity Inc. is now a ‘hyperscaler,’ and has reportedly bought a power plant ‘for latency reasons.’” Analysts remain confused, but bullish.",
+      },
     ],
     /** Reach era 1 once this many research nodes are owned. */
     startupAtResearchCount: 3,
     /** Reach era 2 once this capability is researched (or you've ever shipped). */
     scaleUpAtResearch: "inference_api",
+    /** Eras 4–5 are endgame spectacle, gated by how many times you've shipped. */
+    frontierAtShips: 2,
+    hyperscalerAtShips: 5,
   },
 
   /** The 2.5D hall floor. Expansions (below) grow it so more racks fit. */
@@ -323,6 +430,58 @@ export const balance = {
     maxDrawnRacks: 120,
     /** Reveal floor expansions once the closet starts to fill (progression rule). */
     expansionRevealRacks: 5,
+  },
+
+  /**
+   * PHASE 2 — Power & Heat (GAMEPLAN §5, PHASE2_PLAN §P2-A). A soft cap: racks
+   * draw power; over-subscribe your capacity and Compute throttles (never a hard
+   * wall — floored at `throttleFloor`). LIVE (`enabled: true`) — flip to false to
+   * dark-launch. Power is a DERIVED constraint shown as a meter, NOT a 4th
+   * resource (legibility).
+   */
+  power: {
+    enabled: true,
+    /** Free power budget before any capacity upgrades (kW). */
+    baseCapacityKw: 50,
+    /** Draw per rack by tier [consumer, server, TPU] (kW). */
+    drawPerRackKw: [0.5, 2, 8],
+    /** Compute never throttles below this fraction, however over-subscribed. */
+    throttleFloor: 0.25,
+    /** Show the power meter / nudge once the lab actually draws something. */
+    revealAtDrawKw: 1,
+  },
+
+  /** PHASE 2 — Staff. Opt-in depth: hire to multiply a lane, pay payroll forever. */
+  staff: {
+    enabled: true,
+    /** Reveal the panel once the lab is established (after the first research). */
+    revealAtResearch: 1,
+    roles: [
+      {
+        id: "staff_researcher",
+        name: "Researcher",
+        desc: "+8% Data per run, each. Mostly reads arXiv and drinks cold brew.",
+        hire: { base: 300, growth: 1.5 },
+        payroll: 2,
+        effect: { lane: "dataMult", perLevel: 0.08 },
+      },
+      {
+        id: "staff_engineer",
+        name: "Engineer",
+        desc: "+6% Compute, each. Keeps the racks alive and the YAML valid.",
+        hire: { base: 500, growth: 1.5 },
+        payroll: 3,
+        effect: { lane: "computeMult", perLevel: 0.06 },
+      },
+      {
+        id: "staff_ops",
+        name: "Ops Lead",
+        desc: "+8% Money per run, each. Monetizes things you didn't know you had.",
+        hire: { base: 700, growth: 1.5 },
+        payroll: 4,
+        effect: { lane: "moneyMult", perLevel: 0.08 },
+      },
+    ] satisfies StaffRole[],
   },
 
   prestige: {
@@ -436,6 +595,31 @@ export const balance = {
       cost: { resource: "money", base: 7000, growth: 2.0 },
       max: 4,
       effect: { kind: "floorRows", perLevel: 2 },
+    },
+    // --- Power & Cooling (Phase 2: raise capacity so racks don't throttle) ---
+    {
+      id: "psu_bay",
+      name: "PSU Bay",
+      desc: "+40 kW power capacity. More racks run before they throttle.",
+      cost: { resource: "money", base: 800, growth: 1.4 },
+      max: Infinity,
+      effect: { kind: "powerCapacity", perLevel: 40 },
+    },
+    {
+      id: "cooling_loop",
+      name: "Liquid Cooling Loop",
+      desc: "+150 kW. Keeps the racks cool enough to run flat out.",
+      cost: { resource: "money", base: 6000, growth: 1.45 },
+      max: Infinity,
+      effect: { kind: "powerCapacity", perLevel: 150 },
+    },
+    {
+      id: "substation",
+      name: "On-Site Substation",
+      desc: "+600 kW. Industrial power for an industrial lab.",
+      cost: { resource: "money", base: 50000, growth: 1.5 },
+      max: Infinity,
+      effect: { kind: "powerCapacity", perLevel: 600 },
     },
     // --- Dark-web tools (sold in the Data Bazaar, not the hardware shelf) ---
     {

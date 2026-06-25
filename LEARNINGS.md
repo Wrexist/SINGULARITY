@@ -194,3 +194,32 @@ Deferred on purpose (documented, not fixed unsupervised — current balance does
   firing, and only reacts to genuine in-play transitions after that. See `App.tsx` toast effect.
 - The `--offline` screenshot mode is the quickest way to catch this class of bug (it loads a
   populated save just like a returning player).
+
+### Timers in components that re-render every tick (the "toast never disappears" trap)
+- **The app re-renders ~10×/sec** (the 10 Hz `advance` tick updates `game`, and `App` subscribes
+  to it). Any child `useEffect` that sets a `setTimeout` and lists a **prop callback** in its deps
+  will have that effect cleared+re-run on EVERY parent render if the callback isn't memoized — so
+  the timeout is perpetually reset and **never fires**. This is exactly why unlock toasts got stuck
+  on screen forever.
+- **Fix pattern:** keep the callback in a ref (`onDoneRef.current = onDone`) and depend only on
+  stable values (the item id), so the timer is armed once per item. Memoize the parent's
+  `push`/`drop` helpers with `useCallback` too. Cap transient stacks (e.g. last 3) so a burst can't
+  bury the screen. See `Toast.tsx` / `App.tsx`.
+- General rule: in this codebase, treat "depends on a function prop" in a timer/interval effect as
+  a bug unless that prop is `useCallback`-stable.
+
+### Canvas perf: cache the static layer, cap the frame rate
+- The hall's rAF loop rebuilt every gradient + the whole floor grid each frame. Big mobile win:
+  paint the **static** parts (sky + walls + floor — depend only on room size/era) once into an
+  offscreen canvas and **blit** it each frame; only the animated layer (racks/motes/markers/burst)
+  redraws. Split is `drawHallStatic` + `drawHallDynamic` in `hallRenderer.ts`; the cache key in
+  `HallCanvas.tsx` is `cols|rows|era|cssW|cssH|dpr`. Also cap paint to ~30fps (motion reads from
+  the clock, so it still looks smooth). The opaque blit fully overwrites the prior frame, so no
+  `clearRect` is needed.
+
+### Hall geometry/capacity is a GAME RULE, not just a view concern
+- Rack capacity (you can only own as many racks as the floor has tiles → must expand) lives in
+  `src/engine/hall.ts` so BOTH the engine (`canBuyUpgrade` gate) and the renderer view-model can
+  use it. Putting it in `render/hallModel.ts` would have created an import cycle (actions ↔
+  hallModel). `hall.ts` imports only `balance` + types, so no cycle. `buildHallModel` still
+  downsamples for over-capacity (legacy/loaded saves) — the gate only blocks NEW purchases.

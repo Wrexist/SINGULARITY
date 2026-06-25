@@ -43,15 +43,22 @@ const TIER_BASE: RGB[] = [
   [155, 81, 224], // TPU pod — violet
 ];
 
+// Lightened, de-saturated room palettes (visibility pass). The hall used to be
+// near-black navy that read as a "dark blue spot"; these slate tones keep enough
+// depth for the glowing racks to pop while sitting comfortably in the light app.
 const ERA_BG: [string, string][] = [
-  ["#0d1124", "#11162e"],
-  ["#0b1430", "#0f2148"],
-  ["#150f2b", "#251b46"],
+  ["#2a3046", "#343c56"], // 0 Garage Closet — slate
+  ["#283454", "#33426c"], // 1 Funded Startup — blue
+  ["#322a4d", "#403962"], // 2 Scale-Up Lab — violet
+  ["#1f3a42", "#27525c"], // 3 Frontier Lab — teal
+  ["#2b2a55", "#3a3a78"], // 4 Hyperscaler — royal indigo
 ];
 const ERA_FLOOR: RGB[] = [
-  [26, 33, 64],
-  [27, 39, 80],
-  [36, 29, 73],
+  [56, 64, 92],
+  [54, 70, 110],
+  [70, 60, 104],
+  [48, 92, 104], // 3 teal
+  [64, 64, 124], // 4 indigo
 ];
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
@@ -109,9 +116,14 @@ export function pointInPoly(x: number, y: number, poly: Pt[]): boolean {
   return inside;
 }
 
-export function drawHall(ctx: CanvasRenderingContext2D, model: HallModel, o: DrawOpts): void {
-  const { width: W, height: H } = o;
-
+/**
+ * The STATIC layer: sky, room shell, and floor. These depend only on the room
+ * size + era, not on the animation clock or rack count — so HallCanvas paints
+ * this once into an offscreen buffer and blits it each frame instead of
+ * rebuilding ~a dozen gradients and the whole floor grid 30–60×/sec (the main
+ * source of the reported jank on mobile).
+ */
+export function drawHallStatic(ctx: CanvasRenderingContext2D, model: HallModel, W: number, H: number): void {
   const [bg0, bg1] = eraBg(model.era);
   const sky = ctx.createLinearGradient(0, 0, 0, H);
   sky.addColorStop(0, bg0);
@@ -120,16 +132,69 @@ export function drawHall(ctx: CanvasRenderingContext2D, model: HallModel, o: Dra
   ctx.fillRect(0, 0, W, H);
 
   const L = computeLayout(model.cols, model.rows, model.gxMin, model.gyMin, W, H);
+  // Fans are frozen in the cached layer (a tiny detail); the room itself is static.
+  drawRoom(ctx, L, model.era, H, 0, true);
+  drawFloor(ctx, L, model.era);
+  drawPartitions(ctx, L, model);
+}
+
+/**
+ * Interior glass partition walls (Phase 2 multi-room): once the floor is expanded
+ * it splits into rooms at the midpoint(s), drawn as low semi-transparent dividers
+ * so the hall reads as a multi-room facility without occluding the racks.
+ */
+function drawPartitions(ctx: CanvasRenderingContext2D, L: Layout, model: HallModel): void {
+  const { iso, tileH, gxMin, gyMin, gxMax, gyMax } = L;
+  const base = eraFloor(model.era);
+  const h = tileH * 2.0; // a partition wall, low enough not to bury the racks
+  const rail: RGB = [120, 210, 255]; // cool cyan glow on the rails
+
+  const wall = (p0: Pt, p1: Pt) => {
+    // Floor seam: a bright walkway stripe under the divider.
+    stroke(ctx, p0, p1, rgba(rail, 0.5), 3);
+    const t0: Pt = { x: p0.x, y: p0.y - h }, t1: Pt = { x: p1.x, y: p1.y - h };
+    const g = ctx.createLinearGradient(0, t0.y, 0, p0.y);
+    g.addColorStop(0, rgba(shade(base, 2.1), 0.42));
+    g.addColorStop(1, rgba(shade(base, 1.3), 0.14));
+    poly(ctx, [p0, p1, t1, t0], g);
+    // Vertical mullions for a server-room divider feel.
+    const segs = 6;
+    for (let i = 1; i < segs; i++) {
+      const a = lerp(p0, p1, i / segs), b = lerp(t0, t1, i / segs);
+      stroke(ctx, a, b, rgba(shade(base, 1.7), 0.2), 1);
+    }
+    stroke(ctx, t0, t1, rgba(rail, 0.7), 1.5); // glowing top rail
+    stroke(ctx, p0, p1, "rgba(0,0,0,0.28)", 1); // base shadow
+  };
+
+  if (model.splitGx !== null) wall(iso(model.splitGx, gyMin), iso(model.splitGx, gyMax));
+  if (model.splitGy !== null) wall(iso(gxMin, model.splitGy), iso(gxMax, model.splitGy));
+}
+
+/** The full hall (static + animated) in one pass. Kept for any non-cached use. */
+export function drawHall(ctx: CanvasRenderingContext2D, model: HallModel, o: DrawOpts): void {
+  drawHallStatic(ctx, model, o.width, o.height);
+  drawHallDynamic(ctx, model, o);
+}
+
+/** The ANIMATED layer: drifting motes, racks, claim burst, expansion markers. */
+export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel, o: DrawOpts): void {
+  const { width: W, height: H } = o;
+
+  const L = computeLayout(model.cols, model.rows, model.gxMin, model.gyMin, W, H);
   const { iso, tileW, tileH, originY, gxMin, gyMin, gxMax, gyMax } = L;
 
-  drawRoom(ctx, L, model.era, H, o.timeMs, o.reducedMotion);
-  drawFloor(ctx, L, model.era);
   drawMotes(ctx, W, H, originY, o.timeMs, model.active, model.total, o.reducedMotion, 0.6);
 
-  // Place racks in orderly rows, back-to-front (valid iso paint order).
+  // Place racks in orderly rows, back-to-front (valid iso paint order). Leave the
+  // partition column/row empty as a walkway so the rooms read as separate.
   const tiles: Pt[] = [];
   for (let gy = gyMin; gy < gyMax; gy++) {
-    for (let gx = gxMin; gx < gxMax; gx++) tiles.push(iso(gx + 0.5, gy + 0.5));
+    if (gy === model.splitGy) continue;
+    for (let gx = gxMin; gx < gxMax; gx++) {
+      if (gx === model.splitGx) continue;
+      tiles.push(iso(gx + 0.5, gy + 0.5));
+    }
   }
 
   const t = o.timeMs;

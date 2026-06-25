@@ -7,6 +7,15 @@ interface Props {
   derived: Derived;
 }
 
+/** Faction stance label from the alignment scalar (−1 doomer … +1 accel). */
+function alignmentLabel(a: number): string {
+  if (a <= -0.6) return "Doomer";
+  if (a < -0.15) return "Leaning doomer";
+  if (a <= 0.15) return "Neutral";
+  if (a < 0.6) return "Leaning accelerationist";
+  return "Accelerationist";
+}
+
 /** Collapsible "Lab Stats" — surfaces the math (legibility is the feature, GDD). */
 export function StatsPanel({ game, derived }: Props) {
   const [open, setOpen] = useState(false);
@@ -23,6 +32,7 @@ export function StatsPanel({ game, derived }: Props) {
     { label: "Lifetime earned", value: fmtMoney(game.lifetimeMoney) },
     { label: "Models shipped", value: String(game.prestige.ships) },
     { label: "Legacy Weights", value: fmt(game.prestige.legacyWeights) },
+    { label: "Faction stance", value: alignmentLabel(game.alignment) },
   ];
 
   return (

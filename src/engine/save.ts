@@ -38,6 +38,7 @@ interface SavedShape {
   lifetimeMoney: string;
   heat: number;
   modifiers: ActiveModifier[];
+  alignment: number;
 }
 
 export function serialize(state: GameState): string {
@@ -58,6 +59,7 @@ export function serialize(state: GameState): string {
     lifetimeMoney: state.lifetimeMoney.toJSON(),
     heat: state.heat,
     modifiers: state.modifiers,
+    alignment: state.alignment,
   };
   return JSON.stringify(shape);
 }
@@ -76,6 +78,10 @@ export function deserialize(json: string): GameState {
   const modifiers = Array.isArray(raw.modifiers)
     ? raw.modifiers.filter(isWellFormedModifier)
     : fresh.modifiers;
+  const alignment =
+    typeof raw.alignment === "number" && Number.isFinite(raw.alignment)
+      ? Math.max(-1, Math.min(1, raw.alignment))
+      : fresh.alignment;
   return {
     version: SAVE_VERSION,
     resources: {
@@ -93,6 +99,7 @@ export function deserialize(json: string): GameState {
     lifetimeMoney: Big.of(raw.lifetimeMoney ?? res.money ?? "0"),
     heat,
     modifiers,
+    alignment,
   };
 }
 
@@ -113,6 +120,10 @@ export function migrate(raw: any): SavedShape {
   if (s.version === 2) {
     // v2 → v3: introduce world-event modifiers (none active to start).
     s = { ...s, version: 3, modifiers: s.modifiers ?? [] };
+  }
+  if (s.version === 3) {
+    // v3 → v4: introduce faction alignment (starts neutral).
+    s = { ...s, version: 4, alignment: s.alignment ?? 0 };
   }
   return s as SavedShape;
 }
