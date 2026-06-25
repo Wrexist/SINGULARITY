@@ -349,8 +349,12 @@ upgrades + a full Employees page. Built on branch `claude/phase3-product-busines
       achievements+ships+ascensions, only `spent` stored → can't desync); 8-perk tree w/ prereqs
       folded into derive (compute/data/money/payroll); persists through prestige+ascension (save
       v10→v11); ReputationModal from a Prestige strip. Curve-safe (no perks owned at run start). 8 tests.
-- [ ] **Step 4 — Polish & ship-prep:** adversarial diff-review of the 3 new economies; CLAUDE.md phase
-      line + docs updated; UX/a11y sweep; then TestFlight run (merging ≠ shipping — see CLAUDE.md).
+- [x] **Step 4 — Polish & ship-prep (dev side):** adversarial diff-review of the 3 new economies →
+      fixed passive-money legacy²/ascension² squaring (curve-neutral, sim byte-identical), scraper
+      lane missing rep.dataMult, and achievement-toast coalescing; CLAUDE.md phase line + docs updated;
+      readability pass (plain-language all business jargon for new players). 232 tests green.
+      ↳ REMAINING (owner action): run **Actions → iOS TestFlight → Run workflow** to ship to phones
+        (merging ≠ shipping — see CLAUDE.md).
 
 > Curve discipline held throughout: every Phase-3 compounding term (ascension, reputation perks) is
 > hard-gated to the endgame, so `npm run sim` first-prestige stays ~12m / wall 1m05s across all of it.
