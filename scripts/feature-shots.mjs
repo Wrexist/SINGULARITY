@@ -150,6 +150,18 @@ try {
   } else {
     console.log("rep-strip not visible (no points) — skipped reputation shot");
   }
+
+  // 7) Lab Stats — the all-time career view.
+  await page.mouse.click(8, 8).catch(() => {});
+  await sleep(200);
+  const statsToggle = page.locator(".stats-toggle");
+  if (await statsToggle.isVisible().catch(() => false)) {
+    await statsToggle.scrollIntoViewIfNeeded().catch(() => {});
+    await statsToggle.click();
+    await sleep(300);
+    await page.locator(".panel.stats").screenshot({ path: "screenshots/feat-stats.png" });
+    console.log("Saved feat-stats.png");
+  }
 } finally {
   if (browser) await browser.close();
   server.kill();

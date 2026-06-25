@@ -1,6 +1,7 @@
 import { balance } from "./balance/config";
 import { products as PB } from "./balance/products";
 import { productMetrics, productsUnlocked, canStartUpgrade } from "./products";
+import { reputationBalance, canBuyReputationPerk } from "./reputation";
 import type { GameState } from "./types";
 
 /**
@@ -74,6 +75,12 @@ export function advisorItems(state: GameState): AdvisorItem[] {
   // First hire: a strong early nudge once the team is unlocked.
   if (staffUnlocked(state) && state.employees.length === 0) {
     items.push({ tab: "employees", text: "Hire your first specialist", priority: 85 });
+  }
+
+  // Lab Reputation: a gentle nudge when a permanent perk is affordable (surfaces the
+  // meta-layer, which lives in the Prestige panel and is easy to miss).
+  if (reputationBalance.perks.some((p) => canBuyReputationPerk(state, p.id))) {
+    items.push({ tab: "lab", text: "You can afford a Lab Reputation perk", priority: 40 });
   }
 
   return items.sort((a, b) => b.priority - a.priority);

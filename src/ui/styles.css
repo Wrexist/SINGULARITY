@@ -882,6 +882,11 @@ body {
   overflow: hidden;
   animation: rise 0.4s var(--ease-out) both;
 }
+.stats-subhead {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--ink-3); margin: 12px 2px 6px;
+}
+.stats-subhead:first-of-type { margin-top: 4px; }
 .stat-row {
   display: flex;
   align-items: center;

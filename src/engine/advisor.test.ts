@@ -76,6 +76,14 @@ describe("advisor", () => {
     expect(advisorItems(s).some((i) => i.text.includes("behind rivals"))).toBe(false);
   });
 
+  it("nudges to spend Lab Reputation when a perk is affordable", () => {
+    const s = createInitialState();
+    s.stats.totalShips = 100; // plenty of reputation earned, none spent
+    expect(advisorItems(s).some((i) => i.text.includes("Lab Reputation"))).toBe(true);
+    // …and not when there's nothing to spend.
+    expect(advisorItems(createInitialState()).some((i) => i.text.includes("Lab Reputation"))).toBe(false);
+  });
+
   it("nudges the first hire once staff is unlocked", () => {
     const s = shipped(); // research length ≥ revealAtResearch (1) from createInitialState? force it
     s.research = ["seed"]; // meets revealAtResearch = 1
