@@ -21,6 +21,7 @@ interface Props {
   onSetMarketing: (id: string, v: number) => void;
   onSetEnterprise: (id: string, on: boolean) => void;
   onSetEnterprisePrice: (id: string, v: number) => void;
+  onSetChannelMix: (id: string, channelId: string, weight: number) => void;
   onBuyFeature: (id: string, featureId: string) => void;
   onRename: (id: string, name: string) => void;
   onRetire: (id: string) => void;
@@ -36,7 +37,7 @@ function featureEffect(lane: FeatureLane, factor: number): string {
 /** Phase 3 — the deep, per-product management dashboard. Opens from a portfolio
  *  card: full metric breakdown, market penetration, the pricing/marketing
  *  workbench, the version-research roadmap, and retire. */
-export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onBuyFeature, onRename, onRetire }: Props) {
+export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onSetChannelMix, onBuyFeature, onRename, onRetire }: Props) {
   const p = game.products.active.find((x) => x.id === productId);
   if (!p) return null;
   const t = typeDef(p.type);
@@ -123,6 +124,27 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
           <input type="range" min={0} max={mktCap} step={Math.max(1, Math.round(mktCap / 50))}
             value={Math.min(p.marketingPerSec, mktCap)} onChange={(e) => onSetMarketing(p.id, Number(e.target.value))} aria-label="Marketing budget" />
         </label>
+
+        {/* Channel mix — split the budget across channels with different CAC/saturation. */}
+        {(() => {
+          const totalW = B.channels.reduce((s, c) => s + Math.max(0, p.channelMix[c.id] ?? 0), 0) || 1;
+          return (
+            <div className="pd-channels">
+              <div className="pd-section-head">Marketing mix — shift toward scale channels as you saturate</div>
+              {B.channels.map((c) => {
+                const w = Math.max(0, p.channelMix[c.id] ?? 0);
+                const share = Math.round((w / totalW) * 100);
+                return (
+                  <label className="prod-ctl" key={c.id}>
+                    <span>{c.name} · {share}% <span className="pd-ch-desc">{c.desc}</span></span>
+                    <input type="range" min={0} max={100} step={5}
+                      value={Math.round(w * 100)} onChange={(e) => onSetChannelMix(p.id, c.id, Number(e.target.value) / 100)} aria-label={`${c.name} weight`} />
+                  </label>
+                );
+              })}
+            </div>
+          );
+        })()}
 
         {(() => {
           const crew = game.employees.filter((e) => e.assignedProductId === p.id);

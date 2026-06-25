@@ -115,6 +115,19 @@ export const products = {
     priceMax: 3,
   },
 
+  /** Marketing channels. The product's total marketing budget is split across these
+   *  by the player's mix weights; each converts budget→users at its own CAC and
+   *  saturates differently. cacMult scales cost; satMult scales how fast CAC rises
+   *  with market penetration. Default mix is 100% Paid Ads (cacMult/satMult = 1), so
+   *  the baseline curve is unchanged. The play: shift from cheap-but-saturating
+   *  Organic toward scale-friendly Influencer/Events as you grow. */
+  channels: [
+    { id: "ads", name: "Paid Ads", desc: "The scalable workhorse — steady cost, steady reach.", cacMult: 1, satMult: 1 },
+    { id: "organic", name: "Organic / Social", desc: "Cheap per user, but saturates fast.", cacMult: 0.5, satMult: 3 },
+    { id: "influencer", name: "Influencers", desc: "Pricey, but keeps converting at scale.", cacMult: 1.6, satMult: 0.4 },
+    { id: "events", name: "Conferences", desc: "Expensive — shines only at massive scale.", cacMult: 2.2, satMult: 0.15 },
+  ],
+
   /** A fresh release / new version spikes acquisition + cuts churn briefly. */
   buzzDurationSec: 45,
   buzzAcqMult: 3,

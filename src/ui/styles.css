@@ -1450,6 +1450,8 @@ body {
 .pd-team-step button:disabled { opacity: 0.4; cursor: not-allowed; }
 .pd-team-step span { min-width: 14px; text-align: center; font-weight: 750; }
 
+.pd-channels { margin: 2px 0 4px; }
+.pd-ch-desc { color: var(--ink-2); font-weight: 500; font-size: 11px; }
 .pd-tier {
   margin: 4px 0 8px; padding: 8px 10px; border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--money) 7%, var(--glass-strong)); border: 1px solid var(--glass-hairline);

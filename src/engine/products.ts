@@ -94,6 +94,25 @@ function tierEconomics(p: ProductState, t: ProductTypeDef, qf: number, fm: Featu
   return { convRate: clamp(total, 0, 1), arpu, proConv, entConv, proArpu, entArpu };
 }
 
+/** Users acquired/sec from marketing, split across channels by the product's mix.
+ *  Each channel converts its share of the budget at its own CAC (which rises with
+ *  market penetration at its own rate). Default mix {ads:1} reproduces the baseline. */
+function channelAcq(p: ProductState, tam: number): number {
+  const mix = p.channelMix && Object.keys(p.channelMix).length ? p.channelMix : { ads: 1 };
+  let totalW = 0;
+  for (const c of B.channels) totalW += Math.max(0, mix[c.id] ?? 0);
+  if (totalW <= 0) return 0;
+  const pen = tam > 0 ? p.mau / tam : 1;
+  let acq = 0;
+  for (const c of B.channels) {
+    const w = Math.max(0, mix[c.id] ?? 0) / totalW;
+    if (w <= 0) continue;
+    const cac = B.marketingCacBase * c.cacMult * (1 + pen * B.cacSaturation * c.satMult);
+    if (cac > 0) acq += (p.marketingPerSec * w) / cac;
+  }
+  return acq;
+}
+
 // ---------- Per-tick simulation (deterministic) ----------
 
 export interface ProductsSimResult {
@@ -126,9 +145,8 @@ export function simulateProducts(
     const tam = t.tam * fm.tam; // a Public API etc. enlarges the addressable market
     const sat = Math.max(0, 1 - p.mau / tam); // remaining TAM headroom
 
-    // Acquisition: paid marketing (CAC rises with saturation) + organic virality.
-    const cac = B.marketingCacBase * (1 + (p.mau / tam) * B.cacSaturation);
-    const acqMkt = cac > 0 ? p.marketingPerSec / cac : 0;
+    // Acquisition: paid marketing (split across channels) + organic virality.
+    const acqMkt = channelAcq(p, tam);
     const acqViral = p.mau * t.virality * qf * sat * (buzz ? B.buzzAcqMult : 1);
     const mau = clamp(p.mau + (acqMkt + acqViral) * mods.acq * fm.acq * seconds, 0, tam);
 
@@ -362,6 +380,7 @@ export function releaseProduct(
     enterprise: false,
     enterprisePrice: 1,
     marketingPerSec: 0,
+    channelMix: { ads: 1 },
     mau: 0,
     paid: 0,
     buzzSec: B.buzzDurationSec,
@@ -438,6 +457,7 @@ export function launchDraft(
     enterprise: false,
     enterprisePrice: 1,
     marketingPerSec: 0,
+    channelMix: { ads: 1 },
     mau: 0,
     paid: 0,
     buzzSec: B.buzzDurationSec,
@@ -635,6 +655,21 @@ export function setProductMarketing(state: GameState, id: string, perSec: number
       // UI shows (the cap shrinks/grows with quality).
       active: state.products.active.map((x) =>
         x.id === id ? { ...x, marketingPerSec: clamp(perSec, 0, marketingCap(x)) } : x,
+      ),
+    },
+  };
+}
+
+/** Set a marketing-channel weight (0..1) for a product; weights are normalized in
+ *  the sim, so they express relative emphasis of the total marketing budget. */
+export function setChannelMix(state: GameState, id: string, channelId: string, weight: number): GameState {
+  const w = clamp(weight, 0, 1);
+  return {
+    ...state,
+    products: {
+      ...state.products,
+      active: state.products.active.map((x) =>
+        x.id === id ? { ...x, channelMix: { ...x.channelMix, [channelId]: w } } : x,
       ),
     },
   };

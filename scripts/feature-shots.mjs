@@ -56,7 +56,7 @@ const SEED = {
     drafts: [{ id: "draft-4", quality: 16, ships: 4 }],
     assignments: { "prod-1": { staff_growth: 2, staff_ml: 1 } },
     active: [
-      { id: "prod-1", name: "Cortex", type: "code", version: 7, quality: 15, priceMult: 1.2, marketingPerSec: 20000, mau: 1200000, paid: 95000, buzzSec: 0, upgrade: { targetVersion: 8, remainingCompute: 200000, remainingData: 20000, remainingSec: 40, totalSec: 90 }, features: ["cdn", "sso", "support"] },
+      { id: "prod-1", name: "Cortex", type: "code", version: 7, quality: 15, priceMult: 1.2, marketingPerSec: 20000, channelMix: { ads: 0.5, influencer: 0.5 }, enterprise: true, enterprisePrice: 1.5, mau: 1200000, paid: 95000, buzzSec: 0, upgrade: { targetVersion: 8, remainingCompute: 200000, remainingData: 20000, remainingSec: 40, totalSec: 90 }, features: ["cdn", "sso", "support"] },
       { id: "prod-2", name: "Lumen", type: "multimodal", version: 4, quality: 12, priceMult: 1.0, marketingPerSec: 12000, mau: 600000, paid: 28000, buzzSec: 0, upgrade: null, features: ["mobile", "onboarding"] },
       { id: "prod-3", name: "Nimbus", type: "general", version: 3, quality: 9, priceMult: 0.8, marketingPerSec: 6000, mau: 2500000, paid: 40000, buzzSec: 0, upgrade: null, features: [] },
     ],

@@ -20,6 +20,7 @@ interface Props {
   onSetMarketing: (id: string, v: number) => void;
   onSetEnterprise: (id: string, on: boolean) => void;
   onSetEnterprisePrice: (id: string, v: number) => void;
+  onSetChannelMix: (id: string, channelId: string, weight: number) => void;
   onBuyFeature: (id: string, featureId: string) => void;
   onRename: (id: string, name: string) => void;
   onRetire: (id: string) => void;
@@ -42,7 +43,7 @@ function fmtDur(sec: number): string {
 
 /** Phase 3 — the Products tab: commercialise the models you ship, market them, set
  *  pricing, research new versions over time, and watch the dashboard. */
-export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onBuyFeature, onRename, onRetire }: Props) {
+export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onSetChannelMix, onBuyFeature, onRename, onRetire }: Props) {
   // Which draft (by id) is currently showing the type-picker, if any.
   const [picking, setPicking] = useState<string | null>(null);
   // Which product's deep-management screen is open, if any.
@@ -225,6 +226,7 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
           onSetMarketing={onSetMarketing}
           onSetEnterprise={onSetEnterprise}
           onSetEnterprisePrice={onSetEnterprisePrice}
+          onSetChannelMix={onSetChannelMix}
           onBuyFeature={onBuyFeature}
           onRename={onRename}
           onRetire={onRetire}

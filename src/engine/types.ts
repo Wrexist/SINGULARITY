@@ -96,8 +96,10 @@ export interface ProductState {
   enterprise: boolean;
   /** Enterprise-tier price dial (×, applied to its premium ARPU). */
   enterprisePrice: number;
-  /** Player marketing budget, Money/sec. */
+  /** Player marketing budget, Money/sec (split across channels by channelMix). */
   marketingPerSec: number;
+  /** Relative budget weights per marketing channel (normalized in the sim). */
+  channelMix: Record<string, number>;
   /** Live monthly-active users and paying subscribers. */
   mau: number;
   paid: number;

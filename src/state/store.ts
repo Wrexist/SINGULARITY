@@ -25,6 +25,7 @@ import {
   releaseProduct,
   pushVersion,
   setProductPrice,
+  setChannelMix,
   setEnterprise,
   setEnterprisePrice,
   setProductMarketing,
@@ -123,6 +124,7 @@ interface GameStore {
   /** Open/close the Enterprise tier for a product. */
   doSetEnterprise: (id: string, on: boolean) => void;
   doSetEnterprisePrice: (id: string, price: number) => void;
+  doSetChannelMix: (id: string, channelId: string, weight: number) => void;
   /** Buy a one-time per-product feature (perk) with Money. */
   doBuyFeature: (id: string, featureId: string) => void;
   doRenameProduct: (id: string, name: string) => void;
@@ -393,6 +395,7 @@ export const useGame = create<GameStore>((set, get) => ({
   doSetProductMarketing: (id, v) => set((s) => ({ game: setProductMarketing(s.game, id, v) })),
   doSetEnterprise: (id, on) => set((s) => ({ game: setEnterprise(s.game, id, on) })),
   doSetEnterprisePrice: (id, v) => set((s) => ({ game: setEnterprisePrice(s.game, id, v) })),
+  doSetChannelMix: (id, channelId, w) => set((s) => ({ game: setChannelMix(s.game, id, channelId, w) })),
   doBuyFeature: (id, featureId) =>
     set((s) => (canBuyFeature(s.game, id, featureId) ? { game: buyFeature(s.game, id, featureId) } : {})),
   doRenameProduct: (id, name) => set((s) => ({ game: renameProduct(s.game, id, name) })),

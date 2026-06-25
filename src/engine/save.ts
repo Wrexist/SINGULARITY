@@ -66,6 +66,16 @@ function sanitizeAssignments(a: unknown): Record<string, Record<string, number>>
   return out;
 }
 
+/** Channel-mix weights are untrusted; keep finite ≥0 numbers, default {ads:1}. */
+function sanitizeChannelMix(m: unknown): Record<string, number> {
+  if (!m || typeof m !== "object") return { ads: 1 };
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(m as Record<string, unknown>)) {
+    if (typeof v === "number" && Number.isFinite(v) && v >= 0) out[k] = v;
+  }
+  return Object.keys(out).length ? out : { ads: 1 };
+}
+
 /** Drafts are untrusted; keep only well-formed entries. */
 function sanitizeDrafts(d: unknown): DraftModel[] {
   if (!Array.isArray(d)) return [];
@@ -216,6 +226,7 @@ export function deserialize(json: string): GameState {
         features: Array.isArray(o.features) ? o.features.filter((s): s is string => typeof s === "string") : [],
         enterprise: o.enterprise === true,
         enterprisePrice: typeof o.enterprisePrice === "number" && Number.isFinite(o.enterprisePrice) && o.enterprisePrice > 0 ? o.enterprisePrice : 1,
+        channelMix: sanitizeChannelMix(o.channelMix),
       };
     }),
     drafts: sanitizeDrafts((loadedProducts as ProductsState).drafts),

@@ -443,6 +443,25 @@ describe("products — pricing tiers", () => {
   });
 });
 
+describe("products — marketing channels", () => {
+  it("at low penetration: Organic (cheap) acquires more than Ads, which beats Events (pricey)", () => {
+    const base = release();
+    const seed = { ...base.products.active[0]!, quality: 100, marketingPerSec: 1000, mau: 1000, paid: 0 };
+    const mauAfter = (channel: string) =>
+      simulateProducts({ ...base.products, active: [{ ...seed, channelMix: { [channel]: 1 } }] }, 2).products.active[0]!.mau;
+    expect(mauAfter("organic")).toBeGreaterThan(mauAfter("ads"));
+    expect(mauAfter("ads")).toBeGreaterThan(mauAfter("events"));
+  });
+
+  it("default {ads:1} reproduces the baseline acquisition (curve undisturbed)", () => {
+    const base = release();
+    const seed = { ...base.products.active[0]!, quality: 100, marketingPerSec: 1000, mau: 1000 };
+    const withDefault = simulateProducts({ ...base.products, active: [{ ...seed, channelMix: { ads: 1 } }] }, 2).products.active[0]!.mau;
+    const withEmpty = simulateProducts({ ...base.products, active: [{ ...seed, channelMix: {} }] }, 2).products.active[0]!.mau;
+    expect(withEmpty).toBeCloseTo(withDefault, 3); // empty mix falls back to ads
+  });
+});
+
 describe("products — ops events", () => {
   const withUsers = () => {
     let s = release();
