@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { balance } from "../engine/balance/config";
 import { canBuyOfficePerk } from "../engine/actions";
 import { officeMorale } from "../engine/derive";
@@ -9,6 +10,7 @@ import type { GameState, Derived, Employee } from "../engine/types";
 import type { Candidate } from "../state/store";
 import { fmtMoney } from "./format";
 import { m$, fmtDur } from "./format";
+import { EmployeeBoard } from "./EmployeeBoard";
 
 interface Props {
   game: GameState;
@@ -86,12 +88,41 @@ function EmployeeCard({ game, emp, onTrain, onAssign, onFire }: {
   );
 }
 
+/** Tap-to-manage bar for a selected person: train / fire / close. */
+function ManageBar({ game, emp, onTrain, onFire, onClose }: {
+  game: GameState; emp: Employee; onTrain: (id: string) => void; onFire: (id: string) => void; onClose: () => void;
+}) {
+  const role = roleDef(emp.roleId);
+  const trait = traitDef(emp.trait);
+  const trainable = canTrain(game, emp.id);
+  const maxed = emp.level >= balance.staff.maxLevel;
+  return (
+    <div className="emp-selbar">
+      <Avatar name={emp.name} />
+      <div className="emp-selbar-main">
+        <div className="emp-name-row"><span className="emp-name">{emp.name}</span><span className="emp-lvl">L{emp.level}</span></div>
+        <div className="emp-role">{role?.name}{trait && <span className="emp-trait" style={{ color: TRAIT_TONE[trait.tone] }}> · {trait.name}</span>} · {m$(employeePayroll(emp))}/s</div>
+      </div>
+      {emp.training ? (
+        <span className="emp-selbar-tr">Training ~{fmtDur(emp.training.remainingSec)}</span>
+      ) : (
+        <button className="btn btn-ghost btn-sm" disabled={!trainable} onClick={() => onTrain(emp.id)}>
+          {maxed ? "Maxed" : `Train · ${m$(trainCost(emp))} · ${fmtDur(trainDurationSec(emp.level))}`}
+        </button>
+      )}
+      <button className="link-btn emp-fire" onClick={() => onFire(emp.id)}>fire</button>
+      <button className="link-btn" onClick={onClose} aria-label="Close">✕</button>
+    </div>
+  );
+}
+
 /**
  * Employees (Phase 3) — your team as individual people. Recruit candidates, assign
  * product-folks to products (or bench them company-wide), train them up over time,
  * and tune the office. Output folds into derive via computeStaffEffects.
  */
 export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh, onCloseRecruit, onHireCandidate, onTrain, onAssign, onFire, onBuyPerk }: Props) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const team = game.employees;
   const pm = derived.productMods;
   const buffs: string[] = [];
@@ -103,6 +134,7 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
 
   const infra = team.filter((e) => roleDef(e.roleId)?.team === "infra");
   const product = team.filter((e) => roleDef(e.roleId)?.team === "product");
+  const selected = selectedId ? team.find((e) => e.id === selectedId) ?? null : null;
 
   return (
     <section className="panel">
@@ -140,10 +172,21 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
 
       {team.length === 0 && !candidates && <p className="market-warn">No employees yet — recruit your first hire.</p>}
 
-      {product.length > 0 && <div className="emp-team-head">🚀 Product team — assign to a product or bench</div>}
-      <div className="emp-list">
-        {product.map((e) => <EmployeeCard key={e.id} game={game} emp={e} onTrain={onTrain} onAssign={onAssign} onFire={onFire} />)}
-      </div>
+      {/* Selected-person manage bar (tap a chip below to open). */}
+      {selected && (
+        <ManageBar game={game} emp={selected} onTrain={onTrain} onFire={(id) => { onFire(id); setSelectedId(null); }} onClose={() => setSelectedId(null)} />
+      )}
+
+      {product.length > 0 && <div className="emp-team-head">🚀 Product team — drag a person onto a product (or Bench)</div>}
+      {product.length > 0 && (
+        <EmployeeBoard
+          employees={product}
+          products={game.products.active.map((p) => ({ id: p.id, name: p.name }))}
+          onAssign={onAssign}
+          onSelect={setSelectedId}
+          selectedId={selectedId}
+        />
+      )}
 
       {infra.length > 0 && <div className="emp-team-head">🏗️ Infrastructure — works lab-wide</div>}
       <div className="emp-list">

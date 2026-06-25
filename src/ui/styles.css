@@ -1468,6 +1468,49 @@ body {
 .pd-feature-cost { font-size: 13px; font-weight: 750; color: var(--money); white-space: nowrap; flex: 0 0 auto; }
 .pd-foot { margin-top: 16px; text-align: center; }
 
+/* ---------- Employee assignment board (drag) ---------- */
+.emp-board { display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px; }
+.emp-zone {
+  border-radius: var(--radius-sm); padding: 8px 10px;
+  background: var(--glass-strong); border: 1px dashed var(--glass-hairline);
+  transition: border-color 0.15s, background 0.15s, transform 0.15s var(--ease-out);
+}
+.emp-zone.over {
+  border-color: color-mix(in srgb, var(--data) 70%, transparent);
+  background: color-mix(in srgb, var(--data) 12%, var(--glass-strong));
+  transform: scale(1.01);
+}
+.emp-zone-head { font-size: 11.5px; font-weight: 700; color: var(--ink-2); margin-bottom: 6px; }
+.emp-zone-n { color: var(--ink-3, var(--ink-2)); font-weight: 650; }
+.emp-zone-chips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 30px; align-items: center; }
+.emp-zone-empty { font-size: 11px; color: var(--ink-2); opacity: 0.6; padding-left: 2px; }
+.emp-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px 4px 4px;
+  border-radius: 999px; background: var(--glass); border: 1px solid var(--glass-hairline);
+  cursor: grab; user-select: none; font-size: 12px; font-weight: 650;
+  transition: box-shadow 0.15s, transform 0.1s;
+}
+.emp-chip:active { cursor: grabbing; }
+.emp-chip.sel { border-color: color-mix(in srgb, var(--data) 55%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--data) 25%, transparent); }
+.emp-chip.dragging { opacity: 0.35; }
+.emp-chip-av { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; }
+.emp-chip-name { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.emp-chip-lvl { font-size: 10px; color: var(--ink-2); font-weight: 700; }
+.emp-chip-train { font-size: 11px; }
+.emp-chip-dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
+.emp-drag-ghost {
+  position: fixed; z-index: 100; transform: translate(-50%, -50%);
+  width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 800; pointer-events: none; box-shadow: var(--shadow-lg);
+}
+.emp-selbar {
+  display: flex; align-items: center; gap: 10px; margin: 4px 0 10px; padding: 8px 10px;
+  border-radius: var(--radius-sm); background: color-mix(in srgb, var(--data) 9%, var(--glass-strong));
+  border: 1px solid color-mix(in srgb, var(--data) 30%, transparent);
+}
+.emp-selbar-main { flex: 1; min-width: 0; }
+.emp-selbar-tr { font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+
 /* ---------- Employees page (individual people) ---------- */
 .emp-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px; }
 .emp-card {
