@@ -202,6 +202,24 @@ fun-gate on 2026-06-24 and greenlit Phase 1. (Phase 0 history retained below for
 ## Done log
 *(append completed items with date as you go — keeps session handoff clean)*
 
+### 2026-06-25 — Phase 3 "Ship It" Products system (full build, M1→M4)
+- [x] **M1 — Products engine core.** Pure/deterministic `src/engine/products.ts` + balance data
+      `src/engine/balance/products.ts` (6 model types: general/code/reasoning/multimodal/small/domain,
+      each with TAM/ARPU/churn/conversion/computePerUser/virality/hype/heat). `simulateProducts`
+      models frontier drift, paid+organic acquisition (CAC rises with saturation), conversion,
+      staleness/price churn, and margin. Save v5→v6 migration; persists across prestige. Products
+      cost Compute+Data to build/version and earn Money to operate (no 4th resource).
+- [x] **M2 — Tab nav + portfolio + release flow.** Lab/Products tab switcher (Products tab appears
+      after first ship); type-picker release modal; portfolio header (MRR / net / slots).
+- [x] **M3 — Deep dashboard.** Per-product cards: MRR/subs/MAU/churn/margin, competitiveness bar
+      vs the rival frontier, price slider, marketing dial, push-version button.
+- [x] **M4 — Competition, juice, persistence.** Launch tentpole modal (`ProductLaunch.tsx`,
+      satirical press release); staleness-nudge toast when a product slips <50% competitiveness;
+      two market world events (`competitor_launch` jumps the frontier, `industry_hype` buzzes all
+      live products); rename a product (✎); **retire now pays a one-time buyout** (≈30min of MRR) —
+      a real "cash out vs keep earning" call. Validated economics via `scripts/balance-sim.ts`
+      `runProduct` scenarios. 18 product tests (140 total). typecheck + build clean.
+
 ### 2026-06-24 — UI visibility/glitch + difficulty pass (owner-directed, from TestFlight screenshots)
 - [x] **Fixed stuck toasts** (the "pop-ups never leave the screen" bug). Root cause: the game
       re-renders ~10×/sec (10 Hz tick) and `Toast`'s dismiss-timer effect depended on the parent's

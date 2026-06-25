@@ -65,6 +65,8 @@ export const products = {
   buzzDurationSec: 45,
   buzzAcqMult: 3,
   buzzChurnMult: 0.4,
+  /** Retiring (selling) a product pays out this many seconds of its current MRR. */
+  retireValuationSec: 1800,
 
   /** Player pricing strategy bounds (×ARPU; higher = more $/user, less conversion). */
   priceMin: 0.5,

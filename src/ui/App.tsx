@@ -22,7 +22,9 @@ import { Onboarding } from "./Onboarding";
 import { DataMarketPanel } from "./DataMarketPanel";
 import { StaffPanel } from "./StaffPanel";
 import { ProductsPanel } from "./ProductsPanel";
-import { productsUnlocked } from "../engine/products";
+import { ProductLaunch } from "./ProductLaunch";
+import { productsUnlocked, productMetrics, typeDef } from "../engine/products";
+import type { ProductTypeId } from "../engine/balance/products";
 import { iap } from "./iap";
 import { balance } from "../engine/balance/config";
 import { HallCanvas } from "./HallCanvas";
@@ -41,7 +43,7 @@ export function App() {
   const event = useGame((s) => s.event);
   const worldEvent = useGame((s) => s.worldEvent);
   const { doStartRun, doClaim, doBuyUpgrade, doHireStaff, doResearch, doBuyData, doPrestige, setComputeFocus,
-    doReleaseProduct, doPushVersion, doSetProductPrice, doSetProductMarketing, doRetireProduct,
+    doReleaseProduct, doPushVersion, doSetProductPrice, doSetProductMarketing, doRenameProduct, doRetireProduct,
     dismissOffline, dismissWorldEvent, chooseWorldEvent, hardReset } =
     useGame.getState();
 
@@ -52,6 +54,7 @@ export function App() {
   const prevWeights = useRef<Big>(game.prestige.legacyWeights);
   const [celebration, setCelebration] = useState<{ gained: Big; total: Big } | null>(null);
   const [eraMoment, setEraMoment] = useState<number | null>(null);
+  const [launch, setLaunch] = useState<{ type: ProductTypeId; name: string } | null>(null);
   const [pendingExpansion, setPendingExpansion] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const reducedMotion = useSettings((s) => s.reducedMotion);
@@ -141,6 +144,31 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event?.key]);
 
+  // Staleness nudge: when a live product slips below ~50% competitiveness (rivals
+  // pulled ahead since its last version), poke the player once to push an update.
+  // Ref-tracked per product so it fires on the downward crossing, not every tick.
+  const staleSeen = useRef<Record<string, boolean>>({});
+  useEffect(() => {
+    if (!initialized) return;
+    const frontier = game.products.frontier;
+    const live = new Set(game.products.active.map((p) => p.id));
+    for (const p of game.products.active) {
+      const qf = productMetrics(p, frontier).qf;
+      const wasStale = staleSeen.current[p.id] ?? false;
+      if (qf < 0.5 && !wasStale) {
+        pushToast(`📉 ${p.name} is falling behind rivals — push a new version`, "bad");
+        staleSeen.current[p.id] = true;
+      } else if (qf >= 0.66 && wasStale) {
+        staleSeen.current[p.id] = false; // re-armed once you've caught back up
+      }
+    }
+    // Forget retired products so a recycled id can re-arm.
+    for (const id of Object.keys(staleSeen.current)) {
+      if (!live.has(id)) delete staleSeen.current[id];
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialized, game.products]);
+
   const syncedShips = useRef(false);
   useEffect(() => {
     // Guard against the empty→loaded hydration: a returning player with ships>0
@@ -169,6 +197,7 @@ export function App() {
   const onHire = (id: string) => { haptics.tap(); sound.purchase(); doHireStaff(id); };
   const onRelease = (type: Parameters<typeof doReleaseProduct>[0], name: string) => {
     haptics.celebrate(); sound.ship(); doReleaseProduct(type, name);
+    setLaunch({ type, name }); // tentpole "we shipped a product" moment
   };
   const onPushVersion = (id: string) => { haptics.success(); sound.success(); doPushVersion(id); };
   const onResearch = (id: string) => { haptics.tap(); sound.purchase(); doResearch(id); };
@@ -233,6 +262,7 @@ export function App() {
             onPushVersion={onPushVersion}
             onSetPrice={doSetProductPrice}
             onSetMarketing={doSetProductMarketing}
+            onRename={doRenameProduct}
             onRetire={doRetireProduct}
           />
         ) : (
@@ -276,6 +306,13 @@ export function App() {
         />
       )}
       {eraMoment !== null && <EraTransition era={eraMoment} onDone={() => setEraMoment(null)} />}
+      {launch && (
+        <ProductLaunch
+          name={launch.name}
+          typeName={typeDef(launch.type).name}
+          onDone={() => setLaunch(null)}
+        />
+      )}
       {worldEvent && (
         <WorldEventCard
           event={worldEvent}

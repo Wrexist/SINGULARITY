@@ -1,8 +1,10 @@
 import { describe, it, expect } from "vitest";
 import {
   productsUnlocked, canReleaseProduct, releaseProduct, pushVersion, canPushVersion,
-  setProductPrice, setProductMarketing, retireProduct, simulateProducts, productMetrics, versionCost,
+  setProductPrice, setProductMarketing, renameProduct, retireProduct, retirePayout,
+  simulateProducts, productMetrics, versionCost,
 } from "./products";
+import { applyWorldEvent } from "./actions";
 import { tick } from "./tick";
 import { prestige } from "./prestige";
 import { createInitialState } from "./state";
@@ -126,5 +128,52 @@ describe("products — persistence", () => {
     expect(s.products.active[0]!.marketingPerSec).toBe(0);
     s = retireProduct(s, "p1");
     expect(s.products.active).toHaveLength(0);
+  });
+});
+
+describe("products — rename + retire payout", () => {
+  it("rename trims, caps length, and falls back to a default", () => {
+    let s = release();
+    s = renameProduct(s, "p1", "  Nimbus  ");
+    expect(s.products.active[0]!.name).toBe("Nimbus");
+    s = renameProduct(s, "p1", "x".repeat(40));
+    expect(s.products.active[0]!.name.length).toBe(24);
+    s = renameProduct(s, "p1", "   ");
+    expect(s.products.active[0]!.name).toBe("Untitled");
+  });
+
+  it("retiring pays out a buyout (≈ retireValuationSec of MRR) into Money + lifetime", () => {
+    let s = release();
+    // Seed a profitable book so MRR > 0 and the payout is meaningful.
+    s = { ...s, products: { ...s.products, active: [{ ...s.products.active[0]!, paid: 5000 }] } };
+    const quote = retirePayout(s, "p1");
+    expect(quote).toBeGreaterThan(0);
+    const before = s.resources.money;
+    const beforeLifetime = s.lifetimeMoney;
+    const next = retireProduct(s, "p1");
+    expect(next.products.active).toHaveLength(0);
+    expect(next.resources.money.sub(before).toNumber()).toBeCloseTo(quote, 0);
+    expect(next.lifetimeMoney.gt(beforeLifetime)).toBe(true);
+  });
+
+  it("retirePayout is 0 for an unknown product", () => {
+    expect(retirePayout(release(), "nope")).toBe(0);
+  });
+});
+
+describe("products — market world events", () => {
+  it("competitor_launch jumps the frontier (rivals pull ahead)", () => {
+    const s = release();
+    const before = s.products.frontier;
+    const { state } = applyWorldEvent(s, "competitor_launch");
+    expect(state.products.frontier).toBeGreaterThan(before);
+  });
+
+  it("industry_hype buzzes every live product", () => {
+    let s = release();
+    // Drain buzz first so the event is what's setting it.
+    s = { ...s, products: { ...s.products, active: [{ ...s.products.active[0]!, buzzSec: 0 }] } };
+    const { state } = applyWorldEvent(s, "industry_hype");
+    expect(state.products.active[0]!.buzzSec).toBeGreaterThan(0);
   });
 });

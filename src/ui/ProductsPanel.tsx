@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { GameState } from "../engine/types";
 import { products as B, type ProductTypeId } from "../engine/balance/products";
 import {
-  typeDef, productMetrics, canReleaseProduct, canPushVersion, versionCost,
+  typeDef, productMetrics, canReleaseProduct, canPushVersion, versionCost, retirePayout,
 } from "../engine/products";
 import { Big } from "../engine/math/Big";
 import { fmt, fmtMoney } from "./format";
@@ -15,6 +15,7 @@ interface Props {
   onPushVersion: (id: string) => void;
   onSetPrice: (id: string, v: number) => void;
   onSetMarketing: (id: string, v: number) => void;
+  onRename: (id: string, name: string) => void;
   onRetire: (id: string) => void;
 }
 
@@ -23,7 +24,7 @@ const num = (n: number) => fmt(Big.of(Math.round(n)));
 
 /** Phase 3 — the Products tab: release AIs as products, market them, set pricing,
  *  push versions, and watch the dashboard. */
-export function ProductsPanel({ game, onRelease, onPushVersion, onSetPrice, onSetMarketing, onRetire }: Props) {
+export function ProductsPanel({ game, onRelease, onPushVersion, onSetPrice, onSetMarketing, onRename, onRetire }: Props) {
   const [picking, setPicking] = useState(false);
   const ps = game.products;
   const frontier = ps.frontier;
@@ -49,7 +50,13 @@ export function ProductsPanel({ game, onRelease, onPushVersion, onSetPrice, onSe
           return (
             <div className="prod-card" key={p.id}>
               <div className="prod-head">
-                <span className="prod-name">{p.name}</span>
+                <button
+                  className="prod-name"
+                  onClick={() => { const n = window.prompt("Rename product", p.name); if (n && n.trim()) onRename(p.id, n); }}
+                  title="Rename"
+                >
+                  {p.name} <span className="prod-rename">✎</span>
+                </button>
                 <span className="prod-mrr">{m$(me.mrr)}/s</span>
               </div>
               <div className="prod-sub">
@@ -86,7 +93,7 @@ export function ProductsPanel({ game, onRelease, onPushVersion, onSetPrice, onSe
                 <button className="btn btn-ghost" disabled={!canVer} onClick={() => onPushVersion(p.id)}>
                   Push v{p.version + 1} · {num(vc.compute)} cpu + {num(vc.data)} data
                 </button>
-                <button className="link-btn" onClick={() => onRetire(p.id)}>retire</button>
+                <button className="link-btn" onClick={() => onRetire(p.id)}>sell · {m$(retirePayout(game, p.id))}</button>
               </div>
             </div>
           );

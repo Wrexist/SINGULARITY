@@ -20,6 +20,7 @@ import {
   pushVersion,
   setProductPrice,
   setProductMarketing,
+  renameProduct,
   retireProduct,
 } from "../engine/products";
 import type { ProductTypeId } from "../engine/balance/products";
@@ -74,6 +75,7 @@ interface GameStore {
   doPushVersion: (id: string) => void;
   doSetProductPrice: (id: string, priceMult: number) => void;
   doSetProductMarketing: (id: string, perSec: number) => void;
+  doRenameProduct: (id: string, name: string) => void;
   doRetireProduct: (id: string) => void;
   doResearch: (id: string) => void;
   doBuyData: (id: string) => MarketOutcome | null;
@@ -193,6 +195,7 @@ export const useGame = create<GameStore>((set, get) => ({
   doPushVersion: (id) => set((s) => ({ game: pushVersion(s.game, id) })),
   doSetProductPrice: (id, v) => set((s) => ({ game: setProductPrice(s.game, id, v) })),
   doSetProductMarketing: (id, v) => set((s) => ({ game: setProductMarketing(s.game, id, v) })),
+  doRenameProduct: (id, name) => set((s) => ({ game: renameProduct(s.game, id, name) })),
   doRetireProduct: (id) => set((s) => ({ game: retireProduct(s.game, id) })),
   doResearch: (id) => set((s) => ({ game: buyResearch(s.game, id) })),
   // The wall clock isn't the only nondeterminism we keep out of the engine —

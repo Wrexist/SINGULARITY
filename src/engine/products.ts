@@ -190,9 +190,34 @@ export function setProductMarketing(state: GameState, id: string, perSec: number
   };
 }
 
-export function retireProduct(state: GameState, id: string): GameState {
+export function renameProduct(state: GameState, id: string, name: string): GameState {
+  const clean = name.trim().slice(0, 24) || "Untitled";
   return {
     ...state,
+    products: {
+      ...state.products,
+      active: state.products.active.map((x) => (x.id === id ? { ...x, name: clean } : x)),
+    },
+  };
+}
+
+/** Sell/sunset a product. Pays out a one-time Money buyout (≈ retireValuationSec
+ *  of its current MRR) — a real "cash out now vs keep earning" decision. */
+export function retireProduct(state: GameState, id: string): GameState {
+  const p = state.products.active.find((x) => x.id === id);
+  if (!p) return state;
+  const payout = productMetrics(p, state.products.frontier).mrr * B.retireValuationSec;
+  return {
+    ...state,
+    resources: { ...state.resources, money: state.resources.money.add(Math.max(0, payout)) },
+    lifetimeMoney: state.lifetimeMoney.add(Math.max(0, payout)),
     products: { ...state.products, active: state.products.active.filter((x) => x.id !== id) },
   };
+}
+
+/** Money you'd get for retiring a product right now (for the UI). */
+export function retirePayout(state: GameState, id: string): number {
+  const p = state.products.active.find((x) => x.id === id);
+  if (!p) return 0;
+  return Math.max(0, productMetrics(p, state.products.frontier).mrr * B.retireValuationSec);
 }
