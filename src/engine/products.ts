@@ -133,7 +133,15 @@ export function churnReason(p: ProductState, frontier: number): ChurnReason {
   const gap = Math.max(0, frontier - p.quality);
   const staleExcess = gap * B.stalenessChurn;        // extra churn fraction from falling behind
   const priceExcess = Math.max(0, p.priceMult - 1);  // extra churn fraction from over-pricing
-  if (staleExcess < B.flavor.staleMin && priceExcess < B.flavor.priceMin) return "healthy";
+  // Only blame a pressure that actually crossed its own threshold — otherwise a
+  // sub-threshold-but-numerically-larger staleExcess could mislabel a purely
+  // over-priced product as "stale" (and tell the player to ship a version they
+  // don't need). Compare magnitudes only when BOTH have crossed.
+  const staleHot = staleExcess >= B.flavor.staleMin;
+  const priceHot = priceExcess >= B.flavor.priceMin;
+  if (!staleHot && !priceHot) return "healthy";
+  if (staleHot && !priceHot) return "stale";
+  if (priceHot && !staleHot) return "pricey";
   return staleExcess >= priceExcess ? "stale" : "pricey";
 }
 

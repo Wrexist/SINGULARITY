@@ -182,6 +182,14 @@ describe("products — churn-reason flavor", () => {
     expect(churnReason(p, 51)).toBe("stale");
   });
 
+  it("blames pricing when only pricing crossed, even if staleness is numerically larger", () => {
+    // gap 0.75 → staleExcess 0.45 (< staleMin 0.5, NOT hot) but > priceExcess 0.42;
+    // priceMult 1.42 → priceExcess 0.42 (≥ priceMin 0.4, hot). Must read "pricey",
+    // not "stale" — only the price pressure actually crossed its threshold.
+    const p = { ...settled(), quality: 5, priceMult: 1.42 };
+    expect(churnReason(p, 5.75)).toBe("pricey");
+  });
+
   it("fires a flavor quip naming a materially-bleeding product", () => {
     const stale = { ...settled(), quality: 1, priceMult: 1, paid: 500 };
     const ps = { active: [stale], frontier: 51, sold: 0 };
