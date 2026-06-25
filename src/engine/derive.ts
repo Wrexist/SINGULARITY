@@ -150,9 +150,18 @@ export function derive(state: GameState): Derived {
   dataMult = dataMult.mul(legacyMult);
   moneyMult = moneyMult.mul(legacyMult);
   passiveMoneyPerSec = passiveMoneyPerSec.mul(legacyMult);
-  // Scraper output rides the global Legacy boost (kept separate from the
-  // per-run dataMult lane so the two data sources stay legible).
-  const dataPerSec = dataPerSecFlat.mul(legacyMult);
+
+  // AGI ascension: a permanent, compounding boost earned by shipping in the
+  // Post-Singularity era (stats.ascensions). Stays 1.0 through the whole early/mid
+  // game (ascensions = 0 until the deep endgame), so the tuned curve is untouched.
+  const ascensionMult = Big.ONE.add(balance.eras.agi.bonusPerAscension * state.stats.ascensions);
+  computeMult = computeMult.mul(ascensionMult);
+  dataMult = dataMult.mul(ascensionMult);
+  moneyMult = moneyMult.mul(ascensionMult);
+  passiveMoneyPerSec = passiveMoneyPerSec.mul(ascensionMult);
+  // Scraper output rides the global Legacy + ascension boost (kept separate from
+  // the per-run dataMult lane so the two data sources stay legible).
+  const dataPerSec = dataPerSecFlat.mul(legacyMult).mul(ascensionMult);
 
   let computePerSec = computeFlat.mul(computeMult);
   // PHASE 2 (flagged off): power/heat soft-cap throttles Compute when the racks

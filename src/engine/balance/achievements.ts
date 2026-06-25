@@ -78,6 +78,7 @@ export const achievements: AchievementDef[] = [
   { id: "legacy_1m", label: "Legend", desc: "Bank 1M Legacy Weights", cat: "legacy", metric: "totalLegacy", threshold: 1_000_000 },
   { id: "era_3", label: "Frontier Lab", desc: "Reach the Frontier Lab era", cat: "legacy", metric: "eraReached", threshold: 3 },
   { id: "era_4", label: "Hyperscaler", desc: "Reach the Hyperscaler era", cat: "legacy", metric: "eraReached", threshold: 4 },
+  { id: "era_5", label: "Singularity", desc: "Reach the Post-Singularity era — you built AGI", cat: "legacy", metric: "eraReached", threshold: 5 },
 
   // ---- Meta ----
   { id: "research_15", label: "Well Read", desc: "Own 15 research nodes in one run", cat: "meta", metric: "peakResearch", threshold: 15 },

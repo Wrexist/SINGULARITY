@@ -98,6 +98,9 @@ export interface LifetimeStats {
   worldEventsResolved: number;
   /** Total play time, seconds (accrued each tick). */
   playtimeSec: number;
+  /** AGI ascensions — ships taken in the Post-Singularity era past the Legacy floor.
+   *  Each grants a permanent compounding boost (derive's ascensionMult). */
+  ascensions: number;
 }
 
 /** An individual employee. roleId names a job (balance.staff.roles); the person's

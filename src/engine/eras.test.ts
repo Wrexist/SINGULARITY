@@ -29,13 +29,16 @@ describe("eras", () => {
     expect(currentEra(s)).toBe(2);
   });
 
-  it("reaches the endgame eras (Frontier, Hyperscaler) by ship count", () => {
+  it("reaches the endgame eras (Frontier, Hyperscaler, Post-Singularity) by ship count", () => {
     const s = createInitialState();
     s.prestige.ships = balance.eras.frontierAtShips;
-    expect(currentEra(s)).toBe(ERA_COUNT - 2); // Frontier Lab
+    expect(currentEra(s)).toBe(3); // Frontier Lab
     s.prestige.ships = balance.eras.hyperscalerAtShips;
-    expect(currentEra(s)).toBe(ERA_COUNT - 1); // Hyperscaler (last era)
-    s.prestige.ships = balance.eras.hyperscalerAtShips + 100;
+    expect(currentEra(s)).toBe(4); // Hyperscaler
+    s.prestige.ships = balance.eras.agiAtShips;
+    expect(currentEra(s)).toBe(5); // Post-Singularity (last era)
+    expect(currentEra(s)).toBe(ERA_COUNT - 1);
+    s.prestige.ships = balance.eras.agiAtShips + 100;
     expect(currentEra(s)).toBe(ERA_COUNT - 1); // caps at the last era
   });
 

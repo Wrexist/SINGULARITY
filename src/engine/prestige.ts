@@ -39,6 +39,14 @@ export function prestige(state: GameState): GameState {
   const fresh = createInitialState();
   const ships = state.prestige.ships + 1;
 
+  // AGI ascension: this ship counts as an ascension if it lands you in the
+  // Post-Singularity era (by ship count) AND your lifetime Legacy clears the floor.
+  // Hard-gated so it stays 0 through the whole early/mid game (no curve impact).
+  const newTotalLegacy = state.stats.totalLegacy.add(gained);
+  const isAscension =
+    ships >= balance.eras.agiAtShips &&
+    newTotalLegacy.gte(Big.of(balance.eras.agi.legacyThreshold));
+
   // Shipping deposits the flagship you just trained as a "raw model" draft in the
   // Products tab — the player commercialises it (pick a type + name, pay to launch)
   // into a standing business. Its strength = the competitive frontier at ship time,
@@ -66,7 +74,8 @@ export function prestige(state: GameState): GameState {
     stats: {
       ...state.stats,
       totalShips: state.stats.totalShips + 1,
-      totalLegacy: state.stats.totalLegacy.add(gained),
+      totalLegacy: newTotalLegacy,
+      ascensions: state.stats.ascensions + (isAscension ? 1 : 0),
     },
     // Achievements are a permanent collection — they survive the reset.
     achievements: state.achievements,

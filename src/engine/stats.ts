@@ -22,6 +22,7 @@ export function initialStats(): LifetimeStats {
     employeesHired: 0,
     worldEventsResolved: 0,
     playtimeSec: 0,
+    ascensions: 0,
   };
 }
 

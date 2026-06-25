@@ -135,6 +135,7 @@ function sanitizeStats(s: unknown): LifetimeStats {
     employeesHired: numf(o.employeesHired),
     worldEventsResolved: numf(o.worldEventsResolved),
     playtimeSec: numf(o.playtimeSec),
+    ascensions: numf(o.ascensions),
   };
 }
 
@@ -215,6 +216,7 @@ export function serialize(state: GameState): string {
       employeesHired: state.stats.employeesHired,
       worldEventsResolved: state.stats.worldEventsResolved,
       playtimeSec: state.stats.playtimeSec,
+      ascensions: state.stats.ascensions,
     },
     achievements: state.achievements,
   };

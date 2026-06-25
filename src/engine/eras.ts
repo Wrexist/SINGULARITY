@@ -13,6 +13,7 @@ export const ERA_COUNT = balance.eras.list.length;
 
 export function currentEra(state: GameState): number {
   const ships = state.prestige.ships;
+  if (ships >= balance.eras.agiAtShips) return 5; // Post-Singularity / AGI
   if (ships >= balance.eras.hyperscalerAtShips) return 4; // Hyperscaler
   if (ships >= balance.eras.frontierAtShips) return 3; // Frontier Lab
   // Scale-Up survives a prestige reset (research clears, but ships persists).
