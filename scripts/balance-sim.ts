@@ -32,6 +32,11 @@ import {
 import { canPrestige, legacyWeightsGain, prestige } from "../src/engine/prestige";
 import { powerStats } from "../src/engine/power";
 import { floorFull } from "../src/engine/hall";
+import {
+  releaseProduct, setProductMarketing, pushVersion, canPushVersion, productMetrics,
+} from "../src/engine/products";
+import type { ProductTypeId } from "../src/engine/balance/products";
+import { Big } from "../src/engine/math/Big";
 import { balance } from "../src/engine/balance/config";
 import type { GameState } from "../src/engine/types";
 
@@ -325,3 +330,41 @@ function run(useMarket = false) {
 run(false);
 run(true);
 analyzeMarket();
+
+/**
+ * PHASE 3 — product economics check. Release one product, set a marketing budget,
+ * push a version every 5 min (catch the frontier), and report subs/MRR/margin over
+ * 30 min. Validates that high-ARPU types reward paid marketing (LTV:CAC > 1) and
+ * become profitable, while low-ARPU types lean on virality.
+ */
+function runProduct(typeId: ProductTypeId, marketingPerSec: number, minutes = 30): void {
+  let s = createInitialState();
+  s.prestige.ships = 1;
+  s.resources.compute = Big.of("1e12");
+  s.resources.data = Big.of("1e12");
+  s.resources.money = Big.of("1e9");
+  s = releaseProduct(s, { type: typeId, name: "Sim", id: "s1" });
+  s = setProductMarketing(s, "s1", marketingPerSec);
+
+  console.log(`\n=== PRODUCT SIM: ${typeId} (marketing ${marketingPerSec}/s, +version/5m) ===`);
+  console.log("  min |     subs |       MRR/s |    margin/s | competitiveness");
+  let t = 0;
+  const STEP = 1000;
+  while (t < minutes * 60000) {
+    s = tick(s, STEP);
+    if (t > 0 && t % 300000 === 0 && canPushVersion(s, "s1")) s = pushVersion(s, "s1");
+    if (t % 60000 === 0) {
+      const p = s.products.active[0]!;
+      const m = productMetrics(p, s.products.frontier);
+      console.log(
+        `  ${String(t / 60000).padStart(3)} | ${String(Math.round(m.paid)).padStart(8)} | ` +
+        `${m.mrr.toFixed(0).padStart(11)} | ${(m.margin >= 0 ? "+" : "") + m.margin.toFixed(0).padStart(10)} | ${Math.round(m.qf * 100)}%`,
+      );
+    }
+    t += STEP;
+  }
+}
+
+runProduct("code", 3000, 30);
+runProduct("general", 800, 30);
+runProduct("domain", 4000, 30);

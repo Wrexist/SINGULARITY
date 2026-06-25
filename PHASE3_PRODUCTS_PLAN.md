@@ -222,6 +222,13 @@ backdrop (clean-to-play: never a hard context switch).
 
 ---
 
+> **BUILD STATUS (owner said "start"):** M1 ✅ engine, M2 ✅ tab+release, M3 ✅
+> dashboard, M5 ✅ balance validated via the `runProduct` sim scenario (code burns
+> ~7m then profits; each version push resets competitiveness to 100% then decays —
+> "update or bleed"; general grows virally, domain is high-ARPU). Remaining: M4
+> deep JUICE (launch-tentpole modal, churn-reason flavor toasts, hype/world-event
+> hooks) — optional polish; the buzz spike + domain Heat are already wired.
+
 ## 9. Build order (milestones; each ends with a playable build)
 1. **M1 — Engine core:** state + types + `releaseProduct`/`pushVersion` + the
    per-tick sim + derived metrics + save migration + tests. (No UI; sim-validated.)
