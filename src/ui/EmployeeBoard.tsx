@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { traitDef } from "../engine/employees";
 import type { Employee } from "../engine/types";
 
-interface Zone { id: string; label: string }
 interface Props {
   /** Product-team employees (the draggable ones). */
   employees: Employee[];
@@ -15,74 +14,90 @@ interface Props {
 }
 
 const TRAIT_TONE: Record<string, string> = { good: "var(--money)", bad: "var(--coral)", mixed: "#f97316" };
+const ZONE_CAP = 24; // don't render hundreds of chips in one zone
 
-function initials(name: string) {
-  return name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
-}
-function hue(name: string) {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
-  return h;
-}
+function initials(name: string) { return name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase(); }
+function hue(name: string) { let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360; return h; }
 
 /** A draggable employee assignment board. Pointer-based so it's identical on touch
  *  and mouse: drag a person between the Bench and product zones; a ghost follows the
  *  finger and the hovered zone highlights. A tap (no movement) selects instead. */
 export function EmployeeBoard({ employees, products, onAssign, onSelect, selectedId }: Props) {
-  const zones: Zone[] = [{ id: "bench", label: "🪑 Bench · buffs all products" }, ...products.map((p) => ({ id: p.id, label: `🚀 ${p.name}` }))];
   const [drag, setDrag] = useState<{ id: string; x: number; y: number; over: string | null } | null>(null);
+
+  // Latest props/handlers, read by the stable pointer handlers (avoids stale closures
+  // when the parent re-renders at 10Hz mid-drag).
+  const live = useRef({ onAssign, onSelect });
+  live.current = { onAssign, onSelect };
   const gesture = useRef<{ id: string; startX: number; startY: number; moved: boolean } | null>(null);
 
-  // Clean up any window listeners if we unmount mid-drag.
-  useEffect(() => () => {
-    window.removeEventListener("pointermove", onMove as never);
-    window.removeEventListener("pointerup", onUp as never);
-  });
+  // Stable handlers (created once); registered on pointerdown, removed by the SAME
+  // identity on pointerup or unmount — no leak, no per-render churn.
+  const handlers = useRef<{ move: (e: PointerEvent) => void; up: (e: PointerEvent) => void } | null>(null);
+  if (!handlers.current) {
+    const zoneAt = (x: number, y: number): string | null => {
+      const el = document.elementFromPoint(x, y)?.closest("[data-empzone]");
+      return el ? el.getAttribute("data-empzone") : null;
+    };
+    const move = (e: PointerEvent) => {
+      const g = gesture.current;
+      if (!g) return;
+      if (!g.moved && Math.hypot(e.clientX - g.startX, e.clientY - g.startY) < 6) return; // tap threshold
+      g.moved = true;
+      e.preventDefault();
+      setDrag({ id: g.id, x: e.clientX, y: e.clientY, over: zoneAt(e.clientX, e.clientY) });
+    };
+    const up = (e: PointerEvent) => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      const g = gesture.current;
+      gesture.current = null;
+      if (g && g.moved) {
+        const over = zoneAt(e.clientX, e.clientY);
+        if (over) live.current.onAssign(g.id, over === "bench" ? null : over);
+      } else if (g) {
+        live.current.onSelect(g.id); // it was a tap
+      }
+      setDrag(null);
+    };
+    handlers.current = { move, up };
+  }
 
-  function zoneAt(x: number, y: number): string | null {
-    const el = document.elementFromPoint(x, y)?.closest("[data-empzone]");
-    return el ? el.getAttribute("data-empzone") : null;
-  }
-  function onMove(e: PointerEvent) {
-    const g = gesture.current;
-    if (!g) return;
-    const dx = e.clientX - g.startX, dy = e.clientY - g.startY;
-    if (!g.moved && Math.hypot(dx, dy) < 6) return; // tap threshold
-    g.moved = true;
-    e.preventDefault();
-    setDrag({ id: g.id, x: e.clientX, y: e.clientY, over: zoneAt(e.clientX, e.clientY) });
-  }
-  function onUp(e: PointerEvent) {
-    window.removeEventListener("pointermove", onMove as never);
-    window.removeEventListener("pointerup", onUp as never);
-    const g = gesture.current;
-    gesture.current = null;
-    if (g && g.moved) {
-      const over = zoneAt(e.clientX, e.clientY);
-      if (over) onAssign(g.id, over === "bench" ? null : over);
-    } else if (g) {
-      onSelect(g.id); // it was a tap
+  // Remove any lingering listeners only on unmount.
+  useEffect(() => () => {
+    if (handlers.current) {
+      window.removeEventListener("pointermove", handlers.current.move);
+      window.removeEventListener("pointerup", handlers.current.up);
     }
-    setDrag(null);
-  }
+  }, []);
+
   function onPointerDown(e: React.PointerEvent, id: string) {
     gesture.current = { id, startX: e.clientX, startY: e.clientY, moved: false };
-    window.addEventListener("pointermove", onMove as never, { passive: false });
-    window.addEventListener("pointerup", onUp as never);
+    window.addEventListener("pointermove", handlers.current!.move, { passive: false });
+    window.addEventListener("pointerup", handlers.current!.up);
   }
+
+  // Group employees by zone once per roster/product change (not every tick).
+  const { zones, byZone } = useMemo(() => {
+    const zs = [{ id: "bench", label: "🪑 Bench · helps every product a little" }, ...products.map((p) => ({ id: p.id, label: `🚀 ${p.name} · 2× focus` }))];
+    const map: Record<string, Employee[]> = {};
+    for (const z of zs) map[z.id] = [];
+    for (const e of employees) (map[e.assignedProductId ?? "bench"] ?? map.bench!).push(e);
+    return { zones: zs, byZone: map };
+  }, [employees, products]);
 
   const dragName = drag ? employees.find((e) => e.id === drag.id)?.name ?? "" : "";
 
   return (
     <div className="emp-board">
       {zones.map((z) => {
-        const here = employees.filter((e) => (e.assignedProductId ?? "bench") === z.id);
+        const here = byZone[z.id] ?? [];
         return (
           <div key={z.id} data-empzone={z.id} className={`emp-zone ${drag?.over === z.id ? "over" : ""}`}>
             <div className="emp-zone-head">{z.label} <span className="emp-zone-n">{here.length}</span></div>
             <div className="emp-zone-chips">
               {here.length === 0 && <span className="emp-zone-empty">drop here</span>}
-              {here.map((e) => {
+              {here.slice(0, ZONE_CAP).map((e) => {
                 const trait = traitDef(e.trait);
                 return (
                   <button
@@ -99,6 +114,7 @@ export function EmployeeBoard({ employees, products, onAssign, onSelect, selecte
                   </button>
                 );
               })}
+              {here.length > ZONE_CAP && <span className="emp-zone-empty">+{here.length - ZONE_CAP} more</span>}
             </div>
           </div>
         );

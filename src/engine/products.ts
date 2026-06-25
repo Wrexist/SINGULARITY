@@ -98,14 +98,15 @@ function tierEconomics(p: ProductState, t: ProductTypeDef, qf: number, fm: Featu
  *  Each channel converts its share of the budget at its own CAC (which rises with
  *  market penetration at its own rate). Default mix {ads:1} reproduces the baseline. */
 function channelAcq(p: ProductState, tam: number): number {
-  const mix = p.channelMix && Object.keys(p.channelMix).length ? p.channelMix : { ads: 1 };
+  const mix = p.channelMix ?? {};
   let totalW = 0;
   for (const c of B.channels) totalW += Math.max(0, mix[c.id] ?? 0);
-  if (totalW <= 0) return 0;
   const pen = tam > 0 ? p.mau / tam : 1;
   let acq = 0;
   for (const c of B.channels) {
-    const w = Math.max(0, mix[c.id] ?? 0) / totalW;
+    // A degenerate/empty mix falls back to 100% Paid Ads so the budget always buys
+    // users (never silently burns Money for nothing).
+    const w = totalW > 0 ? Math.max(0, mix[c.id] ?? 0) / totalW : c.id === "ads" ? 1 : 0;
     if (w <= 0) continue;
     const cac = B.marketingCacBase * c.cacMult * (1 + pen * B.cacSaturation * c.satMult);
     if (cac > 0) acq += (p.marketingPerSec * w) / cac;
@@ -176,9 +177,12 @@ export function simulateProducts(
     const paidIntegral = k > 0
       ? pStar * seconds + ((p.paid - pStar) * (1 - decay)) / k
       : p.paid * seconds;
+    // Bill on the time-integral of paid, but never on more subscribers than exist
+    // now (guards against a tick where an event/feature shrank mau below last paid).
+    const billed = Math.min(paidIntegral, mau * seconds);
     const arpu = econ.arpu * mods.arpu;
-    const mrr = paidIntegral * arpu;
-    const serve = paidIntegral * t.computePerUser * p.quality * mods.serveCost * fm.serveCost;
+    const mrr = billed * arpu;
+    const serve = billed * t.computePerUser * p.quality * mods.serveCost * fm.serveCost;
     moneyDelta += mrr - serve - p.marketingPerSec * seconds;
     if (paid > 0) heatDelta += t.heatPerSec * fm.heat * mods.heat * seconds;
 

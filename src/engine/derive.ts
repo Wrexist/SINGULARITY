@@ -1,8 +1,20 @@
 import { Big } from "./math/Big";
 import { balance } from "./balance/config";
-import { computeStaffEffects, teamMorale } from "./employees";
+import { computeStaffEffects, teamMorale, type StaffEffects } from "./employees";
 import { powerStats } from "./power";
-import type { Derived, GameState } from "./types";
+import type { Derived, Employee, GameState } from "./types";
+
+// Single-slot memo for the staff aggregation (see derive()). Keyed on the employees
+// array IDENTITY (stable between ticks) + morale + the product-id set.
+let staffCache: { employees: Employee[]; morale: number; idsKey: string; fx: StaffEffects } | null = null;
+function staffCacheGet(employees: Employee[], morale: number, idsKey: string): StaffEffects | null {
+  return staffCache && staffCache.employees === employees && staffCache.morale === morale && staffCache.idsKey === idsKey
+    ? staffCache.fx : null;
+}
+function staffCacheSet(employees: Employee[], morale: number, idsKey: string, fx: StaffEffects): StaffEffects {
+  staffCache = { employees, morale, idsKey, fx };
+  return fx;
+}
 
 /** Morale multiplier on all staff output from owned office perks (1 = baseline). */
 export function officeMorale(state: GameState): number {
@@ -106,12 +118,14 @@ export function derive(state: GameState): Derived {
   // the whole roster into lane multipliers, payroll, and per-product buffs (benched
   // people buff all products at base rate; assigned ones focus on theirs at 2×).
   const morale = officeMorale(state) + teamMorale(state.employees);
-  const fx = computeStaffEffects(
-    state.employees,
-    state.products.active.map((p) => p.id),
-    morale,
-    balance.staff.assignFocusMult,
-  );
+  // Cross-tick memo: the staff aggregation is O(employees × products) but its inputs
+  // (the employees array reference, morale, the product-id set) only change on
+  // hire/fire/train/assign/perk — not every 10Hz tick. derive() runs every render, so
+  // caching here turns ~100+ employees into a no-op on the common path.
+  const idsKey = state.products.active.map((p) => p.id).join(",");
+  const fx = staffCacheGet(state.employees, morale, idsKey)
+    ?? staffCacheSet(state.employees, morale, idsKey,
+      computeStaffEffects(state.employees, state.products.active.map((p) => p.id), morale, balance.staff.assignFocusMult));
   computeMult = computeMult.mul(fx.computeMultF);
   dataMult = dataMult.mul(fx.dataMultF);
   moneyMult = moneyMult.mul(fx.moneyMultF);

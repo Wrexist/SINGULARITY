@@ -1393,8 +1393,13 @@ body {
 
 /* ---------- Product milestones (the chase ladder) ---------- */
 .prod-milestones { margin-top: 18px; }
-.prod-ms-head { font-size: 13px; font-weight: 750; margin-bottom: 8px; }
+.prod-ms-head {
+  width: 100%; display: flex; align-items: center; gap: 8px;
+  padding: 0; background: none; border: none; cursor: pointer; text-align: left;
+  font-size: 13px; font-weight: 750; color: var(--ink); margin-bottom: 8px;
+}
 .prod-ms-count { color: var(--ink-2); font-weight: 650; }
+.prod-ms-toggle { margin-left: auto; color: var(--ink-2); }
 .prod-ms-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .prod-ms {
   padding: 9px 11px; border-radius: var(--radius-sm);

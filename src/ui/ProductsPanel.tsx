@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { GameState } from "../engine/types";
 import { products as B, type ProductTypeId } from "../engine/balance/products";
 import { productMilestones } from "../engine/balance/products";
@@ -6,8 +6,7 @@ import {
   typeDef, productMetrics, canLaunchDraft, canStartUpgrade, versionCost,
   upgradeDurationSec, upgradeProgress, retirePayout, milestoneValue,
 } from "../engine/products";
-import { Big } from "../engine/math/Big";
-import { fmt, fmtMoney } from "./format";
+import { m$, numOf as num, fmtDur } from "./format";
 import { ProductDetail } from "./ProductDetail";
 
 const FUN_NAMES = ["Nimbus", "Oracle", "Synthia", "Cortex", "Lumen", "Vertex", "Sage", "Atlas", "Echo", "Prism", "Nova", "Helix", "Quasar", "Mirage"];
@@ -26,21 +25,6 @@ interface Props {
   onRetire: (id: string) => void;
 }
 
-// Sign-aware: the magnitude goes through the K/M/B formatter and the sign sits
-// OUTSIDE the $ (−$5K, not the raw ungrouped "$-5000" that overflowed the card).
-const m$ = (n: number) => (n < 0 ? `-${fmtMoney(Big.of(Math.round(-n)))}` : fmtMoney(Big.of(Math.round(n))));
-const num = (n: number) => fmt(Big.of(Math.round(n)));
-
-/** Short, human duration ("90s", "3m", "1h 5m") for research timers. */
-function fmtDur(sec: number): string {
-  const s = Math.max(0, Math.ceil(sec));
-  if (s < 60) return `${s}s`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return s % 60 ? `${m}m ${s % 60}s` : `${m}m`;
-  const h = Math.floor(m / 60);
-  return m % 60 ? `${h}h ${m % 60}m` : `${h}h`;
-}
-
 /** Phase 3 — the Products tab: commercialise the models you ship, market them, set
  *  pricing, research new versions over time, and watch the dashboard. */
 export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onSetChannelMix, onBuyFeature, onRename, onRetire }: Props) {
@@ -48,11 +32,17 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
   const [picking, setPicking] = useState<string | null>(null);
   // Which product's deep-management screen is open, if any.
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [msOpen, setMsOpen] = useState(false);
   const ps = game.products;
   const frontier = ps.frontier;
   const slotsFull = ps.active.length >= B.maxActive;
-  const totalMrr = ps.active.reduce((s, p) => s + productMetrics(p, frontier).mrr, 0);
-  const totalMargin = ps.active.reduce((s, p) => s + productMetrics(p, frontier).margin, 0);
+  // One metrics pass per product (was computed up to 3× each, every 10Hz tick).
+  const metrics = useMemo(
+    () => new Map(ps.active.map((p) => [p.id, productMetrics(p, frontier)])),
+    [ps.active, frontier],
+  );
+  const totalMrr = ps.active.reduce((s, p) => s + (metrics.get(p.id)?.mrr ?? 0), 0);
+  const totalMargin = ps.active.reduce((s, p) => s + (metrics.get(p.id)?.margin ?? 0), 0);
 
   return (
     <section className="panel">
@@ -117,7 +107,7 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
       <div className="list">
         {ps.active.map((p) => {
           const t = typeDef(p.type);
-          const me = productMetrics(p, frontier);
+          const me = metrics.get(p.id)!;
           const up = p.upgrade;
           const vc = versionCost(p.version);
           const upfrontC = vc.compute * B.upgrade.upfrontFrac;
@@ -193,26 +183,29 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
 
       {ps.active.length + ps.milestones.length > 0 && (
         <div className="prod-milestones">
-          <div className="prod-ms-head">
+          <button className="prod-ms-head" onClick={() => setMsOpen((o) => !o)} aria-expanded={msOpen}>
             🏆 Milestones <span className="prod-ms-count">{ps.milestones.length}/{productMilestones.length}</span>
-          </div>
-          <div className="prod-ms-grid">
-            {productMilestones.map((mDef) => {
-              const done = ps.milestones.includes(mDef.id);
-              const val = milestoneValue(game, mDef.metric);
-              const pct = Math.max(0, Math.min(1, val / mDef.threshold));
-              return (
-                <div className={`prod-ms ${done ? "done" : ""}`} key={mDef.id} title={mDef.desc}>
-                  <div className="prod-ms-top">
-                    <span className="prod-ms-name">{done ? "✓ " : ""}{mDef.label}</span>
-                    <span className="prod-ms-reward">+{m$(mDef.reward)}</span>
+            <span className="prod-ms-toggle">{msOpen ? "▾" : "▸"}</span>
+          </button>
+          {msOpen && (
+            <div className="prod-ms-grid">
+              {productMilestones.map((mDef) => {
+                const done = ps.milestones.includes(mDef.id);
+                const val = milestoneValue(game, mDef.metric);
+                const pct = Math.max(0, Math.min(1, val / mDef.threshold));
+                return (
+                  <div className={`prod-ms ${done ? "done" : ""}`} key={mDef.id} title={mDef.desc}>
+                    <div className="prod-ms-top">
+                      <span className="prod-ms-name">{done ? "✓ " : ""}{mDef.label}</span>
+                      <span className="prod-ms-reward">+{m$(mDef.reward)}</span>
+                    </div>
+                    <div className="prod-ms-desc">{mDef.desc}</div>
+                    {!done && <div className="prod-bar prod-ms-bar"><div className="prod-bar-fill" style={{ width: `${pct * 100}%`, background: "var(--data)" }} /></div>}
                   </div>
-                  <div className="prod-ms-desc">{mDef.desc}</div>
-                  {!done && <div className="prod-bar prod-ms-bar"><div className="prod-bar-fill" style={{ width: `${pct * 100}%`, background: "var(--data)" }} /></div>}
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

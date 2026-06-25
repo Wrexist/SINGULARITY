@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useGame } from "../state/store";
 import { useGameLoop } from "../state/useGameLoop";
 import { derive } from "../engine/derive";
@@ -51,7 +51,7 @@ export function App() {
     dismissOffline, dismissWorldEvent, chooseWorldEvent, hardReset } =
     useGame.getState();
 
-  const d = derive(game);
+  const d = useMemo(() => derive(game), [game]);
 
   // Detect a ship (prestige) and fire the celebration moment + haptics.
   const prevShips = useRef(game.prestige.ships);

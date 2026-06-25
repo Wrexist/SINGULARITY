@@ -66,12 +66,14 @@ function sanitizeAssignments(a: unknown): Record<string, Record<string, number>>
   return out;
 }
 
-/** Channel-mix weights are untrusted; keep finite ≥0 numbers, default {ads:1}. */
+/** Channel-mix weights are untrusted; keep finite ≥0 weights for KNOWN channels
+ *  only (drop stray keys), default {ads:1}. */
+const CHANNEL_IDS = new Set(PRODUCTS.channels.map((c) => c.id));
 function sanitizeChannelMix(m: unknown): Record<string, number> {
   if (!m || typeof m !== "object") return { ads: 1 };
   const out: Record<string, number> = {};
   for (const [k, v] of Object.entries(m as Record<string, unknown>)) {
-    if (typeof v === "number" && Number.isFinite(v) && v >= 0) out[k] = v;
+    if (CHANNEL_IDS.has(k) && typeof v === "number" && Number.isFinite(v) && v >= 0) out[k] = v;
   }
   return Object.keys(out).length ? out : { ads: 1 };
 }

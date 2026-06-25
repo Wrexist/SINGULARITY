@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { balance } from "../engine/balance/config";
 import { canBuyOfficePerk } from "../engine/actions";
 import { officeMorale } from "../engine/derive";
@@ -89,10 +89,18 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [labOpen, setLabOpen] = useState(false);
   const team = game.employees;
-  const infra = team.filter((e) => roleDef(e.roleId)?.team === "infra");
-  const product = team.filter((e) => roleDef(e.roleId)?.team === "product");
+  // Roster splits/sums only change on hire/fire/train/assign — not every 10Hz tick.
+  const { infra, product, labPay } = useMemo(() => {
+    const inf = team.filter((e) => roleDef(e.roleId)?.team === "infra");
+    const prod = team.filter((e) => roleDef(e.roleId)?.team === "product");
+    return { infra: inf, product: prod, labPay: inf.reduce((s, e) => s + employeePayroll(e), 0) };
+  }, [team]);
   const selected = selectedId ? team.find((e) => e.id === selectedId) ?? null : null;
 
+  const boardProducts = useMemo(
+    () => game.products.active.map((p) => ({ id: p.id, name: p.name })),
+    [game.products.active],
+  );
   const pm = derived.productMods;
   const buffs: string[] = [];
   if (pm.upgradeSpeed > 1) buffs.push(`+${Math.round((pm.upgradeSpeed - 1) * 100)}% research`);
@@ -100,7 +108,6 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
   if (pm.arpu > 1) buffs.push(`+${Math.round((pm.arpu - 1) * 100)}% ARPU`);
   if (pm.serveCost < 1) buffs.push(`−${Math.round((1 - pm.serveCost) * 100)}% serve`);
   if (pm.churn < 1) buffs.push(`−${Math.round((1 - pm.churn) * 100)}% churn`);
-  const labPay = infra.reduce((s, e) => s + employeePayroll(e), 0);
 
   return (
     <section className="panel">
@@ -128,7 +135,7 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
               <div className="emp-team-head">🚀 Product team — drag onto a product, or tap to manage</div>
               <EmployeeBoard
                 employees={product}
-                products={game.products.active.map((p) => ({ id: p.id, name: p.name }))}
+                products={boardProducts}
                 onAssign={onAssign} onSelect={setSelectedId} selectedId={selectedId}
               />
             </>
