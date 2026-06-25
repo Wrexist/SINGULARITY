@@ -358,14 +358,30 @@ function effectSummary(effect: WorldEventEffect): string {
     const sign = effect.pct > 0 ? "+" : "";
     return `${sign}${Math.round(effect.pct * 100)}% ${RES_LABEL[effect.resource]}`;
   }
+  if (effect.kind === "frontierJump") return "📈 Rivals leap ahead";
+  if (effect.kind === "productBuzz") return `🚀 Product buzz · ${effect.durationSec}s`;
   return `${TARGET_LABEL[effect.target]} ×${effect.factor} · ${effect.durationSec}s`;
 }
 
-/** Apply one effect (immediate % swing or a timed modifier), keyed to an id for refresh. */
+/** Apply one effect (immediate swing, timed modifier, or product effect). */
 function applyEffect(state: GameState, effect: WorldEventEffect, id: string, tone: "good" | "bad"): GameState {
   if (effect.kind === "grantPct") {
     const { resource, pct } = effect;
     return { ...state, resources: { ...state.resources, [resource]: state.resources[resource].mul(1 + pct) } };
+  }
+  if (effect.kind === "frontierJump") {
+    // Competitors advance — your shipped products fall behind (more churn).
+    return { ...state, products: { ...state.products, frontier: state.products.frontier + effect.amount } };
+  }
+  if (effect.kind === "productBuzz") {
+    // Industry hype — every live product gets a buzz wave (acquisition + churn cut).
+    return {
+      ...state,
+      products: {
+        ...state.products,
+        active: state.products.active.map((p) => ({ ...p, buzzSec: Math.max(p.buzzSec, effect.durationSec) })),
+      },
+    };
   }
   const mod: ActiveModifier = {
     id,

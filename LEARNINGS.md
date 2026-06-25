@@ -217,9 +217,35 @@ Deferred on purpose (documented, not fixed unsupervised — current balance does
   the clock, so it still looks smooth). The opaque blit fully overwrites the prior frame, so no
   `clearRect` is needed.
 
+### Auto-train can starve banked Compute (why the compute-gated research stalls)
+- A run costs `computePerSec × costSeconds` (≈2× income) and yields Data/Money.
+  Auto-train re-fires the instant `compute ≥ runCost`, so banked Compute is
+  capped at ~one run's cost. Compute-COSTED research (MoE 75K, Inference API 130K,
+  Scaling 300K) needs Compute *banked* — and it never gets there.
+- It's worse once run duration is short (Batch Scheduler + KV Cache + Distillation):
+  if `runDurationSec < costSeconds`, each auto-train cycle spends more than income
+  replenishes, draining the bank toward zero. Player ends up with mountains of
+  Data/Money and stuck Compute (real player report).
+- **Fix — Compute Focus (`game.computeFocus`, 0..1, save v4→v5):** auto-train only
+  fires once `compute ≥ runCost / focus`, so lowering focus lets the bank float up
+  to `runCost/focus` (focus=0 = hold, no auto-train). Manual runs ignore it. A
+  slider in the TrainingDock exposes it. focus=1 is byte-identical to the old gate
+  (`compute ≥ runCost`), so existing saves + the balance sim are unchanged.
+
 ### Hall geometry/capacity is a GAME RULE, not just a view concern
 - Rack capacity (you can only own as many racks as the floor has tiles → must expand) lives in
   `src/engine/hall.ts` so BOTH the engine (`canBuyUpgrade` gate) and the renderer view-model can
   use it. Putting it in `render/hallModel.ts` would have created an import cycle (actions ↔
   hallModel). `hall.ts` imports only `balance` + types, so no cycle. `buildHallModel` still
   downsamples for over-capacity (legacy/loaded saves) — the gate only blocks NEW purchases.
+- **Per-tick rates that decay/grow must NOT be linearized for big (offline) ticks.** The product
+  sim originally did `paid - paid*churn*seconds`; over an 8h offline catch-up (one ~28,800s tick)
+  that term dwarfs `paid` → clamps to 0, silently wiping the entire paying base (even "sticky"
+  products) on every reopen. Fix: solve the subscriber ODE in closed form —
+  `paid = pStar + (paid0 - pStar)*exp(-k*seconds)` with `k = convSpeed + churn`,
+  `pStar = convSpeed*target/k` — and bill revenue on the exact time-INTEGRAL of that curve, not the
+  endpoint or a trapezoid. This matches the old per-frame math for small ticks (so balance is
+  unchanged online) and converges sanely offline. Rule: anything of the form `x -= x*rate*dt` is a
+  bug waiting for a large `dt`; use `x *= exp(-rate*dt)` (bounded) instead. Also: format negative
+  money sign-OUTSIDE the unit (`-$5K`, not raw ungrouped `$-5000`) — `formatBig` only suffixes
+  values ≥1000 and assumed positivity, so losses overflowed the card.

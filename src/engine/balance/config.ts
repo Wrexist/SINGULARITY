@@ -108,10 +108,13 @@ export interface ResearchDef {
     | { kind: "unlockPassiveMoney"; perSec: number };
 }
 
-/** A world-event effect: a timed global buff/debuff or an immediate % swing. */
+/** A world-event effect: a timed global buff/debuff, an immediate % swing, or a
+ *  Phase-3 product effect (competitor frontier jump / industry hype buzz). */
 export type WorldEventEffect =
   | { kind: "buff"; target: "computeMult" | "dataMult" | "moneyMult"; factor: number; durationSec: number }
-  | { kind: "grantPct"; resource: "compute" | "data" | "money"; pct: number };
+  | { kind: "grantPct"; resource: "compute" | "data" | "money"; pct: number }
+  | { kind: "frontierJump"; amount: number }
+  | { kind: "productBuzz"; durationSec: number };
 
 /** One branch of a faction event: a label, its effect, and how it moves alignment. */
 export interface WorldEventChoice {
@@ -304,6 +307,24 @@ const WORLD_EVENTS: WorldEvent[] = [
     headline: "Open Letter to Pause AI",
     body: "Ten thousand signatories demand you stop. You frame it and keep going, but optics force a 'safety review.' Compute ×0.8.",
     effect: { kind: "buff", target: "computeMult", factor: 0.8, durationSec: 40 },
+  },
+
+  // --- Product/market events (Phase 3): pressure + hype on your released AIs. ---
+  {
+    id: "competitor_launch",
+    weight: 3,
+    tone: "bad",
+    headline: "A Rival Ships a Better Model",
+    body: "A competitor's flashy launch trends all week. The frontier moves; your shipped products suddenly look a step behind.",
+    effect: { kind: "frontierJump", amount: 2 },
+  },
+  {
+    id: "industry_hype",
+    weight: 2,
+    tone: "good",
+    headline: "AI Is Having A Moment (Again)",
+    body: "Every outlet runs the same breathless segment. Signups pour into anything with 'AI' on the box. Your products get a buzz wave.",
+    effect: { kind: "productBuzz", durationSec: 60 },
   },
 
   // --- Faction events (Phase 2): two choices, diverging effects + alignment. ---

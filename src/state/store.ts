@@ -15,6 +15,16 @@ import {
   type MarketOutcome,
   type WorldEventResult,
 } from "../engine/actions";
+import {
+  canReleaseProduct,
+  releaseProduct,
+  pushVersion,
+  setProductPrice,
+  setProductMarketing,
+  renameProduct,
+  retireProduct,
+} from "../engine/products";
+import type { ProductTypeId } from "../engine/balance/products";
 import { prestige } from "../engine/prestige";
 import { applyOffline, type OfflineSummary } from "../engine/offline";
 import { serialize, deserialize } from "../engine/save";
@@ -61,6 +71,14 @@ interface GameStore {
   doClaim: () => void;
   doBuyUpgrade: (id: string) => void;
   doHireStaff: (id: string) => void;
+  setComputeFocus: (v: number) => void;
+  /** Returns true if the release succeeded (so the UI only celebrates on a real ship). */
+  doReleaseProduct: (type: ProductTypeId, name: string) => boolean;
+  doPushVersion: (id: string) => void;
+  doSetProductPrice: (id: string, priceMult: number) => void;
+  doSetProductMarketing: (id: string, perSec: number) => void;
+  doRenameProduct: (id: string, name: string) => void;
+  doRetireProduct: (id: string) => void;
   doResearch: (id: string) => void;
   doBuyData: (id: string) => MarketOutcome | null;
   doPrestige: () => void;
@@ -74,6 +92,16 @@ function now(): number {
 let eventKey = 0;
 let worldKey = 0;
 let claimKey = 0;
+let productKey = 0;
+
+/** Advance the product-id counter past every persisted `prod-N` id so the next
+ *  release can't collide with a saved product (ids are React keys + find() keys). */
+function seedProductKey(game: GameState): void {
+  for (const p of game.products.active) {
+    const n = Number(p.id.replace(/^prod-/, ""));
+    if (Number.isFinite(n) && n > productKey) productKey = n;
+  }
+}
 
 export const useGame = create<GameStore>((set, get) => ({
   game: createInitialState(),
@@ -112,6 +140,7 @@ export const useGame = create<GameStore>((set, get) => ({
       console.warn("Save load failed, starting fresh:", err);
       game = createInitialState();
     }
+    seedProductKey(game);
     set({ game, offline, initialized: true });
     localStorage.setItem(TIME_KEY, String(now()));
   },
@@ -167,6 +196,21 @@ export const useGame = create<GameStore>((set, get) => ({
     }),
   doBuyUpgrade: (id) => set((s) => ({ game: buyUpgrade(s.game, id) })),
   doHireStaff: (id) => set((s) => ({ game: hireStaff(s.game, id) })),
+  setComputeFocus: (v) =>
+    set((s) => ({ game: { ...s.game, computeFocus: Math.max(0, Math.min(1, v)) } })),
+  // The store mints the product id (nondeterminism stays out of the engine).
+  // Guard first so a stale/double tap can't burn an id or fake a celebration.
+  doReleaseProduct: (type, name) => {
+    if (!canReleaseProduct(get().game, type)) return false;
+    productKey += 1;
+    set((s) => ({ game: releaseProduct(s.game, { type, name, id: `prod-${productKey}` }) }));
+    return true;
+  },
+  doPushVersion: (id) => set((s) => ({ game: pushVersion(s.game, id) })),
+  doSetProductPrice: (id, v) => set((s) => ({ game: setProductPrice(s.game, id, v) })),
+  doSetProductMarketing: (id, v) => set((s) => ({ game: setProductMarketing(s.game, id, v) })),
+  doRenameProduct: (id, name) => set((s) => ({ game: renameProduct(s.game, id, name) })),
+  doRetireProduct: (id) => set((s) => ({ game: retireProduct(s.game, id) })),
   doResearch: (id) => set((s) => ({ game: buyResearch(s.game, id) })),
   // The wall clock isn't the only nondeterminism we keep out of the engine —
   // the risk roll lives here too and is passed in, mirroring how we pass time.

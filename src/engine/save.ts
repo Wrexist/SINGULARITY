@@ -1,8 +1,48 @@
 import { Big } from "./math/Big";
 import { SAVE_VERSION, createInitialState } from "./state";
-import type { ActiveModifier, GameState, ModifierTarget } from "./types";
+import { products as PRODUCTS } from "./balance/products";
+import type { ActiveModifier, GameState, ModifierTarget, ProductsState, ProductState } from "./types";
 
 const MODIFIER_TARGETS: ModifierTarget[] = ["computeMult", "dataMult", "moneyMult"];
+const PRODUCT_TYPE_IDS = PRODUCTS.types.map((t) => t.id);
+
+/** Validate a single product entry. A corrupt/old entry with a missing or
+ *  non-finite numeric (or a zero priceMult → div-by-zero in convRate) would feed
+ *  NaN straight into simulateProducts → money, so drop it on load. */
+function isWellFormedProduct(p: unknown): p is ProductState {
+  const o = p as Partial<ProductState> | null;
+  return (
+    !!o &&
+    typeof o.id === "string" &&
+    typeof o.name === "string" &&
+    typeof o.type === "string" &&
+    (PRODUCT_TYPE_IDS as string[]).includes(o.type) &&
+    [o.version, o.quality, o.priceMult, o.marketingPerSec, o.mau, o.paid, o.buzzSec].every(
+      (n) => typeof n === "number" && Number.isFinite(n),
+    ) &&
+    // No negative counts/quality (would stick qf at 0 / break versionCost), and
+    // a positive priceMult (0 divides by zero in convRate).
+    o.priceMult! > 0 &&
+    o.version! >= 1 &&
+    o.quality! >= 0 &&
+    o.marketingPerSec! >= 0 &&
+    o.mau! >= 0 &&
+    o.paid! >= 0 &&
+    o.buzzSec! >= 0
+  );
+}
+
+/** Loaded products are untrusted; guard the container AND each entry. */
+function isWellFormedProducts(p: unknown): p is ProductsState {
+  const o = p as Partial<ProductsState> | null;
+  return (
+    !!o &&
+    Array.isArray(o.active) &&
+    o.active.every(isWellFormedProduct) &&
+    typeof o.frontier === "number" &&
+    Number.isFinite(o.frontier)
+  );
+}
 
 /** Loaded saves are untrusted input: a NaN heat or malformed modifier would
  * flow straight into tick()/derive() and poison or crash the run. Validate. */
@@ -39,6 +79,8 @@ interface SavedShape {
   heat: number;
   modifiers: ActiveModifier[];
   alignment: number;
+  computeFocus: number;
+  products: ProductsState;
 }
 
 export function serialize(state: GameState): string {
@@ -60,6 +102,8 @@ export function serialize(state: GameState): string {
     heat: state.heat,
     modifiers: state.modifiers,
     alignment: state.alignment,
+    computeFocus: state.computeFocus,
+    products: state.products,
   };
   return JSON.stringify(shape);
 }
@@ -82,6 +126,16 @@ export function deserialize(json: string): GameState {
     typeof raw.alignment === "number" && Number.isFinite(raw.alignment)
       ? Math.max(-1, Math.min(1, raw.alignment))
       : fresh.alignment;
+  const computeFocus =
+    typeof raw.computeFocus === "number" && Number.isFinite(raw.computeFocus)
+      ? Math.max(0, Math.min(1, raw.computeFocus))
+      : fresh.computeFocus;
+  const loadedProducts = isWellFormedProducts(raw.products) ? raw.products : fresh.products;
+  // `sold` was added after v6 shipped; default it for saves that predate it.
+  const products: ProductsState = {
+    ...loadedProducts,
+    sold: typeof loadedProducts.sold === "number" && Number.isFinite(loadedProducts.sold) ? loadedProducts.sold : 0,
+  };
   return {
     version: SAVE_VERSION,
     resources: {
@@ -100,6 +154,8 @@ export function deserialize(json: string): GameState {
     heat,
     modifiers,
     alignment,
+    computeFocus,
+    products,
   };
 }
 
@@ -124,6 +180,14 @@ export function migrate(raw: any): SavedShape {
   if (s.version === 3) {
     // v3 → v4: introduce faction alignment (starts neutral).
     s = { ...s, version: 4, alignment: s.alignment ?? 0 };
+  }
+  if (s.version === 4) {
+    // v4 → v5: introduce auto-train compute focus (defaults to full training).
+    s = { ...s, version: 5, computeFocus: s.computeFocus ?? 1 };
+  }
+  if (s.version === 5) {
+    // v5 → v6: introduce released products (none yet; frontier at the start value).
+    s = { ...s, version: 6, products: s.products ?? { active: [], frontier: PRODUCTS.frontierStart } };
   }
   return s as SavedShape;
 }

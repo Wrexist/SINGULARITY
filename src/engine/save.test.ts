@@ -61,6 +61,21 @@ describe("save/load", () => {
     expect(deserialize(serialize(s)).heat).toBe(42);
   });
 
+  it("preserves computeFocus through a round-trip, and backfills it on a v4 save", () => {
+    const s = createInitialState();
+    s.computeFocus = 0.4;
+    expect(deserialize(serialize(s)).computeFocus).toBe(0.4);
+    const v4 = {
+      version: 4,
+      resources: { compute: "1", data: "1", money: "1" },
+      upgrades: {}, research: [],
+      run: { active: false, progress: 0, readyToClaim: false },
+      prestige: { legacyWeights: "0", ships: 0 },
+      lifetimeMoney: "1", heat: 0, modifiers: [], alignment: 0,
+    };
+    expect(migrate(v4).computeFocus).toBe(1); // v4 → v5 backfill (full training)
+  });
+
   it("preserves faction alignment through a round-trip, and backfills it on a v3 save", () => {
     const s = createInitialState();
     s.alignment = -0.5;
@@ -104,6 +119,25 @@ describe("save/load", () => {
     expect(state.heat).toBe(100);
     expect(state.modifiers).toHaveLength(1);
     expect(state.modifiers[0]!.id).toBe("ok");
+  });
+
+  it("round-trips a well-formed product, but rejects a products block with a malformed entry", () => {
+    // Good entry survives.
+    const good = createInitialState();
+    good.products = {
+      frontier: 3,
+      sold: 0,
+      active: [{ id: "prod-1", name: "Nimbus", type: "general", version: 1, quality: 2, priceMult: 1, marketingPerSec: 0, mau: 10, paid: 2, buzzSec: 0 }],
+    };
+    expect(deserialize(serialize(good)).products.active).toHaveLength(1);
+
+    // A NaN/zero-priceMult entry would poison Money via simulateProducts → the
+    // whole products block is rejected and falls back to a fresh (empty) one.
+    const raw = JSON.parse(serialize(good));
+    raw.products.active[0].paid = "not a number";
+    const recovered = deserialize(JSON.stringify(raw));
+    expect(recovered.products.active).toHaveLength(0);
+    expect(Number.isFinite(recovered.products.frontier)).toBe(true);
   });
 
   it("loads a partial/legacy save without throwing (missing prestige/heat/run)", () => {

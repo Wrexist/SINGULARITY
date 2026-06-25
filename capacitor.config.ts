@@ -11,7 +11,9 @@ const config: CapacitorConfig = {
   webDir: "dist",
   ios: {
     contentInset: "always",
-    backgroundColor: "#0d1124", // matches the hall's dark room so launch is seamless
+    // Light, matching the app surface — so the status-bar area, home-indicator
+    // area, and overscroll bounce never flash the old dark navy ("blue bar").
+    backgroundColor: "#eef1f8",
   },
 };
 
