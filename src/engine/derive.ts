@@ -150,7 +150,11 @@ export function derive(state: GameState): Derived {
   computeMult = computeMult.mul(legacyMult);
   dataMult = dataMult.mul(legacyMult);
   moneyMult = moneyMult.mul(legacyMult);
-  passiveMoneyPerSec = passiveMoneyPerSec.mul(legacyMult);
+  // NOTE: passiveMoneyPerSec is NOT multiplied by global lane mults here — it is
+  // `acc × computePerSec` at the return, and computePerSec already carries legacy,
+  // ascension and rep-compute/global. Applying them here too would square them
+  // (the bug the Phase-3 review caught). Global boosts reach passive money exactly
+  // once, through compute.
 
   // AGI ascension: a permanent, compounding boost earned by shipping in the
   // Post-Singularity era (stats.ascensions). Stays 1.0 through the whole early/mid
@@ -159,7 +163,6 @@ export function derive(state: GameState): Derived {
   computeMult = computeMult.mul(ascensionMult);
   dataMult = dataMult.mul(ascensionMult);
   moneyMult = moneyMult.mul(ascensionMult);
-  passiveMoneyPerSec = passiveMoneyPerSec.mul(ascensionMult);
 
   // Lab Reputation perks — permanent global multipliers bought with meta-currency.
   // Owned perks are empty on a fresh run, so this is 1.0 until the player spends.
@@ -168,9 +171,9 @@ export function derive(state: GameState): Derived {
   dataMult = dataMult.mul(rep.dataMult);
   moneyMult = moneyMult.mul(rep.moneyMult);
   if (rep.payrollMult !== 1) payrollPerSec = payrollPerSec.mul(rep.payrollMult);
-  // Scraper output rides the global Legacy + ascension boost (kept separate from
-  // the per-run dataMult lane so the two data sources stay legible).
-  const dataPerSec = dataPerSecFlat.mul(legacyMult).mul(ascensionMult);
+  // Scraper output is its own lane (does NOT ride compute), so global boosts —
+  // Legacy, ascension, AND reputation data perks — must be applied to it directly.
+  const dataPerSec = dataPerSecFlat.mul(legacyMult).mul(ascensionMult).mul(rep.dataMult);
 
   let computePerSec = computeFlat.mul(computeMult);
   // PHASE 2 (flagged off): power/heat soft-cap throttles Compute when the racks

@@ -284,17 +284,27 @@ export const useGame = create<GameStore>((set, get) => ({
         }
       }
 
-      // A newly-unlocked achievement is a collection win — surface it (unless a
-      // milestone already claimed this tick's notice slot).
+      // Newly-unlocked achievements are a collection win — surface them (unless a
+      // milestone already claimed this tick's notice slot). Several can land in one
+      // tick (e.g. a big offline catch-up); with only one notice slot, show the
+      // first by name and coalesce the rest into the count so none are silently lost.
       if (!patch.notice) {
         const had = new Set(s.game.achievements);
-        const newAch = game.achievements.find((id) => !had.has(id));
-        if (newAch) {
-          const def = ACHIEVEMENT_DEFS.find((a) => a.id === newAch);
+        const newAch = game.achievements.filter((id) => !had.has(id));
+        if (newAch.length === 1) {
+          const def = ACHIEVEMENT_DEFS.find((a) => a.id === newAch[0]);
           if (def) {
             noticeKey += 1;
             patch.notice = { key: noticeKey, message: `🏅 Achievement: ${def.label} — ${def.desc}`, tone: "good" };
           }
+        } else if (newAch.length > 1) {
+          const first = ACHIEVEMENT_DEFS.find((a) => a.id === newAch[0]);
+          noticeKey += 1;
+          patch.notice = {
+            key: noticeKey,
+            message: `🏅 ${newAch.length} achievements unlocked${first ? ` — incl. ${first.label}` : ""}`,
+            tone: "good",
+          };
         }
       }
 

@@ -68,6 +68,19 @@ describe("lab reputation", () => {
     expect(ratio).toBeCloseTo(1.1, 5); // +10% Compute
   });
 
+  it("a data perk boosts the scraper data lane (dataPerSec), not just run yields", () => {
+    // Regression for the Phase-3 review bug: dataPerSec is its own lane and must
+    // receive rep.dataMult directly (it does not ride compute).
+    const base = createInitialState();
+    base.upgrades = { web_scraper: 5 }; // some passive Data/sec
+    const withPerk = { ...base, reputation: { spent: 0, perks: ["rep_data1"] } };
+    const baseRate = derive(base).dataPerSec;
+    if (baseRate.gt(0)) {
+      const ratio = derive(withPerk).dataPerSec.div(baseRate).toNumber();
+      expect(ratio).toBeCloseTo(1.1, 5); // +10% Data reaches the scraper lane
+    }
+  });
+
   it("survives prestige and a save round-trip", () => {
     let s = createInitialState();
     s.research = [balance.prestige.capabilityResearch];

@@ -46,6 +46,19 @@ describe("AGI ascension", () => {
     expect(ratio).toBeCloseTo(1 + 3 * balance.eras.agi.bonusPerAscension, 5);
   });
 
+  it("scales passive money LINEARLY (not quadratically) with ascensions", () => {
+    // Regression for the Phase-3 review bug: passive money = acc × computePerSec,
+    // and computePerSec already carries ascensionMult — so it must be applied ONCE.
+    const base = createInitialState();
+    base.upgrades = { rack_basic: 10 };
+    base.research = ["inference_api"]; // unlocks passive money
+    const boosted = { ...base, stats: { ...base.stats, ascensions: 3 } };
+    const ratio = derive(boosted).passiveMoneyPerSec.div(derive(base).passiveMoneyPerSec).toNumber();
+    const linear = 1 + 3 * balance.eras.agi.bonusPerAscension;
+    expect(ratio).toBeCloseTo(linear, 4); // linear, NOT linear² (the squaring bug)
+    expect(ratio).toBeLessThan(linear * linear - 0.001);
+  });
+
   it("no ascensions = no multiplier change (early/mid curve untouched)", () => {
     const base = createInitialState();
     expect(base.stats.ascensions).toBe(0);
