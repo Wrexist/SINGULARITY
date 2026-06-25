@@ -1391,6 +1391,31 @@ body {
 .prod-draft-sub { font-size: 12px; color: var(--ink-2); line-height: 1.35; }
 .btn-sm { padding: 7px 14px; font-size: 13px; flex: 0 0 auto; white-space: nowrap; }
 
+/* ---------- Product detail screen ---------- */
+.prod-details { font-size: 12px; margin-left: auto; }
+.pd-modal { max-width: 420px; text-align: left; }
+.pd-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pd-blurb { font-size: 12.5px; color: var(--ink-2); line-height: 1.4; margin: 4px 0 12px; }
+.pd-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 14px;
+}
+.pd-stat {
+  display: flex; flex-direction: column; gap: 1px; padding: 8px 10px;
+  background: var(--glass-strong); border: 1px solid var(--glass-hairline); border-radius: var(--radius-sm);
+}
+.pd-stat-v { font-size: 15px; font-weight: 750; }
+.pd-stat-v.pos { color: var(--money); }
+.pd-stat-v.neg { color: var(--coral); }
+.pd-stat-l { font-size: 11px; color: var(--ink-2); }
+.pd-section-head { font-size: 12px; font-weight: 750; color: var(--ink-2); margin: 14px 0 6px; }
+.pd-roadmap { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.pd-roadmap-row {
+  display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--ink-2);
+  padding: 5px 8px; background: var(--glass-strong); border-radius: 8px;
+}
+.pd-roadmap-row span:first-child { font-weight: 700; color: var(--ink); }
+.pd-foot { margin-top: 16px; text-align: center; }
+
 /* ---------- Employees page ---------- */
 .emp-buffs {
   font-size: 12.5px; font-weight: 650; color: var(--ink-2); margin: 2px 0 6px;

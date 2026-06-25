@@ -7,6 +7,7 @@ import {
 } from "../engine/products";
 import { Big } from "../engine/math/Big";
 import { fmt, fmtMoney } from "./format";
+import { ProductDetail } from "./ProductDetail";
 
 const FUN_NAMES = ["Nimbus", "Oracle", "Synthia", "Cortex", "Lumen", "Vertex", "Sage", "Atlas", "Echo", "Prism", "Nova", "Helix", "Quasar", "Mirage"];
 
@@ -40,6 +41,8 @@ function fmtDur(sec: number): string {
 export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice, onSetMarketing, onRename, onRetire }: Props) {
   // Which draft (by id) is currently showing the type-picker, if any.
   const [picking, setPicking] = useState<string | null>(null);
+  // Which product's deep-management screen is open, if any.
+  const [detailId, setDetailId] = useState<string | null>(null);
   const ps = game.products;
   const frontier = ps.frontier;
   const slotsFull = ps.active.length >= B.maxActive;
@@ -132,6 +135,7 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
               <div className="prod-sub">
                 <span className="prod-badge">{t.name}</span>
                 <span className="prod-ver">v{p.version}</span>
+                <button className="link-btn prod-details" onClick={() => setDetailId(p.id)}>details ▸</button>
               </div>
               <div className="prod-stats">
                 <span><b>{num(me.paid)}</b> subs</span>
@@ -181,6 +185,19 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
           );
         })}
       </div>
+
+      {detailId && (
+        <ProductDetail
+          game={game}
+          productId={detailId}
+          onClose={() => setDetailId(null)}
+          onStartUpgrade={onStartUpgrade}
+          onSetPrice={onSetPrice}
+          onSetMarketing={onSetMarketing}
+          onRename={onRename}
+          onRetire={onRetire}
+        />
+      )}
     </section>
   );
 }
