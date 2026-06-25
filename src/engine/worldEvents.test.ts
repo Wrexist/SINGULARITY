@@ -101,10 +101,13 @@ describe("world events — faction choices (Phase 2)", () => {
     expect(state.alignment).toBeCloseTo(-0.34, 6);
   });
 
-  it("alignment clamps to [-1, 1]", () => {
-    let s = createInitialState();
-    for (let i = 0; i < 10; i++) s = applyWorldEventChoice(s, "choice_opensource", 0).state;
-    expect(s.alignment).toBe(1);
+  it("alignment clamps to [-1, 1] on both ends", () => {
+    let hi = createInitialState();
+    for (let i = 0; i < 10; i++) hi = applyWorldEventChoice(hi, "choice_opensource", 0).state; // +accel
+    expect(hi.alignment).toBe(1);
+    let lo = createInitialState();
+    for (let i = 0; i < 10; i++) lo = applyWorldEventChoice(lo, "choice_opensource", 1).state; // +doomer
+    expect(lo.alignment).toBe(-1);
   });
 });
 

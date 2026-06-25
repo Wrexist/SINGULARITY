@@ -9,12 +9,13 @@ interface Props {
   onHire: (id: string) => void;
 }
 
-const LANE_VAR: Record<string, string> = {
+type Lane = (typeof balance.staff.roles)[number]["effect"]["lane"];
+const LANE_VAR: Record<Lane, string> = {
   computeMult: "--compute",
   dataMult: "--data",
   moneyMult: "--money",
 };
-const LANE_LABEL: Record<string, string> = {
+const LANE_LABEL: Record<Lane, string> = {
   computeMult: "Compute",
   dataMult: "Data/run",
   moneyMult: "Money/run",

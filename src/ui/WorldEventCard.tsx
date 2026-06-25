@@ -12,10 +12,17 @@ export function WorldEventCard({ event, onDismiss, onChoose }: Props) {
   const hasChoices = !!event.choices && event.choices.length > 0;
   return (
     <div className="modal-backdrop" onClick={hasChoices ? undefined : onDismiss}>
-      <div className={`modal world-modal world-${event.tone}`} onClick={(e) => e.stopPropagation()}>
+      <div
+        className={`modal world-modal world-${event.tone}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="world-event-headline"
+        aria-describedby="world-event-body"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="world-kicker">{event.tone === "good" ? "📣 BREAKING" : "⚠️ BREAKING"}</div>
-        <h2 className="world-headline">{event.headline}</h2>
-        <p className="world-body">{event.body}</p>
+        <h2 id="world-event-headline" className="world-headline">{event.headline}</h2>
+        <p id="world-event-body" className="world-body">{event.body}</p>
 
         {hasChoices ? (
           <div className="world-choices">

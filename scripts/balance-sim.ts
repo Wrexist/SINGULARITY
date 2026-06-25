@@ -31,6 +31,7 @@ import {
 } from "../src/engine/actions";
 import { canPrestige, legacyWeightsGain, prestige } from "../src/engine/prestige";
 import { powerStats } from "../src/engine/power";
+import { floorFull } from "../src/engine/hall";
 import { balance } from "../src/engine/balance/config";
 import type { GameState } from "../src/engine/types";
 
@@ -188,6 +189,11 @@ function autoBuy(state: GameState, useMarket: boolean): { state: GameState; boug
       .filter((d) => canBuyUpgrade(s, d.id))
       // Drop lower-tier racks when a better one is affordable.
       .filter((d) => d.effect.kind !== "computeFlat" || d.effect.perLevel >= bestRackPerLevel)
+      // Only buy headroom when it's the ACTIVE constraint: power capacity when
+      // throttled, hall expansions when the floor is full. Otherwise the sim
+      // spends on spare capacity before it's needed and skews the baseline.
+      .filter((d) => d.effect.kind !== "powerCapacity" || powerStats(s).throttled)
+      .filter((d) => (d.effect.kind !== "floorCols" && d.effect.kind !== "floorRows") || floorFull(s))
       .map((d) => ({ d, cost: upgradeCost(d, s.upgrades[d.id] ?? 0) }))
       // Don't spend compute we need to run training; keep a buffer.
       .filter(({ d, cost }) => {

@@ -43,7 +43,15 @@ export function hallDims(game: GameState): { cols: number; rows: number; gxMin: 
  */
 export function hallCapacity(game: GameState): number {
   const { cols, rows } = hallDims(game);
-  return Math.min(cols * rows, balance.hall.maxDrawnRacks);
+  // The multi-room view reserves the split column/row as walkways (the renderer
+  // skips those tiles). Subtract them so capacity == the drawable tile count and
+  // every owned rack manifests (no silently-undrawn tail racks).
+  const { splitGx, splitGy } = hallRoomSplit(game);
+  const reserved =
+    (splitGx !== null ? rows : 0) +
+    (splitGy !== null ? cols : 0) -
+    (splitGx !== null && splitGy !== null ? 1 : 0); // shared corner counted once
+  return Math.min(cols * rows - reserved, balance.hall.maxDrawnRacks);
 }
 
 export function isRackId(id: string): boolean {

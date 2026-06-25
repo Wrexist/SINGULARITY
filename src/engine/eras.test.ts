@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { currentEra, eraName, ERA_COUNT } from "./eras";
 import { createInitialState } from "./state";
+import { balance } from "./balance/config";
 
 describe("eras", () => {
   it("a fresh lab is era 0 (garage closet)", () => {
@@ -30,12 +31,12 @@ describe("eras", () => {
 
   it("reaches the endgame eras (Frontier, Hyperscaler) by ship count", () => {
     const s = createInitialState();
-    s.prestige.ships = 2;
-    expect(currentEra(s)).toBe(3); // Frontier Lab
-    s.prestige.ships = 5;
-    expect(currentEra(s)).toBe(4); // Hyperscaler
-    s.prestige.ships = 100;
-    expect(currentEra(s)).toBe(4); // caps at the last era
+    s.prestige.ships = balance.eras.frontierAtShips;
+    expect(currentEra(s)).toBe(ERA_COUNT - 2); // Frontier Lab
+    s.prestige.ships = balance.eras.hyperscalerAtShips;
+    expect(currentEra(s)).toBe(ERA_COUNT - 1); // Hyperscaler (last era)
+    s.prestige.ships = balance.eras.hyperscalerAtShips + 100;
+    expect(currentEra(s)).toBe(ERA_COUNT - 1); // caps at the last era
   });
 
   it("exposes a name for every era index", () => {

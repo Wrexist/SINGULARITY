@@ -65,7 +65,7 @@ export function claimRun(state: GameState): GameState {
 
 /** Cost of the next level of an upgrade: base * growth^owned. */
 export function upgradeCost(def: UpgradeDef, owned: number): Big {
-  return Big.of(def.cost.base).mul(Math.pow(def.cost.growth, owned));
+  return Big.of(def.cost.base).mul(Big.of(def.cost.growth).pow(owned));
 }
 
 export function canBuyUpgrade(state: GameState, id: string): boolean {
@@ -113,7 +113,7 @@ const STAFF_BY_ID: Record<string, StaffRole> = Object.fromEntries(
 
 /** Cost to hire the next of a role: base * growth^owned. */
 export function staffHireCost(role: StaffRole, owned: number): Big {
-  return Big.of(role.hire.base).mul(Math.pow(role.hire.growth, owned));
+  return Big.of(role.hire.base).mul(Big.of(role.hire.growth).pow(owned));
 }
 
 export function canHireStaff(state: GameState, id: string): boolean {
@@ -385,7 +385,9 @@ function applyEffect(state: GameState, effect: WorldEventEffect, id: string, ton
  * pick via applyWorldEventChoice — but surface their branches for the card.
  */
 export function applyWorldEvent(state: GameState, eventId: string): { state: GameState; event: WorldEventResult } {
-  const def = WORLD_EVENTS.find((e) => e.id === eventId) ?? WORLD_EVENTS[0]!;
+  const def = WORLD_EVENTS.find((e) => e.id === eventId);
+  // Unknown id (stale save / typo): apply nothing rather than the wrong event.
+  if (!def) return { state, event: { id: eventId, headline: "", body: "", tone: "good", summary: "" } };
   const base = { id: def.id, headline: def.headline, body: def.body, tone: def.tone };
 
   if (def.choices && def.choices.length > 0) {
@@ -408,7 +410,8 @@ export function applyWorldEventChoice(
   eventId: string,
   choiceIndex: number,
 ): { state: GameState; event: WorldEventResult } {
-  const def = WORLD_EVENTS.find((e) => e.id === eventId) ?? WORLD_EVENTS[0]!;
+  const def = WORLD_EVENTS.find((e) => e.id === eventId);
+  if (!def) return { state, event: { id: eventId, headline: "", body: "", tone: "good", summary: "" } };
   const choice = def.choices?.[choiceIndex];
   const base = { id: def.id, headline: def.headline, body: def.body, tone: def.tone, summary: "" };
   if (!choice) return { state, event: base };

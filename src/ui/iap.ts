@@ -82,8 +82,29 @@ function ensureInit(): Promise<CdvStore | null> {
     await store.initialize([Platform.APPLE_APPSTORE]);
     sync();
     return store;
-  })();
+  })().catch((e) => {
+    // Don't cache a rejected init — a transient StoreKit/network failure must not
+    // permanently block future buy/restore attempts.
+    initPromise = null;
+    throw e;
+  });
   return initPromise;
+}
+
+const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/**
+ * Wait for ownership to settle after an order/restore. CdvPurchase mirrors
+ * ownership via async approved/receiptUpdated callbacks, so reading owned()
+ * immediately can miss a just-completed transaction. Poll briefly.
+ */
+async function settleOwnership(store: CdvStore, timeoutMs = 2500): Promise<boolean> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (store.owned(PREMIUM_PRODUCT_ID)) return true;
+    await delay(150);
+  }
+  return store.owned(PREMIUM_PRODUCT_ID);
 }
 
 export const iap = {
@@ -116,8 +137,9 @@ export const iap = {
       console.warn("IAP purchase failed/cancelled:", e);
       return isPremium();
     }
-    // Ownership is mirrored by the approved/receiptUpdated handlers above.
-    const owned = store.owned(PREMIUM_PRODUCT_ID);
+    // Ownership is mirrored asynchronously by the approved/receiptUpdated
+    // handlers — wait for it to settle so we don't report a false negative.
+    const owned = await settleOwnership(store);
     setPremium(owned);
     return owned;
   },
@@ -131,7 +153,7 @@ export const iap = {
     } catch (e) {
       console.warn("IAP restore failed:", e);
     }
-    const owned = store.owned(PREMIUM_PRODUCT_ID);
+    const owned = await settleOwnership(store);
     setPremium(owned);
     return owned;
   },
