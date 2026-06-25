@@ -3,6 +3,7 @@ import {
   productsUnlocked, canReleaseProduct, releaseProduct, pushVersion, canPushVersion,
   setProductPrice, setProductMarketing, renameProduct, retireProduct, retirePayout,
   simulateProducts, productMetrics, versionCost,
+  churnReason, maybeChurnFlavor,
 } from "./products";
 import { applyWorldEvent } from "./actions";
 import { tick } from "./tick";
@@ -146,6 +147,66 @@ describe("products — simulation", () => {
     s = setProductMarketing(s, "p1", 1e9);
     const p = s.products.active[0]!;
     expect(p.marketingPerSec).toBe(p.quality * B.marketingCapPerQuality);
+  });
+});
+
+describe("products — churn-reason flavor", () => {
+  // A released product carries a launch-buzz window; clear it to read steady-state churn.
+  const settled = () => {
+    const s = release();
+    return { ...s.products.active[0]!, buzzSec: 0, paid: 500 };
+  };
+
+  it("classifies a competitive, fairly-priced product as healthy", () => {
+    const p = { ...settled(), quality: 5, priceMult: 1 };
+    expect(churnReason(p, 5)).toBe("healthy");
+  });
+
+  it("a product inside its buzz window is never roasted", () => {
+    const p = { ...settled(), buzzSec: 10, quality: 1 };
+    expect(churnReason(p, 100)).toBe("healthy"); // stale on paper, but freshly shipped
+  });
+
+  it("blames staleness when the frontier has run far ahead", () => {
+    const p = { ...settled(), quality: 1, priceMult: 1 };
+    expect(churnReason(p, 51)).toBe("stale");
+  });
+
+  it("blames pricing when the dial is cranked but quality is current", () => {
+    const p = { ...settled(), quality: 5, priceMult: 1.8 };
+    expect(churnReason(p, 5)).toBe("pricey");
+  });
+
+  it("picks the dominant pressure when both apply (huge gap → stale)", () => {
+    const p = { ...settled(), quality: 1, priceMult: 1.8 };
+    expect(churnReason(p, 51)).toBe("stale");
+  });
+
+  it("fires a flavor quip naming a materially-bleeding product", () => {
+    const stale = { ...settled(), quality: 1, priceMult: 1, paid: 500 };
+    const ps = { active: [stale], frontier: 51, sold: 0 };
+    const res = maybeChurnFlavor(ps, 10, 0, 0, 0); // rollFire 0 → fires
+    expect(res).not.toBeNull();
+    expect(res!.reason).toBe("stale");
+    expect(res!.message).toContain(stale.name);
+  });
+
+  it("stays silent on the dice when the fire roll misses", () => {
+    const stale = { ...settled(), quality: 1, priceMult: 1, paid: 500 };
+    const ps = { active: [stale], frontier: 51, sold: 0 };
+    expect(maybeChurnFlavor(ps, 0.1, 0.99, 0, 0)).toBeNull(); // tiny window, high roll
+  });
+
+  it("won't quip about a product with no real subscriber base", () => {
+    const tiny = { ...settled(), quality: 1, priceMult: 1, paid: 5 }; // below flavor.minPaid
+    const ps = { active: [tiny], frontier: 51, sold: 0 };
+    expect(maybeChurnFlavor(ps, 10, 0, 0, 0)).toBeNull();
+  });
+
+  it("won't quip about a healthy portfolio", () => {
+    const healthy = { ...settled(), quality: 50, priceMult: 1, paid: 500 };
+    const ps = { active: [healthy], frontier: 50, sold: 0 };
+    expect(maybeChurnFlavor(ps, 10, 0, 0, 0)).toBeNull();
   });
 });
 

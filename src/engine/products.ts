@@ -121,6 +121,53 @@ export function productMetrics(p: ProductState, frontier: number): ProductMetric
   };
 }
 
+// ---------- Churn-reason classification + flavor (pure) ----------
+
+export type ChurnReason = "stale" | "pricey" | "healthy";
+
+/** The dominant reason a product is shedding subscribers — for legibility + flavor.
+ *  Pure: same product + frontier → same reason. A product inside its launch/version
+ *  buzz window counts as "healthy" (it was just refreshed; don't roast it). */
+export function churnReason(p: ProductState, frontier: number): ChurnReason {
+  if (p.buzzSec > 0) return "healthy";
+  const gap = Math.max(0, frontier - p.quality);
+  const staleExcess = gap * B.stalenessChurn;        // extra churn fraction from falling behind
+  const priceExcess = Math.max(0, p.priceMult - 1);  // extra churn fraction from over-pricing
+  if (staleExcess < B.flavor.staleMin && priceExcess < B.flavor.priceMin) return "healthy";
+  return staleExcess >= priceExcess ? "stale" : "pricey";
+}
+
+export interface ChurnFlavorResult {
+  productId: string;
+  productName: string;
+  reason: "stale" | "pricey";
+  message: string;
+}
+
+/** Occasionally surface WHY a product is bleeding, as a satirical toast. Deterministic
+ *  given its rolls (the store supplies Math.random(), like maybeHeatEvent) — so the
+ *  cadence lives in the impure layer and this stays pure/testable. Returns null when
+ *  nothing is materially churning or the dice say "not this tick". */
+export function maybeChurnFlavor(
+  ps: ProductsState,
+  seconds: number,
+  rollFire: number,
+  rollPick: number,
+  rollLine: number,
+): ChurnFlavorResult | null {
+  const bleeding = ps.active.filter(
+    (p) => p.paid >= B.flavor.minPaid && churnReason(p, ps.frontier) !== "healthy",
+  );
+  if (bleeding.length === 0) return null;
+  const chance = 1 - Math.exp(-B.flavor.ratePerSec * seconds);
+  if (rollFire >= chance) return null;
+  const p = bleeding[Math.min(bleeding.length - 1, Math.floor(rollPick * bleeding.length))]!;
+  const reason = churnReason(p, ps.frontier) as "stale" | "pricey";
+  const lines = B.flavor.lines[reason];
+  const line = lines[Math.min(lines.length - 1, Math.floor(rollLine * lines.length))]!;
+  return { productId: p.id, productName: p.name, reason, message: line.replace("{name}", p.name) };
+}
+
 // ---------- Actions (pure; the store supplies a fresh `id`) ----------
 
 export function canReleaseProduct(state: GameState, type: ProductTypeId): boolean {

@@ -23,6 +23,7 @@ import {
   setProductMarketing,
   renameProduct,
   retireProduct,
+  maybeChurnFlavor,
 } from "../engine/products";
 import type { ProductTypeId } from "../engine/balance/products";
 import { prestige } from "../engine/prestige";
@@ -55,6 +56,8 @@ interface GameStore {
   initialized: boolean;
   /** Most recent regulatory event (heat-driven), or null. */
   event: FiredEvent | null;
+  /** Most recent lightweight flavor toast (e.g. churn-reason quips), or null. */
+  notice: FiredEvent | null;
   /** Pending ambient world event (shown as a card), or null. */
   worldEvent: FiredWorldEvent | null;
   /** Bumps each time a payout is claimed (drives the hall's mote burst). */
@@ -90,6 +93,7 @@ function now(): number {
 }
 
 let eventKey = 0;
+let noticeKey = 0;
 let worldKey = 0;
 let claimKey = 0;
 let productKey = 0;
@@ -108,6 +112,7 @@ export const useGame = create<GameStore>((set, get) => ({
   offline: null,
   initialized: false,
   event: null,
+  notice: null,
   worldEvent: null,
   claimBurst: 0,
   dismissWorldEvent: () => set({ worldEvent: null }),
@@ -173,6 +178,18 @@ export const useGame = create<GameStore>((set, get) => ({
         }
       }
 
+      // Churn-reason flavor quip — the satire surface for "update or bleed". Only
+      // when no heavier regulatory event already claimed this tick's toast slot.
+      if (!patch.event) {
+        const flavor = maybeChurnFlavor(
+          game.products, secs, Math.random(), Math.random(), Math.random(),
+        );
+        if (flavor) {
+          noticeKey += 1;
+          patch.notice = { key: noticeKey, message: flavor.message, tone: "bad" };
+        }
+      }
+
       return patch;
     }),
 
@@ -226,7 +243,7 @@ export const useGame = create<GameStore>((set, get) => ({
     localStorage.removeItem(TIME_KEY);
     // Clear transient UI state too, or a stale world-event card / claim burst
     // could survive into the fresh run.
-    set({ game: createInitialState(), offline: null, event: null, worldEvent: null, claimBurst: 0 });
+    set({ game: createInitialState(), offline: null, event: null, notice: null, worldEvent: null, claimBurst: 0 });
   },
 }));
 

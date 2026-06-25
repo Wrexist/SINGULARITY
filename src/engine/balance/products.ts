@@ -85,6 +85,36 @@ export const products = {
    *  the ceiling rises as quality (versions/frontier) climbs. */
   marketingCapPerQuality: 2000,
 
+  /** Churn-reason flavor toasts — the satire surface that makes "update or bleed"
+   *  LEGIBLE: when a product is materially shedding subscribers, an occasional
+   *  toast names the dominant reason (rivals pulled ahead, or the price stings).
+   *  Cadence/RNG live in the store; these only set the thresholds + the copy. */
+  flavor: {
+    /** Need a real subscriber base before "rivals are poaching them" reads true. */
+    minPaid: 50,
+    /** Staleness must add ≥ this fraction of churn to be the headline. */
+    staleMin: 0.5,
+    /** Pricing must add ≥ this fraction of churn to be the headline. */
+    priceMin: 0.4,
+    /** Per-second hazard while a product is bleeding (≈ one quip per ~50s eligible). */
+    ratePerSec: 0.02,
+    /** Satirical lines per reason; {name} is interpolated. Humor lives here. */
+    lines: {
+      stale: [
+        "📉 {name} users are wandering off to a rival's shinier demo. Ship a new version?",
+        "📉 A competitor just leapfrogged {name}. The fickle masses have noticed.",
+        "📉 {name} is starting to feel last-season. Churn is creeping up.",
+        "📉 \"Is {name} still being maintained?\" — an actual {name} user, leaving.",
+      ],
+      pricey: [
+        "💸 {name} subscribers are rage-canceling over the price. Too rich for their blood.",
+        "💸 \"{name} is great but I'm not made of money\" — a former {name} subscriber.",
+        "💸 Sticker shock is thinning {name}'s paid tier. The dial may be cranked too high.",
+        "💸 {name} churn is spiking — turns out people read the invoice.",
+      ],
+    },
+  },
+
   types: [
     {
       id: "general", name: "General Assistant",

@@ -42,6 +42,7 @@ export function App() {
   const offline = useGame((s) => s.offline);
   const initialized = useGame((s) => s.initialized);
   const event = useGame((s) => s.event);
+  const notice = useGame((s) => s.notice);
   const worldEvent = useGame((s) => s.worldEvent);
   const { doStartRun, doClaim, doBuyUpgrade, doHireStaff, doResearch, doBuyData, doPrestige, setComputeFocus,
     doReleaseProduct, doPushVersion, doSetProductPrice, doSetProductMarketing, doRenameProduct, doRetireProduct,
@@ -144,6 +145,15 @@ export function App() {
     else { haptics.celebrate(); sound.success(); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event?.key]);
+
+  // Churn-reason flavor quips — satirical, low-weight. A light tap (NOT the heavy
+  // regulatory warn) keeps them feeling like ambient color, not an alarm.
+  useEffect(() => {
+    if (!notice) return;
+    pushToast(notice.message, notice.tone);
+    haptics.tap();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notice?.key]);
 
   // Staleness nudge: when a live product slips below ~50% competitiveness (rivals
   // pulled ahead since its last version), poke the player once to push an update.

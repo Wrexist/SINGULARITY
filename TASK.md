@@ -220,6 +220,18 @@ fun-gate on 2026-06-24 and greenlit Phase 1. (Phase 0 history retained below for
       a real "cash out vs keep earning" call. Validated economics via `scripts/balance-sim.ts`
       `runProduct` scenarios. 18 product tests (140 total). typecheck + build clean.
 
+### 2026-06-25 — Phase 3 depth follow-ups (post-#10 merge)
+- [x] **Era-gated product types.** Not all 6 model types unlock at once — premium high-ARPU
+      types arrive as you ship (Ship 1: general/code/small · 2: multimodal · 3: reasoning ·
+      4: domain). `unlockAtShips` per type + `typeUnlocked()`; the picker shows 🔒 + "Unlocks
+      after shipping N models". Reinforces "hard early, compounds later".
+- [x] **Churn-reason flavor toasts (M4 juice).** When a product is materially shedding subs, an
+      occasional satirical quip names the dominant reason — **stale** (rivals pulled ahead) vs
+      **pricey** (the dial is cranked too high). Pure `churnReason()` + RNG-parameterized
+      `maybeChurnFlavor()` in the engine (deterministic, like `maybeHeatEvent`); cadence + rolls
+      live in the store's `notice` channel; App surfaces it with a light tap (not the heavy
+      regulatory warn). Makes "update or bleed" legible + funny. +9 tests (155 total).
+
 ### 2026-06-24 — UI visibility/glitch + difficulty pass (owner-directed, from TestFlight screenshots)
 - [x] **Fixed stuck toasts** (the "pop-ups never leave the screen" bug). Root cause: the game
       re-renders ~10×/sec (10 Hz tick) and `Toast`'s dismiss-timer effect depended on the parent's
