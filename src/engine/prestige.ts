@@ -42,5 +42,8 @@ export function prestige(state: GameState): GameState {
       legacyWeights: state.prestige.legacyWeights.add(gained),
       ships: state.prestige.ships + 1,
     },
+    // Phase 3 — released products are your standing business; they survive the
+    // reset and keep earning Money into the next run (the meta-reward for shipping).
+    products: state.products,
   };
 }

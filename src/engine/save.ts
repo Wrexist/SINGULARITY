@@ -1,8 +1,15 @@
 import { Big } from "./math/Big";
 import { SAVE_VERSION, createInitialState } from "./state";
-import type { ActiveModifier, GameState, ModifierTarget } from "./types";
+import { products as PRODUCTS } from "./balance/products";
+import type { ActiveModifier, GameState, ModifierTarget, ProductsState } from "./types";
 
 const MODIFIER_TARGETS: ModifierTarget[] = ["computeMult", "dataMult", "moneyMult"];
+
+/** Loaded products are untrusted; guard the shape (entries are our own format). */
+function isWellFormedProducts(p: unknown): p is ProductsState {
+  const o = p as Partial<ProductsState> | null;
+  return !!o && Array.isArray(o.active) && typeof o.frontier === "number" && Number.isFinite(o.frontier);
+}
 
 /** Loaded saves are untrusted input: a NaN heat or malformed modifier would
  * flow straight into tick()/derive() and poison or crash the run. Validate. */
@@ -40,6 +47,7 @@ interface SavedShape {
   modifiers: ActiveModifier[];
   alignment: number;
   computeFocus: number;
+  products: ProductsState;
 }
 
 export function serialize(state: GameState): string {
@@ -62,6 +70,7 @@ export function serialize(state: GameState): string {
     modifiers: state.modifiers,
     alignment: state.alignment,
     computeFocus: state.computeFocus,
+    products: state.products,
   };
   return JSON.stringify(shape);
 }
@@ -88,6 +97,7 @@ export function deserialize(json: string): GameState {
     typeof raw.computeFocus === "number" && Number.isFinite(raw.computeFocus)
       ? Math.max(0, Math.min(1, raw.computeFocus))
       : fresh.computeFocus;
+  const products = isWellFormedProducts(raw.products) ? raw.products : fresh.products;
   return {
     version: SAVE_VERSION,
     resources: {
@@ -107,6 +117,7 @@ export function deserialize(json: string): GameState {
     modifiers,
     alignment,
     computeFocus,
+    products,
   };
 }
 
@@ -135,6 +146,10 @@ export function migrate(raw: any): SavedShape {
   if (s.version === 4) {
     // v4 → v5: introduce auto-train compute focus (defaults to full training).
     s = { ...s, version: 5, computeFocus: s.computeFocus ?? 1 };
+  }
+  if (s.version === 5) {
+    // v5 → v6: introduce released products (none yet; frontier at the start value).
+    s = { ...s, version: 6, products: s.products ?? { active: [], frontier: PRODUCTS.frontierStart } };
   }
   return s as SavedShape;
 }

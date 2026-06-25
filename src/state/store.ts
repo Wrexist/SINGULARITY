@@ -15,6 +15,14 @@ import {
   type MarketOutcome,
   type WorldEventResult,
 } from "../engine/actions";
+import {
+  releaseProduct,
+  pushVersion,
+  setProductPrice,
+  setProductMarketing,
+  retireProduct,
+} from "../engine/products";
+import type { ProductTypeId } from "../engine/balance/products";
 import { prestige } from "../engine/prestige";
 import { applyOffline, type OfflineSummary } from "../engine/offline";
 import { serialize, deserialize } from "../engine/save";
@@ -62,6 +70,11 @@ interface GameStore {
   doBuyUpgrade: (id: string) => void;
   doHireStaff: (id: string) => void;
   setComputeFocus: (v: number) => void;
+  doReleaseProduct: (type: ProductTypeId, name: string) => void;
+  doPushVersion: (id: string) => void;
+  doSetProductPrice: (id: string, priceMult: number) => void;
+  doSetProductMarketing: (id: string, perSec: number) => void;
+  doRetireProduct: (id: string) => void;
   doResearch: (id: string) => void;
   doBuyData: (id: string) => MarketOutcome | null;
   doPrestige: () => void;
@@ -75,6 +88,7 @@ function now(): number {
 let eventKey = 0;
 let worldKey = 0;
 let claimKey = 0;
+let productKey = 0;
 
 export const useGame = create<GameStore>((set, get) => ({
   game: createInitialState(),
@@ -170,6 +184,16 @@ export const useGame = create<GameStore>((set, get) => ({
   doHireStaff: (id) => set((s) => ({ game: hireStaff(s.game, id) })),
   setComputeFocus: (v) =>
     set((s) => ({ game: { ...s.game, computeFocus: Math.max(0, Math.min(1, v)) } })),
+  // The store mints the product id (nondeterminism stays out of the engine).
+  doReleaseProduct: (type, name) =>
+    set((s) => {
+      productKey += 1;
+      return { game: releaseProduct(s.game, { type, name, id: `prod-${productKey}` }) };
+    }),
+  doPushVersion: (id) => set((s) => ({ game: pushVersion(s.game, id) })),
+  doSetProductPrice: (id, v) => set((s) => ({ game: setProductPrice(s.game, id, v) })),
+  doSetProductMarketing: (id, v) => set((s) => ({ game: setProductMarketing(s.game, id, v) })),
+  doRetireProduct: (id) => set((s) => ({ game: retireProduct(s.game, id) })),
   doResearch: (id) => set((s) => ({ game: buyResearch(s.game, id) })),
   // The wall clock isn't the only nondeterminism we keep out of the engine —
   // the risk roll lives here too and is passed in, mirroring how we pass time.

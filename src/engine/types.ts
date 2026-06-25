@@ -1,4 +1,5 @@
 import type { Big } from "./math/Big";
+import type { ProductTypeId } from "./balance/products";
 
 export type ResourceId = "compute" | "data" | "money";
 
@@ -58,6 +59,33 @@ export interface GameState {
    * auto-train). Only gates auto-train; manual runs always fire when affordable.
    */
   computeFocus: number;
+  /** Phase 3 — released AI products (persist across prestige). */
+  products: ProductsState;
+}
+
+/** A released AI product (Phase 3). Economic fields are plain numbers; net margin
+ *  flows into Money (Big) in tick. quality = the competitor frontier at last (re)launch. */
+export interface ProductState {
+  id: string;
+  name: string;
+  type: ProductTypeId;
+  version: number;
+  quality: number;
+  /** Player pricing strategy (×ARPU; higher = more $/user, less conversion). */
+  priceMult: number;
+  /** Player marketing budget, Money/sec. */
+  marketingPerSec: number;
+  /** Live monthly-active users and paying subscribers. */
+  mau: number;
+  paid: number;
+  /** Remaining launch-buzz seconds (acquisition spike + churn cut). */
+  buzzSec: number;
+}
+
+export interface ProductsState {
+  active: ProductState[];
+  /** Global competitor capability; drifts up over time. */
+  frontier: number;
 }
 
 /** Everything the sim and UI read each frame, folded from upgrades + research + prestige. */

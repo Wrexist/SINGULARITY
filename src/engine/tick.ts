@@ -1,6 +1,7 @@
 import { Big } from "./math/Big";
 import { balance } from "./balance/config";
 import { derive } from "./derive";
+import { simulateProducts } from "./products";
 import type { Derived, GameState } from "./types";
 
 /**
@@ -96,7 +97,18 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   }
 
   // Regulatory Heat cools passively when you're not buying shady data.
-  const heat = Math.max(0, state.heat - balance.heat.coolPerSec * seconds);
+  let heat = Math.max(0, state.heat - balance.heat.coolPerSec * seconds);
+
+  // Phase 3 — released products earn Money (subs − serving − marketing) and may
+  // add Heat. Money-based, so they keep running across a prestige reset.
+  let products = state.products;
+  if (products.active.length > 0) {
+    const sim = simulateProducts(products, seconds);
+    products = sim.products;
+    money = money.add(sim.moneyDelta).max(Big.ZERO);
+    if (sim.moneyDelta > 0) lifetimeMoney = lifetimeMoney.add(sim.moneyDelta);
+    heat = Math.max(0, Math.min(balance.heat.max, heat + sim.heatDelta));
+  }
 
   // World-event modifiers tick down; expired ones drop off.
   let modifiers = state.modifiers;
@@ -113,6 +125,7 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     run,
     heat,
     modifiers,
+    products,
   };
 }
 
