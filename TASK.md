@@ -289,3 +289,32 @@ upgrades + a full Employees page. Built on branch `claude/phase3-product-busines
 - [x] Updated `scripts/balance-sim.ts` to model the floor cap: the greedy player now BUYS hall
       expansions when the floor fills and prefers the highest-tier affordable rack (filling permanent
       slots with cheap consumer cards was tanking the modeled income and faking a wall).
+
+---
+
+## Phase 3 audit fixes + polish (post product/employee redesign)
+
+### Audit pass (critical bugs + perf)
+- [x] **Drag stale-closure fix:** EmployeeBoard pointer handlers were re-bound every 10Hz render,
+      capturing stale `onAssign`/`onSelect` mid-drag → a drop could mis-assign. Now ref-stable
+      handlers + memoized zone grouping + per-zone render cap.
+- [x] **Sim hardening:** `simulateProducts` clamps billed seconds to `mau·seconds` (no over-billing);
+      `channelAcq` falls back to 100% ads on a degenerate mix (no wasted spend); `sanitizeChannelMix`
+      keeps only known channel ids.
+- [x] **Perf:** one memoized `productMetrics` pass per render (was up to 3×/product ×10Hz); cross-tick
+      `computeStaffEffects` memo in derive (keyed on stable employees ref + morale + product set);
+      memoized roster splits; collapsed milestones.
+
+### P1 polish batch
+- [x] **A5 — inline rename:** new `EditableName` component replaces `window.prompt` (bad on iOS) in
+      the product card + detail header. Commits on Enter/blur, cancels on Escape.
+- [x] **A1/B4 — advisor:** new pure `src/engine/advisor.ts` (`nextAction`/`attentionCounts`,
+      7 tests) powers a single "do this next" nudge bar + small per-tab attention badges. Signals are
+      deliberately conservative & unambiguous (draft waiting *with a free slot*, empty portfolio →
+      ship, stale product, first hire). Tapping the nudge jumps to the right tab.
+
+### Deferred (need owner sign-off / next batch)
+- [ ] **B1 — diminishing-returns hiring** (BALANCE; needs sign-off): per-head output is linear, so
+      zerg-hiring is optimal. Propose per-role diminishing returns / soft headcount curve.
+- [ ] **B2** role-summary strip · **B5** "suggest mix" button · **C1** drop dead `products.assignments`
+      via a versioned save cleanup.

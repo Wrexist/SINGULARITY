@@ -1311,6 +1311,24 @@ body {
   transition: color 0.2s, background 0.2s;
 }
 .tab.on { background: var(--glass-strong); color: var(--ink); box-shadow: var(--shadow-sm); }
+.tab-dot {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 17px; height: 17px; padding: 0 4px; margin-left: 5px;
+  border-radius: 9px; background: var(--coral); color: #fff;
+  font-size: 11px; font-weight: 800; vertical-align: middle;
+}
+
+/* ---------- Advisor nudge (one "do this next" hint) ---------- */
+.advisor-bar {
+  display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
+  padding: 11px 13px; border-radius: 12px; cursor: pointer;
+  background: linear-gradient(100deg, color-mix(in srgb, var(--data) 16%, var(--glass-strong)), var(--glass-strong));
+  border: 1px solid color-mix(in srgb, var(--data) 35%, var(--glass-edge));
+  box-shadow: var(--shadow-sm);
+}
+.advisor-icon { font-size: 16px; line-height: 1; }
+.advisor-text { flex: 1; font-size: 13.5px; font-weight: 700; color: var(--ink); }
+.advisor-go { font-size: 12px; font-weight: 750; color: var(--data); white-space: nowrap; }
 
 /* ---------- Products (Phase 3) ---------- */
 .prod-card {
@@ -1331,6 +1349,11 @@ body {
 .prod-name:hover { color: #6d28d9; }
 .prod-rename { font-size: 11px; opacity: 0.45; }
 .prod-name:hover .prod-rename { opacity: 0.9; }
+.inline-edit {
+  font-size: 15px; font-weight: 800; letter-spacing: -0.01em; color: var(--ink);
+  background: var(--glass); border: 1px solid var(--data); border-radius: 8px;
+  padding: 2px 7px; margin: -3px 0; max-width: 200px; outline: none;
+}
 .prod-sold-badge { font-weight: 700; color: #6d28d9; white-space: nowrap; }
 .prod-mrr { font-size: 15px; font-weight: 800; color: var(--money); font-variant-numeric: tabular-nums; }
 .prod-sub { display: flex; gap: 8px; align-items: center; margin-top: -4px; }

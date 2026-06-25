@@ -6,6 +6,7 @@ import {
   upgradeDurationSec, upgradeProgress, retirePayout, enterpriseUnlocked,
 } from "../engine/products";
 import { m$, numOf as num, fmtDur } from "./format";
+import { EditableName } from "./EditableName";
 
 /** Short human label for a feature's effect lane. */
 const LANE_LABEL: Record<FeatureLane, string> = {
@@ -81,9 +82,7 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
       <div className="modal pd-modal" onClick={(e) => e.stopPropagation()}>
         <div className="pd-head">
           <div>
-            <button className="prod-name" onClick={() => { const n = window.prompt("Rename product", p.name); if (n && n.trim()) onRename(p.id, n); }}>
-              {p.name} <span className="prod-rename">✎</span>
-            </button>
+            <EditableName className="prod-name" value={p.name} onCommit={(n) => onRename(p.id, n)} />
             <div className="prod-sub"><span className="prod-badge">{t.name}</span><span className="prod-ver">v{p.version}</span></div>
           </div>
           <button className="link-btn" onClick={onClose}>close</button>

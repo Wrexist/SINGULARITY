@@ -249,3 +249,16 @@ Deferred on purpose (documented, not fixed unsupervised — current balance does
   bug waiting for a large `dt`; use `x *= exp(-rate*dt)` (bounded) instead. Also: format negative
   money sign-OUTSIDE the unit (`-$5K`, not raw ungrouped `$-5000`) — `formatBig` only suffixes
   values ≥1000 and assumed positivity, so losses overflowed the card.
+
+- **Product margin sign is independent of absolute quality.** Per-user margin works out to
+  `quality · (baseArpu·priceMult·fm.arpu − computePerUser·serveCost·fm.serveCost)` — both revenue and
+  serve cost scale linearly with `quality`, so it factors out. Cranking a product's quality to force a
+  loss (or profit) in a test does nothing; only `priceMult`, the type constants, and feature mods move
+  the sign. Practical upshot: a product with no marketing is essentially always profitable at any
+  allowed price, so a "losing money (no marketing)" advisor signal would never fire — dropped it in
+  favor of the staleness signal, which IS a real, reliably-detectable problem.
+- **Advisor/next-action items must be gated on actionability, not just existence.** First cut nudged
+  "Launch the model you shipped" whenever a draft existed — but with a full portfolio (active ==
+  maxActive) launching is blocked, so the nudge pointed at a dead end. Gate every suggestion on the
+  same predicate the button uses (free slot, can-afford, etc.) so the advisor never tells the player
+  to do something the UI won't let them do.

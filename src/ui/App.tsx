@@ -24,6 +24,7 @@ import { EmployeesPanel } from "./EmployeesPanel";
 import { ProductsPanel } from "./ProductsPanel";
 import { ProductLaunch } from "./ProductLaunch";
 import { productsUnlocked, productMetrics, typeDef, retirePayout } from "../engine/products";
+import { nextAction, attentionCounts } from "../engine/advisor";
 import { fmtMoney } from "./format";
 import type { ProductTypeId } from "../engine/balance/products";
 import { iap } from "./iap";
@@ -52,6 +53,10 @@ export function App() {
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
+  // Advisor: one "do this next" nudge + small per-tab attention counts. Memoized
+  // per tick (same cadence as derive) — a handful of product checks, no clock.
+  const advice = useMemo(() => nextAction(game), [game]);
+  const attention = useMemo(() => attentionCounts(game), [game]);
 
   // Detect a ship (prestige) and fire the celebration moment + haptics.
   const prevShips = useRef(game.prestige.ships);
@@ -295,13 +300,30 @@ export function App() {
 
       {(showStaff || showProducts) && (
         <div className="tabs" role="tablist">
-          <button className={`tab ${tab === "lab" ? "on" : ""}`} role="tab" aria-selected={tab === "lab"} onClick={() => setTab("lab")}>Lab</button>
-          {showProducts && <button className={`tab ${tab === "products" ? "on" : ""}`} role="tab" aria-selected={tab === "products"} onClick={() => setTab("products")}>Products</button>}
-          {showStaff && <button className={`tab ${tab === "employees" ? "on" : ""}`} role="tab" aria-selected={tab === "employees"} onClick={() => setTab("employees")}>Employees</button>}
+          <button className={`tab ${tab === "lab" ? "on" : ""}`} role="tab" aria-selected={tab === "lab"} onClick={() => setTab("lab")}>
+            Lab{attention.lab > 0 && <span className="tab-dot" aria-label={`${attention.lab} need attention`}>{attention.lab}</span>}
+          </button>
+          {showProducts && <button className={`tab ${tab === "products" ? "on" : ""}`} role="tab" aria-selected={tab === "products"} onClick={() => setTab("products")}>
+            Products{attention.products > 0 && <span className="tab-dot" aria-label={`${attention.products} need attention`}>{attention.products}</span>}
+          </button>}
+          {showStaff && <button className={`tab ${tab === "employees" ? "on" : ""}`} role="tab" aria-selected={tab === "employees"} onClick={() => setTab("employees")}>
+            Employees{attention.employees > 0 && <span className="tab-dot" aria-label={`${attention.employees} need attention`}>{attention.employees}</span>}
+          </button>}
         </div>
       )}
 
       <main className="stage">
+        {advice && (
+          <button
+            className="advisor-bar"
+            onClick={() => { haptics.tap(); setTab(advice.tab); }}
+            aria-label={`Suggested next: ${advice.text}`}
+          >
+            <span className="advisor-icon">💡</span>
+            <span className="advisor-text">{advice.text}</span>
+            {advice.tab !== tab && <span className="advisor-go">{advice.tab === "lab" ? "Lab" : advice.tab === "products" ? "Products" : "Employees"} ▸</span>}
+          </button>
+        )}
         {tab === "products" && showProducts ? (
           <ProductsPanel
             game={game}
