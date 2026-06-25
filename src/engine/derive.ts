@@ -1,8 +1,8 @@
 import { Big } from "./math/Big";
 import { balance } from "./balance/config";
-import type { ProductStaffLane } from "./balance/config";
+import { computeStaffEffects, teamMorale } from "./employees";
 import { powerStats } from "./power";
-import type { Derived, GameState, ProductMods } from "./types";
+import type { Derived, GameState } from "./types";
 
 /** Morale multiplier on all staff output from owned office perks (1 = baseline). */
 export function officeMorale(state: GameState): number {
@@ -101,68 +101,24 @@ export function derive(state: GameState): Derived {
     }
   }
 
-  // Staff: each hire either multiplies a lab lane (infra) or buffs the product
-  // business (product). Payroll is summed for tick(); product buffs fold into
-  // productMods. Reductions (serveCost/churn) are floored so they can't zero out.
-  // Office perks: morale scales ALL staff OUTPUT (not payroll); a payroll multiplier
-  // trims the wage bill. Both are one-time perks living in the upgrades map.
-  const morale = officeMorale(state);
-  let payrollPerSec = Big.ZERO;
-  let hireCut = 0;
-  // Product-team roles are handled separately (assignment-aware) below.
-  const productRoles: { id: string; lane: ProductStaffLane; perLevel: number; hired: number }[] = [];
-  if (balance.staff.enabled) {
-    for (const role of balance.staff.roles) {
-      const n = state.upgrades[role.id] ?? 0;
-      if (n > 0) payrollPerSec = payrollPerSec.add(role.payroll * n); // payroll counts every hire
-      if (role.effect.kind === "lane") {
-        if (n <= 0) continue;
-        const f = 1 + role.effect.perLevel * n * morale;
-        if (role.effect.lane === "computeMult") computeMult = computeMult.mul(f);
-        else if (role.effect.lane === "dataMult") dataMult = dataMult.mul(f);
-        else if (role.effect.lane === "moneyMult") moneyMult = moneyMult.mul(f);
-      } else if (role.effect.kind === "meta") {
-        if (role.effect.lane === "hireDiscount") hireCut += role.effect.perLevel * n;
-      } else {
-        productRoles.push({ id: role.id, lane: role.effect.lane, perLevel: role.effect.perLevel, hired: n });
-      }
-    }
-    payrollPerSec = payrollPerSec.mul(officePayrollMult(state));
-  }
-
-  // Assignment-aware product buffs: unassigned product-staff buff EVERY product at
-  // base rate; assigned ones buff only their product at a focus bonus.
-  const assignments = state.products.assignments ?? {};
-  const totalAssigned: Record<string, number> = {};
-  for (const pid in assignments) {
-    for (const rid in assignments[pid]) totalAssigned[rid] = (totalAssigned[rid] ?? 0) + (assignments[pid][rid] ?? 0);
-  }
-  const emptyUnits = (): Record<ProductStaffLane, number> =>
-    ({ upgradeSpeed: 0, acquisition: 0, arpu: 0, serveCost: 0, churn: 0, heat: 0 });
-  const buildMods = (u: Record<ProductStaffLane, number>) => ({
-    upgradeSpeed: 1 + u.upgradeSpeed,
-    acq: 1 + u.acquisition,
-    arpu: 1 + u.arpu,
-    serveCost: Math.max(0.2, 1 - u.serveCost),
-    churn: Math.max(0.2, 1 - u.churn),
-    heat: Math.max(0.1, 1 - u.heat),
-  });
-  // Global baseline from unassigned hires.
-  const globalUnits = emptyUnits();
-  for (const pr of productRoles) {
-    const unassigned = Math.max(0, pr.hired - (totalAssigned[pr.id] ?? 0));
-    globalUnits[pr.lane] += unassigned * pr.perLevel * morale;
-  }
-  const productMods = buildMods(globalUnits);
-  const focus = balance.staff.assignFocusMult;
-  const productModsById: Record<string, ProductMods> = {};
-  for (const p of state.products.active) {
-    const u: Record<ProductStaffLane, number> = { ...globalUnits };
-    const a = assignments[p.id] ?? {};
-    for (const pr of productRoles) u[pr.lane] += (a[pr.id] ?? 0) * pr.perLevel * focus * morale;
-    productModsById[p.id] = buildMods(u);
-  }
-  const hireDiscount = Math.max(0.25, 1 - hireCut); // hires never cheaper than 25% of base
+  // Staff are individual people now. Morale (office perks + Mentor traits) scales
+  // every person's output; office perks also trim payroll. computeStaffEffects folds
+  // the whole roster into lane multipliers, payroll, and per-product buffs (benched
+  // people buff all products at base rate; assigned ones focus on theirs at 2×).
+  const morale = officeMorale(state) + teamMorale(state.employees);
+  const fx = computeStaffEffects(
+    state.employees,
+    state.products.active.map((p) => p.id),
+    morale,
+    balance.staff.assignFocusMult,
+  );
+  computeMult = computeMult.mul(fx.computeMultF);
+  dataMult = dataMult.mul(fx.dataMultF);
+  moneyMult = moneyMult.mul(fx.moneyMultF);
+  const payrollPerSec = Big.of(fx.payroll).mul(officePayrollMult(state));
+  const productMods = fx.productMods;
+  const productModsById = fx.productModsById;
+  const hireDiscount = Math.max(0.25, 1 - fx.hireCut); // hires never cheaper than 25% of base
 
   // World-event modifiers: time-limited global multipliers (buffs/debuffs).
   for (const m of state.modifiers) {

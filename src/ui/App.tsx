@@ -44,8 +44,10 @@ export function App() {
   const event = useGame((s) => s.event);
   const notice = useGame((s) => s.notice);
   const worldEvent = useGame((s) => s.worldEvent);
-  const { doStartRun, doClaim, doBuyUpgrade, doHireStaff, doBuyOfficePerk, doResearch, doBuyData, doPrestige, setComputeFocus,
-    doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doBuyFeature, doAssignEmployee, doRenameProduct, doRetireProduct,
+  const candidates = useGame((s) => s.candidates);
+  const { doStartRun, doClaim, doBuyUpgrade, doBuyOfficePerk, doResearch, doBuyData, doPrestige, setComputeFocus,
+    doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
+    doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doBuyFeature, doRenameProduct, doRetireProduct,
     dismissOffline, dismissWorldEvent, chooseWorldEvent, hardReset } =
     useGame.getState();
 
@@ -215,7 +217,10 @@ export function App() {
   const onStart = () => { haptics.tap(); sound.tap(); doStartRun(); };
   const onClaim = () => { haptics.success(); sound.success(); doClaim(); };
   const onBuy = (id: string) => { haptics.tap(); sound.purchase(); doBuyUpgrade(id); };
-  const onHire = (id: string) => { haptics.tap(); sound.purchase(); doHireStaff(id); };
+  const onHireCandidate = (i: number) => { haptics.celebrate(); sound.purchase(); doHireCandidate(i); };
+  const onTrain = (id: string) => { haptics.tap(); sound.tap(); doTrainEmployee(id); };
+  const onAssignEmp = (id: string, productId: string | null) => { haptics.tap(); doAssignEmployeeToProduct(id, productId); };
+  const onFire = (id: string) => { haptics.tap(); doFireEmployee(id); };
   const onBuyPerk = (id: string) => { haptics.tap(); sound.purchase(); doBuyOfficePerk(id); };
   const onLaunchDraft = (draftId: string, type: ProductTypeId, name: string) => {
     // Only fire the tentpole moment if the launch actually happened (a stale tap
@@ -305,12 +310,21 @@ export function App() {
             onSetPrice={doSetProductPrice}
             onSetMarketing={doSetProductMarketing}
             onBuyFeature={doBuyFeature}
-            onAssign={doAssignEmployee}
             onRename={doRenameProduct}
             onRetire={onRetireProductFx}
           />
         ) : tab === "employees" && showStaff ? (
-          <EmployeesPanel game={game} derived={d} onHire={onHire} onBuyPerk={onBuyPerk} />
+          <EmployeesPanel
+            game={game} derived={d} candidates={candidates}
+            onRecruit={() => { haptics.tap(); sound.tap(); doRecruit(); }}
+            onRefresh={doRefreshCandidates}
+            onCloseRecruit={doCloseRecruit}
+            onHireCandidate={onHireCandidate}
+            onTrain={onTrain}
+            onAssign={onAssignEmp}
+            onFire={onFire}
+            onBuyPerk={onBuyPerk}
+          />
         ) : (
           <>
             <HallCanvas onExpand={setPendingExpansion} />

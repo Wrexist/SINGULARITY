@@ -31,9 +31,16 @@ const SEED = {
   resources: { compute: "5e8", data: "5e7", money: "5e7" },
   upgrades: {
     rack_basic: 40, rack_server: 20, rack_tpu: 10, overclock: 5, data_pipeline: 5, monetize: 5, auto_claim: 1, auto_train: 1,
-    staff_researcher: 4, staff_engineer: 3, staff_data_eng: 2, staff_ml: 3, staff_sre: 2, staff_growth: 4, staff_sales: 2, staff_pr: 1, staff_recruiter: 1,
     perk_snacks: 1, perk_remote: 1,
   },
+  employees: [
+    { id: "emp-1", name: "Ada Lovelace", roleId: "staff_ml", level: 3, trait: "tenx", assignedProductId: "prod-1", training: null },
+    { id: "emp-2", name: "Grace Hopper", roleId: "staff_sre", level: 2, trait: "steady", assignedProductId: "prod-1", training: null },
+    { id: "emp-3", name: "Linus Torvalds", roleId: "staff_growth", level: 1, trait: "workaholic", assignedProductId: "prod-2", training: { remainingSec: 48, totalSec: 120 } },
+    { id: "emp-4", name: "Fei-Fei Chen", roleId: "staff_sales", level: 2, trait: "prima_donna", assignedProductId: null, training: null },
+    { id: "emp-5", name: "Dennis Ritchie", roleId: "staff_engineer", level: 2, trait: "frugal", assignedProductId: null, training: null },
+    { id: "emp-6", name: "Noor Haddad", roleId: "staff_pr", level: 1, trait: "mentor", assignedProductId: null, training: null },
+  ],
   research: ["backprop", "curated_data", "distributed", "distillation", "inference_api"],
   run: { active: true, progress: 0.5, readyToClaim: false },
   prestige: { legacyWeights: "5", ships: 4 },
@@ -105,11 +112,17 @@ try {
   await page.mouse.click(8, 8).catch(() => {});
   await sleep(300);
 
-  // 3) Employees tab — teams + office perks.
+  // 3) Employees tab — individual roster (people, traits, training, assignment).
   await page.getByRole("tab", { name: "Employees" }).click();
   await sleep(500);
   await page.screenshot({ path: "screenshots/feat-employees.png", fullPage: true });
   console.log("Saved feat-employees.png");
+
+  // 4) Recruiting — candidate picker open.
+  await page.getByRole("button", { name: /Recruit talent/ }).click();
+  await sleep(400);
+  await page.screenshot({ path: "screenshots/feat-recruit.png", fullPage: true });
+  console.log("Saved feat-recruit.png");
 } finally {
   if (browser) await browser.close();
   server.kill();

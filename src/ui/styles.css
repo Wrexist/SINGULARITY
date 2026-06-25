@@ -1468,6 +1468,39 @@ body {
 .pd-feature-cost { font-size: 13px; font-weight: 750; color: var(--money); white-space: nowrap; flex: 0 0 auto; }
 .pd-foot { margin-top: 16px; text-align: center; }
 
+/* ---------- Employees page (individual people) ---------- */
+.emp-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px; }
+.emp-card {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  background: var(--glass-strong); border: 1px solid var(--glass-hairline);
+}
+.emp-avatar {
+  flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 800; letter-spacing: -0.02em;
+}
+.emp-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.emp-name-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.emp-name { font-size: 14px; font-weight: 750; }
+.emp-lvl { font-size: 11px; font-weight: 700; color: var(--ink-2); flex: 0 0 auto; }
+.emp-role { font-size: 12px; color: var(--ink-2); }
+.emp-trait { font-weight: 700; }
+.emp-pay { font-size: 11px; color: var(--money); font-weight: 650; }
+.emp-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+.emp-assign {
+  font-size: 12px; padding: 4px 8px; border-radius: 8px;
+  border: 1px solid var(--glass-hairline); background: var(--glass); color: var(--ink); max-width: 160px;
+}
+.emp-lab { font-size: 12px; color: var(--ink-2); }
+.emp-fire { color: var(--coral); }
+.emp-training { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; font-size: 11px; color: var(--ink-2); }
+.pd-crew { display: flex; flex-wrap: wrap; gap: 6px; }
+.pd-crew-chip {
+  font-size: 12px; font-weight: 650; padding: 4px 9px; border-radius: 999px;
+  background: color-mix(in srgb, var(--data) 12%, var(--glass-strong)); border: 1px solid var(--glass-hairline);
+}
+
 /* ---------- Employees page ---------- */
 .emp-buffs {
   font-size: 12.5px; font-weight: 650; color: var(--ink-2); margin: 2px 0 6px;

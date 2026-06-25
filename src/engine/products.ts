@@ -58,39 +58,6 @@ export function buyFeature(state: GameState, productId: string, featureId: strin
   };
 }
 
-// ---------- Employee assignment (per-product focus) ----------
-
-/** Total of a role assigned across all products. */
-export function assignedTotal(state: GameState, roleId: string): number {
-  let t = 0;
-  const a = state.products.assignments ?? {};
-  for (const pid in a) t += a[pid]?.[roleId] ?? 0;
-  return t;
-}
-
-/** How many of a role are hired but not yet assigned to any product. */
-export function rolePool(state: GameState, roleId: string): number {
-  return Math.max(0, (state.upgrades[roleId] ?? 0) - assignedTotal(state, roleId));
-}
-
-/** Assign (delta > 0) or unassign (delta < 0) headcount of a role to a product,
- *  clamped to the available pool and ≥ 0. Pure. */
-export function assignEmployee(state: GameState, productId: string, roleId: string, delta: number): GameState {
-  if (!state.products.active.some((p) => p.id === productId)) return state;
-  const cur = state.products.assignments[productId]?.[roleId] ?? 0;
-  const pool = rolePool(state, roleId);
-  const next = Math.max(0, Math.min(cur + delta, cur + pool)); // can't exceed what's free
-  if (next === cur) return state;
-  const forProduct = { ...(state.products.assignments[productId] ?? {}), [roleId]: next };
-  return {
-    ...state,
-    products: {
-      ...state.products,
-      assignments: { ...state.products.assignments, [productId]: forProduct },
-    },
-  };
-}
-
 /** Products unlock once you've shipped at least `unlockAtShips` models. */
 export function productsUnlocked(state: GameState): boolean {
   return state.prestige.ships >= B.unlockAtShips;

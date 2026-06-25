@@ -7,10 +7,8 @@ import {
   canLaunchDraft, launchDraft, canStartUpgrade, startUpgrade, advanceUpgrades, upgradeDurationSec,
   applyMilestones, milestoneValue, maybeProductEvent,
   canBuyFeature, buyFeature, featureMods,
-  rolePool, assignEmployee,
 } from "./products";
 import { applyWorldEvent } from "./actions";
-import { derive } from "./derive";
 import { tick } from "./tick";
 import { prestige } from "./prestige";
 import { createInitialState } from "./state";
@@ -422,33 +420,6 @@ describe("products — per-product features", () => {
     const s = release(); // money = 1e6 from shipped(); drop it
     s.resources.money = Big.of(10);
     expect(canBuyFeature(s, "p1", "api")).toBe(false);
-  });
-});
-
-describe("products — employee assignment", () => {
-  it("assigns from the pool, clamps to availability, and frees on retire", () => {
-    let s = release(); // product p1
-    s.upgrades = { staff_growth: 3 }; // 3 Growth Leads hired
-    expect(rolePool(s, "staff_growth")).toBe(3);
-    s = assignEmployee(s, "p1", "staff_growth", 2);
-    expect(s.products.assignments.p1!.staff_growth).toBe(2);
-    expect(rolePool(s, "staff_growth")).toBe(1);
-    // Can't assign more than the pool (only 1 free).
-    s = assignEmployee(s, "p1", "staff_growth", 5);
-    expect(s.products.assignments.p1!.staff_growth).toBe(3);
-    expect(rolePool(s, "staff_growth")).toBe(0);
-    // Retiring the product frees them all.
-    s = retireProduct(s, "p1");
-    expect(rolePool(s, "staff_growth")).toBe(3);
-  });
-
-  it("assigned employees buff their product MORE than leaving them global", () => {
-    const glob = release();
-    glob.upgrades = { staff_growth: 4 };
-    const focus = assignEmployee(glob, "p1", "staff_growth", 4);
-    const acqGlobal = derive(glob).productModsById["p1"]!.acq;
-    const acqFocus = derive(focus).productModsById["p1"]!.acq;
-    expect(acqFocus).toBeGreaterThan(acqGlobal); // 2× focus bonus
   });
 });
 

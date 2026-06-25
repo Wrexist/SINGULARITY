@@ -1,77 +1,98 @@
 import { balance } from "../engine/balance/config";
-import type { StaffRole } from "../engine/balance/config";
-import { staffHireCost, canHireStaff, staffHireDiscount, canBuyOfficePerk } from "../engine/actions";
+import { canBuyOfficePerk } from "../engine/actions";
 import { officeMorale } from "../engine/derive";
-import type { GameState, Derived } from "../engine/types";
+import {
+  roleDef, traitDef, employeePayroll, canTrain, trainCost, trainDurationSec, hireCost,
+} from "../engine/employees";
 import { Big } from "../engine/math/Big";
+import type { GameState, Derived, Employee } from "../engine/types";
+import type { Candidate } from "../state/store";
 import { fmtMoney } from "./format";
+import { m$, fmtDur } from "./format";
 
 interface Props {
   game: GameState;
   derived: Derived;
-  onHire: (id: string) => void;
+  candidates: Candidate[] | null;
+  onRecruit: () => void;
+  onRefresh: () => void;
+  onCloseRecruit: () => void;
+  onHireCandidate: (index: number) => void;
+  onTrain: (id: string) => void;
+  onAssign: (id: string, productId: string | null) => void;
+  onFire: (id: string) => void;
   onBuyPerk: (id: string) => void;
 }
 
-/** One-line, human description of what a hire does (and its lane colour). */
-function effectLabel(role: StaffRole): { text: string; color: string } {
-  const e = role.effect;
-  if (e.kind === "lane") {
-    const pct = Math.round(e.perLevel * 100);
-    if (e.lane === "computeMult") return { text: `+${pct}% Compute, each`, color: "var(--compute)" };
-    if (e.lane === "dataMult") return { text: `+${pct}% Data/run, each`, color: "var(--data)" };
-    return { text: `+${pct}% Money/run, each`, color: "var(--money)" };
-  }
-  if (e.kind === "meta") {
-    const pct = Math.round(e.perLevel * 100);
-    return { text: `−${pct}% hire costs, each`, color: "var(--money)" };
-  }
-  const pct = Math.round(e.perLevel * 100);
-  switch (e.lane) {
-    case "upgradeSpeed": return { text: `+${pct}% research speed, each`, color: "var(--data)" };
-    case "serveCost": return { text: `−${pct}% serving cost, each`, color: "var(--compute)" };
-    case "churn": return { text: `−${pct}% churn, each`, color: "var(--coral)" };
-    case "acquisition": return { text: `+${pct}% acquisition, each`, color: "var(--money)" };
-    case "arpu": return { text: `+${pct}% ARPU, each`, color: "var(--money)" };
-    case "heat": return { text: `−${pct}% product Heat, each`, color: "var(--coral)" };
-  }
+const TRAIT_TONE: Record<string, string> = { good: "var(--money)", bad: "var(--coral)", mixed: "#f97316" };
+
+/** A parametric avatar: initials on a hue derived from the name (no image assets). */
+function Avatar({ name }: { name: string }) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
+  const initials = name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
+  return (
+    <span className="emp-avatar" style={{ background: `hsl(${h} 60% 88%)`, color: `hsl(${h} 55% 32%)` }}>
+      {initials}
+    </span>
+  );
 }
 
-function RoleCard({ game, role, onHire }: { game: GameState; role: StaffRole; onHire: (id: string) => void }) {
-  const owned = game.upgrades[role.id] ?? 0;
-  const cost = staffHireCost(role, owned, staffHireDiscount(game));
-  const affordable = canHireStaff(game, role.id);
-  const fx = effectLabel(role);
+function EmployeeCard({ game, emp, onTrain, onAssign, onFire }: {
+  game: GameState; emp: Employee;
+  onTrain: (id: string) => void; onAssign: (id: string, p: string | null) => void; onFire: (id: string) => void;
+}) {
+  const role = roleDef(emp.roleId);
+  const trait = traitDef(emp.trait);
+  const isProduct = role?.team === "product";
+  const trainable = canTrain(game, emp.id);
+  const maxed = emp.level >= balance.staff.maxLevel;
   return (
-    <button className={`card ${affordable ? "affordable" : ""}`} disabled={!affordable} onClick={() => onHire(role.id)}>
-      <div className="card-main">
-        <span className="card-name">
-          {role.name}
-          {owned > 0 && <span className="card-owned">×{owned}</span>}
-        </span>
-        <span className="card-desc">{role.desc}</span>
-        <span className="card-note" style={{ color: fx.color }}>
-          {fx.text} · ${role.payroll}/s payroll
-        </span>
+    <div className="emp-card">
+      <Avatar name={emp.name} />
+      <div className="emp-main">
+        <div className="emp-name-row">
+          <span className="emp-name">{emp.name}</span>
+          <span className="emp-lvl">L{emp.level}</span>
+        </div>
+        <div className="emp-role">{role?.name ?? emp.roleId}{trait && <span className="emp-trait" style={{ color: TRAIT_TONE[trait.tone] }}> · {trait.name}</span>}</div>
+        <div className="emp-pay">{m$(employeePayroll(emp))}/s salary</div>
+
+        {emp.training ? (
+          <div className="emp-training">
+            <div className="prod-bar"><div className="prod-bar-fill prod-bar-research" style={{ width: `${(1 - emp.training.remainingSec / emp.training.totalSec) * 100}%` }} /></div>
+            <span>Training… ~{fmtDur(emp.training.remainingSec)}</span>
+          </div>
+        ) : (
+          <div className="emp-actions">
+            {isProduct ? (
+              <select className="emp-assign" value={emp.assignedProductId ?? ""} onChange={(e) => onAssign(emp.id, e.target.value || null)}>
+                <option value="">Bench (all products)</option>
+                {game.products.active.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            ) : (
+              <span className="emp-lab">🏗️ Lab-wide</span>
+            )}
+            <button className="link-btn" disabled={!trainable}
+              onClick={() => onTrain(emp.id)}
+              title={maxed ? "Max level" : `Train to L${emp.level + 1}`}>
+              {maxed ? "maxed" : `train · ${m$(trainCost(emp))} · ${fmtDur(trainDurationSec(emp.level))}`}
+            </button>
+            <button className="link-btn emp-fire" onClick={() => onFire(emp.id)} title="Let go">✕</button>
+          </div>
+        )}
       </div>
-      <div className="card-cost">
-        <span style={{ color: "var(--money)" }}>{fmtMoney(cost)}</span>
-      </div>
-    </button>
+    </div>
   );
 }
 
 /**
- * Employees (Phase 3) — a dedicated team-building page. The Infrastructure team
- * multiplies lab production; the Product team buffs the live business (research
- * speed, serving cost, churn, acquisition). The headline is headcount + the live
- * payroll drain (the over-hire tension) plus the aggregate buffs you're getting.
+ * Employees (Phase 3) — your team as individual people. Recruit candidates, assign
+ * product-folks to products (or bench them company-wide), train them up over time,
+ * and tune the office. Output folds into derive via computeStaffEffects.
  */
-export function EmployeesPanel({ game, derived, onHire, onBuyPerk }: Props) {
-  const roles = balance.staff.roles;
-  const infra = roles.filter((r) => r.team === "infra");
-  const product = roles.filter((r) => r.team === "product");
-  const headcount = roles.reduce((n, r) => n + (game.upgrades[r.id] ?? 0), 0);
+export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh, onCloseRecruit, onHireCandidate, onTrain, onAssign, onFire, onBuyPerk }: Props) {
+  const team = game.employees;
   const pm = derived.productMods;
   const buffs: string[] = [];
   if (pm.upgradeSpeed > 1) buffs.push(`+${Math.round((pm.upgradeSpeed - 1) * 100)}% research`);
@@ -79,28 +100,54 @@ export function EmployeesPanel({ game, derived, onHire, onBuyPerk }: Props) {
   if (pm.arpu > 1) buffs.push(`+${Math.round((pm.arpu - 1) * 100)}% ARPU`);
   if (pm.serveCost < 1) buffs.push(`−${Math.round((1 - pm.serveCost) * 100)}% serve cost`);
   if (pm.churn < 1) buffs.push(`−${Math.round((1 - pm.churn) * 100)}% churn`);
-  if (pm.heat < 1) buffs.push(`−${Math.round((1 - pm.heat) * 100)}% Heat`);
-  if (derived.hireDiscount < 1) buffs.push(`−${Math.round((1 - derived.hireDiscount) * 100)}% hire cost`);
+
+  const infra = team.filter((e) => roleDef(e.roleId)?.team === "infra");
+  const product = team.filter((e) => roleDef(e.roleId)?.team === "product");
 
   return (
     <section className="panel">
       <h2 className="panel-title">Employees</h2>
       <p className={`floor-meter${derived.payrollPerSec.gt(0) ? " full" : ""}`}>
-        <b>{headcount}</b> on payroll · <b>{fmtMoney(derived.payrollPerSec)}/s</b>
-        {derived.payrollPerSec.gt(0) && <span> — paid continuously from Money.</span>}
+        <b>{team.length}</b> on staff · <b>{fmtMoney(derived.payrollPerSec)}/s</b> payroll · morale ×{officeMorale(game).toFixed(2)}
       </p>
-      {buffs.length > 0 && (
-        <p className="emp-buffs">Active team buffs: {buffs.join(" · ")}</p>
+      {buffs.length > 0 && <p className="emp-buffs">Active team buffs: {buffs.join(" · ")}</p>}
+
+      {/* Recruiting */}
+      {candidates ? (
+        <div className="prod-release">
+          <div className="prod-release-head">
+            <span>Candidates</span>
+            <span><button className="link-btn" onClick={onRefresh}>↻ refresh</button> · <button className="link-btn" onClick={onCloseRecruit}>close</button></span>
+          </div>
+          {candidates.map((c, i) => {
+            const role = roleDef(c.roleId);
+            const trait = traitDef(c.trait);
+            const cost = hireCost(c.roleId) * derived.hireDiscount;
+            const afford = game.resources.money.gte(cost);
+            return (
+              <button key={i} className={`prod-type ${afford ? "" : "maxed"}`} disabled={!afford} onClick={() => onHireCandidate(i)}>
+                <span className="prod-type-name"><Avatar name={c.name} /> {c.name}</span>
+                <span className="prod-type-blurb">
+                  {role?.name}{trait && <span style={{ color: TRAIT_TONE[trait.tone] }}> · {trait.name} ({trait.desc})</span>} — hire {m$(cost)}, {m$(role?.payroll ?? 0)}/s salary
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <button className="btn btn-primary" onClick={onRecruit}>+ Recruit talent</button>
       )}
 
-      <div className="emp-team-head">🏗️ Infrastructure — scales the lab</div>
-      <div className="list">
-        {infra.map((role) => <RoleCard key={role.id} game={game} role={role} onHire={onHire} />)}
+      {team.length === 0 && !candidates && <p className="market-warn">No employees yet — recruit your first hire.</p>}
+
+      {product.length > 0 && <div className="emp-team-head">🚀 Product team — assign to a product or bench</div>}
+      <div className="emp-list">
+        {product.map((e) => <EmployeeCard key={e.id} game={game} emp={e} onTrain={onTrain} onAssign={onAssign} onFire={onFire} />)}
       </div>
 
-      <div className="emp-team-head">🚀 Product — scales the business</div>
-      <div className="list">
-        {product.map((role) => <RoleCard key={role.id} game={game} role={role} onHire={onHire} />)}
+      {infra.length > 0 && <div className="emp-team-head">🏗️ Infrastructure — works lab-wide</div>}
+      <div className="emp-list">
+        {infra.map((e) => <EmployeeCard key={e.id} game={game} emp={e} onTrain={onTrain} onAssign={onAssign} onFire={onFire} />)}
       </div>
 
       {balance.office.enabled && (
@@ -110,20 +157,15 @@ export function EmployeesPanel({ game, derived, onHire, onBuyPerk }: Props) {
             {balance.office.perks.map((perk) => {
               const owned = (game.upgrades[perk.id] ?? 0) > 0;
               const afford = canBuyOfficePerk(game, perk.id);
-              const fx = perk.morale > 0
-                ? `+${Math.round(perk.morale * 100)}% staff effectiveness`
-                : `−${Math.round((1 - perk.payrollMult) * 100)}% payroll`;
+              const fx = perk.morale > 0 ? `+${Math.round(perk.morale * 100)}% staff effectiveness` : `−${Math.round((1 - perk.payrollMult) * 100)}% payroll`;
               return (
-                <button key={perk.id} className={`card ${owned ? "" : afford ? "affordable" : ""}`} disabled={owned || !afford}
-                  onClick={() => onBuyPerk(perk.id)}>
+                <button key={perk.id} className={`card ${owned ? "" : afford ? "affordable" : ""}`} disabled={owned || !afford} onClick={() => onBuyPerk(perk.id)}>
                   <div className="card-main">
                     <span className="card-name">{owned ? "✓ " : ""}{perk.name}</span>
                     <span className="card-desc">{perk.desc}</span>
                     <span className="card-note" style={{ color: "var(--money)" }}>{fx}</span>
                   </div>
-                  <div className="card-cost">
-                    <span style={{ color: "var(--money)" }}>{owned ? "owned" : fmtMoney(Big.of(perk.cost))}</span>
-                  </div>
+                  <div className="card-cost"><span style={{ color: "var(--money)" }}>{owned ? "owned" : fmtMoney(Big.of(perk.cost))}</span></div>
                 </button>
               );
             })}
