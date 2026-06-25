@@ -1,13 +1,16 @@
 import { balance } from "../engine/balance/config";
 import type { StaffRole } from "../engine/balance/config";
-import { staffHireCost, canHireStaff, staffHireDiscount } from "../engine/actions";
+import { staffHireCost, canHireStaff, staffHireDiscount, canBuyOfficePerk } from "../engine/actions";
+import { officeMorale } from "../engine/derive";
 import type { GameState, Derived } from "../engine/types";
+import { Big } from "../engine/math/Big";
 import { fmtMoney } from "./format";
 
 interface Props {
   game: GameState;
   derived: Derived;
   onHire: (id: string) => void;
+  onBuyPerk: (id: string) => void;
 }
 
 /** One-line, human description of what a hire does (and its lane colour). */
@@ -64,7 +67,7 @@ function RoleCard({ game, role, onHire }: { game: GameState; role: StaffRole; on
  * speed, serving cost, churn, acquisition). The headline is headcount + the live
  * payroll drain (the over-hire tension) plus the aggregate buffs you're getting.
  */
-export function EmployeesPanel({ game, derived, onHire }: Props) {
+export function EmployeesPanel({ game, derived, onHire, onBuyPerk }: Props) {
   const roles = balance.staff.roles;
   const infra = roles.filter((r) => r.team === "infra");
   const product = roles.filter((r) => r.team === "product");
@@ -99,6 +102,34 @@ export function EmployeesPanel({ game, derived, onHire }: Props) {
       <div className="list">
         {product.map((role) => <RoleCard key={role.id} game={game} role={role} onHire={onHire} />)}
       </div>
+
+      {balance.office.enabled && (
+        <>
+          <div className="emp-team-head">🏢 Office &amp; perks — morale ×{officeMorale(game).toFixed(2)}</div>
+          <div className="list">
+            {balance.office.perks.map((perk) => {
+              const owned = (game.upgrades[perk.id] ?? 0) > 0;
+              const afford = canBuyOfficePerk(game, perk.id);
+              const fx = perk.morale > 0
+                ? `+${Math.round(perk.morale * 100)}% staff effectiveness`
+                : `−${Math.round((1 - perk.payrollMult) * 100)}% payroll`;
+              return (
+                <button key={perk.id} className={`card ${owned ? "" : afford ? "affordable" : ""}`} disabled={owned || !afford}
+                  onClick={() => onBuyPerk(perk.id)}>
+                  <div className="card-main">
+                    <span className="card-name">{owned ? "✓ " : ""}{perk.name}</span>
+                    <span className="card-desc">{perk.desc}</span>
+                    <span className="card-note" style={{ color: "var(--money)" }}>{fx}</span>
+                  </div>
+                  <div className="card-cost">
+                    <span style={{ color: "var(--money)" }}>{owned ? "owned" : fmtMoney(Big.of(perk.cost))}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
     </section>
   );
 }

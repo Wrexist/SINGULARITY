@@ -7,6 +7,7 @@ import {
   claimRun,
   buyUpgrade,
   hireStaff,
+  buyOfficePerk,
   buyResearch,
   buyDataOffer,
   maybeHeatEvent,
@@ -81,6 +82,8 @@ interface GameStore {
   doClaim: () => void;
   doBuyUpgrade: (id: string) => void;
   doHireStaff: (id: string) => void;
+  /** Buy a one-time office perk (morale / payroll). */
+  doBuyOfficePerk: (id: string) => void;
   setComputeFocus: (v: number) => void;
   /** Returns true if the release succeeded (so the UI only celebrates on a real ship). */
   doReleaseProduct: (type: ProductTypeId, name: string) => boolean;
@@ -265,6 +268,7 @@ export const useGame = create<GameStore>((set, get) => ({
     }),
   doBuyUpgrade: (id) => set((s) => ({ game: buyUpgrade(s.game, id) })),
   doHireStaff: (id) => set((s) => ({ game: hireStaff(s.game, id) })),
+  doBuyOfficePerk: (id) => set((s) => ({ game: buyOfficePerk(s.game, id) })),
   setComputeFocus: (v) =>
     set((s) => ({ game: { ...s.game, computeFocus: Math.max(0, Math.min(1, v)) } })),
   // The store mints the product id (nondeterminism stays out of the engine).

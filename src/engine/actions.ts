@@ -147,6 +147,24 @@ export function hireStaff(state: GameState, id: string): GameState {
   };
 }
 
+/** Office perks are one-time (0/1) purchases living in the upgrades map. */
+export function canBuyOfficePerk(state: GameState, id: string): boolean {
+  if (!balance.office.enabled) return false;
+  const perk = balance.office.perks.find((p) => p.id === id);
+  if (!perk || (state.upgrades[id] ?? 0) > 0) return false;
+  return state.resources.money.gte(perk.cost);
+}
+
+export function buyOfficePerk(state: GameState, id: string): GameState {
+  if (!canBuyOfficePerk(state, id)) return state;
+  const perk = balance.office.perks.find((p) => p.id === id)!;
+  return {
+    ...state,
+    resources: { ...state.resources, money: state.resources.money.sub(perk.cost) },
+    upgrades: { ...state.upgrades, [id]: 1 },
+  };
+}
+
 // ---------- Research ----------
 
 export function researchAvailable(state: GameState, id: string): boolean {

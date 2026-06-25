@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { hireStaff, canHireStaff, staffHireCost, staffHireDiscount } from "./actions";
-import { derive } from "./derive";
+import { hireStaff, canHireStaff, staffHireCost, staffHireDiscount, buyOfficePerk, canBuyOfficePerk } from "./actions";
+import { derive, officeMorale } from "./derive";
 import { tick } from "./tick";
 import { createInitialState } from "./state";
 import { balance } from "./balance/config";
@@ -60,6 +60,28 @@ describe("staff (Phase 2)", () => {
     expect(disc).toBeGreaterThanOrEqual(0.25); // floored
     // The discounted cost is strictly cheaper than the base.
     expect(staffHireCost(researcher, 0, disc).lt(staffHireCost(researcher, 0))).toBe(true);
+  });
+
+  it("office morale perk boosts staff output; payroll perk trims the wage bill", () => {
+    const base = createInitialState();
+    base.upgrades = { staff_researcher: 5 };
+    const moraleUp = { ...base, upgrades: { ...base.upgrades, perk_snacks: 1 } };
+    // +10% morale → the researcher's data buff is stronger.
+    expect(derive(moraleUp).dataMult.gt(derive(base).dataMult)).toBe(true);
+    expect(officeMorale(moraleUp)).toBeGreaterThan(1);
+
+    const remote = { ...base, upgrades: { ...base.upgrades, perk_remote: 1 } }; // −20% payroll
+    expect(derive(remote).payrollPerSec.lt(derive(base).payrollPerSec)).toBe(true);
+  });
+
+  it("office perks are one-time buys", () => {
+    const s = createInitialState();
+    s.resources.money = Big.of(1e6);
+    expect(canBuyOfficePerk(s, "perk_snacks")).toBe(true);
+    const bought = buyOfficePerk(s, "perk_snacks");
+    expect(bought.upgrades.perk_snacks).toBe(1);
+    expect(canBuyOfficePerk(bought, "perk_snacks")).toBe(false); // can't re-buy
+    expect(buyOfficePerk(bought, "perk_snacks")).toBe(bought); // no-op
   });
 
   it("payroll floors Money at zero (never negative)", () => {

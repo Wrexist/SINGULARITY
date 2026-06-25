@@ -3,6 +3,26 @@ import { balance } from "./balance/config";
 import { powerStats } from "./power";
 import type { Derived, GameState } from "./types";
 
+/** Morale multiplier on all staff output from owned office perks (1 = baseline). */
+export function officeMorale(state: GameState): number {
+  if (!balance.office.enabled) return 1;
+  let m = 1;
+  for (const perk of balance.office.perks) {
+    if ((state.upgrades[perk.id] ?? 0) > 0) m += perk.morale;
+  }
+  return m;
+}
+
+/** Payroll multiplier from owned office perks (≤ 1 trims the wage bill). */
+export function officePayrollMult(state: GameState): number {
+  if (!balance.office.enabled) return 1;
+  let mult = 1;
+  for (const perk of balance.office.perks) {
+    if ((state.upgrades[perk.id] ?? 0) > 0) mult *= perk.payrollMult;
+  }
+  return mult;
+}
+
 /**
  * Fold owned upgrades, research, and prestige into the stats the sim and UI use.
  * Pure and cheap — safe to call every frame. Keeping this the single source of
@@ -83,6 +103,9 @@ export function derive(state: GameState): Derived {
   // Staff: each hire either multiplies a lab lane (infra) or buffs the product
   // business (product). Payroll is summed for tick(); product buffs fold into
   // productMods. Reductions (serveCost/churn) are floored so they can't zero out.
+  // Office perks: morale scales ALL staff OUTPUT (not payroll); a payroll multiplier
+  // trims the wage bill. Both are one-time perks living in the upgrades map.
+  const morale = officeMorale(state);
   let payrollPerSec = Big.ZERO;
   let upSpeed = 1, acq = 1, arpu = 1, serveCut = 0, churnCut = 0, heatCut = 0, hireCut = 0;
   if (balance.staff.enabled) {
@@ -90,23 +113,24 @@ export function derive(state: GameState): Derived {
       const n = state.upgrades[role.id] ?? 0;
       if (n <= 0) continue;
       payrollPerSec = payrollPerSec.add(role.payroll * n);
+      const eff = role.effect.perLevel * n * morale; // morale boosts effectiveness
       if (role.effect.kind === "lane") {
-        const f = 1 + role.effect.perLevel * n;
+        const f = 1 + eff;
         if (role.effect.lane === "computeMult") computeMult = computeMult.mul(f);
         else if (role.effect.lane === "dataMult") dataMult = dataMult.mul(f);
         else if (role.effect.lane === "moneyMult") moneyMult = moneyMult.mul(f);
       } else if (role.effect.kind === "meta") {
-        if (role.effect.lane === "hireDiscount") hireCut += role.effect.perLevel * n;
+        if (role.effect.lane === "hireDiscount") hireCut += role.effect.perLevel * n; // morale doesn't cheapen hiring
       } else {
-        const add = role.effect.perLevel * n;
-        if (role.effect.lane === "upgradeSpeed") upSpeed += add;
-        else if (role.effect.lane === "acquisition") acq += add;
-        else if (role.effect.lane === "arpu") arpu += add;
-        else if (role.effect.lane === "serveCost") serveCut += add;
-        else if (role.effect.lane === "churn") churnCut += add;
-        else if (role.effect.lane === "heat") heatCut += add;
+        if (role.effect.lane === "upgradeSpeed") upSpeed += eff;
+        else if (role.effect.lane === "acquisition") acq += eff;
+        else if (role.effect.lane === "arpu") arpu += eff;
+        else if (role.effect.lane === "serveCost") serveCut += eff;
+        else if (role.effect.lane === "churn") churnCut += eff;
+        else if (role.effect.lane === "heat") heatCut += eff;
       }
     }
+    payrollPerSec = payrollPerSec.mul(officePayrollMult(state));
   }
   const productMods = {
     upgradeSpeed: upSpeed,

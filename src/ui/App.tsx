@@ -44,7 +44,7 @@ export function App() {
   const event = useGame((s) => s.event);
   const notice = useGame((s) => s.notice);
   const worldEvent = useGame((s) => s.worldEvent);
-  const { doStartRun, doClaim, doBuyUpgrade, doHireStaff, doResearch, doBuyData, doPrestige, setComputeFocus,
+  const { doStartRun, doClaim, doBuyUpgrade, doHireStaff, doBuyOfficePerk, doResearch, doBuyData, doPrestige, setComputeFocus,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doBuyFeature, doRenameProduct, doRetireProduct,
     dismissOffline, dismissWorldEvent, chooseWorldEvent, hardReset } =
     useGame.getState();
@@ -216,6 +216,7 @@ export function App() {
   const onClaim = () => { haptics.success(); sound.success(); doClaim(); };
   const onBuy = (id: string) => { haptics.tap(); sound.purchase(); doBuyUpgrade(id); };
   const onHire = (id: string) => { haptics.tap(); sound.purchase(); doHireStaff(id); };
+  const onBuyPerk = (id: string) => { haptics.tap(); sound.purchase(); doBuyOfficePerk(id); };
   const onLaunchDraft = (draftId: string, type: ProductTypeId, name: string) => {
     // Only fire the tentpole moment if the launch actually happened (a stale tap
     // on a full/unaffordable portfolio must not celebrate a phantom product).
@@ -308,7 +309,7 @@ export function App() {
             onRetire={onRetireProductFx}
           />
         ) : tab === "employees" && showStaff ? (
-          <EmployeesPanel game={game} derived={d} onHire={onHire} />
+          <EmployeesPanel game={game} derived={d} onHire={onHire} onBuyPerk={onBuyPerk} />
         ) : (
           <>
             <HallCanvas onExpand={setPendingExpansion} />

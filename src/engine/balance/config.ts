@@ -107,6 +107,18 @@ export interface StaffRole {
  *  heat are "−x% each" (reductions, floored so they can't go to zero or negative). */
 export type ProductStaffLane = "upgradeSpeed" | "serveCost" | "churn" | "acquisition" | "arpu" | "heat";
 
+/** A one-time office perk: raises staff morale (output) and/or trims payroll. */
+export interface OfficePerk {
+  id: string;
+  name: string;
+  desc: string;
+  cost: number;
+  /** Added to the morale multiplier on ALL staff output (e.g. 0.1 = +10%). */
+  morale: number;
+  /** Multiplier on total payroll (≤ 1 trims it; 1 = no change). */
+  payrollMult: number;
+}
+
 export interface ResearchDef {
   id: string;
   name: string;
@@ -593,6 +605,21 @@ export const balance = {
         effect: { kind: "meta", lane: "hireDiscount", perLevel: 0.06 },
       },
     ] satisfies StaffRole[],
+  },
+
+  /** PHASE 3 — Office perks & morale. One-time Money investments that boost ALL
+   *  staff output (morale) or trim payroll. Counts live in the upgrades map (0/1
+   *  each), so no migration. */
+  office: {
+    enabled: true,
+    revealAtResearch: 1,
+    perks: [
+      { id: "perk_snacks", name: "Free Lunch & Snacks", desc: "+10% staff effectiveness. The cold brew flows.", cost: 60_000, morale: 0.10, payrollMult: 1 },
+      { id: "perk_remote", name: "Remote-First", desc: "−20% payroll. Goodbye, office lease.", cost: 90_000, morale: 0, payrollMult: 0.8 },
+      { id: "perk_equity", name: "Equity for All", desc: "+15% staff effectiveness. Everyone's an owner now.", cost: 250_000, morale: 0.15, payrollMult: 1 },
+      { id: "perk_ld", name: "L&D Budget", desc: "+15% staff effectiveness. Conf talks watched at 2×.", cost: 400_000, morale: 0.15, payrollMult: 1 },
+      { id: "perk_wellness", name: "Wellness Program", desc: "−15% payroll, fewer burnout re-hires.", cost: 350_000, morale: 0, payrollMult: 0.85 },
+    ] satisfies OfficePerk[],
   },
 
   prestige: {
