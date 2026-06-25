@@ -5,7 +5,7 @@ import {
   simulateProducts, productMetrics, versionCost,
   churnReason, maybeChurnFlavor,
   canLaunchDraft, launchDraft, canStartUpgrade, startUpgrade, advanceUpgrades, upgradeDurationSec,
-  applyMilestones, milestoneValue,
+  applyMilestones, milestoneValue, maybeProductEvent,
 } from "./products";
 import { applyWorldEvent } from "./actions";
 import { tick } from "./tick";
@@ -388,6 +388,40 @@ describe("products — milestones", () => {
     s = { ...s, products: { ...s.products, active: [{ ...s.products.active[0]!, mau: 200_000, paid: 1000 }] } };
     const next = tick(s, 1000);
     expect(next.products.milestones).toContain("users_100k");
+  });
+});
+
+describe("products — ops events", () => {
+  const withUsers = () => {
+    let s = release();
+    return { ...s, products: { ...s.products, active: [{ ...s.products.active[0]!, mau: 200_000, paid: 20_000, buzzSec: 0 }] } };
+  };
+
+  it("won't fire for a product without a real user base", () => {
+    const s = release(); // mau = 0
+    expect(maybeProductEvent(s, 10, 0, 0, 0)).toBeNull();
+  });
+
+  it("stays silent when the fire roll misses", () => {
+    expect(maybeProductEvent(withUsers(), 0.1, 0.999, 0, 0)).toBeNull();
+  });
+
+  it("fires an event that nudges the product and returns a toast", () => {
+    const s = withUsers();
+    const res = maybeProductEvent(s, 10, 0, 0, 0); // rollFire 0 → fires; first event = viral (good)
+    expect(res).not.toBeNull();
+    expect(res!.tone).toBe("good");
+    expect(res!.message).toContain("Test AI");
+    // viral spikes users and arms buzz
+    expect(res!.state.products.active[0]!.mau).toBeGreaterThan(s.products.active[0]!.mau);
+    expect(res!.state.products.active[0]!.buzzSec).toBeGreaterThan(0);
+  });
+
+  it("a bad event (last in the list) reduces subs", () => {
+    const s = withUsers();
+    const res = maybeProductEvent(s, 10, 0, 0, 0.999)!; // last event = price_war (bad)
+    expect(res.tone).toBe("bad");
+    expect(res.state.products.active[0]!.paid).toBeLessThan(s.products.active[0]!.paid);
   });
 });
 

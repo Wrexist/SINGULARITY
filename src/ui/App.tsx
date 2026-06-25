@@ -151,9 +151,10 @@ export function App() {
   useEffect(() => {
     if (!notice) return;
     pushToast(notice.message, notice.tone);
-    // A "good" notice is a win (a version shipped) — give it the full beat. Churn
-    // quips ("bad"/neutral) stay a light ambient tap.
+    // A "good" notice is a win (version shipped, milestone, viral) — full beat. A
+    // "bad" ops event (outage/breach) feels bad. Neutral churn quips stay a light tap.
     if (notice.tone === "good") { haptics.celebrate(); sound.success(); }
+    else if (notice.tone === "bad") { haptics.warn(); sound.alert(); }
     else haptics.tap();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notice?.key]);

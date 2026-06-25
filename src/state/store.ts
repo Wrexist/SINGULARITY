@@ -28,6 +28,7 @@ import {
   launchDraft,
   canStartUpgrade,
   startUpgrade,
+  maybeProductEvent,
 } from "../engine/products";
 import { productMilestones as PRODUCT_MILESTONES, type ProductTypeId } from "../engine/balance/products";
 import { prestige } from "../engine/prestige";
@@ -48,7 +49,7 @@ const TIME_KEY = "singularity.lastSeen.v1";
 export interface FiredEvent {
   key: number;
   message: string;
-  tone: "bad" | "good";
+  tone: "neutral" | "bad" | "good";
 }
 
 export type FiredWorldEvent = WorldEventResult & { key: number };
@@ -211,16 +212,29 @@ export const useGame = create<GameStore>((set, get) => ({
         }
       }
 
+      // Per-product ops event (outage, viral spike, breach…) — a reactive moment
+      // that nudges a product's users/subs. More significant than a churn quip, so
+      // it gets the toast slot first (but yields to a milestone/upgrade-ship).
+      if (!patch.event && !patch.notice && game.products.active.length > 0) {
+        const pe = maybeProductEvent(game, secs, Math.random(), Math.random(), Math.random());
+        if (pe) {
+          game = pe.state;
+          patch.game = game;
+          noticeKey += 1;
+          patch.notice = { key: noticeKey, message: pe.message, tone: pe.tone };
+        }
+      }
+
       // Churn-reason flavor quip — the satire surface for "update or bleed". Only
-      // when nothing heavier (regulatory event or an upgrade-ship) already claimed
-      // this tick's toast slot.
+      // when nothing heavier (regulatory event, upgrade-ship, ops event) already
+      // claimed this tick's toast slot.
       if (!patch.event && !patch.notice) {
         const flavor = maybeChurnFlavor(
           game.products, secs, Math.random(), Math.random(), Math.random(),
         );
         if (flavor) {
           noticeKey += 1;
-          patch.notice = { key: noticeKey, message: flavor.message, tone: "bad" };
+          patch.notice = { key: noticeKey, message: flavor.message, tone: "neutral" };
         }
       }
 

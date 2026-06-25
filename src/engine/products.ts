@@ -171,6 +171,52 @@ export function applyMilestones(state: GameState): { state: GameState; achieved:
   };
 }
 
+// ---------- Per-product ops events (pure; RNG passed in) ----------
+
+export interface ProductEventResult {
+  state: GameState;
+  message: string;
+  tone: "good" | "bad";
+}
+
+/** Occasionally fire a reactive ops event on one live product (outage, viral spike,
+ *  breach…). Deterministic given its rolls (the store supplies Math.random()), like
+ *  maybeHeatEvent. One-shot effect (user/sub nudge, maybe Heat); returns the new
+ *  state + a toast, or null when nothing fires. */
+export function maybeProductEvent(
+  state: GameState,
+  seconds: number,
+  rollFire: number,
+  rollPick: number,
+  rollEvent: number,
+): ProductEventResult | null {
+  const ps = state.products;
+  const eligible = ps.active.filter((p) => p.mau >= B.events.minMau);
+  if (eligible.length === 0) return null;
+  const chance = 1 - Math.exp(-B.events.ratePerSec * seconds);
+  if (rollFire >= chance) return null;
+  const p = eligible[Math.min(eligible.length - 1, Math.floor(rollPick * eligible.length))]!;
+  const ev = B.events.list[Math.min(B.events.list.length - 1, Math.floor(rollEvent * B.events.list.length))]!;
+  const t = typeDef(p.type);
+
+  const np: ProductState = {
+    ...p,
+    mau: clamp(p.mau * (ev.mauMult ?? 1), 0, t.tam),
+    paid: Math.max(0, Math.min(p.paid * (ev.paidMult ?? 1), p.mau * (ev.mauMult ?? 1))),
+    buzzSec: ev.buzz ? B.buzzDurationSec : p.buzzSec,
+  };
+  const heat = ev.heat ? state.heat + ev.heat : state.heat;
+  return {
+    state: {
+      ...state,
+      heat,
+      products: { ...ps, active: ps.active.map((x) => (x.id === p.id ? np : x)) },
+    },
+    message: ev.message.replace("{name}", p.name),
+    tone: ev.tone === "good" ? "good" : "bad",
+  };
+}
+
 // ---------- Churn-reason classification + flavor (pure) ----------
 
 export type ChurnReason = "stale" | "pricey" | "healthy";
