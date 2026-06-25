@@ -1,7 +1,7 @@
 import { Big } from "./math/Big";
 import { SAVE_VERSION, createInitialState } from "./state";
 import { products as PRODUCTS } from "./balance/products";
-import type { ActiveModifier, GameState, ModifierTarget, ProductsState, ProductState } from "./types";
+import type { ActiveModifier, DraftModel, GameState, ModifierTarget, ProductsState, ProductState, UpgradeState } from "./types";
 
 const MODIFIER_TARGETS: ModifierTarget[] = ["computeMult", "dataMult", "moneyMult"];
 const PRODUCT_TYPE_IDS = PRODUCTS.types.map((t) => t.id);
@@ -30,6 +30,39 @@ function isWellFormedProduct(p: unknown): p is ProductState {
     o.paid! >= 0 &&
     o.buzzSec! >= 0
   );
+}
+
+/** An in-flight upgrade is untrusted: a NaN remaining would freeze the bar or feed
+ *  NaN into the resource drain. Drop a malformed one (the product just keeps its
+ *  current version) rather than crash. */
+function sanitizeUpgrade(u: unknown): UpgradeState | null {
+  const o = u as Partial<UpgradeState> | null;
+  if (!o || typeof o !== "object") return null;
+  const nums = [o.targetVersion, o.remainingCompute, o.remainingData, o.remainingSec, o.totalSec];
+  if (!nums.every((n) => typeof n === "number" && Number.isFinite(n))) return null;
+  if (o.targetVersion! < 2 || o.remainingSec! < 0 || o.totalSec! <= 0) return null;
+  if (o.remainingCompute! < 0 || o.remainingData! < 0) return null;
+  return {
+    targetVersion: o.targetVersion!,
+    remainingCompute: o.remainingCompute!,
+    remainingData: o.remainingData!,
+    remainingSec: o.remainingSec!,
+    totalSec: o.totalSec!,
+  };
+}
+
+/** Drafts are untrusted; keep only well-formed entries. */
+function sanitizeDrafts(d: unknown): DraftModel[] {
+  if (!Array.isArray(d)) return [];
+  return d
+    .filter(
+      (x): x is DraftModel =>
+        !!x &&
+        typeof x.id === "string" &&
+        typeof x.quality === "number" && Number.isFinite(x.quality) && x.quality >= 0 &&
+        typeof x.ships === "number" && Number.isFinite(x.ships),
+    )
+    .map((x) => ({ id: x.id, quality: x.quality, ships: x.ships }));
 }
 
 /** Loaded products are untrusted; guard the container AND each entry. */
@@ -131,9 +164,12 @@ export function deserialize(json: string): GameState {
       ? Math.max(0, Math.min(1, raw.computeFocus))
       : fresh.computeFocus;
   const loadedProducts = isWellFormedProducts(raw.products) ? raw.products : fresh.products;
-  // `sold` was added after v6 shipped; default it for saves that predate it.
+  // `sold` was added after v6 shipped, `drafts`/`upgrade` in v7; default them for
+  // saves that predate each, and sanitize the untrusted nested shapes.
   const products: ProductsState = {
     ...loadedProducts,
+    active: loadedProducts.active.map((p) => ({ ...p, upgrade: sanitizeUpgrade((p as ProductState).upgrade) })),
+    drafts: sanitizeDrafts((loadedProducts as ProductsState).drafts),
     sold: typeof loadedProducts.sold === "number" && Number.isFinite(loadedProducts.sold) ? loadedProducts.sold : 0,
   };
   return {
@@ -188,6 +224,12 @@ export function migrate(raw: any): SavedShape {
   if (s.version === 5) {
     // v5 → v6: introduce released products (none yet; frontier at the start value).
     s = { ...s, version: 6, products: s.products ?? { active: [], frontier: PRODUCTS.frontierStart } };
+  }
+  if (s.version === 6) {
+    // v6 → v7: drafts (raw models from shipping) + per-product timed upgrades. The
+    // deserializer defaults/sanitizes both, so this just stamps the version.
+    const prev = s.products ?? { active: [], frontier: PRODUCTS.frontierStart };
+    s = { ...s, version: 7, products: { ...prev, drafts: prev.drafts ?? [] } };
   }
   return s as SavedShape;
 }

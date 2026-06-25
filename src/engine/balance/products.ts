@@ -70,6 +70,23 @@ export const products = {
   /** How fast paid count eases toward its conversion target (per second). */
   convSpeed: 0.05,
 
+  /** Drafts — each Ship the Model deposits a "raw model" you commercialise. Cap the
+   *  pile so it can't grow unbounded across many prestiges (oldest drops off). */
+  maxDrafts: 6,
+
+  /** Timed version upgrades ("research takes time"). Starting an upgrade pays an
+   *  upfront fraction of versionCost immediately; the remainder DRAINS over the
+   *  research duration (Compute+Data/sec). Progress stalls on any tick you can't
+   *  afford the drain. On completion the model jumps to the frontier + fires buzz. */
+  upgrade: {
+    /** Fraction of the version cost paid upfront to start (rest drains over time). */
+    upfrontFrac: 0.4,
+    /** Base research seconds for v1→v2; ×growth per version, capped. */
+    baseSec: 90,
+    secGrowth: 1.3,
+    maxSec: 1800,
+  },
+
   /** A fresh release / new version spikes acquisition + cuts churn briefly. */
   buzzDurationSec: 45,
   buzzAcqMult: 3,

@@ -80,10 +80,42 @@ export interface ProductState {
   paid: number;
   /** Remaining launch-buzz seconds (acquisition spike + churn cut). */
   buzzSec: number;
+  /** An in-progress timed version upgrade (research), or null. The model keeps
+   *  earning at its current quality until the upgrade completes. */
+  upgrade: UpgradeState | null;
+}
+
+/** A version upgrade in flight: pay an upfront chunk to start, then it drains the
+ *  remainder of the Compute+Data cost over a research duration. On completion the
+ *  product jumps to the current frontier and fires launch buzz. Stalls (no progress)
+ *  on any tick the player can't afford the drain. */
+export interface UpgradeState {
+  /** Version the product becomes when this completes. */
+  targetVersion: number;
+  /** Compute still to be drained before completion. */
+  remainingCompute: number;
+  /** Data still to be drained before completion. */
+  remainingData: number;
+  /** Research seconds left (drives the progress bar + ETA). */
+  remainingSec: number;
+  /** Total research seconds (for the progress %). */
+  totalSec: number;
+}
+
+/** A "raw model" deposited in the Products tab each time you Ship the Model. The
+ *  player commercialises it (pick a type + name, pay the launch cost) → a product. */
+export interface DraftModel {
+  id: string;
+  /** Strength of the shipped model → the product's starting quality. */
+  quality: number;
+  /** Which ship produced it (flavor + ordering). */
+  ships: number;
 }
 
 export interface ProductsState {
   active: ProductState[];
+  /** Unlaunched "raw models" from shipping, awaiting commercialisation. */
+  drafts: DraftModel[];
   /** Global competitor capability; drifts up over time. */
   frontier: number;
   /** Lifetime count of products sold/retired (a badge stat; survives prestige). */

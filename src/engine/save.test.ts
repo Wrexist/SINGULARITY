@@ -127,7 +127,8 @@ describe("save/load", () => {
     good.products = {
       frontier: 3,
       sold: 0,
-      active: [{ id: "prod-1", name: "Nimbus", type: "general", version: 1, quality: 2, priceMult: 1, marketingPerSec: 0, mau: 10, paid: 2, buzzSec: 0 }],
+      drafts: [],
+      active: [{ id: "prod-1", name: "Nimbus", type: "general", version: 1, quality: 2, priceMult: 1, marketingPerSec: 0, mau: 10, paid: 2, buzzSec: 0, upgrade: null }],
     };
     expect(deserialize(serialize(good)).products.active).toHaveLength(1);
 
@@ -138,6 +139,32 @@ describe("save/load", () => {
     const recovered = deserialize(JSON.stringify(raw));
     expect(recovered.products.active).toHaveLength(0);
     expect(Number.isFinite(recovered.products.frontier)).toBe(true);
+  });
+
+  it("round-trips drafts and an in-flight timed upgrade (v7)", () => {
+    const s = createInitialState();
+    s.products = {
+      frontier: 5,
+      sold: 0,
+      drafts: [{ id: "draft-2", quality: 4, ships: 2 }],
+      active: [{
+        id: "prod-1", name: "Cortex", type: "code", version: 3, quality: 4,
+        priceMult: 1, marketingPerSec: 0, mau: 100, paid: 20, buzzSec: 0,
+        upgrade: { targetVersion: 4, remainingCompute: 1000, remainingData: 100, remainingSec: 30, totalSec: 90 },
+      }],
+    };
+    const back = deserialize(serialize(s)).products;
+    expect(back.drafts).toHaveLength(1);
+    expect(back.drafts[0]!.quality).toBe(4);
+    expect(back.active[0]!.upgrade!.targetVersion).toBe(4);
+    expect(back.active[0]!.upgrade!.remainingSec).toBe(30);
+
+    // A malformed upgrade is dropped (product kept, just no in-flight research).
+    const raw = JSON.parse(serialize(s));
+    raw.products.active[0].upgrade.remainingSec = "soon";
+    const recovered = deserialize(JSON.stringify(raw));
+    expect(recovered.products.active).toHaveLength(1);
+    expect(recovered.products.active[0]!.upgrade).toBeNull();
   });
 
   it("loads a partial/legacy save without throwing (missing prestige/heat/run)", () => {

@@ -4,6 +4,7 @@ import {
   setProductPrice, setProductMarketing, renameProduct, retireProduct, retirePayout,
   simulateProducts, productMetrics, versionCost,
   churnReason, maybeChurnFlavor,
+  canLaunchDraft, launchDraft, canStartUpgrade, startUpgrade, advanceUpgrades, upgradeDurationSec,
 } from "./products";
 import { applyWorldEvent } from "./actions";
 import { tick } from "./tick";
@@ -192,7 +193,7 @@ describe("products — churn-reason flavor", () => {
 
   it("fires a flavor quip naming a materially-bleeding product", () => {
     const stale = { ...settled(), quality: 1, priceMult: 1, paid: 500 };
-    const ps = { active: [stale], frontier: 51, sold: 0 };
+    const ps = { active: [stale], frontier: 51, sold: 0, drafts: [] };
     const res = maybeChurnFlavor(ps, 10, 0, 0, 0); // rollFire 0 → fires
     expect(res).not.toBeNull();
     expect(res!.reason).toBe("stale");
@@ -201,19 +202,19 @@ describe("products — churn-reason flavor", () => {
 
   it("stays silent on the dice when the fire roll misses", () => {
     const stale = { ...settled(), quality: 1, priceMult: 1, paid: 500 };
-    const ps = { active: [stale], frontier: 51, sold: 0 };
+    const ps = { active: [stale], frontier: 51, sold: 0, drafts: [] };
     expect(maybeChurnFlavor(ps, 0.1, 0.99, 0, 0)).toBeNull(); // tiny window, high roll
   });
 
   it("won't quip about a product with no real subscriber base", () => {
     const tiny = { ...settled(), quality: 1, priceMult: 1, paid: 5 }; // below flavor.minPaid
-    const ps = { active: [tiny], frontier: 51, sold: 0 };
+    const ps = { active: [tiny], frontier: 51, sold: 0, drafts: [] };
     expect(maybeChurnFlavor(ps, 10, 0, 0, 0)).toBeNull();
   });
 
   it("won't quip about a healthy portfolio", () => {
     const healthy = { ...settled(), quality: 50, priceMult: 1, paid: 500 };
-    const ps = { active: [healthy], frontier: 50, sold: 0 };
+    const ps = { active: [healthy], frontier: 50, sold: 0, drafts: [] };
     expect(maybeChurnFlavor(ps, 10, 0, 0, 0)).toBeNull();
   });
 });
@@ -239,6 +240,106 @@ describe("products — persistence", () => {
     expect(s.products.active[0]!.marketingPerSec).toBe(0);
     s = retireProduct(s, "p1");
     expect(s.products.active).toHaveLength(0);
+  });
+});
+
+describe("products — drafts from shipping", () => {
+  const shippable = () => {
+    const s = shipped();
+    s.lifetimeMoney = Big.of("1e9");
+    s.research = ["inference_api"]; // the capability research that unlocks shipping
+    return s;
+  };
+
+  it("Ship the Model deposits a raw-model draft sized to the frontier", () => {
+    const s = shippable();
+    s.products = { ...s.products, frontier: 7 };
+    const after = prestige(s);
+    expect(after.products.drafts).toHaveLength(1);
+    expect(after.products.drafts[0]!.quality).toBe(7);
+    expect(after.products.drafts[0]!.ships).toBe(s.prestige.ships + 1);
+    // the reset still happened (compute zeroed) but the business + draft carried over
+    expect(after.resources.compute.toNumber()).toBe(0);
+  });
+
+  it("caps the draft pile at maxDrafts (oldest drops off)", () => {
+    let s = shippable();
+    for (let i = 0; i < B.maxDrafts + 3; i++) s = { ...prestige(s), lifetimeMoney: Big.of("1e9"), research: ["inference_api"] };
+    expect(s.products.drafts.length).toBe(B.maxDrafts);
+  });
+
+  it("launches a draft into a product at the DRAFT's quality, paying the launch cost", () => {
+    const s = shipped();
+    s.products = { ...s.products, drafts: [{ id: "draft-1", quality: 12, ships: 1 }] };
+    expect(canLaunchDraft(s, "draft-1", "general")).toBe(true);
+    const next = launchDraft(s, { draftId: "draft-1", type: "general", name: "Nimbus", id: "prod-1" });
+    expect(next.products.active).toHaveLength(1);
+    expect(next.products.active[0]!.quality).toBe(12); // not the frontier — the model you shipped
+    expect(next.products.drafts).toHaveLength(0);
+    expect(next.resources.compute.lt(s.resources.compute)).toBe(true);
+  });
+
+  it("won't launch a locked type or past the slot cap", () => {
+    const s = shipped(); // ships = 1
+    s.products = { ...s.products, drafts: [{ id: "draft-1", quality: 5, ships: 1 }] };
+    expect(canLaunchDraft(s, "draft-1", "domain")).toBe(false); // premium type still gated
+    expect(launchDraft(s, { draftId: "missing", type: "general", name: "x", id: "p" })).toBe(s);
+  });
+});
+
+describe("products — timed version upgrades", () => {
+  const ready = () => {
+    let s = release(); // p1, v1, quality = frontier
+    s = { ...s, products: { ...s.products, frontier: s.products.frontier + 10 } }; // frontier ran ahead
+    s.resources.compute = Big.of(1e9);
+    s.resources.data = Big.of(1e9);
+    return s;
+  };
+
+  it("research duration escalates with version", () => {
+    expect(upgradeDurationSec(2)).toBeGreaterThan(upgradeDurationSec(1));
+  });
+
+  it("starting an upgrade pays upfront and arms the research timer (one at a time)", () => {
+    let s = ready();
+    const before = s.resources.compute;
+    expect(canStartUpgrade(s, "p1")).toBe(true);
+    s = startUpgrade(s, "p1");
+    const u = s.products.active[0]!.upgrade!;
+    expect(u.targetVersion).toBe(2);
+    expect(u.remainingSec).toBeGreaterThan(0);
+    expect(u.totalSec).toBe(upgradeDurationSec(1));
+    expect(s.resources.compute.lt(before)).toBe(true); // upfront paid
+    expect(canStartUpgrade(s, "p1")).toBe(false); // can't stack a second
+  });
+
+  it("completes after its research window: version bumps, quality catches the frontier, buzz fires", () => {
+    let s = startUpgrade(ready(), "p1");
+    const u = s.products.active[0]!.upgrade!;
+    const res = advanceUpgrades(s.products, 1e9, 1e9, u.totalSec + 1);
+    const p = res.products.active[0]!;
+    expect(p.upgrade).toBeNull();
+    expect(p.version).toBe(2);
+    expect(p.quality).toBe(s.products.frontier); // caught up
+    expect(p.buzzSec).toBeGreaterThan(0);
+    expect(res.computeSpent).toBeGreaterThan(0);
+    expect(res.completed).toHaveLength(1);
+  });
+
+  it("stalls (no progress, no spend) on a tick the player can't afford the drain", () => {
+    const s = startUpgrade(ready(), "p1");
+    const u = s.products.active[0]!.upgrade!;
+    const res = advanceUpgrades(s.products, 0, 0, u.totalSec + 1); // broke
+    expect(res.products.active[0]!.upgrade!.remainingSec).toBeCloseTo(u.remainingSec, 5);
+    expect(res.computeSpent).toBe(0);
+  });
+
+  it("a long offline tick completes an affordable in-flight upgrade", () => {
+    let s = startUpgrade(ready(), "p1");
+    const dur = s.products.active[0]!.upgrade!.totalSec;
+    const next = tick(s, (dur + 5) * 1000);
+    expect(next.products.active[0]!.version).toBe(2);
+    expect(next.products.active[0]!.upgrade).toBeNull();
   });
 });
 

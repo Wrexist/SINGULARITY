@@ -1,5 +1,5 @@
 import { products as B, type ProductTypeId, type ProductTypeDef } from "./balance/products";
-import type { GameState, ProductState, ProductsState } from "./types";
+import type { GameState, ProductState, ProductsState, UpgradeState } from "./types";
 
 /**
  * PHASE 3 — AI Product / Deployment engine. Pure & deterministic (time passed in,
@@ -204,6 +204,7 @@ export function releaseProduct(
     mau: 0,
     paid: 0,
     buzzSec: B.buzzDurationSec,
+    upgrade: null,
   };
   return {
     ...state,
@@ -241,6 +242,181 @@ export function pushVersion(state: GameState, id: string): GameState {
     },
     products: { ...state.products, active },
   };
+}
+
+// ---------- Drafts (commercialise a shipped model) ----------
+
+export function canLaunchDraft(state: GameState, draftId: string, type: ProductTypeId): boolean {
+  if (!productsUnlocked(state)) return false;
+  if (!typeUnlocked(state, type)) return false;
+  if (state.products.active.length >= B.maxActive) return false;
+  if (!state.products.drafts.some((d) => d.id === draftId)) return false;
+  return (
+    state.resources.compute.gte(B.releaseCost.compute) &&
+    state.resources.data.gte(B.releaseCost.data)
+  );
+}
+
+/** Commercialise a shipped "raw model" draft into an active product: pick its type
+ *  + name, pay the launch cost. The product starts at the DRAFT's quality (the
+ *  strength of the model you shipped), not the current frontier. */
+export function launchDraft(
+  state: GameState,
+  opts: { draftId: string; type: ProductTypeId; name: string; id: string },
+): GameState {
+  if (!canLaunchDraft(state, opts.draftId, opts.type)) return state;
+  const draft = state.products.drafts.find((d) => d.id === opts.draftId)!;
+  const product: ProductState = {
+    id: opts.id,
+    name: opts.name,
+    type: opts.type,
+    version: 1,
+    quality: Math.max(1, draft.quality),
+    priceMult: 1,
+    marketingPerSec: 0,
+    mau: 0,
+    paid: 0,
+    buzzSec: B.buzzDurationSec,
+    upgrade: null,
+  };
+  return {
+    ...state,
+    resources: {
+      ...state.resources,
+      compute: state.resources.compute.sub(B.releaseCost.compute),
+      data: state.resources.data.sub(B.releaseCost.data),
+    },
+    products: {
+      ...state.products,
+      active: [...state.products.active, product],
+      drafts: state.products.drafts.filter((d) => d.id !== opts.draftId),
+    },
+  };
+}
+
+// ---------- Timed version upgrades ("research takes time") ----------
+
+/** Research seconds for the upgrade leaving the given current version. */
+export function upgradeDurationSec(version: number): number {
+  const g = Math.pow(B.upgrade.secGrowth, Math.max(0, version - 1));
+  return Math.min(B.upgrade.maxSec, B.upgrade.baseSec * g);
+}
+
+export function canStartUpgrade(state: GameState, id: string): boolean {
+  const p = state.products.active.find((x) => x.id === id);
+  if (!p || p.upgrade) return false; // one upgrade per product at a time
+  const c = versionCost(p.version);
+  return (
+    state.resources.compute.gte(c.compute * B.upgrade.upfrontFrac) &&
+    state.resources.data.gte(c.data * B.upgrade.upfrontFrac)
+  );
+}
+
+/** Begin a timed upgrade: pay the upfront fraction now; the rest drains over the
+ *  research window (handled each tick by advanceUpgrades). */
+export function startUpgrade(state: GameState, id: string): GameState {
+  if (!canStartUpgrade(state, id)) return state;
+  const p = state.products.active.find((x) => x.id === id)!;
+  const c = versionCost(p.version);
+  const upfrontC = c.compute * B.upgrade.upfrontFrac;
+  const upfrontD = c.data * B.upgrade.upfrontFrac;
+  const dur = upgradeDurationSec(p.version);
+  const upgrade: UpgradeState = {
+    targetVersion: p.version + 1,
+    remainingCompute: c.compute - upfrontC,
+    remainingData: c.data - upfrontD,
+    remainingSec: dur,
+    totalSec: dur,
+  };
+  return {
+    ...state,
+    resources: {
+      ...state.resources,
+      compute: state.resources.compute.sub(upfrontC),
+      data: state.resources.data.sub(upfrontD),
+    },
+    products: {
+      ...state.products,
+      active: state.products.active.map((x) => (x.id === id ? { ...x, upgrade } : x)),
+    },
+  };
+}
+
+/** Progress fraction [0,1] of an in-flight upgrade (for the UI bar). */
+export function upgradeProgress(u: UpgradeState): number {
+  return u.totalSec > 0 ? clamp(1 - u.remainingSec / u.totalSec, 0, 1) : 1;
+}
+
+export interface UpgradeTickResult {
+  products: ProductsState;
+  /** Compute/Data drained this window (subtract from resources in tick). */
+  computeSpent: number;
+  dataSpent: number;
+  /** Upgrades that finished this window (for the celebration toast). */
+  completed: { id: string; name: string; version: number }[];
+}
+
+/** Advance every in-flight upgrade by `seconds`, limited by available Compute/Data
+ *  (a tick you can't afford the drain stalls that upgrade). Pure: resource pools
+ *  are passed in as numbers and the amounts spent are returned for the caller (tick)
+ *  to subtract from the Big resources. On completion: version bumps, quality jumps
+ *  to the current frontier, and launch buzz fires. */
+export function advanceUpgrades(
+  ps: ProductsState,
+  computeAvail: number,
+  dataAvail: number,
+  seconds: number,
+): UpgradeTickResult {
+  if (seconds <= 0 || !ps.active.some((p) => p.upgrade)) {
+    return { products: ps, computeSpent: 0, dataSpent: 0, completed: [] };
+  }
+  let cAvail = computeAvail;
+  let dAvail = dataAvail;
+  let computeSpent = 0;
+  let dataSpent = 0;
+  const completed: { id: string; name: string; version: number }[] = [];
+
+  const active = ps.active.map((p) => {
+    const u = p.upgrade;
+    if (!u) return p;
+    let adv = Math.min(seconds, u.remainingSec);
+    const perSecC = u.remainingSec > 0 ? u.remainingCompute / u.remainingSec : 0;
+    const perSecD = u.remainingSec > 0 ? u.remainingData / u.remainingSec : 0;
+    // Scale the advance down to what the player can actually afford this tick.
+    let frac = 1;
+    if (perSecC * adv > 0) frac = Math.min(frac, cAvail / (perSecC * adv));
+    if (perSecD * adv > 0) frac = Math.min(frac, dAvail / (perSecD * adv));
+    frac = Math.max(0, Math.min(1, frac));
+    adv *= frac;
+    const spentC = perSecC * adv;
+    const spentD = perSecD * adv;
+    cAvail -= spentC; dAvail -= spentD;
+    computeSpent += spentC; dataSpent += spentD;
+
+    const remainingSec = u.remainingSec - adv;
+    if (remainingSec <= 1e-6) {
+      // Research complete — catch up to the frontier and fire launch buzz.
+      completed.push({ id: p.id, name: p.name, version: u.targetVersion });
+      return {
+        ...p,
+        version: u.targetVersion,
+        quality: Math.max(p.quality, ps.frontier),
+        buzzSec: B.buzzDurationSec,
+        upgrade: null,
+      };
+    }
+    return {
+      ...p,
+      upgrade: {
+        ...u,
+        remainingSec,
+        remainingCompute: Math.max(0, u.remainingCompute - spentC),
+        remainingData: Math.max(0, u.remainingData - spentD),
+      },
+    };
+  });
+
+  return { products: { ...ps, active }, computeSpent, dataSpent, completed };
 }
 
 export function setProductPrice(state: GameState, id: string, priceMult: number): GameState {
