@@ -112,13 +112,15 @@ try {
   await page.mouse.click(8, 8).catch(() => {});
   await sleep(300);
 
-  // 3) Employees tab — individual roster (people, traits, training, assignment).
+  // 3) Employees tab — clean Team view (compact board + collapsed Lab roster).
   await page.getByRole("tab", { name: "Employees" }).click();
   await sleep(500);
   await page.screenshot({ path: "screenshots/feat-employees.png", fullPage: true });
   console.log("Saved feat-employees.png");
 
-  // 4) Recruiting — candidate picker open.
+  // 4) Hire sub-tab — candidate picker.
+  await page.getByRole("tab", { name: "Hire" }).click();
+  await sleep(300);
   await page.getByRole("button", { name: /Recruit talent/ }).click();
   await sleep(400);
   await page.screenshot({ path: "screenshots/feat-recruit.png", fullPage: true });

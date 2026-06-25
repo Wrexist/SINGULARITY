@@ -1533,6 +1533,32 @@ body {
 .emp-selbar-main { flex: 1; min-width: 0; }
 .emp-selbar-tr { font-size: 12px; color: var(--ink-2); white-space: nowrap; }
 
+/* ---------- Employees page (clean, tabbed) ---------- */
+.emp-buffs-line { font-size: 12px; color: var(--ink-2); margin: 0 0 4px; }
+.emp-labsec { margin-top: 4px; }
+.emp-lab-head {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 11px 12px; border-radius: var(--radius-sm); cursor: pointer;
+  background: var(--glass-strong); border: 1px solid var(--glass-hairline);
+  font-size: 13px; font-weight: 700; color: var(--ink);
+}
+.emp-lab-meta { font-size: 12px; color: var(--ink-2); font-weight: 650; }
+.emp-lab-chips { margin-top: 8px; }
+.emp-cand {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer;
+  background: var(--glass-strong); border: 1px solid var(--glass-hairline);
+  transition: border-color 0.15s, transform 0.15s var(--ease-out);
+}
+.emp-cand:hover:not(:disabled) { border-color: color-mix(in srgb, var(--money) 40%, transparent); transform: translateY(-1px); }
+.emp-cand.maxed { opacity: 0.5; cursor: not-allowed; }
+.emp-cand-main { flex: 1; min-width: 0; }
+.emp-cand-name { font-size: 14px; font-weight: 750; }
+.emp-cand-role { font-size: 12px; color: var(--ink-2); }
+.emp-cand-cost { display: flex; flex-direction: column; align-items: flex-end; flex: 0 0 auto; }
+.emp-cand-cost span { font-size: 14px; font-weight: 750; color: var(--money); }
+.emp-cand-sal { font-size: 11px !important; font-weight: 600 !important; color: var(--ink-2) !important; }
+
 /* ---------- Employees page (individual people) ---------- */
 .emp-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px; }
 .emp-card {
