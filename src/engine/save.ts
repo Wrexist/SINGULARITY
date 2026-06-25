@@ -39,6 +39,7 @@ interface SavedShape {
   heat: number;
   modifiers: ActiveModifier[];
   alignment: number;
+  computeFocus: number;
 }
 
 export function serialize(state: GameState): string {
@@ -60,6 +61,7 @@ export function serialize(state: GameState): string {
     heat: state.heat,
     modifiers: state.modifiers,
     alignment: state.alignment,
+    computeFocus: state.computeFocus,
   };
   return JSON.stringify(shape);
 }
@@ -82,6 +84,10 @@ export function deserialize(json: string): GameState {
     typeof raw.alignment === "number" && Number.isFinite(raw.alignment)
       ? Math.max(-1, Math.min(1, raw.alignment))
       : fresh.alignment;
+  const computeFocus =
+    typeof raw.computeFocus === "number" && Number.isFinite(raw.computeFocus)
+      ? Math.max(0, Math.min(1, raw.computeFocus))
+      : fresh.computeFocus;
   return {
     version: SAVE_VERSION,
     resources: {
@@ -100,6 +106,7 @@ export function deserialize(json: string): GameState {
     heat,
     modifiers,
     alignment,
+    computeFocus,
   };
 }
 
@@ -124,6 +131,10 @@ export function migrate(raw: any): SavedShape {
   if (s.version === 3) {
     // v3 → v4: introduce faction alignment (starts neutral).
     s = { ...s, version: 4, alignment: s.alignment ?? 0 };
+  }
+  if (s.version === 4) {
+    // v4 → v5: introduce auto-train compute focus (defaults to full training).
+    s = { ...s, version: 5, computeFocus: s.computeFocus ?? 1 };
   }
   return s as SavedShape;
 }

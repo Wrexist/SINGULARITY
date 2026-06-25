@@ -6,13 +6,23 @@ interface Props {
   derived: Derived;
   onStart: () => void;
   onClaim: () => void;
+  onSetFocus: (v: number) => void;
 }
 
 /** The active loop: assign Compute → watch the bar → claim Data + Money. */
-export function TrainingDock({ game, derived, onStart, onClaim }: Props) {
+export function TrainingDock({ game, derived, onStart, onClaim, onSetFocus }: Props) {
   const { run } = game;
   const canStart = !run.active && !run.readyToClaim && game.resources.compute.gte(derived.runComputeCost);
   const pct = Math.min(100, run.progress * 100);
+
+  // Compute focus: lets the player reserve Compute (lower focus) so the bank can
+  // climb toward expensive research, instead of auto-train spending it all. Only
+  // relevant once auto-train exists (otherwise the player paces runs by hand).
+  const focus = game.computeFocus;
+  const focusLabel =
+    focus === 0
+      ? "Holding — Compute banks freely"
+      : `${Math.round(focus * 100)}% · banks up to ${fmt(derived.runComputeCost.div(focus))} compute`;
 
   // Coach the very first run, then get out of the way (clean-to-play).
   const firstRun = game.lifetimeMoney.eq(0) && game.prestige.ships === 0;
@@ -48,6 +58,29 @@ export function TrainingDock({ game, derived, onStart, onClaim }: Props) {
         <button className={`btn btn-primary ${canStart && firstRun ? "nudge" : ""}`} disabled={!canStart} onClick={onStart}>
           {run.active ? "Training…" : "Start training run"}
         </button>
+      )}
+
+      {derived.autoTrain && (
+        <div className="focus">
+          <div className="focus-head">
+            <span className="focus-title">Compute focus</span>
+            <span className="focus-val">{focusLabel}</span>
+          </div>
+          <input
+            className="focus-slider"
+            type="range"
+            min={0}
+            max={100}
+            step={5}
+            value={Math.round(focus * 100)}
+            onChange={(e) => onSetFocus(Number(e.target.value) / 100)}
+            aria-label="Compute focus"
+          />
+          <div className="focus-ends">
+            <span>Bank for research</span>
+            <span>Max Data &amp; Money</span>
+          </div>
+        </div>
       )}
 
       {hint && <p className="coach">{hint}</p>}

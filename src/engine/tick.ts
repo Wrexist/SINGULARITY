@@ -35,6 +35,13 @@ export function tick(state: GameState, elapsedMs: number): GameState {
 
   const d = derive(state);
 
+  // Compute-focus gate (Phase 2): auto-train only fires once Compute reaches
+  // runCost / focus, so lowering focus lets the bank float up toward expensive
+  // research instead of being drained every run. focus = 0 holds training
+  // entirely. Manual runs (startRun) ignore this — the player can always run.
+  const autoTrainReady = (c: Big): boolean =>
+    d.autoTrain && state.computeFocus > 0 && c.gte(d.runComputeCost.div(state.computeFocus));
+
   let compute = state.resources.compute.add(d.computePerSec.mul(seconds));
   let data = state.resources.data.add(d.dataPerSec.mul(seconds));
   let money = state.resources.money.add(d.passiveMoneyPerSec.mul(seconds));
@@ -58,7 +65,7 @@ export function tick(state: GameState, elapsedMs: number): GameState {
         if (d.autoClaim) {
           ({ data, money, lifetimeMoney } = claimInto(d, data, money, lifetimeMoney));
           run = { active: false, progress: 0, readyToClaim: false };
-          if (d.autoTrain && compute.gte(d.runComputeCost)) {
+          if (autoTrainReady(compute)) {
             compute = compute.sub(d.runComputeCost);
             run = { active: true, progress: 0, readyToClaim: false };
           } else {
@@ -76,8 +83,8 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     // A run finished last tick before auto-claim existed; claim it now.
     ({ data, money, lifetimeMoney } = claimInto(d, data, money, lifetimeMoney));
     run = { active: false, progress: 0, readyToClaim: false };
-  } else if (!run.active && !run.readyToClaim && d.autoTrain && compute.gte(d.runComputeCost)) {
-    // Idle + auto-train: kick off a fresh run.
+  } else if (!run.active && !run.readyToClaim && autoTrainReady(compute)) {
+    // Idle + auto-train (and focus allows): kick off a fresh run.
     compute = compute.sub(d.runComputeCost);
     run = { active: true, progress: 0, readyToClaim: false };
   }

@@ -52,6 +52,12 @@ export interface GameState {
   modifiers: ActiveModifier[];
   /** Faction stance (Phase 2): −1 doomer … +1 accelerationist. Moved by event choices. */
   alignment: number;
+  /**
+   * Auto-train focus 0..1 (1 = spend Compute on runs aggressively; lower = reserve
+   * more Compute so the bank can climb toward expensive research). 0 = hold (no
+   * auto-train). Only gates auto-train; manual runs always fire when affordable.
+   */
+  computeFocus: number;
 }
 
 /** Everything the sim and UI read each frame, folded from upgrades + research + prestige. */

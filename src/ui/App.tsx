@@ -38,7 +38,7 @@ export function App() {
   const initialized = useGame((s) => s.initialized);
   const event = useGame((s) => s.event);
   const worldEvent = useGame((s) => s.worldEvent);
-  const { doStartRun, doClaim, doBuyUpgrade, doHireStaff, doResearch, doBuyData, doPrestige, dismissOffline, dismissWorldEvent, chooseWorldEvent, hardReset } =
+  const { doStartRun, doClaim, doBuyUpgrade, doHireStaff, doResearch, doBuyData, doPrestige, setComputeFocus, dismissOffline, dismissWorldEvent, chooseWorldEvent, hardReset } =
     useGame.getState();
 
   const d = derive(game);
@@ -210,7 +210,7 @@ export function App() {
 
       <main className="stage">
         <HallCanvas onExpand={setPendingExpansion} />
-        <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} />
+        <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} onSetFocus={setComputeFocus} />
         <UpgradePanel game={game} onBuy={onBuy} />
         {showResearch && <ResearchPanel game={game} onResearch={onResearch} />}
         {showStaff && <StaffPanel game={game} derived={d} onHire={onHire} />}

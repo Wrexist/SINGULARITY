@@ -217,6 +217,21 @@ Deferred on purpose (documented, not fixed unsupervised — current balance does
   the clock, so it still looks smooth). The opaque blit fully overwrites the prior frame, so no
   `clearRect` is needed.
 
+### Auto-train can starve banked Compute (why the compute-gated research stalls)
+- A run costs `computePerSec × costSeconds` (≈2× income) and yields Data/Money.
+  Auto-train re-fires the instant `compute ≥ runCost`, so banked Compute is
+  capped at ~one run's cost. Compute-COSTED research (MoE 75K, Inference API 130K,
+  Scaling 300K) needs Compute *banked* — and it never gets there.
+- It's worse once run duration is short (Batch Scheduler + KV Cache + Distillation):
+  if `runDurationSec < costSeconds`, each auto-train cycle spends more than income
+  replenishes, draining the bank toward zero. Player ends up with mountains of
+  Data/Money and stuck Compute (real player report).
+- **Fix — Compute Focus (`game.computeFocus`, 0..1, save v4→v5):** auto-train only
+  fires once `compute ≥ runCost / focus`, so lowering focus lets the bank float up
+  to `runCost/focus` (focus=0 = hold, no auto-train). Manual runs ignore it. A
+  slider in the TrainingDock exposes it. focus=1 is byte-identical to the old gate
+  (`compute ≥ runCost`), so existing saves + the balance sim are unchanged.
+
 ### Hall geometry/capacity is a GAME RULE, not just a view concern
 - Rack capacity (you can only own as many racks as the floor has tiles → must expand) lives in
   `src/engine/hall.ts` so BOTH the engine (`canBuyUpgrade` gate) and the renderer view-model can

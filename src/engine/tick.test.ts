@@ -63,6 +63,38 @@ describe("tick — automation", () => {
   });
 });
 
+describe("tick — compute focus (auto-train banking)", () => {
+  it("focus = 1 behaves like before: auto-train fires at runCost", () => {
+    const s = createInitialState(); // computeFocus defaults to 1
+    s.upgrades = { auto_train: 1 };
+    s.resources.compute = Big.of(1e9);
+    expect(tick(s, 1).run.active).toBe(true);
+  });
+
+  it("auto-train waits for runCost / focus, so Compute can bank up", () => {
+    const s = createInitialState();
+    s.upgrades = { auto_train: 1 };
+    s.computeFocus = 0.5; // threshold = 2 × runCost
+    const cost = derive(s).runComputeCost;
+    // Between runCost and 2×runCost → auto-train holds, banking Compute.
+    s.resources.compute = cost.mul(1.5);
+    expect(tick(s, 1).run.active).toBe(false);
+    // Above 2×runCost → it fires.
+    const s2 = { ...s, resources: { ...s.resources, compute: cost.mul(2.5) } };
+    expect(tick(s2, 1).run.active).toBe(true);
+  });
+
+  it("focus = 0 holds auto-train entirely (Compute banks, nothing spent)", () => {
+    const s = createInitialState();
+    s.upgrades = { auto_train: 1 };
+    s.computeFocus = 0;
+    s.resources.compute = Big.of(1e9);
+    const next = tick(s, 1000);
+    expect(next.run.active).toBe(false);
+    expect(next.resources.compute.gt(1e9)).toBe(true); // income banked, no run cost
+  });
+});
+
 describe("tick — passive money capability", () => {
   it("generates passive money once the inference API is researched", () => {
     const s = createInitialState();

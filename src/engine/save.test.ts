@@ -61,6 +61,21 @@ describe("save/load", () => {
     expect(deserialize(serialize(s)).heat).toBe(42);
   });
 
+  it("preserves computeFocus through a round-trip, and backfills it on a v4 save", () => {
+    const s = createInitialState();
+    s.computeFocus = 0.4;
+    expect(deserialize(serialize(s)).computeFocus).toBe(0.4);
+    const v4 = {
+      version: 4,
+      resources: { compute: "1", data: "1", money: "1" },
+      upgrades: {}, research: [],
+      run: { active: false, progress: 0, readyToClaim: false },
+      prestige: { legacyWeights: "0", ships: 0 },
+      lifetimeMoney: "1", heat: 0, modifiers: [], alignment: 0,
+    };
+    expect(migrate(v4).computeFocus).toBe(1); // v4 → v5 backfill (full training)
+  });
+
   it("preserves faction alignment through a round-trip, and backfills it on a v3 save", () => {
     const s = createInitialState();
     s.alignment = -0.5;
