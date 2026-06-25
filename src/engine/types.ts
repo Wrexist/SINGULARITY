@@ -148,6 +148,8 @@ export interface Derived {
   payrollPerSec: Big;
   /** Product-team staff buffs folded into the product sim (Phase 3). */
   productMods: ProductMods;
+  /** Staff hire-cost multiplier from Recruiters (≤ 1; cheaper hires). */
+  hireDiscount: number;
 }
 
 /** Aggregate product-team multipliers from employees. Neutral = all 1. */
@@ -160,4 +162,8 @@ export interface ProductMods {
   churn: number;
   /** Acquisition multiplier (>1 = more users in). */
   acq: number;
+  /** ARPU multiplier (>1 = more revenue per paying user). */
+  arpu: number;
+  /** Product Heat-generation multiplier (<1 = less Regulatory Heat). */
+  heat: number;
 }

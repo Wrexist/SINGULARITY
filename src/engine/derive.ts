@@ -84,7 +84,7 @@ export function derive(state: GameState): Derived {
   // business (product). Payroll is summed for tick(); product buffs fold into
   // productMods. Reductions (serveCost/churn) are floored so they can't zero out.
   let payrollPerSec = Big.ZERO;
-  let upSpeed = 1, acq = 1, serveCut = 0, churnCut = 0;
+  let upSpeed = 1, acq = 1, arpu = 1, serveCut = 0, churnCut = 0, heatCut = 0, hireCut = 0;
   if (balance.staff.enabled) {
     for (const role of balance.staff.roles) {
       const n = state.upgrades[role.id] ?? 0;
@@ -95,21 +95,28 @@ export function derive(state: GameState): Derived {
         if (role.effect.lane === "computeMult") computeMult = computeMult.mul(f);
         else if (role.effect.lane === "dataMult") dataMult = dataMult.mul(f);
         else if (role.effect.lane === "moneyMult") moneyMult = moneyMult.mul(f);
+      } else if (role.effect.kind === "meta") {
+        if (role.effect.lane === "hireDiscount") hireCut += role.effect.perLevel * n;
       } else {
         const add = role.effect.perLevel * n;
         if (role.effect.lane === "upgradeSpeed") upSpeed += add;
         else if (role.effect.lane === "acquisition") acq += add;
+        else if (role.effect.lane === "arpu") arpu += add;
         else if (role.effect.lane === "serveCost") serveCut += add;
         else if (role.effect.lane === "churn") churnCut += add;
+        else if (role.effect.lane === "heat") heatCut += add;
       }
     }
   }
   const productMods = {
     upgradeSpeed: upSpeed,
     acq,
+    arpu,
     serveCost: Math.max(0.2, 1 - serveCut), // never below 20% of base serve cost
     churn: Math.max(0.2, 1 - churnCut),     // never below 20% of base churn
+    heat: Math.max(0.1, 1 - heatCut),       // never below 10% of base Heat
   };
+  const hireDiscount = Math.max(0.25, 1 - hireCut); // hires never cheaper than 25% of base
 
   // World-event modifiers: time-limited global multipliers (buffs/debuffs).
   for (const m of state.modifiers) {
@@ -158,5 +165,6 @@ export function derive(state: GameState): Derived {
     legacyMult,
     payrollPerSec,
     productMods,
+    hireDiscount,
   };
 }

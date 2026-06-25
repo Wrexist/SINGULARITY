@@ -98,12 +98,14 @@ export interface StaffRole {
     | { kind: "lane"; lane: "computeMult" | "dataMult" | "moneyMult"; perLevel: number }
     // Product team — buffs the live product business (Phase 3). Each is summed
     // across hires into a single multiplier folded into the product sim.
-    | { kind: "product"; lane: ProductStaffLane; perLevel: number };
+    | { kind: "product"; lane: ProductStaffLane; perLevel: number }
+    // Meta — affects the company itself (e.g. cheaper hiring).
+    | { kind: "meta"; lane: "hireDiscount"; perLevel: number };
 }
 
-/** Product-team effect lanes. upgradeSpeed/acq are "+x% each"; serveCost/churn are
- *  "−x% each" (reductions, floored so they can't go to zero or negative). */
-export type ProductStaffLane = "upgradeSpeed" | "serveCost" | "churn" | "acquisition";
+/** Product-team effect lanes. upgradeSpeed/acq/arpu are "+x% each"; serveCost/churn/
+ *  heat are "−x% each" (reductions, floored so they can't go to zero or negative). */
+export type ProductStaffLane = "upgradeSpeed" | "serveCost" | "churn" | "acquisition" | "arpu" | "heat";
 
 export interface ResearchDef {
   id: string;
@@ -552,6 +554,43 @@ export const balance = {
         payroll: 18,
         team: "product",
         effect: { kind: "product", lane: "acquisition", perLevel: 0.08 },
+      },
+      {
+        id: "staff_sales",
+        name: "Sales Exec",
+        desc: "+7% ARPU across products, each. Always be closing.",
+        hire: { base: 8_000, growth: 1.6 },
+        payroll: 20,
+        team: "product",
+        effect: { kind: "product", lane: "arpu", perLevel: 0.07 },
+      },
+      {
+        id: "staff_pr",
+        name: "PR & Legal",
+        desc: "−10% product Heat, each. Makes the lawsuits go quiet.",
+        hire: { base: 9_000, growth: 1.6 },
+        payroll: 22,
+        team: "product",
+        effect: { kind: "product", lane: "heat", perLevel: 0.1 },
+      },
+      // ---- Infrastructure additions ----
+      {
+        id: "staff_data_eng",
+        name: "Data Engineer",
+        desc: "+7% Data per run, each. Builds pipelines that mostly don't break.",
+        hire: { base: 1_200, growth: 1.5 },
+        payroll: 6,
+        team: "infra",
+        effect: { kind: "lane", lane: "dataMult", perLevel: 0.07 },
+      },
+      {
+        id: "staff_recruiter",
+        name: "Recruiter",
+        desc: "−6% on all future hire costs, each. Knows a guy who knows a guy.",
+        hire: { base: 6_500, growth: 1.7 },
+        payroll: 10,
+        team: "infra",
+        effect: { kind: "meta", lane: "hireDiscount", perLevel: 0.06 },
       },
     ] satisfies StaffRole[],
   },

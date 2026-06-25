@@ -111,15 +111,27 @@ const STAFF_BY_ID: Record<string, StaffRole> = Object.fromEntries(
   balance.staff.roles.map((r) => [r.id, r]),
 );
 
-/** Cost to hire the next of a role: base * growth^owned. */
-export function staffHireCost(role: StaffRole, owned: number): Big {
-  return Big.of(role.hire.base).mul(Big.of(role.hire.growth).pow(owned));
+/** Recruiters cut hire costs: multiplier ≤ 1 from `hireDiscount` perLevel, floored. */
+export function staffHireDiscount(state: GameState): number {
+  if (!balance.staff.enabled) return 1;
+  let cut = 0;
+  for (const role of balance.staff.roles) {
+    if (role.effect.kind === "meta" && role.effect.lane === "hireDiscount") {
+      cut += role.effect.perLevel * (state.upgrades[role.id] ?? 0);
+    }
+  }
+  return Math.max(0.25, 1 - cut);
+}
+
+/** Cost to hire the next of a role: base * growth^owned, after any Recruiter discount. */
+export function staffHireCost(role: StaffRole, owned: number, discount = 1): Big {
+  return Big.of(role.hire.base).mul(Big.of(role.hire.growth).pow(owned)).mul(discount);
 }
 
 export function canHireStaff(state: GameState, id: string): boolean {
   const role = STAFF_BY_ID[id];
   if (!role || !balance.staff.enabled) return false;
-  return state.resources.money.gte(staffHireCost(role, state.upgrades[id] ?? 0));
+  return state.resources.money.gte(staffHireCost(role, state.upgrades[id] ?? 0, staffHireDiscount(state)));
 }
 
 /** Hire one of a role. No-op if unaffordable. Counts live in the upgrades map. */
@@ -127,7 +139,7 @@ export function hireStaff(state: GameState, id: string): GameState {
   if (!canHireStaff(state, id)) return state;
   const role = STAFF_BY_ID[id]!;
   const owned = state.upgrades[id] ?? 0;
-  const cost = staffHireCost(role, owned);
+  const cost = staffHireCost(role, owned, staffHireDiscount(state));
   return {
     ...state,
     resources: { ...state.resources, money: state.resources.money.sub(cost) },

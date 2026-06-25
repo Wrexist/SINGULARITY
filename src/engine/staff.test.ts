@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { hireStaff, canHireStaff, staffHireCost } from "./actions";
+import { hireStaff, canHireStaff, staffHireCost, staffHireDiscount } from "./actions";
 import { derive } from "./derive";
 import { tick } from "./tick";
 import { createInitialState } from "./state";
@@ -42,6 +42,24 @@ describe("staff (Phase 2)", () => {
     expect(next.resources.money.lt(1000)).toBe(true);
     expect(next.resources.money.gte(890)).toBe(true); // ~900 (no other money source)
     expect(next.lifetimeMoney.eq(0)).toBe(true); // payroll never touches lifetime earnings
+  });
+
+  it("product-team roles fold into productMods (ARPU up, Heat down)", () => {
+    const s = createInitialState();
+    s.upgrades = { staff_sales: 2, staff_pr: 2 };
+    const d = derive(s);
+    expect(d.productMods.arpu).toBeGreaterThan(1);   // Sales Execs raise ARPU
+    expect(d.productMods.heat).toBeLessThan(1);       // PR & Legal cut Heat
+  });
+
+  it("Recruiters discount future hire costs", () => {
+    const s = createInitialState();
+    s.upgrades = { staff_recruiter: 3 };
+    const disc = staffHireDiscount(s);
+    expect(disc).toBeLessThan(1);
+    expect(disc).toBeGreaterThanOrEqual(0.25); // floored
+    // The discounted cost is strictly cheaper than the base.
+    expect(staffHireCost(researcher, 0, disc).lt(staffHireCost(researcher, 0))).toBe(true);
   });
 
   it("payroll floors Money at zero (never negative)", () => {

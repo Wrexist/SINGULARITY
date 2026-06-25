@@ -5,7 +5,7 @@ import {
 import type { GameState, ProductMods, ProductState, ProductsState, UpgradeState } from "./types";
 
 /** No employees hired → no product buffs. */
-export const NEUTRAL_MODS: ProductMods = { upgradeSpeed: 1, serveCost: 1, churn: 1, acq: 1 };
+export const NEUTRAL_MODS: ProductMods = { upgradeSpeed: 1, serveCost: 1, churn: 1, acq: 1, arpu: 1, heat: 1 };
 
 /**
  * PHASE 3 — AI Product / Deployment engine. Pure & deterministic (time passed in,
@@ -137,11 +137,11 @@ export function simulateProducts(
     const paidIntegral = k > 0
       ? pStar * seconds + ((p.paid - pStar) * (1 - decay)) / k
       : p.paid * seconds;
-    const arpu = t.baseArpu * p.priceMult * p.quality * fm.arpu;
+    const arpu = t.baseArpu * p.priceMult * p.quality * fm.arpu * mods.arpu;
     const mrr = paidIntegral * arpu;
     const serve = paidIntegral * t.computePerUser * p.quality * mods.serveCost * fm.serveCost;
     moneyDelta += mrr - serve - p.marketingPerSec * seconds;
-    if (paid > 0) heatDelta += t.heatPerSec * fm.heat * seconds;
+    if (paid > 0) heatDelta += t.heatPerSec * fm.heat * mods.heat * seconds;
 
     return { ...p, mau, paid, buzzSec: Math.max(0, p.buzzSec - seconds) };
   });

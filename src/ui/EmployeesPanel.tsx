@@ -1,6 +1,6 @@
 import { balance } from "../engine/balance/config";
 import type { StaffRole } from "../engine/balance/config";
-import { staffHireCost, canHireStaff } from "../engine/actions";
+import { staffHireCost, canHireStaff, staffHireDiscount } from "../engine/actions";
 import type { GameState, Derived } from "../engine/types";
 import { fmtMoney } from "./format";
 
@@ -19,18 +19,24 @@ function effectLabel(role: StaffRole): { text: string; color: string } {
     if (e.lane === "dataMult") return { text: `+${pct}% Data/run, each`, color: "var(--data)" };
     return { text: `+${pct}% Money/run, each`, color: "var(--money)" };
   }
+  if (e.kind === "meta") {
+    const pct = Math.round(e.perLevel * 100);
+    return { text: `−${pct}% hire costs, each`, color: "var(--money)" };
+  }
   const pct = Math.round(e.perLevel * 100);
   switch (e.lane) {
     case "upgradeSpeed": return { text: `+${pct}% research speed, each`, color: "var(--data)" };
     case "serveCost": return { text: `−${pct}% serving cost, each`, color: "var(--compute)" };
     case "churn": return { text: `−${pct}% churn, each`, color: "var(--coral)" };
     case "acquisition": return { text: `+${pct}% acquisition, each`, color: "var(--money)" };
+    case "arpu": return { text: `+${pct}% ARPU, each`, color: "var(--money)" };
+    case "heat": return { text: `−${pct}% product Heat, each`, color: "var(--coral)" };
   }
 }
 
 function RoleCard({ game, role, onHire }: { game: GameState; role: StaffRole; onHire: (id: string) => void }) {
   const owned = game.upgrades[role.id] ?? 0;
-  const cost = staffHireCost(role, owned);
+  const cost = staffHireCost(role, owned, staffHireDiscount(game));
   const affordable = canHireStaff(game, role.id);
   const fx = effectLabel(role);
   return (
@@ -67,8 +73,11 @@ export function EmployeesPanel({ game, derived, onHire }: Props) {
   const buffs: string[] = [];
   if (pm.upgradeSpeed > 1) buffs.push(`+${Math.round((pm.upgradeSpeed - 1) * 100)}% research`);
   if (pm.acq > 1) buffs.push(`+${Math.round((pm.acq - 1) * 100)}% acquisition`);
+  if (pm.arpu > 1) buffs.push(`+${Math.round((pm.arpu - 1) * 100)}% ARPU`);
   if (pm.serveCost < 1) buffs.push(`−${Math.round((1 - pm.serveCost) * 100)}% serve cost`);
   if (pm.churn < 1) buffs.push(`−${Math.round((1 - pm.churn) * 100)}% churn`);
+  if (pm.heat < 1) buffs.push(`−${Math.round((1 - pm.heat) * 100)}% Heat`);
+  if (derived.hireDiscount < 1) buffs.push(`−${Math.round((1 - derived.hireDiscount) * 100)}% hire cost`);
 
   return (
     <section className="panel">
