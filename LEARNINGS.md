@@ -291,3 +291,23 @@ Deferred on purpose (documented, not fixed unsupervised — current balance does
   "behind rivals" nudge fired on a just-launched product while `churnReason` (the toast layer) stayed
   silent during the launch `buzzSec` window — two systems disagreeing about the same product on the
   same tick. If a comment says "mirrors X", actually replicate X's guards (here, `p.buzzSec <= 0`).
+
+- **Make a meta-currency `earned − spent`, not a stored balance.** Lab Reputation stores only
+  `spent` (+ owned perks); `earned` is a PURE function of the permanent achievement collection +
+  ships + ascensions. So the available balance can never desync from progress (no grant-on-unlock
+  mutation to get wrong, no double-credit on reload). Same trick keeps it idempotent across the
+  10Hz tick. Only invariant to guard: `spent ≤ earned` (enforced at purchase via canBuy).
+- **Gate every compounding meta-term so it's literally 0 through the tuned curve.** Both Phase-3
+  compounding terms — AGI `ascensionMult` (1 + n·bonus) and Reputation perks — multiply into derive,
+  which is exactly where the early/mid economy is tuned. They stay curve-neutral because their inputs
+  (`stats.ascensions`, `reputation.perks`) are provably 0 until the deep endgame: ascensions require
+  shipping in era 5 past a Legacy floor; perks require Reputation that only achievements/ascensions
+  produce. Result: `npm run sim` first-prestige is byte-identical before/after. The lab sim doesn't
+  model these systems, so the proof is "inputs are 0 at sim horizon" + a unit test asserting mult=1
+  at 0 — not the sim itself.
+- **Adding a field to an existing serialized sub-object needs no version bump IF the sanitizer
+  defaults it.** `stats.ascensions` was added after save v9 shipped (this session) without a v-bump,
+  because `sanitizeStats` coerces every field with a `numf(...)→0` default. Contrast with top-level
+  GameState fields, which DO get a migration step. Rule: sanitizer-defaulted nested fields are
+  backward-compatible for free; only bump the version when load logic would otherwise dereference a
+  missing field.

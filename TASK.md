@@ -1,8 +1,9 @@
 # TASK.md — Singularity Inc.
 *Live task list. Claude Code updates this as work progresses. One source of truth for "what's next."*
 
-**Current phase:** PHASE 1 — Shippable MVP (the 2.5D hall + manifestation). Owner passed the Phase 0
-fun-gate on 2026-06-24 and greenlit Phase 1. (Phase 0 history retained below for context.)
+**Current phase:** PHASE 3 — Endgame & spectacle (Steps 0–3 done; Step 4 polish/ship-prep in progress).
+Phases 1–2 complete + a beyond-roadmap Products business. Plan: `PHASE3_ENDGAME_PLAN.md`. (Phase 0–2
+history retained below for context.)
 **Phase 0 exit gate:** PASSED — owner confirmed the loop is fun without art.
 
 ---
@@ -329,3 +330,27 @@ upgrades + a full Employees page. Built on branch `claude/phase3-product-busines
 - [x] **C1 — dead-field cleanup:** removed `products.assignments` (superseded by per-Employee
       `assignedProductId`). Save v7→v8 migration strips it; retire now frees crew via their own
       `assignedProductId`. 1 new migration test.
+
+---
+
+## Phase 3 — Endgame & spectacle (plan: PHASE3_ENDGAME_PLAN.md)
+
+- [x] **Step 0 — Lifetime Stats store:** persistent, monotonic cross-run counters (peak compute/MRR/
+      MAU, totals, ships, legacy, hires, events, playtime, ascensions). accrueStats folded per tick +
+      event-site bumps. Save v8→v9 backfill. The data backbone for everything below. 5 tests.
+- [x] **Step 1 — Achievements:** 37 badges across scale/business/team/legacy/meta (+2 secret), pure
+      detection over the stats store, persist across prestige (save v9→v10), toast on unlock,
+      AchievementsModal (topbar trophy + count, category filter, progress bars, masked secrets). 6 tests.
+- [x] **Step 2 — Era 6 Post-Singularity / AGI:** 6th era (agiAtShips=9) + iridescent hall palette;
+      ascension = a ship in the AGI era past a Legacy floor → permanent compounding ascensionMult
+      (1+n·0.08) in derive; bespoke AGI era-transition + AGI banner/✦Ascend button in Prestige. Hard-
+      gated (ascensions=0 until deep endgame) so the curve is untouched (sim unchanged). 12 tests.
+- [x] **Step 3 — Lab Reputation:** second meta-currency = earned−spent (earned is pure from
+      achievements+ships+ascensions, only `spent` stored → can't desync); 8-perk tree w/ prereqs
+      folded into derive (compute/data/money/payroll); persists through prestige+ascension (save
+      v10→v11); ReputationModal from a Prestige strip. Curve-safe (no perks owned at run start). 8 tests.
+- [ ] **Step 4 — Polish & ship-prep:** adversarial diff-review of the 3 new economies; CLAUDE.md phase
+      line + docs updated; UX/a11y sweep; then TestFlight run (merging ≠ shipping — see CLAUDE.md).
+
+> Curve discipline held throughout: every Phase-3 compounding term (ascension, reputation perks) is
+> hard-gated to the endgame, so `npm run sim` first-prestige stays ~12m / wall 1m05s across all of it.
