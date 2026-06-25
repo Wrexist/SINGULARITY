@@ -107,6 +107,19 @@ export interface StaffRole {
  *  heat are "−x% each" (reductions, floored so they can't go to zero or negative). */
 export type ProductStaffLane = "upgradeSpeed" | "serveCost" | "churn" | "acquisition" | "arpu" | "heat";
 
+/** A personality/specialty trait an employee can have. effectMult/payrollMult scale
+ *  that person's output and salary; teamMorale (optional) nudges the whole company. */
+export interface StaffTrait {
+  id: string;
+  name: string;
+  desc: string;
+  effectMult: number;
+  payrollMult: number;
+  /** Added to the global morale multiplier while employed (e.g. Mentor +0.05). */
+  teamMorale?: number;
+  tone: "good" | "bad" | "mixed";
+}
+
 /** A one-time office perk: raises staff morale (output) and/or trims payroll. */
 export interface OfficePerk {
   id: string;
@@ -505,6 +518,30 @@ export const balance = {
     assignFocusMult: 2,
     /** Reveal the panel once the lab is established (after the first research). */
     revealAtResearch: 1,
+    /** Seniority levels (1 = junior). Each level above 1 multiplies a person's
+     *  output (+levelEffectStep) and salary (+levelPayrollStep). */
+    maxLevel: 4,
+    levelEffectStep: 0.5,
+    levelPayrollStep: 0.6,
+    /** Timed training to the NEXT level: duration grows per level; cost in Money. */
+    trainBaseSec: 120,
+    trainSecGrowth: 1.6,
+    trainCostMult: 6, // cost = role.hire.base × trainCostMult × level
+    /** Signing bonus to hire a candidate = role.hire.base × this. */
+    hireSigningMult: 1,
+    /** Personality/specialty traits rolled at hire. */
+    traits: [
+      { id: "tenx", name: "10×", desc: "Ships like ten people. Insufferable about it.", effectMult: 1.7, payrollMult: 1.3, tone: "good" },
+      { id: "workaholic", name: "Workaholic", desc: "Always online. Slightly pricey, very productive.", effectMult: 1.4, payrollMult: 1.1, tone: "good" },
+      { id: "steady", name: "Steady", desc: "Reliable, low drama, solid output.", effectMult: 1.1, payrollMult: 0.95, tone: "good" },
+      { id: "frugal", name: "Frugal", desc: "Works for equity and snacks. Cheap, a touch slower.", effectMult: 0.9, payrollMult: 0.5, tone: "good" },
+      { id: "mentor", name: "Mentor", desc: "Lifts the whole company (+morale), modest output.", effectMult: 1.0, payrollMult: 1.05, teamMorale: 0.06, tone: "good" },
+      { id: "greenhorn", name: "Greenhorn", desc: "Junior and cheap — train them up.", effectMult: 0.75, payrollMult: 0.6, tone: "mixed" },
+      { id: "prima_donna", name: "Prima Donna", desc: "Brilliant but expensive and high-maintenance.", effectMult: 1.5, payrollMult: 1.8, tone: "mixed" },
+      { id: "burned_out", name: "Burned Out", desc: "Coasting. A training sabbatical might revive them.", effectMult: 0.7, payrollMult: 1.0, tone: "bad" },
+    ] satisfies StaffTrait[],
+    firstNames: ["Ada", "Grace", "Alan", "Linus", "Margaret", "Dennis", "Ken", "Barbara", "Guido", "Bjarne", "Hedy", "Claude", "Geoffrey", "Yann", "Fei-Fei", "Demis", "Ilya", "Andrej", "Lena", "Omar", "Priya", "Mateo", "Noor", "Sora"],
+    lastNames: ["Lovelace", "Hopper", "Turing", "Torvalds", "Hamilton", "Ritchie", "Thompson", "Liskov", "Okafor", "Nakamura", "Kim", "Patel", "Santos", "Müller", "Rossi", "Haddad", "Ng", "Bengio", "Chen", "Volkov", "Ivanova", "Diallo", "Khan", "Reyes"],
     roles: [
       {
         id: "staff_researcher",

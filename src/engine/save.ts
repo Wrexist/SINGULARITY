@@ -1,7 +1,7 @@
 import { Big } from "./math/Big";
 import { SAVE_VERSION, createInitialState } from "./state";
 import { products as PRODUCTS } from "./balance/products";
-import type { ActiveModifier, DraftModel, GameState, ModifierTarget, ProductsState, ProductState, UpgradeState } from "./types";
+import type { ActiveModifier, DraftModel, Employee, GameState, ModifierTarget, ProductsState, ProductState, UpgradeState } from "./types";
 
 const MODIFIER_TARGETS: ModifierTarget[] = ["computeMult", "dataMult", "moneyMult"];
 const PRODUCT_TYPE_IDS = PRODUCTS.types.map((t) => t.id);
@@ -92,6 +92,29 @@ function isWellFormedProducts(p: unknown): p is ProductsState {
   );
 }
 
+/** Employees are untrusted; keep only well-formed people, sanitizing training. */
+function sanitizeEmployees(e: unknown): Employee[] {
+  if (!Array.isArray(e)) return [];
+  return e
+    .filter((x): x is Employee =>
+      !!x && typeof x.id === "string" && typeof x.name === "string" && typeof x.roleId === "string" &&
+      typeof x.level === "number" && Number.isFinite(x.level) && x.level >= 1)
+    .map((x) => ({
+      id: x.id,
+      name: x.name,
+      roleId: x.roleId,
+      level: Math.max(1, Math.floor(x.level)),
+      trait: typeof x.trait === "string" ? x.trait : null,
+      assignedProductId: typeof x.assignedProductId === "string" ? x.assignedProductId : null,
+      training:
+        x.training && typeof x.training.remainingSec === "number" && Number.isFinite(x.training.remainingSec) &&
+        typeof x.training.totalSec === "number" && Number.isFinite(x.training.totalSec) && x.training.totalSec > 0 &&
+        x.training.remainingSec > 0
+          ? { remainingSec: x.training.remainingSec, totalSec: x.training.totalSec }
+          : null,
+    }));
+}
+
 /** Loaded saves are untrusted input: a NaN heat or malformed modifier would
  * flow straight into tick()/derive() and poison or crash the run. Validate. */
 function isWellFormedModifier(m: unknown): m is ActiveModifier {
@@ -129,6 +152,7 @@ interface SavedShape {
   alignment: number;
   computeFocus: number;
   products: ProductsState;
+  employees: Employee[];
 }
 
 export function serialize(state: GameState): string {
@@ -152,6 +176,7 @@ export function serialize(state: GameState): string {
     alignment: state.alignment,
     computeFocus: state.computeFocus,
     products: state.products,
+    employees: state.employees,
   };
   return JSON.stringify(shape);
 }
@@ -217,6 +242,7 @@ export function deserialize(json: string): GameState {
     alignment,
     computeFocus,
     products,
+    employees: sanitizeEmployees(raw.employees),
   };
 }
 

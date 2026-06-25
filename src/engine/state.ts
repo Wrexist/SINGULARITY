@@ -26,5 +26,6 @@ export function createInitialState(): GameState {
     computeFocus: 1,
     // Phase 3 — released AI products (persist across prestige); none yet.
     products: { active: [], drafts: [], frontier: PRODUCTS.frontierStart, sold: 0, milestones: [], assignments: {} },
+    employees: [],
   };
 }

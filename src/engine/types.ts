@@ -61,6 +61,25 @@ export interface GameState {
   computeFocus: number;
   /** Phase 3 — released AI products (persist across prestige). */
   products: ProductsState;
+  /** Phase 3 — individual employees (people, not counts). Persist across prestige. */
+  employees: Employee[];
+}
+
+/** An individual employee. roleId names a job (balance.staff.roles); the person's
+ *  output = that role's effect × their level × trait. Product-team people can be
+ *  assigned to one product (focus bonus); infra people always work on the lab. */
+export interface Employee {
+  id: string;
+  name: string;
+  roleId: string;
+  /** Seniority level (1 = junior). Raised by completing training. */
+  level: number;
+  /** Personality/specialty trait id, or null. */
+  trait: string | null;
+  /** Product this person is focused on, or null = global (bench/lab). */
+  assignedProductId: string | null;
+  /** In-progress timed training, or null. On completion: level + 1. */
+  training: { remainingSec: number; totalSec: number } | null;
 }
 
 /** A released AI product (Phase 3). Economic fields are plain numbers; net margin
