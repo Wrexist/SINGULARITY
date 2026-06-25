@@ -57,12 +57,20 @@ body,
   min-height: 100%;
 }
 
+/* Light surface behind everything — so the status-bar area, the home-indicator
+   area, and any overscroll bounce show the app's light bg, never a dark band. */
+html {
+  background: var(--bg);
+}
+
 body {
   background: linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overflow-x: hidden;
+  /* Stop rubber-band scroll-chaining glitches at the page edges. */
+  overscroll-behavior-y: none;
 }
 
 /* ---------- Animated aurora (the thing the glass refracts) ---------- */
@@ -250,6 +258,11 @@ body {
   padding: 12px 8px 11px;
   border-radius: var(--radius-sm);
   text-align: center;
+  /* The resource bar is sticky; a live backdrop-filter on a sticky element
+     smears/flickers while scrolling on iOS. Use an opaque-ish surface instead. */
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 .resource-icon {
   flex: none;
@@ -853,6 +866,11 @@ body {
   width: 100%;
   box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.7);
   animation: rise-modal 0.4s var(--spring);
+  /* Scroll inside tall modals on short screens without chaining to the page. */
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 @keyframes rise-modal {
   from { transform: translateY(20px) scale(0.96); opacity: 0; }
@@ -1211,6 +1229,11 @@ body {
   border-radius: 28px 28px 0 0;
   box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.7);
   animation: sheet-up 0.42s var(--ease-out);
+  /* Scroll inside the sheet on short screens; don't chain to the page behind. */
+  max-height: 92vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 @keyframes sheet-up {
   from { transform: translateY(100%); }
