@@ -339,7 +339,7 @@ analyzeMarket();
  */
 function runProduct(typeId: ProductTypeId, marketingPerSec: number, minutes = 30): void {
   let s = createInitialState();
-  s.prestige.ships = 1;
+  s.prestige.ships = 9; // unlock every product type for the scenario
   s.resources.compute = Big.of("1e12");
   s.resources.data = Big.of("1e12");
   s.resources.money = Big.of("1e9");

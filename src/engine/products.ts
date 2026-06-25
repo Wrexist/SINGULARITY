@@ -19,6 +19,12 @@ export function productsUnlocked(state: GameState): boolean {
   return state.prestige.ships >= B.unlockAtShips;
 }
 
+/** A specific model type unlocks once you've shipped enough models — premium,
+ *  high-ARPU types arrive later (reinforces "hard early, compounds later"). */
+export function typeUnlocked(state: GameState, id: ProductTypeId): boolean {
+  return state.prestige.ships >= typeDef(id).unlockAtShips;
+}
+
 /** Compute+Data cost to push from the given current version to the next. */
 export function versionCost(version: number): { compute: number; data: number } {
   const g = Math.pow(B.versionCostGrowth, Math.max(0, version - 1));
@@ -107,8 +113,9 @@ export function productMetrics(p: ProductState, frontier: number): ProductMetric
 
 // ---------- Actions (pure; the store supplies a fresh `id`) ----------
 
-export function canReleaseProduct(state: GameState, _type: ProductTypeId): boolean {
+export function canReleaseProduct(state: GameState, type: ProductTypeId): boolean {
   if (!productsUnlocked(state)) return false;
+  if (!typeUnlocked(state, type)) return false;
   if (state.products.active.length >= B.maxActive) return false;
   return (
     state.resources.compute.gte(B.releaseCost.compute) &&

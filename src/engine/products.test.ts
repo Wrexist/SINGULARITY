@@ -49,6 +49,19 @@ describe("products — unlock + release", () => {
     expect(s.products.active.length).toBe(B.maxActive);
   });
 
+  it("gates premium model types behind ship count", () => {
+    const s = shipped(); // ships = 1
+    // Entry types available immediately…
+    expect(canReleaseProduct(s, "general")).toBe(true);
+    expect(canReleaseProduct(s, "code")).toBe(true);
+    // …premium types are locked until you've shipped more.
+    expect(canReleaseProduct(s, "domain")).toBe(false);
+    expect(canReleaseProduct(s, "reasoning")).toBe(false);
+    expect(releaseProduct(s, { type: "domain", name: "x", id: "p" })).toBe(s); // no-op
+    const veteran = { ...s, prestige: { ...s.prestige, ships: 4 } };
+    expect(canReleaseProduct(veteran, "domain")).toBe(true);
+  });
+
   it("can't release without enough Compute/Data", () => {
     const s = shipped();
     s.resources.compute = Big.of(0);

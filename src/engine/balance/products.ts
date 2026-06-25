@@ -32,6 +32,9 @@ export interface ProductTypeDef {
   hype: number;
   /** Regulatory Heat added per second while the product has paying users. */
   heatPerSec: number;
+  /** Gate: this type can only be released once you've shipped this many models.
+   *  Premium/high-ARPU types unlock later (reinforces "hard early, compounds late"). */
+  unlockAtShips: number;
 }
 
 export const products = {
@@ -88,36 +91,42 @@ export const products = {
       blurb: "Mass-market chat. Huge reach, low ARPU, leaky bucket. Grows virally.",
       segment: "consumer", tam: 1.0e7, baseArpu: 0.005, baseChurn: 0.0009,
       baseConversion: 0.03, computePerUser: 0.001, virality: 0.025, hype: 1.0, heatPerSec: 0,
+      unlockAtShips: 1,
     },
     {
       id: "code", name: "Code & Agentic",
       blurb: "Ships software for devs & teams. High ARPU, very sticky, pricey to serve.",
       segment: "prosumer", tam: 6.0e5, baseArpu: 0.1, baseChurn: 0.00012,
       baseConversion: 0.16, computePerUser: 0.036, virality: 0.006, hype: 0.6, heatPerSec: 0,
+      unlockAtShips: 1,
     },
     {
       id: "reasoning", name: "Reasoning Engine",
       blurb: "Deep thinking for research/technical work. Premium price, heavy compute.",
       segment: "prosumer", tam: 2.0e6, baseArpu: 0.075, baseChurn: 0.0004,
       baseConversion: 0.09, computePerUser: 0.04, virality: 0.005, hype: 0.7, heatPerSec: 0,
+      unlockAtShips: 3,
     },
     {
       id: "multimodal", name: "Multimodal Studio",
       blurb: "Image/audio/video for creators. Trendy spikes, medium ARPU, heavy serve.",
       segment: "consumer", tam: 5.0e6, baseArpu: 0.03, baseChurn: 0.0007,
       baseConversion: 0.05, computePerUser: 0.014, virality: 0.03, hype: 1.5, heatPerSec: 0,
+      unlockAtShips: 2,
     },
     {
       id: "small", name: "Fast & Cheap API",
       blurb: "Tiny, fast, high-volume. Massive scale, razor margins, price war.",
       segment: "api", tam: 1.0e8, baseArpu: 0.002, baseChurn: 0.0006,
       baseConversion: 0.02, computePerUser: 0.00024, virality: 0.004, hype: 0.3, heatPerSec: 0,
+      unlockAtShips: 1,
     },
     {
       id: "domain", name: "Domain Expert (legal/med/fin)",
       blurb: "Vertical, compliance-grade. Very high ARPU, ultra-sticky — but raises Heat.",
       segment: "enterprise", tam: 2.0e5, baseArpu: 0.5, baseChurn: 0.00005,
       baseConversion: 0.26, computePerUser: 0.096, virality: 0.002, hype: 0.4, heatPerSec: 0.02,
+      unlockAtShips: 4,
     },
   ] satisfies ProductTypeDef[],
 };

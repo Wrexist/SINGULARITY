@@ -108,12 +108,15 @@ export function ProductsPanel({ game, onRelease, onPushVersion, onSetPrice, onSe
             <button className="link-btn" onClick={() => setPicking(false)}>cancel</button>
           </div>
           {B.types.map((t) => {
+            const locked = game.prestige.ships < t.unlockAtShips;
             const afford = canReleaseProduct(game, t.id);
             return (
               <button key={t.id} className={`prod-type ${afford ? "" : "maxed"}`} disabled={!afford}
                 onClick={() => { onRelease(t.id, FUN_NAMES[Math.floor(Math.random() * FUN_NAMES.length)]!); setPicking(false); }}>
-                <span className="prod-type-name">{t.name}</span>
-                <span className="prod-type-blurb">{t.blurb}</span>
+                <span className="prod-type-name">{locked ? "🔒 " : ""}{t.name}</span>
+                <span className="prod-type-blurb">
+                  {locked ? `Unlocks after shipping ${t.unlockAtShips} models (you've shipped ${game.prestige.ships}).` : t.blurb}
+                </span>
               </button>
             );
           })}
