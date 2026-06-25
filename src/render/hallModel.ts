@@ -2,7 +2,7 @@ import { balance } from "../engine/balance/config";
 import { canBuyUpgrade, upgradeCost } from "../engine/actions";
 import type { GameState } from "../engine/types";
 import { currentEra } from "../engine/eras";
-import { RACK_IDS, hallDims, hallCapacity, type Dir } from "../engine/hall";
+import { RACK_IDS, hallDims, hallCapacity, hallRoomSplit, type Dir } from "../engine/hall";
 
 export { hallDims, hallExpansion, type Dir } from "../engine/hall";
 
@@ -43,6 +43,9 @@ export interface HallModel {
   progress: number;
   era: number;
   total: number;
+  /** Interior partition lines (tile coords) that split the floor into rooms, or null. */
+  splitGx: number | null;
+  splitGy: number | null;
 }
 
 // Only the two OPEN sides are expandable — the back-left and back-right edges
@@ -116,5 +119,6 @@ export function buildHallModel(game: GameState): HallModel {
     progress: game.run.progress,
     era: currentEra(game),
     total: racks.length,
+    ...hallRoomSplit(game),
   };
 }

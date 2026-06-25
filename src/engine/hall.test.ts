@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { hallCapacity, totalRacks, floorFull } from "./hall";
+import { hallCapacity, totalRacks, floorFull, hallRooms, hallRoomSplit } from "./hall";
 import { canBuyUpgrade, buyUpgrade } from "./actions";
 import { createInitialState } from "./state";
 import { balance } from "./balance/config";
@@ -37,6 +37,22 @@ describe("hall capacity (racks are gated by floor space)", () => {
     expect(hallCapacity(s)).toBe((balance.hall.baseCols + 2) * balance.hall.baseRows);
     expect(floorFull(s)).toBe(false);
     expect(canBuyUpgrade(s, "rack_basic")).toBe(true);
+  });
+
+  it("splits into multiple rooms only after the floor is expanded", () => {
+    const base = createInitialState();
+    expect(hallRooms(base)).toBe(1);
+    expect(hallRoomSplit(base)).toEqual({ splitGx: null, splitGy: null });
+
+    const wide = createInitialState();
+    wide.upgrades = { expand_e: 1 }; // +2 cols → splits left/right
+    expect(hallRooms(wide)).toBe(2);
+    expect(hallRoomSplit(wide).splitGx).not.toBeNull();
+    expect(hallRoomSplit(wide).splitGy).toBeNull();
+
+    const facility = createInitialState();
+    facility.upgrades = { expand_e: 2, expand_s: 2 }; // both → 2×2
+    expect(hallRooms(facility)).toBe(4);
   });
 
   it("does not gate non-rack upgrades by floor space", () => {

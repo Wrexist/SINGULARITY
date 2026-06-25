@@ -6,6 +6,7 @@ import { sound } from "./sound";
 import { buildHallModel } from "../render/hallModel";
 import { drawHallStatic, drawHallDynamic, expansionMarkers, pointInPoly } from "../render/hallRenderer";
 import { currentEra, eraName } from "../engine/eras";
+import { hallRooms } from "../engine/hall";
 
 /**
  * The 2.5D hall (Phase 1 pillar). A self-driving canvas: an rAF loop reads game
@@ -28,6 +29,7 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       (s.game.upgrades.rack_tpu ?? 0),
   );
   const era = useGame((s) => currentEra(s.game));
+  const rooms = useGame((s) => hallRooms(s.game));
 
   useEffect(() => {
     const canvas = canvasRef.current!;
@@ -186,7 +188,10 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       <canvas ref={canvasRef} className="hall-canvas" aria-hidden="true" />
       <div className="hall-tag">
         <span className="hall-era">{eraName(era)}</span>
-        <span className="hall-count">{rackCount} {rackCount === 1 ? "rack" : "racks"}</span>
+        <span className="hall-count">
+          {rackCount} {rackCount === 1 ? "rack" : "racks"}
+          {rooms > 1 && ` · ${rooms} rooms`}
+        </span>
       </div>
     </div>
   );

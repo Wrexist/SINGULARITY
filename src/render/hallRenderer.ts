@@ -135,6 +135,40 @@ export function drawHallStatic(ctx: CanvasRenderingContext2D, model: HallModel, 
   // Fans are frozen in the cached layer (a tiny detail); the room itself is static.
   drawRoom(ctx, L, model.era, H, 0, true);
   drawFloor(ctx, L, model.era);
+  drawPartitions(ctx, L, model);
+}
+
+/**
+ * Interior glass partition walls (Phase 2 multi-room): once the floor is expanded
+ * it splits into rooms at the midpoint(s), drawn as low semi-transparent dividers
+ * so the hall reads as a multi-room facility without occluding the racks.
+ */
+function drawPartitions(ctx: CanvasRenderingContext2D, L: Layout, model: HallModel): void {
+  const { iso, tileH, gxMin, gyMin, gxMax, gyMax } = L;
+  const base = eraFloor(model.era);
+  const h = tileH * 2.0; // a partition wall, low enough not to bury the racks
+  const rail: RGB = [120, 210, 255]; // cool cyan glow on the rails
+
+  const wall = (p0: Pt, p1: Pt) => {
+    // Floor seam: a bright walkway stripe under the divider.
+    stroke(ctx, p0, p1, rgba(rail, 0.5), 3);
+    const t0: Pt = { x: p0.x, y: p0.y - h }, t1: Pt = { x: p1.x, y: p1.y - h };
+    const g = ctx.createLinearGradient(0, t0.y, 0, p0.y);
+    g.addColorStop(0, rgba(shade(base, 2.1), 0.42));
+    g.addColorStop(1, rgba(shade(base, 1.3), 0.14));
+    poly(ctx, [p0, p1, t1, t0], g);
+    // Vertical mullions for a server-room divider feel.
+    const segs = 6;
+    for (let i = 1; i < segs; i++) {
+      const a = lerp(p0, p1, i / segs), b = lerp(t0, t1, i / segs);
+      stroke(ctx, a, b, rgba(shade(base, 1.7), 0.2), 1);
+    }
+    stroke(ctx, t0, t1, rgba(rail, 0.7), 1.5); // glowing top rail
+    stroke(ctx, p0, p1, "rgba(0,0,0,0.28)", 1); // base shadow
+  };
+
+  if (model.splitGx !== null) wall(iso(model.splitGx, gyMin), iso(model.splitGx, gyMax));
+  if (model.splitGy !== null) wall(iso(gxMin, model.splitGy), iso(gxMax, model.splitGy));
 }
 
 /** The full hall (static + animated) in one pass. Kept for any non-cached use. */
@@ -152,10 +186,15 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
 
   drawMotes(ctx, W, H, originY, o.timeMs, model.active, model.total, o.reducedMotion, 0.6);
 
-  // Place racks in orderly rows, back-to-front (valid iso paint order).
+  // Place racks in orderly rows, back-to-front (valid iso paint order). Leave the
+  // partition column/row empty as a walkway so the rooms read as separate.
   const tiles: Pt[] = [];
   for (let gy = gyMin; gy < gyMax; gy++) {
-    for (let gx = gxMin; gx < gxMax; gx++) tiles.push(iso(gx + 0.5, gy + 0.5));
+    if (gy === model.splitGy) continue;
+    for (let gx = gxMin; gx < gxMax; gx++) {
+      if (gx === model.splitGx) continue;
+      tiles.push(iso(gx + 0.5, gy + 0.5));
+    }
   }
 
   const t = o.timeMs;

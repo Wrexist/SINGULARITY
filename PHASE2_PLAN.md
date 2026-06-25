@@ -115,7 +115,7 @@ is real but fair (sim-verified), panel is legible. ~1 milestone.
 
 ---
 
-## P2-C — Eras 4–5 + multi-room hall — 🟡 ERAS DONE, multi-room deferred
+## P2-C — Eras 4–5 + multi-room hall — ✅ DONE & LIVE
 
 > Shipped: eras 4–5 — **Frontier Lab** (teal) + **Hyperscaler** (royal indigo) —
 > as data + renderer palettes (`ERA_BG`/`ERA_FLOOR` indices 3–4) + satirical
@@ -124,10 +124,13 @@ is real but fair (sim-verified), panel is legible. ~1 milestone.
 > tentpole era-transition moment fires for them automatically. 1 new era test
 > (109 total). Verified both reskins on screenshot.
 >
-> DEFERRED (risky renderer work, best done focused): the true **multi-room hall**
-> (overflow into a second room past a size threshold) + per-phone camera framing.
-> The single room + expansions + reskins already carry the Phase-1/2 scale, so
-> this is spectacle, not a blocker.
+> Multi-room hall ✅: a pure-renderer approach (no engine/capacity/save change).
+> `hallRoomSplit`/`hallRooms` derive split lines at the floor midpoint once
+> expanded; the renderer draws glowing glass partition walls there and leaves the
+> split column/row as a lit walkway (skips those rack tiles) so the floor reads as
+> 1 → 2 → 4 rooms. Room count shows in the hall tag ("N rooms"). Base floor is
+> visually unchanged. 1 room test (115 total); both 2- and 4-room layouts verified
+> on screenshot.
 
 
 **Design intent (GDD §3):** Frontier Lab → Hyperscaler. The hall's next visual

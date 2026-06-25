@@ -62,6 +62,26 @@ export function floorFull(game: GameState): boolean {
   return totalRacks(game) >= hallCapacity(game);
 }
 
+/**
+ * Multi-room view (Phase 2 spectacle): once the floor has been expanded past the
+ * base in a direction, it visually splits into rooms at the midpoint of that
+ * direction. Pure geometry — returns the grid lines (in tile coords) to divide
+ * on, or null for no split. Up to a 2×2 = 4-room facility.
+ */
+export function hallRoomSplit(game: GameState): { splitGx: number | null; splitGy: number | null } {
+  const { cols, rows, gxMin, gyMin } = hallDims(game);
+  return {
+    splitGx: cols > balance.hall.baseCols ? gxMin + Math.floor(cols / 2) : null,
+    splitGy: rows > balance.hall.baseRows ? gyMin + Math.floor(rows / 2) : null,
+  };
+}
+
+/** How many rooms the lab reads as (1, 2, or 4). */
+export function hallRooms(game: GameState): number {
+  const { splitGx, splitGy } = hallRoomSplit(game);
+  return (splitGx !== null ? 2 : 1) * (splitGy !== null ? 2 : 1);
+}
+
 /** Tier rank of a rack id (0 = consumer, 1 = server, 2 = TPU); -1 if not a rack. */
 export function rackTier(id: string): number {
   return (RACK_IDS as readonly string[]).indexOf(id);
