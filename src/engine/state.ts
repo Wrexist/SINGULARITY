@@ -3,7 +3,7 @@ import { products as PRODUCTS } from "./balance/products";
 import { initialStats } from "./stats";
 import type { GameState } from "./types";
 
-export const SAVE_VERSION = 10;
+export const SAVE_VERSION = 11;
 
 /** A fresh lab: empty closet, a trickle of free Compute, nothing owned. */
 export function createInitialState(): GameState {
@@ -30,5 +30,6 @@ export function createInitialState(): GameState {
     employees: [],
     stats: initialStats(),
     achievements: [],
+    reputation: { spent: 0, perks: [] },
   };
 }

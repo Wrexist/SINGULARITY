@@ -255,6 +255,24 @@ body {
 .era-agi .era-modal { border-color: color-mix(in srgb, #a855f7 50%, var(--glass-edge)); }
 .era-agi .era-kicker { color: #a855f7; letter-spacing: 0.18em; }
 
+/* ---------- Lab Reputation ---------- */
+.rep-strip {
+  display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
+  margin: 4px 0 10px; padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer;
+  background: linear-gradient(100deg, color-mix(in srgb, var(--data) 14%, var(--glass-strong)), var(--glass-strong));
+  border: 1px solid color-mix(in srgb, var(--data) 32%, var(--glass-edge));
+}
+.rep-strip-mark { font-size: 16px; }
+.rep-strip-text { flex: 1; font-size: 12.5px; font-weight: 650; color: var(--ink); }
+.rep-strip-text b { font-weight: 850; }
+.rep-strip-go { font-size: 12px; font-weight: 750; color: var(--data); white-space: nowrap; }
+.rep-modal { max-width: 440px; }
+.rep-pts { color: var(--data); font-weight: 850; }
+.rep-list { margin-top: 6px; }
+.rep-card .card-note.rep-req { color: var(--coral); }
+.rep-cost { font-weight: 800; color: var(--data); white-space: nowrap; }
+.rep-card.owned .rep-cost { color: var(--ink-3); }
+
 /* ---------- Glass material (shared) ---------- */
 .glass,
 .resource,

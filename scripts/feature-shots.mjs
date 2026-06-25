@@ -134,6 +134,22 @@ try {
   const achModal = page.locator(".ach-modal");
   await achModal.screenshot({ path: "screenshots/feat-achievements.png" });
   console.log("Saved feat-achievements.png");
+
+  // 6) Lab Reputation perk tree (Phase 3) — opened from the Prestige panel.
+  await page.mouse.click(8, 8).catch(() => {});
+  await sleep(200);
+  await page.getByRole("tab", { name: "Lab" }).click().catch(() => {});
+  await sleep(300);
+  const repStrip = page.locator(".rep-strip");
+  if (await repStrip.isVisible().catch(() => false)) {
+    await repStrip.scrollIntoViewIfNeeded().catch(() => {});
+    await repStrip.click();
+    await sleep(350);
+    await page.locator(".rep-modal").screenshot({ path: "screenshots/feat-reputation.png" });
+    console.log("Saved feat-reputation.png");
+  } else {
+    console.log("rep-strip not visible (no points) — skipped reputation shot");
+  }
 } finally {
   if (browser) await browser.close();
   server.kill();

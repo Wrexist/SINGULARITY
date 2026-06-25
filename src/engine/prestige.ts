@@ -79,5 +79,7 @@ export function prestige(state: GameState): GameState {
     },
     // Achievements are a permanent collection — they survive the reset.
     achievements: state.achievements,
+    // Lab Reputation (points + bought perks) is permanent meta-progression.
+    reputation: state.reputation,
   };
 }

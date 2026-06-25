@@ -180,6 +180,7 @@ interface SavedShape {
   /** Serialized lifetime stats (Big fields as strings). */
   stats: Record<string, string | number>;
   achievements: string[];
+  reputation: { spent: number; perks: string[] };
 }
 
 export function serialize(state: GameState): string {
@@ -219,6 +220,7 @@ export function serialize(state: GameState): string {
       ascensions: state.stats.ascensions,
     },
     achievements: state.achievements,
+    reputation: state.reputation,
   };
   return JSON.stringify(shape);
 }
@@ -292,6 +294,16 @@ export function deserialize(json: string): GameState {
     achievements: Array.isArray(raw.achievements)
       ? raw.achievements.filter((a): a is string => typeof a === "string")
       : [],
+    reputation: sanitizeReputation(raw.reputation),
+  };
+}
+
+/** Reputation is untrusted: keep a non-negative spent + string perk ids. */
+function sanitizeReputation(r: unknown): { spent: number; perks: string[] } {
+  const o = (r ?? {}) as { spent?: unknown; perks?: unknown };
+  return {
+    spent: typeof o.spent === "number" && Number.isFinite(o.spent) && o.spent >= 0 ? o.spent : 0,
+    perks: Array.isArray(o.perks) ? o.perks.filter((p): p is string => typeof p === "string") : [],
   };
 }
 
@@ -358,6 +370,11 @@ export function migrate(raw: any): SavedShape {
   if (s.version === 9) {
     // v9 → v10: achievements collection (starts empty; unlocks evaluate on load).
     s = { ...s, version: 10, achievements: s.achievements ?? [] };
+  }
+  if (s.version === 10) {
+    // v10 → v11: Lab Reputation (meta-currency). Nothing spent yet; perks evaluate
+    // from the carried achievement/ship/ascension totals on load.
+    s = { ...s, version: 11, reputation: s.reputation ?? { spent: 0, perks: [] } };
   }
   return s as SavedShape;
 }

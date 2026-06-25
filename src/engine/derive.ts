@@ -1,6 +1,7 @@
 import { Big } from "./math/Big";
 import { balance } from "./balance/config";
 import { computeStaffEffects, teamMorale, type StaffEffects } from "./employees";
+import { reputationMods } from "./reputation";
 import { powerStats } from "./power";
 import type { Derived, Employee, GameState } from "./types";
 
@@ -129,7 +130,7 @@ export function derive(state: GameState): Derived {
   computeMult = computeMult.mul(fx.computeMultF);
   dataMult = dataMult.mul(fx.dataMultF);
   moneyMult = moneyMult.mul(fx.moneyMultF);
-  const payrollPerSec = Big.of(fx.payroll).mul(officePayrollMult(state));
+  let payrollPerSec = Big.of(fx.payroll).mul(officePayrollMult(state));
   const productMods = fx.productMods;
   const productModsById = fx.productModsById;
   const hireDiscount = Math.max(0.25, 1 - fx.hireCut); // hires never cheaper than 25% of base
@@ -159,6 +160,14 @@ export function derive(state: GameState): Derived {
   dataMult = dataMult.mul(ascensionMult);
   moneyMult = moneyMult.mul(ascensionMult);
   passiveMoneyPerSec = passiveMoneyPerSec.mul(ascensionMult);
+
+  // Lab Reputation perks — permanent global multipliers bought with meta-currency.
+  // Owned perks are empty on a fresh run, so this is 1.0 until the player spends.
+  const rep = reputationMods(state);
+  computeMult = computeMult.mul(rep.computeMult);
+  dataMult = dataMult.mul(rep.dataMult);
+  moneyMult = moneyMult.mul(rep.moneyMult);
+  if (rep.payrollMult !== 1) payrollPerSec = payrollPerSec.mul(rep.payrollMult);
   // Scraper output rides the global Legacy + ascension boost (kept separate from
   // the per-run dataMult lane so the two data sources stay legible).
   const dataPerSec = dataPerSecFlat.mul(legacyMult).mul(ascensionMult);

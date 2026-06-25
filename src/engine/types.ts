@@ -68,6 +68,10 @@ export interface GameState {
   stats: LifetimeStats;
   /** Phase 3 — unlocked achievement ids (a collection; survives prestige). */
   achievements: string[];
+  /** Phase 3 — Lab Reputation: a meta-currency spent on permanent perks. Points are
+   *  earned − spent (earned is derived from achievements/ships/ascensions). Survives
+   *  prestige AND ascension. */
+  reputation: { spent: number; perks: string[] };
 }
 
 /**

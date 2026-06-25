@@ -1,18 +1,24 @@
 import { useState } from "react";
 import { canPrestige, legacyWeightsGain } from "../engine/prestige";
 import { currentEra } from "../engine/eras";
+import { reputationAvailable } from "../engine/reputation";
 import { balance } from "../engine/balance/config";
 import type { GameState } from "../engine/types";
 import { fmt } from "./format";
 import { Big } from "../engine/math/Big";
+import { ReputationModal } from "./ReputationModal";
 
 interface Props {
   game: GameState;
   onPrestige: () => void;
+  onBuyReputationPerk: (id: string) => void;
 }
 
-export function PrestigePanel({ game, onPrestige }: Props) {
+export function PrestigePanel({ game, onPrestige, onBuyReputationPerk }: Props) {
   const [confirming, setConfirming] = useState(false);
+  const [repOpen, setRepOpen] = useState(false);
+  const repPoints = reputationAvailable(game);
+  const repOwned = game.reputation.perks.length;
   const ready = canPrestige(game);
   const gain = legacyWeightsGain(game);
   const have = game.prestige.legacyWeights;
@@ -64,6 +70,14 @@ export function PrestigePanel({ game, onPrestige }: Props) {
         </div>
       )}
 
+      {(repPoints > 0 || repOwned > 0) && (
+        <button className="rep-strip" onClick={() => setRepOpen(true)}>
+          <span className="rep-strip-mark">🏛️</span>
+          <span className="rep-strip-text">Lab Reputation — <b>{repPoints}</b> point{repPoints === 1 ? "" : "s"} to spend{repOwned > 0 ? ` · ${repOwned} perk${repOwned === 1 ? "" : "s"} owned` : ""}</span>
+          <span className="rep-strip-go">open ▸</span>
+        </button>
+      )}
+
       {!confirming ? (
         <button className={`btn btn-ship${willAscend ? " btn-ascend" : ""}`} disabled={!ready} onClick={() => setConfirming(true)}>
           {!ready ? "Locked — deploy a model first" : willAscend ? `✦ Ascend — gain ${fmt(gain)} weights` : `Ship — gain ${fmt(gain)} weights`}
@@ -84,6 +98,8 @@ export function PrestigePanel({ game, onPrestige }: Props) {
           </div>
         </div>
       )}
+
+      {repOpen && <ReputationModal game={game} onBuy={onBuyReputationPerk} onClose={() => setRepOpen(false)} />}
     </section>
   );
 }

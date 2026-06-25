@@ -38,6 +38,13 @@ export interface AchievementDef {
   threshold: number;
   /** Hidden until unlocked (the description shows only after). */
   secret?: boolean;
+  /** Lab Reputation points granted on unlock (default 2; see engine/reputation.ts). */
+  rep?: number;
+}
+
+/** Reputation granted by an achievement on unlock (defaults to 2). */
+export function achievementRep(def: AchievementDef): number {
+  return def.rep ?? 2;
 }
 
 export const achievements: AchievementDef[] = [

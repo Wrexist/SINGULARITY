@@ -47,7 +47,7 @@ export function App() {
   const notice = useGame((s) => s.notice);
   const worldEvent = useGame((s) => s.worldEvent);
   const candidates = useGame((s) => s.candidates);
-  const { doStartRun, doClaim, doBuyUpgrade, doBuyOfficePerk, doResearch, doBuyData, doPrestige, setComputeFocus,
+  const { doStartRun, doClaim, doBuyUpgrade, doBuyOfficePerk, doBuyReputationPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
     dismissOffline, dismissWorldEvent, chooseWorldEvent, hardReset } =
@@ -364,7 +364,7 @@ export function App() {
             <UpgradePanel game={game} onBuy={onBuy} />
             {showResearch && <ResearchPanel game={game} onResearch={onResearch} />}
             {showMarket && <DataMarketPanel game={game} onBuyData={onBuyData} onBuyTool={onBuy} />}
-            {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} />}
+            {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={doBuyReputationPerk} />}
             <StatsPanel game={game} derived={d} />
           </>
         )}
