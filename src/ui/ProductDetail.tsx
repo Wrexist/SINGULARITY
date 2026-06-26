@@ -18,6 +18,7 @@ const LANE_LABEL: Record<FeatureLane, string> = {
 /** Glyph shown in the header app-icon, per product type. Shared with the list. */
 export const TYPE_GLYPH: Record<ProductTypeId, string> = {
   general: "💬", code: "⌘", reasoning: "🧠", multimodal: "🎨", small: "⚡", domain: "⚖️",
+  companion: "💞", science: "🔬",
 };
 
 /** Tinted icon chip per marketing channel (matches the design's coloured glyphs). */
