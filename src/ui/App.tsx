@@ -62,6 +62,7 @@ export function App() {
   // Detect a ship (prestige) and fire the celebration moment + haptics.
   const prevShips = useRef(game.prestige.ships);
   const prevWeights = useRef<Big>(game.prestige.legacyWeights);
+  const prevAscensions = useRef(game.stats.ascensions);
   const [celebration, setCelebration] = useState<{ gained: Big; total: Big } | null>(null);
   const [eraMoment, setEraMoment] = useState<number | null>(null);
   const [launch, setLaunch] = useState<{ type: ProductTypeId; name: string } | null>(null);
@@ -162,7 +163,11 @@ export function App() {
     pushToast(notice.message, notice.tone);
     // A "good" notice is a win (version shipped, milestone, viral) — full beat. A
     // "bad" ops event (outage/breach) feels bad. Neutral churn quips stay a light tap.
-    if (notice.tone === "good") { haptics.celebrate(); sound.success(); }
+    // Achievement unlocks (🏅) get their own bright chime so they feel distinct.
+    if (notice.tone === "good") {
+      if (notice.message.startsWith("🏅")) { haptics.success(); sound.achievement(); }
+      else { haptics.celebrate(); sound.success(); }
+    }
     else if (notice.tone === "bad") { haptics.warn(); sound.alert(); }
     else haptics.tap();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -214,10 +219,13 @@ export function App() {
       const gained = game.prestige.legacyWeights.sub(prevWeights.current);
       setCelebration({ gained, total: game.prestige.legacyWeights });
       haptics.celebrate();
-      sound.ship();
+      // An AGI ascension (a ship in the Post-Singularity era) gets the grander beat.
+      if (game.stats.ascensions > prevAscensions.current) sound.ascend();
+      else sound.ship();
     }
     prevShips.current = game.prestige.ships;
     prevWeights.current = game.prestige.legacyWeights;
+    prevAscensions.current = game.stats.ascensions;
   }, [initialized, game.prestige.ships, game.prestige.legacyWeights]);
 
   // Action handlers wrapped with tactile + audio feedback.
@@ -364,7 +372,7 @@ export function App() {
             <UpgradePanel game={game} onBuy={onBuy} />
             {showResearch && <ResearchPanel game={game} onResearch={onResearch} />}
             {showMarket && <DataMarketPanel game={game} onBuyData={onBuyData} onBuyTool={onBuy} />}
-            {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={doBuyReputationPerk} />}
+            {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} />}
             <StatsPanel game={game} derived={d} />
           </>
         )}

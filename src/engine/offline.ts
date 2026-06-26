@@ -1,6 +1,7 @@
 import { Big } from "./math/Big";
 import { balance } from "./balance/config";
 import { tick } from "./tick";
+import { earnedReputation } from "./reputation";
 import type { GameState } from "./types";
 
 export interface OfflineSummary {
@@ -15,6 +16,10 @@ export interface OfflineSummary {
     data: Big;
     money: Big;
   };
+  /** Ids of achievements unlocked during the offline window (Phase 3). */
+  achievementsUnlocked: string[];
+  /** Lab Reputation points earned during the offline window. */
+  reputationEarned: number;
 }
 
 /**
@@ -33,6 +38,8 @@ export function applyOffline(
   const capMs = capHours * 3600 * 1000;
   const appliedMs = Math.max(0, Math.min(elapsedMs, capMs));
   const before = state.resources;
+  const hadAchievements = new Set(state.achievements);
+  const repBefore = earnedReputation(state);
   const next = tick(state, appliedMs);
   return {
     state: next,
@@ -45,6 +52,8 @@ export function applyOffline(
         data: next.resources.data.sub(before.data).max(0),
         money: next.resources.money.sub(before.money).max(0),
       },
+      achievementsUnlocked: next.achievements.filter((id) => !hadAchievements.has(id)),
+      reputationEarned: Math.max(0, earnedReputation(next) - repBefore),
     },
   };
 }

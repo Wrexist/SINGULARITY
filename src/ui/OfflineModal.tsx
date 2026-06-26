@@ -1,6 +1,7 @@
 import type { OfflineSummary } from "../engine/offline";
 import type { Big } from "../engine/math/Big";
 import { fmt, fmtPerHour, fmtTime } from "./format";
+import { achievementDefs } from "../engine/achievements";
 
 interface Props {
   summary: OfflineSummary;
@@ -20,6 +21,12 @@ export function OfflineModal({ summary, onClose }: Props) {
     { label: "Data", cssVar: "--data", value: gained.data, prefix: "" },
     { label: "$", cssVar: "--money", value: gained.money, prefix: "$" },
   ];
+
+  // Phase 3 — meta progress that landed while away (achievements + reputation).
+  const unlocked = (summary.achievementsUnlocked ?? [])
+    .map((id) => achievementDefs.find((d) => d.id === id))
+    .filter((d): d is NonNullable<typeof d> => !!d);
+  const repEarned = summary.reputationEarned ?? 0;
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -43,6 +50,21 @@ export function OfflineModal({ summary, onClose }: Props) {
             );
           })}
         </div>
+        {(unlocked.length > 0 || repEarned > 0) && (
+          <div className="wiwa-meta">
+            {repEarned > 0 && (
+              <div className="wiwa-meta-row">🏛️ <b>+{repEarned}</b> Lab Reputation earned</div>
+            )}
+            {unlocked.length > 0 && (
+              <div className="wiwa-meta-row">
+                🏅 <b>{unlocked.length}</b> achievement{unlocked.length === 1 ? "" : "s"} unlocked
+                <span className="wiwa-ach-names">
+                  {unlocked.slice(0, 3).map((d) => d.label).join(", ")}{unlocked.length > 3 ? `, +${unlocked.length - 3} more` : ""}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
         <p className="wiwa-tip">
           {summary.capped
             ? "Offline earnings are capped — even robots need a weekend."
