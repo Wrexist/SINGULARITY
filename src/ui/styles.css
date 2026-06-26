@@ -1641,7 +1641,11 @@ body {
 .pd-team-step span { min-width: 14px; text-align: center; font-weight: 750; }
 
 .pd-channels { margin: 2px 0 4px; }
-.pd-ch-desc { color: var(--ink-2); font-weight: 500; font-size: 11px; }
+.pd-ch-desc { color: var(--ink-2); font-weight: 500; font-size: 11px; line-height: 1.3; }
+.pd-channel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.pd-channel-name { font-size: 13px; font-weight: 750; color: var(--ink); }
+.pd-channel-pct { font-size: 13px; font-weight: 800; color: var(--data); font-variant-numeric: tabular-nums; }
+.pd-channel { gap: 4px; }
 .pd-tier {
   margin: 4px 0 8px; padding: 8px 10px; border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--money) 7%, var(--glass-strong)); border: 1px solid var(--glass-hairline);

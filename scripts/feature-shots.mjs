@@ -95,7 +95,7 @@ try {
   console.log("Saved feat-products.png");
 
   // 2) Product detail — open Cortex (research in progress, team + features).
-  await page.getByText("details ▸").first().click();
+  await page.getByText("Manage product").first().click();
   await sleep(500);
   const modal = page.locator(".pd-modal");
   await modal.screenshot({ path: "screenshots/feat-detail-top.png" });

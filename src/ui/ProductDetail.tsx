@@ -164,8 +164,12 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
               return B.channels.map((c) => {
                 const w = Math.max(0, p.channelMix[c.id] ?? 0);
                 return (
-                  <label className="prod-ctl" key={c.id}>
-                    <span>{c.name} · {Math.round((w / totalW) * 100)}% <span className="pd-ch-desc">{c.desc}</span></span>
+                  <label className="prod-ctl pd-channel" key={c.id}>
+                    <div className="pd-channel-head">
+                      <span className="pd-channel-name">{c.name}</span>
+                      <span className="pd-channel-pct">{Math.round((w / totalW) * 100)}%</span>
+                    </div>
+                    <span className="pd-ch-desc">{c.desc}</span>
                     <input type="range" min={0} max={100} step={5}
                       value={Math.round(w * 100)} onChange={(e) => onSetChannelMix(p.id, c.id, Number(e.target.value) / 100)} aria-label={`${c.name} weight`} />
                   </label>
