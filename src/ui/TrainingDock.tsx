@@ -1,5 +1,6 @@
 import type { Derived, GameState } from "../engine/types";
 import { fmt, fmtMoney } from "./format";
+import { burst, floatText } from "./fx";
 
 interface Props {
   game: GameState;
@@ -51,7 +52,19 @@ export function TrainingDock({ game, derived, onStart, onClaim, onSetFocus }: Pr
       </div>
 
       {run.readyToClaim ? (
-        <button className="btn btn-claim" onClick={onClaim}>
+        <button
+          className="btn btn-claim"
+          onClick={(e) => {
+            // Juice the most-repeated action: a payout burst + rising "+Data / +$"
+            // floaters right at the button.
+            const r = e.currentTarget.getBoundingClientRect();
+            const cx = r.left + r.width / 2;
+            burst(cx, r.top + r.height / 2, { count: 18, power: 1.1, colors: ["#2f7bf6", "#16b364", "#ff9f0a"] });
+            floatText(cx - 34, r.top, `+${fmt(derived.runDataYield)}`, "#2f7bf6", 17);
+            floatText(cx + 34, r.top - 4, `+${fmtMoney(derived.runMoneyYield)}`, "#16b364", 17);
+            onClaim();
+          }}
+        >
           Claim payout
         </button>
       ) : (

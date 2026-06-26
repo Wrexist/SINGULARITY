@@ -2,6 +2,7 @@ import { balance } from "../engine/balance/config";
 import { canBuyResearch, researchAvailable } from "../engine/actions";
 import type { Derived, GameState } from "../engine/types";
 import { fmt, fmtDur, etaSecs, effRate } from "./format";
+import { burst } from "./fx";
 import { Big } from "../engine/math/Big";
 
 interface Props {
@@ -43,7 +44,11 @@ export function ResearchPanel({ game, derived, onResearch }: Props) {
               key={def.id}
               className={`node ${state} ${affordable ? "affordable" : ""}`}
               disabled={!affordable}
-              onClick={() => onResearch(def.id)}
+              onClick={(e) => {
+                const r = e.currentTarget.getBoundingClientRect();
+                burst(r.left + r.width / 2, r.top + r.height / 2, { count: 14, power: 1, colors: ["#9b51e0", "#2f7bf6"] });
+                onResearch(def.id);
+              }}
             >
               <div className="node-head">
                 <span className="node-name">{def.name}</span>

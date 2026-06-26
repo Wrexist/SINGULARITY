@@ -6,6 +6,9 @@ import { productMetrics } from "../engine/products";
 import { Big } from "../engine/math/Big";
 import type { Derived, GameState } from "../engine/types";
 import { fmt, effRate, fmtEta } from "./format";
+import { burst } from "./fx";
+
+const RES_HEX: Record<string, string> = { compute: "#2f7bf6", data: "#9b51e0", money: "#16b364" };
 
 interface Props {
   game: GameState;
@@ -90,7 +93,11 @@ export function UpgradePanel({ game, derived, onBuy }: Props) {
               key={def.id}
               className={`card ${affordable ? "affordable" : ""} ${maxed ? "maxed" : ""}`}
               disabled={!affordable}
-              onClick={() => onBuy(def.id)}
+              onClick={(e) => {
+                const r = e.currentTarget.getBoundingClientRect();
+                burst(r.right - 22, r.top + r.height / 2, { count: 9, power: 0.8, colors: [RES_HEX[def.cost.resource] ?? "#9b51e0"] });
+                onBuy(def.id);
+              }}
             >
               <div className="card-main">
                 <span className="card-name">
