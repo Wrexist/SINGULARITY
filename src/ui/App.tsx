@@ -24,6 +24,8 @@ import { EmployeesPanel } from "./EmployeesPanel";
 import { ProductsPanel } from "./ProductsPanel";
 import { AchievementsModal } from "./AchievementsModal";
 import { EventLog } from "./EventLog";
+import { FxCanvas } from "./FxCanvas";
+import { burst as fxBurst } from "./fx";
 import { ProductLaunch } from "./ProductLaunch";
 import { productsUnlocked, productMetrics, typeDef, retirePayout } from "../engine/products";
 import { nextAction, attentionCounts } from "../engine/advisor";
@@ -171,7 +173,12 @@ export function App() {
     // "bad" ops event (outage/breach) feels bad. Neutral churn quips stay a light tap.
     // Achievement unlocks (🏅) get their own bright chime so they feel distinct.
     if (notice.tone === "good") {
-      if (notice.message.startsWith("🏅")) { haptics.success(); sound.achievement(); }
+      if (notice.message.startsWith("🏅")) {
+        haptics.success(); sound.achievement();
+        // Burst from the topbar trophy — "it went into your collection".
+        const el = document.querySelector('[aria-label="Achievements"]');
+        if (el) { const r = el.getBoundingClientRect(); fxBurst(r.left + r.width / 2, r.top + r.height / 2, { count: 22, power: 1.1, colors: ["#ff9f0a", "#ffd60a", "#9b51e0"] }); }
+      }
       else { haptics.celebrate(); sound.success(); }
     }
     else if (notice.tone === "bad") { haptics.warn(); sound.alert(); }
@@ -430,6 +437,7 @@ export function App() {
       )}
       {!onboarded && !offline && <Onboarding onDone={completeOnboarding} />}
       <ToastStack toasts={toasts} onDone={dropToast} />
+      <FxCanvas reducedMotion={reducedMotion} />
     </div>
   );
 }
