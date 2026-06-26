@@ -7,7 +7,7 @@ import {
   upgradeProgress, milestoneValue,
 } from "../engine/products";
 import { m$, numOf as num, fmtDur } from "./format";
-import { ProductDetail } from "./ProductDetail";
+import { ProductDetail, TYPE_GLYPH } from "./ProductDetail";
 import { EditableName } from "./EditableName";
 
 const FUN_NAMES = ["Nimbus", "Oracle", "Synthia", "Cortex", "Lumen", "Vertex", "Sage", "Atlas", "Echo", "Prism", "Nova", "Helix", "Quasar", "Mirage"];
@@ -114,13 +114,18 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
           return (
             <div className="prod-card" key={p.id}>
               <div className="prod-head">
-                <EditableName className="prod-name" value={p.name} onCommit={(n) => onRename(p.id, n)} />
-                <span className="prod-mrr">{m$(me.mrr)}/s</span>
-              </div>
-              <div className="prod-sub">
-                <span className="prod-badge">{t.name}</span>
-                <span className="prod-ver">v{p.version}</span>
-                <span className={`prod-profit ${me.margin >= 0 ? "pos" : "neg"}`}>{me.margin >= 0 ? "+" : ""}{m$(me.margin)}/s profit</span>
+                <span className="prod-icon">{TYPE_GLYPH[p.type] ?? "✦"}</span>
+                <div className="prod-head-text">
+                  <div className="prod-head-row">
+                    <EditableName className="prod-name" value={p.name} onCommit={(n) => onRename(p.id, n)} />
+                    <span className="prod-mrr">{m$(me.mrr)}/s</span>
+                  </div>
+                  <div className="prod-sub">
+                    <span className="prod-badge">{t.name}</span>
+                    <span className="prod-ver">v{p.version}</span>
+                    <span className={`prod-profit ${me.margin >= 0 ? "pos" : "neg"}`}>{me.margin >= 0 ? "+" : ""}{m$(me.margin)}/s profit</span>
+                  </div>
+                </div>
               </div>
               <div className="prod-stats">
                 <div className="prod-stat"><b>{num(me.paid)}</b><span>paying</span></div>

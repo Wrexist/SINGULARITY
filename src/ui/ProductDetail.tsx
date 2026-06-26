@@ -14,8 +14,8 @@ const LANE_LABEL: Record<FeatureLane, string> = {
   serveCost: "serve cost", tam: "market size", heat: "heat",
 };
 
-/** Glyph shown in the header app-icon, per product type. */
-const TYPE_GLYPH: Record<ProductTypeId, string> = {
+/** Glyph shown in the header app-icon, per product type. Shared with the list. */
+export const TYPE_GLYPH: Record<ProductTypeId, string> = {
   general: "💬", code: "⌘", reasoning: "🧠", multimodal: "🎨", small: "⚡", domain: "⚖️",
 };
 
