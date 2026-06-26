@@ -1254,6 +1254,58 @@ export const balance = {
       cost: { compute: 300000, data: 0 },
       effect: { kind: "computeMult", factor: 2.5 },
     },
+
+    // --- Late-era branch (Phase B2): gated behind Scaling Laws, so it's only
+    // reachable deep into a run (post-first-prestige). The early/mid curve and
+    // the sim are untouched; this is extra to chase in eras 3–6. ---
+    {
+      id: "synthetic_data",
+      name: "Synthetic Data Engine",
+      desc: "Models teach models. Nobody mentions model collapse. ×2 Data per run.",
+      requires: ["scaling_laws"],
+      cost: { compute: 250000, data: 20000 },
+      effect: { kind: "dataMult", factor: 2 },
+    },
+    {
+      id: "flash_attention",
+      name: "Flash Attention",
+      desc: "Attention, but it goes brrr. −25% run duration.",
+      requires: ["scaling_laws"],
+      cost: { compute: 450000, data: 0 },
+      effect: { kind: "runSpeed", factor: 0.75 },
+    },
+    {
+      id: "quantization",
+      name: "4-bit Quantization",
+      desc: "Half the bits, somehow still coherent. ×2 Money per run.",
+      requires: ["scaling_laws"],
+      cost: { compute: 600000, data: 15000 },
+      effect: { kind: "moneyMult", factor: 2 },
+    },
+    {
+      id: "multi_datacenter",
+      name: "Multi-Datacenter Run",
+      desc: "Your own power grid, your own problems. ×3 Compute.",
+      requires: ["flash_attention", "synthetic_data"],
+      cost: { compute: 1500000, data: 50000 },
+      effect: { kind: "computeMult", factor: 3 },
+    },
+    {
+      id: "world_model",
+      name: "World Model",
+      desc: "It dreams now. The dreams are mostly ads. ×2.5 Money per run.",
+      requires: ["multi_datacenter", "quantization"],
+      cost: { compute: 3000000, data: 120000 },
+      effect: { kind: "moneyMult", factor: 2.5 },
+    },
+    {
+      id: "recursive_self_improvement",
+      name: "Recursive Self-Improvement",
+      desc: "It writes its own training code. You watch, nervously. ×4 Compute.",
+      requires: ["world_model"],
+      cost: { compute: 8000000, data: 300000 },
+      effect: { kind: "computeMult", factor: 4 },
+    },
   ] satisfies ResearchDef[],
 };
 
