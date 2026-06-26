@@ -375,6 +375,18 @@ body {
 /* Juice overlay — particles + floating numbers (FxCanvas). Above content, below modals. */
 .fx-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 45; }
 
+/* AGI ascension screen flash — a brief gold/violet radial bloom. */
+.screen-flash {
+  position: fixed; inset: 0; pointer-events: none; z-index: 46;
+  background: radial-gradient(circle at 50% 45%, rgba(168, 85, 247, 0.55), rgba(255, 214, 10, 0.25) 35%, transparent 70%);
+  animation: screen-flash 0.9s var(--ease-out) forwards;
+}
+@keyframes screen-flash {
+  0% { opacity: 0; }
+  15% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 .pop {
   position: absolute;
   left: 50%;

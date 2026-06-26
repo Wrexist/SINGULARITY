@@ -72,6 +72,7 @@ export function App() {
   const [pendingExpansion, setPendingExpansion] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
+  const [flash, setFlash] = useState(0); // AGI ascension screen flash (key replays the anim)
   const reducedMotion = useSettings((s) => s.reducedMotion);
   const onboarded = useSettings((s) => s.onboarded);
   const completeOnboarding = useSettings((s) => s.completeOnboarding);
@@ -233,9 +234,13 @@ export function App() {
       const gained = game.prestige.legacyWeights.sub(prevWeights.current);
       setCelebration({ gained, total: game.prestige.legacyWeights });
       haptics.celebrate();
-      // An AGI ascension (a ship in the Post-Singularity era) gets the grander beat.
-      if (game.stats.ascensions > prevAscensions.current) sound.ascend();
-      else sound.ship();
+      // An AGI ascension (a ship in the Post-Singularity era) gets the grander beat:
+      // the ascend fanfare + a gold screen flash + a big central particle bloom.
+      if (game.stats.ascensions > prevAscensions.current) {
+        sound.ascend();
+        setFlash((k) => k + 1);
+        if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight / 2, { count: 48, power: 2.2, colors: ["#a855f7", "#ffd60a", "#ff9f0a", "#fff"] });
+      } else sound.ship();
     }
     prevShips.current = game.prestige.ships;
     prevWeights.current = game.prestige.legacyWeights;
@@ -438,6 +443,7 @@ export function App() {
       {!onboarded && !offline && <Onboarding onDone={completeOnboarding} />}
       <ToastStack toasts={toasts} onDone={dropToast} />
       <FxCanvas reducedMotion={reducedMotion} />
+      {flash > 0 && !reducedMotion && <div key={flash} className="screen-flash" aria-hidden="true" onAnimationEnd={() => setFlash(0)} />}
     </div>
   );
 }
