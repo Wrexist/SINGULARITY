@@ -427,7 +427,14 @@ body {
 /* Reference look: panels are crisp solid-white sheets (not translucent glass),
    so content reads on a clean surface like the mockup. The aurora/dock keep
    their glass; only the content panels flip to solid. */
-.panel { padding: 18px; background: #fff; border: 1px solid rgba(17, 24, 39, 0.05); box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05); }
+.panel {
+  padding: 18px; background: #fff;
+  border: 1px solid rgba(17, 24, 39, 0.05);
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05);
+  /* Opaque now — drop the inherited glass blur. A backdrop-filter would also
+     trap fixed-position descendants (modals) to the panel's box. */
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
 .panel::before { display: none; }
 .panel-title {
   font-size: 12px;
