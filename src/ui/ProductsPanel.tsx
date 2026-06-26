@@ -3,8 +3,8 @@ import type { GameState } from "../engine/types";
 import { products as B, type ProductTypeId } from "../engine/balance/products";
 import { productMilestones } from "../engine/balance/products";
 import {
-  typeDef, productMetrics, canLaunchDraft, canStartUpgrade, versionCost,
-  upgradeDurationSec, upgradeProgress, retirePayout, milestoneValue,
+  typeDef, productMetrics, canLaunchDraft, canStartUpgrade,
+  upgradeProgress, milestoneValue,
 } from "../engine/products";
 import { m$, numOf as num, fmtDur } from "./format";
 import { ProductDetail } from "./ProductDetail";
@@ -110,11 +110,7 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
           const t = typeDef(p.type);
           const me = metrics.get(p.id)!;
           const up = p.upgrade;
-          const vc = versionCost(p.version);
-          const upfrontC = vc.compute * B.upgrade.upfrontFrac;
-          const upfrontD = vc.data * B.upgrade.upfrontFrac;
-          const canVer = canStartUpgrade(game, p.id);
-          const mktCap = Math.max(1, Math.round(p.quality * B.marketingCapPerQuality));
+          const canVer = !up && canStartUpgrade(game, p.id);
           const qfColor = me.qf > 0.66 ? "var(--money)" : me.qf > 0.33 ? "#f97316" : "var(--coral)";
           return (
             <div className="prod-card" key={p.id}>
@@ -125,33 +121,20 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
               <div className="prod-sub">
                 <span className="prod-badge">{t.name}</span>
                 <span className="prod-ver">v{p.version}</span>
-                <button className="link-btn prod-details" onClick={() => setDetailId(p.id)}>details ▸</button>
+                <span className={`prod-profit ${me.margin >= 0 ? "pos" : "neg"}`}>{me.margin >= 0 ? "+" : ""}{m$(me.margin)}/s profit</span>
               </div>
               <div className="prod-stats">
                 <span><b>{num(me.paid)}</b> paying</span>
                 <span><b>{num(me.mau)}</b> users</span>
-                <span title="Share of users leaving per minute"><b>{me.churnPerMin.toFixed(1)}%</b>/min leaving</span>
-                <span className={me.margin >= 0 ? "pos" : "neg"} title="Profit per second (revenue − costs)">{me.margin >= 0 ? "+" : ""}{m$(me.margin)}/s</span>
               </div>
 
               <div className="prod-quality">
                 <div className="prod-quality-head">
-                  <span>Competitiveness vs rivals</span>
+                  <span>Competitiveness</span>
                   <span>{Math.round(me.qf * 100)}%</span>
                 </div>
                 <div className="prod-bar"><div className="prod-bar-fill" style={{ width: `${me.qf * 100}%`, background: qfColor }} /></div>
               </div>
-
-              <label className="prod-ctl">
-                <span>Pricing ×{p.priceMult.toFixed(1)}{p.priceMult > 1 ? " (premium)" : p.priceMult < 1 ? " (value)" : ""}</span>
-                <input type="range" min={Math.round(B.priceMin * 10)} max={Math.round(B.priceMax * 10)} step={1}
-                  value={Math.round(p.priceMult * 10)} onChange={(e) => onSetPrice(p.id, Number(e.target.value) / 10)} aria-label="Pricing" />
-              </label>
-              <label className="prod-ctl">
-                <span>Marketing {m$(p.marketingPerSec)}/s</span>
-                <input type="range" min={0} max={mktCap} step={Math.max(1, Math.round(mktCap / 50))}
-                  value={Math.min(p.marketingPerSec, mktCap)} onChange={(e) => onSetMarketing(p.id, Number(e.target.value))} aria-label="Marketing budget" />
-              </label>
 
               {up ? (
                 <div className="prod-research">
@@ -163,14 +146,16 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
                     <div className="prod-bar-fill prod-bar-research" style={{ width: `${upgradeProgress(up) * 100}%` }} />
                   </div>
                 </div>
-              ) : (
-                <div className="prod-actions">
-                  <button className="btn btn-ghost" disabled={!canVer} onClick={() => onStartUpgrade(p.id)}>
-                    Research v{p.version + 1} · {num(upfrontC)}+{num(upfrontD)} upfront · ~{fmtDur(upgradeDurationSec(p.version))}
-                  </button>
-                  <button className="link-btn" onClick={() => onRetire(p.id)}>sell · {m$(retirePayout(game, p.id))}</button>
-                </div>
-              )}
+              ) : canVer ? (
+                <div className="prod-status ready">✨ v{p.version + 1} ready to research</div>
+              ) : me.qf < 0.5 ? (
+                <div className="prod-status behind">📉 Falling behind — research a new version</div>
+              ) : null}
+
+              <button className="prod-manage" onClick={() => setDetailId(p.id)}>
+                <span className="prod-manage-main">Manage product</span>
+                <span className="prod-manage-sub">pricing · marketing · research · upgrades</span>
+              </button>
             </div>
           );
         })}

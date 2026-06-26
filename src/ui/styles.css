@@ -1448,11 +1448,12 @@ body {
 .prod-card {
   background: var(--glass-strong);
   border: 1px solid var(--glass-hairline);
-  border-radius: var(--radius-sm);
-  padding: 14px;
+  border-radius: 18px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 11px;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.04);
 }
 .prod-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .prod-name {
@@ -1476,10 +1477,29 @@ body {
   color: #6d28d9; background: rgba(124, 58, 237, 0.12); padding: 2px 8px; border-radius: 999px;
 }
 .prod-ver { font-size: 11px; font-weight: 700; color: var(--ink-3); }
-.prod-stats { display: flex; flex-wrap: wrap; gap: 10px 14px; font-size: 12px; color: var(--ink-2); }
+.prod-profit { font-size: 11px; font-weight: 750; margin-left: auto; font-variant-numeric: tabular-nums; }
+.prod-profit.pos { color: var(--money); }
+.prod-profit.neg { color: var(--coral); }
+.prod-stats { display: flex; flex-wrap: wrap; gap: 10px 16px; font-size: 12.5px; color: var(--ink-2); }
 .prod-stats b { color: var(--ink); }
-.prod-stats .pos { color: var(--money); font-weight: 700; }
-.prod-stats .neg { color: var(--coral); font-weight: 700; }
+
+/* Soft status hint (replaces the old inline research/sell row). */
+.prod-status { font-size: 12px; font-weight: 650; padding: 8px 11px; border-radius: 10px; }
+.prod-status.ready { color: #6d28d9; background: rgba(124, 58, 237, 0.08); }
+.prod-status.behind { color: var(--coral); background: rgba(255, 56, 92, 0.07); }
+
+/* The clear "there's more here" entry point — replaces the tiny "details ▸" link. */
+.prod-manage {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  width: 100%; padding: 11px; margin-top: 2px; border-radius: 13px; cursor: pointer;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--data) 11%, var(--glass-strong)), var(--glass-strong));
+  border: 1px solid color-mix(in srgb, var(--data) 30%, var(--glass-edge));
+  color: var(--ink); transition: transform 0.15s var(--spring), box-shadow 0.2s;
+}
+.prod-manage:hover { box-shadow: var(--shadow-sm); }
+.prod-manage:active { transform: scale(0.985); }
+.prod-manage-main { font-size: 14px; font-weight: 800; letter-spacing: -0.01em; }
+.prod-manage-sub { font-size: 11px; color: var(--ink-2); font-weight: 600; }
 .prod-quality-head { display: flex; justify-content: space-between; font-size: 11px; font-weight: 650; color: var(--ink-2); margin-bottom: 5px; }
 .prod-bar { height: 8px; border-radius: 999px; background: rgba(17, 24, 39, 0.08); overflow: hidden; }
 .prod-bar-fill { height: 100%; border-radius: 999px; transition: width 0.4s var(--ease-out), background 0.4s; }
