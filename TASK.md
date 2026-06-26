@@ -1,8 +1,9 @@
 # TASK.md — Singularity Inc.
 *Live task list. Claude Code updates this as work progresses. One source of truth for "what's next."*
 
-**Current phase:** PHASE 1 — Shippable MVP (the 2.5D hall + manifestation). Owner passed the Phase 0
-fun-gate on 2026-06-24 and greenlit Phase 1. (Phase 0 history retained below for context.)
+**Current phase:** PHASE 3 — Endgame & spectacle (Steps 0–3 done; Step 4 polish/ship-prep in progress).
+Phases 1–2 complete + a beyond-roadmap Products business. Plan: `PHASE3_ENDGAME_PLAN.md`. (Phase 0–2
+history retained below for context.)
 **Phase 0 exit gate:** PASSED — owner confirmed the loop is fun without art.
 
 ---
@@ -289,3 +290,71 @@ upgrades + a full Employees page. Built on branch `claude/phase3-product-busines
 - [x] Updated `scripts/balance-sim.ts` to model the floor cap: the greedy player now BUYS hall
       expansions when the floor fills and prefers the highest-tier affordable rack (filling permanent
       slots with cheap consumer cards was tanking the modeled income and faking a wall).
+
+---
+
+## Phase 3 audit fixes + polish (post product/employee redesign)
+
+### Audit pass (critical bugs + perf)
+- [x] **Drag stale-closure fix:** EmployeeBoard pointer handlers were re-bound every 10Hz render,
+      capturing stale `onAssign`/`onSelect` mid-drag → a drop could mis-assign. Now ref-stable
+      handlers + memoized zone grouping + per-zone render cap.
+- [x] **Sim hardening:** `simulateProducts` clamps billed seconds to `mau·seconds` (no over-billing);
+      `channelAcq` falls back to 100% ads on a degenerate mix (no wasted spend); `sanitizeChannelMix`
+      keeps only known channel ids.
+- [x] **Perf:** one memoized `productMetrics` pass per render (was up to 3×/product ×10Hz); cross-tick
+      `computeStaffEffects` memo in derive (keyed on stable employees ref + morale + product set);
+      memoized roster splits; collapsed milestones.
+
+### P1 polish batch
+- [x] **A5 — inline rename:** new `EditableName` component replaces `window.prompt` (bad on iOS) in
+      the product card + detail header. Commits on Enter/blur, cancels on Escape.
+- [x] **A1/B4 — advisor:** new pure `src/engine/advisor.ts` (`nextAction`/`attentionCounts`,
+      7 tests) powers a single "do this next" nudge bar + small per-tab attention badges. Signals are
+      deliberately conservative & unambiguous (draft waiting *with a free slot*, empty portfolio →
+      ship, stale product, first hire). Tapping the nudge jumps to the right tab.
+
+### P2 batch (B1 / B2 / B5 / C1)
+- [x] **B1 — diminishing-returns hiring (BALANCE):** `computeStaffEffects` now ranks each lane's
+      contributors by raw output and weights the k-th at `1/(1 + k·perLaneRate)` (`balance.staff.
+      diminishing.perLaneRate = 0.18`). Output diminishes, payroll does NOT → a small, trained,
+      high-trait team beats a wall of juniors. 1–2 hires ≈ unchanged; at 80-on-one-lane acq is
+      ~2.25× (was 7.4× linear) while you still pay 80 salaries. `npm run sim` unchanged (first
+      prestige ~12m, longest wall 1m05s — the sim doesn't model staff, so the lab curve is intact).
+      3 new staff tests (diminishing, per-head falloff, seniority > headcount).
+- [x] **B2 — role-summary strip:** compact "N RoleName" chips on the Employees → Team pane (memoized),
+      so a big roster is legible at a glance.
+- [x] **B5 — suggest mix:** pure `suggestChannelMix(p, t)` weights channels by acquisition efficiency
+      (1/effective-CAC) at the current penetration; "✨ Suggest mix" button on the Marketing tab applies
+      it. Cheap channels lead early, budget shifts as they saturate. 2 new tests.
+- [x] **C1 — dead-field cleanup:** removed `products.assignments` (superseded by per-Employee
+      `assignedProductId`). Save v7→v8 migration strips it; retire now frees crew via their own
+      `assignedProductId`. 1 new migration test.
+
+---
+
+## Phase 3 — Endgame & spectacle (plan: PHASE3_ENDGAME_PLAN.md)
+
+- [x] **Step 0 — Lifetime Stats store:** persistent, monotonic cross-run counters (peak compute/MRR/
+      MAU, totals, ships, legacy, hires, events, playtime, ascensions). accrueStats folded per tick +
+      event-site bumps. Save v8→v9 backfill. The data backbone for everything below. 5 tests.
+- [x] **Step 1 — Achievements:** 37 badges across scale/business/team/legacy/meta (+2 secret), pure
+      detection over the stats store, persist across prestige (save v9→v10), toast on unlock,
+      AchievementsModal (topbar trophy + count, category filter, progress bars, masked secrets). 6 tests.
+- [x] **Step 2 — Era 6 Post-Singularity / AGI:** 6th era (agiAtShips=9) + iridescent hall palette;
+      ascension = a ship in the AGI era past a Legacy floor → permanent compounding ascensionMult
+      (1+n·0.08) in derive; bespoke AGI era-transition + AGI banner/✦Ascend button in Prestige. Hard-
+      gated (ascensions=0 until deep endgame) so the curve is untouched (sim unchanged). 12 tests.
+- [x] **Step 3 — Lab Reputation:** second meta-currency = earned−spent (earned is pure from
+      achievements+ships+ascensions, only `spent` stored → can't desync); 8-perk tree w/ prereqs
+      folded into derive (compute/data/money/payroll); persists through prestige+ascension (save
+      v10→v11); ReputationModal from a Prestige strip. Curve-safe (no perks owned at run start). 8 tests.
+- [x] **Step 4 — Polish & ship-prep (dev side):** adversarial diff-review of the 3 new economies →
+      fixed passive-money legacy²/ascension² squaring (curve-neutral, sim byte-identical), scraper
+      lane missing rep.dataMult, and achievement-toast coalescing; CLAUDE.md phase line + docs updated;
+      readability pass (plain-language all business jargon for new players). 232 tests green.
+      ↳ REMAINING (owner action): run **Actions → iOS TestFlight → Run workflow** to ship to phones
+        (merging ≠ shipping — see CLAUDE.md).
+
+> Curve discipline held throughout: every Phase-3 compounding term (ascension, reputation perks) is
+> hard-gated to the endgame, so `npm run sim` first-prestige stays ~12m / wall 1m05s across all of it.

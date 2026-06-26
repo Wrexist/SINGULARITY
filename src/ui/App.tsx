@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useGame } from "../state/store";
 import { useGameLoop } from "../state/useGameLoop";
 import { derive } from "../engine/derive";
@@ -22,8 +22,11 @@ import { Onboarding } from "./Onboarding";
 import { DataMarketPanel } from "./DataMarketPanel";
 import { EmployeesPanel } from "./EmployeesPanel";
 import { ProductsPanel } from "./ProductsPanel";
+import { AchievementsModal } from "./AchievementsModal";
+import { EventLog } from "./EventLog";
 import { ProductLaunch } from "./ProductLaunch";
 import { productsUnlocked, productMetrics, typeDef, retirePayout } from "../engine/products";
+import { nextAction, attentionCounts } from "../engine/advisor";
 import { fmtMoney } from "./format";
 import type { ProductTypeId } from "../engine/balance/products";
 import { iap } from "./iap";
@@ -45,22 +48,28 @@ export function App() {
   const notice = useGame((s) => s.notice);
   const worldEvent = useGame((s) => s.worldEvent);
   const candidates = useGame((s) => s.candidates);
-  const { doStartRun, doClaim, doBuyUpgrade, doBuyOfficePerk, doResearch, doBuyData, doPrestige, setComputeFocus,
+  const { doStartRun, doClaim, doBuyUpgrade, doBuyOfficePerk, doBuyReputationPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
     dismissOffline, dismissWorldEvent, chooseWorldEvent, hardReset } =
     useGame.getState();
 
-  const d = derive(game);
+  const d = useMemo(() => derive(game), [game]);
+  // Advisor: one "do this next" nudge + small per-tab attention counts. Memoized
+  // per tick (same cadence as derive) — a handful of product checks, no clock.
+  const advice = useMemo(() => nextAction(game), [game]);
+  const attention = useMemo(() => attentionCounts(game), [game]);
 
   // Detect a ship (prestige) and fire the celebration moment + haptics.
   const prevShips = useRef(game.prestige.ships);
   const prevWeights = useRef<Big>(game.prestige.legacyWeights);
+  const prevAscensions = useRef(game.stats.ascensions);
   const [celebration, setCelebration] = useState<{ gained: Big; total: Big } | null>(null);
   const [eraMoment, setEraMoment] = useState<number | null>(null);
   const [launch, setLaunch] = useState<{ type: ProductTypeId; name: string } | null>(null);
   const [pendingExpansion, setPendingExpansion] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showAchievements, setShowAchievements] = useState(false);
   const reducedMotion = useSettings((s) => s.reducedMotion);
   const onboarded = useSettings((s) => s.onboarded);
   const completeOnboarding = useSettings((s) => s.completeOnboarding);
@@ -86,10 +95,15 @@ export function App() {
   // Cap the stack so a burst of simultaneous unlocks can't bury the screen
   // (keep the most recent few). Stable identities so child timers don't reset.
   const MAX_TOASTS = 3;
+  // A capped, session-only history of everything that toasted, so the player can
+  // review what happened after the transient toasts fade (legibility = the feature).
+  const [log, setLog] = useState<ToastData[]>([]);
+  const MAX_LOG = 40;
   const pushToast = useCallback((text: string, tone: ToastData["tone"] = "neutral") => {
     toastId.current += 1;
     const id = toastId.current;
     setToasts((ts) => [...ts, { id, text, tone }].slice(-MAX_TOASTS));
+    setLog((l) => [{ id, text, tone }, ...l].slice(0, MAX_LOG));
   }, []);
   const dropToast = useCallback((id: number) => setToasts((ts) => ts.filter((t) => t.id !== id)), []);
   const seenResearch = useRef(showResearch);
@@ -155,7 +169,11 @@ export function App() {
     pushToast(notice.message, notice.tone);
     // A "good" notice is a win (version shipped, milestone, viral) — full beat. A
     // "bad" ops event (outage/breach) feels bad. Neutral churn quips stay a light tap.
-    if (notice.tone === "good") { haptics.celebrate(); sound.success(); }
+    // Achievement unlocks (🏅) get their own bright chime so they feel distinct.
+    if (notice.tone === "good") {
+      if (notice.message.startsWith("🏅")) { haptics.success(); sound.achievement(); }
+      else { haptics.celebrate(); sound.success(); }
+    }
     else if (notice.tone === "bad") { haptics.warn(); sound.alert(); }
     else haptics.tap();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -200,6 +218,7 @@ export function App() {
     if (!syncedShips.current) {
       prevShips.current = game.prestige.ships;
       prevWeights.current = game.prestige.legacyWeights;
+      prevAscensions.current = game.stats.ascensions;
       syncedShips.current = true;
       return;
     }
@@ -207,10 +226,13 @@ export function App() {
       const gained = game.prestige.legacyWeights.sub(prevWeights.current);
       setCelebration({ gained, total: game.prestige.legacyWeights });
       haptics.celebrate();
-      sound.ship();
+      // An AGI ascension (a ship in the Post-Singularity era) gets the grander beat.
+      if (game.stats.ascensions > prevAscensions.current) sound.ascend();
+      else sound.ship();
     }
     prevShips.current = game.prestige.ships;
     prevWeights.current = game.prestige.legacyWeights;
+    prevAscensions.current = game.stats.ascensions;
   }, [initialized, game.prestige.ships, game.prestige.legacyWeights]);
 
   // Action handlers wrapped with tactile + audio feedback.
@@ -278,9 +300,14 @@ export function App() {
             <Tagline />
           </div>
         </div>
-        <button className="icon-btn" onClick={() => setShowSettings(true)} aria-label="Settings">
-          <GearIcon />
-        </button>
+        <div className="topbar-actions">
+          <button className="icon-btn" onClick={() => setShowAchievements(true)} aria-label="Achievements">
+            🏅{game.achievements.length > 0 && <span className="icon-badge">{game.achievements.length}</span>}
+          </button>
+          <button className="icon-btn" onClick={() => setShowSettings(true)} aria-label="Settings">
+            <GearIcon />
+          </button>
+        </div>
       </header>
 
       <ResourceBar
@@ -295,13 +322,30 @@ export function App() {
 
       {(showStaff || showProducts) && (
         <div className="tabs" role="tablist">
-          <button className={`tab ${tab === "lab" ? "on" : ""}`} role="tab" aria-selected={tab === "lab"} onClick={() => setTab("lab")}>Lab</button>
-          {showProducts && <button className={`tab ${tab === "products" ? "on" : ""}`} role="tab" aria-selected={tab === "products"} onClick={() => setTab("products")}>Products</button>}
-          {showStaff && <button className={`tab ${tab === "employees" ? "on" : ""}`} role="tab" aria-selected={tab === "employees"} onClick={() => setTab("employees")}>Employees</button>}
+          <button className={`tab ${tab === "lab" ? "on" : ""}`} role="tab" aria-selected={tab === "lab"} onClick={() => setTab("lab")}>
+            Lab{attention.lab > 0 && <span className="tab-dot" aria-label={`${attention.lab} need attention`}>{attention.lab}</span>}
+          </button>
+          {showProducts && <button className={`tab ${tab === "products" ? "on" : ""}`} role="tab" aria-selected={tab === "products"} onClick={() => setTab("products")}>
+            Products{attention.products > 0 && <span className="tab-dot" aria-label={`${attention.products} need attention`}>{attention.products}</span>}
+          </button>}
+          {showStaff && <button className={`tab ${tab === "employees" ? "on" : ""}`} role="tab" aria-selected={tab === "employees"} onClick={() => setTab("employees")}>
+            Employees{attention.employees > 0 && <span className="tab-dot" aria-label={`${attention.employees} need attention`}>{attention.employees}</span>}
+          </button>}
         </div>
       )}
 
       <main className="stage">
+        {advice && (
+          <button
+            className="advisor-bar"
+            onClick={() => { haptics.tap(); setTab(advice.tab); }}
+            aria-label={`Suggested next: ${advice.text}`}
+          >
+            <span className="advisor-icon">💡</span>
+            <span className="advisor-text">{advice.text}</span>
+            {advice.tab !== tab && <span className="advisor-go">{advice.tab === "lab" ? "Lab" : advice.tab === "products" ? "Products" : "Employees"} ▸</span>}
+          </button>
+        )}
         {tab === "products" && showProducts ? (
           <ProductsPanel
             game={game}
@@ -332,11 +376,12 @@ export function App() {
           <>
             <HallCanvas onExpand={setPendingExpansion} />
             <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} onSetFocus={setComputeFocus} />
-            <UpgradePanel game={game} onBuy={onBuy} />
-            {showResearch && <ResearchPanel game={game} onResearch={onResearch} />}
+            <UpgradePanel game={game} derived={d} onBuy={onBuy} />
+            {showResearch && <ResearchPanel game={game} derived={d} onResearch={onResearch} />}
             {showMarket && <DataMarketPanel game={game} onBuyData={onBuyData} onBuyTool={onBuy} />}
-            {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} />}
+            {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} />}
             <StatsPanel game={game} derived={d} />
+            <EventLog log={log} />
           </>
         )}
 
@@ -360,6 +405,7 @@ export function App() {
         />
       )}
       {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} />}
+      {showAchievements && <AchievementsModal game={game} onClose={() => setShowAchievements(false)} />}
       {pendingExpansion && (
         <ExpandConfirm
           id={pendingExpansion}

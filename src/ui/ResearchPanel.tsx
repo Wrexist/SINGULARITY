@@ -1,15 +1,16 @@
 import { balance } from "../engine/balance/config";
 import { canBuyResearch, researchAvailable } from "../engine/actions";
-import type { GameState } from "../engine/types";
-import { fmt } from "./format";
+import type { Derived, GameState } from "../engine/types";
+import { fmt, fmtDur, etaSecs, effRate } from "./format";
 import { Big } from "../engine/math/Big";
 
 interface Props {
   game: GameState;
+  derived: Derived;
   onResearch: (id: string) => void;
 }
 
-export function ResearchPanel({ game, onResearch }: Props) {
+export function ResearchPanel({ game, derived, onResearch }: Props) {
   const isOwned = (id: string) => game.research.includes(id);
   // Reveal in waves (GDD): show owned/available nodes and the NEXT wave (locked
   // nodes whose prerequisites are owned or already available) — not the whole tree.
@@ -27,6 +28,16 @@ export function ResearchPanel({ game, onResearch }: Props) {
           const available = researchAvailable(game, def.id);
           const affordable = canBuyResearch(game, def.id);
           const state = owned ? "owned" : available ? "available" : "locked";
+          // Time-to-afford for an available-but-unaffordable node: the binding
+          // (longest) of its compute + data legs.
+          let etaText: string | null = null;
+          if (available && !affordable) {
+            const legs = [
+              def.cost.compute > 0 ? etaSecs(Big.of(def.cost.compute), game.resources.compute, effRate(derived, "compute")) : null,
+              def.cost.data > 0 ? etaSecs(Big.of(def.cost.data), game.resources.data, effRate(derived, "data")) : null,
+            ].filter((x): x is number => x !== null);
+            if (legs.length > 0) etaText = `~${fmtDur(Math.max(...legs))}`;
+          }
           return (
             <button
               key={def.id}
@@ -48,6 +59,7 @@ export function ResearchPanel({ game, onResearch }: Props) {
                   {def.cost.data > 0 && (
                     <span style={{ color: "var(--data)" }}>{fmt(Big.of(def.cost.data))} data</span>
                   )}
+                  {etaText && <span className="cost-eta">{etaText}</span>}
                 </span>
               )}
             </button>

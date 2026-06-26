@@ -7,7 +7,7 @@ import {
   canLaunchDraft, launchDraft, canStartUpgrade, startUpgrade, advanceUpgrades, upgradeDurationSec,
   applyMilestones, milestoneValue, maybeProductEvent,
   canBuyFeature, buyFeature, featureMods,
-  setEnterprise, enterpriseUnlocked,
+  setEnterprise, enterpriseUnlocked, suggestChannelMix, typeDef,
 } from "./products";
 import { applyWorldEvent } from "./actions";
 import { tick } from "./tick";
@@ -196,7 +196,7 @@ describe("products — churn-reason flavor", () => {
 
   it("fires a flavor quip naming a materially-bleeding product", () => {
     const stale = { ...settled(), quality: 1, priceMult: 1, paid: 500 };
-    const ps = { active: [stale], frontier: 51, sold: 0, drafts: [], milestones: [], assignments: {} };
+    const ps = { active: [stale], frontier: 51, sold: 0, drafts: [], milestones: [] };
     const res = maybeChurnFlavor(ps, 10, 0, 0, 0); // rollFire 0 → fires
     expect(res).not.toBeNull();
     expect(res!.reason).toBe("stale");
@@ -205,19 +205,19 @@ describe("products — churn-reason flavor", () => {
 
   it("stays silent on the dice when the fire roll misses", () => {
     const stale = { ...settled(), quality: 1, priceMult: 1, paid: 500 };
-    const ps = { active: [stale], frontier: 51, sold: 0, drafts: [], milestones: [], assignments: {} };
+    const ps = { active: [stale], frontier: 51, sold: 0, drafts: [], milestones: [] };
     expect(maybeChurnFlavor(ps, 0.1, 0.99, 0, 0)).toBeNull(); // tiny window, high roll
   });
 
   it("won't quip about a product with no real subscriber base", () => {
     const tiny = { ...settled(), quality: 1, priceMult: 1, paid: 5 }; // below flavor.minPaid
-    const ps = { active: [tiny], frontier: 51, sold: 0, drafts: [], milestones: [], assignments: {} };
+    const ps = { active: [tiny], frontier: 51, sold: 0, drafts: [], milestones: [] };
     expect(maybeChurnFlavor(ps, 10, 0, 0, 0)).toBeNull();
   });
 
   it("won't quip about a healthy portfolio", () => {
     const healthy = { ...settled(), quality: 50, priceMult: 1, paid: 500 };
-    const ps = { active: [healthy], frontier: 50, sold: 0, drafts: [], milestones: [], assignments: {} };
+    const ps = { active: [healthy], frontier: 50, sold: 0, drafts: [], milestones: [] };
     expect(maybeChurnFlavor(ps, 10, 0, 0, 0)).toBeNull();
   });
 });
@@ -536,6 +536,30 @@ describe("products — rename + retire payout", () => {
     s.research = ["inference_api"];
     const after = prestige(retireProduct(s, "p1"));
     expect(after.products.sold).toBe(2);
+  });
+});
+
+describe("products — suggest channel mix", () => {
+  it("favours the cheapest channel on a fresh product and normalises to ≤ 1", () => {
+    const p = release().products.active[0]!;
+    p.mau = 0; // zero penetration
+    const mix = suggestChannelMix(p, typeDef(p.type));
+    // Organic (cacMult 0.5) is cheapest at pen 0 → it should be the 1.0 anchor.
+    expect(mix.organic).toBe(1);
+    expect(mix.organic).toBeGreaterThan(mix.ads!);
+    expect(mix.ads!).toBeGreaterThan(mix.influencer!);
+    for (const w of Object.values(mix)) { expect(w).toBeGreaterThanOrEqual(0); expect(w).toBeLessThanOrEqual(1); }
+  });
+
+  it("shifts away from fast-saturating channels as the market fills", () => {
+    const t = typeDef(release().products.active[0]!.type);
+    const fresh = release().products.active[0]!; fresh.mau = 0;
+    const saturated = release().products.active[0]!; saturated.mau = t.tam; // fully penetrated
+    const a = suggestChannelMix(fresh, t);
+    const b = suggestChannelMix(saturated, t);
+    // Organic saturates fastest (satMult 3); its share of budget should fall as the
+    // market fills, relative to the slow-saturating Conferences (satMult 0.15).
+    expect(b.organic! / b.events!).toBeLessThan(a.organic! / a.events!);
   });
 });
 

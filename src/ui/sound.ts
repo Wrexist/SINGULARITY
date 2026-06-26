@@ -63,4 +63,16 @@ export const sound = {
     tone(311.13, 0, 0.16, "sawtooth", 0.05);
     tone(207.65, 0.12, 0.24, "square", 0.045);
   },
+  /** Achievement unlock — a bright, sparkly major triad "ta-da" (distinct from a buy). */
+  achievement: () => {
+    if (!on()) return;
+    [659.25, 830.61, 1318.51].forEach((f, i) => tone(f, i * 0.05, 0.18, "triangle", 0.05));
+    tone(1661.22, 0.16, 0.12, "sine", 0.035);
+  },
+  /** AGI ascension — the grandest beat: a long rising run into a shimmering held chord. */
+  ascend: () => {
+    if (!on()) return;
+    [392, 523.25, 659.25, 783.99, 1046.5, 1318.51].forEach((f, i) => tone(f, i * 0.08, 0.5, "sine", 0.055));
+    [1046.5, 1318.51, 1567.98].forEach((f) => tone(f, 0.5, 0.6, "triangle", 0.04));
+  },
 };

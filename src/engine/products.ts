@@ -98,19 +98,35 @@ function tierEconomics(p: ProductState, t: ProductTypeDef, qf: number, fm: Featu
  *  Each channel converts its share of the budget at its own CAC (which rises with
  *  market penetration at its own rate). Default mix {ads:1} reproduces the baseline. */
 function channelAcq(p: ProductState, tam: number): number {
-  const mix = p.channelMix && Object.keys(p.channelMix).length ? p.channelMix : { ads: 1 };
+  const mix = p.channelMix ?? {};
   let totalW = 0;
   for (const c of B.channels) totalW += Math.max(0, mix[c.id] ?? 0);
-  if (totalW <= 0) return 0;
   const pen = tam > 0 ? p.mau / tam : 1;
   let acq = 0;
   for (const c of B.channels) {
-    const w = Math.max(0, mix[c.id] ?? 0) / totalW;
+    // A degenerate/empty mix falls back to 100% Paid Ads so the budget always buys
+    // users (never silently burns Money for nothing).
+    const w = totalW > 0 ? Math.max(0, mix[c.id] ?? 0) / totalW : c.id === "ads" ? 1 : 0;
     if (w <= 0) continue;
     const cac = B.marketingCacBase * c.cacMult * (1 + pen * B.cacSaturation * c.satMult);
     if (cac > 0) acq += (p.marketingPerSec * w) / cac;
   }
   return acq;
+}
+
+/** Suggest a sensible channel split for a product right now: weight each channel
+ *  by its acquisition efficiency (1 / effective CAC) at the current market
+ *  penetration, normalised so the strongest channel sits at 1.0 (the slider max).
+ *  Cheap channels lead early; as they saturate, budget naturally shifts to the
+ *  ones that keep converting at scale — exactly the "diversify as you grow" advice
+ *  the tip gives, but computed. Pure. */
+export function suggestChannelMix(p: ProductState, t: ProductTypeDef): Record<string, number> {
+  const pen = t.tam > 0 ? clamp(p.mau / t.tam, 0, 1) : 0;
+  const eff = B.channels.map((c) => 1 / (c.cacMult * (1 + pen * B.cacSaturation * c.satMult)));
+  const max = Math.max(...eff, 1e-9);
+  const mix: Record<string, number> = {};
+  B.channels.forEach((c, i) => { mix[c.id] = Math.round((eff[i]! / max) * 100) / 100; });
+  return mix;
 }
 
 // ---------- Per-tick simulation (deterministic) ----------
@@ -176,9 +192,12 @@ export function simulateProducts(
     const paidIntegral = k > 0
       ? pStar * seconds + ((p.paid - pStar) * (1 - decay)) / k
       : p.paid * seconds;
+    // Bill on the time-integral of paid, but never on more subscribers than exist
+    // now (guards against a tick where an event/feature shrank mau below last paid).
+    const billed = Math.min(paidIntegral, mau * seconds);
     const arpu = econ.arpu * mods.arpu;
-    const mrr = paidIntegral * arpu;
-    const serve = paidIntegral * t.computePerUser * p.quality * mods.serveCost * fm.serveCost;
+    const mrr = billed * arpu;
+    const serve = billed * t.computePerUser * p.quality * mods.serveCost * fm.serveCost;
     moneyDelta += mrr - serve - p.marketingPerSec * seconds;
     if (paid > 0) heatDelta += t.heatPerSec * fm.heat * mods.heat * seconds;
 
@@ -476,6 +495,7 @@ export function launchDraft(
       active: [...state.products.active, product],
       drafts: state.products.drafts.filter((d) => d.id !== opts.draftId),
     },
+    stats: { ...state.stats, productsLaunched: state.stats.productsLaunched + 1 },
   };
 }
 
@@ -692,16 +712,18 @@ export function retireProduct(state: GameState, id: string): GameState {
   const p = state.products.active.find((x) => x.id === id);
   if (!p) return state;
   const payout = productMetrics(p, state.products.frontier).mrr * B.retireValuationSec;
-  // Releasing the product frees any employees assigned to it back into the pool.
-  const { [id]: _dropped, ...assignments } = state.products.assignments;
+  // Releasing the product frees any employees assigned to it back to the bench.
+  const employees = state.employees.some((e) => e.assignedProductId === id)
+    ? state.employees.map((e) => (e.assignedProductId === id ? { ...e, assignedProductId: null } : e))
+    : state.employees;
   return {
     ...state,
     resources: { ...state.resources, money: state.resources.money.add(Math.max(0, payout)) },
     lifetimeMoney: state.lifetimeMoney.add(Math.max(0, payout)),
+    employees,
     products: {
       ...state.products,
       active: state.products.active.filter((x) => x.id !== id),
-      assignments,
       sold: state.products.sold + 1, // lifetime "products sold" badge (persists across prestige)
     },
   };

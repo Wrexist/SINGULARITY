@@ -3,13 +3,14 @@ import type { GameState } from "../engine/types";
 import { products as B, productFeatures, type FeatureLane } from "../engine/balance/products";
 import {
   typeDef, productMetrics, canStartUpgrade, canBuyFeature, versionCost,
-  upgradeDurationSec, upgradeProgress, retirePayout, enterpriseUnlocked,
+  upgradeDurationSec, upgradeProgress, retirePayout, enterpriseUnlocked, suggestChannelMix,
 } from "../engine/products";
 import { m$, numOf as num, fmtDur } from "./format";
+import { EditableName } from "./EditableName";
 
 /** Short human label for a feature's effect lane. */
 const LANE_LABEL: Record<FeatureLane, string> = {
-  acq: "acquisition", arpu: "ARPU", conversion: "conversion", churn: "churn",
+  acq: "new users", arpu: "revenue/user", conversion: "conversion", churn: "users leaving",
   serveCost: "serve cost", tam: "market size", heat: "heat",
 };
 
@@ -81,9 +82,7 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
       <div className="modal pd-modal" onClick={(e) => e.stopPropagation()}>
         <div className="pd-head">
           <div>
-            <button className="prod-name" onClick={() => { const n = window.prompt("Rename product", p.name); if (n && n.trim()) onRename(p.id, n); }}>
-              {p.name} <span className="prod-rename">✎</span>
-            </button>
+            <EditableName className="prod-name" value={p.name} onCommit={(n) => onRename(p.id, n)} />
             <div className="prod-sub"><span className="prod-badge">{t.name}</span><span className="prod-ver">v{p.version}</span></div>
           </div>
           <button className="link-btn" onClick={onClose}>close</button>
@@ -100,10 +99,10 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
         {tab === "overview" && (
           <div className="pd-pane">
             <div className="pd-grid">
-              {stat("MRR", `${m$(me.mrr)}/s`)}
-              {stat("Net margin", `${me.margin >= 0 ? "+" : ""}${m$(me.margin)}/s`, me.margin >= 0 ? "pos" : "neg")}
-              {stat("Paying subs", num(me.paid))}
-              {stat("Monthly users", num(me.mau))}
+              {stat("Revenue/s", `${m$(me.mrr)}/s`)}
+              {stat("Profit/s", `${me.margin >= 0 ? "+" : ""}${m$(me.margin)}/s`, me.margin >= 0 ? "pos" : "neg")}
+              {stat("Paying users", num(me.paid))}
+              {stat("Total users", num(me.mau))}
             </div>
             {bar("Competitiveness vs rivals", me.qf * 100, qfColor, `${Math.round(me.qf * 100)}%`)}
             {bar(`Market share (of ${num(t.tam)})`, penetration * 100, "var(--data)", `${(penetration * 100).toFixed(penetration < 0.01 ? 2 : 1)}%`)}
@@ -134,7 +133,7 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
                 </label>
                 {p.enterprise && (
                   <label className="prod-ctl">
-                    <span>Enterprise price ×{p.enterprisePrice.toFixed(1)} — small slice, ~{B.enterprise.arpuMult}× ARPU</span>
+                    <span>Enterprise price ×{p.enterprisePrice.toFixed(1)} — small slice, ~{B.enterprise.arpuMult}× revenue/user</span>
                     <input type="range" min={Math.round(B.enterprise.priceMin * 10)} max={Math.round(B.enterprise.priceMax * 10)} step={1}
                       value={Math.round(p.enterprisePrice * 10)} onChange={(e) => onSetEnterprisePrice(p.id, Number(e.target.value) / 10)} aria-label="Enterprise pricing" />
                   </label>
@@ -154,6 +153,12 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
               <input type="range" min={0} max={mktCap} step={Math.max(1, Math.round(mktCap / 50))}
                 value={Math.min(p.marketingPerSec, mktCap)} onChange={(e) => onSetMarketing(p.id, Number(e.target.value))} aria-label="Marketing budget" />
             </label>
+            <div className="pd-mix-head">
+              <span>Channel split</span>
+              <button className="link-btn" onClick={() => { const mix = suggestChannelMix(p, t); for (const c of B.channels) onSetChannelMix(p.id, c.id, mix[c.id] ?? 0); }}>
+                ✨ Suggest mix
+              </button>
+            </div>
             {(() => {
               const totalW = B.channels.reduce((s, c) => s + Math.max(0, p.channelMix[c.id] ?? 0), 0) || 1;
               return B.channels.map((c) => {

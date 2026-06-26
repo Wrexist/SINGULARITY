@@ -41,6 +41,8 @@ import {
   buyFeature,
 } from "../engine/products";
 import { productMilestones as PRODUCT_MILESTONES, type ProductTypeId } from "../engine/balance/products";
+import { achievements as ACHIEVEMENT_DEFS } from "../engine/balance/achievements";
+import { buyReputationPerk } from "../engine/reputation";
 import { prestige } from "../engine/prestige";
 import { applyOffline, type OfflineSummary } from "../engine/offline";
 import { serialize, deserialize } from "../engine/save";
@@ -111,6 +113,7 @@ interface GameStore {
   doFireEmployee: (id: string) => void;
   /** Buy a one-time office perk (morale / payroll). */
   doBuyOfficePerk: (id: string) => void;
+  doBuyReputationPerk: (id: string) => void;
   setComputeFocus: (v: number) => void;
   /** Returns true if the release succeeded (so the UI only celebrates on a real ship). */
   doReleaseProduct: (type: ProductTypeId, name: string) => boolean;
@@ -281,6 +284,30 @@ export const useGame = create<GameStore>((set, get) => ({
         }
       }
 
+      // Newly-unlocked achievements are a collection win — surface them (unless a
+      // milestone already claimed this tick's notice slot). Several can land in one
+      // tick (e.g. a big offline catch-up); with only one notice slot, show the
+      // first by name and coalesce the rest into the count so none are silently lost.
+      if (!patch.notice) {
+        const had = new Set(s.game.achievements);
+        const newAch = game.achievements.filter((id) => !had.has(id));
+        if (newAch.length === 1) {
+          const def = ACHIEVEMENT_DEFS.find((a) => a.id === newAch[0]);
+          if (def) {
+            noticeKey += 1;
+            patch.notice = { key: noticeKey, message: `🏅 Achievement: ${def.label} — ${def.desc}`, tone: "good" };
+          }
+        } else if (newAch.length > 1) {
+          const first = ACHIEVEMENT_DEFS.find((a) => a.id === newAch[0]);
+          noticeKey += 1;
+          patch.notice = {
+            key: noticeKey,
+            message: `🏅 ${newAch.length} achievements unlocked${first ? ` — incl. ${first.label}` : ""}`,
+            tone: "good",
+          };
+        }
+      }
+
       // Heat-driven regulatory event (only when there's heat to drive it).
       if (game.heat > 0) {
         const res = maybeHeatEvent(game, secs, Math.random(), Math.random());
@@ -372,6 +399,7 @@ export const useGame = create<GameStore>((set, get) => ({
   doAssignEmployeeToProduct: (id, productId) => set((s) => ({ game: assignEmployeeToProduct(s.game, id, productId) })),
   doFireEmployee: (id) => set((s) => ({ game: fireEmployee(s.game, id) })),
   doBuyOfficePerk: (id) => set((s) => ({ game: buyOfficePerk(s.game, id) })),
+  doBuyReputationPerk: (id) => set((s) => ({ game: buyReputationPerk(s.game, id) })),
   setComputeFocus: (v) =>
     set((s) => ({ game: { ...s.game, computeFocus: Math.max(0, Math.min(1, v)) } })),
   // The store mints the product id (nondeterminism stays out of the engine).

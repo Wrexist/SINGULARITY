@@ -2,11 +2,14 @@ import { balance } from "../engine/balance/config";
 import { upgradeCost, canBuyUpgrade } from "../engine/actions";
 import { hallCapacity, totalRacks, isRackId, evictableRackFor } from "../engine/hall";
 import { powerStats } from "../engine/power";
-import type { GameState } from "../engine/types";
-import { fmt } from "./format";
+import { productMetrics } from "../engine/products";
+import { Big } from "../engine/math/Big";
+import type { Derived, GameState } from "../engine/types";
+import { fmt, effRate, fmtEta } from "./format";
 
 interface Props {
   game: GameState;
+  derived: Derived;
   onBuy: (id: string) => void;
 }
 
@@ -37,7 +40,7 @@ function PowerMeter({ draw, cap, factor, throttled }: { draw: number; cap: numbe
   );
 }
 
-export function UpgradePanel({ game, onBuy }: Props) {
+export function UpgradePanel({ game, derived, onBuy }: Props) {
   // Hall expansions only matter once you have hardware to house — reveal them
   // when the closet starts to fill, rather than cluttering the first session.
   const racks = totalRacks(game);
@@ -50,6 +53,12 @@ export function UpgradePanel({ game, onBuy }: Props) {
   // actually draws power, so the first session stays clean.
   const power = powerStats(game);
   const showPower = balance.power.enabled && power.drawKw >= balance.power.revealAtDrawKw;
+
+  // ETA income rates. Money also flows from live products (net margin) minus payroll,
+  // so a money-cost ETA isn't misleadingly long once a product business is running.
+  const prodMargin = game.products.active.reduce((s, p) => s + productMetrics(p, game.products.frontier).margin, 0);
+  const moneyRate = effRate(derived, "money").add(Big.of(prodMargin)).sub(derived.payrollPerSec);
+  const rateFor = (r: "compute" | "data" | "money") => (r === "money" ? moneyRate : effRate(derived, r));
 
   return (
     <section className="panel">
@@ -98,9 +107,15 @@ export function UpgradePanel({ game, onBuy }: Props) {
                 ) : blockedByFloor ? (
                   <span className="cost-blocked">Floor full</span>
                 ) : (
-                  <span style={{ color: `var(${RESOURCE_VAR[def.cost.resource]})` }}>
-                    {def.cost.resource === "money" ? `$${fmt(cost)}` : `${fmt(cost)} ${def.cost.resource}`}
-                  </span>
+                  <>
+                    <span style={{ color: `var(${RESOURCE_VAR[def.cost.resource]})` }}>
+                      {def.cost.resource === "money" ? `$${fmt(cost)}` : `${fmt(cost)} ${def.cost.resource}`}
+                    </span>
+                    {!affordable && (() => {
+                      const eta = fmtEta(cost, game.resources[def.cost.resource], rateFor(def.cost.resource));
+                      return eta ? <span className="cost-eta">{eta}</span> : null;
+                    })()}
+                  </>
                 )}
               </div>
             </button>

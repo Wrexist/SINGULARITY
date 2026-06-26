@@ -1,8 +1,26 @@
 import { Big } from "./math/Big";
 import { balance } from "./balance/config";
-import { computeStaffEffects, teamMorale } from "./employees";
+import { computeStaffEffects, teamMorale, type StaffEffects } from "./employees";
+import { reputationMods } from "./reputation";
+import { ascensionMultiplier } from "./prestige";
 import { powerStats } from "./power";
-import type { Derived, GameState } from "./types";
+import type { Derived, Employee, GameState } from "./types";
+
+// Single-slot memo for the staff aggregation (see derive()). Keyed on the employees
+// array IDENTITY (stable between ticks) + morale + the product-id set.
+// INVARIANT: this relies on Employee objects being treated as IMMUTABLE — every
+// roster change must produce a NEW array (the codebase's update pattern already does
+// this). A caller that mutated an employee in place without swapping the array
+// reference would read a stale `fx`. Keep updates immutable to preserve determinism.
+let staffCache: { employees: Employee[]; morale: number; idsKey: string; fx: StaffEffects } | null = null;
+function staffCacheGet(employees: Employee[], morale: number, idsKey: string): StaffEffects | null {
+  return staffCache && staffCache.employees === employees && staffCache.morale === morale && staffCache.idsKey === idsKey
+    ? staffCache.fx : null;
+}
+function staffCacheSet(employees: Employee[], morale: number, idsKey: string, fx: StaffEffects): StaffEffects {
+  staffCache = { employees, morale, idsKey, fx };
+  return fx;
+}
 
 /** Morale multiplier on all staff output from owned office perks (1 = baseline). */
 export function officeMorale(state: GameState): number {
@@ -106,16 +124,18 @@ export function derive(state: GameState): Derived {
   // the whole roster into lane multipliers, payroll, and per-product buffs (benched
   // people buff all products at base rate; assigned ones focus on theirs at 2×).
   const morale = officeMorale(state) + teamMorale(state.employees);
-  const fx = computeStaffEffects(
-    state.employees,
-    state.products.active.map((p) => p.id),
-    morale,
-    balance.staff.assignFocusMult,
-  );
+  // Cross-tick memo: the staff aggregation is O(employees × products) but its inputs
+  // (the employees array reference, morale, the product-id set) only change on
+  // hire/fire/train/assign/perk — not every 10Hz tick. derive() runs every render, so
+  // caching here turns ~100+ employees into a no-op on the common path.
+  const idsKey = state.products.active.map((p) => p.id).join(",");
+  const fx = staffCacheGet(state.employees, morale, idsKey)
+    ?? staffCacheSet(state.employees, morale, idsKey,
+      computeStaffEffects(state.employees, state.products.active.map((p) => p.id), morale, balance.staff.assignFocusMult));
   computeMult = computeMult.mul(fx.computeMultF);
   dataMult = dataMult.mul(fx.dataMultF);
   moneyMult = moneyMult.mul(fx.moneyMultF);
-  const payrollPerSec = Big.of(fx.payroll).mul(officePayrollMult(state));
+  let payrollPerSec = Big.of(fx.payroll).mul(officePayrollMult(state));
   const productMods = fx.productMods;
   const productModsById = fx.productModsById;
   const hireDiscount = Math.max(0.25, 1 - fx.hireCut); // hires never cheaper than 25% of base
@@ -135,10 +155,30 @@ export function derive(state: GameState): Derived {
   computeMult = computeMult.mul(legacyMult);
   dataMult = dataMult.mul(legacyMult);
   moneyMult = moneyMult.mul(legacyMult);
-  passiveMoneyPerSec = passiveMoneyPerSec.mul(legacyMult);
-  // Scraper output rides the global Legacy boost (kept separate from the
-  // per-run dataMult lane so the two data sources stay legible).
-  const dataPerSec = dataPerSecFlat.mul(legacyMult);
+  // NOTE: passiveMoneyPerSec is NOT multiplied by global lane mults here — it is
+  // `acc × computePerSec` at the return, and computePerSec already carries legacy,
+  // ascension and rep-compute/global. Applying them here too would square them
+  // (the bug the Phase-3 review caught). Global boosts reach passive money exactly
+  // once, through compute.
+
+  // AGI ascension: a permanent, compounding boost earned by shipping in the
+  // Post-Singularity era (stats.ascensions). Stays 1.0 through the whole early/mid
+  // game (ascensions = 0 until the deep endgame), so the tuned curve is untouched.
+  const ascensionMult = Big.of(ascensionMultiplier(state));
+  computeMult = computeMult.mul(ascensionMult);
+  dataMult = dataMult.mul(ascensionMult);
+  moneyMult = moneyMult.mul(ascensionMult);
+
+  // Lab Reputation perks — permanent global multipliers bought with meta-currency.
+  // Owned perks are empty on a fresh run, so this is 1.0 until the player spends.
+  const rep = reputationMods(state);
+  computeMult = computeMult.mul(rep.computeMult);
+  dataMult = dataMult.mul(rep.dataMult);
+  moneyMult = moneyMult.mul(rep.moneyMult);
+  if (rep.payrollMult !== 1) payrollPerSec = payrollPerSec.mul(rep.payrollMult);
+  // Scraper output is its own lane (does NOT ride compute), so global boosts —
+  // Legacy, ascension, AND reputation data perks — must be applied to it directly.
+  const dataPerSec = dataPerSecFlat.mul(legacyMult).mul(ascensionMult).mul(rep.dataMult);
 
   let computePerSec = computeFlat.mul(computeMult);
   // PHASE 2 (flagged off): power/heat soft-cap throttles Compute when the racks

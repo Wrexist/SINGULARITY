@@ -1,7 +1,8 @@
 import { Big } from "./math/Big";
 import { SAVE_VERSION, createInitialState } from "./state";
+import { initialStats } from "./stats";
 import { products as PRODUCTS } from "./balance/products";
-import type { ActiveModifier, DraftModel, Employee, GameState, ModifierTarget, ProductsState, ProductState, UpgradeState } from "./types";
+import type { ActiveModifier, DraftModel, Employee, GameState, LifetimeStats, ModifierTarget, ProductsState, ProductState, UpgradeState } from "./types";
 
 const MODIFIER_TARGETS: ModifierTarget[] = ["computeMult", "dataMult", "moneyMult"];
 const PRODUCT_TYPE_IDS = PRODUCTS.types.map((t) => t.id);
@@ -51,27 +52,14 @@ function sanitizeUpgrade(u: unknown): UpgradeState | null {
   };
 }
 
-/** Assignments are untrusted: keep only string→(string→finite non-negative number). */
-function sanitizeAssignments(a: unknown): Record<string, Record<string, number>> {
-  if (!a || typeof a !== "object") return {};
-  const out: Record<string, Record<string, number>> = {};
-  for (const [pid, roles] of Object.entries(a as Record<string, unknown>)) {
-    if (!roles || typeof roles !== "object") continue;
-    const inner: Record<string, number> = {};
-    for (const [rid, n] of Object.entries(roles as Record<string, unknown>)) {
-      if (typeof n === "number" && Number.isFinite(n) && n > 0) inner[rid] = Math.floor(n);
-    }
-    if (Object.keys(inner).length > 0) out[pid] = inner;
-  }
-  return out;
-}
-
-/** Channel-mix weights are untrusted; keep finite ≥0 numbers, default {ads:1}. */
+/** Channel-mix weights are untrusted; keep finite ≥0 weights for KNOWN channels
+ *  only (drop stray keys), default {ads:1}. */
+const CHANNEL_IDS = new Set(PRODUCTS.channels.map((c) => c.id));
 function sanitizeChannelMix(m: unknown): Record<string, number> {
   if (!m || typeof m !== "object") return { ads: 1 };
   const out: Record<string, number> = {};
   for (const [k, v] of Object.entries(m as Record<string, unknown>)) {
-    if (typeof v === "number" && Number.isFinite(v) && v >= 0) out[k] = v;
+    if (CHANNEL_IDS.has(k) && typeof v === "number" && Number.isFinite(v) && v >= 0) out[k] = v;
   }
   return Object.keys(out).length ? out : { ads: 1 };
 }
@@ -125,6 +113,32 @@ function sanitizeEmployees(e: unknown): Employee[] {
     }));
 }
 
+/** Lifetime stats are untrusted: coerce each field, default a zeroed stat block. */
+function sanitizeStats(s: unknown): LifetimeStats {
+  const d = initialStats();
+  if (!s || typeof s !== "object") return d;
+  const o = s as Record<string, unknown>;
+  const big = (v: unknown, fb: Big): Big => {
+    if (typeof v !== "string" && typeof v !== "number") return fb;
+    try { return Big.of(v); } catch { return fb; }
+  };
+  const numf = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : 0);
+  return {
+    totalMoney: big(o.totalMoney, d.totalMoney),
+    peakComputePerSec: big(o.peakComputePerSec, d.peakComputePerSec),
+    totalLegacy: big(o.totalLegacy, d.totalLegacy),
+    peakMrr: numf(o.peakMrr),
+    peakMau: numf(o.peakMau),
+    peakResearchCount: numf(o.peakResearchCount),
+    totalShips: numf(o.totalShips),
+    productsLaunched: numf(o.productsLaunched),
+    employeesHired: numf(o.employeesHired),
+    worldEventsResolved: numf(o.worldEventsResolved),
+    playtimeSec: numf(o.playtimeSec),
+    ascensions: numf(o.ascensions),
+  };
+}
+
 /** Loaded saves are untrusted input: a NaN heat or malformed modifier would
  * flow straight into tick()/derive() and poison or crash the run. Validate. */
 function isWellFormedModifier(m: unknown): m is ActiveModifier {
@@ -163,6 +177,10 @@ interface SavedShape {
   computeFocus: number;
   products: ProductsState;
   employees: Employee[];
+  /** Serialized lifetime stats (Big fields as strings). */
+  stats: Record<string, string | number>;
+  achievements: string[];
+  reputation: { spent: number; perks: string[] };
 }
 
 export function serialize(state: GameState): string {
@@ -187,6 +205,22 @@ export function serialize(state: GameState): string {
     computeFocus: state.computeFocus,
     products: state.products,
     employees: state.employees,
+    stats: {
+      totalMoney: state.stats.totalMoney.toJSON(),
+      peakComputePerSec: state.stats.peakComputePerSec.toJSON(),
+      totalLegacy: state.stats.totalLegacy.toJSON(),
+      peakMrr: state.stats.peakMrr,
+      peakMau: state.stats.peakMau,
+      peakResearchCount: state.stats.peakResearchCount,
+      totalShips: state.stats.totalShips,
+      productsLaunched: state.stats.productsLaunched,
+      employeesHired: state.stats.employeesHired,
+      worldEventsResolved: state.stats.worldEventsResolved,
+      playtimeSec: state.stats.playtimeSec,
+      ascensions: state.stats.ascensions,
+    },
+    achievements: state.achievements,
+    reputation: state.reputation,
   };
   return JSON.stringify(shape);
 }
@@ -234,7 +268,6 @@ export function deserialize(json: string): GameState {
     milestones: Array.isArray((loadedProducts as ProductsState).milestones)
       ? (loadedProducts as ProductsState).milestones.filter((m): m is string => typeof m === "string")
       : [],
-    assignments: sanitizeAssignments((loadedProducts as ProductsState).assignments),
   };
   return {
     version: SAVE_VERSION,
@@ -257,6 +290,20 @@ export function deserialize(json: string): GameState {
     computeFocus,
     products,
     employees: sanitizeEmployees(raw.employees),
+    stats: sanitizeStats(raw.stats),
+    achievements: Array.isArray(raw.achievements)
+      ? raw.achievements.filter((a): a is string => typeof a === "string")
+      : [],
+    reputation: sanitizeReputation(raw.reputation),
+  };
+}
+
+/** Reputation is untrusted: keep a non-negative spent + string perk ids. */
+function sanitizeReputation(r: unknown): { spent: number; perks: string[] } {
+  const o = (r ?? {}) as { spent?: unknown; perks?: unknown };
+  return {
+    spent: typeof o.spent === "number" && Number.isFinite(o.spent) && o.spent >= 0 ? o.spent : 0,
+    perks: Array.isArray(o.perks) ? o.perks.filter((p): p is string => typeof p === "string") : [],
   };
 }
 
@@ -294,7 +341,40 @@ export function migrate(raw: any): SavedShape {
     // v6 → v7: drafts (raw models from shipping), per-product timed upgrades, and
     // product milestones. The deserializer defaults/sanitizes them; stamp + default.
     const prev = s.products ?? { active: [], frontier: PRODUCTS.frontierStart };
-    s = { ...s, version: 7, products: { ...prev, drafts: prev.drafts ?? [], milestones: prev.milestones ?? [], assignments: prev.assignments ?? {} } };
+    s = { ...s, version: 7, products: { ...prev, drafts: prev.drafts ?? [], milestones: prev.milestones ?? [] } };
+  }
+  if (s.version === 7) {
+    // v7 → v8: individual employees replaced the per-product role-count `assignments`
+    // map (assignment now lives on each Employee). Drop the dead field.
+    const { assignments: _dropped, ...products } = s.products ?? { active: [], frontier: PRODUCTS.frontierStart };
+    s = { ...s, version: 8, products };
+  }
+  if (s.version === 8) {
+    // v8 → v9: lifetime stats store (Phase 3). Backfill from what the save already
+    // knows so a returning player's totals aren't all zero (ships/legacy/money seed
+    // their lifetime counterparts; the rest start fresh and climb from here).
+    s = { ...s, version: 9, stats: s.stats ?? {
+      totalMoney: s.lifetimeMoney ?? "0",
+      peakComputePerSec: "0",
+      totalLegacy: s.prestige?.legacyWeights ?? "0",
+      peakMrr: 0,
+      peakMau: 0,
+      peakResearchCount: Array.isArray(s.research) ? s.research.length : 0,
+      totalShips: s.prestige?.ships ?? 0,
+      productsLaunched: Array.isArray(s.products?.active) ? s.products.active.length : 0,
+      employeesHired: Array.isArray(s.employees) ? s.employees.length : 0,
+      worldEventsResolved: 0,
+      playtimeSec: 0,
+    } };
+  }
+  if (s.version === 9) {
+    // v9 → v10: achievements collection (starts empty; unlocks evaluate on load).
+    s = { ...s, version: 10, achievements: s.achievements ?? [] };
+  }
+  if (s.version === 10) {
+    // v10 → v11: Lab Reputation (meta-currency). Nothing spent yet; perks evaluate
+    // from the carried achievement/ship/ascension totals on load.
+    s = { ...s, version: 11, reputation: s.reputation ?? { spent: 0, perks: [] } };
   }
   return s as SavedShape;
 }

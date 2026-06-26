@@ -1,8 +1,9 @@
 import { Big } from "./math/Big";
 import { products as PRODUCTS } from "./balance/products";
+import { initialStats } from "./stats";
 import type { GameState } from "./types";
 
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 11;
 
 /** A fresh lab: empty closet, a trickle of free Compute, nothing owned. */
 export function createInitialState(): GameState {
@@ -25,7 +26,10 @@ export function createInitialState(): GameState {
     // Auto-train focus (1 = full training; lower banks Compute for research).
     computeFocus: 1,
     // Phase 3 — released AI products (persist across prestige); none yet.
-    products: { active: [], drafts: [], frontier: PRODUCTS.frontierStart, sold: 0, milestones: [], assignments: {} },
+    products: { active: [], drafts: [], frontier: PRODUCTS.frontierStart, sold: 0, milestones: [] },
     employees: [],
+    stats: initialStats(),
+    achievements: [],
+    reputation: { spent: 0, perks: [] },
   };
 }

@@ -63,6 +63,48 @@ export interface GameState {
   products: ProductsState;
   /** Phase 3 — individual employees (people, not counts). Persist across prestige. */
   employees: Employee[];
+  /** Phase 3 — lifetime stats that accumulate across ALL runs (survive prestige).
+   *  The data backbone for achievements, the AGI gate, and lab reputation. */
+  stats: LifetimeStats;
+  /** Phase 3 — unlocked achievement ids (a collection; survives prestige). */
+  achievements: string[];
+  /** Phase 3 — Lab Reputation: a meta-currency spent on permanent perks. Points are
+   *  earned − spent (earned is derived from achievements/ships/ascensions). Survives
+   *  prestige AND ascension. */
+  reputation: { spent: number; perks: string[] };
+}
+
+/**
+ * Cross-run, monotonic progress counters (Phase 3). Continuous fields (peaks,
+ * totals, playtime) accrue each tick; discrete counters bump at their event site
+ * (ship, launch, hire, event). Never decrease. Survive prestige and AGI ascension.
+ */
+export interface LifetimeStats {
+  /** Money earned across all runs (cumulative). */
+  totalMoney: Big;
+  /** Best Compute/sec ever reached. */
+  peakComputePerSec: Big;
+  /** Best total product MRR/s ever reached. */
+  peakMrr: number;
+  /** Best total product MAU ever reached. */
+  peakMau: number;
+  /** Most research nodes owned in a single run (research resets each run). */
+  peakResearchCount: number;
+  /** Models shipped (mirrors prestige.ships; kept here for symmetry + secrets). */
+  totalShips: number;
+  /** Total Legacy Weights ever gained. */
+  totalLegacy: Big;
+  /** Products launched across all runs. */
+  productsLaunched: number;
+  /** Employees hired across all runs. */
+  employeesHired: number;
+  /** World events resolved (a choice made). */
+  worldEventsResolved: number;
+  /** Total play time, seconds (accrued each tick). */
+  playtimeSec: number;
+  /** AGI ascensions — ships taken in the Post-Singularity era past the Legacy floor.
+   *  Each grants a permanent compounding boost (derive's ascensionMult). */
+  ascensions: number;
 }
 
 /** An individual employee. roleId names a job (balance.staff.roles); the person's
@@ -149,10 +191,6 @@ export interface ProductsState {
   sold: number;
   /** Ids of achieved product milestones (a collection; survives prestige). */
   milestones: string[];
-  /** Per-product employee assignments: productId → roleId → headcount focused there.
-   *  Assigned product-staff buff only that product (at a focus bonus); unassigned ones
-   *  buff every product at base rate. */
-  assignments: Record<string, Record<string, number>>;
 }
 
 /** Everything the sim and UI read each frame, folded from upgrades + research + prestige. */

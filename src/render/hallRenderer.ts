@@ -52,6 +52,7 @@ const ERA_BG: [string, string][] = [
   ["#322a4d", "#403962"], // 2 Scale-Up Lab — violet
   ["#1f3a42", "#27525c"], // 3 Frontier Lab — teal
   ["#2b2a55", "#3a3a78"], // 4 Hyperscaler — royal indigo
+  ["#3a3470", "#5848a8"], // 5 Post-Singularity — luminous iridescent violet
 ];
 const ERA_FLOOR: RGB[] = [
   [56, 64, 92],
@@ -59,6 +60,7 @@ const ERA_FLOOR: RGB[] = [
   [70, 60, 104],
   [48, 92, 104], // 3 teal
   [64, 64, 124], // 4 indigo
+  [96, 82, 168], // 5 post-singularity — bright iridescent
 ];
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));

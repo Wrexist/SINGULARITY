@@ -249,3 +249,65 @@ Deferred on purpose (documented, not fixed unsupervised — current balance does
   bug waiting for a large `dt`; use `x *= exp(-rate*dt)` (bounded) instead. Also: format negative
   money sign-OUTSIDE the unit (`-$5K`, not raw ungrouped `$-5000`) — `formatBig` only suffixes
   values ≥1000 and assumed positivity, so losses overflowed the card.
+
+- **Product margin sign is independent of absolute quality.** Per-user margin works out to
+  `quality · (baseArpu·priceMult·fm.arpu − computePerUser·serveCost·fm.serveCost)` — both revenue and
+  serve cost scale linearly with `quality`, so it factors out. Cranking a product's quality to force a
+  loss (or profit) in a test does nothing; only `priceMult`, the type constants, and feature mods move
+  the sign. Practical upshot: a product with no marketing is essentially always profitable at any
+  allowed price, so a "losing money (no marketing)" advisor signal would never fire — dropped it in
+  favor of the staleness signal, which IS a real, reliably-detectable problem.
+- **Advisor/next-action items must be gated on actionability, not just existence.** First cut nudged
+  "Launch the model you shipped" whenever a draft existed — but with a full portfolio (active ==
+  maxActive) launching is blocked, so the nudge pointed at a dead end. Gate every suggestion on the
+  same predicate the button uses (free slot, can-afford, etc.) so the advisor never tells the player
+  to do something the UI won't let them do.
+
+- **Diminishing returns belong on OUTPUT, not headcount, with payroll left linear.** To kill
+  zerg-hiring without a hard cap, `computeStaffEffects` ranks each lane's contributors by raw output
+  and weights the k-th at `1/(1 + k·perLaneRate)`; salary stays full per head. This naturally (a)
+  leaves 1–2 hires unchanged, (b) makes leveling/traits matter (the strongest sort first → full
+  weight, juniors decay), and (c) makes a 100-person mob pay 100 salaries for ~3× output. Rank
+  ACROSS buckets (benched + assigned) per lane, then route the decayed value to global vs focus —
+  so assigning concentrates+focuses talent rather than dodging the diminishing curve. Note the lab
+  `balance-sim` doesn't model staff at all, so staff-only balance changes can't be validated there —
+  verify them with a focused unit test + a hand-computed per-head curve instead.
+- **When removing a state field, the deserializer's `{...loadedProducts}` spread will leak it back.**
+  Dropping `products.assignments` from the type isn't enough — a v7 save still carries the key, and
+  `{ ...loadedProducts, ... }` re-spreads it onto the loaded object at runtime. The fix is a real
+  migration step (`v7→v8`) that deletes the key before deserialize spreads it, asserted with
+  `expect("assignments" in load.products).toBe(false)`.
+
+- **Rank diminishing returns WITHIN each destination bucket, not across the whole roster.**
+  First cut of `computeStaffEffects` sorted every product-lane contributor together and decayed by a
+  single shared rank — so a benched person's company-wide (global) buff got penalised by how many
+  people were *assigned elsewhere*, even though assigned staff flow into a different (per-product
+  focus) bucket and never touch the global pool. Symptom: assigning staff to product P silently
+  weakened the buff on unrelated product Q. Fix: group contributions by destination bucket
+  (`"" = global`, else productId), then sort + decay each bucket independently. An adversarial
+  self-review caught this; the lesson is that a "rank then route" order is wrong when ranking is
+  supposed to be per-route — route first (or group), then rank.
+- **Keep advisory/nudge guards in sync with the flavor layer they claim to mirror.** The advisor's
+  "behind rivals" nudge fired on a just-launched product while `churnReason` (the toast layer) stayed
+  silent during the launch `buzzSec` window — two systems disagreeing about the same product on the
+  same tick. If a comment says "mirrors X", actually replicate X's guards (here, `p.buzzSec <= 0`).
+
+- **Make a meta-currency `earned − spent`, not a stored balance.** Lab Reputation stores only
+  `spent` (+ owned perks); `earned` is a PURE function of the permanent achievement collection +
+  ships + ascensions. So the available balance can never desync from progress (no grant-on-unlock
+  mutation to get wrong, no double-credit on reload). Same trick keeps it idempotent across the
+  10Hz tick. Only invariant to guard: `spent ≤ earned` (enforced at purchase via canBuy).
+- **Gate every compounding meta-term so it's literally 0 through the tuned curve.** Both Phase-3
+  compounding terms — AGI `ascensionMult` (1 + n·bonus) and Reputation perks — multiply into derive,
+  which is exactly where the early/mid economy is tuned. They stay curve-neutral because their inputs
+  (`stats.ascensions`, `reputation.perks`) are provably 0 until the deep endgame: ascensions require
+  shipping in era 5 past a Legacy floor; perks require Reputation that only achievements/ascensions
+  produce. Result: `npm run sim` first-prestige is byte-identical before/after. The lab sim doesn't
+  model these systems, so the proof is "inputs are 0 at sim horizon" + a unit test asserting mult=1
+  at 0 — not the sim itself.
+- **Adding a field to an existing serialized sub-object needs no version bump IF the sanitizer
+  defaults it.** `stats.ascensions` was added after save v9 shipped (this session) without a v-bump,
+  because `sanitizeStats` coerces every field with a `numf(...)→0` default. Contrast with top-level
+  GameState fields, which DO get a migration step. Rule: sanitizer-defaulted nested fields are
+  backward-compatible for free; only bump the version when load logic would otherwise dereference a
+  missing field.

@@ -471,14 +471,29 @@ export const balance = {
         blurb:
           "WSJ — “Singularity Inc. is now a ‘hyperscaler,’ and has reportedly bought a power plant ‘for latency reasons.’” Analysts remain confused, but bullish.",
       },
+      {
+        name: "Post-Singularity",
+        blurb:
+          "The model is writing its own press releases now. This one included. Singularity Inc. has, by its own announcement, achieved AGI; the AGI has politely declined to comment. The hall hums at a frequency employees describe as “optimistic.”",
+      },
     ],
     /** Reach era 1 once this many research nodes are owned. */
     startupAtResearchCount: 3,
     /** Reach era 2 once this capability is researched (or you've ever shipped). */
     scaleUpAtResearch: "inference_api",
-    /** Eras 4–5 are endgame spectacle, gated by how many times you've shipped. */
+    /** Eras 3–5 are endgame spectacle, gated by how many times you've shipped. */
     frontierAtShips: 2,
     hyperscalerAtShips: 5,
+    /** Era 5 — Post-Singularity / AGI. The capstone era. */
+    agiAtShips: 9,
+    /** AGI ascension: a ship taken in the AGI era past this lifetime-Legacy floor
+     *  is an "ascension" — it grants a permanent compounding boost. Gated hard so
+     *  stats.ascensions stays 0 (mult = 1) through the entire early/mid game. */
+    agi: {
+      legacyThreshold: 2_000,
+      /** Permanent boost to all lanes per ascension (additive: 1 + n·bonus). */
+      bonusPerAscension: 0.08,
+    },
   },
 
   /** The 2.5D hall floor. Expansions (below) grow it so more racks fit. */
@@ -529,6 +544,11 @@ export const balance = {
     trainCostMult: 6, // cost = role.hire.base × trainCostMult × level
     /** Signing bonus to hire a candidate = role.hire.base × this. */
     hireSigningMult: 1,
+    /** Diminishing returns on stacking one lane. Contributors to a lane are ranked
+     *  by raw output; the k-th (0-indexed) counts at 1/(1 + k·perLaneRate). Output
+     *  diminishes but payroll does NOT — so a small, trained, high-trait team beats
+     *  zerg-hiring a wall of juniors. perLaneRate 0 = old linear behaviour. */
+    diminishing: { perLaneRate: 0.18 },
     /** Personality/specialty traits rolled at hire. */
     traits: [
       { id: "tenx", name: "10×", desc: "Ships like ten people. Insufferable about it.", effectMult: 1.7, payrollMult: 1.3, tone: "good" },
@@ -592,7 +612,7 @@ export const balance = {
       {
         id: "staff_success",
         name: "Customer Success",
-        desc: "−5% churn across products, each. Professionally prevents goodbyes.",
+        desc: "−5% users leaving, each. Professionally prevents goodbyes.",
         hire: { base: 6_000, growth: 1.6 },
         payroll: 16,
         team: "product",
@@ -610,7 +630,7 @@ export const balance = {
       {
         id: "staff_sales",
         name: "Sales Exec",
-        desc: "+7% ARPU across products, each. Always be closing.",
+        desc: "+7% revenue per user, each. Always be closing.",
         hire: { base: 8_000, growth: 1.6 },
         payroll: 20,
         team: "product",

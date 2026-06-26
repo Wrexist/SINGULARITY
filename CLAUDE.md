@@ -14,12 +14,15 @@ An AI compute tycoon (idle/incremental + management) with a 2.5D data-center hal
 5. Humor lives in writing/events; systems stay clean.
 
 ## The current phase (UPDATE THIS LINE EVERY SESSION)
-> **PHASE 1 — Shippable MVP. Owner passed the Phase 0 fun-gate (2026-06-24) and greenlit Phase 1.**
-> Building the 2.5D data-center hall with the **manifestation rule** (every purchasable thing that can
-> be physical appears in the hall). Rendering: **Canvas 2D isometric** (parametric boxes/lights, no
-> image assets, lean bundle), wrapped behind a render module so a WebGL swap stays possible.
-> In scope now: hall + rack manifestation, then era re-skins, lightweight events, era-transition moments.
-> Still hard rules: 3 resources only; engine stays pure/deterministic; humor in writing not math.
+> **PHASE 3 — Endgame & spectacle (in progress).** Phases 1 (shippable MVP) and 2 (power/heat,
+> staff, events/factions, eras 0–4) are complete, plus a beyond-roadmap Products business. Phase 3
+> plan lives in `PHASE3_ENDGAME_PLAN.md`. Shipped this phase: **Step 0** lifetime-stats store,
+> **Step 1** achievements (37 badges), **Step 2** Era 6 "Post-Singularity" + AGI ascension, **Step 3**
+> Lab Reputation meta-layer. Remaining: **Step 4** polish & ship-prep (review, UX sweep, TestFlight).
+> Rendering: **Canvas 2D isometric** (parametric, no image assets). Hard rules still hold: 3 in-run
+> resources only (Legacy/Reputation are meta-currencies, not a 4th resource); engine pure/deterministic;
+> humor in writing not math; all new systems are data-in-`balance/` + pure folds + tests, and every
+> compounding meta-term is hard-gated so the tuned early/mid curve stays untouched (verified via `npm run sim`).
 
 If a request would pull work forward from a later phase, STOP and flag it. Scope drift is this project's #1 documented risk. Protecting the phase boundary is part of your job.
 

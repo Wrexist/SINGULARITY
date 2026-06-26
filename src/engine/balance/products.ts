@@ -33,7 +33,7 @@ export interface ProductTypeDef {
   /** Regulatory Heat added per second while the product has paying users. */
   heatPerSec: number;
   /** Gate: this type can only be released once you've shipped this many models.
-   *  Premium/high-ARPU types unlock later (reinforces "hard early, compounds late"). */
+   *  Premium/high-revenue/user types unlock later (reinforces "hard early, compounds late"). */
   unlockAtShips: number;
 }
 
@@ -62,8 +62,8 @@ export const products = {
    *  flywheel only spinning up once quality/upgrades compound. So CAC starts high
    *  and saturates faster, conversion eases in slowly, and the marketing dial is
    *  gated tight at low quality (see marketingCapPerQuality) — it opens as you
-   *  progress. High-ARPU types (code/reasoning/domain) still reward paid spend;
-   *  low-ARPU consumer types (general/small) lean on virality, which itself needs
+   *  progress. High-revenue/user types (code/reasoning/domain) still reward paid spend;
+   *  low-revenue/user consumer types (general/small) lean on virality, which itself needs
    *  an installed base to ignite. */
   marketingCacBase: 80,
   cacSaturation: 8,
@@ -106,11 +106,11 @@ export const products = {
   /** Pricing tiers. Free = the non-paying MAU funnel (implicit). Pro = the base
    *  paid tier (the product's priceMult dial). Enterprise = a premium tier the
    *  player can OPEN once they've shipped enough: a small slice of users at a much
-   *  higher ARPU (its own price dial). Blended into ARPU by conversion share. */
+   *  higher revenue/user (its own price dial). Blended into revenue/user by conversion share. */
   enterprise: {
     unlockShips: 3,
     convShare: 0.18, // enterprise converts ~18% as readily as Pro…
-    arpuMult: 7,     // …but pays ~7× the ARPU
+    arpuMult: 7,     // …but pays ~7× the revenue/user
     priceMin: 0.5,
     priceMax: 3,
   },
@@ -135,7 +135,7 @@ export const products = {
   /** Retiring (selling) a product pays out this many seconds of its current MRR. */
   retireValuationSec: 1800,
 
-  /** Player pricing strategy bounds (×ARPU; higher = more $/user, less conversion). */
+  /** Player pricing strategy bounds (×revenue/user; higher = more $/user, less conversion). */
   priceMin: 0.5,
   priceMax: 2,
   /** Marketing-dial ceiling scales with quality (≈ game progress): cap = quality × this.
@@ -176,14 +176,14 @@ export const products = {
   types: [
     {
       id: "general", name: "General Assistant",
-      blurb: "Mass-market chat. Huge reach, low ARPU, leaky bucket. Grows virally.",
+      blurb: "Mass-market chat. Huge reach, low revenue/user, leaky bucket. Grows virally.",
       segment: "consumer", tam: 1.0e7, baseArpu: 0.005, baseChurn: 0.0009,
       baseConversion: 0.03, computePerUser: 0.001, virality: 0.025, hype: 1.0, heatPerSec: 0,
       unlockAtShips: 1,
     },
     {
       id: "code", name: "Code & Agentic",
-      blurb: "Ships software for devs & teams. High ARPU, very sticky, pricey to serve.",
+      blurb: "Ships software for devs & teams. High revenue/user, very sticky, pricey to serve.",
       segment: "prosumer", tam: 6.0e5, baseArpu: 0.1, baseChurn: 0.00012,
       baseConversion: 0.16, computePerUser: 0.036, virality: 0.006, hype: 0.6, heatPerSec: 0,
       unlockAtShips: 1,
@@ -197,7 +197,7 @@ export const products = {
     },
     {
       id: "multimodal", name: "Multimodal Studio",
-      blurb: "Image/audio/video for creators. Trendy spikes, medium ARPU, heavy serve.",
+      blurb: "Image/audio/video for creators. Trendy spikes, medium revenue/user, heavy serve.",
       segment: "consumer", tam: 5.0e6, baseArpu: 0.03, baseChurn: 0.0007,
       baseConversion: 0.05, computePerUser: 0.014, virality: 0.03, hype: 1.5, heatPerSec: 0,
       unlockAtShips: 2,
@@ -211,7 +211,7 @@ export const products = {
     },
     {
       id: "domain", name: "Domain Expert (legal/med/fin)",
-      blurb: "Vertical, compliance-grade. Very high ARPU, ultra-sticky — but raises Heat.",
+      blurb: "Vertical, compliance-grade. Very high revenue/user, ultra-sticky — but raises Heat.",
       segment: "enterprise", tam: 2.0e5, baseArpu: 0.5, baseChurn: 0.00005,
       baseConversion: 0.26, computePerUser: 0.096, virality: 0.002, hype: 0.4, heatPerSec: 0.02,
       unlockAtShips: 4,
@@ -271,8 +271,8 @@ export const productMilestones: MilestoneDef[] = [
   { id: "users_1m", label: "Household Name", desc: "1M total monthly users", metric: "users", threshold: 1_000_000, reward: 150_000 },
   { id: "users_10m", label: "Ubiquity", desc: "10M total monthly users", metric: "users", threshold: 10_000_000, reward: 1_000_000 },
   { id: "paid_100k", label: "Real Revenue", desc: "100K paying subscribers", metric: "paid", threshold: 100_000, reward: 200_000 },
-  { id: "mrr_1k", label: "Ramen Profitable", desc: "$1K/s total MRR", metric: "mrr", threshold: 1_000, reward: 50_000 },
-  { id: "mrr_50k", label: "Hypergrowth", desc: "$50K/s total MRR", metric: "mrr", threshold: 50_000, reward: 750_000 },
+  { id: "mrr_1k", label: "Ramen Profitable", desc: "$1K/s total revenue", metric: "mrr", threshold: 1_000, reward: 50_000 },
+  { id: "mrr_50k", label: "Hypergrowth", desc: "$50K/s total revenue", metric: "mrr", threshold: 50_000, reward: 750_000 },
   { id: "version_5", label: "Iterating", desc: "Take a product to v5", metric: "version", threshold: 5, reward: 100_000 },
   { id: "version_10", label: "Never Stale", desc: "Take a product to v10", metric: "version", threshold: 10, reward: 600_000 },
   { id: "dominant", label: "Market Leader", desc: "A product at 99% competitiveness", metric: "qf", threshold: 0.99, reward: 120_000 },

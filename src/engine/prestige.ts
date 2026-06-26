@@ -16,6 +16,12 @@ export function canPrestige(state: GameState): boolean {
   return state.research.includes(balance.prestige.capabilityResearch);
 }
 
+/** The permanent AGI-ascension output multiplier (1 = none). Single source of truth
+ *  for derive's lane boost AND the UI displays, so they can never diverge. */
+export function ascensionMultiplier(state: GameState): number {
+  return 1 + state.stats.ascensions * balance.eras.agi.bonusPerAscension;
+}
+
 /**
  * Legacy Weights shipping now would grant: max(1, floor((money/scale)^exp)).
  * Computed Big-native (no .toNumber() round-trip) so it never overflows to
@@ -38,6 +44,14 @@ export function prestige(state: GameState): GameState {
   const gained = legacyWeightsGain(state);
   const fresh = createInitialState();
   const ships = state.prestige.ships + 1;
+
+  // AGI ascension: this ship counts as an ascension if it lands you in the
+  // Post-Singularity era (by ship count) AND your lifetime Legacy clears the floor.
+  // Hard-gated so it stays 0 through the whole early/mid game (no curve impact).
+  const newTotalLegacy = state.stats.totalLegacy.add(gained);
+  const isAscension =
+    ships >= balance.eras.agiAtShips &&
+    newTotalLegacy.gte(Big.of(balance.eras.agi.legacyThreshold));
 
   // Shipping deposits the flagship you just trained as a "raw model" draft in the
   // Products tab — the player commercialises it (pick a type + name, pay to launch)
@@ -62,5 +76,16 @@ export function prestige(state: GameState): GameState {
     // Your team stays with you across a ship (they're employed by the company,
     // not the run) — but their product assignments reset since the lab is fresh.
     employees: state.employees.map((e) => ({ ...e, assignedProductId: null })),
+    // Lifetime stats persist across the ship; the ship itself bumps its counters.
+    stats: {
+      ...state.stats,
+      totalShips: state.stats.totalShips + 1,
+      totalLegacy: newTotalLegacy,
+      ascensions: state.stats.ascensions + (isAscension ? 1 : 0),
+    },
+    // Achievements are a permanent collection — they survive the reset.
+    achievements: state.achievements,
+    // Lab Reputation (points + bought perks) is permanent meta-progression.
+    reputation: state.reputation,
   };
 }

@@ -11,17 +11,18 @@ interface Props {
  * into a new era. The room behind has already re-skinned; this announces it.
  */
 export function EraTransition({ era, onDone }: Props) {
+  const agi = era >= 5; // Post-Singularity — the capstone tentpole.
   return (
-    <div className="modal-backdrop era-backdrop" onClick={onDone}>
+    <div className={`modal-backdrop era-backdrop${agi ? " era-agi" : ""}`} onClick={onDone}>
       <div className="modal era-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="era-kicker">NEW ERA</div>
+        <div className="era-kicker">{agi ? "✦ SINGULARITY ✦" : "NEW ERA"}</div>
         <h2 className="era-title">{eraName(era)}</h2>
         <div className="era-press">
-          <span className="era-press-tag">PRESS RELEASE</span>
+          <span className="era-press-tag">{agi ? "AUTO-GENERATED" : "PRESS RELEASE"}</span>
           <p>{eraBlurb(era)}</p>
         </div>
         <button className="btn btn-primary" onClick={onDone}>
-          Onwards &amp; upwards
+          {agi ? "Ascend" : "Onwards & upwards"}
         </button>
       </div>
     </div>
