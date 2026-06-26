@@ -60,15 +60,14 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
           {ps.drafts.map((d) => (
             <div className="prod-draft" key={d.id}>
               <div className="prod-draft-row">
-                <div>
-                  <div className="prod-draft-title">Model from Ship #{d.ships}</div>
-                  <div className="prod-draft-sub">Starting quality {num(d.quality)} · pick a market to launch it</div>
+                <div className="prod-draft-main">
+                  <div className="prod-draft-title">Shipped model #{d.ships}</div>
+                  <div className="prod-draft-sub">Quality {num(d.quality)} · pick a market to launch</div>
                 </div>
                 {picking !== d.id && (
-                  <button className="btn btn-primary btn-sm" disabled={slotsFull}
-                    onClick={() => setPicking(d.id)}>
-                    {slotsFull ? "Slots full" : "Launch"}
-                  </button>
+                  slotsFull
+                    ? <span className="prod-draft-full">Slots full</span>
+                    : <button className="btn btn-primary btn-sm prod-draft-btn" onClick={() => setPicking(d.id)}>Launch</button>
                 )}
               </div>
 
@@ -124,8 +123,8 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
                 <span className={`prod-profit ${me.margin >= 0 ? "pos" : "neg"}`}>{me.margin >= 0 ? "+" : ""}{m$(me.margin)}/s profit</span>
               </div>
               <div className="prod-stats">
-                <span><b>{num(me.paid)}</b> paying</span>
-                <span><b>{num(me.mau)}</b> users</span>
+                <div className="prod-stat"><b>{num(me.paid)}</b><span>paying</span></div>
+                <div className="prod-stat"><b>{num(me.mau)}</b><span>users</span></div>
               </div>
 
               <div className="prod-quality">

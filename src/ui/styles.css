@@ -1480,8 +1480,13 @@ body {
 .prod-profit { font-size: 11px; font-weight: 750; margin-left: auto; font-variant-numeric: tabular-nums; }
 .prod-profit.pos { color: var(--money); }
 .prod-profit.neg { color: var(--coral); }
-.prod-stats { display: flex; flex-wrap: wrap; gap: 10px 16px; font-size: 12.5px; color: var(--ink-2); }
-.prod-stats b { color: var(--ink); }
+.prod-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.prod-stat {
+  display: flex; flex-direction: column; gap: 1px;
+  padding: 8px 11px; border-radius: 11px; background: var(--glass);
+}
+.prod-stat b { font-size: 15px; font-weight: 800; color: var(--ink); letter-spacing: -0.01em; }
+.prod-stat span { font-size: 11px; color: var(--ink-2); font-weight: 600; }
 
 /* Soft status hint (replaces the old inline research/sell row). */
 .prod-status { font-size: 12px; font-weight: 650; padding: 8px 11px; border-radius: 10px; }
@@ -1543,9 +1548,15 @@ body {
   background: var(--glass-strong); border: 1px solid var(--glass-hairline);
   border-radius: var(--radius-sm); padding: 10px 12px;
 }
-.prod-draft-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.prod-draft-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.prod-draft-main { flex: 1 1 auto; min-width: 0; } /* take the row width so text never collapses to one word per line */
 .prod-draft-title { font-size: 14px; font-weight: 750; }
 .prod-draft-sub { font-size: 12px; color: var(--ink-2); line-height: 1.35; }
+.prod-draft-btn { width: auto; flex: 0 0 auto; } /* override .btn width:100% so it stays content-sized in the row */
+.prod-draft-full {
+  flex: 0 0 auto; white-space: nowrap; font-size: 12px; font-weight: 700; color: var(--ink-3);
+  padding: 6px 12px; border-radius: 999px; background: rgba(17, 24, 39, 0.06);
+}
 .btn-sm { padding: 7px 14px; font-size: 13px; flex: 0 0 auto; white-space: nowrap; }
 
 /* ---------- Product milestones (the chase ladder) ---------- */
