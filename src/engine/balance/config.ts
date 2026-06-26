@@ -656,6 +656,11 @@ export const balance = {
      *  diminishes but payroll does NOT — so a small, trained, high-trait team beats
      *  zerg-hiring a wall of juniors. perLaneRate 0 = old linear behaviour. */
     diminishing: { perLaneRate: 0.18 },
+    /** Rare "legendary" recruits: occasionally a candidate rolls in already trained
+     *  (higher start level) with a guaranteed elite trait — a satisfying chase on
+     *  re-roll. Same signing bonus, so they're a genuine score (not pay-to-win;
+     *  recruiting is opt-in and doesn't touch the lab curve). */
+    rare: { chance: 0.12, level: 2, traits: ["tenx", "workaholic", "mentor"] },
     /** Personality/specialty traits rolled at hire. */
     traits: [
       { id: "tenx", name: "10×", desc: "Ships like ten people. Insufferable about it.", effectMult: 1.7, payrollMult: 1.3, tone: "good" },

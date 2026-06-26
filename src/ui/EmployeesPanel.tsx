@@ -203,10 +203,14 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
                 const cost = hireCost(c.roleId) * derived.hireDiscount;
                 const afford = game.resources.money.gte(cost);
                 return (
-                  <div className="emp-person" key={i}>
+                  <div className={`emp-person ${c.rare ? "rare" : ""}`} key={i}>
                     <Avatar name={c.name} />
                     <div className="emp-person-main">
-                      <div className="emp-person-top"><span className="emp-person-name">{c.name}</span></div>
+                      <div className="emp-person-top">
+                        <span className="emp-person-name">{c.name}</span>
+                        {c.rare && <span className="emp-rare-badge">✦ Legendary</span>}
+                        {c.rare && <Stars level={c.level ?? 1} />}
+                      </div>
                       <div className="emp-person-tags">
                         <span className="emp-tag role">{role?.name}</span>
                         {trait && <span className="emp-tag" style={{ color: TRAIT_TONE[trait.tone], background: `color-mix(in srgb, ${TRAIT_TONE[trait.tone]} 12%, #fff)` }}>{trait.name}</span>}

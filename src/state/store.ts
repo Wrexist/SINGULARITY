@@ -72,6 +72,10 @@ export interface Candidate {
   name: string;
   roleId: string;
   trait: string | null;
+  /** Rare "legendary" recruit — starts already trained with an elite trait. */
+  rare?: boolean;
+  /** Starting seniority level (1 for normal hires; higher for rares). */
+  level?: number;
 }
 
 interface GameStore {
@@ -180,11 +184,15 @@ function randomName(): string {
 function randomTrait(): string | null {
   return Math.random() < 0.25 ? null : pick(balance.staff.traits).id;
 }
-function mintEmployee(roleId: string, name: string, trait: string | null): Employee {
+function mintEmployee(roleId: string, name: string, trait: string | null, level = 1): Employee {
   empKey += 1;
-  return { id: `emp-${empKey}`, name, roleId, level: 1, trait, assignedProductId: null, training: null };
+  return { id: `emp-${empKey}`, name, roleId, level, trait, assignedProductId: null, training: null };
 }
 function rollCandidate(): Candidate {
+  const r = balance.staff.rare;
+  if (Math.random() < r.chance) {
+    return { name: randomName(), roleId: pick(balance.staff.roles).id, trait: pick(r.traits), rare: true, level: r.level };
+  }
   return { name: randomName(), roleId: pick(balance.staff.roles).id, trait: randomTrait() };
 }
 
@@ -396,7 +404,7 @@ export const useGame = create<GameStore>((set, get) => ({
     if (g.resources.money.lt(cost)) return false;
     set((s) => {
       const paid = { ...s.game, resources: { ...s.game.resources, money: s.game.resources.money.sub(cost) } };
-      const game = addEmployee(paid, mintEmployee(c.roleId, c.name, c.trait));
+      const game = addEmployee(paid, mintEmployee(c.roleId, c.name, c.trait, c.level ?? 1));
       const candidates = (s.candidates ?? []).filter((_, i) => i !== index);
       return { game, candidates: candidates.length ? candidates : null };
     });
