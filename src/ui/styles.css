@@ -887,6 +887,23 @@ body {
   color: var(--ink-3); margin: 12px 2px 6px;
 }
 .stats-subhead:first-of-type { margin-top: 4px; }
+
+/* ---------- Recent activity log ---------- */
+.log-count {
+  margin-left: auto; margin-right: 8px; font-size: 11px; font-weight: 800;
+  color: var(--ink-2); background: var(--glass-strong); border-radius: 999px; padding: 1px 8px;
+}
+.log-list { display: flex; flex-direction: column; gap: 1px; max-height: 320px; overflow-y: auto; animation: rise 0.4s var(--ease-out) both; }
+.log-row {
+  display: flex; align-items: baseline; gap: 8px; padding: 7px 10px;
+  background: var(--glass-strong); font-size: 12.5px; color: var(--ink); line-height: 1.35;
+}
+.log-row:first-child { border-radius: 10px 10px 0 0; }
+.log-row:last-child { border-radius: 0 0 10px 10px; }
+.log-dot { flex: 0 0 auto; width: 6px; height: 6px; border-radius: 50%; background: var(--ink-3); transform: translateY(-1px); }
+.log-good .log-dot { background: var(--money); }
+.log-bad .log-dot { background: var(--coral); }
+.log-text { flex: 1; }
 .stat-row {
   display: flex;
   align-items: center;

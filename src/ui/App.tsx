@@ -23,6 +23,7 @@ import { DataMarketPanel } from "./DataMarketPanel";
 import { EmployeesPanel } from "./EmployeesPanel";
 import { ProductsPanel } from "./ProductsPanel";
 import { AchievementsModal } from "./AchievementsModal";
+import { EventLog } from "./EventLog";
 import { ProductLaunch } from "./ProductLaunch";
 import { productsUnlocked, productMetrics, typeDef, retirePayout } from "../engine/products";
 import { nextAction, attentionCounts } from "../engine/advisor";
@@ -94,10 +95,15 @@ export function App() {
   // Cap the stack so a burst of simultaneous unlocks can't bury the screen
   // (keep the most recent few). Stable identities so child timers don't reset.
   const MAX_TOASTS = 3;
+  // A capped, session-only history of everything that toasted, so the player can
+  // review what happened after the transient toasts fade (legibility = the feature).
+  const [log, setLog] = useState<ToastData[]>([]);
+  const MAX_LOG = 40;
   const pushToast = useCallback((text: string, tone: ToastData["tone"] = "neutral") => {
     toastId.current += 1;
     const id = toastId.current;
     setToasts((ts) => [...ts, { id, text, tone }].slice(-MAX_TOASTS));
+    setLog((l) => [{ id, text, tone }, ...l].slice(0, MAX_LOG));
   }, []);
   const dropToast = useCallback((id: number) => setToasts((ts) => ts.filter((t) => t.id !== id)), []);
   const seenResearch = useRef(showResearch);
@@ -374,6 +380,7 @@ export function App() {
             {showMarket && <DataMarketPanel game={game} onBuyData={onBuyData} onBuyTool={onBuy} />}
             {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} />}
             <StatsPanel game={game} derived={d} />
+            <EventLog log={log} />
           </>
         )}
 
