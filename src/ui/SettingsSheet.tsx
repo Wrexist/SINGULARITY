@@ -4,6 +4,7 @@ import { iap, PREMIUM_PRICE } from "./iap";
 import { haptics as hpt } from "./haptics";
 import { sound as snd } from "./sound";
 import { balance } from "../engine/balance/config";
+import { useGame } from "../state/store";
 
 type ToggleKey = "sound" | "music" | "haptics" | "reducedMotion";
 
@@ -44,6 +45,23 @@ export function SettingsSheet({ onClose }: Props) {
 
   const [premium, setPremiumState] = useState(iap.isPremium());
   const [busy, setBusy] = useState(false);
+  const [backupOpen, setBackupOpen] = useState(false);
+  const [exportText, setExportText] = useState("");
+  const [importText, setImportText] = useState("");
+  const [status, setStatus] = useState<string | null>(null);
+
+  const doExport = async () => {
+    const blob = useGame.getState().exportSave();
+    setExportText(blob);
+    try { await navigator.clipboard.writeText(blob); setStatus("Backup copied to clipboard — paste it somewhere safe."); }
+    catch { setStatus("Select the text below and copy it."); }
+  };
+  const doImport = () => {
+    if (!importText.trim()) return;
+    if (!confirm("Replace your current progress with this backup? This can't be undone.")) return;
+    if (useGame.getState().importSave(importText)) { location.reload(); }
+    else { setStatus("That backup didn't look valid — check you copied all of it."); }
+  };
   const buy = async () => {
     setBusy(true);
     try {
@@ -105,6 +123,28 @@ export function SettingsSheet({ onClose }: Props) {
             />
           ))}
         </div>
+        {/* Save backup — local-only; protects a long run from a cleared cache. */}
+        <div className="set-backup">
+          <button className="set-backup-head" onClick={() => setBackupOpen((o) => !o)} aria-expanded={backupOpen}>
+            <span>💾 Back up &amp; restore save</span>
+            <span className="set-backup-chev">{backupOpen ? "▾" : "▸"}</span>
+          </button>
+          {backupOpen && (
+            <div className="set-backup-body">
+              <p className="set-backup-tip">Your progress lives only on this device. Export a backup string and keep it safe; paste it back to restore (or move to a new device).</p>
+              <div className="set-backup-actions">
+                <button className="btn btn-ghost btn-sm" onClick={doExport}>Export backup</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => { setImportText(""); setStatus(null); setExportText(""); }}>Clear</button>
+              </div>
+              {exportText && <textarea className="set-backup-text" readOnly rows={3} value={exportText} onFocus={(e) => e.currentTarget.select()} />}
+              <label className="set-backup-label">Restore from a backup</label>
+              <textarea className="set-backup-text" rows={3} placeholder="Paste a backup string here…" value={importText} onChange={(e) => setImportText(e.target.value)} />
+              <button className="btn btn-primary btn-sm" disabled={!importText.trim()} onClick={doImport}>Restore this backup</button>
+              {status && <p className="set-backup-status">{status}</p>}
+            </div>
+          )}
+        </div>
+
         <button className="btn btn-ghost" onClick={onClose}>
           Done
         </button>

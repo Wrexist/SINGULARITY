@@ -136,6 +136,10 @@ interface GameStore {
   doBuyData: (id: string) => MarketOutcome | null;
   doPrestige: (mode?: ShipMode) => void;
   hardReset: () => void;
+  /** A portable backup string of the current save (base64). */
+  exportSave: () => string;
+  /** Validate + persist a backup string (base64 or raw JSON). Returns ok. */
+  importSave: (blob: string) => boolean;
 }
 
 function now(): number {
@@ -444,6 +448,30 @@ export const useGame = create<GameStore>((set, get) => ({
     // Clear transient UI state too, or a stale world-event card / claim burst
     // could survive into the fresh run.
     set({ game: createInitialState(), offline: null, event: null, notice: null, worldEvent: null, claimBurst: 0, candidates: null });
+  },
+
+  // ---- Save backup (local-only; the player owns their progress) ----
+  exportSave: () => {
+    const json = serialize(get().game);
+    try { return btoa(unescape(encodeURIComponent(json))); } catch { return json; }
+  },
+  importSave: (blob: string) => {
+    const raw = blob.trim();
+    if (!raw) return false;
+    // Accept either a base64 backup (preferred) or a raw JSON save.
+    const candidates: string[] = [];
+    try { candidates.push(decodeURIComponent(escape(atob(raw)))); } catch { /* not base64 */ }
+    candidates.push(raw);
+    for (const json of candidates) {
+      try {
+        const game = deserialize(json); // throws on bad shape; migrates + sanitizes
+        set({ game, offline: null, event: null, notice: null, worldEvent: null, claimBurst: 0, candidates: null });
+        localStorage.setItem(SAVE_KEY, serialize(game));
+        localStorage.setItem(TIME_KEY, String(now()));
+        return true;
+      } catch { /* try the next candidate */ }
+    }
+    return false;
   },
 }));
 
