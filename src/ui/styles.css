@@ -424,7 +424,11 @@ body {
   to { opacity: 1; transform: none; }
 }
 
-.panel { padding: 18px; }
+/* Reference look: panels are crisp solid-white sheets (not translucent glass),
+   so content reads on a clean surface like the mockup. The aurora/dock keep
+   their glass; only the content panels flip to solid. */
+.panel { padding: 18px; background: #fff; border: 1px solid rgba(17, 24, 39, 0.05); box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05); }
+.panel::before { display: none; }
 .panel-title {
   font-size: 12px;
   font-weight: 700;
@@ -1637,8 +1641,8 @@ body {
 /* Segmented tab bar — purple text + a short underline under the active tab */
 .pd-tabs { display: flex; gap: 2px; margin: 0 0 16px; padding: 0; background: transparent; border-bottom: 1px solid #e6e6ec; }
 .pd-tab {
-  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; position: relative;
-  padding: 8px 2px 11px; border: none; background: transparent; cursor: pointer;
+  flex: 1; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 5px; position: relative;
+  padding: 9px 2px 12px; border: none; background: transparent; cursor: pointer;
   font-size: 12px; font-weight: 700; color: #8b909c; transition: color 0.15s;
 }
 .pd-tab-ic { display: inline-flex; opacity: 0.9; }
