@@ -129,7 +129,8 @@ body {
   min-height: 100vh;
   max-width: 480px;
   margin: 0 auto;
-  padding: 0 16px calc(28px + env(safe-area-inset-bottom));
+  /* Bottom room for the fixed bottom-nav bar (~64px + its safe-area inset). */
+  padding: 0 16px calc(84px + env(safe-area-inset-bottom));
 }
 
 /* ---------- Top bar ---------- */
@@ -1439,6 +1440,35 @@ body {
   transition: transform 0.25s var(--spring);
 }
 .switch.on .knob { transform: translateX(20px); }
+
+/* ---------- Bottom navigation (primary destinations) ---------- */
+.botnav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+  margin: 0 auto; max-width: 480px;
+  display: flex; gap: 2px; justify-content: space-around;
+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(18px) saturate(180%); -webkit-backdrop-filter: blur(18px) saturate(180%);
+  border-top: 1px solid rgba(17, 24, 39, 0.07);
+  box-shadow: 0 -6px 20px -12px rgba(16, 24, 40, 0.25);
+}
+.botnav-item {
+  position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  border: none; background: transparent; cursor: pointer; padding: 5px 2px 3px;
+  color: var(--ink-3); transition: color 0.15s;
+}
+.botnav-ic { font-size: 19px; line-height: 1; filter: grayscale(0.35); transition: filter 0.15s, transform 0.15s var(--spring); }
+.botnav-lbl { font-size: 10.5px; font-weight: 700; letter-spacing: -0.01em; }
+.botnav-item.on { color: #7c5cff; }
+.botnav-item.on .botnav-ic { filter: none; transform: translateY(-1px) scale(1.06); }
+.botnav-item:active .botnav-ic { transform: scale(0.9); }
+.botnav-badge {
+  position: absolute; top: 0; right: 50%; margin-right: -22px;
+  min-width: 15px; height: 15px; padding: 0 4px; border-radius: 999px;
+  background: var(--coral); color: #fff; font-size: 9.5px; font-weight: 800;
+  display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px #fff;
+}
+.botnav-badge.alt { background: #f5b40a; }
 
 /* ---------- Tabs (Lab / Products) ---------- */
 .tabs {

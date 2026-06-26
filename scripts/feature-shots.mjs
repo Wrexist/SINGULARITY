@@ -89,7 +89,7 @@ try {
   if (await collect.isVisible().catch(() => false)) await collect.click().catch(() => {});
 
   // 1) Products tab — portfolio (drafts + cards + milestones).
-  await page.getByRole("tab", { name: "Products" }).click();
+  await page.getByRole("tab", { name: /Products/ }).click();
   await sleep(500);
   await page.screenshot({ path: "screenshots/feat-products.png", fullPage: true });
   console.log("Saved feat-products.png");
@@ -113,7 +113,7 @@ try {
   await sleep(300);
 
   // 3) Employees tab — KPI header + People roster (redesign).
-  await page.getByRole("tab", { name: "Employees" }).click();
+  await page.getByRole("tab", { name: /Team/ }).click();
   await sleep(500);
   await page.screenshot({ path: "screenshots/feat-employees.png", fullPage: true });
   console.log("Saved feat-employees.png");
@@ -144,7 +144,7 @@ try {
   // 6) Lab Reputation perk tree (Phase 3) — opened from the Prestige panel.
   await page.mouse.click(8, 8).catch(() => {});
   await sleep(200);
-  await page.getByRole("tab", { name: "Lab" }).click().catch(() => {});
+  await page.getByRole("tab", { name: /Lab/ }).click().catch(() => {});
   await sleep(300);
   const repStrip = page.locator(".rep-strip");
   if (await repStrip.isVisible().catch(() => false)) {

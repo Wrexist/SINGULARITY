@@ -6,7 +6,6 @@ import { Big } from "../engine/math/Big";
 import { haptics } from "./haptics";
 import { sound } from "./sound";
 import { useSettings } from "./settings";
-import { GearIcon } from "./Icons";
 import { ResourceBar } from "./ResourceBar";
 import { TrainingDock } from "./TrainingDock";
 import { UpgradePanel } from "./UpgradePanel";
@@ -328,14 +327,6 @@ export function App() {
             <Tagline />
           </div>
         </div>
-        <div className="topbar-actions">
-          <button className="icon-btn" onClick={() => setShowAchievements(true)} aria-label="Achievements">
-            🏅{game.achievements.length > 0 && <span className="icon-badge">{game.achievements.length}</span>}
-          </button>
-          <button className="icon-btn" onClick={() => setShowSettings(true)} aria-label="Settings">
-            <GearIcon />
-          </button>
-        </div>
       </header>
 
       <ResourceBar
@@ -347,20 +338,6 @@ export function App() {
         moneyRate={d.passiveMoneyPerSec}
       />
       <ModifierBar modifiers={game.modifiers} />
-
-      {(showStaff || showProducts) && (
-        <div className="tabs" role="tablist">
-          <button className={`tab ${tab === "lab" ? "on" : ""}`} role="tab" aria-selected={tab === "lab"} onClick={() => setTab("lab")}>
-            Lab{attention.lab > 0 && <span className="tab-dot" aria-label={`${attention.lab} need attention`}>{attention.lab}</span>}
-          </button>
-          {showProducts && <button className={`tab ${tab === "products" ? "on" : ""}`} role="tab" aria-selected={tab === "products"} onClick={() => setTab("products")}>
-            Products{attention.products > 0 && <span className="tab-dot" aria-label={`${attention.products} need attention`}>{attention.products}</span>}
-          </button>}
-          {showStaff && <button className={`tab ${tab === "employees" ? "on" : ""}`} role="tab" aria-selected={tab === "employees"} onClick={() => setTab("employees")}>
-            Employees{attention.employees > 0 && <span className="tab-dot" aria-label={`${attention.employees} need attention`}>{attention.employees}</span>}
-          </button>}
-        </div>
-      )}
 
       <main className="stage">
         {advice && (
@@ -423,6 +400,32 @@ export function App() {
           <span className="footer-flavor">Singularity Inc. — disrupting disruption since today.</span>
         </footer>
       </main>
+
+      <nav className="botnav" role="tablist" aria-label="Primary">
+        <button className={`botnav-item ${tab === "lab" ? "on" : ""}`} role="tab" aria-selected={tab === "lab"} onClick={() => { haptics.tap(); setTab("lab"); }}>
+          <span className="botnav-ic">🧪</span><span className="botnav-lbl">Lab</span>
+          {attention.lab > 0 && <span className="botnav-badge">{attention.lab}</span>}
+        </button>
+        {showProducts && (
+          <button className={`botnav-item ${tab === "products" ? "on" : ""}`} role="tab" aria-selected={tab === "products"} onClick={() => { haptics.tap(); setTab("products"); }}>
+            <span className="botnav-ic">📦</span><span className="botnav-lbl">Products</span>
+            {attention.products > 0 && <span className="botnav-badge">{attention.products}</span>}
+          </button>
+        )}
+        {showStaff && (
+          <button className={`botnav-item ${tab === "employees" ? "on" : ""}`} role="tab" aria-selected={tab === "employees"} onClick={() => { haptics.tap(); setTab("employees"); }}>
+            <span className="botnav-ic">👥</span><span className="botnav-lbl">Team</span>
+            {attention.employees > 0 && <span className="botnav-badge">{attention.employees}</span>}
+          </button>
+        )}
+        <button className="botnav-item" onClick={() => { haptics.tap(); setShowAchievements(true); }} aria-label="Achievements">
+          <span className="botnav-ic">🏆</span><span className="botnav-lbl">Awards</span>
+          {game.achievements.length > 0 && <span className="botnav-badge alt">{game.achievements.length}</span>}
+        </button>
+        <button className="botnav-item" onClick={() => { haptics.tap(); setShowSettings(true); }} aria-label="Settings">
+          <span className="botnav-ic">⚙️</span><span className="botnav-lbl">More</span>
+        </button>
+      </nav>
 
       {offline && <OfflineModal summary={offline} onClose={dismissOffline} />}
       {celebration && (
