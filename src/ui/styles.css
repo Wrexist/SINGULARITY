@@ -427,8 +427,10 @@ body {
 /* Reference look: panels are crisp solid-white sheets (not translucent glass),
    so content reads on a clean surface like the mockup. The aurora/dock keep
    their glass; only the content panels flip to solid. */
+/* Two-level surface system (matches the reference + product sheet):
+   panels are a light-gray sheet, the cards inside them are solid white. */
 .panel {
-  padding: 18px; background: #fff;
+  padding: 18px; background: #f4f4f8;
   border: 1px solid rgba(17, 24, 39, 0.05);
   box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05);
   /* Opaque now — drop the inherited glass blur. A backdrop-filter would also
@@ -637,8 +639,9 @@ body {
   justify-content: space-between;
   gap: 12px;
   text-align: left;
-  background: var(--glass-strong);
-  border: 1px solid var(--glass-hairline);
+  background: #fff;
+  border: 1px solid rgba(17, 24, 39, 0.05);
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.04);
   border-radius: var(--radius-sm);
   padding: 13px 14px;
   color: var(--ink);
@@ -811,8 +814,9 @@ body {
 .research-track { display: flex; flex-direction: column; gap: 10px; }
 .node {
   text-align: left;
-  background: var(--glass-strong);
-  border: 1px solid var(--glass-hairline);
+  background: #fff;
+  border: 1px solid rgba(17, 24, 39, 0.05);
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.04);
   border-radius: var(--radius-sm);
   padding: 13px 14px;
   color: var(--ink);

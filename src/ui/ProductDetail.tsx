@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { Portal } from "./Portal";
 import type { GameState } from "../engine/types";
 import { products as B, productFeatures, type FeatureLane, type ProductTypeId } from "../engine/balance/products";
 import {
@@ -104,7 +104,8 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
 
   // Portal to <body> so the fixed backdrop overlays the true viewport — never
   // trapped/clipped by an ancestor's containing block (panels carry filters).
-  return createPortal(
+  return (
+    <Portal>
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal pd-modal" role="dialog" aria-modal="true" aria-label={`${p.name} — manage`} onClick={(e) => e.stopPropagation()}>
         <div className="pd-head">
@@ -262,7 +263,7 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
           </div>
         )}
       </div>
-    </div>,
-    document.body,
+    </div>
+    </Portal>
   );
 }

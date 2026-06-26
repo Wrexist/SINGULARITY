@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Portal } from "./Portal";
 import type { GameState } from "../engine/types";
 import { reputationBalance, reputationAvailable, earnedReputation, canBuyReputationPerk } from "../engine/reputation";
 
@@ -21,6 +22,7 @@ export function ReputationModal({ game, onBuy, onClose }: {
   }, [onClose]);
 
   return (
+    <Portal>
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal rep-modal" role="dialog" aria-modal="true" aria-label="Lab Reputation" onClick={(e) => e.stopPropagation()}>
         <div className="pd-head">
@@ -60,5 +62,6 @@ export function ReputationModal({ game, onBuy, onClose }: {
         </div>
       </div>
     </div>
+    </Portal>
   );
 }
