@@ -180,7 +180,13 @@ export function App() {
         const el = document.querySelector('[aria-label="Achievements"]');
         if (el) { const r = el.getBoundingClientRect(); fxBurst(r.left + r.width / 2, r.top + r.height / 2, { count: 22, power: 1.1, colors: ["#ff9f0a", "#ffd60a", "#9b51e0"] }); }
       }
-      else { haptics.celebrate(); sound.success(); }
+      else {
+        haptics.celebrate(); sound.success();
+        // A milestone (🏆) is a chase-ladder payoff — bloom gold from the screen centre.
+        if (notice.message.startsWith("🏆") && !reducedMotion) {
+          fxBurst(window.innerWidth / 2, window.innerHeight * 0.4, { count: 30, power: 1.6, colors: ["#ff9f0a", "#ffd60a", "#16b364"] });
+        }
+      }
     }
     else if (notice.tone === "bad") { haptics.warn(); sound.alert(); }
     else haptics.tap();
