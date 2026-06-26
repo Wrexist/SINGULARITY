@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { canPrestige, legacyWeightsGain } from "../engine/prestige";
+import { canPrestige, legacyWeightsGain, ascensionMultiplier } from "../engine/prestige";
 import { currentEra } from "../engine/eras";
 import { reputationAvailable } from "../engine/reputation";
 import { balance } from "../engine/balance/config";
@@ -54,7 +54,7 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk }: Props) 
           <div>
             <div className="agi-title">Post-Singularity · AGI</div>
             <div className="agi-sub">
-              {ascensions} ascension{ascensions === 1 ? "" : "s"} · permanent ×{(1 + ascensions * ascBoost).toFixed(2)} to all output
+              {ascensions} ascension{ascensions === 1 ? "" : "s"} · permanent ×{ascensionMultiplier(game).toFixed(2)} to all output
               {willAscend && <> · <b>next ship ascends (+{Math.round(ascBoost * 100)}%)</b></>}
             </div>
           </div>

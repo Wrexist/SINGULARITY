@@ -218,6 +218,7 @@ export function App() {
     if (!syncedShips.current) {
       prevShips.current = game.prestige.ships;
       prevWeights.current = game.prestige.legacyWeights;
+      prevAscensions.current = game.stats.ascensions;
       syncedShips.current = true;
       return;
     }

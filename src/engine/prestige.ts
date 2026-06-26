@@ -16,6 +16,12 @@ export function canPrestige(state: GameState): boolean {
   return state.research.includes(balance.prestige.capabilityResearch);
 }
 
+/** The permanent AGI-ascension output multiplier (1 = none). Single source of truth
+ *  for derive's lane boost AND the UI displays, so they can never diverge. */
+export function ascensionMultiplier(state: GameState): number {
+  return 1 + state.stats.ascensions * balance.eras.agi.bonusPerAscension;
+}
+
 /**
  * Legacy Weights shipping now would grant: max(1, floor((money/scale)^exp)).
  * Computed Big-native (no .toNumber() round-trip) so it never overflows to

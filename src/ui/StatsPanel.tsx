@@ -3,7 +3,7 @@ import type { Derived, GameState } from "../engine/types";
 import { fmt, fmtMoney, m$, numOf, fmtDur } from "./format";
 import { achievementDefs } from "../engine/achievements";
 import { reputationAvailable } from "../engine/reputation";
-import { balance } from "../engine/balance/config";
+import { ascensionMultiplier } from "../engine/prestige";
 
 interface Props {
   game: GameState;
@@ -47,7 +47,7 @@ export function StatsPanel({ game, derived }: Props) {
     { label: "Peak users", value: numOf(s.peakMau) },
     { label: "Models shipped", value: String(s.totalShips) },
     { label: "Legacy Weights", value: fmt(game.prestige.legacyWeights) },
-    ...(s.ascensions > 0 ? [{ label: "AGI ascensions", value: `${s.ascensions} (×${(1 + s.ascensions * balance.eras.agi.bonusPerAscension).toFixed(2)})` }] : []),
+    ...(s.ascensions > 0 ? [{ label: "AGI ascensions", value: `${s.ascensions} (×${ascensionMultiplier(game).toFixed(2)})` }] : []),
     { label: "Products launched", value: String(s.productsLaunched) },
     { label: "Employees hired", value: String(s.employeesHired) },
     { label: "World events", value: String(s.worldEventsResolved) },

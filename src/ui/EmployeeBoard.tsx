@@ -36,12 +36,17 @@ export function EmployeeBoard({ employees, products, onAssign, onSelect, selecte
   const gesture = useRef<{ id: string; startX: number; startY: number; moved: boolean } | null>(null);
 
   // Stable handlers (created once); registered on pointerdown, removed by the SAME
-  // identity on pointerup or unmount — no leak, no per-render churn.
-  const handlers = useRef<{ move: (e: PointerEvent) => void; up: (e: PointerEvent) => void } | null>(null);
+  // identity on pointerup/pointercancel or unmount — no leak, no per-render churn.
+  const handlers = useRef<{ move: (e: PointerEvent) => void; up: (e: PointerEvent) => void; cancel: () => void } | null>(null);
   if (!handlers.current) {
     const zoneAt = (x: number, y: number): string | null => {
       const el = document.elementFromPoint(x, y)?.closest("[data-empzone]");
       return el ? el.getAttribute("data-empzone") : null;
+    };
+    const teardown = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", cancel);
     };
     const move = (e: PointerEvent) => {
       const g = gesture.current;
@@ -52,8 +57,7 @@ export function EmployeeBoard({ employees, products, onAssign, onSelect, selecte
       setDrag({ id: g.id, x: e.clientX, y: e.clientY, over: zoneAt(e.clientX, e.clientY) });
     };
     const up = (e: PointerEvent) => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
+      teardown();
       const g = gesture.current;
       gesture.current = null;
       if (g && g.moved) {
@@ -64,7 +68,14 @@ export function EmployeeBoard({ employees, products, onAssign, onSelect, selecte
       }
       setDrag(null);
     };
-    handlers.current = { move, up };
+    // Touch can cancel a pointer without firing pointerup (scroll/gesture takeover);
+    // tear down the same way so a drag can't get stuck mid-gesture.
+    const cancel = () => {
+      teardown();
+      gesture.current = null;
+      setDrag(null);
+    };
+    handlers.current = { move, up, cancel };
   }
 
   // Remove any lingering listeners only on unmount.
@@ -72,6 +83,7 @@ export function EmployeeBoard({ employees, products, onAssign, onSelect, selecte
     if (handlers.current) {
       window.removeEventListener("pointermove", handlers.current.move);
       window.removeEventListener("pointerup", handlers.current.up);
+      window.removeEventListener("pointercancel", handlers.current.cancel);
     }
   }, []);
 
@@ -79,6 +91,7 @@ export function EmployeeBoard({ employees, products, onAssign, onSelect, selecte
     gesture.current = { id, startX: e.clientX, startY: e.clientY, moved: false };
     window.addEventListener("pointermove", handlers.current!.move, { passive: false });
     window.addEventListener("pointerup", handlers.current!.up);
+    window.addEventListener("pointercancel", handlers.current!.cancel);
   }
 
   // Group employees by zone once per roster/product change (not every tick).

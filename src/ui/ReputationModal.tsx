@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import type { GameState } from "../engine/types";
 import { reputationBalance, reputationAvailable, earnedReputation, canBuyReputationPerk } from "../engine/reputation";
 
@@ -13,9 +14,15 @@ export function ReputationModal({ game, onBuy, onClose }: {
   const earned = earnedReputation(game);
   const owned = new Set(game.reputation.perks);
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal rep-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal rep-modal" role="dialog" aria-modal="true" aria-label="Lab Reputation" onClick={(e) => e.stopPropagation()}>
         <div className="pd-head">
           <div>
             <h2 className="ach-title">🏛️ Lab Reputation</h2>

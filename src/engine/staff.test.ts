@@ -81,6 +81,14 @@ describe("staff (individual employees) — derive + payroll", () => {
     expect(senior - 1).toBeGreaterThan((junior - 1) * 2); // level 4 ≫ level 1 (no decay on a single head)
   });
 
+  it("morale scales the recruiter hire-discount lane too (consistency)", () => {
+    const r = [person("staff_recruiter", { id: "r" })];
+    const base = computeStaffEffects(r, [], 1, 2).hireCut;
+    const boosted = computeStaffEffects(r, [], 1.5, 2).hireCut; // +50% morale
+    expect(boosted).toBeGreaterThan(base);
+    expect(boosted).toBeCloseTo(base * 1.5, 6);
+  });
+
   it("office morale perk boosts staff output; payroll perk trims the wage bill", () => {
     const baseS = { ...createInitialState(), employees: [person("staff_sales", { id: "1" })] };
     const morale = { ...baseS, upgrades: { perk_snacks: 1 } };

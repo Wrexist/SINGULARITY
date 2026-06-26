@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { GameState } from "../engine/types";
 import { achievementDefs, achievementProgress } from "../engine/achievements";
 import type { AchCategory } from "../engine/balance/achievements";
@@ -24,9 +24,15 @@ export function AchievementsModal({ game, onClose }: { game: GameState; onClose:
 
   const shown = filter === "all" ? achievementDefs : achievementDefs.filter((a) => a.cat === filter);
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal ach-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal ach-modal" role="dialog" aria-modal="true" aria-label="Achievements" onClick={(e) => e.stopPropagation()}>
         <div className="pd-head">
           <div>
             <h2 className="ach-title">🏅 Achievements</h2>

@@ -181,7 +181,8 @@ export function computeStaffEffects(
     if (role.effect.kind === "lane") {
       laneMult[role.effect.lane].push(role.effect.perLevel * eff);
     } else if (role.effect.kind === "meta") {
-      if (role.effect.lane === "hireDiscount") metaHire.push(role.effect.perLevel * employeeEffectMult(e));
+      // Morale scales the hire-discount lane too, consistent with every other lane.
+      if (role.effect.lane === "hireDiscount") metaHire.push(role.effect.perLevel * eff);
     } else {
       // Assigned to a LIVE product → that product's focus bucket; else benched (global).
       const bucket = e.assignedProductId && activeSet.has(e.assignedProductId) ? e.assignedProductId : "";

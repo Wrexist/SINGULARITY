@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 /**
  * Tap-to-rename in place. Replaces window.prompt (which is unreliable / ugly on
@@ -13,9 +13,13 @@ export function EditableName({ value, onCommit, className, max = 32 }: {
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
+  // Guard so the edit resolves exactly once: Escape (cancel) must not be undone by
+  // a blur committing the stale draft, and Enter+blur can't double-commit.
+  const done = useRef(false);
 
   if (editing) {
-    const commit = () => { const v = draft.trim(); if (v) onCommit(v); setEditing(false); };
+    const commit = () => { if (done.current) return; done.current = true; const v = draft.trim(); if (v) onCommit(v); setEditing(false); };
+    const cancel = () => { done.current = true; setDraft(value); setEditing(false); };
     return (
       <input
         className={`inline-edit ${className ?? ""}`}
@@ -27,13 +31,13 @@ export function EditableName({ value, onCommit, className, max = 32 }: {
         onBlur={commit}
         onKeyDown={(e) => {
           if (e.key === "Enter") commit();
-          else if (e.key === "Escape") { setDraft(value); setEditing(false); }
+          else if (e.key === "Escape") cancel();
         }}
       />
     );
   }
   return (
-    <button className={className} title="Rename" onClick={() => { setDraft(value); setEditing(true); }}>
+    <button className={className} title="Rename" onClick={() => { done.current = false; setDraft(value); setEditing(true); }}>
       {value} <span className="prod-rename">✎</span>
     </button>
   );

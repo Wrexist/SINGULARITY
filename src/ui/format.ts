@@ -2,7 +2,10 @@ import { Big } from "../engine/math/Big";
 import type { Derived } from "../engine/types";
 
 /** Effective income per second for a resource, amortizing per-run yields over the
- *  run duration (a rough but honest "how fast it's coming in" for ETA estimates). */
+ *  run duration (a rough but honest "how fast it's coming in" for ETA estimates).
+ *  NOTE: the "money" lane here is base income only (passive + amortized run); live
+ *  product net margin and payroll fluctuate, so callers that show money ETAs add
+ *  those in (see UpgradePanel). */
 export function effRate(d: Derived, resource: "compute" | "data" | "money"): Big {
   const perRun = (yield_: Big) => (d.runDurationSec > 0 ? yield_.div(d.runDurationSec) : Big.ZERO);
   if (resource === "compute") return d.computePerSec;

@@ -2,11 +2,16 @@ import { Big } from "./math/Big";
 import { balance } from "./balance/config";
 import { computeStaffEffects, teamMorale, type StaffEffects } from "./employees";
 import { reputationMods } from "./reputation";
+import { ascensionMultiplier } from "./prestige";
 import { powerStats } from "./power";
 import type { Derived, Employee, GameState } from "./types";
 
 // Single-slot memo for the staff aggregation (see derive()). Keyed on the employees
 // array IDENTITY (stable between ticks) + morale + the product-id set.
+// INVARIANT: this relies on Employee objects being treated as IMMUTABLE — every
+// roster change must produce a NEW array (the codebase's update pattern already does
+// this). A caller that mutated an employee in place without swapping the array
+// reference would read a stale `fx`. Keep updates immutable to preserve determinism.
 let staffCache: { employees: Employee[]; morale: number; idsKey: string; fx: StaffEffects } | null = null;
 function staffCacheGet(employees: Employee[], morale: number, idsKey: string): StaffEffects | null {
   return staffCache && staffCache.employees === employees && staffCache.morale === morale && staffCache.idsKey === idsKey
@@ -159,7 +164,7 @@ export function derive(state: GameState): Derived {
   // AGI ascension: a permanent, compounding boost earned by shipping in the
   // Post-Singularity era (stats.ascensions). Stays 1.0 through the whole early/mid
   // game (ascensions = 0 until the deep endgame), so the tuned curve is untouched.
-  const ascensionMult = Big.ONE.add(balance.eras.agi.bonusPerAscension * state.stats.ascensions);
+  const ascensionMult = Big.of(ascensionMultiplier(state));
   computeMult = computeMult.mul(ascensionMult);
   dataMult = dataMult.mul(ascensionMult);
   moneyMult = moneyMult.mul(ascensionMult);
