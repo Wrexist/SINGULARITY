@@ -6,6 +6,7 @@ import { Big } from "../engine/math/Big";
 import { haptics } from "./haptics";
 import { sound } from "./sound";
 import { useSettings } from "./settings";
+import { dailyAvailable, markDailyClaimed } from "./daily";
 import { ResourceBar } from "./ResourceBar";
 import { TrainingDock } from "./TrainingDock";
 import { UpgradePanel } from "./UpgradePanel";
@@ -52,7 +53,7 @@ export function App() {
   const { doStartRun, doClaim, doBuyUpgrade, doBuyOfficePerk, doBuyReputationPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
-    dismissOffline, dismissWorldEvent, chooseWorldEvent, hardReset } =
+    dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset } =
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
@@ -72,6 +73,7 @@ export function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
   const [flash, setFlash] = useState(0); // AGI ascension screen flash (key replays the anim)
+  const [dailyOn, setDailyOn] = useState(() => dailyAvailable());
   const reducedMotion = useSettings((s) => s.reducedMotion);
   const music = useSettings((s) => s.music);
   const onboarded = useSettings((s) => s.onboarded);
@@ -265,6 +267,10 @@ export function App() {
   // Action handlers wrapped with tactile + audio feedback.
   const onStart = () => { haptics.tap(); sound.tap(); doStartRun(); };
   const onClaim = () => { haptics.success(); sound.success(); doClaim(); };
+  const onClaimDaily = () => {
+    haptics.celebrate(); sound.success(); doClaimDaily(); markDailyClaimed(); setDailyOn(false);
+    if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.32, { count: 30, power: 1.5, colors: ["#7c5cff", "#ffd60a", "#16b364", "#2f7bf6"] });
+  };
   const onBuy = (id: string) => { haptics.tap(); sound.purchase(); doBuyUpgrade(id); };
   const onHireCandidate = (i: number) => { haptics.celebrate(); sound.purchase(); doHireCandidate(i); };
   const onTrain = (id: string) => { haptics.tap(); sound.tap(); doTrainEmployee(id); };
@@ -340,6 +346,13 @@ export function App() {
       <ModifierBar modifiers={game.modifiers} />
 
       <main className="stage">
+        {dailyOn && (
+          <button className="daily-bar" onClick={onClaimDaily} aria-label="Claim your daily boost">
+            <span className="daily-ic">🎁</span>
+            <span className="daily-text"><b>Daily boost ready</b> — +{Math.round((balance.daily.factor - 1) * 100)}% output for {Math.round(balance.daily.durationSec / 60)} min</span>
+            <span className="daily-go">Claim</span>
+          </button>
+        )}
         {advice && (
           <button
             className="advisor-bar"

@@ -8,11 +8,26 @@ import {
   canBuyResearch,
   researchAvailable,
   upgradeCost,
+  grantDailyBoost,
 } from "./actions";
 import { createInitialState } from "./state";
 import { balance } from "./balance/config";
 import { derive } from "./derive";
 import { Big } from "./math/Big";
+
+describe("daily boost", () => {
+  it("applies a temporary all-output buff and refreshes (never stacks)", () => {
+    const s = createInitialState();
+    const a = grantDailyBoost(s);
+    const daily = a.modifiers.filter((m) => m.id.startsWith("daily_"));
+    expect(daily).toHaveLength(3); // compute + data + money
+    expect(daily.every((m) => m.factor === balance.daily.factor)).toBe(true);
+    expect(daily.every((m) => m.remainingSec === balance.daily.durationSec)).toBe(true);
+    // Claiming again refreshes rather than piling up a second set.
+    const b = grantDailyBoost(a);
+    expect(b.modifiers.filter((m) => m.id.startsWith("daily_"))).toHaveLength(3);
+  });
+});
 
 describe("training run actions", () => {
   it("startRun spends compute and activates a run when affordable", () => {

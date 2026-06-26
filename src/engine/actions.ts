@@ -426,6 +426,25 @@ function applyEffect(state: GameState, effect: WorldEventEffect, id: string, ton
 }
 
 /**
+ * Daily Boost — apply a short global output buff (compute/data/money) through the
+ * normal modifier system. Temporary by construction, so it never touches the
+ * permanent curve. Day-tracking lives in the UI (no save schema change).
+ */
+export function grantDailyBoost(state: GameState): GameState {
+  const { factor, durationSec } = balance.daily;
+  const targets: ActiveModifier["target"][] = ["computeMult", "dataMult", "moneyMult"];
+  const mods: ActiveModifier[] = targets.map((target) => ({
+    id: `daily_${target}`,
+    target,
+    factor,
+    remainingSec: durationSec,
+    label: `🎁 Daily ×${factor}`,
+    tone: "good",
+  }));
+  return { ...state, modifiers: [...state.modifiers.filter((m) => !m.id.startsWith("daily_")), ...mods] };
+}
+
+/**
  * Fire a world event. Simple events apply their effect immediately. Faction
  * events (with `choices`) do NOT apply anything here — they wait for the player's
  * pick via applyWorldEventChoice — but surface their branches for the card.

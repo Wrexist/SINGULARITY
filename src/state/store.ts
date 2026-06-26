@@ -17,6 +17,7 @@ import {
   maybeHeatEvent,
   maybeWorldEvent,
   applyWorldEventChoice,
+  grantDailyBoost,
   type MarketOutcome,
   type WorldEventResult,
 } from "../engine/actions";
@@ -135,6 +136,8 @@ interface GameStore {
   doResearch: (id: string) => void;
   doBuyData: (id: string) => MarketOutcome | null;
   doPrestige: (mode?: ShipMode) => void;
+  /** Claim the once-a-day output boost (temporary modifiers). */
+  doClaimDaily: () => void;
   hardReset: () => void;
   /** A portable backup string of the current save (base64). */
   exportSave: () => string;
@@ -441,6 +444,7 @@ export const useGame = create<GameStore>((set, get) => ({
     return outcome;
   },
   doPrestige: (mode: ShipMode = "deploy") => set((s) => ({ game: prestige(s.game, mode) })),
+  doClaimDaily: () => set((s) => ({ game: grantDailyBoost(s.game) })),
 
   hardReset: () => {
     localStorage.removeItem(SAVE_KEY);

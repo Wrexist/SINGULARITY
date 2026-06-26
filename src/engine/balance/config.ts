@@ -836,6 +836,16 @@ export const balance = {
     premiumMaxHours: 24,
   },
 
+  /** Daily Boost — an HONEST once-a-day return reward (GDD §6: no fake-urgency
+   *  countdown, no penalty for missing a day). Claiming applies a short, global
+   *  output buff via the normal modifier system — purely temporary, so it never
+   *  inflates the permanent curve. Tracked in a UI-only localStorage key, so no
+   *  game-save migration. */
+  daily: {
+    factor: 1.5,
+    durationSec: 180,
+  },
+
   upgrades: [
     {
       id: "rack_basic",

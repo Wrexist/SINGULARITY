@@ -32,7 +32,7 @@ Eras 0–6 + AGI ascension · research tree · "Ship the Model" prestige (Legacy
 - **B3 · More product types & per-product features** ✅ *(done)* — +2 product types gated by ship count for replayability (**AI Companion**, consumer/viral, unlock @2; **Science Co-Pilot**, premium/sticky/Heat, unlock @5) and +4 features (Fine-Tuning Studio·arpu, On-Device Mode·serveCost, Community Forum·churn, Localization·acq). Pure data; sim byte-identical (12m15s).
 - **B4 · Employee depth: synergies & rare hires** *(P2, M)* — team synergies (a "10x + mentor" combo), rare named hires, a light career/level cap. Builds on the existing trait system.
 - **B5 · Prestige variety / challenge runs** *(P3, L)* — optional modifiers ("no marketing", "hard heat") for bonus Reputation — replay depth without a 4th resource. Heavily gated.
-- **B6 · Daily honest re-engagement** *(P2, S)* — a once-a-day "research grant" or "stand-up" that gives a small, *non-urgent* bonus (no countdown pressure, no penalty for missing). Respects GDD's anti-dark-pattern stance while giving a reason to return.
+- **B6 · Daily honest re-engagement** ✅ *(done)* — a once-a-day **Daily Boost**: claim a short global +50%/3-min output buff (via the normal temporary-modifier system, so it never inflates the permanent curve). Honest per GDD §6 — no countdown, no penalty for missing; just available again next day. Day tracked in a UI-only localStorage key (no save migration). Banner on the stage; +1 test (248).
 
 ## Phase C — Spectacle & game-feel (P2/P3)
 *Goal: the tentpole "wow" moments and overall smoothness.*
