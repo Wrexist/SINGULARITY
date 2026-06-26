@@ -656,6 +656,8 @@ body {
 .card-note { font-size: 11px; font-weight: 700; color: var(--compute); margin-top: 2px; }
 .card-cost { font-size: 13px; font-weight: 750; white-space: nowrap; text-align: right; display: flex; flex-direction: column; gap: 2px; align-items: flex-end; }
 .cost-max { color: var(--ship); }
+.cost-eta { font-size: 10.5px; font-weight: 650; color: var(--ink-3); }
+.node-cost .cost-eta { margin-left: 6px; }
 .cost-sub { font-size: 11px; font-weight: 700; color: var(--money); }
 .cost-blocked { color: var(--coral); font-size: 12px; font-weight: 750; }
 

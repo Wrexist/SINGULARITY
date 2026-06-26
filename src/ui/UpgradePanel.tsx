@@ -2,11 +2,12 @@ import { balance } from "../engine/balance/config";
 import { upgradeCost, canBuyUpgrade } from "../engine/actions";
 import { hallCapacity, totalRacks, isRackId, evictableRackFor } from "../engine/hall";
 import { powerStats } from "../engine/power";
-import type { GameState } from "../engine/types";
-import { fmt } from "./format";
+import type { Derived, GameState } from "../engine/types";
+import { fmt, effRate, fmtEta } from "./format";
 
 interface Props {
   game: GameState;
+  derived: Derived;
   onBuy: (id: string) => void;
 }
 
@@ -37,7 +38,7 @@ function PowerMeter({ draw, cap, factor, throttled }: { draw: number; cap: numbe
   );
 }
 
-export function UpgradePanel({ game, onBuy }: Props) {
+export function UpgradePanel({ game, derived, onBuy }: Props) {
   // Hall expansions only matter once you have hardware to house — reveal them
   // when the closet starts to fill, rather than cluttering the first session.
   const racks = totalRacks(game);
@@ -98,9 +99,15 @@ export function UpgradePanel({ game, onBuy }: Props) {
                 ) : blockedByFloor ? (
                   <span className="cost-blocked">Floor full</span>
                 ) : (
-                  <span style={{ color: `var(${RESOURCE_VAR[def.cost.resource]})` }}>
-                    {def.cost.resource === "money" ? `$${fmt(cost)}` : `${fmt(cost)} ${def.cost.resource}`}
-                  </span>
+                  <>
+                    <span style={{ color: `var(${RESOURCE_VAR[def.cost.resource]})` }}>
+                      {def.cost.resource === "money" ? `$${fmt(cost)}` : `${fmt(cost)} ${def.cost.resource}`}
+                    </span>
+                    {!affordable && (() => {
+                      const eta = fmtEta(cost, game.resources[def.cost.resource], effRate(derived, def.cost.resource));
+                      return eta ? <span className="cost-eta">{eta}</span> : null;
+                    })()}
+                  </>
                 )}
               </div>
             </button>

@@ -1,4 +1,28 @@
 import { Big } from "../engine/math/Big";
+import type { Derived } from "../engine/types";
+
+/** Effective income per second for a resource, amortizing per-run yields over the
+ *  run duration (a rough but honest "how fast it's coming in" for ETA estimates). */
+export function effRate(d: Derived, resource: "compute" | "data" | "money"): Big {
+  const perRun = (yield_: Big) => (d.runDurationSec > 0 ? yield_.div(d.runDurationSec) : Big.ZERO);
+  if (resource === "compute") return d.computePerSec;
+  if (resource === "data") return d.dataPerSec.add(perRun(d.runDataYield));
+  return d.passiveMoneyPerSec.add(perRun(d.runMoneyYield));
+}
+
+/** Seconds-to-afford for one resource, or null when affordable / unknowable / too far. */
+export function etaSecs(cost: Big, have: Big, rate: Big): number | null {
+  if (have.gte(cost) || rate.lte(Big.ZERO)) return null;
+  const secs = cost.sub(have).div(rate).toNumber();
+  if (!Number.isFinite(secs) || secs <= 0 || secs > 3600 * 24 * 99) return null;
+  return secs;
+}
+
+/** "~3m" time-to-afford, or null. */
+export function fmtEta(cost: Big, have: Big, rate: Big): string | null {
+  const secs = etaSecs(cost, have, rate);
+  return secs === null ? null : `~${fmtDur(secs)}`;
+}
 
 /** Format a Big for display (idle-game notation). */
 export function fmt(v: Big): string {

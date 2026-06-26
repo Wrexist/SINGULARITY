@@ -375,8 +375,8 @@ export function App() {
           <>
             <HallCanvas onExpand={setPendingExpansion} />
             <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} onSetFocus={setComputeFocus} />
-            <UpgradePanel game={game} onBuy={onBuy} />
-            {showResearch && <ResearchPanel game={game} onResearch={onResearch} />}
+            <UpgradePanel game={game} derived={d} onBuy={onBuy} />
+            {showResearch && <ResearchPanel game={game} derived={d} onResearch={onResearch} />}
             {showMarket && <DataMarketPanel game={game} onBuyData={onBuyData} onBuyTool={onBuy} />}
             {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} />}
             <StatsPanel game={game} derived={d} />
