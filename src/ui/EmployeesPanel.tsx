@@ -1,4 +1,5 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
+import { Portal } from "./Portal";
 import { balance } from "../engine/balance/config";
 import { canBuyOfficePerk } from "../engine/actions";
 import { officeMorale } from "../engine/derive";
@@ -69,8 +70,44 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
   const [seg, setSeg] = useState<Seg>("people");
   const [selectedId, setSelectedId] = useState<string | null>(null); // person being managed / placed
   const [perksOpen, setPerksOpen] = useState(false);
+  const [roleFilter, setRoleFilter] = useState<string>("all");
   const team = game.employees;
   const morale = officeMorale(game);
+
+  // Drag-to-assign (from a grip handle so list scrolling isn't hijacked). Hit-tests
+  // pointer position against the project-card rects on drop.
+  const projectEls = useRef(new Map<string, HTMLElement>());
+  const dragRef = useRef<{ id: string; sx: number; sy: number; active: boolean } | null>(null);
+  const [drag, setDrag] = useState<{ id: string; name: string; x: number; y: number; over: string | null } | null>(null);
+  const hitTest = (x: number, y: number): string | null => {
+    for (const [id, el] of projectEls.current) {
+      const r = el.getBoundingClientRect();
+      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return id;
+    }
+    return null;
+  };
+  const onDragMove = (e: PointerEvent) => {
+    const d = dragRef.current;
+    if (!d) return;
+    if (!d.active && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 6) return;
+    d.active = true;
+    const emp = team.find((x) => x.id === d.id);
+    setDrag({ id: d.id, name: emp?.name ?? "", x: e.clientX, y: e.clientY, over: hitTest(e.clientX, e.clientY) });
+  };
+  const onDragUp = (e: PointerEvent) => {
+    const d = dragRef.current;
+    window.removeEventListener("pointermove", onDragMove);
+    window.removeEventListener("pointerup", onDragUp);
+    if (d?.active) { const over = hitTest(e.clientX, e.clientY); if (over) onAssign(d.id, over); }
+    dragRef.current = null;
+    setDrag(null);
+  };
+  const startDrag = (e: { clientX: number; clientY: number; preventDefault: () => void }, id: string) => {
+    e.preventDefault();
+    dragRef.current = { id, sx: e.clientX, sy: e.clientY, active: false };
+    window.addEventListener("pointermove", onDragMove);
+    window.addEventListener("pointerup", onDragUp);
+  };
 
   const { product, idle } = useMemo(() => {
     const prod = team.filter((e) => roleDef(e.roleId)?.team === "product");
@@ -243,7 +280,11 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
       )}
 
       {/* ---------------- PROJECTS ---------------- */}
-      {seg === "projects" && (
+      {seg === "projects" && (() => {
+        const avail = product.filter((e) => !e.assignedProductId);
+        const roleOpts = [...new Set(avail.map((e) => e.roleId))];
+        const shown = roleFilter === "all" ? avail : avail.filter((e) => e.roleId === roleFilter);
+        return (
         <div className="pd-pane">
           {selected && (
             <div className="emp-place-hint">
@@ -257,8 +298,17 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
             const up = p.upgrade;
             const pct = up ? upgradeProgress(up) * 100 : me.qf * 100;
             const tg = tier(me.qf);
+            // Group crew by role for the "2 Engineers · 1 Growth" chips in the mockup.
+            const roleCounts = new Map<string, number>();
+            for (const e of crew) roleCounts.set(e.roleId, (roleCounts.get(e.roleId) ?? 0) + 1);
             return (
-              <div className={`emp-proj ${selected ? "targetable" : ""}`} key={p.id} onClick={() => selected && place(p.id)} role={selected ? "button" : undefined}>
+              <div
+                className={`emp-proj ${selected || drag ? "targetable" : ""} ${drag?.over === p.id ? "dragover" : ""}`}
+                key={p.id}
+                ref={(el) => { if (el) projectEls.current.set(p.id, el); else projectEls.current.delete(p.id); }}
+                onClick={() => selected && place(p.id)}
+                role={selected ? "button" : undefined}
+              >
                 <div className="emp-proj-head">
                   <div className="emp-proj-id">
                     <span className="emp-proj-name">{p.name}</span>
@@ -272,26 +322,49 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
                   {up ? <span>🔬 v{up.targetVersion} · ~{fmtDur(up.remainingSec)}</span> : <span>{Math.round(me.qf * 100)}% competitive</span>}
                 </div>
                 <div className="emp-proj-crew">
-                  {crew.length === 0 && <span className="emp-proj-empty">{selected ? "Tap to assign here" : "No crew assigned"}</span>}
+                  {crew.length === 0 && <span className="emp-proj-empty">{selected || drag ? "Drop / tap to assign here" : "No crew assigned"}</span>}
                   {crew.map((e) => (
                     <button key={e.id} className="emp-crew-av" title={`${e.name} · unassign`} onClick={(ev) => { ev.stopPropagation(); onAssign(e.id, null); }}>
                       <Avatar name={e.name} size={30} />
                     </button>
+                  ))}
+                  {[...roleCounts].map(([rid, n]) => (
+                    <span className="emp-role-chip" key={rid}>{n} {roleDef(rid)?.name ?? rid}</span>
                   ))}
                 </div>
               </div>
             );
           })}
 
-          <div className="emp-section-head"><span>Available {product.length > 0 ? `· ${idle} idle` : ""}</span></div>
+          <div className="emp-section-head">
+            <span>Available {product.length > 0 ? `· ${idle} idle` : ""}</span>
+            {roleOpts.length > 1 && (
+              <select className="emp-filter" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
+                <option value="all">All roles</option>
+                {roleOpts.map((rid) => <option key={rid} value={rid}>{roleDef(rid)?.name ?? rid}</option>)}
+              </select>
+            )}
+          </div>
           {product.length === 0 && <p className="pd-pane-tip">Hire product-team roles (engineers, growth, sales…) in <b>People</b> to staff your projects.</p>}
-          {product.filter((e) => !e.assignedProductId).map((e) =>
+          {shown.map((e) =>
             personCard(e, (
-              <button className="emp-assign-btn" onClick={() => setSelectedId(selectedId === e.id ? null : e.id)}>{selectedId === e.id ? "Picking…" : "Assign"}</button>
+              <div className="emp-avail-right">
+                <button className="emp-assign-btn" onClick={() => setSelectedId(selectedId === e.id ? null : e.id)}>{selectedId === e.id ? "Picking…" : "Assign"}</button>
+                <span className="emp-grip" onPointerDown={(ev) => startDrag(ev, e.id)} title="Drag onto a project" aria-label="Drag to assign">⠿</span>
+              </div>
             )),
           )}
           {idle === 0 && product.length > 0 && <p className="pd-pane-tip">Everyone's assigned. Tap a crew avatar on a project to free them up.</p>}
         </div>
+        );
+      })()}
+
+      {drag && (
+        <Portal>
+          <div className="emp-drag-ghost" style={{ left: drag.x, top: drag.y }}>
+            <Avatar name={drag.name} size={34} />
+          </div>
+        </Portal>
       )}
     </section>
   );

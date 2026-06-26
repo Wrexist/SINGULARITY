@@ -1994,6 +1994,18 @@ body {
 .emp-proj-empty { font-size: 11.5px; color: var(--ink-3); }
 .emp-crew-av { border: none; background: none; padding: 0; cursor: pointer; border-radius: 50%; transition: transform 0.12s; }
 .emp-crew-av:hover { transform: scale(1.08); }
+.emp-role-chip { font-size: 10.5px; font-weight: 750; color: #5a43c8; background: rgba(124, 92, 255, 0.1); border-radius: 999px; padding: 3px 9px; }
+.emp-proj.dragover { border-color: #7c5cff; border-style: solid; background: rgba(124, 92, 255, 0.05); transform: translateY(-1px); }
+
+/* Available-list role filter + drag grip */
+.emp-filter { font-size: 12px; font-weight: 700; color: var(--ink-2); background: #fff; border: 1px solid var(--glass-hairline); border-radius: 999px; padding: 5px 10px; cursor: pointer; }
+.emp-avail-right { display: flex; align-items: center; gap: 8px; }
+.emp-grip { font-size: 16px; color: var(--ink-3); cursor: grab; touch-action: none; padding: 0 2px; user-select: none; line-height: 1; }
+.emp-grip:active { cursor: grabbing; }
+.emp-drag-ghost {
+  position: fixed; z-index: 200; transform: translate(-50%, -50%); pointer-events: none;
+  border-radius: 50%; box-shadow: var(--shadow-lg); opacity: 0.92;
+}
 
 /* ---------- Timed version research (in-flight upgrade) ---------- */
 .prod-research { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
