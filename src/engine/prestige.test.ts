@@ -93,6 +93,16 @@ describe("prestige", () => {
       expect(legacyWeightsForMode(s, "open_source").gt(legacyWeightsForMode(s, "deploy"))).toBe(true);
     });
 
+    it("hard ship banks more Legacy but leaps the frontier (products start behind)", () => {
+      const s = eligible();
+      s.prestige.ships = 3; // hard mode is unlocked
+      const deploy = prestige(s, "deploy");
+      const hard = prestige(s, "hard");
+      expect(hard.prestige.legacyWeights.gt(deploy.prestige.legacyWeights)).toBe(true);
+      expect(hard.products.frontier).toBeGreaterThan(deploy.products.frontier);
+      expect(hard.products.drafts.length).toBe(1); // still keeps the draft
+    });
+
     it("sell banks less Legacy, hands over cash, and leaves no draft", () => {
       const s = eligible();
       const deploy = prestige(s, "deploy");

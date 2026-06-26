@@ -94,7 +94,8 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     },
     // Phase 3 — released products are your standing business; they survive the
     // reset and keep earning Money into the next run (the meta-reward for shipping).
-    products: { ...state.products, drafts },
+    // A "hard" ship leaps the competitive frontier so carried products start behind.
+    products: { ...state.products, drafts, frontier: state.products.frontier + modeDef.frontierPenalty },
     // Your team stays with you across a ship (they're employed by the company,
     // not the run) — but their product assignments reset since the lab is fresh.
     employees: state.employees.map((e) => ({ ...e, assignedProductId: null })),

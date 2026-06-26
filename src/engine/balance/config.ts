@@ -819,17 +819,25 @@ export const balance = {
       deploy: {
         id: "deploy", label: "Deploy commercially", glyph: "🚀",
         blurb: "Balanced. Bank full Legacy Weights and keep the model as a product draft to commercialise.",
-        legacyMult: 1, keepsDraft: true, moneyKickstartPerShip: 0,
+        legacyMult: 1, keepsDraft: true, moneyKickstartPerShip: 0, frontierPenalty: 0, unlockShips: 0,
       },
       open_source: {
         id: "open_source", label: "Open-source it", glyph: "🌍",
         blurb: "The community spreads your weights further — more Legacy — but you give the model away (no product draft).",
-        legacyMult: 1.3, keepsDraft: false, moneyKickstartPerShip: 0,
+        legacyMult: 1.3, keepsDraft: false, moneyKickstartPerShip: 0, frontierPenalty: 0, unlockShips: 0,
       },
       sell: {
         id: "sell", label: "Sell to a hyperscaler", glyph: "💰",
         blurb: "Cash up front to bootstrap the next run, but fewer Legacy Weights and no product draft.",
-        legacyMult: 0.5, keepsDraft: false, moneyKickstartPerShip: 200,
+        legacyMult: 0.5, keepsDraft: false, moneyKickstartPerShip: 200, frontierPenalty: 0, unlockShips: 0,
+      },
+      // B5 challenge: an OPTIONAL risk/reward ship, unlocked once you know the loop.
+      // Rivals start further ahead (your carried products begin behind), but you
+      // bank +50% Legacy. Lives in the same chooser — no new screen/mechanic.
+      hard: {
+        id: "hard", label: "Hard ship (challenge)", glyph: "⚔️",
+        blurb: "Rivals leap ahead — your products start behind — but bank +50% Legacy. For when the easy money bores you.",
+        legacyMult: 1.5, keepsDraft: true, moneyKickstartPerShip: 0, frontierPenalty: 6, unlockShips: 3,
       },
     },
   },

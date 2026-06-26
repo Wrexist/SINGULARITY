@@ -89,7 +89,7 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk }: Props) 
             <button className="link-btn" onClick={() => setConfirming(false)}>cancel</button>
           </div>
           <p className="ship-choose-tip">Resets Compute, Data, $, racks and research. Your team, products, achievements and Reputation stay.</p>
-          {Object.values(balance.prestige.shipModes).map((m) => {
+          {Object.values(balance.prestige.shipModes).filter((m) => game.prestige.ships >= m.unlockShips).map((m) => {
             const banked = legacyWeightsForMode(game, m.id as ShipMode);
             const kickstart = m.moneyKickstartPerShip * (game.prestige.ships + 1);
             return (
