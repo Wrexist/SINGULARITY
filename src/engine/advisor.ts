@@ -2,7 +2,12 @@ import { balance } from "./balance/config";
 import { products as PB } from "./balance/products";
 import { productMetrics, productsUnlocked, canStartUpgrade } from "./products";
 import { reputationBalance, canBuyReputationPerk } from "./reputation";
+import { canBuyResearch } from "./actions";
+import { canPrestige } from "./prestige";
 import type { GameState } from "./types";
+
+/** The first research node (no prereqs) — the new player's first capability buy. */
+const FIRST_RESEARCH = balance.research[0]?.id ?? "";
 
 /**
  * The advisor — a tiny, pure "what should I do next?" layer. It scans the game
@@ -38,6 +43,24 @@ function staffUnlocked(state: GameState): boolean {
 export function advisorItems(state: GameState): AdvisorItem[] {
   const items: AdvisorItem[] = [];
   const ps = state.products;
+
+  // ---- First-session hook: until the first Ship, hand-hold the core loop so a
+  // brand-new player always has one obvious next move (claim → start → research
+  // → ship). Gated on ships === 0 so it never nags a returning player. ----
+  if (state.prestige.ships === 0) {
+    if (state.run.readyToClaim) {
+      items.push({ tab: "lab", text: "Claim your finished run — bank the Data & $", priority: 95 });
+    }
+    if (canPrestige(state)) {
+      items.push({ tab: "lab", text: "🚀 Ship the Model — reset for a permanent boost", priority: 92 });
+    }
+    if (!state.run.active && !state.run.readyToClaim) {
+      items.push({ tab: "lab", text: "Start a training run to earn Data & $", priority: 68 });
+    }
+    if (state.research.length === 0 && FIRST_RESEARCH && canBuyResearch(state, FIRST_RESEARCH)) {
+      items.push({ tab: "lab", text: "Research your first capability", priority: 64 });
+    }
+  }
 
   if (productsUnlocked(state)) {
     // A raw model from Ship the Model is sitting un-commercialised — but only
