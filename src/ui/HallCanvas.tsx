@@ -94,7 +94,7 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       // Cheap signature of render-affecting fields (run.progress is excluded —
       // the renderer animates from the clock, not from progress).
       const u = game.upgrades;
-      const sig = `${u.rack_basic ?? 0}|${u.rack_server ?? 0}|${u.rack_tpu ?? 0}|${u.expand_n ?? 0}|${u.expand_s ?? 0}|${u.expand_e ?? 0}|${u.expand_w ?? 0}|${game.run.active ? 1 : 0}|${currentEra(game)}`;
+      const sig = `${u.rack_basic ?? 0}|${u.rack_server ?? 0}|${u.rack_tpu ?? 0}|${u.expand_n ?? 0}|${u.expand_s ?? 0}|${u.expand_e ?? 0}|${u.expand_w ?? 0}|${u.psu_bay ?? 0}|${u.cooling_loop ?? 0}|${u.substation ?? 0}|${game.run.active ? 1 : 0}|${currentEra(game)}`;
       if (sig !== modelSig) {
         modelSig = sig;
         model = buildHallModel(game);
@@ -112,7 +112,7 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       const spawnT = Math.min(1, (timeMs - spawnStart) / SPAWN_MS);
 
       // Repaint the cached static room only when its inputs change.
-      const ssig = `${model.cols}|${model.rows}|${model.era}|${cssW}|${cssH}|${dpr}`;
+      const ssig = `${model.cols}|${model.rows}|${model.era}|${model.coolingUnits}|${cssW}|${cssH}|${dpr}`;
       if (ssig !== staticSig) {
         staticSig = ssig;
         off.width = canvas.width;
