@@ -694,6 +694,32 @@ export const balance = {
     exponent: 0.5,
     /** Each Legacy Weight grants this much permanent global production. */
     multiplierPerPoint: 0.05,
+
+    /**
+     * GDD §4 — shipping is a player-flavored choice with minor different bonuses.
+     * `deploy` is the default and MUST equal the historical behavior exactly
+     * (legacyMult 1, keeps the product draft, no kickstart) so the tuned curve /
+     * `npm run sim` stay byte-identical — the sim always ships via deploy. The
+     * other two are opt-in trade-offs, never the balanced baseline. First-pass
+     * numbers; tune against the sim if they prove too strong/weak.
+     */
+    shipModes: {
+      deploy: {
+        id: "deploy", label: "Deploy commercially", glyph: "🚀",
+        blurb: "Balanced. Bank full Legacy Weights and keep the model as a product draft to commercialise.",
+        legacyMult: 1, keepsDraft: true, moneyKickstartPerShip: 0,
+      },
+      open_source: {
+        id: "open_source", label: "Open-source it", glyph: "🌍",
+        blurb: "The community spreads your weights further — more Legacy — but you give the model away (no product draft).",
+        legacyMult: 1.3, keepsDraft: false, moneyKickstartPerShip: 0,
+      },
+      sell: {
+        id: "sell", label: "Sell to a hyperscaler", glyph: "💰",
+        blurb: "Cash up front to bootstrap the next run, but fewer Legacy Weights and no product draft.",
+        legacyMult: 0.5, keepsDraft: false, moneyKickstartPerShip: 200,
+      },
+    },
   },
 
   offline: {

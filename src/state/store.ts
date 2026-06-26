@@ -43,7 +43,7 @@ import {
 import { productMilestones as PRODUCT_MILESTONES, type ProductTypeId } from "../engine/balance/products";
 import { achievements as ACHIEVEMENT_DEFS } from "../engine/balance/achievements";
 import { buyReputationPerk } from "../engine/reputation";
-import { prestige } from "../engine/prestige";
+import { prestige, type ShipMode } from "../engine/prestige";
 import { applyOffline, type OfflineSummary } from "../engine/offline";
 import { serialize, deserialize } from "../engine/save";
 import { isPremium } from "./premium";
@@ -134,7 +134,7 @@ interface GameStore {
   doRetireProduct: (id: string) => void;
   doResearch: (id: string) => void;
   doBuyData: (id: string) => MarketOutcome | null;
-  doPrestige: () => void;
+  doPrestige: (mode?: ShipMode) => void;
   hardReset: () => void;
 }
 
@@ -436,7 +436,7 @@ export const useGame = create<GameStore>((set, get) => ({
     if (outcome) set({ game: next });
     return outcome;
   },
-  doPrestige: () => set((s) => ({ game: prestige(s.game) })),
+  doPrestige: (mode: ShipMode = "deploy") => set((s) => ({ game: prestige(s.game, mode) })),
 
   hardReset: () => {
     localStorage.removeItem(SAVE_KEY);
