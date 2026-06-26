@@ -5,7 +5,7 @@ import { haptics as hpt } from "./haptics";
 import { sound as snd } from "./sound";
 import { balance } from "../engine/balance/config";
 
-type ToggleKey = "sound" | "haptics" | "reducedMotion";
+type ToggleKey = "sound" | "music" | "haptics" | "reducedMotion";
 
 interface RowProps {
   label: string;
@@ -34,9 +34,10 @@ interface Props {
 
 /** iOS-style bottom sheet for feel preferences (clean-to-play, GAMEPLAN §8). */
 export function SettingsSheet({ onClose }: Props) {
-  const { sound, haptics, reducedMotion, toggle } = useSettings();
+  const { sound, music, haptics, reducedMotion, toggle } = useSettings();
   const rows: { key: ToggleKey; label: string; hint: string; value: boolean }[] = [
-    { key: "sound", label: "Sound", hint: "Synthesized taps, claims & ship chimes", value: sound },
+    { key: "sound", label: "Sound effects", hint: "Synthesized taps, claims & ship chimes", value: sound },
+    { key: "music", label: "Music", hint: "Ambient bed + era & ship swells", value: music },
     { key: "haptics", label: "Haptics", hint: "Vibration feedback on supported devices", value: haptics },
     { key: "reducedMotion", label: "Reduced motion", hint: "Calm the animations", value: reducedMotion },
   ];

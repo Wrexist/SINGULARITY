@@ -74,8 +74,18 @@ export function App() {
   const [showAchievements, setShowAchievements] = useState(false);
   const [flash, setFlash] = useState(0); // AGI ascension screen flash (key replays the anim)
   const reducedMotion = useSettings((s) => s.reducedMotion);
+  const music = useSettings((s) => s.music);
   const onboarded = useSettings((s) => s.onboarded);
   const completeOnboarding = useSettings((s) => s.completeOnboarding);
+
+  // Ambient music bed — follow the Music setting; pause while the tab is hidden
+  // (battery). Starts on the first user gesture if audio isn't unlocked yet.
+  useEffect(() => {
+    const apply = () => sound.setMusic(music && !document.hidden);
+    apply();
+    document.addEventListener("visibilitychange", apply);
+    return () => document.removeEventListener("visibilitychange", apply);
+  }, [music]);
 
   // Re-validate the premium entitlement against StoreKit at launch (native only;
   // no-op on web). Keeps the localStorage cache from being the source of truth.
@@ -143,7 +153,7 @@ export function App() {
   useEffect(() => {
     if (!initialized) return;
     if (!syncedEra.current) { seenEra.current = era; syncedEra.current = true; return; }
-    if (era > seenEra.current) { setEraMoment(era); haptics.celebrate(); sound.ship(); }
+    if (era > seenEra.current) { setEraMoment(era); haptics.celebrate(); sound.ship(); sound.era(); }
     seenEra.current = era;
   }, [initialized, era]);
 
