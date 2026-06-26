@@ -112,16 +112,22 @@ try {
   await page.mouse.click(8, 8).catch(() => {});
   await sleep(300);
 
-  // 3) Employees tab — clean Team view (compact board + collapsed Lab roster).
+  // 3) Employees tab — KPI header + People roster (redesign).
   await page.getByRole("tab", { name: "Employees" }).click();
   await sleep(500);
   await page.screenshot({ path: "screenshots/feat-employees.png", fullPage: true });
   console.log("Saved feat-employees.png");
 
-  // 4) Hire sub-tab — candidate picker.
-  await page.getByRole("tab", { name: "Hire" }).click();
+  // 3b) Projects sub-view — per-product crew assignment.
+  await page.getByRole("tab", { name: /Projects/ }).click().catch(() => {});
   await sleep(300);
-  await page.getByRole("button", { name: /Recruit talent/ }).click();
+  await page.screenshot({ path: "screenshots/feat-emp-projects.png", fullPage: true });
+  console.log("Saved feat-emp-projects.png");
+
+  // 4) Recruit — candidate picker (People pane → "+ Recruit").
+  await page.getByRole("tab", { name: /People/ }).click().catch(() => {});
+  await sleep(200);
+  await page.getByRole("button", { name: /Recruit/ }).first().click();
   await sleep(400);
   await page.screenshot({ path: "screenshots/feat-recruit.png", fullPage: true });
   console.log("Saved feat-recruit.png");

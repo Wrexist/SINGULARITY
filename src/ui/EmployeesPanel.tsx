@@ -1,15 +1,15 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { balance } from "../engine/balance/config";
 import { canBuyOfficePerk } from "../engine/actions";
 import { officeMorale } from "../engine/derive";
 import {
   roleDef, traitDef, employeePayroll, canTrain, trainCost, hireCost,
 } from "../engine/employees";
+import { typeDef, productMetrics, upgradeProgress } from "../engine/products";
 import { Big } from "../engine/math/Big";
 import type { GameState, Derived, Employee } from "../engine/types";
 import type { Candidate } from "../state/store";
 import { fmtMoney, m$, fmtDur } from "./format";
-import { EmployeeBoard } from "./EmployeeBoard";
 
 interface Props {
   game: GameState;
@@ -25,164 +25,138 @@ interface Props {
   onBuyPerk: (id: string) => void;
 }
 
+const MAX_LEVEL = balance.staff.maxLevel;
 const TRAIT_TONE: Record<string, string> = { good: "var(--money)", bad: "var(--coral)", mixed: "#f97316" };
 const hueOf = (name: string) => { let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360; return h; };
 const initialsOf = (name: string) => name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
 
-function Avatar({ name }: { name: string }) {
+function Avatar({ name, size = 38 }: { name: string; size?: number }) {
   const h = hueOf(name);
-  return <span className="emp-avatar" style={{ background: `hsl(${h} 60% 88%)`, color: `hsl(${h} 55% 32%)` }}>{initialsOf(name)}</span>;
-}
-
-/** A compact tappable chip (avatar + first name + level + trait dot). */
-function Chip({ emp, selected, onTap }: { emp: Employee; selected: boolean; onTap: () => void }) {
-  const trait = traitDef(emp.trait);
   return (
-    <button className={`emp-chip ${selected ? "sel" : ""}`} onClick={onTap}>
-      <span className="emp-chip-av" style={{ background: `hsl(${hueOf(emp.name)} 60% 88%)`, color: `hsl(${hueOf(emp.name)} 55% 32%)` }}>{initialsOf(emp.name)}</span>
-      <span className="emp-chip-name">{emp.name.split(" ")[0]}</span>
-      <span className="emp-chip-lvl">L{emp.level}</span>
-      {emp.training && <span className="emp-chip-train">🎓</span>}
-      {trait && <span className="emp-chip-dot" style={{ background: TRAIT_TONE[trait.tone] }} />}
-    </button>
+    <span className="emp-av" style={{ width: size, height: size, fontSize: size * 0.34, background: `hsl(${h} 62% 88%)`, color: `hsl(${h} 55% 32%)` }}>
+      {initialsOf(name)}
+    </span>
   );
 }
 
-/** Tap-to-manage bar for a selected person: train / fire / close. */
-function ManageBar({ game, emp, onTrain, onFire, onClose }: {
-  game: GameState; emp: Employee; onTrain: (id: string) => void; onFire: (id: string) => void; onClose: () => void;
-}) {
-  const role = roleDef(emp.roleId);
-  const trait = traitDef(emp.trait);
-  const trainable = canTrain(game, emp.id);
-  const maxed = emp.level >= balance.staff.maxLevel;
+/** Level shown as filled pips out of MAX_LEVEL (the mockup's star rating). */
+function Stars({ level }: { level: number }) {
   return (
-    <div className="emp-selbar">
-      <Avatar name={emp.name} />
-      <div className="emp-selbar-main">
-        <div className="emp-name-row"><span className="emp-name">{emp.name}</span><span className="emp-lvl">L{emp.level}</span></div>
-        <div className="emp-role">{role?.name}{trait && <span className="emp-trait" style={{ color: TRAIT_TONE[trait.tone] }}> · {trait.name}</span>} · {m$(employeePayroll(emp))}/s</div>
-      </div>
-      {emp.training ? (
-        <span className="emp-selbar-tr">Training ~{fmtDur(emp.training.remainingSec)}</span>
-      ) : (
-        <button className="btn btn-ghost btn-sm" disabled={!trainable} onClick={() => onTrain(emp.id)}>
-          {maxed ? "Maxed" : `Train · ${m$(trainCost(emp))}`}
-        </button>
-      )}
-      <button className="link-btn emp-fire" onClick={() => onFire(emp.id)}>fire</button>
-      <button className="link-btn" onClick={onClose} aria-label="Close">✕</button>
-    </div>
+    <span className="emp-stars" aria-label={`Level ${level} of ${MAX_LEVEL}`}>
+      {Array.from({ length: MAX_LEVEL }, (_, i) => (
+        <span key={i} className={`emp-star ${i < level ? "on" : ""}`}>★</span>
+      ))}
+    </span>
   );
 }
 
-type Tab = "team" | "hire" | "office";
-const LAB_CHIP_CAP = 30; // don't render hundreds of chips at once
+/** Quality tier badge from a product's competitiveness (qf 0..1). */
+function tier(qf: number): { label: string; cls: string } {
+  if (qf > 0.66) return { label: "High", cls: "high" };
+  if (qf > 0.33) return { label: "Mid", cls: "mid" };
+  return { label: "Low", cls: "low" };
+}
+
+type Seg = "people" | "projects";
 
 /**
- * Employees (Phase 3) — your team as individual people, organised into Team / Hire /
- * Office tabs so it stays clean even with a big roster. The lab crew collapses behind
- * a count; product folks live on a drag board; tap anyone to train/fire.
+ * Employees (Phase 3, redesigned to the owner's mockup) — a KPI header, a
+ * People / Projects toggle, project cards that show their assigned crew, and
+ * available-staff cards with level + trait + salary. Assignment is tap-driven
+ * (pick a person → tap a project): reliable on mobile, same look as the design.
  */
 export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh, onCloseRecruit, onHireCandidate, onTrain, onAssign, onFire, onBuyPerk }: Props) {
-  const [tab, setTab] = useState<Tab>("team");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [labOpen, setLabOpen] = useState(false);
-  const [labAll, setLabAll] = useState(false); // expand the capped lab roster to all chips
+  const [seg, setSeg] = useState<Seg>("people");
+  const [selectedId, setSelectedId] = useState<string | null>(null); // person being managed / placed
+  const [perksOpen, setPerksOpen] = useState(false);
   const team = game.employees;
-  // Roster splits/sums only change on hire/fire/train/assign — not every 10Hz tick.
-  const { infra, product, labPay, roleSummary } = useMemo(() => {
-    const inf = team.filter((e) => roleDef(e.roleId)?.team === "infra");
+  const morale = officeMorale(game);
+
+  const { product, idle } = useMemo(() => {
     const prod = team.filter((e) => roleDef(e.roleId)?.team === "product");
-    // Headcount per role (most-staffed first) — legibility for a big roster.
-    const counts = new Map<string, number>();
-    for (const e of team) counts.set(e.roleId, (counts.get(e.roleId) ?? 0) + 1);
-    const summary = [...counts.entries()]
-      .map(([roleId, n]) => ({ roleId, n, name: roleDef(roleId)?.name ?? roleId }))
-      .sort((a, b) => b.n - a.n);
-    return { infra: inf, product: prod, labPay: inf.reduce((s, e) => s + employeePayroll(e), 0), roleSummary: summary };
+    return { product: prod, idle: prod.filter((e) => !e.assignedProductId).length };
   }, [team]);
+
+  // One metrics pass per product; crew grouped by assignment.
+  const frontier = game.products.frontier;
+  const projects = useMemo(() => game.products.active.map((p) => ({
+    p, me: productMetrics(p, frontier),
+    crew: team.filter((e) => e.assignedProductId === p.id),
+  })), [game.products.active, frontier, team]);
+  const totalMrr = projects.reduce((s, x) => s + x.me.mrr, 0);
+
   const selected = selectedId ? team.find((e) => e.id === selectedId) ?? null : null;
 
-  const boardProducts = useMemo(
-    () => game.products.active.map((p) => ({ id: p.id, name: p.name })),
-    [game.products.active],
+  // Tap-to-assign: when a person is selected in the Projects pane, tapping a
+  // project staffs them there; tapping their current chip un-assigns.
+  const place = (productId: string | null) => {
+    if (!selected) return;
+    onAssign(selected.id, productId);
+    setSelectedId(null);
+  };
+
+  const kpis = (
+    <div className="emp-kpis">
+      <div className="emp-kpi">
+        <span className="emp-kpi-ic people">👥</span>
+        <div><div className="emp-kpi-v">{team.length}</div><div className="emp-kpi-l">{idle > 0 ? `${idle} idle` : "Employees"}</div></div>
+      </div>
+      <div className="emp-kpi">
+        <span className="emp-kpi-ic pay">💸</span>
+        <div><div className="emp-kpi-v">{fmtMoney(derived.payrollPerSec)}</div><div className="emp-kpi-l">Payroll /s</div></div>
+      </div>
+      <div className="emp-kpi">
+        <span className="emp-kpi-ic mood">😊</span>
+        <div><div className="emp-kpi-v">×{morale.toFixed(2)}</div><div className="emp-kpi-l">Morale</div></div>
+      </div>
+      <div className="emp-kpi">
+        <span className="emp-kpi-ic rev">📈</span>
+        <div><div className="emp-kpi-v">{m$(totalMrr)}</div><div className="emp-kpi-l">Revenue /s</div></div>
+      </div>
+    </div>
   );
-  const pm = derived.productMods;
-  const buffs: string[] = [];
-  if (pm.upgradeSpeed > 1) buffs.push(`+${Math.round((pm.upgradeSpeed - 1) * 100)}% research speed`);
-  if (pm.acq > 1) buffs.push(`+${Math.round((pm.acq - 1) * 100)}% new users`);
-  if (pm.arpu > 1) buffs.push(`+${Math.round((pm.arpu - 1) * 100)}% revenue/user`);
-  if (pm.serveCost < 1) buffs.push(`−${Math.round((1 - pm.serveCost) * 100)}% serving cost`);
-  if (pm.churn < 1) buffs.push(`−${Math.round((1 - pm.churn) * 100)}% users leaving`);
+
+  /** A full person card (roster + available list). `action` renders the right side. */
+  const personCard = (e: Employee, action: ReactNode, onTap?: () => void) => {
+    const role = roleDef(e.roleId);
+    const trait = traitDef(e.trait);
+    return (
+      <div className={`emp-person ${selectedId === e.id ? "sel" : ""}`} key={e.id} onClick={onTap} role={onTap ? "button" : undefined}>
+        <Avatar name={e.name} />
+        <div className="emp-person-main">
+          <div className="emp-person-top">
+            <span className="emp-person-name">{e.name}</span>
+            <Stars level={e.level} />
+          </div>
+          <div className="emp-person-tags">
+            <span className="emp-tag role">{role?.name}</span>
+            {trait && <span className="emp-tag" style={{ color: TRAIT_TONE[trait.tone], background: `color-mix(in srgb, ${TRAIT_TONE[trait.tone]} 12%, #fff)` }}>{trait.name}</span>}
+            {e.training && <span className="emp-tag train">🎓 training</span>}
+          </div>
+        </div>
+        <div className="emp-person-right">{action}</div>
+      </div>
+    );
+  };
 
   return (
     <section className="panel">
       <h2 className="panel-title">Employees</h2>
-      <p className={`floor-meter${derived.payrollPerSec.gt(0) ? " full" : ""}`}>
-        👥 <b>{team.length}</b> · <b>{fmtMoney(derived.payrollPerSec)}/s</b> payroll · 😊 ×{officeMorale(game).toFixed(2)}
-      </p>
+      {kpis}
 
-      <div className="pd-tabs" role="tablist">
-        {(["team", "hire", "office"] as Tab[]).map((id) => (
-          <button key={id} role="tab" aria-selected={tab === id} className={`pd-tab ${tab === id ? "on" : ""}`} onClick={() => setTab(id)}>
-            {id === "team" ? "Team" : id === "hire" ? "Hire" : "Office"}
-          </button>
-        ))}
+      <div className="emp-seg" role="tablist">
+        <button role="tab" aria-selected={seg === "people"} className={`emp-seg-btn ${seg === "people" ? "on" : ""}`} onClick={() => { setSeg("people"); setSelectedId(null); }}>People</button>
+        <button role="tab" aria-selected={seg === "projects"} className={`emp-seg-btn ${seg === "projects" ? "on" : ""}`} onClick={() => { setSeg("projects"); setSelectedId(null); }}>
+          Projects{projects.length > 0 && <span className="emp-seg-badge">{projects.length}</span>}
+        </button>
       </div>
 
-      {tab === "team" && (
-        <div className="pd-pane">
-          {team.length === 0 && <p className="market-warn">No employees yet — head to <b>Hire</b> to recruit your first.</p>}
-          {roleSummary.length > 0 && (
-            <div className="emp-rolesum">
-              {roleSummary.map((r) => (
-                <span className="emp-rolesum-chip" key={r.roleId}><b>{r.n}</b> {r.name}</span>
-              ))}
-            </div>
-          )}
-          {buffs.length > 0 && <p className="emp-buffs-line">Bonuses: {buffs.join(" · ")}</p>}
-          {selected && <ManageBar game={game} emp={selected} onTrain={onTrain} onFire={(id) => { onFire(id); setSelectedId(null); }} onClose={() => setSelectedId(null)} />}
-
-          {product.length > 0 && (
-            <>
-              <div className="emp-team-head">🚀 Product team — drag onto a product, or tap to manage</div>
-              <EmployeeBoard
-                employees={product}
-                products={boardProducts}
-                onAssign={onAssign} onSelect={setSelectedId} selectedId={selectedId}
-              />
-            </>
-          )}
-
-          {infra.length > 0 && (
-            <div className="emp-labsec">
-              <button className="emp-lab-head" onClick={() => setLabOpen((o) => !o)}>
-                <span>🏗️ Lab team — works company-wide</span>
-                <span className="emp-lab-meta">{infra.length} · {m$(labPay)}/s {labOpen ? "▾" : "▸"}</span>
-              </button>
-              {labOpen && (
-                <div className="emp-zone-chips emp-lab-chips">
-                  {(labAll ? infra : infra.slice(0, LAB_CHIP_CAP)).map((e) => (
-                    <Chip key={e.id} emp={e} selected={selectedId === e.id} onTap={() => setSelectedId(e.id)} />
-                  ))}
-                  {infra.length > LAB_CHIP_CAP && (
-                    <button type="button" className="emp-zone-more" onClick={() => setLabAll((v) => !v)}>
-                      {labAll ? "show less" : `+${infra.length - LAB_CHIP_CAP} more`}
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {tab === "hire" && (
+      {/* ---------------- PEOPLE ---------------- */}
+      {seg === "people" && (
         <div className="pd-pane">
           {candidates ? (
             <>
-              <div className="prod-release-head">
+              <div className="emp-section-head">
                 <span>Pick a candidate</span>
                 <span><button className="link-btn" onClick={onRefresh}>↻ refresh</button> · <button className="link-btn" onClick={onCloseRecruit}>close</button></span>
               </div>
@@ -192,46 +166,131 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
                 const cost = hireCost(c.roleId) * derived.hireDiscount;
                 const afford = game.resources.money.gte(cost);
                 return (
-                  <button key={i} className={`emp-cand ${afford ? "" : "maxed"}`} disabled={!afford} onClick={() => onHireCandidate(i)}>
+                  <div className="emp-person" key={i}>
                     <Avatar name={c.name} />
-                    <div className="emp-cand-main">
-                      <div className="emp-cand-name">{c.name}</div>
-                      <div className="emp-cand-role">{role?.name}{trait && <span style={{ color: TRAIT_TONE[trait.tone] }}> · {trait.name}</span>}</div>
+                    <div className="emp-person-main">
+                      <div className="emp-person-top"><span className="emp-person-name">{c.name}</span></div>
+                      <div className="emp-person-tags">
+                        <span className="emp-tag role">{role?.name}</span>
+                        {trait && <span className="emp-tag" style={{ color: TRAIT_TONE[trait.tone], background: `color-mix(in srgb, ${TRAIT_TONE[trait.tone]} 12%, #fff)` }}>{trait.name}</span>}
+                        <span className="emp-tag muted">{m$(role?.payroll ?? 0)}/s</span>
+                      </div>
                     </div>
-                    <div className="emp-cand-cost"><span>{m$(cost)}</span><span className="emp-cand-sal">{m$(role?.payroll ?? 0)}/s</span></div>
-                  </button>
+                    <button className="emp-hire-btn" disabled={!afford} onClick={() => onHireCandidate(i)}>{m$(cost)}</button>
+                  </div>
                 );
               })}
             </>
           ) : (
             <>
-              <p className="pd-pane-tip">Recruit specialists to scale the lab and your products. Each hire costs a one-time signing bonus + ongoing salary.</p>
-              <button className="btn btn-primary" onClick={onRecruit}>+ Recruit talent</button>
+              <div className="emp-section-head">
+                <span>Your team · {team.length}</span>
+                <button className="emp-recruit" onClick={onRecruit}>+ Recruit</button>
+              </div>
+              {team.length === 0 && <p className="market-warn">No employees yet — tap <b>Recruit</b> to hire your first specialist.</p>}
+              {team.map((e) => {
+                const trainable = canTrain(game, e.id);
+                const maxed = e.level >= MAX_LEVEL;
+                const open = selectedId === e.id;
+                return (
+                  <div className="emp-person-wrap" key={e.id}>
+                    {personCard(e, (
+                      <span className="emp-person-pay">{m$(employeePayroll(e))}/s</span>
+                    ), () => setSelectedId(open ? null : e.id))}
+                    {open && (
+                      <div className="emp-person-actions">
+                        {e.training ? (
+                          <span className="emp-act-train">🎓 Training · ~{fmtDur(e.training.remainingSec)}</span>
+                        ) : (
+                          <button className="emp-act" disabled={!trainable} onClick={() => onTrain(e.id)}>{maxed ? "Max level" : `Train → L${e.level + 1} · ${m$(trainCost(e))}`}</button>
+                        )}
+                        {roleDef(e.roleId)?.team === "product" && (
+                          <button className="emp-act" onClick={() => { setSeg("projects"); setSelectedId(e.id); }}>Assign…</button>
+                        )}
+                        <button className="emp-act danger" onClick={() => { onFire(e.id); setSelectedId(null); }}>Fire</button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {balance.office.enabled && (
+                <div className="emp-perks">
+                  <button className="emp-section-head emp-perks-head" onClick={() => setPerksOpen((o) => !o)}>
+                    <span>🏢 Office perks</span>
+                    <span className="emp-perks-meta">morale ×{morale.toFixed(2)} {perksOpen ? "▾" : "▸"}</span>
+                  </button>
+                  {perksOpen && balance.office.perks.map((perk) => {
+                    const owned = (game.upgrades[perk.id] ?? 0) > 0;
+                    const afford = canBuyOfficePerk(game, perk.id);
+                    const fx = perk.morale > 0 ? `+${Math.round(perk.morale * 100)}% effectiveness` : `−${Math.round((1 - perk.payrollMult) * 100)}% payroll`;
+                    return (
+                      <button key={perk.id} className={`emp-perk ${owned ? "owned" : ""}`} disabled={owned || !afford} onClick={() => onBuyPerk(perk.id)}>
+                        <div className="emp-perk-main">
+                          <span className="emp-perk-name">{owned ? "✓ " : ""}{perk.name}</span>
+                          <span className="emp-perk-desc">{perk.desc}</span>
+                          <span className="emp-perk-fx">{fx}</span>
+                        </div>
+                        <span className="emp-perk-cost">{owned ? "owned" : fmtMoney(Big.of(perk.cost))}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </>
           )}
         </div>
       )}
 
-      {tab === "office" && balance.office.enabled && (
+      {/* ---------------- PROJECTS ---------------- */}
+      {seg === "projects" && (
         <div className="pd-pane">
-          <p className="pd-pane-tip">Perks boost every employee's output (morale) or trim the wage bill. Morale ×{officeMorale(game).toFixed(2)}.</p>
-          <div className="list">
-            {balance.office.perks.map((perk) => {
-              const owned = (game.upgrades[perk.id] ?? 0) > 0;
-              const afford = canBuyOfficePerk(game, perk.id);
-              const fx = perk.morale > 0 ? `+${Math.round(perk.morale * 100)}% staff effectiveness` : `−${Math.round((1 - perk.payrollMult) * 100)}% payroll`;
-              return (
-                <button key={perk.id} className={`card ${owned ? "" : afford ? "affordable" : ""}`} disabled={owned || !afford} onClick={() => onBuyPerk(perk.id)}>
-                  <div className="card-main">
-                    <span className="card-name">{owned ? "✓ " : ""}{perk.name}</span>
-                    <span className="card-desc">{perk.desc}</span>
-                    <span className="card-note" style={{ color: "var(--money)" }}>{fx}</span>
+          {selected && (
+            <div className="emp-place-hint">
+              Placing <b>{selected.name.split(" ")[0]}</b> — tap a project below, or <button className="link-btn" onClick={() => place(null)}>send to Lab</button> · <button className="link-btn" onClick={() => setSelectedId(null)}>cancel</button>
+            </div>
+          )}
+          {projects.length === 0 && <p className="market-warn">No products yet — launch one in the <b>Products</b> tab to staff a team.</p>}
+
+          {projects.map(({ p, me, crew }) => {
+            const t = typeDef(p.type);
+            const up = p.upgrade;
+            const pct = up ? upgradeProgress(up) * 100 : me.qf * 100;
+            const tg = tier(me.qf);
+            return (
+              <div className={`emp-proj ${selected ? "targetable" : ""}`} key={p.id} onClick={() => selected && place(p.id)} role={selected ? "button" : undefined}>
+                <div className="emp-proj-head">
+                  <div className="emp-proj-id">
+                    <span className="emp-proj-name">{p.name}</span>
+                    <span className="emp-proj-sub">{t.name} · v{p.version}</span>
                   </div>
-                  <div className="card-cost"><span style={{ color: "var(--money)" }}>{owned ? "owned" : fmtMoney(Big.of(perk.cost))}</span></div>
-                </button>
-              );
-            })}
-          </div>
+                  <span className={`emp-proj-badge ${tg.cls}`}>{tg.label}</span>
+                </div>
+                <div className="emp-proj-bar"><div className="emp-proj-fill" style={{ width: `${Math.min(100, pct)}%`, background: up ? "#7c5cff" : "var(--money)" }} /></div>
+                <div className="emp-proj-meta">
+                  <span>{m$(me.mrr)}/s revenue</span>
+                  {up ? <span>🔬 v{up.targetVersion} · ~{fmtDur(up.remainingSec)}</span> : <span>{Math.round(me.qf * 100)}% competitive</span>}
+                </div>
+                <div className="emp-proj-crew">
+                  {crew.length === 0 && <span className="emp-proj-empty">{selected ? "Tap to assign here" : "No crew assigned"}</span>}
+                  {crew.map((e) => (
+                    <button key={e.id} className="emp-crew-av" title={`${e.name} · unassign`} onClick={(ev) => { ev.stopPropagation(); onAssign(e.id, null); }}>
+                      <Avatar name={e.name} size={30} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+
+          <div className="emp-section-head"><span>Available {product.length > 0 ? `· ${idle} idle` : ""}</span></div>
+          {product.length === 0 && <p className="pd-pane-tip">Hire product-team roles (engineers, growth, sales…) in <b>People</b> to staff your projects.</p>}
+          {product.filter((e) => !e.assignedProductId).map((e) =>
+            personCard(e, (
+              <button className="emp-assign-btn" onClick={() => setSelectedId(selectedId === e.id ? null : e.id)}>{selectedId === e.id ? "Picking…" : "Assign"}</button>
+            )),
+          )}
+          {idle === 0 && product.length > 0 && <p className="pd-pane-tip">Everyone's assigned. Tap a crew avatar on a project to free them up.</p>}
         </div>
       )}
     </section>

@@ -1906,6 +1906,95 @@ body {
   text-transform: uppercase; letter-spacing: 0.04em; margin: 14px 0 6px;
 }
 
+/* ---------- Employees — redesign (KPI header · People/Projects · cards) ---------- */
+.emp-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.emp-kpi { display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 14px; padding: 11px 12px; box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05); }
+.emp-kpi-ic { flex: 0 0 auto; width: 34px; height: 34px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; }
+.emp-kpi-ic.people { background: rgba(124, 92, 255, 0.12); }
+.emp-kpi-ic.pay { background: rgba(22, 179, 100, 0.12); }
+.emp-kpi-ic.mood { background: rgba(249, 115, 22, 0.12); }
+.emp-kpi-ic.rev { background: rgba(47, 123, 246, 0.12); }
+.emp-kpi-v { font-size: 16px; font-weight: 800; color: var(--ink); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.emp-kpi-l { font-size: 10.5px; font-weight: 600; color: var(--ink-3); }
+
+/* Segmented People / Projects toggle */
+.emp-seg { display: flex; gap: 4px; padding: 4px; background: #e9e9f1; border-radius: 12px; margin-bottom: 14px; }
+.emp-seg-btn {
+  flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 9px; border: none; background: transparent; border-radius: 9px; cursor: pointer;
+  font-size: 13.5px; font-weight: 750; color: var(--ink-2); transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+.emp-seg-btn.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(16, 24, 40, 0.1); }
+.emp-seg-badge { font-size: 10.5px; font-weight: 800; color: #fff; background: #7c5cff; border-radius: 999px; padding: 1px 6px; min-width: 16px; }
+
+/* Avatars + level pips */
+.emp-av { flex: 0 0 auto; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; letter-spacing: -0.02em; }
+.emp-stars { display: inline-flex; gap: 1px; flex: 0 0 auto; }
+.emp-star { font-size: 11px; color: #d8d8e0; line-height: 1; }
+.emp-star.on { color: #f5b40a; }
+
+.emp-section-head { display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 800; color: #2b2f38; margin: 4px 2px 2px; }
+.emp-recruit { font-size: 12.5px; font-weight: 750; color: #fff; background: #7c5cff; border: none; border-radius: 999px; padding: 6px 13px; cursor: pointer; transition: filter 0.15s; }
+.emp-recruit:hover { filter: brightness(1.06); }
+
+/* Person card (roster · available · candidate) */
+.emp-person-wrap { display: flex; flex-direction: column; }
+.emp-person { display: flex; align-items: center; gap: 11px; background: #fff; border-radius: 14px; padding: 11px 13px; box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05); cursor: pointer; transition: box-shadow 0.15s, border-color 0.15s; border: 1px solid transparent; }
+.emp-person.sel { border-color: #7c5cff; box-shadow: 0 0 0 2px rgba(124, 92, 255, 0.18); }
+.emp-person-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.emp-person-top { display: flex; align-items: center; gap: 8px; }
+.emp-person-name { font-size: 14px; font-weight: 750; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.emp-person-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.emp-tag { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: #f0f0f5; color: var(--ink-2); }
+.emp-tag.role { background: rgba(124, 92, 255, 0.1); color: #5a43c8; }
+.emp-tag.muted { color: var(--money); background: rgba(22, 179, 100, 0.1); }
+.emp-tag.train { background: rgba(47, 123, 246, 0.1); color: #2f7bf6; }
+.emp-person-right { flex: 0 0 auto; }
+.emp-person-pay { font-size: 12px; font-weight: 750; color: var(--ink-3); white-space: nowrap; }
+
+.emp-person-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 4px 4px; }
+.emp-act { font-size: 12px; font-weight: 700; padding: 7px 12px; border-radius: 10px; border: 1px solid var(--glass-hairline); background: #fff; color: var(--ink); cursor: pointer; }
+.emp-act:disabled { opacity: 0.45; cursor: not-allowed; }
+.emp-act.danger { color: var(--coral); border-color: color-mix(in srgb, var(--coral) 30%, transparent); }
+.emp-act-train { font-size: 12px; font-weight: 700; color: #2f7bf6; padding: 7px 4px; }
+.emp-hire-btn { flex: 0 0 auto; font-size: 13px; font-weight: 800; color: #fff; background: var(--money); border: none; border-radius: 11px; padding: 8px 13px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.emp-hire-btn:disabled { background: #cfd2da; cursor: not-allowed; }
+.emp-assign-btn { flex: 0 0 auto; font-size: 12.5px; font-weight: 750; color: #7c5cff; background: rgba(124, 92, 255, 0.1); border: none; border-radius: 10px; padding: 7px 13px; cursor: pointer; }
+
+/* Office perks (folded into People) */
+.emp-perks { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+.emp-perks-head { width: 100%; border: none; background: none; cursor: pointer; padding: 0; }
+.emp-perks-meta { font-size: 12px; font-weight: 650; color: var(--ink-2); }
+.emp-perk { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; background: #fff; border: none; border-radius: 14px; padding: 11px 13px; box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05); cursor: pointer; }
+.emp-perk.owned { background: rgba(22, 179, 100, 0.07); box-shadow: inset 0 0 0 1px rgba(22, 179, 100, 0.2); }
+.emp-perk:disabled:not(.owned) { opacity: 0.5; cursor: not-allowed; }
+.emp-perk-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.emp-perk-name { font-size: 13.5px; font-weight: 750; color: var(--ink); }
+.emp-perk-desc { font-size: 11px; color: var(--ink-3); line-height: 1.3; }
+.emp-perk-fx { font-size: 11px; font-weight: 700; color: var(--money); margin-top: 1px; }
+.emp-perk-cost { flex: 0 0 auto; font-size: 13px; font-weight: 800; color: var(--money); white-space: nowrap; }
+
+/* Projects pane */
+.emp-place-hint { font-size: 12.5px; font-weight: 650; color: var(--ink); background: rgba(124, 92, 255, 0.1); border: 1px solid rgba(124, 92, 255, 0.25); border-radius: 12px; padding: 9px 12px; line-height: 1.4; }
+.emp-proj { background: #fff; border-radius: 16px; padding: 14px 15px; box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05); display: flex; flex-direction: column; gap: 9px; border: 1.5px solid transparent; transition: border-color 0.15s, transform 0.12s; }
+.emp-proj.targetable { border-color: rgba(124, 92, 255, 0.4); border-style: dashed; cursor: pointer; }
+.emp-proj.targetable:hover { border-color: #7c5cff; transform: translateY(-1px); }
+.emp-proj-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.emp-proj-id { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.emp-proj-name { font-size: 15px; font-weight: 800; color: var(--ink); letter-spacing: -0.01em; }
+.emp-proj-sub { font-size: 11.5px; color: var(--ink-3); font-weight: 600; }
+.emp-proj-badge { flex: 0 0 auto; font-size: 10.5px; font-weight: 800; padding: 3px 9px; border-radius: 999px; }
+.emp-proj-badge.high { color: var(--money); background: rgba(22, 179, 100, 0.12); }
+.emp-proj-badge.mid { color: #f97316; background: rgba(249, 115, 22, 0.12); }
+.emp-proj-badge.low { color: var(--coral); background: rgba(255, 56, 92, 0.12); }
+.emp-proj-bar { height: 7px; border-radius: 99px; background: #ededf3; overflow: hidden; }
+.emp-proj-fill { height: 100%; border-radius: 99px; }
+.emp-proj-meta { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 650; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.emp-proj-crew { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-height: 30px; }
+.emp-proj-empty { font-size: 11.5px; color: var(--ink-3); }
+.emp-crew-av { border: none; background: none; padding: 0; cursor: pointer; border-radius: 50%; transition: transform 0.12s; }
+.emp-crew-av:hover { transform: scale(1.08); }
+
 /* ---------- Timed version research (in-flight upgrade) ---------- */
 .prod-research { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
 .prod-research-head {
