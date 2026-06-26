@@ -27,7 +27,7 @@ Eras 0–6 + AGI ascension · research tree · "Ship the Model" prestige (Legacy
 ## Phase B — Content & replayability depth (P2, post-launch, data-driven)
 *Goal: more reasons to keep playing and to start a new run. The GDD says expand in waves, not dumps.*
 
-- **B1 · More world events + faction arcs** *(P2, M)* — deepen alignment (doomer↔accelerationist) into a light arc with milestone payoffs/penalties and more satirical one-shots. Pure content in balance + existing event engine.
+- **B1 · More world events + faction arcs** 🟡 *(content done)* — +12 events (9 ambient good/bad + 3 new faction choices: defense contract, EU AI Act, capability-eval publish) in the satire voice; pure data, curve-safe (events are RNG-fired in the store, not the sim — still 12m15s). *Remaining (optional): an alignment-threshold arc with milestone payoffs/penalties.*
 - **B2 · Research-tree breadth for late eras** *(P2, L)* — Eras 5–6 deserve more capability/multiplier/automation nodes so the endgame keeps revealing depth. Curve-gated; verify with sim.
 - **B3 · More product types & per-product features** *(P2, M)* — new market types and feature lanes give the Products business longer legs. Data-only additions.
 - **B4 · Employee depth: synergies & rare hires** *(P2, M)* — team synergies (a "10x + mentor" combo), rare named hires, a light career/level cap. Builds on the existing trait system.
