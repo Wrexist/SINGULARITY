@@ -215,14 +215,34 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
     const blink = o.reducedMotion ? 0.6 : 0.5 + 0.5 * Math.sin(t / 280 + i * 1.7);
     // A manual run drives a strong work pulse; a running product business keeps a
     // gentler ambient pulse so the racks always look like they're computing.
-    const workPulse = o.reducedMotion
+    const basePulse = o.reducedMotion
       ? 0
       : model.active
         ? 0.5 + 0.5 * Math.sin(t / 150 + i)
         : model.busy
           ? 0.22 + 0.22 * Math.sin(t / 320 + i)
           : 0;
+    // Overclock manifests as a hotter rack: lift the work-pulse (which already
+    // drives rim/LED glow) so the upgrade you bought is visible in the room.
+    const workPulse = Math.min(1.2, basePulse + model.overclock * 0.45);
     drawRack(ctx, c.x, c.y, tileW, tileH, rack.tier, rack.density, scale, blink, workPulse, model.active, powerOn);
+  }
+
+  // Auto-train "ops bot": a small glowing dot that patrols the floor, so the
+  // automation you bought is something you can see working. Additive, drawn over
+  // the racks; reduced-motion hides it (it's pure motion juice).
+  if (model.autoBot && !o.reducedMotion && model.total > 0) {
+    const cx = (gxMin + gxMax) / 2;
+    const cyy = (gyMin + gyMax) / 2;
+    const r = Math.max(0.6, (gxMax - gxMin) / 2 - 0.5);
+    const bot = iso(cx + Math.cos(t / 900) * r, cyy + Math.sin(t / 900) * r * 0.7);
+    const glow = ctx.createRadialGradient(bot.x, bot.y, 0, bot.x, bot.y, 9);
+    glow.addColorStop(0, "rgba(120,230,180,0.9)");
+    glow.addColorStop(1, "rgba(120,230,180,0)");
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(bot.x, bot.y, 9, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   // Data flowing through a live business: bright packets stream along the front

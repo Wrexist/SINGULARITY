@@ -52,6 +52,12 @@ export interface HallModel {
   /** Wall-mounted cooling units PER WALL — grows as you buy power/cooling gear so
    *  the manifestation rule holds (GDD §5: "upgrade cooling, fans spin"). */
   coolingUnits: number;
+  /** 0..1 overclock intensity (from the Overclock Firmware upgrade). Drives a
+   *  hotter rack glow so this software multiplier actually shows in the hall. */
+  overclock: number;
+  /** Auto-train owned → a little "ops bot" roams the floor (the automation, made
+   *  visible). */
+  autoBot: boolean;
 }
 
 /** Power/cooling infrastructure ids (drive the visible wall units). Exported so
@@ -91,6 +97,11 @@ export function buildHallModel(game: GameState): HallModel {
   // facility still reads cleanly (parametric: many → one upgraded visual).
   const powerLevels = POWER_IDS.reduce((s, id) => s + (game.upgrades[id] ?? 0), 0);
   const coolingUnits = Math.min(3, (era >= 2 ? 1 : 0) + powerLevels);
+
+  // Manifest software upgrades that used to change only a number: overclock makes
+  // racks visibly run hotter; auto-train puts a little ops bot on the floor.
+  const overclock = Math.min(1, (game.upgrades["overclock"] ?? 0) * 0.1);
+  const autoBot = (game.upgrades["auto_train"] ?? 0) > 0;
 
   const owned = RACK_IDS.map((id) => game.upgrades[id] ?? 0);
   const totalOwned = owned[0]! + owned[1]! + owned[2]!;
@@ -138,6 +149,8 @@ export function buildHallModel(game: GameState): HallModel {
     era,
     total: racks.length,
     coolingUnits,
+    overclock,
+    autoBot,
     ...hallRoomSplit(game),
   };
 }

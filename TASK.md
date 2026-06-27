@@ -39,9 +39,14 @@ no dark patterns. Re-run `npm run sim` after any economy change.*
 
 ### Step 3 — The hall (R2)
 - [ ] **R2.1 · Tappable, inspectable racks** (P1) — tap a rack → parametric callout + satirical name.
-- [ ] **R2.2 · Fix manifestation-rule violations** (P1) — overclock/cooling/auto/staff/products
-      get a physical echo in the hall.
-- [ ] **R2.5 · Juice the rack-buy moment** (P1, S) — wire `punch()` + burst + "+X/s" floater to buys.
+      *(Canvas hit-testing/interaction — best done with on-device verification.)*
+- [~] **R2.2 · Fix manifestation-rule violations** (P1) — 🟡 *partial*: **overclock** now manifests
+      (racks visibly run hotter — folds into the existing work-pulse glow, GDD §5's exact example)
+      and **auto-train** spawns a roaming "ops bot" dot. Pure model fields (`overclock`, `autoBot`)
+      + 2 tests; renderer changes are additive/reduced-motion-aware. ⚠️ visuals want an on-device
+      check before the next TestFlight push. *Remaining: staff desks, live-product uplink beams.*
+- [x] **R2.5 · Rack-buy juice** — audit's "no celebration" was stale: `UpgradePanel` already fires
+      `burst()` + `punch()` on every buy card. Left as-is (already covered).
 
 ### Step 4 — Endgame balance (R4 — do after R0.2)
 - [x] **R4.1 · Tame the Legacy snowball** — `legacyMult` is now diminishing:

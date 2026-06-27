@@ -100,4 +100,20 @@ describe("hall view-model", () => {
     expect(m.active).toBe(true);
     expect(m.progress).toBe(0.5);
   });
+
+  it("manifests overclock as a 0..1 heat intensity that scales with levels", () => {
+    expect(buildHallModel(createInitialState()).overclock).toBe(0);
+    const s = createInitialState();
+    s.upgrades = { overclock: 5 };
+    expect(buildHallModel(s).overclock).toBeCloseTo(0.5, 5);
+    s.upgrades = { overclock: 50 }; // clamps at 1
+    expect(buildHallModel(s).overclock).toBe(1);
+  });
+
+  it("shows an ops bot only once auto-train is owned", () => {
+    expect(buildHallModel(createInitialState()).autoBot).toBe(false);
+    const s = createInitialState();
+    s.upgrades = { auto_train: 1 };
+    expect(buildHallModel(s).autoBot).toBe(true);
+  });
 });
