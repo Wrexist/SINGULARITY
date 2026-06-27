@@ -7,6 +7,7 @@ import type { GameState } from "../engine/types";
 import { fmt } from "./format";
 import { Big } from "../engine/math/Big";
 import { ReputationModal } from "./ReputationModal";
+import { LandmarkIcon } from "./Icons";
 
 interface Props {
   game: GameState;
@@ -72,7 +73,7 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk }: Props) 
 
       {(repPoints > 0 || repOwned > 0) && (
         <button className="rep-strip" onClick={() => setRepOpen(true)}>
-          <span className="rep-strip-mark">🏛️</span>
+          <span className="rep-strip-mark"><LandmarkIcon size={18} /></span>
           <span className="rep-strip-text">Lab Reputation — <b>{repPoints}</b> point{repPoints === 1 ? "" : "s"} to spend{repOwned > 0 ? ` · ${repOwned} perk${repOwned === 1 ? "" : "s"} owned` : ""}</span>
           <span className="rep-strip-go">open ▸</span>
         </button>

@@ -216,7 +216,8 @@ body {
 
 /* ---------- Achievements ---------- */
 .ach-modal { max-width: 440px; }
-.ach-title { font-size: 17px; font-weight: 800; margin: 0; }
+.ach-title { font-size: 17px; font-weight: 800; margin: 0; display: inline-flex; align-items: center; gap: 8px; }
+.ach-title svg { color: var(--data); }
 .ach-count { font-size: 12px; color: var(--ink-2); font-weight: 650; margin-top: 2px; }
 .ach-progress-track { height: 6px; border-radius: 3px; background: var(--glass-strong); overflow: hidden; margin: 10px 0 4px; }
 .ach-progress-fill { height: 100%; background: linear-gradient(90deg, var(--data), var(--money)); transition: width 0.4s var(--ease-out); }
@@ -263,7 +264,7 @@ body {
   background: linear-gradient(100deg, color-mix(in srgb, var(--data) 14%, var(--glass-strong)), var(--glass-strong));
   border: 1px solid color-mix(in srgb, var(--data) 32%, var(--glass-edge));
 }
-.rep-strip-mark { font-size: 16px; }
+.rep-strip-mark { display: inline-flex; align-items: center; color: var(--data); }
 .rep-strip-text { flex: 1; font-size: 12.5px; font-weight: 650; color: var(--ink); }
 .rep-strip-text b { font-weight: 850; }
 .rep-strip-go { font-size: 12px; font-weight: 750; color: var(--data); white-space: nowrap; }
@@ -1015,6 +1016,8 @@ body {
   /* Scroll inside tall modals on short screens without chaining to the page. */
   max-height: calc(100vh - 48px);
   overflow-y: auto;
+  overflow-x: hidden; /* keep overflow-x from computing to `auto` and panning sideways */
+  touch-action: pan-y;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
@@ -1044,7 +1047,8 @@ body {
   padding: 10px 12px; border-radius: var(--radius-sm);
   background: var(--glass-strong); border: 1px solid var(--glass-hairline);
 }
-.wiwa-meta-row { font-size: 12.5px; color: var(--ink); display: flex; align-items: baseline; gap: 5px; flex-wrap: wrap; }
+.wiwa-meta-row { font-size: 12.5px; color: var(--ink); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.wiwa-meta-row svg { color: var(--data); flex: 0 0 auto; }
 .wiwa-meta-row b { font-weight: 850; }
 .wiwa-ach-names { color: var(--ink-2); font-size: 11.5px; }
 
@@ -1388,6 +1392,11 @@ body {
   /* Scroll inside the sheet on short screens; don't chain to the page behind. */
   max-height: 92vh;
   overflow-y: auto;
+  /* Pin the horizontal axis. When only overflow-y is set, CSS computes overflow-x
+     to `auto` — which let the whole sheet be dragged sideways (the reported bug).
+     Lock it to hidden and restrict touch to vertical panning. */
+  overflow-x: hidden;
+  touch-action: pan-y;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
@@ -1407,7 +1416,9 @@ body {
 
 /* Hall theme picker (cosmetic) */
 .set-theme { margin-bottom: 16px; }
-.set-theme-head { font-size: 14px; font-weight: 750; color: var(--ink); margin-bottom: 10px; }
+.set-theme-head { display: flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 750; color: var(--ink); margin-bottom: 10px; }
+.set-theme-head svg, .set-backup-title svg { color: var(--ink-2); }
+.set-backup-title { display: inline-flex; align-items: center; gap: 7px; }
 .set-theme-row { display: flex; flex-wrap: wrap; gap: 10px; }
 .set-theme-chip { display: flex; flex-direction: column; align-items: center; gap: 5px; border: none; background: none; cursor: pointer; padding: 0; }
 .set-theme-swatch {
@@ -1494,10 +1505,10 @@ body {
   border: none; background: transparent; cursor: pointer; padding: 5px 2px 3px;
   color: var(--ink-3); transition: color 0.15s;
 }
-.botnav-ic { font-size: 19px; line-height: 1; filter: grayscale(0.35); transition: filter 0.15s, transform 0.15s var(--spring); }
+.botnav-ic { display: inline-flex; align-items: center; justify-content: center; line-height: 1; opacity: 0.7; transition: opacity 0.15s, transform 0.15s var(--spring); }
 .botnav-lbl { font-size: 10.5px; font-weight: 700; letter-spacing: -0.01em; }
 .botnav-item.on { color: #7c5cff; }
-.botnav-item.on .botnav-ic { filter: none; transform: translateY(-1px) scale(1.06); }
+.botnav-item.on .botnav-ic { opacity: 1; transform: translateY(-1px) scale(1.06); }
 .botnav-item:active .botnav-ic { transform: scale(0.9); }
 .botnav-badge {
   position: absolute; top: 0; right: 50%; margin-right: -22px;
@@ -1537,18 +1548,6 @@ body {
   font-size: 11px; font-weight: 800; vertical-align: middle;
 }
 
-/* ---------- Advisor nudge (one "do this next" hint) ---------- */
-.advisor-bar {
-  display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
-  padding: 11px 13px; border-radius: 12px; cursor: pointer;
-  background: linear-gradient(100deg, color-mix(in srgb, var(--data) 16%, var(--glass-strong)), var(--glass-strong));
-  border: 1px solid color-mix(in srgb, var(--data) 35%, var(--glass-edge));
-  box-shadow: var(--shadow-sm);
-}
-.advisor-icon { font-size: 16px; line-height: 1; }
-.advisor-text { flex: 1; font-size: 13.5px; font-weight: 700; color: var(--ink); }
-.advisor-go { font-size: 12px; font-weight: 750; color: var(--data); white-space: nowrap; }
-
 /* Daily Boost banner — celebratory, never a countdown (honest re-engagement) */
 .daily-bar {
   display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
@@ -1562,7 +1561,7 @@ body {
   0%, 100% { box-shadow: 0 0 0 0 rgba(124, 92, 255, 0); }
   50% { box-shadow: 0 0 0 4px rgba(124, 92, 255, 0.14); }
 }
-.daily-ic { font-size: 17px; line-height: 1; }
+.daily-ic { display: inline-flex; align-items: center; color: #7c5cff; }
 .daily-text { flex: 1; font-size: 13px; font-weight: 650; color: var(--ink); }
 .daily-text b { font-weight: 800; }
 .daily-go { font-size: 12.5px; font-weight: 800; color: #fff; background: #7c5cff; border-radius: 999px; padding: 4px 12px; white-space: nowrap; }
@@ -1995,10 +1994,12 @@ body {
 .emp-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
 .emp-kpi { display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 14px; padding: 11px 12px; box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05); }
 .emp-kpi-ic { flex: 0 0 auto; width: 34px; height: 34px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; }
-.emp-kpi-ic.people { background: rgba(124, 92, 255, 0.12); }
-.emp-kpi-ic.pay { background: rgba(22, 179, 100, 0.12); }
-.emp-kpi-ic.mood { background: rgba(249, 115, 22, 0.12); }
-.emp-kpi-ic.rev { background: rgba(47, 123, 246, 0.12); }
+.emp-kpi-ic.people { background: rgba(124, 92, 255, 0.12); color: #7c5cff; }
+.emp-kpi-ic.pay { background: rgba(22, 179, 100, 0.12); color: #16b364; }
+.emp-kpi-ic.mood { background: rgba(249, 115, 22, 0.12); color: #f97316; }
+.emp-kpi-ic.rev { background: rgba(47, 123, 246, 0.12); color: #2f7bf6; }
+.emp-perks-title { display: inline-flex; align-items: center; gap: 7px; }
+.emp-perks-title svg { color: var(--ink-2); }
 .emp-kpi-v { font-size: 16px; font-weight: 800; color: var(--ink); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .emp-kpi-l { font-size: 10.5px; font-weight: 600; color: var(--ink-3); }
 

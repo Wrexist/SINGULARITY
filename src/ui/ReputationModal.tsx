@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Portal } from "./Portal";
 import type { GameState } from "../engine/types";
 import { reputationBalance, reputationAvailable, earnedReputation, canBuyReputationPerk } from "../engine/reputation";
+import { LandmarkIcon } from "./Icons";
 
 /** Phase 3 — the Lab Reputation perk tree: spend meta-currency earned from
  *  achievements + ascensions on permanent, run-spanning boosts. Honest goals,
@@ -27,7 +28,7 @@ export function ReputationModal({ game, onBuy, onClose }: {
       <div className="modal rep-modal" role="dialog" aria-modal="true" aria-label="Lab Reputation" onClick={(e) => e.stopPropagation()}>
         <div className="pd-head">
           <div>
-            <h2 className="ach-title">🏛️ Lab Reputation</h2>
+            <h2 className="ach-title"><LandmarkIcon size={20} /> Lab Reputation</h2>
             <div className="ach-count"><b className="rep-pts">{available}</b> available · {earned} earned all-time</div>
           </div>
           <button className="link-btn" onClick={onClose}>close</button>

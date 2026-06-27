@@ -388,8 +388,8 @@ function effectSummary(effect: WorldEventEffect): string {
     const sign = effect.pct > 0 ? "+" : "";
     return `${sign}${Math.round(effect.pct * 100)}% ${RES_LABEL[effect.resource]}`;
   }
-  if (effect.kind === "frontierJump") return "📈 Rivals leap ahead";
-  if (effect.kind === "productBuzz") return `🚀 Product buzz · ${effect.durationSec}s`;
+  if (effect.kind === "frontierJump") return "Rivals leap ahead";
+  if (effect.kind === "productBuzz") return `Product buzz · ${effect.durationSec}s`;
   return `${TARGET_LABEL[effect.target]} ×${effect.factor} · ${effect.durationSec}s`;
 }
 
@@ -438,7 +438,7 @@ export function grantDailyBoost(state: GameState): GameState {
     target,
     factor,
     remainingSec: durationSec,
-    label: `🎁 Daily ×${factor}`,
+    label: `Daily ×${factor}`,
     tone: "good",
   }));
   return { ...state, modifiers: [...state.modifiers.filter((m) => !m.id.startsWith("daily_")), ...mods] };

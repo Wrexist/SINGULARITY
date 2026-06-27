@@ -33,7 +33,7 @@ export function Onboarding({ onDone }: Props) {
         </div>
         <p className="onboard-foot">
           <b>First up:</b> start a training run in the Lab, then claim it for Data &amp; $.
-          The 💡 hint at the top always tells you what to do next — no manual required.
+          The badges on the tab bar flag anything that needs you — no manual required.
         </p>
         <button className="btn btn-primary" onClick={onDone}>
           Open the Lab →

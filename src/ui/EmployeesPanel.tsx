@@ -11,6 +11,7 @@ import { Big } from "../engine/math/Big";
 import type { GameState, Derived, Employee } from "../engine/types";
 import type { Candidate } from "../state/store";
 import { fmtMoney, m$, fmtDur } from "./format";
+import { TeamIcon, BanknoteIcon, SmileIcon, BarsIcon, BuildingIcon } from "./Icons";
 
 interface Props {
   game: GameState;
@@ -152,19 +153,19 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
   const kpis = (
     <div className="emp-kpis">
       <div className="emp-kpi">
-        <span className="emp-kpi-ic people">👥</span>
+        <span className="emp-kpi-ic people"><TeamIcon size={19} /></span>
         <div><div className="emp-kpi-v">{team.length}</div><div className="emp-kpi-l">{idle > 0 ? `${idle} idle` : "Employees"}</div></div>
       </div>
       <div className="emp-kpi">
-        <span className="emp-kpi-ic pay">💸</span>
+        <span className="emp-kpi-ic pay"><BanknoteIcon size={19} /></span>
         <div><div className="emp-kpi-v">{fmtMoney(derived.payrollPerSec)}</div><div className="emp-kpi-l">Payroll /s</div></div>
       </div>
       <div className="emp-kpi">
-        <span className="emp-kpi-ic mood">😊</span>
+        <span className="emp-kpi-ic mood"><SmileIcon size={19} /></span>
         <div><div className="emp-kpi-v">×{morale.toFixed(2)}</div><div className="emp-kpi-l">Morale</div></div>
       </div>
       <div className="emp-kpi">
-        <span className="emp-kpi-ic rev">📈</span>
+        <span className="emp-kpi-ic rev"><BarsIcon size={19} /></span>
         <div><div className="emp-kpi-v">{m$(totalMrr)}</div><div className="emp-kpi-l">Revenue /s</div></div>
       </div>
     </div>
@@ -282,7 +283,7 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
               {balance.office.enabled && (
                 <div className="emp-perks">
                   <button className="emp-section-head emp-perks-head" onClick={() => setPerksOpen((o) => !o)}>
-                    <span>🏢 Office perks</span>
+                    <span className="emp-perks-title"><BuildingIcon size={16} /> Office perks</span>
                     <span className="emp-perks-meta">morale ×{morale.toFixed(2)} {perksOpen ? "▾" : "▸"}</span>
                   </button>
                   {perksOpen && balance.office.perks.map((perk) => {

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { GameState } from "../engine/types";
 import { achievementDefs, achievementProgress } from "../engine/achievements";
 import type { AchCategory } from "../engine/balance/achievements";
+import { TrophyIcon } from "./Icons";
 
 const CAT_META: Record<AchCategory, { label: string; icon: string; hue: number }> = {
   scale: { label: "Scale", icon: "⚡", hue: 265 },
@@ -35,7 +36,7 @@ export function AchievementsModal({ game, onClose }: { game: GameState; onClose:
       <div className="modal ach-modal" role="dialog" aria-modal="true" aria-label="Achievements" onClick={(e) => e.stopPropagation()}>
         <div className="pd-head">
           <div>
-            <h2 className="ach-title">🏅 Achievements</h2>
+            <h2 className="ach-title"><TrophyIcon size={20} /> Achievements</h2>
             <div className="ach-count">{earned} / {total} unlocked</div>
           </div>
           <button className="link-btn" onClick={onClose}>close</button>

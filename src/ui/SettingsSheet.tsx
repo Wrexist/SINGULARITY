@@ -6,6 +6,7 @@ import { sound as snd } from "./sound";
 import { balance } from "../engine/balance/config";
 import { useGame } from "../state/store";
 import { HALL_THEMES } from "./hallThemes";
+import { PaletteIcon, DownloadIcon, LockIcon, CheckIcon } from "./Icons";
 
 type ToggleKey = "sound" | "music" | "haptics" | "reducedMotion";
 
@@ -100,7 +101,7 @@ export function SettingsSheet({ onClose }: Props) {
             <li>One-time unlock — no ads, ever, no pay-to-win</li>
           </ul>
           {premium ? (
-            <div className="premium-owned-tag">Unlocked — thank you 💚</div>
+            <div className="premium-owned-tag">Unlocked — thank you</div>
           ) : (
             <div className="premium-actions">
               <button className="btn btn-primary" disabled={busy} onClick={buy}>
@@ -126,7 +127,7 @@ export function SettingsSheet({ onClose }: Props) {
         </div>
         {/* Hall theme — cosmetic only (never affects gameplay). */}
         <div className="set-theme">
-          <div className="set-theme-head">🎨 Hall theme</div>
+          <div className="set-theme-head"><PaletteIcon size={16} /> Hall theme</div>
           <div className="set-theme-row">
             {HALL_THEMES.map((t) => {
               const locked = t.premium && !premium;
@@ -139,7 +140,7 @@ export function SettingsSheet({ onClose }: Props) {
                   aria-pressed={active}
                   title={locked ? `${t.name} — unlock with Premium` : t.name}
                 >
-                  <span className="set-theme-swatch" style={{ background: t.swatch }}>{locked ? "🔒" : active ? "✓" : ""}</span>
+                  <span className="set-theme-swatch" style={{ background: t.swatch }}>{locked ? <LockIcon size={16} /> : active ? <CheckIcon size={16} /> : ""}</span>
                   <span className="set-theme-name">{t.name}</span>
                 </button>
               );
@@ -150,7 +151,7 @@ export function SettingsSheet({ onClose }: Props) {
         {/* Save backup — local-only; protects a long run from a cleared cache. */}
         <div className="set-backup">
           <button className="set-backup-head" onClick={() => setBackupOpen((o) => !o)} aria-expanded={backupOpen}>
-            <span>💾 Back up &amp; restore save</span>
+            <span className="set-backup-title"><DownloadIcon size={16} /> Back up &amp; restore save</span>
             <span className="set-backup-chev">{backupOpen ? "▾" : "▸"}</span>
           </button>
           {backupOpen && (

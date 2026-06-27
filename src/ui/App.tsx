@@ -28,7 +28,8 @@ import { FxCanvas } from "./FxCanvas";
 import { burst as fxBurst } from "./fx";
 import { ProductLaunch } from "./ProductLaunch";
 import { productsUnlocked, productMetrics, typeDef, retirePayout } from "../engine/products";
-import { nextAction, attentionCounts } from "../engine/advisor";
+import { attentionCounts } from "../engine/advisor";
+import { FlaskIcon, BoxIcon, TeamIcon, TrophyIcon, GearIcon, GiftIcon } from "./Icons";
 import { fmtMoney } from "./format";
 import type { ProductTypeId } from "../engine/balance/products";
 import { iap } from "./iap";
@@ -57,9 +58,8 @@ export function App() {
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
-  // Advisor: one "do this next" nudge + small per-tab attention counts. Memoized
-  // per tick (same cadence as derive) — a handful of product checks, no clock.
-  const advice = useMemo(() => nextAction(game), [game]);
+  // Per-tab attention counts (the small badges on the bottom nav). Memoized per
+  // tick (same cadence as derive) — a handful of product checks, no clock.
   const attention = useMemo(() => attentionCounts(game), [game]);
 
   // Detect a ship (prestige) and fire the celebration moment + haptics.
@@ -348,20 +348,9 @@ export function App() {
       <main className="stage">
         {dailyOn && (
           <button className="daily-bar" onClick={onClaimDaily} aria-label="Claim your daily boost">
-            <span className="daily-ic">🎁</span>
+            <span className="daily-ic"><GiftIcon size={18} /></span>
             <span className="daily-text"><b>Daily boost ready</b> — +{Math.round((balance.daily.factor - 1) * 100)}% output for {Math.round(balance.daily.durationSec / 60)} min</span>
             <span className="daily-go">Claim</span>
-          </button>
-        )}
-        {advice && (
-          <button
-            className="advisor-bar"
-            onClick={() => { haptics.tap(); setTab(advice.tab); }}
-            aria-label={`Suggested next: ${advice.text}`}
-          >
-            <span className="advisor-icon">💡</span>
-            <span className="advisor-text">{advice.text}</span>
-            {advice.tab !== tab && <span className="advisor-go">{advice.tab === "lab" ? "Lab" : advice.tab === "products" ? "Products" : "Employees"} ▸</span>}
           </button>
         )}
         {tab === "products" && showProducts ? (
@@ -418,27 +407,27 @@ export function App() {
         {/* Destinations use aria-current; Awards/More are actions (open modals),
             so this is a nav bar, not a tablist (the panes aren't tab panels). */}
         <button className={`botnav-item ${tab === "lab" ? "on" : ""}`} aria-current={tab === "lab" ? "page" : undefined} onClick={() => { haptics.tap(); setTab("lab"); }}>
-          <span className="botnav-ic">🧪</span><span className="botnav-lbl">Lab</span>
+          <span className="botnav-ic"><FlaskIcon size={23} /></span><span className="botnav-lbl">Lab</span>
           {attention.lab > 0 && <span className="botnav-badge">{attention.lab}</span>}
         </button>
         {showProducts && (
           <button className={`botnav-item ${tab === "products" ? "on" : ""}`} aria-current={tab === "products" ? "page" : undefined} onClick={() => { haptics.tap(); setTab("products"); }}>
-            <span className="botnav-ic">📦</span><span className="botnav-lbl">Products</span>
+            <span className="botnav-ic"><BoxIcon size={23} /></span><span className="botnav-lbl">Products</span>
             {attention.products > 0 && <span className="botnav-badge">{attention.products}</span>}
           </button>
         )}
         {showStaff && (
           <button className={`botnav-item ${tab === "employees" ? "on" : ""}`} aria-current={tab === "employees" ? "page" : undefined} onClick={() => { haptics.tap(); setTab("employees"); }}>
-            <span className="botnav-ic">👥</span><span className="botnav-lbl">Team</span>
+            <span className="botnav-ic"><TeamIcon size={23} /></span><span className="botnav-lbl">Team</span>
             {attention.employees > 0 && <span className="botnav-badge">{attention.employees}</span>}
           </button>
         )}
         <button className="botnav-item" onClick={() => { haptics.tap(); setShowAchievements(true); }} aria-label="Achievements">
-          <span className="botnav-ic">🏆</span><span className="botnav-lbl">Awards</span>
+          <span className="botnav-ic"><TrophyIcon size={23} /></span><span className="botnav-lbl">Awards</span>
           {game.achievements.length > 0 && <span className="botnav-badge alt">{game.achievements.length}</span>}
         </button>
         <button className="botnav-item" onClick={() => { haptics.tap(); setShowSettings(true); }} aria-label="Settings">
-          <span className="botnav-ic">⚙️</span><span className="botnav-lbl">More</span>
+          <span className="botnav-ic"><GearIcon size={22} /></span><span className="botnav-lbl">More</span>
         </button>
       </nav>
 
