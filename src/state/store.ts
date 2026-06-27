@@ -11,6 +11,7 @@ import {
   startRun,
   claimRun,
   buyUpgrade,
+  buyUpgradeBulk,
   buyOfficePerk,
   buyResearch,
   buyDataOffer,
@@ -107,6 +108,7 @@ interface GameStore {
   doStartRun: () => void;
   doClaim: () => void;
   doBuyUpgrade: (id: string) => void;
+  doBuyUpgradeBulk: (id: string, count: number) => void;
   /** Open recruiting (rolls 3 candidates) / re-roll / close. */
   doRecruit: () => void;
   doRefreshCandidates: () => void;
@@ -398,6 +400,7 @@ export const useGame = create<GameStore>((set, get) => ({
       return { game: claimRun(s.game), claimBurst: claimKey };
     }),
   doBuyUpgrade: (id) => set((s) => ({ game: buyUpgrade(s.game, id) })),
+  doBuyUpgradeBulk: (id, count) => set((s) => ({ game: buyUpgradeBulk(s.game, id, count) })),
   doRecruit: () => set({ candidates: [rollCandidate(), rollCandidate(), rollCandidate()] }),
   doRefreshCandidates: () => set({ candidates: [rollCandidate(), rollCandidate(), rollCandidate()] }),
   doCloseRecruit: () => set({ candidates: null }),

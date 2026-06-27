@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { recommendedUpgrade } from "./recommend";
-import { canBuyUpgrade } from "./actions";
+import { canBuyUpgrade, planBulkUpgrade, buyUpgradeBulk, upgradeCost } from "./actions";
+import { balance } from "./balance/config";
+import { totalRacks, hallCapacity } from "./hall";
 import { createInitialState } from "./state";
 import { Big } from "./math/Big";
 
@@ -50,5 +52,53 @@ describe("recommendedUpgrade (best value, not cheapest)", () => {
     s.resources.money = Big.of(50); // enough for the first Consumer rack
     const rec = recommendedUpgrade(s);
     if (rec !== null) expect(canBuyUpgrade(s, rec)).toBe(true);
+  });
+});
+
+describe("bulk upgrade buying (×10 / Max)", () => {
+  const rackDef = balance.upgrades.find((u) => u.id === "rack_basic")!;
+  const sumCost = (from: number, n: number) => {
+    let t = Big.ZERO;
+    for (let i = 0; i < n; i++) t = t.add(upgradeCost(rackDef, from + i));
+    return t;
+  };
+
+  it("plans ×10 as exactly ten levels and their summed cost", () => {
+    const s = createInitialState();
+    s.resources.money = Big.of(1e9); // plenty; floor capacity easily fits 10
+    const plan = planBulkUpgrade(s, "rack_basic", 10);
+    expect(plan.count).toBe(10);
+    expect(plan.totalCost.toNumber()).toBeCloseTo(sumCost(0, 10).toNumber(), 3);
+  });
+
+  it("caps the batch at what you can actually afford", () => {
+    const s = createInitialState();
+    s.resources.money = sumCost(0, 3); // exactly three racks' worth
+    const plan = planBulkUpgrade(s, "rack_basic", 10);
+    expect(plan.count).toBe(3); // not 10 — can't afford the 4th
+  });
+
+  it("buyUpgradeBulk applies exactly the planned batch and spends the planned cost", () => {
+    const s = createInitialState();
+    s.resources.money = Big.of(1e9);
+    const plan = planBulkUpgrade(s, "rack_basic", 10);
+    const after = buyUpgradeBulk(s, "rack_basic", 10);
+    expect(after.upgrades.rack_basic).toBe(plan.count);
+    expect(s.resources.money.sub(after.resources.money).toNumber()).toBeCloseTo(plan.totalCost.toNumber(), 3);
+  });
+
+  it("Max never exceeds floor capacity for racks", () => {
+    const s = createInitialState();
+    s.resources.money = Big.of(1e12); // could afford far more than the floor holds
+    const after = buyUpgradeBulk(s, "rack_basic", Infinity);
+    expect(totalRacks(after)).toBeLessThanOrEqual(hallCapacity(after));
+    expect(totalRacks(after)).toBe(hallCapacity(after)); // fills the floor exactly
+  });
+
+  it("want=1 buys exactly one (parity with a single buy)", () => {
+    const s = createInitialState();
+    s.resources.money = Big.of(1e9);
+    const after = buyUpgradeBulk(s, "rack_basic", 1);
+    expect(after.upgrades.rack_basic).toBe(1);
   });
 });

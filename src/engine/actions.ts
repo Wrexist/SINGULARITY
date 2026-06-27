@@ -105,6 +105,45 @@ export function buyUpgrade(state: GameState, id: string): GameState {
   };
 }
 
+/**
+ * Plan a bulk buy of `id`: how many levels you can actually buy (up to `want`,
+ * or Infinity for "Max") and their total cost — honoring affordability, max
+ * level, floor space and rack auto-eviction. Pure: it simulates real buys (each
+ * `buyUpgrade` is cheap — no `derive`), so the plan can never diverge from what
+ * `buyUpgradeBulk` does. Used by the panel to label the ×10 / Max buttons.
+ */
+export function planBulkUpgrade(
+  state: GameState,
+  id: string,
+  want: number,
+): { count: number; totalCost: Big; resource: UpgradeDef["cost"]["resource"] } {
+  const def = UPGRADE_BY_ID[id];
+  if (!def) return { count: 0, totalCost: Big.ZERO, resource: "money" };
+  const cap = Math.min(want, 10000); // safety bound for low-growth infinite-max upgrades
+  let s = state;
+  let count = 0;
+  let totalCost = Big.ZERO;
+  while (count < cap && canBuyUpgrade(s, id)) {
+    totalCost = totalCost.add(upgradeCost(def, s.upgrades[id] ?? 0));
+    s = buyUpgrade(s, id);
+    count += 1;
+  }
+  return { count, totalCost, resource: def.cost.resource };
+}
+
+/** Buy up to `want` levels of `id` (Infinity = as many as affordable). Stops at
+ *  the first level you can't buy. No-op-safe (returns the same state if count 0). */
+export function buyUpgradeBulk(state: GameState, id: string, want: number): GameState {
+  const cap = Math.min(want, 10000);
+  let s = state;
+  let n = 0;
+  while (n < cap && canBuyUpgrade(s, id)) {
+    s = buyUpgrade(s, id);
+    n += 1;
+  }
+  return s;
+}
+
 // ---------- Staff (Phase 2) ----------
 
 const STAFF_BY_ID: Record<string, StaffRole> = Object.fromEntries(

@@ -1684,6 +1684,17 @@ svg { vertical-align: middle; }
 .next-text b { font-weight: 800; color: #2f7bf6; margin-right: 3px; }
 .next-go { font-size: 12px; font-weight: 800; color: #2f7bf6; white-space: nowrap; opacity: 0.85; }
 
+/* Buy-quantity selector (×1 / ×10 / Max) for the Hardware panel. */
+.buy-qty { display: flex; gap: 6px; margin: 2px 0 4px; }
+.buy-qty-btn {
+  flex: 1; min-height: 36px; padding: 7px 10px; border-radius: 10px;
+  font-size: 13px; font-weight: 800; cursor: pointer;
+  color: var(--ink-2); background: rgba(17, 24, 39, 0.04);
+  border: 1px solid rgba(17, 24, 39, 0.08);
+}
+.buy-qty-btn.on { color: #fff; background: #2f7bf6; border-color: #2f7bf6; }
+.cost-mult { font-weight: 800; opacity: 0.8; font-size: 0.86em; }
+
 /* ---------- Products (Phase 3) ---------- */
 .prod-card {
   background: #fff;

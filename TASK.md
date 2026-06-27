@@ -24,7 +24,13 @@ no dark patterns. Re-run `npm run sim` after any economy change.*
 - [x] **R1.1 · Advisor "Next: …" banner** — wired the already-built/tested `nextAction()` as a
       persistent, tappable banner above the stage that jumps to the resolving tab. UI-only (sim
       byte-identical, 12m15s); +1 invariant test (the banner can never point at a locked tab). 250 tests.
-- [ ] **R1.2 · Buy ×1 / ×10 / Max** (P1) — batch `upgradeCost`; add a "Buy all affordable" sweep.
+- [x] **R1.2 · Buy ×1 / ×10 / Max** — segmented selector in the Hardware panel; pure engine
+      `planBulkUpgrade` / `buyUpgradeBulk` (simulate real buys → exact total cost, honor
+      affordability + floor space + rack auto-eviction; Max capped at floor). Cards show the batched
+      total + "×N" for the qty that will actually buy. +5 tests; UI/engine-additive (sim 12m15s).
+- [x] **Bonus · "Recommended next" = best value, not cheapest** — fixed the panel hero surfacing a
+      strictly-worse rack (+2/s $106 over +12/s $220). New pure/tested `recommendedUpgrade()` scores
+      by marginal money-equivalent throughput per cost. +4 tests.
 
 ### Step 3 — The hall (R2)
 - [ ] **R2.1 · Tappable, inspectable racks** (P1) — tap a rack → parametric callout + satirical name.

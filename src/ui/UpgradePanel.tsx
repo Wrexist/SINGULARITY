@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { balance } from "../engine/balance/config";
-import { upgradeCost, canBuyUpgrade } from "../engine/actions";
+import { upgradeCost, canBuyUpgrade, planBulkUpgrade } from "../engine/actions";
 import { recommendedUpgrade } from "../engine/recommend";
 import { hallCapacity, totalRacks, isRackId, evictableRackFor } from "../engine/hall";
 import { powerStats } from "../engine/power";
@@ -16,8 +17,11 @@ const RES_HEX: Record<string, string> = { compute: "#2f7bf6", data: "#9b51e0", m
 interface Props {
   game: GameState;
   derived: Derived;
-  onBuy: (id: string) => void;
+  onBuy: (id: string, count?: number) => void;
 }
+
+/** Buy-quantity for the panel: one, ten, or as many as affordable. */
+type BuyQty = 1 | 10 | "max";
 
 const RESOURCE_VAR: Record<string, string> = {
   money: "--money",
@@ -47,6 +51,11 @@ function PowerMeter({ draw, cap, factor, throttled }: { draw: number; cap: numbe
 }
 
 export function UpgradePanel({ game, derived, onBuy }: Props) {
+  // Buy quantity: ×1 / ×10 / Max. Batches purchases so late-game players aren't
+  // tapping the same rack dozens of times (a core idle QoL the panel was missing).
+  const [qty, setQty] = useState<BuyQty>(1);
+  const want = qty === "max" ? Infinity : qty;
+
   // Hall expansions only matter once you have hardware to house — reveal them
   // when the closet starts to fill, rather than cluttering the first session.
   const racks = totalRacks(game);
@@ -92,6 +101,13 @@ export function UpgradePanel({ game, derived, onBuy }: Props) {
     const rack = isRackId(def.id);
     const willReplace = rack && floorFull && !maxed && !!evictableRackFor(game, def.id);
     const blockedByFloor = rack && floorFull && !maxed && !willReplace;
+    // When buying in bulk, plan the actual batch (how many you can afford up to
+    // `want`, and its total cost) so the card shows what the tap will really do.
+    const bulk = qty !== 1 && affordable && !maxed && !blockedByFloor
+      ? planBulkUpgrade(game, def.id, want)
+      : null;
+    const showBulk = !!bulk && bulk.count > 1;
+    const displayCost = showBulk ? bulk!.totalCost : cost;
     return (
       <button
         key={def.id}
@@ -101,7 +117,7 @@ export function UpgradePanel({ game, derived, onBuy }: Props) {
           const r = e.currentTarget.getBoundingClientRect();
           burst(r.right - 22, r.top + r.height / 2, { count: isHero ? 16 : 12, power: isHero ? 1.1 : 0.9, colors: [RES_HEX[def.cost.resource] ?? "#9b51e0"] });
           punch(e.currentTarget);
-          onBuy(def.id);
+          onBuy(def.id, want);
         }}
       >
         <UpgradeIcon id={def.id} kind={def.effect.kind} />
@@ -123,7 +139,8 @@ export function UpgradePanel({ game, derived, onBuy }: Props) {
           ) : (
             <>
               <span style={{ color: `var(${RESOURCE_VAR[def.cost.resource]})` }}>
-                {def.cost.resource === "money" ? `$${fmt(cost)}` : `${fmt(cost)} ${def.cost.resource}`}
+                {def.cost.resource === "money" ? `$${fmt(displayCost)}` : `${fmt(displayCost)} ${def.cost.resource}`}
+                {showBulk && <span className="cost-mult"> ×{bulk!.count}</span>}
               </span>
               {!affordable && (() => {
                 const eta = fmtEta(cost, game.resources[def.cost.resource], rateFor(def.cost.resource));
@@ -146,6 +163,21 @@ export function UpgradePanel({ game, derived, onBuy }: Props) {
       {showPower && (
         <PowerMeter draw={power.drawKw} cap={power.capacityKw} factor={power.thermalFactor} throttled={power.throttled} />
       )}
+      <div className="buy-qty" role="group" aria-label="Buy quantity">
+        {(["1", "10", "max"] as const).map((q) => {
+          const val: BuyQty = q === "max" ? "max" : (Number(q) as 1 | 10);
+          return (
+            <button
+              key={q}
+              className={`buy-qty-btn ${qty === val ? "on" : ""}`}
+              aria-pressed={qty === val}
+              onClick={() => setQty(val)}
+            >
+              {q === "max" ? "Max" : `×${q}`}
+            </button>
+          );
+        })}
+      </div>
       {hero && (
         <div className="hero-wrap">
           <div className="hero-kicker">Recommended next</div>
