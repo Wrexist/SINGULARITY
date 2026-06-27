@@ -163,7 +163,7 @@ export function staffHireDiscount(state: GameState): number {
       cut += role.effect.perLevel * (state.upgrades[role.id] ?? 0);
     }
   }
-  return Math.max(0.25, 1 - cut);
+  return Math.max(balance.staff.hireDiscountFloor, 1 - cut);
 }
 
 /** Cost to hire the next of a role: base * growth^owned, after any Recruiter discount. */
@@ -303,7 +303,7 @@ export function buyDataOffer(
       raided = true;
       dataGained = dataGained.mul(raidDataFactor);
       moneyLost = moneyLost.add(fine);
-      heat = clampHeat(state.heat * 0.4); // caught → lay low
+      heat = clampHeat(state.heat * balance.heat.postRaidHeatMult); // caught → lay low
     } else if (roll < raidChance + poisonChance) {
       kind = "poisoned";
       dataGained = dataGained.mul(poisonDataFactor);

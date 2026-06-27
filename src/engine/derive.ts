@@ -139,7 +139,7 @@ export function derive(state: GameState): Derived {
   let payrollPerSec = Big.of(fx.payroll).mul(officePayrollMult(state));
   const productMods = fx.productMods;
   const productModsById = fx.productModsById;
-  const hireDiscount = Math.max(0.25, 1 - fx.hireCut); // hires never cheaper than 25% of base
+  const hireDiscount = Math.max(balance.staff.hireDiscountFloor, 1 - fx.hireCut); // floored hire discount
 
   // World-event modifiers: time-limited global multipliers (buffs/debuffs).
   for (const m of state.modifiers) {
@@ -207,7 +207,7 @@ export function derive(state: GameState): Derived {
     computePerSec,
     dataMult,
     moneyMult,
-    runDurationSec: Math.max(0.5, runDurationSec),
+    runDurationSec: Math.max(balance.run.minDurationSec, runDurationSec),
     passiveMoneyPerSec: passiveMoneyPerSec.mul(computePerSec),
     dataPerSec,
     autoClaim,

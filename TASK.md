@@ -63,7 +63,12 @@ no dark patterns. Re-run `npm run sim` after any economy change.*
       cash cows still retire fairly. Old saves' products default to mature (no returning-player penalty).
       +3 product tests; existing retire test matured. 279 tests; sim 12m15s.
 - [ ] **R4.3 · Re-couple the triangle** (P1) — late-game Compute/Data/Money sinks (reservoir cap /
-      data freshness decay / infra maintenance). Model in the R0.2 sim first.
+      data freshness decay / infra maintenance). Model in the R0.2 sim first. ⚠️ introduces a NEW
+      mechanic (changes feel) — wants an owner design call on which lever + how punishing.
+- [x] **R4.6 · Lift hardcoded balance constants into `balance/`** — moved the staff hire-discount
+      floor (0.25), product-mod floors (serveCost/churn/heat), the post-raid heat ×0.4, and the min
+      run duration (0.5s) out of logic into `balance.staff`/`balance.heat`/`balance.run` (CLAUDE.md
+      data-driven rule). Values unchanged → pure refactor, sim byte-identical (12m15s). 281 tests.
 
 ### Step 5 — Depth (R5)
 - [x] **R5.1 · Activate the dead `alignment` dial** — was set by faction choices but read nowhere.

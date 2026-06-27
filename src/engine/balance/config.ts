@@ -544,6 +544,8 @@ export const balance = {
     costSeconds: 2,
     minCompute: 10,
     durationSec: 5,
+    /** A run can never resolve faster than this, however much run-speed you stack. */
+    minDurationSec: 0.5,
     // Difficulty pass: leaner run payouts so scaling the operation (more/better
     // racks + expansions) matters more. Tuned against the sim to stay wall-free.
     dataPerCompute: 0.28,
@@ -651,6 +653,12 @@ export const balance = {
     trainCostMult: 6, // cost = role.hire.base × trainCostMult × level
     /** Signing bonus to hire a candidate = role.hire.base × this. */
     hireSigningMult: 1,
+    /** Recruiter hire-cost discount is floored here (hires never cheaper than this
+     *  fraction of base). */
+    hireDiscountFloor: 0.25,
+    /** Product-team effect reductions are floored so a stacked roster can't drive a
+     *  lane to zero/negative (serveCost/churn/heat multipliers). */
+    productModFloors: { serveCost: 0.2, churn: 0.2, heat: 0.1 },
     /** Diminishing returns on stacking one lane. Contributors to a lane are ranked
      *  by raw output; the k-th (0-indexed) counts at 1/(1 + k·perLaneRate). Output
      *  diminishes but payroll does NOT — so a small, trained, high-trait team beats
@@ -1031,6 +1039,8 @@ export const balance = {
     eventChanceCap: 0.5,
     /** Heat added when buying a dark-web tool (scraper/botnet — you're on a list now). */
     toolBuyHeat: 5,
+    /** Getting raided cools you off this much (×) — you lay low afterwards. */
+    postRaidHeatMult: 0.4,
     /** UI meter tiers: label + color, picked by the lowest `upTo` heat value the meter is under. */
     tiers: [
       { upTo: 25, label: "Cold", color: "#22c55e" },
