@@ -11,6 +11,8 @@ import { Big } from "../engine/math/Big";
 import type { GameState, Derived, Employee } from "../engine/types";
 import type { Candidate } from "../state/store";
 import { fmtMoney, m$, fmtDur } from "./format";
+import { TeamIcon, BanknoteIcon, SmileIcon, BarsIcon, BuildingIcon, GradCapIcon, AtomIcon } from "./Icons";
+import { burst } from "./fx";
 
 interface Props {
   game: GameState;
@@ -152,19 +154,19 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
   const kpis = (
     <div className="emp-kpis">
       <div className="emp-kpi">
-        <span className="emp-kpi-ic people">👥</span>
+        <span className="emp-kpi-ic people"><TeamIcon size={19} /></span>
         <div><div className="emp-kpi-v">{team.length}</div><div className="emp-kpi-l">{idle > 0 ? `${idle} idle` : "Employees"}</div></div>
       </div>
       <div className="emp-kpi">
-        <span className="emp-kpi-ic pay">💸</span>
+        <span className="emp-kpi-ic pay"><BanknoteIcon size={19} /></span>
         <div><div className="emp-kpi-v">{fmtMoney(derived.payrollPerSec)}</div><div className="emp-kpi-l">Payroll /s</div></div>
       </div>
       <div className="emp-kpi">
-        <span className="emp-kpi-ic mood">😊</span>
+        <span className="emp-kpi-ic mood"><SmileIcon size={19} /></span>
         <div><div className="emp-kpi-v">×{morale.toFixed(2)}</div><div className="emp-kpi-l">Morale</div></div>
       </div>
       <div className="emp-kpi">
-        <span className="emp-kpi-ic rev">📈</span>
+        <span className="emp-kpi-ic rev"><BarsIcon size={19} /></span>
         <div><div className="emp-kpi-v">{m$(totalMrr)}</div><div className="emp-kpi-l">Revenue /s</div></div>
       </div>
     </div>
@@ -192,7 +194,7 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
           <div className="emp-person-tags">
             <span className="emp-tag role">{role?.name}</span>
             {trait && <span className="emp-tag" style={{ color: TRAIT_TONE[trait.tone], background: `color-mix(in srgb, ${TRAIT_TONE[trait.tone]} 12%, #fff)` }}>{trait.name}</span>}
-            {e.training && <span className="emp-tag train">🎓 training</span>}
+            {e.training && <span className="emp-tag train"><GradCapIcon size={12} /> training</span>}
           </div>
         </div>
         <div className="emp-person-right">{action}</div>
@@ -241,7 +243,11 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
                         <span className="emp-tag muted">{m$(role?.payroll ?? 0)}/s</span>
                       </div>
                     </div>
-                    <button className="emp-hire-btn" disabled={!afford} onClick={() => onHireCandidate(i)}>{m$(cost)}</button>
+                    <button className="emp-hire-btn" disabled={!afford} onClick={(e) => {
+                      const r = e.currentTarget.getBoundingClientRect();
+                      burst(r.left + r.width / 2, r.top + r.height / 2, { count: c.rare ? 26 : 16, power: c.rare ? 1.4 : 1, colors: c.rare ? ["#ffd60a", "#ff9f0a", "#7c5cff"] : ["#16b364", "#2f7bf6"] });
+                      onHireCandidate(i);
+                    }}>{m$(cost)}</button>
                   </div>
                 );
               })}
@@ -265,7 +271,7 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
                     {open && (
                       <div className="emp-person-actions">
                         {e.training ? (
-                          <span className="emp-act-train">🎓 Training · ~{fmtDur(e.training.remainingSec)}</span>
+                          <span className="emp-act-train"><GradCapIcon size={13} /> Training · ~{fmtDur(e.training.remainingSec)}</span>
                         ) : (
                           <button className="emp-act" disabled={!trainable} onClick={() => onTrain(e.id)}>{maxed ? "Max level" : `Train → L${e.level + 1} · ${m$(trainCost(e))}`}</button>
                         )}
@@ -282,7 +288,7 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
               {balance.office.enabled && (
                 <div className="emp-perks">
                   <button className="emp-section-head emp-perks-head" onClick={() => setPerksOpen((o) => !o)}>
-                    <span>🏢 Office perks</span>
+                    <span className="emp-perks-title"><BuildingIcon size={16} /> Office perks</span>
                     <span className="emp-perks-meta">morale ×{morale.toFixed(2)} {perksOpen ? "▾" : "▸"}</span>
                   </button>
                   {perksOpen && balance.office.perks.map((perk) => {
@@ -352,7 +358,7 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
                 <div className="emp-proj-bar"><div className="emp-proj-fill" style={{ width: `${Math.min(100, pct)}%`, background: up ? "#7c5cff" : "var(--money)" }} /></div>
                 <div className="emp-proj-meta">
                   <span>{m$(me.mrr)}/s revenue</span>
-                  {up ? <span>🔬 v{up.targetVersion} · ~{fmtDur(up.remainingSec)}</span> : <span>{Math.round(me.qf * 100)}% competitive</span>}
+                  {up ? <span className="emp-inline-ic"><AtomIcon size={12} /> v{up.targetVersion} · ~{fmtDur(up.remainingSec)}</span> : <span>{Math.round(me.qf * 100)}% competitive</span>}
                 </div>
                 <div className="emp-proj-crew">
                   {crew.length === 0 && <span className="emp-proj-empty">{selected || drag ? "Drop / tap to assign here" : "No crew assigned"}</span>}

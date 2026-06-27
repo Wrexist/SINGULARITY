@@ -3,6 +3,7 @@ import { canBuyDataOffer, canBuyUpgrade, upgradeCost, effectiveRaidChance } from
 import { Big } from "../engine/math/Big";
 import type { GameState } from "../engine/types";
 import { fmt, fmtMoney } from "./format";
+import { SkullIcon, AlertTriangleIcon } from "./Icons";
 
 function HeatMeter({ heat }: { heat: number }) {
   const pct = Math.min(100, (heat / balance.heat.max) * 100);
@@ -95,7 +96,7 @@ export function DataMarketPanel({ game, onBuyData, onBuyTool }: Props) {
                 </span>
                 <span className="card-desc">{o.desc}</span>
                 <span className="risk-line">
-                  ☠️ {Math.round(risk.poisonChance * 100)}% poison · 🚨 {raidPct}% raid · +{o.heat} heat
+                  <SkullIcon size={13} /> {Math.round(risk.poisonChance * 100)}% poison · <AlertTriangleIcon size={13} /> {raidPct}% raid · +{o.heat} heat
                 </span>
               </div>
               <div className="card-cost">

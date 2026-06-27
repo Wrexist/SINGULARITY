@@ -8,6 +8,12 @@ import {
 } from "../engine/products";
 import { m$, numOf as num, fmtDur } from "./format";
 import { EditableName } from "./EditableName";
+import type { ReactNode } from "react";
+import {
+  ChatIcon, CodeIcon, BrainIcon, PaletteIcon, BoltIcon, ScalesIcon, HeartIcon, AtomIcon,
+  MegaphoneIcon, SproutIcon, PersonIcon, MicIcon, SparkIcon, TrendDownIcon, CoinIcon,
+  LockIcon, TargetIcon, BarsIcon,
+} from "./Icons";
 
 /** Short human label for a feature's effect lane. */
 const LANE_LABEL: Record<FeatureLane, string> = {
@@ -15,18 +21,19 @@ const LANE_LABEL: Record<FeatureLane, string> = {
   serveCost: "serve cost", tam: "market size", heat: "heat",
 };
 
-/** Glyph shown in the header app-icon, per product type. Shared with the list. */
-export const TYPE_GLYPH: Record<ProductTypeId, string> = {
-  general: "💬", code: "⌘", reasoning: "🧠", multimodal: "🎨", small: "⚡", domain: "⚖️",
-  companion: "💞", science: "🔬",
+/** Icon shown in the header app-icon, per product type. Shared with the list. */
+export const TYPE_GLYPH: Record<ProductTypeId, ReactNode> = {
+  general: <ChatIcon size={20} />, code: <CodeIcon size={20} />, reasoning: <BrainIcon size={20} />,
+  multimodal: <PaletteIcon size={20} />, small: <BoltIcon size={20} />, domain: <ScalesIcon size={20} />,
+  companion: <HeartIcon size={20} />, science: <AtomIcon size={20} />,
 };
 
-/** Tinted icon chip per marketing channel (matches the design's coloured glyphs). */
-const CH_META: Record<string, { glyph: string; tint: string }> = {
-  ads: { glyph: "📣", tint: "#7c5cff" },
-  organic: { glyph: "🌱", tint: "#16b364" },
-  influencer: { glyph: "👤", tint: "#ff8c42" },
-  events: { glyph: "🎤", tint: "#2f7bf6" },
+/** Tinted icon chip per marketing channel. */
+const CH_META: Record<string, { glyph: ReactNode; tint: string }> = {
+  ads: { glyph: <MegaphoneIcon size={16} />, tint: "#7c5cff" },
+  organic: { glyph: <SproutIcon size={16} />, tint: "#16b364" },
+  influencer: { glyph: <PersonIcon size={16} />, tint: "#ff8c42" },
+  events: { glyph: <MicIcon size={16} />, tint: "#2f7bf6" },
 };
 
 /** Small monochrome tab icons (colour via currentColor). */
@@ -96,7 +103,7 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
       <div className="pd-track"><div className="pd-track-fill" style={{ width: `${Math.min(100, pct)}%`, background: color }} /></div>
     </div>
   );
-  const info = (glyph: string, title: string, sub: string) => (
+  const info = (glyph: ReactNode, title: string, sub: string) => (
     <div className="pd-info-card">
       <span className="pd-info-ic">{glyph}</span>
       <div><div className="pd-info-title">{title}</div><div className="pd-info-sub">{sub}</div></div>
@@ -111,7 +118,7 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
       <div className="modal pd-modal" role="dialog" aria-modal="true" aria-label={`${p.name} — manage`} onClick={(e) => e.stopPropagation()}>
         <div className="pd-head">
           <div className="pd-head-id">
-            <span className="pd-app-icon">{TYPE_GLYPH[p.type] ?? "✦"}</span>
+            <span className="pd-app-icon">{TYPE_GLYPH[p.type] ?? <SparkIcon size={20} />}</span>
             <div className="pd-head-text">
               <div className="pd-title-row">
                 <EditableName className="pd-name" value={p.name} onCommit={(n) => onRename(p.id, n)} />
@@ -141,10 +148,10 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
             </div>
             {barCard("Competitiveness vs rivals", me.qf * 100, qfColor, `${Math.round(me.qf * 100)}%`)}
             {barCard(`Market share (of ${num(t.tam)})`, penetration * 100, "var(--data)", `${(penetration * 100).toFixed(penetration < 0.01 ? 2 : 1)}%`)}
-            {me.qf < 0.5 && <p className="pd-hint">📉 Rivals are pulling ahead — research a new version to catch up.</p>}
+            {me.qf < 0.5 && <p className="pd-hint"><TrendDownIcon size={14} /> Rivals are pulling ahead — research a new version to catch up.</p>}
             {up ? (
               <div className="pd-card">
-                <div className="pd-card-row"><span className="pd-card-label">🔬 Researching v{up.targetVersion}</span><span className="pd-card-value">{Math.round(upgradeProgress(up) * 100)}% · ~{fmtDur(up.remainingSec)}</span></div>
+                <div className="pd-card-row"><span className="pd-card-label"><AtomIcon size={14} /> Researching v{up.targetVersion}</span><span className="pd-card-value">{Math.round(upgradeProgress(up) * 100)}% · ~{fmtDur(up.remainingSec)}</span></div>
                 <div className="pd-track"><div className="pd-track-fill" style={{ width: `${upgradeProgress(up) * 100}%`, background: "#7c5cff" }} /></div>
               </div>
             ) : (
@@ -162,7 +169,7 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
 
         {tab === "pricing" && (
           <div className="pd-pane">
-            {info("💲", "Pricing strategy", "Higher prices earn more per user but fewer convert. Free users are everyone who hasn't paid.")}
+            {info(<CoinIcon size={18} />, "Pricing strategy", "Higher prices earn more per user but fewer convert. Free users are everyone who hasn't paid.")}
             <div className="pd-card">
               <div className="pd-card-row">
                 <span className="pd-card-label">Pro price</span>
@@ -188,7 +195,7 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
                 )}
               </div>
             ) : (
-              <p className="pd-hint">🔒 Enterprise tier unlocks after shipping {B.enterprise.unlockShips} models.</p>
+              <p className="pd-hint"><LockIcon size={14} /> Enterprise tier unlocks after shipping {B.enterprise.unlockShips} models.</p>
             )}
           </div>
         )}
@@ -199,7 +206,7 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
           const budgetPct = mktCap > 0 ? (Math.min(p.marketingPerSec, mktCap) / mktCap) * 100 : 0;
           return (
             <div className="pd-pane">
-              {info("🎯", "Smart budget allocation", "Set your total budget, then split it across channels. Cheap channels saturate fast — diversify as you grow.")}
+              {info(<TargetIcon size={18} />, "Smart budget allocation", "Set your total budget, then split it across channels. Cheap channels saturate fast — diversify as you grow.")}
               <div className="pd-card">
                 <div className="pd-card-row"><span className="pd-card-label">Total budget</span><span className="pd-card-value">{m$(p.marketingPerSec)} /s</span></div>
                 <input className="pd-slider" type="range" min={0} max={mktCap} step={Math.max(1, Math.round(mktCap / 50))}
@@ -207,12 +214,12 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
               </div>
               <div className="pd-section-head">
                 <span>Channel split</span>
-                <button className="pd-suggest" onClick={() => { const mix = suggestChannelMix(p, t); for (const c of B.channels) onSetChannelMix(p.id, c.id, mix[c.id] ?? 0); }}>✨ Suggest mix</button>
+                <button className="pd-suggest" onClick={() => { const mix = suggestChannelMix(p, t); for (const c of B.channels) onSetChannelMix(p.id, c.id, mix[c.id] ?? 0); }}><SparkIcon size={13} /> Suggest mix</button>
               </div>
               {B.channels.map((c) => {
                 const w = Math.max(0, p.channelMix[c.id] ?? 0);
                 const pct = Math.round((w / totalW) * 100);
-                const meta = CH_META[c.id] ?? { glyph: "📢", tint: "#7c5cff" };
+                const meta = CH_META[c.id] ?? { glyph: <MegaphoneIcon size={16} />, tint: "#7c5cff" };
                 return (
                   <label className="pd-channel-card" key={c.id}>
                     <div className="pd-channel-top">
@@ -229,7 +236,7 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
                 );
               })}
               <div className="pd-total-card">
-                <span className="pd-total-ic">📊</span>
+                <span className="pd-total-ic"><BarsIcon size={18} /></span>
                 <div className="pd-total-text">
                   <span className="pd-total-label">Total allocation</span>
                   <span className="pd-total-sub">100% of {m$(p.marketingPerSec)}/s</span>
@@ -242,7 +249,7 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
 
         {tab === "upgrades" && (
           <div className="pd-pane">
-            {info("✨", "Permanent upgrades", "One-time Money investments that permanently improve this product.")}
+            {info(<SparkIcon size={18} />, "Permanent upgrades", "One-time Money investments that permanently improve this product.")}
             {productFeatures.map((f) => {
               const owned = p.features.includes(f.id);
               const afford = canBuyFeature(game, p.id, f.id);

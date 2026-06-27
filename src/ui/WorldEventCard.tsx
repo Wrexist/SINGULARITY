@@ -1,4 +1,5 @@
 import type { FiredWorldEvent } from "../state/store";
+import { MegaphoneIcon, AlertTriangleIcon } from "./Icons";
 
 interface Props {
   event: FiredWorldEvent;
@@ -20,7 +21,10 @@ export function WorldEventCard({ event, onDismiss, onChoose }: Props) {
         aria-describedby="world-event-body"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="world-kicker">{event.tone === "good" ? "📣 BREAKING" : "⚠️ BREAKING"}</div>
+        <div className="world-kicker">
+          {event.tone === "good" ? <MegaphoneIcon size={15} /> : <AlertTriangleIcon size={15} />}
+          BREAKING
+        </div>
         <h2 id="world-event-headline" className="world-headline">{event.headline}</h2>
         <p id="world-event-body" className="world-body">{event.body}</p>
 

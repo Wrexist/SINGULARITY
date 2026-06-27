@@ -95,12 +95,12 @@ export const products = {
     minMau: 5_000,
     ratePerSec: 0.012, // ~ one per ~80s while a product is eligible
     list: [
-      { id: "viral", tone: "good", message: "🔥 {name} is trending — signups are spiking!", mauMult: 1.18, buzz: true },
-      { id: "press_good", tone: "good", message: "📰 {name} got a glowing review — buzz incoming.", buzz: true },
-      { id: "enterprise_deal", tone: "good", message: "🤝 {name} landed a big enterprise contract.", paidMult: 1.12 },
-      { id: "outage", tone: "bad", message: "💥 {name} had an outage — some users bounced.", mauMult: 0.93, paidMult: 0.9 },
-      { id: "breach", tone: "bad", message: "🔓 {name} leaked some data — regulators are curious.", paidMult: 0.92, heat: 6 },
-      { id: "price_war", tone: "bad", message: "⚔️ A rival undercut {name} on price — churn ticked up.", paidMult: 0.9 },
+      { id: "viral", tone: "good", message: "{name} is trending — signups are spiking!", mauMult: 1.18, buzz: true },
+      { id: "press_good", tone: "good", message: "{name} got a glowing review — buzz incoming.", buzz: true },
+      { id: "enterprise_deal", tone: "good", message: "{name} landed a big enterprise contract.", paidMult: 1.12 },
+      { id: "outage", tone: "bad", message: "{name} had an outage — some users bounced.", mauMult: 0.93, paidMult: 0.9 },
+      { id: "breach", tone: "bad", message: "{name} leaked some data — regulators are curious.", paidMult: 0.92, heat: 6 },
+      { id: "price_war", tone: "bad", message: "A rival undercut {name} on price — churn ticked up.", paidMult: 0.9 },
     ],
   },
 
@@ -160,16 +160,16 @@ export const products = {
     /** Satirical lines per reason; {name} is interpolated. Humor lives here. */
     lines: {
       stale: [
-        "📉 {name} users are wandering off to a rival's shinier demo. Ship a new version?",
-        "📉 A competitor just leapfrogged {name}. The fickle masses have noticed.",
-        "📉 {name} is starting to feel last-season. Churn is creeping up.",
-        "📉 \"Is {name} still being maintained?\" — an actual {name} user, leaving.",
+        "{name} users are wandering off to a rival's shinier demo. Ship a new version?",
+        "A competitor just leapfrogged {name}. The fickle masses have noticed.",
+        "{name} is starting to feel last-season. Churn is creeping up.",
+        "\"Is {name} still being maintained?\" — an actual {name} user, leaving.",
       ],
       pricey: [
-        "💸 {name} subscribers are rage-canceling over the price. Too rich for their blood.",
-        "💸 \"{name} is great but I'm not made of money\" — a former {name} subscriber.",
-        "💸 Sticker shock is thinning {name}'s paid tier. The dial may be cranked too high.",
-        "💸 {name} churn is spiking — turns out people read the invoice.",
+        "{name} subscribers are rage-canceling over the price. Too rich for their blood.",
+        "\"{name} is great but I'm not made of money\" — a former {name} subscriber.",
+        "Sticker shock is thinning {name}'s paid tier. The dial may be cranked too high.",
+        "{name} churn is spiking — turns out people read the invoice.",
       ],
     },
   },

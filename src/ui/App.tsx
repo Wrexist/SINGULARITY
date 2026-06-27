@@ -28,7 +28,8 @@ import { FxCanvas } from "./FxCanvas";
 import { burst as fxBurst } from "./fx";
 import { ProductLaunch } from "./ProductLaunch";
 import { productsUnlocked, productMetrics, typeDef, retirePayout } from "../engine/products";
-import { nextAction, attentionCounts } from "../engine/advisor";
+import { attentionCounts } from "../engine/advisor";
+import { FlaskIcon, BoxIcon, TeamIcon, TrophyIcon, GearIcon, GiftIcon } from "./Icons";
 import { fmtMoney } from "./format";
 import type { ProductTypeId } from "../engine/balance/products";
 import { iap } from "./iap";
@@ -57,9 +58,8 @@ export function App() {
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
-  // Advisor: one "do this next" nudge + small per-tab attention counts. Memoized
-  // per tick (same cadence as derive) — a handful of product checks, no clock.
-  const advice = useMemo(() => nextAction(game), [game]);
+  // Per-tab attention counts (the small badges on the bottom nav). Memoized per
+  // tick (same cadence as derive) — a handful of product checks, no clock.
   const attention = useMemo(() => attentionCounts(game), [game]);
 
   // Detect a ship (prestige) and fire the celebration moment + haptics.
@@ -137,10 +137,10 @@ export function App() {
       syncedToSave.current = true;
       return;
     }
-    if (showResearch && !seenResearch.current) pushToast("🔬 Research unlocked");
-    if (showMarket && !seenMarket.current) pushToast("🛒 Data Market unlocked");
-    if (showPrestige && !seenPrestige.current) pushToast("🚀 The path to shipping is open");
-    if (shipReady && !seenShipReady.current) pushToast("✨ You can Ship the Model!");
+    if (showResearch && !seenResearch.current) pushToast("Research unlocked", "good");
+    if (showMarket && !seenMarket.current) pushToast("Data Market unlocked", "good");
+    if (showPrestige && !seenPrestige.current) pushToast("The path to shipping is open", "good");
+    if (shipReady && !seenShipReady.current) pushToast("You can Ship the Model!", "good");
     seenResearch.current = showResearch;
     seenPrestige.current = showPrestige;
     seenMarket.current = showMarket;
@@ -183,19 +183,35 @@ export function App() {
     pushToast(notice.message, notice.tone);
     // A "good" notice is a win (version shipped, milestone, viral) — full beat. A
     // "bad" ops event (outage/breach) feels bad. Neutral churn quips stay a light tap.
-    // Achievement unlocks (🏅) get their own bright chime so they feel distinct.
+    // Achievement unlocks get their own bright chime so they feel distinct.
     if (notice.tone === "good") {
-      if (notice.message.startsWith("🏅")) {
+      if (notice.kind === "achievement") {
         haptics.success(); sound.achievement();
-        // Burst from the topbar trophy — "it went into your collection".
-        const el = document.querySelector('[aria-label="Achievements"]');
-        if (el) { const r = el.getBoundingClientRect(); fxBurst(r.left + r.width / 2, r.top + r.height / 2, { count: 22, power: 1.1, colors: ["#ff9f0a", "#ffd60a", "#9b51e0"] }); }
+        // Burst from the topbar trophy — "it went into your collection". If the
+        // trophy is scrolled off-screen, bloom from the screen centre so the
+        // celebration is never invisible.
+        if (!reducedMotion) {
+          const el = document.querySelector('[aria-label="Achievements"]');
+          const r = el?.getBoundingClientRect();
+          const onScreen = r && r.top >= 0 && r.bottom <= window.innerHeight && r.left >= 0 && r.right <= window.innerWidth;
+          const cx = onScreen ? r!.left + r!.width / 2 : window.innerWidth / 2;
+          const cy = onScreen ? r!.top + r!.height / 2 : window.innerHeight * 0.4;
+          fxBurst(cx, cy, { count: 22, power: 1.1, colors: ["#ff9f0a", "#ffd60a", "#9b51e0"] });
+        }
       }
       else {
         haptics.celebrate(); sound.success();
-        // A milestone (🏆) is a chase-ladder payoff — bloom gold from the screen centre.
-        if (notice.message.startsWith("🏆") && !reducedMotion) {
+        // A milestone is a chase-ladder payoff — bloom gold from the screen centre.
+        if (notice.kind === "milestone" && !reducedMotion) {
           fxBurst(window.innerWidth / 2, window.innerHeight * 0.4, { count: 30, power: 1.6, colors: ["#ff9f0a", "#ffd60a", "#16b364"] });
+        }
+        // A specialist levelling up gets a small gold star-pop near the Team tab.
+        if (notice.kind === "levelup" && !reducedMotion) {
+          const team = Array.from(document.querySelectorAll(".botnav-lbl")).find((n) => n.textContent === "Team")?.parentElement;
+          const r = team?.getBoundingClientRect();
+          const cx = r ? r.left + r.width / 2 : window.innerWidth / 2;
+          const cy = r ? r.top + r.height / 2 : window.innerHeight * 0.5;
+          fxBurst(cx, cy, { count: 18, power: 1.1, colors: ["#ffd60a", "#ff9f0a", "#16b364"] });
         }
       }
     }
@@ -222,7 +238,7 @@ export function App() {
       const qf = productMetrics(p, frontier).qf;
       const wasStale = staleSeen.current[p.id] ?? false;
       if (qf < 0.5 && !wasStale) {
-        pushToast(`📉 ${p.name} is falling behind rivals — push a new version`, "bad");
+        pushToast(`${p.name} is falling behind rivals — push a new version`, "bad");
         staleSeen.current[p.id] = true;
       } else if (qf >= 0.66 && wasStale) {
         staleSeen.current[p.id] = false; // re-armed once you've caught back up
@@ -251,6 +267,11 @@ export function App() {
       const gained = game.prestige.legacyWeights.sub(prevWeights.current);
       setCelebration({ gained, total: game.prestige.legacyWeights });
       haptics.celebrate();
+      // The flagship you just shipped is waiting as a free-to-launch product —
+      // make sure the player knows (a ship that "gave nothing" was the #1 confusion).
+      if (game.products.drafts.length > 0) {
+        pushToast("Your shipped model is ready — commercialise it free in Products", "good");
+      }
       // An AGI ascension (a ship in the Post-Singularity era) gets the grander beat:
       // the ascend fanfare + a gold screen flash + a big central particle bloom.
       if (game.stats.ascensions > prevAscensions.current) {
@@ -290,7 +311,7 @@ export function App() {
     // Kicking off research is a small commit beat; the big payoff lands when it
     // COMPLETES (the store fires a "good" notice → celebration in the notice effect).
     haptics.tap(); sound.tap();
-    if (p && !p.upgrade) pushToast(`🔬 ${p.name} — researching v${p.version + 1}…`, "neutral");
+    if (p && !p.upgrade) pushToast(`${p.name} — researching v${p.version + 1}…`, "neutral");
   };
   const onRetireProductFx = (id: string) => {
     const p = game.products.active.find((x) => x.id === id);
@@ -299,7 +320,7 @@ export function App() {
     if (!window.confirm(`Sell ${p.name} for ${fmtMoney(Big.of(Math.round(payout)))}? This is permanent.`)) return;
     doRetireProduct(id);
     haptics.success(); sound.purchase();
-    pushToast(`🏷️ Sold ${p.name} for ${fmtMoney(Big.of(Math.round(payout)))}`, "neutral");
+    pushToast(`Sold ${p.name} for ${fmtMoney(Big.of(Math.round(payout)))}`, "neutral");
   };
   const onResearch = (id: string) => { haptics.tap(); sound.purchase(); doResearch(id); };
   const onBuyData = (id: string) => {
@@ -348,20 +369,9 @@ export function App() {
       <main className="stage">
         {dailyOn && (
           <button className="daily-bar" onClick={onClaimDaily} aria-label="Claim your daily boost">
-            <span className="daily-ic">🎁</span>
+            <span className="daily-ic"><GiftIcon size={18} /></span>
             <span className="daily-text"><b>Daily boost ready</b> — +{Math.round((balance.daily.factor - 1) * 100)}% output for {Math.round(balance.daily.durationSec / 60)} min</span>
             <span className="daily-go">Claim</span>
-          </button>
-        )}
-        {advice && (
-          <button
-            className="advisor-bar"
-            onClick={() => { haptics.tap(); setTab(advice.tab); }}
-            aria-label={`Suggested next: ${advice.text}`}
-          >
-            <span className="advisor-icon">💡</span>
-            <span className="advisor-text">{advice.text}</span>
-            {advice.tab !== tab && <span className="advisor-go">{advice.tab === "lab" ? "Lab" : advice.tab === "products" ? "Products" : "Employees"} ▸</span>}
           </button>
         )}
         {tab === "products" && showProducts ? (
@@ -418,27 +428,27 @@ export function App() {
         {/* Destinations use aria-current; Awards/More are actions (open modals),
             so this is a nav bar, not a tablist (the panes aren't tab panels). */}
         <button className={`botnav-item ${tab === "lab" ? "on" : ""}`} aria-current={tab === "lab" ? "page" : undefined} onClick={() => { haptics.tap(); setTab("lab"); }}>
-          <span className="botnav-ic">🧪</span><span className="botnav-lbl">Lab</span>
+          <span className="botnav-ic"><FlaskIcon size={23} /></span><span className="botnav-lbl">Lab</span>
           {attention.lab > 0 && <span className="botnav-badge">{attention.lab}</span>}
         </button>
         {showProducts && (
           <button className={`botnav-item ${tab === "products" ? "on" : ""}`} aria-current={tab === "products" ? "page" : undefined} onClick={() => { haptics.tap(); setTab("products"); }}>
-            <span className="botnav-ic">📦</span><span className="botnav-lbl">Products</span>
+            <span className="botnav-ic"><BoxIcon size={23} /></span><span className="botnav-lbl">Products</span>
             {attention.products > 0 && <span className="botnav-badge">{attention.products}</span>}
           </button>
         )}
         {showStaff && (
           <button className={`botnav-item ${tab === "employees" ? "on" : ""}`} aria-current={tab === "employees" ? "page" : undefined} onClick={() => { haptics.tap(); setTab("employees"); }}>
-            <span className="botnav-ic">👥</span><span className="botnav-lbl">Team</span>
+            <span className="botnav-ic"><TeamIcon size={23} /></span><span className="botnav-lbl">Team</span>
             {attention.employees > 0 && <span className="botnav-badge">{attention.employees}</span>}
           </button>
         )}
         <button className="botnav-item" onClick={() => { haptics.tap(); setShowAchievements(true); }} aria-label="Achievements">
-          <span className="botnav-ic">🏆</span><span className="botnav-lbl">Awards</span>
+          <span className="botnav-ic"><TrophyIcon size={23} /></span><span className="botnav-lbl">Awards</span>
           {game.achievements.length > 0 && <span className="botnav-badge alt">{game.achievements.length}</span>}
         </button>
         <button className="botnav-item" onClick={() => { haptics.tap(); setShowSettings(true); }} aria-label="Settings">
-          <span className="botnav-ic">⚙️</span><span className="botnav-lbl">More</span>
+          <span className="botnav-ic"><GearIcon size={22} /></span><span className="botnav-lbl">More</span>
         </button>
       </nav>
 
@@ -447,7 +457,12 @@ export function App() {
         <Celebration
           weightsGained={celebration.gained}
           totalWeights={celebration.total}
-          onDone={() => setCelebration(null)}
+          onDone={() => {
+            setCelebration(null);
+            // Land the player on their reward: a freshly-shipped model waiting to
+            // be commercialised. Removes the "I shipped and got nothing" dead-end.
+            if (productsUnlocked(game) && game.products.drafts.length > 0) setTab("products");
+          }}
         />
       )}
       {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} />}

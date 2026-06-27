@@ -264,9 +264,9 @@ export function buyDataOffer(
     } else if (roll < raidChance + poisonChance) {
       kind = "poisoned";
       dataGained = dataGained.mul(poisonDataFactor);
-      message = `☠️ Poisoned batch — mostly raccoon photos. Only +${dataGained.format()} data.`;
+      message = `Poisoned batch — mostly raccoon photos. Only +${dataGained.format()} data.`;
     } else {
-      message = `✅ Clean haul from the Bazaar. +${dataGained.format()} data.`;
+      message = `Clean haul from the Bazaar. +${dataGained.format()} data.`;
     }
   }
 
@@ -277,7 +277,7 @@ export function buyDataOffer(
     // Report the fine ACTUALLY charged (cost is always affordable; the fine is
     // what the clamp may have trimmed) so the toast never overstates the hit.
     const finePaid = moneyLost.sub(def.cost).max(0);
-    message = `🚨 Raided! Regulators kicked the door in. Fined $${finePaid.format()}.`;
+    message = `Raided! Regulators kicked the door in. Fined $${finePaid.format()}.`;
   }
   const next: GameState = {
     ...state,
@@ -388,8 +388,8 @@ function effectSummary(effect: WorldEventEffect): string {
     const sign = effect.pct > 0 ? "+" : "";
     return `${sign}${Math.round(effect.pct * 100)}% ${RES_LABEL[effect.resource]}`;
   }
-  if (effect.kind === "frontierJump") return "📈 Rivals leap ahead";
-  if (effect.kind === "productBuzz") return `🚀 Product buzz · ${effect.durationSec}s`;
+  if (effect.kind === "frontierJump") return "Rivals leap ahead";
+  if (effect.kind === "productBuzz") return `Product buzz · ${effect.durationSec}s`;
   return `${TARGET_LABEL[effect.target]} ×${effect.factor} · ${effect.durationSec}s`;
 }
 
@@ -438,7 +438,7 @@ export function grantDailyBoost(state: GameState): GameState {
     target,
     factor,
     remainingSec: durationSec,
-    label: `🎁 Daily ×${factor}`,
+    label: `Daily ×${factor}`,
     tone: "good",
   }));
   return { ...state, modifiers: [...state.modifiers.filter((m) => !m.id.startsWith("daily_")), ...mods] };

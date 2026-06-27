@@ -28,7 +28,7 @@ export function ProductLaunch({ name, typeName, onDone }: Props) {
           <p><b>{name}</b> {blurb}</p>
         </div>
         <button className="btn btn-primary" onClick={onDone}>
-          Ship it 🚀
+          Ship it
         </button>
       </div>
     </div>

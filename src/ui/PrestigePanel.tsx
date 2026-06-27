@@ -7,6 +7,16 @@ import type { GameState } from "../engine/types";
 import { fmt } from "./format";
 import { Big } from "../engine/math/Big";
 import { ReputationModal } from "./ReputationModal";
+import { LandmarkIcon, RocketIcon, GlobeIcon, CoinIcon, SwordsIcon } from "./Icons";
+import type { ReactNode } from "react";
+
+/** Per-ship-mode icon (keyed by mode id; matches the engine's shipModes). */
+const SHIP_MODE_ICON: Record<string, ReactNode> = {
+  deploy: <RocketIcon size={20} />,
+  open_source: <GlobeIcon size={20} />,
+  sell: <CoinIcon size={20} />,
+  hard: <SwordsIcon size={20} />,
+};
 
 interface Props {
   game: GameState;
@@ -72,7 +82,7 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk }: Props) 
 
       {(repPoints > 0 || repOwned > 0) && (
         <button className="rep-strip" onClick={() => setRepOpen(true)}>
-          <span className="rep-strip-mark">🏛️</span>
+          <span className="rep-strip-mark"><LandmarkIcon size={18} /></span>
           <span className="rep-strip-text">Lab Reputation — <b>{repPoints}</b> point{repPoints === 1 ? "" : "s"} to spend{repOwned > 0 ? ` · ${repOwned} perk${repOwned === 1 ? "" : "s"} owned` : ""}</span>
           <span className="rep-strip-go">open ▸</span>
         </button>
@@ -94,7 +104,7 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk }: Props) 
             const kickstart = m.moneyKickstartPerShip * (game.prestige.ships + 1);
             return (
               <button key={m.id} className="ship-mode" onClick={() => { onPrestige(m.id as ShipMode); setConfirming(false); }}>
-                <span className="ship-mode-ic">{m.glyph}</span>
+                <span className="ship-mode-ic">{SHIP_MODE_ICON[m.id]}</span>
                 <div className="ship-mode-text">
                   <div className="ship-mode-top">
                     <span className="ship-mode-label">{m.label}</span>

@@ -817,17 +817,17 @@ export const balance = {
      */
     shipModes: {
       deploy: {
-        id: "deploy", label: "Deploy commercially", glyph: "🚀",
+        id: "deploy", label: "Deploy commercially",
         blurb: "Balanced. Bank full Legacy Weights and keep the model as a product draft to commercialise.",
         legacyMult: 1, keepsDraft: true, moneyKickstartPerShip: 0, frontierPenalty: 0, unlockShips: 0,
       },
       open_source: {
-        id: "open_source", label: "Open-source it", glyph: "🌍",
+        id: "open_source", label: "Open-source it",
         blurb: "The community spreads your weights further — more Legacy — but you give the model away (no product draft).",
         legacyMult: 1.3, keepsDraft: false, moneyKickstartPerShip: 0, frontierPenalty: 0, unlockShips: 0,
       },
       sell: {
-        id: "sell", label: "Sell to a hyperscaler", glyph: "💰",
+        id: "sell", label: "Sell to a hyperscaler",
         blurb: "Cash up front to bootstrap the next run, but fewer Legacy Weights and no product draft.",
         legacyMult: 0.5, keepsDraft: false, moneyKickstartPerShip: 200, frontierPenalty: 0, unlockShips: 0,
       },
@@ -835,7 +835,7 @@ export const balance = {
       // Rivals start further ahead (your carried products begin behind), but you
       // bank +50% Legacy. Lives in the same chooser — no new screen/mechanic.
       hard: {
-        id: "hard", label: "Hard ship (challenge)", glyph: "⚔️",
+        id: "hard", label: "Hard ship (challenge)",
         blurb: "Rivals leap ahead — your products start behind — but bank +50% Legacy. For when the easy money bores you.",
         legacyMult: 1.5, keepsDraft: true, moneyKickstartPerShip: 0, frontierPenalty: 6, unlockShips: 3,
       },
@@ -1038,28 +1038,28 @@ export const balance = {
       id: "audit",
       weight: 4,
       tone: "bad",
-      message: "🚨 Surprise audit! Regulators want their cut. Fined 25% of your cash.",
+      message: "Surprise audit! Regulators want their cut. Fined 25% of your cash.",
       effect: { fineFraction: 0.25, heatMul: 0.3 },
     },
     {
       id: "subpoena",
       weight: 3,
       tone: "bad",
-      message: "📑 Data subpoena — a chunk of your dataset is seized as evidence.",
+      message: "Data subpoena — a chunk of your dataset is seized as evidence.",
       effect: { dataFraction: 0.2, heatMul: 0.5 },
     },
     {
       id: "whistleblower",
       weight: 2,
       tone: "bad",
-      message: "📰 A whistleblower leaks your sourcing. The heat is on.",
+      message: "A whistleblower leaks your sourcing. The heat is on.",
       effect: { heatAdd: 25 },
     },
     {
       id: "lobbyist",
       weight: 1,
       tone: "good",
-      message: "🤝 A friendly lobbyist makes it all go away. Heat cleared.",
+      message: "A friendly lobbyist makes it all go away. Heat cleared.",
       effect: { heatSet: 0 },
     },
   ] satisfies HeatEvent[],

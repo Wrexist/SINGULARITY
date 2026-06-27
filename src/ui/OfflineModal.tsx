@@ -2,6 +2,7 @@ import type { OfflineSummary } from "../engine/offline";
 import type { Big } from "../engine/math/Big";
 import { fmt, fmtPerHour, fmtTime } from "./format";
 import { achievementDefs } from "../engine/achievements";
+import { LandmarkIcon, TrophyIcon } from "./Icons";
 
 interface Props {
   summary: OfflineSummary;
@@ -53,11 +54,11 @@ export function OfflineModal({ summary, onClose }: Props) {
         {(unlocked.length > 0 || repEarned > 0) && (
           <div className="wiwa-meta">
             {repEarned > 0 && (
-              <div className="wiwa-meta-row">🏛️ <b>+{repEarned}</b> Lab Reputation earned</div>
+              <div className="wiwa-meta-row"><LandmarkIcon size={16} /> <b>+{repEarned}</b> Lab Reputation earned</div>
             )}
             {unlocked.length > 0 && (
               <div className="wiwa-meta-row">
-                🏅 <b>{unlocked.length}</b> achievement{unlocked.length === 1 ? "" : "s"} unlocked
+                <TrophyIcon size={16} /> <b>{unlocked.length}</b> achievement{unlocked.length === 1 ? "" : "s"} unlocked
                 <span className="wiwa-ach-names">
                   {unlocked.slice(0, 3).map((d) => d.label).join(", ")}{unlocked.length > 3 ? `, +${unlocked.length - 3} more` : ""}
                 </span>

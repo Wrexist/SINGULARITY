@@ -1,9 +1,11 @@
+import { useState, useRef, useCallback } from "react";
 import { balance } from "../engine/balance/config";
 import { canBuyResearch, researchAvailable } from "../engine/actions";
 import type { Derived, GameState } from "../engine/types";
 import { fmt, fmtDur, etaSecs, effRate } from "./format";
 import { burst } from "./fx";
 import { Big } from "../engine/math/Big";
+import { CheckIcon, LockIcon } from "./Icons";
 
 interface Props {
   game: GameState;
@@ -12,6 +14,14 @@ interface Props {
 }
 
 export function ResearchPanel({ game, derived, onResearch }: Props) {
+  const [bought, setBought] = useState<string | null>(null);
+  const buyTimer = useRef<number | undefined>(undefined);
+  const flashBuy = useCallback((id: string) => {
+    setBought(id);
+    window.clearTimeout(buyTimer.current);
+    buyTimer.current = window.setTimeout(() => setBought(null), 500);
+  }, []);
+
   const isOwned = (id: string) => game.research.includes(id);
   // Reveal in waves (GDD): show owned/available nodes and the NEXT wave (locked
   // nodes whose prerequisites are owned or already available) — not the whole tree.
@@ -42,18 +52,19 @@ export function ResearchPanel({ game, derived, onResearch }: Props) {
           return (
             <button
               key={def.id}
-              className={`node ${state} ${affordable ? "affordable" : ""}`}
+              className={`node ${state} ${affordable ? "affordable" : ""} ${bought === def.id ? "bought" : ""}`}
               disabled={!affordable}
               onClick={(e) => {
                 const r = e.currentTarget.getBoundingClientRect();
-                burst(r.left + r.width / 2, r.top + r.height / 2, { count: 14, power: 1, colors: ["#9b51e0", "#2f7bf6"] });
+                burst(r.left + r.width / 2, r.top + r.height / 2, { count: 18, power: 1.1, colors: ["#9b51e0", "#2f7bf6", "#16b364"] });
+                flashBuy(def.id);
                 onResearch(def.id);
               }}
             >
               <div className="node-head">
                 <span className="node-name">{def.name}</span>
-                {owned && <span className="node-tag">✓ done</span>}
-                {!owned && !available && <span className="node-tag">🔒 locked</span>}
+                {owned && <span className="node-tag"><CheckIcon size={12} /> done</span>}
+                {!owned && !available && <span className="node-tag"><LockIcon size={12} /> locked</span>}
               </div>
               <span className="node-desc">{def.desc}</span>
               {!owned && (
