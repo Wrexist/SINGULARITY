@@ -16,9 +16,14 @@ no dark patterns. Re-run `npm run sim` after any economy change.*
 ### Step 1 — Foundation (R0)
 - [ ] **R0.1 · Kill the 10Hz whole-app re-render** (P1) — narrow store selectors + `React.memo`
       on leaf panels; isolate the only truly-10Hz component (`ResourceBar`). Biggest perf/battery win.
-- [ ] **R0.2 · Extend the balance sim to the long game** (P1) — `scripts/balance-sim.ts` long-haul
-      policy (10–20 gens, buys products/versions/staff); report weights/hr + era cadence. The
-      instrument that unblocks all of R4.
+- [x] **R0.2 · Extend the balance sim to the long game** — new `runLongHaul()` in
+      `scripts/balance-sim.ts`: 20 generations driving the lab loop + the products business
+      (commercialise deployed drafts, push versions). Reports per-gen ship time, total weights,
+      legacyMult, era, weights/hr, and the data/compute + $/compute ratios; plus era-arrival times
+      and a "sub-minute ships" collapse flag. **Immediately quantified the R4 targets:** 18/20 ships
+      are sub-minute (meta-loop collapsing → R4.1), legacyMult ×1→×18. Baseline run() untouched
+      (first prestige still 12m15s). (Staff = RNG-rolled employees in the store, out of a pure sim's
+      scope — documented, same as the baseline.)
 
 ### Step 2 — Friendliness (R1)
 - [x] **R1.1 · Advisor "Next: …" banner** — wired the already-built/tested `nextAction()` as a
