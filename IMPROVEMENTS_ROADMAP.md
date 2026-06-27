@@ -44,7 +44,7 @@ Eras 0–6 + AGI ascension · research tree · "Ship the Model" prestige (Legacy
 
 ## Phase D — Monetization & store (P1/P2, before/with launch)
 - **D1 · Cosmetic hall themes** ✅ *(done)* — 5 parametric hall themes (Classic, Neon, Sunset, Blueprint, Founder Gold) as CSS filters on the hall canvas — no assets, no gameplay effect. Picker in Settings; choice stored in the settings localStorage (no save migration). **Founder Gold is gated behind Premium** (delivers part of D2). Cosmetic-only, never power (GDD §7).
-- **D2 · Premium unlock content bundle** *(P1, S)* — make sure the premium entitlement actually grants its promised QoL/cosmetic bundle (faster offline cap, founder skin, themes) so the IAP delivers.
+- **D2 · Premium unlock content bundle** ✅ *(done)* — verified the entitlement delivers what the card promises: the **24h offline cap** is wired to `isPremium()` (store.ts), the **Founder** badge shows when owned, and the new **Founder Gold** hall theme is Premium-gated. No ads, no pay-to-win — all QoL/cosmetic per GDD §7.
 - **D3 · Store screenshot kit** *(P2, S)* — capture the era-transition beats as marketing screenshots (falls out of C1).
 
 ## Phase E — Balance & telemetry (P2, ongoing)
