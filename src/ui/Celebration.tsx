@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import type { Big } from "../engine/math/Big";
 import { fmt } from "./format";
+import { RocketIcon } from "./Icons";
 
 interface Props {
   weightsGained: Big;
@@ -40,7 +41,7 @@ export function Celebration({ weightsGained, totalWeights, onDone }: Props) {
       </div>
 
       <div className="celebrate-card">
-        <div className="celebrate-rocket">🚀</div>
+        <div className="celebrate-rocket"><RocketIcon size={40} /></div>
         <h2>Model Shipped</h2>
         <p className="celebrate-sub">
           Investors are “thrilled.” The press release writes itself. You banked:

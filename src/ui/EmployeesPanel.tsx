@@ -11,7 +11,7 @@ import { Big } from "../engine/math/Big";
 import type { GameState, Derived, Employee } from "../engine/types";
 import type { Candidate } from "../state/store";
 import { fmtMoney, m$, fmtDur } from "./format";
-import { TeamIcon, BanknoteIcon, SmileIcon, BarsIcon, BuildingIcon } from "./Icons";
+import { TeamIcon, BanknoteIcon, SmileIcon, BarsIcon, BuildingIcon, GradCapIcon, AtomIcon } from "./Icons";
 
 interface Props {
   game: GameState;
@@ -193,7 +193,7 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
           <div className="emp-person-tags">
             <span className="emp-tag role">{role?.name}</span>
             {trait && <span className="emp-tag" style={{ color: TRAIT_TONE[trait.tone], background: `color-mix(in srgb, ${TRAIT_TONE[trait.tone]} 12%, #fff)` }}>{trait.name}</span>}
-            {e.training && <span className="emp-tag train">🎓 training</span>}
+            {e.training && <span className="emp-tag train"><GradCapIcon size={12} /> training</span>}
           </div>
         </div>
         <div className="emp-person-right">{action}</div>
@@ -266,7 +266,7 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
                     {open && (
                       <div className="emp-person-actions">
                         {e.training ? (
-                          <span className="emp-act-train">🎓 Training · ~{fmtDur(e.training.remainingSec)}</span>
+                          <span className="emp-act-train"><GradCapIcon size={13} /> Training · ~{fmtDur(e.training.remainingSec)}</span>
                         ) : (
                           <button className="emp-act" disabled={!trainable} onClick={() => onTrain(e.id)}>{maxed ? "Max level" : `Train → L${e.level + 1} · ${m$(trainCost(e))}`}</button>
                         )}
@@ -353,7 +353,7 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
                 <div className="emp-proj-bar"><div className="emp-proj-fill" style={{ width: `${Math.min(100, pct)}%`, background: up ? "#7c5cff" : "var(--money)" }} /></div>
                 <div className="emp-proj-meta">
                   <span>{m$(me.mrr)}/s revenue</span>
-                  {up ? <span>🔬 v{up.targetVersion} · ~{fmtDur(up.remainingSec)}</span> : <span>{Math.round(me.qf * 100)}% competitive</span>}
+                  {up ? <span className="emp-inline-ic"><AtomIcon size={12} /> v{up.targetVersion} · ~{fmtDur(up.remainingSec)}</span> : <span>{Math.round(me.qf * 100)}% competitive</span>}
                 </div>
                 <div className="emp-proj-crew">
                   {crew.length === 0 && <span className="emp-proj-empty">{selected || drag ? "Drop / tap to assign here" : "No crew assigned"}</span>}

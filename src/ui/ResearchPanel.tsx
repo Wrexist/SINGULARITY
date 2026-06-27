@@ -4,6 +4,7 @@ import type { Derived, GameState } from "../engine/types";
 import { fmt, fmtDur, etaSecs, effRate } from "./format";
 import { burst } from "./fx";
 import { Big } from "../engine/math/Big";
+import { CheckIcon, LockIcon } from "./Icons";
 
 interface Props {
   game: GameState;
@@ -52,8 +53,8 @@ export function ResearchPanel({ game, derived, onResearch }: Props) {
             >
               <div className="node-head">
                 <span className="node-name">{def.name}</span>
-                {owned && <span className="node-tag">✓ done</span>}
-                {!owned && !available && <span className="node-tag">🔒 locked</span>}
+                {owned && <span className="node-tag"><CheckIcon size={12} /> done</span>}
+                {!owned && !available && <span className="node-tag"><LockIcon size={12} /> locked</span>}
               </div>
               <span className="node-desc">{def.desc}</span>
               {!owned && (

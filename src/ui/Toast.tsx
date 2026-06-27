@@ -1,10 +1,17 @@
 import { useEffect, useRef } from "react";
+import { InfoIcon, CheckCircleIcon, AlertTriangleIcon } from "./Icons";
 
 export interface ToastData {
   id: number;
   text: string;
   /** Visual weight: plain unlock vs. a regulatory event. */
   tone?: "neutral" | "bad" | "good";
+}
+
+function ToneIcon({ tone }: { tone: ToastData["tone"] }) {
+  if (tone === "good") return <CheckCircleIcon size={17} />;
+  if (tone === "bad") return <AlertTriangleIcon size={17} />;
+  return <InfoIcon size={17} />;
 }
 
 function Toast({ toast, onDone }: { toast: ToastData; onDone: (id: number) => void }) {
@@ -22,7 +29,8 @@ function Toast({ toast, onDone }: { toast: ToastData; onDone: (id: number) => vo
 
   return (
     <div className={`toast toast-${toast.tone ?? "neutral"}`} onClick={() => onDone(toast.id)}>
-      {toast.text}
+      <span className="toast-ic"><ToneIcon tone={toast.tone} /></span>
+      <span className="toast-text">{toast.text}</span>
     </div>
   );
 }

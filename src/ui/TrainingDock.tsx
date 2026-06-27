@@ -29,9 +29,9 @@ export function TrainingDock({ game, derived, onStart, onClaim, onSetFocus }: Pr
   const firstRun = game.lifetimeMoney.eq(0) && game.prestige.ships === 0;
   let hint: string | null = null;
   if (firstRun) {
-    if (run.readyToClaim) hint = "Done! Claim your first Data + Money 🎉";
+    if (run.readyToClaim) hint = "Done! Claim your first Data + Money.";
     else if (run.active) hint = "Training… payouts land when the bar fills.";
-    else if (canStart) hint = "Ready — start your first training run 👇";
+    else if (canStart) hint = "Ready — start your first training run.";
     else hint = "Your server closet is making Compute. Start a run when you can afford it.";
   }
 

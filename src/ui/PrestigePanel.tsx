@@ -7,7 +7,16 @@ import type { GameState } from "../engine/types";
 import { fmt } from "./format";
 import { Big } from "../engine/math/Big";
 import { ReputationModal } from "./ReputationModal";
-import { LandmarkIcon } from "./Icons";
+import { LandmarkIcon, RocketIcon, GlobeIcon, CoinIcon, SwordsIcon } from "./Icons";
+import type { ReactNode } from "react";
+
+/** Per-ship-mode icon (keyed by mode id; matches the engine's shipModes). */
+const SHIP_MODE_ICON: Record<string, ReactNode> = {
+  deploy: <RocketIcon size={20} />,
+  open_source: <GlobeIcon size={20} />,
+  sell: <CoinIcon size={20} />,
+  hard: <SwordsIcon size={20} />,
+};
 
 interface Props {
   game: GameState;
@@ -95,7 +104,7 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk }: Props) 
             const kickstart = m.moneyKickstartPerShip * (game.prestige.ships + 1);
             return (
               <button key={m.id} className="ship-mode" onClick={() => { onPrestige(m.id as ShipMode); setConfirming(false); }}>
-                <span className="ship-mode-ic">{m.glyph}</span>
+                <span className="ship-mode-ic">{SHIP_MODE_ICON[m.id]}</span>
                 <div className="ship-mode-text">
                   <div className="ship-mode-top">
                     <span className="ship-mode-label">{m.label}</span>

@@ -52,7 +52,7 @@ export function advisorItems(state: GameState): AdvisorItem[] {
       items.push({ tab: "lab", text: "Claim your finished run — bank the Data & $", priority: 95 });
     }
     if (canPrestige(state)) {
-      items.push({ tab: "lab", text: "🚀 Ship the Model — reset for a permanent boost", priority: 92 });
+      items.push({ tab: "lab", text: "Ship the Model — reset for a permanent boost", priority: 92 });
     }
     // Affordable first research outranks the idle "start a run" nudge, so it
     // actually surfaces when it becomes the meaningful next step (nextAction

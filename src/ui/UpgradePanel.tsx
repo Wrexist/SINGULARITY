@@ -6,6 +6,7 @@ import { productMetrics } from "../engine/products";
 import { Big } from "../engine/math/Big";
 import type { Derived, GameState } from "../engine/types";
 import { fmt, effRate, fmtEta } from "./format";
+import { BoltIcon } from "./Icons";
 import { burst } from "./fx";
 
 const RES_HEX: Record<string, string> = { compute: "#2f7bf6", data: "#9b51e0", money: "#16b364" };
@@ -33,7 +34,7 @@ function PowerMeter({ draw, cap, factor, throttled }: { draw: number; cap: numbe
         <span>Power</span>
         <span className="power-stat" style={{ color }}>
           {Math.round(draw)}/{Math.round(cap)} kW
-          {throttled ? ` · ⚡ throttled −${penalty}%` : ` · ${Math.round(pct)}%`}
+          {throttled ? <> · <BoltIcon size={12} /> throttled −{penalty}%</> : ` · ${Math.round(pct)}%`}
         </span>
       </div>
       <div className="power-bar">

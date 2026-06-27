@@ -73,6 +73,11 @@ body {
   overscroll-behavior-y: none;
 }
 
+/* Line-icons that sit inline with text align to the visual centre instead of
+   the baseline (so they don't drop below the text). Icons inside flex/grid
+   containers ignore this — it only affects the inline-with-text cases. */
+svg { vertical-align: middle; }
+
 /* ---------- Animated aurora (the thing the glass refracts) ---------- */
 .aurora {
   position: fixed;
@@ -238,7 +243,7 @@ body {
 .ach-desc { font-size: 11.5px; color: var(--ink-2); line-height: 1.35; }
 .ach-bar { height: 4px; border-radius: 2px; background: var(--glass); overflow: hidden; margin-top: 6px; }
 .ach-bar-fill { height: 100%; transition: width 0.3s var(--ease-out); }
-.ach-check { flex: 0 0 auto; color: var(--money); font-weight: 800; font-size: 16px; }
+.ach-check { flex: 0 0 auto; display: inline-flex; align-items: center; color: var(--money); }
 
 /* ---------- AGI ascension (Post-Singularity) ---------- */
 .agi-banner {
@@ -790,7 +795,8 @@ body {
   /* color set inline by tier (green → amber → orange → red) */
   transition: width 0.4s var(--ease-out), background 0.4s linear;
 }
-.risk-line { font-size: 11px; font-weight: 650; color: #7c3aed; margin-top: 3px; }
+.risk-line { display: inline-flex; align-items: center; gap: 3px; flex-wrap: wrap; font-size: 11px; font-weight: 650; color: #7c3aed; margin-top: 3px; }
+.risk-line svg { vertical-align: middle; }
 /* The Bazaar keeps a violet identity but now sits in the light theme — a soft
    lavender card instead of a dark block, so its text stays readable. */
 .market-group.shady {
@@ -852,7 +858,7 @@ body {
 .node.owned { opacity: 0.9; }
 .node-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .node-name { font-weight: 700; font-size: 14px; letter-spacing: -0.01em; }
-.node-tag { font-size: 11px; font-weight: 600; color: var(--ink-2); white-space: nowrap; }
+.node-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: var(--ink-2); white-space: nowrap; }
 .node-desc { font-size: 12px; color: var(--ink-2); line-height: 1.35; }
 .node-cost { font-size: 12px; font-weight: 700; margin-top: 3px; }
 
@@ -1127,7 +1133,9 @@ body {
 .world-modal { text-align: left; max-width: 380px; border-top: 4px solid var(--ink-3); }
 .world-modal.world-good { border-top-color: var(--money); }
 .world-modal.world-bad { border-top-color: var(--coral); }
-.world-kicker { font-size: 11px; font-weight: 800; letter-spacing: 0.16em; color: var(--ink-3); margin-bottom: 6px; }
+.world-kicker { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.16em; color: var(--ink-3); margin-bottom: 6px; }
+.world-good .world-kicker { color: var(--money); }
+.world-bad .world-kicker { color: var(--coral); }
 .world-headline { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 10px; }
 .world-body { font-size: 14px; line-height: 1.5; color: var(--ink-2); margin: 0 0 16px; }
 .world-effect {
@@ -1262,7 +1270,8 @@ body {
   animation: rise-modal 0.5s var(--spring);
 }
 .celebrate-rocket {
-  font-size: 52px;
+  display: inline-flex;
+  color: #fff;
   animation: launch 0.9s var(--spring);
 }
 @keyframes launch {
@@ -1317,6 +1326,9 @@ body {
 }
 .toast {
   pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 13px;
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -1334,14 +1346,16 @@ body {
   from { transform: translateY(-14px) scale(0.92); opacity: 0; }
   to { transform: none; opacity: 1; }
 }
+.toast-ic { display: inline-flex; flex: 0 0 auto; color: var(--ink-2); }
+.toast-text { min-width: 0; }
 /* Regulatory-event toasts read louder than plain unlocks. */
 .toast-bad, .toast-good {
-  max-width: 300px;
-  text-align: center;
+  max-width: 320px;
   line-height: 1.35;
   padding: 12px 18px;
   color: #fff;
 }
+.toast-bad .toast-ic, .toast-good .toast-ic { color: rgba(255, 255, 255, 0.95); }
 .toast-bad {
   background: linear-gradient(180deg, rgba(239, 68, 68, 0.96), rgba(190, 30, 30, 0.96));
   border-color: rgba(255, 160, 160, 0.5);
@@ -1619,9 +1633,13 @@ body {
 .prod-stat span { font-size: 11px; color: var(--ink-2); font-weight: 600; }
 
 /* Soft status hint (replaces the old inline research/sell row). */
-.prod-status { font-size: 12px; font-weight: 650; padding: 8px 11px; border-radius: 10px; }
+.prod-status { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 650; padding: 8px 11px; border-radius: 10px; }
 .prod-status.ready { color: #6d28d9; background: rgba(124, 58, 237, 0.08); }
 .prod-status.behind { color: var(--coral); background: rgba(255, 56, 92, 0.07); }
+.prod-icon svg { color: #fff; }
+.prod-sold-badge { display: inline-flex; align-items: center; gap: 4px; }
+.prod-inline-ic { display: inline-flex; align-items: center; gap: 5px; }
+.prod-ms-title { display: inline-flex; align-items: center; gap: 6px; }
 
 /* The clear "there's more here" entry point — replaces the tiny "details ▸" link. */
 .prod-manage {
@@ -1662,7 +1680,7 @@ body {
 }
 .prod-type:hover { border-color: color-mix(in srgb, var(--data) 40%, transparent); transform: translateY(-1px); }
 .prod-type:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-.prod-type-name { font-size: 14px; font-weight: 750; }
+.prod-type-name { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 750; }
 .prod-type-blurb { font-size: 12px; color: var(--ink-2); line-height: 1.35; }
 
 /* ---------- Drafts: raw models from Ship the Model, awaiting commercialisation ---------- */
@@ -1672,7 +1690,7 @@ body {
   background: color-mix(in srgb, var(--money) 8%, var(--glass-strong));
   border: 1px solid color-mix(in srgb, var(--money) 28%, transparent);
 }
-.prod-drafts-head { font-size: 12px; font-weight: 750; color: var(--ink-2); }
+.prod-drafts-head { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 750; color: var(--ink-2); }
 .prod-draft {
   display: flex; flex-direction: column; gap: 8px;
   background: var(--glass-strong); border: 1px solid var(--glass-hairline);
@@ -1795,7 +1813,12 @@ body {
 .pd-info-title { font-size: 14px; font-weight: 800; color: #14161b; }
 .pd-info-sub { font-size: 12px; color: #69707f; line-height: 1.4; margin-top: 2px; }
 
-.pd-hint { font-size: 12.5px; color: var(--coral); font-weight: 650; margin: 2px; line-height: 1.4; }
+.pd-hint { display: flex; align-items: flex-start; gap: 6px; font-size: 12.5px; color: var(--coral); font-weight: 650; margin: 2px; line-height: 1.4; }
+.pd-hint svg { flex: 0 0 auto; margin-top: 1px; }
+.pd-app-icon svg { color: #fff; }
+.pd-info-ic, .pd-total-ic { color: var(--pd-purple); }
+.pd-card-label { display: inline-flex; align-items: center; gap: 6px; }
+.pd-suggest { display: inline-flex; align-items: center; gap: 5px; }
 
 /* Primary action (purple) */
 .pd-primary {
@@ -2037,6 +2060,7 @@ body {
 .emp-tag.role { background: rgba(124, 92, 255, 0.1); color: #5a43c8; }
 .emp-tag.muted { color: var(--money); background: rgba(22, 179, 100, 0.1); }
 .emp-tag.train { background: rgba(47, 123, 246, 0.1); color: #2f7bf6; }
+.emp-tag.train, .emp-act-train, .emp-inline-ic { display: inline-flex; align-items: center; gap: 4px; }
 .emp-person-right { flex: 0 0 auto; }
 .emp-person-pay { font-size: 12px; font-weight: 750; color: var(--ink-3); white-space: nowrap; }
 

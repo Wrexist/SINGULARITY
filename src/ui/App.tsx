@@ -137,10 +137,10 @@ export function App() {
       syncedToSave.current = true;
       return;
     }
-    if (showResearch && !seenResearch.current) pushToast("🔬 Research unlocked");
-    if (showMarket && !seenMarket.current) pushToast("🛒 Data Market unlocked");
-    if (showPrestige && !seenPrestige.current) pushToast("🚀 The path to shipping is open");
-    if (shipReady && !seenShipReady.current) pushToast("✨ You can Ship the Model!");
+    if (showResearch && !seenResearch.current) pushToast("Research unlocked", "good");
+    if (showMarket && !seenMarket.current) pushToast("Data Market unlocked", "good");
+    if (showPrestige && !seenPrestige.current) pushToast("The path to shipping is open", "good");
+    if (shipReady && !seenShipReady.current) pushToast("You can Ship the Model!", "good");
     seenResearch.current = showResearch;
     seenPrestige.current = showPrestige;
     seenMarket.current = showMarket;
@@ -183,9 +183,9 @@ export function App() {
     pushToast(notice.message, notice.tone);
     // A "good" notice is a win (version shipped, milestone, viral) — full beat. A
     // "bad" ops event (outage/breach) feels bad. Neutral churn quips stay a light tap.
-    // Achievement unlocks (🏅) get their own bright chime so they feel distinct.
+    // Achievement unlocks get their own bright chime so they feel distinct.
     if (notice.tone === "good") {
-      if (notice.message.startsWith("🏅")) {
+      if (notice.kind === "achievement") {
         haptics.success(); sound.achievement();
         // Burst from the topbar trophy — "it went into your collection".
         const el = document.querySelector('[aria-label="Achievements"]');
@@ -193,8 +193,8 @@ export function App() {
       }
       else {
         haptics.celebrate(); sound.success();
-        // A milestone (🏆) is a chase-ladder payoff — bloom gold from the screen centre.
-        if (notice.message.startsWith("🏆") && !reducedMotion) {
+        // A milestone is a chase-ladder payoff — bloom gold from the screen centre.
+        if (notice.kind === "milestone" && !reducedMotion) {
           fxBurst(window.innerWidth / 2, window.innerHeight * 0.4, { count: 30, power: 1.6, colors: ["#ff9f0a", "#ffd60a", "#16b364"] });
         }
       }
@@ -222,7 +222,7 @@ export function App() {
       const qf = productMetrics(p, frontier).qf;
       const wasStale = staleSeen.current[p.id] ?? false;
       if (qf < 0.5 && !wasStale) {
-        pushToast(`📉 ${p.name} is falling behind rivals — push a new version`, "bad");
+        pushToast(`${p.name} is falling behind rivals — push a new version`, "bad");
         staleSeen.current[p.id] = true;
       } else if (qf >= 0.66 && wasStale) {
         staleSeen.current[p.id] = false; // re-armed once you've caught back up
@@ -290,7 +290,7 @@ export function App() {
     // Kicking off research is a small commit beat; the big payoff lands when it
     // COMPLETES (the store fires a "good" notice → celebration in the notice effect).
     haptics.tap(); sound.tap();
-    if (p && !p.upgrade) pushToast(`🔬 ${p.name} — researching v${p.version + 1}…`, "neutral");
+    if (p && !p.upgrade) pushToast(`${p.name} — researching v${p.version + 1}…`, "neutral");
   };
   const onRetireProductFx = (id: string) => {
     const p = game.products.active.find((x) => x.id === id);
@@ -299,7 +299,7 @@ export function App() {
     if (!window.confirm(`Sell ${p.name} for ${fmtMoney(Big.of(Math.round(payout)))}? This is permanent.`)) return;
     doRetireProduct(id);
     haptics.success(); sound.purchase();
-    pushToast(`🏷️ Sold ${p.name} for ${fmtMoney(Big.of(Math.round(payout)))}`, "neutral");
+    pushToast(`Sold ${p.name} for ${fmtMoney(Big.of(Math.round(payout)))}`, "neutral");
   };
   const onResearch = (id: string) => { haptics.tap(); sound.purchase(); doResearch(id); };
   const onBuyData = (id: string) => {

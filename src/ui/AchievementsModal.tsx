@@ -2,14 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import type { GameState } from "../engine/types";
 import { achievementDefs, achievementProgress } from "../engine/achievements";
 import type { AchCategory } from "../engine/balance/achievements";
-import { TrophyIcon } from "./Icons";
+import type { ReactNode } from "react";
+import { TrophyIcon, BoltIcon, CoinIcon, TeamIcon, RocketIcon, TargetIcon, CheckIcon, LockIcon, HelpIcon } from "./Icons";
 
-const CAT_META: Record<AchCategory, { label: string; icon: string; hue: number }> = {
-  scale: { label: "Scale", icon: "⚡", hue: 265 },
-  business: { label: "Business", icon: "💰", hue: 150 },
-  team: { label: "Team", icon: "👥", hue: 200 },
-  legacy: { label: "Legacy", icon: "🚀", hue: 28 },
-  meta: { label: "Meta", icon: "🎯", hue: 330 },
+const CAT_META: Record<AchCategory, { label: string; icon: ReactNode; hue: number }> = {
+  scale: { label: "Scale", icon: <BoltIcon size={16} />, hue: 265 },
+  business: { label: "Business", icon: <CoinIcon size={16} />, hue: 150 },
+  team: { label: "Team", icon: <TeamIcon size={16} />, hue: 200 },
+  legacy: { label: "Legacy", icon: <RocketIcon size={16} />, hue: 28 },
+  meta: { label: "Meta", icon: <TargetIcon size={16} />, hue: 330 },
 };
 const CATS = Object.keys(CAT_META) as AchCategory[];
 type Filter = "all" | AchCategory;
@@ -65,7 +66,7 @@ export function AchievementsModal({ game, onClose }: { game: GameState; onClose:
                   className="ach-badge"
                   style={got ? { background: `hsl(${hue} 65% 90%)`, color: `hsl(${hue} 60% 35%)` } : undefined}
                 >
-                  {got ? CAT_META[def.cat].icon : masked ? "❓" : "🔒"}
+                  {got ? CAT_META[def.cat].icon : masked ? <HelpIcon size={16} /> : <LockIcon size={15} />}
                 </span>
                 <div className="ach-card-main">
                   <div className="ach-name">{masked ? "Secret achievement" : def.label}</div>
@@ -74,7 +75,7 @@ export function AchievementsModal({ game, onClose }: { game: GameState; onClose:
                     <div className="ach-bar"><div className="ach-bar-fill" style={{ width: `${pct * 100}%`, background: `hsl(${hue} 60% 55%)` }} /></div>
                   )}
                 </div>
-                {got && <span className="ach-check">✓</span>}
+                {got && <span className="ach-check"><CheckIcon size={13} /></span>}
               </div>
             );
           })}

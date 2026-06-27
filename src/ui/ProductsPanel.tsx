@@ -9,6 +9,7 @@ import {
 import { m$, numOf as num, fmtDur } from "./format";
 import { ProductDetail, TYPE_GLYPH } from "./ProductDetail";
 import { EditableName } from "./EditableName";
+import { TagIcon, AtomIcon, LockIcon, SparkIcon, TrendDownIcon, TrophyIcon } from "./Icons";
 
 const FUN_NAMES = ["Nimbus", "Oracle", "Synthia", "Cortex", "Lumen", "Vertex", "Sage", "Atlas", "Echo", "Prism", "Nova", "Helix", "Quasar", "Mirage"];
 
@@ -50,13 +51,13 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
       <h2 className="panel-title">Products</h2>
       <p className="floor-meter">
         Portfolio: <b>{m$(totalMrr)}/s</b> revenue · {totalMargin >= 0 ? "+" : ""}{m$(totalMargin)}/s profit · {ps.active.length}/{B.maxActive} slots
-        {ps.sold > 0 && <> · <span className="prod-sold-badge">🏷️ {ps.sold} sold</span></>}
+        {ps.sold > 0 && <> · <span className="prod-sold-badge"><TagIcon size={12} /> {ps.sold} sold</span></>}
       </p>
 
       {/* Raw models from Ship the Model — commercialise them into products. */}
       {ps.drafts.length > 0 && (
         <div className="prod-drafts">
-          <div className="prod-drafts-head">🧪 Raw models — commercialise a model you shipped</div>
+          <div className="prod-drafts-head"><AtomIcon size={15} /> Raw models — commercialise a model you shipped</div>
           {ps.drafts.map((d) => (
             <div className="prod-draft" key={d.id}>
               <div className="prod-draft-row">
@@ -83,7 +84,7 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
                     return (
                       <button key={t.id} className={`prod-type ${afford ? "" : "maxed"}`} disabled={!afford}
                         onClick={() => { onLaunchDraft(d.id, t.id, FUN_NAMES[Math.floor(Math.random() * FUN_NAMES.length)]!); setPicking(null); }}>
-                        <span className="prod-type-name">{locked ? "🔒 " : ""}{t.name}</span>
+                        <span className="prod-type-name">{locked && <LockIcon size={13} />}{t.name}</span>
                         <span className="prod-type-blurb">
                           {locked ? `Unlocks after shipping ${t.unlockAtShips} models (you've shipped ${game.prestige.ships}).` : t.blurb}
                         </span>
@@ -114,7 +115,7 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
           return (
             <div className="prod-card" key={p.id}>
               <div className="prod-head">
-                <span className="prod-icon">{TYPE_GLYPH[p.type] ?? "✦"}</span>
+                <span className="prod-icon">{TYPE_GLYPH[p.type] ?? <SparkIcon size={20} />}</span>
                 <div className="prod-head-text">
                   <div className="prod-head-row">
                     <EditableName className="prod-name" value={p.name} onCommit={(n) => onRename(p.id, n)} />
@@ -143,7 +144,7 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
               {up ? (
                 <div className="prod-research">
                   <div className="prod-research-head">
-                    <span>🔬 Researching v{up.targetVersion}</span>
+                    <span className="prod-inline-ic"><AtomIcon size={13} /> Researching v{up.targetVersion}</span>
                     <span>{Math.round(upgradeProgress(up) * 100)}% · ~{fmtDur(up.remainingSec)} left</span>
                   </div>
                   <div className="prod-bar">
@@ -151,9 +152,9 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
                   </div>
                 </div>
               ) : canVer ? (
-                <div className="prod-status ready">✨ v{p.version + 1} ready to research</div>
+                <div className="prod-status ready"><SparkIcon size={13} /> v{p.version + 1} ready to research</div>
               ) : me.qf < 0.5 ? (
-                <div className="prod-status behind">📉 Falling behind — research a new version</div>
+                <div className="prod-status behind"><TrendDownIcon size={13} /> Falling behind — research a new version</div>
               ) : null}
 
               <button className="prod-manage" onClick={() => setDetailId(p.id)}>
@@ -168,7 +169,7 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
       {ps.active.length + ps.milestones.length > 0 && (
         <div className="prod-milestones">
           <button className="prod-ms-head" onClick={() => setMsOpen((o) => !o)} aria-expanded={msOpen}>
-            🏆 Milestones <span className="prod-ms-count">{ps.milestones.length}/{productMilestones.length}</span>
+            <span className="prod-ms-title"><TrophyIcon size={15} /> Milestones</span> <span className="prod-ms-count">{ps.milestones.length}/{productMilestones.length}</span>
             <span className="prod-ms-toggle">{msOpen ? "▾" : "▸"}</span>
           </button>
           {msOpen && (

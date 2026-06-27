@@ -15,7 +15,7 @@ import { isPremium, setPremium } from "../state/premium";
  * The entitlement itself lives in state/premium so the engine/store can read it
  * without importing UI.
  *
- * ⚠️ The native path can only be exercised once the product exists in App Store
+ * NOTE: The native path can only be exercised once the product exists in App Store
  * Connect AND on a real device with a sandbox account — see DEPLOYMENT.md. It is
  * written against the documented CdvPurchase v13 API and must be verified on
  * device before relying on it; the web stub is what's exercised by our tests.

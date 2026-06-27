@@ -63,6 +63,9 @@ export interface FiredEvent {
   key: number;
   message: string;
   tone: "neutral" | "bad" | "good";
+  /** Optional classifier so the UI can pick the right feedback (chime, particle
+   *  burst) without sniffing emoji out of the message text. */
+  kind?: "achievement" | "milestone" | "ship" | "levelup";
 }
 
 export type FiredWorldEvent = WorldEventResult & { key: number };
@@ -274,7 +277,7 @@ export const useGame = create<GameStore>((set, get) => ({
       const trained = game.employees.find((e) => wasTraining.get(e.id) && !e.training);
       if (trained) {
         noticeKey += 1;
-        patch.notice = { key: noticeKey, message: `🎓 ${trained.name} leveled up to L${trained.level}`, tone: "good" };
+        patch.notice = { key: noticeKey, message: `${trained.name} leveled up to L${trained.level}`, tone: "good", kind: "levelup" };
       }
 
       const finished = game.products.active.find((p) => wasUpgrading.get(p.id) && !p.upgrade);
@@ -282,8 +285,9 @@ export const useGame = create<GameStore>((set, get) => ({
         noticeKey += 1;
         patch.notice = {
           key: noticeKey,
-          message: `🚀 ${finished.name} v${finished.version} shipped — back at the frontier`,
+          message: `${finished.name} v${finished.version} shipped — back at the frontier`,
           tone: "good",
+          kind: "ship",
         };
       }
 
@@ -295,7 +299,7 @@ export const useGame = create<GameStore>((set, get) => ({
         const def = PRODUCT_MILESTONES.find((m) => m.id === newMs);
         if (def) {
           noticeKey += 1;
-          patch.notice = { key: noticeKey, message: `🏆 ${def.label} — ${def.desc} (+$${def.reward.toLocaleString()})`, tone: "good" };
+          patch.notice = { key: noticeKey, message: `${def.label} — ${def.desc} (+$${def.reward.toLocaleString()})`, tone: "good", kind: "milestone" };
         }
       }
 
@@ -310,15 +314,16 @@ export const useGame = create<GameStore>((set, get) => ({
           const def = ACHIEVEMENT_DEFS.find((a) => a.id === newAch[0]);
           if (def) {
             noticeKey += 1;
-            patch.notice = { key: noticeKey, message: `🏅 Achievement: ${def.label} — ${def.desc}`, tone: "good" };
+            patch.notice = { key: noticeKey, message: `Achievement: ${def.label} — ${def.desc}`, tone: "good", kind: "achievement" };
           }
         } else if (newAch.length > 1) {
           const first = ACHIEVEMENT_DEFS.find((a) => a.id === newAch[0]);
           noticeKey += 1;
           patch.notice = {
             key: noticeKey,
-            message: `🏅 ${newAch.length} achievements unlocked${first ? ` — incl. ${first.label}` : ""}`,
+            message: `${newAch.length} achievements unlocked${first ? ` — incl. ${first.label}` : ""}`,
             tone: "good",
+            kind: "achievement",
           };
         }
       }
