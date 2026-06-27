@@ -23,6 +23,7 @@ import { DataMarketPanel } from "./DataMarketPanel";
 import { EmployeesPanel } from "./EmployeesPanel";
 import { ProductsPanel } from "./ProductsPanel";
 import { AchievementsModal } from "./AchievementsModal";
+import { ContractsPanel } from "./ContractsPanel";
 import { EventLog } from "./EventLog";
 import { FxCanvas } from "./FxCanvas";
 import { burst as fxBurst } from "./fx";
@@ -54,7 +55,7 @@ export function App() {
   const { doStartRun, doClaim, doBuyUpgrade, doBuyUpgradeBulk, doBuyOfficePerk, doBuyReputationPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
-    dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset } =
+    doClaimContract, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset } =
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
@@ -328,6 +329,12 @@ export function App() {
     haptics.success(); sound.purchase();
     pushToast(`Sold ${p.name} for ${fmtMoney(Big.of(Math.round(payout)))}`, "neutral");
   };
+  const onClaimContract = (id: string, rep: number) => {
+    doClaimContract(id);
+    haptics.celebrate(); sound.success();
+    pushToast(`Contract complete — +${rep} Lab Reputation`, "good");
+    if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.4, { count: 24, power: 1.3, colors: ["#ff9f0a", "#ffd60a", "#16b364"] });
+  };
   const onResearch = (id: string) => { haptics.tap(); sound.purchase(); doResearch(id); };
   const onBuyData = (id: string) => {
     const outcome = doBuyData(id);
@@ -425,6 +432,7 @@ export function App() {
             {showResearch && <ResearchPanel game={game} derived={d} onResearch={onResearch} />}
             {showMarket && <DataMarketPanel game={game} onBuyData={onBuyData} onBuyTool={onBuy} />}
             {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} />}
+            {showResearch && <ContractsPanel game={game} onClaim={onClaimContract} />}
             <StatsPanel game={game} derived={d} />
             <EventLog log={log} />
           </>

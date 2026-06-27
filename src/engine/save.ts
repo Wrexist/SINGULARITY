@@ -181,6 +181,7 @@ interface SavedShape {
   stats: Record<string, string | number>;
   achievements: string[];
   reputation: { spent: number; perks: string[] };
+  contracts: { completed: string[] };
 }
 
 export function serialize(state: GameState): string {
@@ -221,6 +222,7 @@ export function serialize(state: GameState): string {
     },
     achievements: state.achievements,
     reputation: state.reputation,
+    contracts: state.contracts,
   };
   return JSON.stringify(shape);
 }
@@ -295,6 +297,15 @@ export function deserialize(json: string): GameState {
       ? raw.achievements.filter((a): a is string => typeof a === "string")
       : [],
     reputation: sanitizeReputation(raw.reputation),
+    contracts: sanitizeContracts(raw.contracts),
+  };
+}
+
+/** Contracts are untrusted: keep a clean array of completed string ids. */
+function sanitizeContracts(c: unknown): { completed: string[] } {
+  const o = (c ?? {}) as { completed?: unknown };
+  return {
+    completed: Array.isArray(o.completed) ? o.completed.filter((x): x is string => typeof x === "string") : [],
   };
 }
 
@@ -375,6 +386,11 @@ export function migrate(raw: any): SavedShape {
     // v10 → v11: Lab Reputation (meta-currency). Nothing spent yet; perks evaluate
     // from the carried achievement/ship/ascension totals on load.
     s = { ...s, version: 11, reputation: s.reputation ?? { spent: 0, perks: [] } };
+  }
+  if (s.version === 11) {
+    // v11 → v12: Contracts board (Phase 4). Nothing completed yet; the board
+    // derives from the empty completed list on load.
+    s = { ...s, version: 12, contracts: s.contracts ?? { completed: [] } };
   }
   return s as SavedShape;
 }

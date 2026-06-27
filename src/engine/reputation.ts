@@ -1,6 +1,7 @@
 import { Big } from "./math/Big";
 import { achievements as ACH_DEFS, achievementRep } from "./balance/achievements";
 import { reputation as R } from "./balance/reputation";
+import { contractsReputation } from "./contracts";
 import type { GameState } from "./types";
 
 /**
@@ -19,6 +20,7 @@ export function earnedReputation(state: GameState): number {
   for (const def of ACH_DEFS) if (have.has(def.id)) pts += achievementRep(def);
   pts += state.stats.totalShips * R.perShip;
   pts += state.stats.ascensions * R.perAscension;
+  pts += contractsReputation(state); // completed contracts grant Reputation
   return pts;
 }
 

@@ -110,5 +110,7 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     achievements: state.achievements,
     // Lab Reputation (points + bought perks) is permanent meta-progression.
     reputation: state.reputation,
+    // Contracts completed are career progress (and feed Reputation) — they persist.
+    contracts: state.contracts,
   };
 }

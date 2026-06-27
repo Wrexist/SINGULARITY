@@ -1695,6 +1695,29 @@ svg { vertical-align: middle; }
 .buy-qty-btn.on { color: #fff; background: #2f7bf6; border-color: #2f7bf6; }
 .cost-mult { font-weight: 800; opacity: 0.8; font-size: 0.86em; }
 
+/* ---------- Contracts (Phase 4) ---------- */
+.contract-card {
+  display: flex; align-items: center; gap: 12px;
+  background: #fff; border: 1px solid rgba(17, 24, 39, 0.06); border-radius: 14px;
+  padding: 13px 14px; box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05);
+}
+.contract-card.ready { border-color: rgba(22, 179, 100, 0.5); background: linear-gradient(100deg, rgba(22, 179, 100, 0.08), rgba(255, 255, 255, 0.6)); }
+.contract-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.contract-title { font-weight: 800; font-size: 14px; color: var(--ink); }
+.contract-desc { font-size: 12px; color: var(--ink-2); }
+.contract-bar { height: 6px; border-radius: 999px; background: rgba(17, 24, 39, 0.08); overflow: hidden; }
+.contract-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #2f7bf6, #16b364); transition: width 0.3s var(--ease-out); }
+.contract-prog { font-size: 11px; font-weight: 700; color: var(--ink-3); }
+.contract-side { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; }
+.contract-rep { font-size: 12px; font-weight: 800; color: #ff9f0a; white-space: nowrap; }
+.contract-claim {
+  min-height: 36px; padding: 7px 14px; border-radius: 10px; font-size: 13px; font-weight: 800;
+  color: #fff; background: #16b364; border: none; cursor: pointer; white-space: nowrap;
+}
+.contract-claim:disabled { color: var(--ink-3); background: rgba(17, 24, 39, 0.06); cursor: default; }
+.contracts-empty { font-size: 13px; color: var(--ink-2); padding: 6px 2px; }
+.contracts-foot { font-size: 11.5px; color: var(--ink-3); margin-top: 10px; }
+
 /* ---------- Products (Phase 3) ---------- */
 .prod-card {
   background: #fff;

@@ -53,8 +53,14 @@ no dark patterns. Re-run `npm run sim` after any economy change.*
       tilt) + the two Heat sites; surfaced as "Stance effects" in Lab Stats so it's legible.
       Hard-gated — neutral (0) is identity, so the sim is **byte-identical** (12m15s). +6 tests.
       ↳ Follow-up (optional): alignment→Reputation-gain and alignment→product-acquisition forks.
-- [ ] **R5.2 · Contracts / quests board** (P1) — rotating `contracts[]` in balance, pure fold in
-      `tick`, Reputation/Money payouts; persisted like achievements.
+- [x] **R5.2 · Contracts board** — a guided ladder of accept-and-fulfill objectives
+      (`balance/contracts.ts` 15-deep pool + pure `src/engine/contracts.ts`). The board is DERIVED
+      from a single persisted `completed[]` (first N uncompleted, like achievements — minimal save
+      surface), shows live progress bars, and pays **Lab Reputation** (meta-currency → no in-run cash
+      injection, curve-safe). Completed contracts feed `earnedReputation`. Save v11→v12; persists
+      through prestige. ContractsPanel in the Lab tab. +10 tests (board derivation, readiness,
+      no double-claim, off-board guard, rep accounting, save round-trip + migration). Sim 12m15s.
+      ↳ Follow-up (optional): advisor nudge + tab badge for a ready contract.
 
 > Full R0–R8 backlog (R3 active-engagement, R6 replayability, R7 content waves, R8 platform)
 > lives in `POST_LAUNCH_ROADMAP.md`.
