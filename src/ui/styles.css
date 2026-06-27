@@ -1403,6 +1403,20 @@ body {
 .sheet-title { margin: 0 0 14px; font-size: 20px; font-weight: 750; letter-spacing: -0.02em; }
 .set-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
 
+/* Hall theme picker (cosmetic) */
+.set-theme { margin-bottom: 16px; }
+.set-theme-head { font-size: 14px; font-weight: 750; color: var(--ink); margin-bottom: 10px; }
+.set-theme-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.set-theme-chip { display: flex; flex-direction: column; align-items: center; gap: 5px; border: none; background: none; cursor: pointer; padding: 0; }
+.set-theme-swatch {
+  width: 46px; height: 46px; border-radius: 13px; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 16px; color: #fff; box-shadow: 0 1px 4px rgba(16, 24, 40, 0.18); border: 2px solid transparent; transition: transform 0.12s, border-color 0.15s;
+}
+.set-theme-chip.on .set-theme-swatch { border-color: var(--ink); transform: scale(1.06); }
+.set-theme-chip.locked .set-theme-swatch { filter: grayscale(0.4); opacity: 0.8; cursor: not-allowed; }
+.set-theme-name { font-size: 10.5px; font-weight: 700; color: var(--ink-2); }
+.set-theme-chip.on .set-theme-name { color: var(--ink); }
+
 /* Save backup / restore */
 .set-backup { margin-bottom: 16px; }
 .set-backup-head {

@@ -43,7 +43,7 @@ Eras 0–6 + AGI ascension · research tree · "Ship the Model" prestige (Legacy
 - **C4 · Reduced-motion parity** *(P3, S)* — ensure every new effect has a calm fallback (accessibility + battery).
 
 ## Phase D — Monetization & store (P1/P2, before/with launch)
-- **D1 · Cosmetic IAP: hall themes & rack skins** *(P2, M)* — GDD §7 + the Settings sheet already promise "future hall themes." Ship 2–3 cosmetic themes + a "founder" rack skin (parametric palettes, no assets). Cosmetic-only, never power.
+- **D1 · Cosmetic hall themes** ✅ *(done)* — 5 parametric hall themes (Classic, Neon, Sunset, Blueprint, Founder Gold) as CSS filters on the hall canvas — no assets, no gameplay effect. Picker in Settings; choice stored in the settings localStorage (no save migration). **Founder Gold is gated behind Premium** (delivers part of D2). Cosmetic-only, never power (GDD §7).
 - **D2 · Premium unlock content bundle** *(P1, S)* — make sure the premium entitlement actually grants its promised QoL/cosmetic bundle (faster offline cap, founder skin, themes) so the IAP delivers.
 - **D3 · Store screenshot kit** *(P2, S)* — capture the era-transition beats as marketing screenshots (falls out of C1).
 

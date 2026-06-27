@@ -7,6 +7,7 @@ import { buildHallModel } from "../render/hallModel";
 import { drawHallStatic, drawHallDynamic, expansionMarkers, pointInPoly } from "../render/hallRenderer";
 import { currentEra, eraName } from "../engine/eras";
 import { hallRooms } from "../engine/hall";
+import { themeFilter } from "./hallThemes";
 
 /**
  * The 2.5D hall (Phase 1 pillar). A self-driving canvas: an rAF loop reads game
@@ -30,6 +31,12 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
   );
   const era = useGame((s) => currentEra(s.game));
   const rooms = useGame((s) => hallRooms(s.game));
+  const hallTheme = useSettings((s) => s.hallTheme);
+
+  // Cosmetic theme = a CSS filter on the canvas (purely visual; no render change).
+  useEffect(() => {
+    if (canvasRef.current) canvasRef.current.style.filter = themeFilter(hallTheme);
+  }, [hallTheme]);
 
   useEffect(() => {
     const canvas = canvasRef.current!;

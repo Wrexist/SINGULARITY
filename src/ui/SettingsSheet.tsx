@@ -5,6 +5,7 @@ import { haptics as hpt } from "./haptics";
 import { sound as snd } from "./sound";
 import { balance } from "../engine/balance/config";
 import { useGame } from "../state/store";
+import { HALL_THEMES } from "./hallThemes";
 
 type ToggleKey = "sound" | "music" | "haptics" | "reducedMotion";
 
@@ -35,7 +36,7 @@ interface Props {
 
 /** iOS-style bottom sheet for feel preferences (clean-to-play, GAMEPLAN §8). */
 export function SettingsSheet({ onClose }: Props) {
-  const { sound, music, haptics, reducedMotion, toggle } = useSettings();
+  const { sound, music, haptics, reducedMotion, hallTheme, toggle, setHallTheme } = useSettings();
   const rows: { key: ToggleKey; label: string; hint: string; value: boolean }[] = [
     { key: "sound", label: "Sound effects", hint: "Synthesized taps, claims & ship chimes", value: sound },
     { key: "music", label: "Music", hint: "Ambient bed + era & ship swells", value: music },
@@ -123,6 +124,29 @@ export function SettingsSheet({ onClose }: Props) {
             />
           ))}
         </div>
+        {/* Hall theme — cosmetic only (never affects gameplay). */}
+        <div className="set-theme">
+          <div className="set-theme-head">🎨 Hall theme</div>
+          <div className="set-theme-row">
+            {HALL_THEMES.map((t) => {
+              const locked = t.premium && !premium;
+              const active = hallTheme === t.id;
+              return (
+                <button
+                  key={t.id}
+                  className={`set-theme-chip ${active ? "on" : ""} ${locked ? "locked" : ""}`}
+                  onClick={() => { if (locked) return; snd.tap(); setHallTheme(t.id); }}
+                  aria-pressed={active}
+                  title={locked ? `${t.name} — unlock with Premium` : t.name}
+                >
+                  <span className="set-theme-swatch" style={{ background: t.swatch }}>{locked ? "🔒" : active ? "✓" : ""}</span>
+                  <span className="set-theme-name">{t.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Save backup — local-only; protects a long run from a cleared cache. */}
         <div className="set-backup">
           <button className="set-backup-head" onClick={() => setBackupOpen((o) => !o)} aria-expanded={backupOpen}>
