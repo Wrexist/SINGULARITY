@@ -41,7 +41,12 @@ no dark patterns. Re-run `npm run sim` after any economy change.*
 ### Step 4 — Endgame balance (R4 — do after R0.2)
 - [ ] **R4.1 · Tame the Legacy snowball** (P1) — make `legacyMult` diminishing so Gen2/3 don't
       collapse to sub-minute ships. Re-sim.
-- [ ] **R4.2 · Close the retire→relaunch windfall** (P1) — lower `retireValuationSec` (1800 → ~300–600).
+- [x] **R4.2 · Close the retire→relaunch windfall** — lowered `retireValuationSec` 1800 → 900 AND
+      added a maturity gate: a new `ProductState.ageSec` accrues in the sim and the retire payout
+      ramps linearly to full value over `retireMaturitySec` (1200s). A freshly-launched/relaunched
+      product is worth ~nothing to sell, so the pump-a-free-draft→dump-for-cash loop is closed; genuine
+      cash cows still retire fairly. Old saves' products default to mature (no returning-player penalty).
+      +3 product tests; existing retire test matured. 279 tests; sim 12m15s.
 - [ ] **R4.3 · Re-couple the triangle** (P1) — late-game Compute/Data/Money sinks (reservoir cap /
       data freshness decay / infra maintenance). Model in the R0.2 sim first.
 
@@ -60,7 +65,8 @@ no dark patterns. Re-run `npm run sim` after any economy change.*
       injection, curve-safe). Completed contracts feed `earnedReputation`. Save v11→v12; persists
       through prestige. ContractsPanel in the Lab tab. +10 tests (board derivation, readiness,
       no double-claim, off-board guard, rep accounting, save round-trip + migration). Sim 12m15s.
-      ↳ Follow-up (optional): advisor nudge + tab badge for a ready contract.
+      ↳ Follow-up: ✅ advisor now nudges "Claim the '<title>' contract — +N Rep" when one is ready
+        (extends the recommendation system); tab badge still optional.
 
 > Full R0–R8 backlog (R3 active-engagement, R6 replayability, R7 content waves, R8 platform)
 > lives in `POST_LAUNCH_ROADMAP.md`.

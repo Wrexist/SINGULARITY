@@ -91,6 +91,14 @@ describe("advisor", () => {
     expect(advisorItems(s).some((i) => i.text.includes("behind rivals"))).toBe(false);
   });
 
+  it("nudges to claim a contract once one is ready on the board", () => {
+    const s = createInitialState();
+    s.stats.peakComputePerSec = Big.of(1e6); // satisfies the early compute contracts
+    expect(advisorItems(s).some((i) => i.tab === "lab" && i.text.toLowerCase().includes("contract"))).toBe(true);
+    // …and stays quiet when nothing is ready.
+    expect(advisorItems(createInitialState()).some((i) => i.text.toLowerCase().includes("contract"))).toBe(false);
+  });
+
   it("nudges to spend Lab Reputation when a perk is affordable", () => {
     const s = createInitialState();
     s.stats.totalShips = 100; // plenty of reputation earned, none spent

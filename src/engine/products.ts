@@ -201,7 +201,7 @@ export function simulateProducts(
     moneyDelta += mrr - serve - p.marketingPerSec * seconds;
     if (paid > 0) heatDelta += t.heatPerSec * fm.heat * mods.heat * seconds;
 
-    return { ...p, mau, paid, buzzSec: Math.max(0, p.buzzSec - seconds) };
+    return { ...p, mau, paid, buzzSec: Math.max(0, p.buzzSec - seconds), ageSec: (p.ageSec ?? 0) + seconds };
   });
 
   return { products: { ...ps, active, frontier }, moneyDelta, heatDelta };
@@ -403,6 +403,7 @@ export function releaseProduct(
     mau: 0,
     paid: 0,
     buzzSec: B.buzzDurationSec,
+    ageSec: 0,
     upgrade: null,
     features: [],
   };
@@ -481,6 +482,7 @@ export function launchDraft(
     mau: 0,
     paid: 0,
     buzzSec: B.buzzDurationSec,
+    ageSec: 0,
     upgrade: null,
     features: [],
   };
@@ -704,10 +706,16 @@ export function renameProduct(state: GameState, id: string, name: string): GameS
 
 /** Sell/sunset a product. Pays out a one-time Money buyout (≈ retireValuationSec
  *  of its current MRR) — a real "cash out now vs keep earning" decision. */
+/** Linear maturity factor (0..1): a product is worth its full valuation only
+ *  after `retireMaturitySec` live; a fresh launch is worth almost nothing. */
+function retireMaturity(p: ProductState): number {
+  return B.retireMaturitySec > 0 ? Math.min(1, (p.ageSec ?? 0) / B.retireMaturitySec) : 1;
+}
+
 export function retireProduct(state: GameState, id: string): GameState {
   const p = state.products.active.find((x) => x.id === id);
   if (!p) return state;
-  const payout = productMetrics(p, state.products.frontier).mrr * B.retireValuationSec;
+  const payout = productMetrics(p, state.products.frontier).mrr * B.retireValuationSec * retireMaturity(p);
   // Releasing the product frees any employees assigned to it back to the bench.
   const employees = state.employees.some((e) => e.assignedProductId === id)
     ? state.employees.map((e) => (e.assignedProductId === id ? { ...e, assignedProductId: null } : e))
@@ -729,5 +737,5 @@ export function retireProduct(state: GameState, id: string): GameState {
 export function retirePayout(state: GameState, id: string): number {
   const p = state.products.active.find((x) => x.id === id);
   if (!p) return 0;
-  return Math.max(0, productMetrics(p, state.products.frontier).mrr * B.retireValuationSec);
+  return Math.max(0, productMetrics(p, state.products.frontier).mrr * B.retireValuationSec * retireMaturity(p));
 }

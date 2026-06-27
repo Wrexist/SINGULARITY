@@ -66,7 +66,7 @@ describe("employees — training (timed)", () => {
 describe("employees — roster transitions", () => {
   it("assign sets the product; invalid product benches; fire removes", () => {
     let s = addEmployee(createInitialState(), emp());
-    s = { ...s, products: { ...s.products, active: [{ id: "prod-1", name: "X", type: "general", version: 1, quality: 1, priceMult: 1, marketingPerSec: 0, mau: 0, paid: 0, buzzSec: 0, upgrade: null, features: [], enterprise: false, enterprisePrice: 1, channelMix: { ads: 1 } }] } };
+    s = { ...s, products: { ...s.products, active: [{ id: "prod-1", name: "X", type: "general", version: 1, quality: 1, priceMult: 1, marketingPerSec: 0, mau: 0, paid: 0, buzzSec: 0, ageSec: 0, upgrade: null, features: [], enterprise: false, enterprisePrice: 1, channelMix: { ads: 1 } }] } };
     s = assignEmployee(s, "emp-1", "prod-1");
     expect(s.employees[0]!.assignedProductId).toBe("prod-1");
     s = assignEmployee(s, "emp-1", "ghost"); // not a real product → bench

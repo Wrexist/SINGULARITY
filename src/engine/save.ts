@@ -263,6 +263,10 @@ export function deserialize(json: string): GameState {
         enterprise: o.enterprise === true,
         enterprisePrice: typeof o.enterprisePrice === "number" && Number.isFinite(o.enterprisePrice) && o.enterprisePrice > 0 ? o.enterprisePrice : 1,
         channelMix: sanitizeChannelMix(o.channelMix),
+        // ageSec gates the retire valuation. A save that predates the field has
+        // products that were already established, so treat them as fully mature
+        // (a large value) rather than penalising a returning player's cash cows.
+        ageSec: typeof o.ageSec === "number" && Number.isFinite(o.ageSec) && o.ageSec >= 0 ? o.ageSec : 1e9,
       };
     }),
     drafts: sanitizeDrafts((loadedProducts as ProductsState).drafts),

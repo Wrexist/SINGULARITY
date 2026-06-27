@@ -512,8 +512,8 @@ describe("products — rename + retire payout", () => {
 
   it("retiring pays out a buyout (≈ retireValuationSec of MRR) into Money + lifetime", () => {
     let s = release();
-    // Seed a profitable book so MRR > 0 and the payout is meaningful.
-    s = { ...s, products: { ...s.products, active: [{ ...s.products.active[0]!, paid: 5000 }] } };
+    // Seed a profitable book so MRR > 0, and mature it so it's worth full value.
+    s = { ...s, products: { ...s.products, active: [{ ...s.products.active[0]!, paid: 5000, ageSec: B.retireMaturitySec }] } };
     const quote = retirePayout(s, "p1");
     expect(quote).toBeGreaterThan(0);
     const before = s.resources.money;
@@ -580,5 +580,36 @@ describe("products — market world events", () => {
     s = { ...s, products: { ...s.products, active: [{ ...s.products.active[0]!, buzzSec: 0 }] } };
     const { state } = applyWorldEvent(s, "industry_hype");
     expect(state.products.active[0]!.buzzSec).toBeGreaterThan(0);
+  });
+});
+
+describe("products — retire valuation maturity (anti pump-and-dump)", () => {
+  it("a freshly-launched product is worth almost nothing to retire", () => {
+    let s = release(); // ageSec = 0 on launch
+    // Give it some users/MRR so a naive valuation would be large.
+    s = { ...s, products: { ...s.products, active: [{ ...s.products.active[0]!, mau: 1e6, paid: 1e5, ageSec: 0 }] } };
+    const fresh = retirePayout(s, "p1");
+    // Mature the same product and re-price.
+    const matured = { ...s, products: { ...s.products, active: [{ ...s.products.active[0]!, ageSec: B.retireMaturitySec }] } };
+    const full = retirePayout(matured, "p1");
+    expect(full).toBeGreaterThan(0);
+    expect(fresh).toBeLessThan(full * 0.05); // age 0 → ~0 payout
+  });
+
+  it("payout ramps linearly to full value at the maturity window", () => {
+    let s = release();
+    s = { ...s, products: { ...s.products, active: [{ ...s.products.active[0]!, mau: 5e5, paid: 5e4 }] } };
+    const at = (age: number) =>
+      retirePayout({ ...s, products: { ...s.products, active: [{ ...s.products.active[0]!, ageSec: age }] } }, "p1");
+    const full = at(B.retireMaturitySec);
+    expect(at(B.retireMaturitySec / 2)).toBeCloseTo(full / 2, 2);
+    expect(at(B.retireMaturitySec * 5)).toBeCloseTo(full, 2); // clamped at 1.0
+  });
+
+  it("ageSec accrues as the product runs in the sim", () => {
+    const s = release();
+    const before = s.products.active[0]!.ageSec;
+    const { products } = simulateProducts(s.products, 30);
+    expect(products.active[0]!.ageSec).toBeCloseTo(before + 30, 5);
   });
 });

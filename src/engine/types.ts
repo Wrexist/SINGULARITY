@@ -150,6 +150,9 @@ export interface ProductState {
   paid: number;
   /** Remaining launch-buzz seconds (acquisition spike + churn cut). */
   buzzSec: number;
+  /** Seconds this product has been live (accrues in the sim). Gates the retire
+   *  valuation so a freshly-launched product can't be pump-and-dumped for cash. */
+  ageSec: number;
   /** An in-progress timed version upgrade (research), or null. The model keeps
    *  earning at its current quality until the upgrade completes. */
   upgrade: UpgradeState | null;
