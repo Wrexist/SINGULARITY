@@ -37,7 +37,7 @@ Eras 0–6 + AGI ascension · research tree · "Ship the Model" prestige (Legacy
 ## Phase C — Spectacle & game-feel (P2/P3)
 *Goal: the tentpole "wow" moments and overall smoothness.*
 
-- **C1 · Era-transition & AGI set-pieces** *(P2, M)* — make each era change a bigger full-screen beat (hall reskin reveal + press-release card + stinger). These double as App Store screenshots (GDD §8).
+- **C1 · Era-transition set-pieces** 🟡 *(juiced)* — era transitions now fire a full-screen confetti burst behind the press-release card (gold for the AGI capstone), on top of the existing reskin + audio stinger — so each era lands as a real tentpole. Confetti is reduced-motion aware (also fixed the Ship celebration to respect it). *Remaining (optional): a bespoke reskin-reveal animation.*
 - **C2 · Hall visual richness** *(P2, L)* — more parametric variety per era (lighting, props, density), subtle idle animation, "1000 GPUs = one upgraded visual" scaling. Draw-call disciplined.
 - **C3 · Number-pop & milestone juice pass 2** *(P3, S)* — round out any actions still lacking a pop/sound/particle; celebrate achievement unlocks and big round-number milestones more.
 - **C4 · Reduced-motion parity** *(P3, S)* — ensure every new effect has a calm fallback (accessibility + battery).
