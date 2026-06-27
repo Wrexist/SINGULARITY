@@ -10,6 +10,7 @@ import {
   type StaffRole,
 } from "./balance/config";
 import { derive } from "./derive";
+import { alignmentHeatMult } from "./alignment";
 import { isRackId, floorFull, evictableRackFor } from "./hall";
 import type { ActiveModifier, GameState } from "./types";
 
@@ -85,8 +86,11 @@ export function buyUpgrade(state: GameState, id: string): GameState {
   const def = UPGRADE_BY_ID[id]!;
   const owned = state.upgrades[id] ?? 0;
   const cost = upgradeCost(def, owned);
-  // Buying dark-web tools puts you on a list — a little heat each time.
-  const heat = def.market === "darkweb" ? clampHeat(state.heat + balance.heat.toolBuyHeat) : state.heat;
+  // Buying dark-web tools puts you on a list — a little heat each time, scaled
+  // by your faction stance (accelerationist runs hotter, doomer keeps it clean).
+  const heat = def.market === "darkweb"
+    ? clampHeat(state.heat + balance.heat.toolBuyHeat * alignmentHeatMult(state))
+    : state.heat;
   const upgrades = { ...state.upgrades, [id]: owned + 1 };
   // Full floor + a higher-tier rack → upgrade in place: evict the lowest
   // lower-tier rack to free its slot (canBuyUpgrade guaranteed one exists).
@@ -291,7 +295,7 @@ export function buyDataOffer(
 
   let raided = false;
   if (def.risk) {
-    heat = clampHeat(state.heat + (def.heat ?? 0));
+    heat = clampHeat(state.heat + (def.heat ?? 0) * alignmentHeatMult(state));
     const raidChance = effectiveRaidChance(state, id);
     const { fine, raidDataFactor, poisonChance, poisonDataFactor } = def.risk;
     if (roll < raidChance) {

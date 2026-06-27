@@ -2,6 +2,7 @@ import { Big } from "./math/Big";
 import { balance } from "./balance/config";
 import { computeStaffEffects, teamMorale, type StaffEffects } from "./employees";
 import { reputationMods } from "./reputation";
+import { alignmentProductionMods } from "./alignment";
 import { ascensionMultiplier } from "./prestige";
 import { powerStats } from "./power";
 import type { Derived, Employee, GameState } from "./types";
@@ -179,6 +180,13 @@ export function derive(state: GameState): Derived {
   // Scraper output is its own lane (does NOT ride compute), so global boosts —
   // Legacy, ascension, AND reputation data perks — must be applied to it directly.
   const dataPerSec = dataPerSecFlat.mul(legacyMult).mul(ascensionMult).mul(rep.dataMult);
+
+  // Faction alignment: a strategic lane-tilt (accelerationist trades money for
+  // compute, doomer the reverse). Identity at neutral, so the curve/sim are
+  // untouched. Applied to compute & money only — not the scraper data lane.
+  const align = alignmentProductionMods(state);
+  computeMult = computeMult.mul(align.computeMult);
+  moneyMult = moneyMult.mul(align.moneyMult);
 
   let computePerSec = computeFlat.mul(computeMult);
   // PHASE 2 (flagged off): power/heat soft-cap throttles Compute when the racks

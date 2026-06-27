@@ -1032,6 +1032,33 @@ export const balance = {
     ],
   },
 
+  /**
+   * Faction alignment (−1 doomer … 0 neutral … +1 accelerationist), shifted by
+   * faction-event choices. It used to be a dead dial (set, never read). Now it's
+   * a real strategic lane-tilt, folded into derive() + the Heat sites. Every value
+   * scales LINEARLY with |alignment| and is 0 at neutral, so a fresh run and the
+   * balance sim (which never fires faction events) are byte-identical.
+   *
+   * Theme: accelerationist races capability — more Compute, but it burns cash and
+   * draws regulators (more Heat). Doomer is cautious & commercial — more Money and
+   * far less Heat, but slower Compute. A genuine "send it vs play it safe" choice.
+   */
+  alignment: {
+    enabled: true,
+    /** +Compute at full accelerationist (+1). */
+    accelComputeBonus: 0.15,
+    /** −Money at full accelerationist (the cost of moving fast). */
+    accelMoneyPenalty: 0.1,
+    /** +Money at full doomer (−1): careful, enterprise-friendly, profitable. */
+    doomerMoneyBonus: 0.15,
+    /** −Compute at full doomer (you move deliberately). */
+    doomerComputePenalty: 0.1,
+    /** Heat-generation multiplier from shady buys at full accelerationist (hotter). */
+    heatGenAtAccel: 1.5,
+    /** Heat-generation multiplier at full doomer (you keep your nose clean). */
+    heatGenAtDoomer: 0.5,
+  },
+
   /** Regulatory events, weighted. Picked when an event fires (see actions). */
   heatEvents: [
     {

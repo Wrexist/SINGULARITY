@@ -46,8 +46,13 @@ no dark patterns. Re-run `npm run sim` after any economy change.*
       data freshness decay / infra maintenance). Model in the R0.2 sim first.
 
 ### Step 5 — Depth (R5)
-- [ ] **R5.1 · Activate the dead `alignment` dial** (P1, S) — wire it into `derive` as a real
-      Heat/acquisition/Reputation fork. Best depth-per-effort fix in the audit.
+- [x] **R5.1 · Activate the dead `alignment` dial** — was set by faction choices but read nowhere.
+      Now a real, data-driven strategic fork (`balance.alignment` + pure `src/engine/alignment.ts`):
+      **accelerationist** trades money for compute and runs hotter (+Heat on shady buys);
+      **doomer** trades compute for money and stays clean (−Heat). Folded into `derive` (compute/$
+      tilt) + the two Heat sites; surfaced as "Stance effects" in Lab Stats so it's legible.
+      Hard-gated — neutral (0) is identity, so the sim is **byte-identical** (12m15s). +6 tests.
+      ↳ Follow-up (optional): alignment→Reputation-gain and alignment→product-acquisition forks.
 - [ ] **R5.2 · Contracts / quests board** (P1) — rotating `contracts[]` in balance, pure fold in
       `tick`, Reputation/Money payouts; persisted like achievements.
 
