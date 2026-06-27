@@ -685,18 +685,13 @@ svg { vertical-align: middle; }
   0% { background-position: 150% 0; }
   55%, 100% { background-position: -40% 0; }
 }
-/* A punchy confirmation the instant a purchase lands (JS adds .bought ~0.5s). */
-.card.bought, .node.bought { animation: buy-punch 0.5s var(--spring); }
-@keyframes buy-punch {
-  0% { transform: scale(1); }
-  28% { transform: scale(0.96); }
-  55% { transform: scale(1.025); box-shadow: 0 0 0 5px rgba(22, 179, 100, 0.32), var(--shadow-md); }
-  100% { transform: scale(1); }
-}
+/* The purchase "punch" is driven via the Web Animations API (see fx.ts punch()),
+   NOT a CSS class — toggling a class that owns `animation` re-triggered the card's
+   entrance animation on release and snapped it back to its start position. */
 .card:disabled:not(.affordable) { opacity: 0.5; cursor: not-allowed; }
 .card:disabled:not(.affordable):hover { transform: none; box-shadow: none; }
 .card.maxed { opacity: 0.65; }
-.card-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.card-main { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .card-name {
   font-weight: 700;
   font-size: 14px;
@@ -863,13 +858,22 @@ svg { vertical-align: middle; }
   color: var(--ink);
   cursor: pointer;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
   animation: item-in 0.34s var(--ease-out) backwards;
   transition: transform 0.22s var(--ease-out), box-shadow 0.22s var(--ease-out);
   position: relative;
   overflow: hidden;
 }
+.node-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+/* Effect-coloured icon chips give each buy a visual identity (no more wall of
+   identical cards): blue = compute, violet = data, green = money, etc. */
+.card-ic, .node-ic {
+  flex: 0 0 auto; width: 42px; height: 42px; border-radius: 12px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.node.owned .node-ic, .node.locked .node-ic { filter: saturate(0.6); opacity: 0.75; }
 .node::before {
   content: "";
   position: absolute;

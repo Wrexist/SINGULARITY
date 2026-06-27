@@ -1,11 +1,11 @@
-import { useState, useRef, useCallback } from "react";
 import { balance } from "../engine/balance/config";
 import { canBuyResearch, researchAvailable } from "../engine/actions";
 import type { Derived, GameState } from "../engine/types";
 import { fmt, fmtDur, etaSecs, effRate } from "./format";
-import { burst } from "./fx";
+import { burst, punch } from "./fx";
 import { Big } from "../engine/math/Big";
 import { CheckIcon, LockIcon } from "./Icons";
+import { ResearchIcon } from "./effectVisual";
 
 interface Props {
   game: GameState;
@@ -14,14 +14,6 @@ interface Props {
 }
 
 export function ResearchPanel({ game, derived, onResearch }: Props) {
-  const [bought, setBought] = useState<string | null>(null);
-  const buyTimer = useRef<number | undefined>(undefined);
-  const flashBuy = useCallback((id: string) => {
-    setBought(id);
-    window.clearTimeout(buyTimer.current);
-    buyTimer.current = window.setTimeout(() => setBought(null), 500);
-  }, []);
-
   const isOwned = (id: string) => game.research.includes(id);
   // Reveal in waves (GDD): show owned/available nodes and the NEXT wave (locked
   // nodes whose prerequisites are owned or already available) — not the whole tree.
@@ -52,32 +44,35 @@ export function ResearchPanel({ game, derived, onResearch }: Props) {
           return (
             <button
               key={def.id}
-              className={`node ${state} ${affordable ? "affordable" : ""} ${bought === def.id ? "bought" : ""}`}
+              className={`node ${state} ${affordable ? "affordable" : ""}`}
               disabled={!affordable}
               onClick={(e) => {
                 const r = e.currentTarget.getBoundingClientRect();
                 burst(r.left + r.width / 2, r.top + r.height / 2, { count: 18, power: 1.1, colors: ["#9b51e0", "#2f7bf6", "#16b364"] });
-                flashBuy(def.id);
+                punch(e.currentTarget);
                 onResearch(def.id);
               }}
             >
-              <div className="node-head">
-                <span className="node-name">{def.name}</span>
-                {owned && <span className="node-tag"><CheckIcon size={12} /> done</span>}
-                {!owned && !available && <span className="node-tag"><LockIcon size={12} /> locked</span>}
+              <ResearchIcon kind={def.effect.kind} />
+              <div className="node-body">
+                <div className="node-head">
+                  <span className="node-name">{def.name}</span>
+                  {owned && <span className="node-tag"><CheckIcon size={12} /> done</span>}
+                  {!owned && !available && <span className="node-tag"><LockIcon size={12} /> locked</span>}
+                </div>
+                <span className="node-desc">{def.desc}</span>
+                {!owned && (
+                  <span className="node-cost">
+                    {def.cost.compute > 0 && (
+                      <span style={{ color: "var(--compute)" }}>{fmt(Big.of(def.cost.compute))} compute </span>
+                    )}
+                    {def.cost.data > 0 && (
+                      <span style={{ color: "var(--data)" }}>{fmt(Big.of(def.cost.data))} data</span>
+                    )}
+                    {etaText && <span className="cost-eta">{etaText}</span>}
+                  </span>
+                )}
               </div>
-              <span className="node-desc">{def.desc}</span>
-              {!owned && (
-                <span className="node-cost">
-                  {def.cost.compute > 0 && (
-                    <span style={{ color: "var(--compute)" }}>{fmt(Big.of(def.cost.compute))} compute </span>
-                  )}
-                  {def.cost.data > 0 && (
-                    <span style={{ color: "var(--data)" }}>{fmt(Big.of(def.cost.data))} data</span>
-                  )}
-                  {etaText && <span className="cost-eta">{etaText}</span>}
-                </span>
-              )}
             </button>
           );
         })}
