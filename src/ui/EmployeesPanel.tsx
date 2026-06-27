@@ -12,6 +12,7 @@ import type { GameState, Derived, Employee } from "../engine/types";
 import type { Candidate } from "../state/store";
 import { fmtMoney, m$, fmtDur } from "./format";
 import { TeamIcon, BanknoteIcon, SmileIcon, BarsIcon, BuildingIcon, GradCapIcon, AtomIcon } from "./Icons";
+import { burst } from "./fx";
 
 interface Props {
   game: GameState;
@@ -242,7 +243,11 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
                         <span className="emp-tag muted">{m$(role?.payroll ?? 0)}/s</span>
                       </div>
                     </div>
-                    <button className="emp-hire-btn" disabled={!afford} onClick={() => onHireCandidate(i)}>{m$(cost)}</button>
+                    <button className="emp-hire-btn" disabled={!afford} onClick={(e) => {
+                      const r = e.currentTarget.getBoundingClientRect();
+                      burst(r.left + r.width / 2, r.top + r.height / 2, { count: c.rare ? 26 : 16, power: c.rare ? 1.4 : 1, colors: c.rare ? ["#ffd60a", "#ff9f0a", "#7c5cff"] : ["#16b364", "#2f7bf6"] });
+                      onHireCandidate(i);
+                    }}>{m$(cost)}</button>
                   </div>
                 );
               })}

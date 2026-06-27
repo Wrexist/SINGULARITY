@@ -186,7 +186,10 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
   const L = computeLayout(model.cols, model.rows, model.gxMin, model.gyMin, W, H);
   const { iso, tileW, tileH, originY, gxMin, gyMin, gxMax, gyMax } = L;
 
-  drawMotes(ctx, W, H, originY, o.timeMs, model.active, model.total, o.reducedMotion, 0.6);
+  // "Lively" = a manual run OR a live product business. Keeps the hall breathing
+  // between runs once you've shipped something, instead of going dead.
+  const lively = model.active || model.busy;
+  drawMotes(ctx, W, H, originY, o.timeMs, lively, model.total, o.reducedMotion, 0.6);
 
   // Place racks in orderly rows, back-to-front (valid iso paint order). Leave the
   // partition column/row empty as a walkway so the rooms read as separate.
@@ -210,12 +213,24 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
       powerOn = 1 - o.spawnT;
     }
     const blink = o.reducedMotion ? 0.6 : 0.5 + 0.5 * Math.sin(t / 280 + i * 1.7);
-    const workPulse = model.active && !o.reducedMotion ? 0.5 + 0.5 * Math.sin(t / 150 + i) : 0;
+    // A manual run drives a strong work pulse; a running product business keeps a
+    // gentler ambient pulse so the racks always look like they're computing.
+    const workPulse = o.reducedMotion
+      ? 0
+      : model.active
+        ? 0.5 + 0.5 * Math.sin(t / 150 + i)
+        : model.busy
+          ? 0.22 + 0.22 * Math.sin(t / 320 + i)
+          : 0;
     drawRack(ctx, c.x, c.y, tileW, tileH, rack.tier, rack.density, scale, blink, workPulse, model.active, powerOn);
   }
 
-  if (model.active || !o.reducedMotion) {
-    drawMotes(ctx, W, H, originY, o.timeMs, model.active, model.total, o.reducedMotion, 1);
+  // Data flowing through a live business: bright packets stream along the front
+  // cable run (era ≥ 1, where the cable exists).
+  if (lively && model.era >= 1 && !o.reducedMotion) drawDataFlow(ctx, L, o.timeMs, model.active);
+
+  if (lively || !o.reducedMotion) {
+    drawMotes(ctx, W, H, originY, o.timeMs, lively, model.total, o.reducedMotion, 1);
   }
   if (o.burst > 0 && !o.reducedMotion) drawClaimBurst(ctx, W, H, originY, o.burst);
 
@@ -533,6 +548,39 @@ function drawClaimBurst(ctx: CanvasRenderingContext2D, W: number, H: number, ori
     ctx.beginPath();
     ctx.arc(x, y, sz, 0, Math.PI * 2);
     ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** Bright packets streaming along the front floor cable — the look of data
+ *  moving through a running business. Cheap: a handful of dots along one segment. */
+function drawDataFlow(ctx: CanvasRenderingContext2D, L: Layout, t: number, active: boolean): void {
+  const { iso, gxMin, gxMax, gyMax } = L;
+  const e0 = iso(gxMin, gyMax - 0.12), e1 = iso(gxMax, gyMax - 0.12);
+  const span = Math.max(1, gxMax - gxMin);
+  const n = Math.min(10, Math.max(3, Math.round(span * 1.4)));
+  const col: RGB = [120, 230, 255];
+  const speed = active ? 1600 : 2600;
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (let i = 0; i < n; i++) {
+    const phase = (t / speed + i / n) % 1;
+    const x = e0.x + (e1.x - e0.x) * phase;
+    const y = e0.y + (e1.y - e0.y) * phase;
+    // Fade in/out at the ends so packets don't pop at the edges.
+    const a = Math.sin(phase * Math.PI) * (active ? 0.9 : 0.55);
+    if (a <= 0.02) continue;
+    ctx.fillStyle = rgba(col, a);
+    ctx.beginPath();
+    ctx.arc(x, y, 2.1, 0, Math.PI * 2);
+    ctx.fill();
+    // Short comet trail.
+    ctx.strokeStyle = rgba(col, a * 0.4);
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x - (e1.x - e0.x) * 0.03, y - (e1.y - e0.y) * 0.03);
+    ctx.stroke();
   }
   ctx.restore();
 }

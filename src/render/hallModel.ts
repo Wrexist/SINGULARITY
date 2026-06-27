@@ -39,6 +39,9 @@ export interface HallModel {
   gyMin: number;
   sides: SideMarker[];
   active: boolean;
+  /** The lab is "running the business": a training run OR live products earning.
+   *  Keeps the hall visibly alive between manual runs once you have products. */
+  busy: boolean;
   readyToClaim: boolean;
   progress: number;
   era: number;
@@ -129,6 +132,7 @@ export function buildHallModel(game: GameState): HallModel {
     gyMin,
     sides: sideMarkers(game),
     active: game.run.active,
+    busy: game.run.active || game.products.active.length > 0,
     readyToClaim: game.run.readyToClaim,
     progress: game.run.progress,
     era,

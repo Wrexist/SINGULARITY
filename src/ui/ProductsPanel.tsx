@@ -119,7 +119,10 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
                 <div className="prod-head-text">
                   <div className="prod-head-row">
                     <EditableName className="prod-name" value={p.name} onCommit={(n) => onRename(p.id, n)} />
-                    <span className="prod-mrr">{m$(me.mrr)}/s</span>
+                    <span className="prod-mrr">
+                      {me.mrr > 0 && <span className="prod-live" title="Earning now" />}
+                      {m$(me.mrr)}/s
+                    </span>
                   </div>
                   <div className="prod-sub">
                     <span className="prod-badge">{t.name}</span>

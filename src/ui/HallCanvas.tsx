@@ -104,7 +104,7 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       // Power ids come from the same source buildHallModel uses, so adding a new
       // powerCapacity upgrade automatically invalidates this cache too.
       const powerSig = POWER_IDS.map((id) => u[id] ?? 0).join(",");
-      const sig = `${u.rack_basic ?? 0}|${u.rack_server ?? 0}|${u.rack_tpu ?? 0}|${u.expand_n ?? 0}|${u.expand_s ?? 0}|${u.expand_e ?? 0}|${u.expand_w ?? 0}|${powerSig}|${game.run.active ? 1 : 0}|${currentEra(game)}`;
+      const sig = `${u.rack_basic ?? 0}|${u.rack_server ?? 0}|${u.rack_tpu ?? 0}|${u.expand_n ?? 0}|${u.expand_s ?? 0}|${u.expand_e ?? 0}|${u.expand_w ?? 0}|${powerSig}|${game.run.active ? 1 : 0}|${game.products.active.length > 0 ? 1 : 0}|${currentEra(game)}`;
       if (sig !== modelSig) {
         modelSig = sig;
         model = buildHallModel(game);
