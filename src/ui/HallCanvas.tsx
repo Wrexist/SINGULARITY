@@ -3,7 +3,7 @@ import { useGame } from "../state/store";
 import { useSettings } from "./settings";
 import { haptics } from "./haptics";
 import { sound } from "./sound";
-import { buildHallModel } from "../render/hallModel";
+import { buildHallModel, POWER_IDS } from "../render/hallModel";
 import { drawHallStatic, drawHallDynamic, expansionMarkers, pointInPoly } from "../render/hallRenderer";
 import { currentEra, eraName } from "../engine/eras";
 import { hallRooms } from "../engine/hall";
@@ -101,7 +101,10 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       // Cheap signature of render-affecting fields (run.progress is excluded —
       // the renderer animates from the clock, not from progress).
       const u = game.upgrades;
-      const sig = `${u.rack_basic ?? 0}|${u.rack_server ?? 0}|${u.rack_tpu ?? 0}|${u.expand_n ?? 0}|${u.expand_s ?? 0}|${u.expand_e ?? 0}|${u.expand_w ?? 0}|${u.psu_bay ?? 0}|${u.cooling_loop ?? 0}|${u.substation ?? 0}|${game.run.active ? 1 : 0}|${currentEra(game)}`;
+      // Power ids come from the same source buildHallModel uses, so adding a new
+      // powerCapacity upgrade automatically invalidates this cache too.
+      const powerSig = POWER_IDS.map((id) => u[id] ?? 0).join(",");
+      const sig = `${u.rack_basic ?? 0}|${u.rack_server ?? 0}|${u.rack_tpu ?? 0}|${u.expand_n ?? 0}|${u.expand_s ?? 0}|${u.expand_e ?? 0}|${u.expand_w ?? 0}|${powerSig}|${game.run.active ? 1 : 0}|${currentEra(game)}`;
       if (sig !== modelSig) {
         modelSig = sig;
         model = buildHallModel(game);

@@ -7,6 +7,11 @@
  *
  * Humour lives here (writing), never in the math — per the design spine.
  */
+import { balance } from "./config";
+
+/** Full research-tree size — the "own everything" capstone tracks this so it can
+ *  never drift out of sync when nodes are added/removed. */
+const RESEARCH_TREE_SIZE = balance.research.length;
 
 export type AchMetric =
   | "peakCompute"
@@ -91,9 +96,9 @@ export const achievements: AchievementDef[] = [
 
   // ---- Meta ----
   { id: "research_15", label: "Well Read", desc: "Own 15 research nodes in one run", cat: "meta", metric: "peakResearch", threshold: 15 },
-  // Capstone = the full tree (keep in sync with balance.research length). Was an
-  // unreachable 30 (the tree has 17 nodes) — now a true "own everything" badge.
-  { id: "research_30", label: "Completionist", desc: "Own every research node in a single run", cat: "meta", metric: "peakResearch", threshold: 17 },
+  // Capstone = the full tree, derived so it can't drift (was an unreachable
+  // hardcoded 30, then a brittle 17) — a true "own everything" badge.
+  { id: "research_30", label: "Completionist", desc: "Own every research node in a single run", cat: "meta", metric: "peakResearch", threshold: RESEARCH_TREE_SIZE },
   { id: "events_25", label: "Survivor", desc: "Resolve 25 world events", cat: "meta", metric: "worldEventsResolved", threshold: 25 },
   { id: "play_1h", label: "Hooked", desc: "Play for 1 hour", cat: "meta", metric: "playtimeSec", threshold: 3_600 },
   { id: "play_10h", label: "Dedicated", desc: "Play for 10 hours", cat: "meta", metric: "playtimeSec", threshold: 36_000 },

@@ -36,7 +36,7 @@ export function Onboarding({ onDone }: Props) {
           The 💡 hint at the top always tells you what to do next — no manual required.
         </p>
         <button className="btn btn-primary" onClick={onDone}>
-          Start a training run →
+          Open the Lab →
         </button>
       </div>
     </div>

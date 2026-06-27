@@ -51,8 +51,10 @@ export interface HallModel {
   coolingUnits: number;
 }
 
-/** Power/cooling infrastructure ids (drive the visible wall units). */
-const POWER_IDS = balance.upgrades.filter((u) => u.effect.kind === "powerCapacity").map((u) => u.id);
+/** Power/cooling infrastructure ids (drive the visible wall units). Exported so
+ *  HallCanvas's cache signature derives from the same source and never goes
+ *  stale if a new powerCapacity upgrade is added. */
+export const POWER_IDS = balance.upgrades.filter((u) => u.effect.kind === "powerCapacity").map((u) => u.id);
 
 // Only the two OPEN sides are expandable — the back-left and back-right edges
 // have walls (see drawRoom). So no north/west expansion.

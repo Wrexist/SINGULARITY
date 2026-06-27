@@ -54,11 +54,14 @@ export function advisorItems(state: GameState): AdvisorItem[] {
     if (canPrestige(state)) {
       items.push({ tab: "lab", text: "🚀 Ship the Model — reset for a permanent boost", priority: 92 });
     }
-    if (!state.run.active && !state.run.readyToClaim) {
+    // Affordable first research outranks the idle "start a run" nudge, so it
+    // actually surfaces when it becomes the meaningful next step (nextAction
+    // returns only the single highest-priority item).
+    const canBuyFirstResearch = state.research.length === 0 && FIRST_RESEARCH && canBuyResearch(state, FIRST_RESEARCH);
+    if (canBuyFirstResearch) {
+      items.push({ tab: "lab", text: "Research your first capability", priority: 70 });
+    } else if (!state.run.active && !state.run.readyToClaim) {
       items.push({ tab: "lab", text: "Start a training run to earn Data & $", priority: 68 });
-    }
-    if (state.research.length === 0 && FIRST_RESEARCH && canBuyResearch(state, FIRST_RESEARCH)) {
-      items.push({ tab: "lab", text: "Research your first capability", priority: 64 });
     }
   }
 

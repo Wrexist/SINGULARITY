@@ -113,10 +113,15 @@ function setMusic(want: boolean): void {
   if (!unlockBound && typeof window !== "undefined") {
     unlockBound = true;
     const kick = () => {
-      getCtx();
-      if (wantMusic) startAmbient();
       window.removeEventListener("pointerdown", kick);
       window.removeEventListener("keydown", kick);
+      unlockBound = false; // allow re-arming if this attempt doesn't take
+      const c = getCtx();
+      if (!c) return;
+      // resume() is async — wait for it to actually run before starting the pad,
+      // or startAmbient()'s "running" guard would no-op on this first gesture.
+      const go = () => { if (wantMusic && c.state === "running") startAmbient(); };
+      c.resume().then(go).catch(go);
     };
     window.addEventListener("pointerdown", kick, { once: true });
     window.addEventListener("keydown", kick, { once: true });

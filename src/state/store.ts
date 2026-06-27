@@ -476,7 +476,13 @@ export const useGame = create<GameStore>((set, get) => ({
     candidates.push(raw);
     for (const json of candidates) {
       try {
-        const game = deserialize(json); // throws on bad shape; migrates + sanitizes
+        let game = deserialize(json); // throws on bad shape; migrates + sanitizes
+        // Mirror init()'s post-load normalization so an imported save matches the
+        // runtime shape (legacy role-counts → people; ID counters seeded so new
+        // products/hires don't collide with existing prod-N / emp-N ids).
+        game = migrateStaffCounts(game);
+        seedProductKey(game);
+        seedEmpKey(game);
         set({ game, offline: null, event: null, notice: null, worldEvent: null, claimBurst: 0, candidates: null });
         localStorage.setItem(SAVE_KEY, serialize(game));
         localStorage.setItem(TIME_KEY, String(now()));

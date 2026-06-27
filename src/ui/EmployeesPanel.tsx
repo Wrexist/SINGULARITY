@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Portal } from "./Portal";
 import { balance } from "../engine/balance/config";
 import { canBuyOfficePerk } from "../engine/actions";
@@ -78,6 +78,7 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
   // pointer position against the project-card rects on drop.
   const projectEls = useRef(new Map<string, HTMLElement>());
   const dragRef = useRef<{ id: string; sx: number; sy: number; active: boolean } | null>(null);
+  const cleanupDragRef = useRef<(() => void) | null>(null);
   const [drag, setDrag] = useState<{ id: string; name: string; x: number; y: number; over: string | null } | null>(null);
   const hitTest = (x: number, y: number): string | null => {
     for (const [id, el] of projectEls.current) {
@@ -94,10 +95,18 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
     const emp = team.find((x) => x.id === d.id);
     setDrag({ id: d.id, name: emp?.name ?? "", x: e.clientX, y: e.clientY, over: hitTest(e.clientX, e.clientY) });
   };
+  // Tear down all drag listeners + state. Used on drop, pointercancel, blur, unmount.
+  const cleanupDrag = () => {
+    cleanupDragRef.current?.();
+    cleanupDragRef.current = null;
+    dragRef.current = null;
+    setDrag(null);
+  };
+  useEffect(() => cleanupDrag, []); // never leak listeners if we unmount mid-drag
   const onDragUp = (e: PointerEvent) => {
     const d = dragRef.current;
-    window.removeEventListener("pointermove", onDragMove);
-    window.removeEventListener("pointerup", onDragUp);
+    cleanupDragRef.current?.();
+    cleanupDragRef.current = null;
     if (d?.active) { const over = hitTest(e.clientX, e.clientY); if (over) onAssign(d.id, over); }
     dragRef.current = null;
     setDrag(null);
@@ -107,6 +116,14 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
     dragRef.current = { id, sx: e.clientX, sy: e.clientY, active: false };
     window.addEventListener("pointermove", onDragMove);
     window.addEventListener("pointerup", onDragUp);
+    window.addEventListener("pointercancel", cleanupDrag);
+    window.addEventListener("blur", cleanupDrag);
+    cleanupDragRef.current = () => {
+      window.removeEventListener("pointermove", onDragMove);
+      window.removeEventListener("pointerup", onDragUp);
+      window.removeEventListener("pointercancel", cleanupDrag);
+      window.removeEventListener("blur", cleanupDrag);
+    };
   };
 
   const { product, idle } = useMemo(() => {
@@ -158,7 +175,14 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
     const role = roleDef(e.roleId);
     const trait = traitDef(e.trait);
     return (
-      <div className={`emp-person ${selectedId === e.id ? "sel" : ""}`} key={e.id} onClick={onTap} role={onTap ? "button" : undefined}>
+      <div
+        className={`emp-person ${selectedId === e.id ? "sel" : ""}`}
+        key={e.id}
+        onClick={onTap}
+        role={onTap ? "button" : undefined}
+        tabIndex={onTap ? 0 : undefined}
+        onKeyDown={onTap ? (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); onTap(); } } : undefined}
+      >
         <Avatar name={e.name} />
         <div className="emp-person-main">
           <div className="emp-person-top">
@@ -287,7 +311,10 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
       {seg === "projects" && (() => {
         const avail = product.filter((e) => !e.assignedProductId);
         const roleOpts = [...new Set(avail.map((e) => e.roleId))];
-        const shown = roleFilter === "all" ? avail : avail.filter((e) => e.roleId === roleFilter);
+        // Fall back to "all" if the selected role no longer exists (e.g. that
+        // person got assigned away and the dropdown hid) — never show an empty list.
+        const effRoleFilter = roleFilter === "all" || roleOpts.includes(roleFilter) ? roleFilter : "all";
+        const shown = effRoleFilter === "all" ? avail : avail.filter((e) => e.roleId === effRoleFilter);
         return (
         <div className="pd-pane">
           {selected && (
@@ -312,6 +339,8 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
                 ref={(el) => { if (el) projectEls.current.set(p.id, el); else projectEls.current.delete(p.id); }}
                 onClick={() => selected && place(p.id)}
                 role={selected ? "button" : undefined}
+                tabIndex={selected ? 0 : undefined}
+                onKeyDown={selected ? (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); place(p.id); } } : undefined}
               >
                 <div className="emp-proj-head">
                   <div className="emp-proj-id">
@@ -343,7 +372,7 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
           <div className="emp-section-head">
             <span>Available {product.length > 0 ? `· ${idle} idle` : ""}</span>
             {roleOpts.length > 1 && (
-              <select className="emp-filter" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
+              <select className="emp-filter" value={effRoleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
                 <option value="all">All roles</option>
                 {roleOpts.map((rid) => <option key={rid} value={rid}>{roleDef(rid)?.name ?? rid}</option>)}
               </select>

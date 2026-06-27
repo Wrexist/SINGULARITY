@@ -1225,6 +1225,7 @@ body {
   pointer-events: none;
 }
 .reduce-motion .confetti span { animation: none; opacity: 0; }
+.reduce-motion .daily-bar { animation: none; }
 .confetti span {
   position: absolute;
   top: -12px;

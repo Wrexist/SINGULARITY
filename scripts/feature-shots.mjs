@@ -88,8 +88,8 @@ try {
   const collect = page.getByRole("button", { name: "Collect" });
   if (await collect.isVisible().catch(() => false)) await collect.click().catch(() => {});
 
-  // 1) Products tab — portfolio (drafts + cards + milestones).
-  await page.getByRole("tab", { name: /Products/ }).click();
+  // 1) Products tab — portfolio (drafts + cards + milestones). Bottom-nav buttons.
+  await page.locator(".botnav-item", { hasText: "Products" }).click();
   await sleep(500);
   await page.screenshot({ path: "screenshots/feat-products.png", fullPage: true });
   console.log("Saved feat-products.png");
@@ -112,20 +112,21 @@ try {
   await page.mouse.click(8, 8).catch(() => {});
   await sleep(300);
 
-  // 3) Employees tab — KPI header + People roster (redesign).
-  await page.getByRole("tab", { name: /Team/ }).click();
+  // 3) Employees tab — KPI header + People roster (redesign). Bottom-nav button.
+  await page.locator(".botnav-item", { hasText: "Team" }).click();
   await sleep(500);
   await page.screenshot({ path: "screenshots/feat-employees.png", fullPage: true });
   console.log("Saved feat-employees.png");
 
-  // 3b) Projects sub-view — per-product crew assignment.
-  await page.getByRole("tab", { name: /Projects/ }).click().catch(() => {});
+  // 3b) Projects sub-view — per-product crew assignment. Don't swallow nav
+  // failures: a missing tab should fail the shot, not capture the wrong view.
+  await page.getByRole("tab", { name: /Projects/ }).click();
   await sleep(300);
   await page.screenshot({ path: "screenshots/feat-emp-projects.png", fullPage: true });
   console.log("Saved feat-emp-projects.png");
 
   // 4) Recruit — candidate picker (People pane → "+ Recruit").
-  await page.getByRole("tab", { name: /People/ }).click().catch(() => {});
+  await page.getByRole("tab", { name: /People/ }).click();
   await sleep(200);
   await page.getByRole("button", { name: /Recruit/ }).first().click();
   await sleep(400);
@@ -144,7 +145,7 @@ try {
   // 6) Lab Reputation perk tree (Phase 3) — opened from the Prestige panel.
   await page.mouse.click(8, 8).catch(() => {});
   await sleep(200);
-  await page.getByRole("tab", { name: /Lab/ }).click().catch(() => {});
+  await page.locator(".botnav-item", { hasText: "Lab" }).click().catch(() => {});
   await sleep(300);
   const repStrip = page.locator(".rep-strip");
   if (await repStrip.isVisible().catch(() => false)) {

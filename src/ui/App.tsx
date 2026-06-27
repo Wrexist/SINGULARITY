@@ -414,19 +414,21 @@ export function App() {
         </footer>
       </main>
 
-      <nav className="botnav" role="tablist" aria-label="Primary">
-        <button className={`botnav-item ${tab === "lab" ? "on" : ""}`} role="tab" aria-selected={tab === "lab"} onClick={() => { haptics.tap(); setTab("lab"); }}>
+      <nav className="botnav" aria-label="Primary">
+        {/* Destinations use aria-current; Awards/More are actions (open modals),
+            so this is a nav bar, not a tablist (the panes aren't tab panels). */}
+        <button className={`botnav-item ${tab === "lab" ? "on" : ""}`} aria-current={tab === "lab" ? "page" : undefined} onClick={() => { haptics.tap(); setTab("lab"); }}>
           <span className="botnav-ic">🧪</span><span className="botnav-lbl">Lab</span>
           {attention.lab > 0 && <span className="botnav-badge">{attention.lab}</span>}
         </button>
         {showProducts && (
-          <button className={`botnav-item ${tab === "products" ? "on" : ""}`} role="tab" aria-selected={tab === "products"} onClick={() => { haptics.tap(); setTab("products"); }}>
+          <button className={`botnav-item ${tab === "products" ? "on" : ""}`} aria-current={tab === "products" ? "page" : undefined} onClick={() => { haptics.tap(); setTab("products"); }}>
             <span className="botnav-ic">📦</span><span className="botnav-lbl">Products</span>
             {attention.products > 0 && <span className="botnav-badge">{attention.products}</span>}
           </button>
         )}
         {showStaff && (
-          <button className={`botnav-item ${tab === "employees" ? "on" : ""}`} role="tab" aria-selected={tab === "employees"} onClick={() => { haptics.tap(); setTab("employees"); }}>
+          <button className={`botnav-item ${tab === "employees" ? "on" : ""}`} aria-current={tab === "employees" ? "page" : undefined} onClick={() => { haptics.tap(); setTab("employees"); }}>
             <span className="botnav-ic">👥</span><span className="botnav-lbl">Team</span>
             {attention.employees > 0 && <span className="botnav-badge">{attention.employees}</span>}
           </button>

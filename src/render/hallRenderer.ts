@@ -308,7 +308,9 @@ function drawRoom(ctx: CanvasRenderingContext2D, L: Layout, era: number, H: numb
   };
   for (const [p0, p1] of [[a, b] as const, [a, d] as const]) {
     for (let k = 0; k < units; k++) {
-      const u = units === 1 ? 0.5 : 0.32 + k * 0.36;
+      // Evenly space within the open (0,1) interval so the last unit never runs
+      // off the wall edge (3 units → 0.25 / 0.5 / 0.75).
+      const u = (k + 1) / (units + 1);
       drawCoolingUnit(ctx, wallPt(p0, p1, u - 0.06, 0.66), wallPt(p0, p1, u + 0.06, 0.66), wallH * 0.3, t, reducedMotion);
     }
   }
