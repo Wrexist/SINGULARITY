@@ -348,7 +348,7 @@ export function App() {
 
       <header className="topbar">
         <div className="brand">
-          <span className="brand-mark" />
+          <img className="brand-mark" src="/logo-mark.png" alt="Singularity Inc." width={30} height={30} />
           <div className="brand-text">
             <h1>Singularity Inc.</h1>
             <Tagline />
