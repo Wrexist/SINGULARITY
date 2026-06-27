@@ -1,5 +1,6 @@
 import { balance } from "../engine/balance/config";
 import { upgradeCost, canBuyUpgrade } from "../engine/actions";
+import { recommendedUpgrade } from "../engine/recommend";
 import { hallCapacity, totalRacks, isRackId, evictableRackFor } from "../engine/hall";
 import { powerStats } from "../engine/power";
 import { productMetrics } from "../engine/products";
@@ -70,16 +71,11 @@ export function UpgradePanel({ game, derived, onBuy }: Props) {
     .filter((def) => def.market !== "darkweb")
     .filter((def) => showExpansions || !isExpansion(def.effect.kind))
     .filter((def) => showPower || def.effect.kind !== "powerCapacity");
-  const isMaxed = (def: Def) => (game.upgrades[def.id] ?? 0) >= def.max;
-  const costNum = (def: Def) => upgradeCost(def, game.upgrades[def.id] ?? 0).toNumber();
-
-  // Recommended next buy: the cheapest thing you can afford right now (an easy win,
-  // and a "what next?" anchor so the panel isn't a flat wall). Null if nothing's
-  // affordable yet — the recommendation only appears when it's actionable.
-  const affordableDefs = defs.filter((def) => !isMaxed(def) && canBuyUpgrade(game, def.id));
-  const hero = affordableDefs.length
-    ? affordableDefs.reduce((a, b) => (costNum(a) <= costNum(b) ? a : b))
-    : null;
+  // Recommended next buy: the best-VALUE upgrade you can afford (most marginal
+  // benefit per cost), NOT merely the cheapest — so it never points you at a
+  // strictly-worse rack. Pure/tested in the engine. Null if nothing's buyable.
+  const heroId = recommendedUpgrade(game);
+  const hero = heroId ? (defs.find((d) => d.id === heroId) ?? null) : null;
 
   const rest = defs.filter((def) => def.id !== hero?.id);
   const groups = UP_GROUP_ORDER
