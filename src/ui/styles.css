@@ -653,20 +653,41 @@ svg { vertical-align: middle; }
   padding: 13px 14px;
   color: var(--ink);
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
   transition: transform 0.22s var(--ease-out), box-shadow 0.22s var(--ease-out),
     border-color 0.2s, background 0.2s;
 }
 .card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-.card:active { transform: scale(0.99); }
+.card:active { transform: scale(0.97); }
+/* Affordable items breathe + catch a slow sheen, so the eye is always drawn to
+   what you can buy RIGHT NOW — the panels feel alive, not a static price list. */
 .card.affordable {
-  border-color: color-mix(in srgb, var(--money) 40%, transparent);
-  background: linear-gradient(180deg, rgba(22, 179, 100, 0.06), var(--glass-strong));
-  animation: afford-pulse 0.7s var(--ease-out);
+  border-color: color-mix(in srgb, var(--money) 45%, transparent);
+  background: linear-gradient(180deg, rgba(22, 179, 100, 0.07), var(--glass-strong));
+  animation: afford-breathe 2.6s ease-in-out infinite;
 }
-@keyframes afford-pulse {
-  0% { box-shadow: 0 0 0 0 rgba(22, 179, 100, 0); }
-  35% { box-shadow: 0 0 0 4px rgba(22, 179, 100, 0.18); }
-  100% { box-shadow: 0 0 0 0 rgba(22, 179, 100, 0); }
+.card.affordable::after, .node.affordable::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, 0.55) 50%, transparent 62%);
+  background-size: 220% 100%; background-repeat: no-repeat;
+  animation: card-sheen 3.4s ease-in-out infinite;
+}
+@keyframes afford-breathe {
+  0%, 100% { box-shadow: 0 1px 3px rgba(16, 24, 40, 0.04); }
+  50% { box-shadow: 0 0 0 4px rgba(22, 179, 100, 0.14), 0 6px 16px -8px rgba(22, 179, 100, 0.5); }
+}
+@keyframes card-sheen {
+  0% { background-position: 150% 0; }
+  55%, 100% { background-position: -40% 0; }
+}
+/* A punchy confirmation the instant a purchase lands (JS adds .bought ~0.5s). */
+.card.bought, .node.bought { animation: buy-punch 0.5s var(--spring); }
+@keyframes buy-punch {
+  0% { transform: scale(1); }
+  28% { transform: scale(0.96); }
+  55% { transform: scale(1.025); box-shadow: 0 0 0 5px rgba(22, 179, 100, 0.32), var(--shadow-md); }
+  100% { transform: scale(1); }
 }
 .card:disabled:not(.affordable) { opacity: 0.5; cursor: not-allowed; }
 .card:disabled:not(.affordable):hover { transform: none; box-shadow: none; }
@@ -687,6 +708,13 @@ svg { vertical-align: middle; }
   background: rgba(17, 24, 39, 0.06);
   padding: 1px 7px;
   border-radius: 999px;
+  /* Remounted with key={owned}, so this pops every time the count ticks up. */
+  animation: badge-pop 0.45s var(--spring);
+}
+@keyframes badge-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.35); color: var(--money); background: rgba(22, 179, 100, 0.22); }
+  100% { transform: scale(1); }
 }
 .card-desc { font-size: 12px; color: var(--ink-2); line-height: 1.35; }
 .card-note { font-size: 11px; font-weight: 700; color: var(--compute); margin-top: 2px; }
@@ -848,14 +876,32 @@ svg { vertical-align: middle; }
 }
 .node.locked { opacity: 0.5; cursor: not-allowed; }
 .node.available::before { background: var(--data); opacity: 1; }
+.node:active { transform: scale(0.97); }
 .node.available:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-.node.affordable::before { background: var(--data); opacity: 1; }
+.node.affordable::before { background: var(--data); opacity: 1; animation: node-accent 1.8s ease-in-out infinite; }
 .node.affordable {
-  border-color: color-mix(in srgb, var(--data) 40%, transparent);
-  background: linear-gradient(180deg, rgba(155, 81, 224, 0.08), var(--glass-strong));
+  border-color: color-mix(in srgb, var(--data) 45%, transparent);
+  background: linear-gradient(180deg, rgba(155, 81, 224, 0.09), var(--glass-strong));
+  animation: node-breathe 2.6s ease-in-out infinite;
+}
+@keyframes node-breathe {
+  0%, 100% { box-shadow: 0 1px 3px rgba(16, 24, 40, 0.04); }
+  50% { box-shadow: 0 0 0 4px rgba(124, 92, 255, 0.13), 0 6px 16px -8px rgba(124, 92, 255, 0.5); }
+}
+@keyframes node-accent {
+  0%, 100% { width: 4px; }
+  50% { width: 6px; }
 }
 .node.owned::before { background: var(--money); opacity: 1; }
-.node.owned { opacity: 0.9; }
+.node.owned {
+  /* A node that just completed sweeps a green fill — research feels like progress. */
+  opacity: 0.92;
+  animation: node-done 0.7s var(--ease-out);
+}
+@keyframes node-done {
+  0% { background: linear-gradient(90deg, rgba(22, 179, 100, 0.28), rgba(22, 179, 100, 0)); }
+  100% { background: #fff; }
+}
 .node-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .node-name { font-weight: 700; font-size: 14px; letter-spacing: -0.01em; }
 .node-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: var(--ink-2); white-space: nowrap; }
@@ -2148,3 +2194,6 @@ svg { vertical-align: middle; }
   animation-iteration-count: 1 !important;
   transition-duration: 0.001ms !important;
 }
+/* The animated sheen overlay would freeze as a static white streak — hide it. */
+.reduce-motion .card.affordable::after,
+.reduce-motion .node.affordable::after { display: none; }
