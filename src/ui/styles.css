@@ -151,11 +151,12 @@ svg { vertical-align: middle; }
   gap: 10px;
 }
 .brand-mark {
-  width: 26px;
-  height: 26px;
-  border-radius: 9px;
-  background: linear-gradient(135deg, var(--compute), var(--data));
-  box-shadow: 0 4px 12px -2px rgba(47, 123, 246, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  /* drop-shadow hugs the rack's silhouette (the PNG is transparent), unlike a
+     box-shadow which would draw a rectangle behind it. */
+  filter: drop-shadow(0 4px 10px rgba(47, 123, 246, 0.45));
 }
 .brand-text {
   display: flex;
