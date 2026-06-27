@@ -150,8 +150,11 @@ export function derive(state: GameState): Derived {
   }
 
   // Prestige: permanent global multiplier from Legacy Weights.
+  // Diminishing in weights (R4.1): worth exactly 1 at zero weights (first prestige
+  // untouched), and each later weight is worth a little less so the meta-loop
+  // doesn't collapse to sub-minute ships.
   const legacyMult = Big.ONE.add(
-    state.prestige.legacyWeights.mul(balance.prestige.multiplierPerPoint),
+    state.prestige.legacyWeights.pow(balance.prestige.multiplierExponent).mul(balance.prestige.multiplierPerPoint),
   );
   computeMult = computeMult.mul(legacyMult);
   dataMult = dataMult.mul(legacyMult);

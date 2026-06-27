@@ -24,8 +24,10 @@ An AI compute tycoon (idle/incremental + management) with a 2.5D data-center hal
 > **R5** depth (activate the dead `alignment` dial, contracts board). See `TASK.md` for live status.
 > Rendering: **Canvas 2D isometric** (parametric, no image assets). Hard rules still hold: 3 in-run
 > resources only (Legacy/Reputation are meta-currencies, not a 4th resource); engine pure/deterministic;
-> humor in writing not math; all new systems are data-in-`balance/` + pure folds + tests, and every
-> compounding meta-term is hard-gated so the tuned early/mid curve stays untouched (verified via `npm run sim`).
+> humor in writing not math; all new systems are data-in-`balance/` + pure folds + tests. The tuned
+> EARLY/MID curve invariant is **first prestige ≈ 12m15s** (every compounding term is 1.0 at run
+> start, so it's untouched); R4.1 deliberately retuned the post-first-ship META-loop (Gen2 ~2m11s)
+> to bound the Legacy snowball. Verify with `npm run sim` (baseline + the new `runLongHaul`).
 
 If a request would pull work forward from a later phase, STOP and flag it. Scope drift is this project's #1 documented risk. Protecting the phase boundary is part of your job.
 

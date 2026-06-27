@@ -806,6 +806,14 @@ export const balance = {
     exponent: 0.5,
     /** Each Legacy Weight grants this much permanent global production. */
     multiplierPerPoint: 0.05,
+    /**
+     * Diminishing exponent on the Legacy multiplier: legacyMult = 1 + perPoint ×
+     * weights^multiplierExponent. <1 means each extra weight is worth a little
+     * less, so prestige still feels like a jump but late generations don't
+     * collapse to sub-minute ships (R4.1). At 0 weights it's exactly 1 (first
+     * prestige unchanged); the meta-loop past the first ship is what this retunes.
+     */
+    multiplierExponent: 0.8,
 
     /**
      * GDD §4 — shipping is a player-flavored choice with minor different bonuses.
