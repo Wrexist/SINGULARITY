@@ -62,9 +62,18 @@ no dark patterns. Re-run `npm run sim` after any economy change.*
       product is worth ~nothing to sell, so the pump-a-free-draft→dump-for-cash loop is closed; genuine
       cash cows still retire fairly. Old saves' products default to mature (no returning-player penalty).
       +3 product tests; existing retire test matured. 279 tests; sim 12m15s.
-- [ ] **R4.3 · Re-couple the triangle** (P1) — late-game Compute/Data/Money sinks (reservoir cap /
-      data freshness decay / infra maintenance). Model in the R0.2 sim first. ⚠️ introduces a NEW
-      mechanic (changes feel) — wants an owner design call on which lever + how punishing.
+- [~] **R4.3 · Re-couple the triangle** — 🟡 *investigated with the instrument; needs an owner
+      design call before shipping.* Added a "Products sink %" metric to the long-haul (how much
+      produced Compute/Data the product business consumes). Findings (measured, not guessed):
+      • Products today sink only **6.4% of Compute, 0% of Data** — confirms F1/F4 decoupling.
+      • The audit's lever (raise version costs) **backfires**: higher prices → fewer affordable
+        pushes → *less* sink (6.4% → 4.1% → 1.9%).
+      • Pricing versions/releases in "seconds of current production" made them **unaffordable** (0%
+        sink) — because **auto-train pins spendable Compute near one run's cost**, so there's no
+        Compute bank to sink into products at all. *(Both pricing experiments reverted.)*
+      → Real re-coupling requires changing how Compute BANKS (the audit's "Compute Reservoir" — let
+        compute accumulate so it can be spent), which is a **core-loop change** (touches the
+        auto-train/computeFocus flow) that wants an owner design call + on-device feel. Not shipped.
 - [x] **R4.6 · Lift hardcoded balance constants into `balance/`** — moved the staff hire-discount
       floor (0.25), product-mod floors (serveCost/churn/heat), the post-raid heat ×0.4, and the min
       run duration (0.5s) out of logic into `balance.staff`/`balance.heat`/`balance.run` (CLAUDE.md

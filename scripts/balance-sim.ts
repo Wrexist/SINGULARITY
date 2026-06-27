@@ -368,6 +368,10 @@ function runLongHaul(maxGen = 20): void {
   let genStartMs = 0;
   let lastWeights = 0;
   let seenEra = currentEra(state);
+  // Re-coupling instrument (R4.3): how much of the Compute/Data you PRODUCE the
+  // product business actually consumes (launch + version pushes). If products are
+  // a real sink, these fractions are non-trivial; if Compute is vestigial, ~0.
+  let computeProduced = 0, dataProduced = 0, computeOnProducts = 0, dataOnProducts = 0;
   const eraArrivals: { era: number; atMs: number }[] = [];
   const gens: {
     gen: number; durationMs: number; weights: number; legacyMult: number; era: number;
@@ -382,7 +386,13 @@ function runLongHaul(maxGen = 20): void {
       if (started !== state) state = started;
     }
     state = autoBuy(state, true).state;
+    const dd = derive(state);
+    computeProduced += dd.computePerSec.toNumber() * (STEP_MS / 1000);
+    dataProduced += (dd.dataPerSec.toNumber() + dd.runDataYield.toNumber() / Math.max(0.5, dd.runDurationSec)) * (STEP_MS / 1000);
+    const cBefore = state.resources.compute.toNumber(), dBefore = state.resources.data.toNumber();
     state = autoBuyProducts(state);
+    computeOnProducts += Math.max(0, cBefore - state.resources.compute.toNumber());
+    dataOnProducts += Math.max(0, dBefore - state.resources.data.toNumber());
 
     const era = currentEra(state);
     if (era > seenEra) { eraArrivals.push({ era, atMs: t }); seenEra = era; }
@@ -436,6 +446,9 @@ function runLongHaul(maxGen = 20): void {
     console.log(`  data/compute ratio: ${first.ratioDC.toExponential(1)} -> ${last.ratioDC.toExponential(1)}  (rising = Data decoupling, R4.3)`);
     console.log(`  money/compute ratio: ${first.ratioMC.toExponential(1)} -> ${last.ratioMC.toExponential(1)}`);
   }
+  const cPct = computeProduced > 0 ? (computeOnProducts / computeProduced) * 100 : 0;
+  const dPct = dataProduced > 0 ? (dataOnProducts / dataProduced) * 100 : 0;
+  console.log(`  Products sink: ${cPct.toFixed(1)}% of Compute produced, ${dPct.toFixed(1)}% of Data produced  (R4.3: higher = better-coupled)`);
   console.log("");
 }
 
