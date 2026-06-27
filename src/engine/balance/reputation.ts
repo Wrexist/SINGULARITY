@@ -14,7 +14,8 @@ export type ReputationEffectKind =
   | "computeMult"
   | "dataMult"
   | "moneyMult"
-  | "payrollMult"; // multiplies payroll (value 0.15 → −15% wage bill)
+  | "payrollMult" // multiplies payroll (value 0.15 → −15% wage bill)
+  | "automate"; // unlocks an automation (value unused) — e.g. auto-buy research
 
 export interface ReputationPerk {
   id: string;
@@ -42,6 +43,7 @@ export const reputation = {
     // --- Tier 2: stronger, gated on a tier-1 pick ---
     { id: "rep_compute2", name: "Supercomputer Access", desc: "+25% Compute.", cost: 30, requires: "rep_compute1", effect: { kind: "computeMult", value: 0.25 } },
     { id: "rep_global1", name: "Industry Standard", desc: "+8% to all production.", cost: 36, requires: "rep_money1", effect: { kind: "globalMult", value: 0.08 } },
+    { id: "rep_autoresearch", name: "Research Director", desc: "Auto-buys affordable research for you — no more babysitting the tree.", cost: 24, effect: { kind: "automate", value: 0 } },
 
     // --- Tier 3: capstones ---
     { id: "rep_global2", name: "Household Name", desc: "+15% to all production.", cost: 90, requires: "rep_global1", effect: { kind: "globalMult", value: 0.15 } },

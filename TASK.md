@@ -97,6 +97,13 @@ no dark patterns. Re-run `npm run sim` after any economy change.*
       ↳ Follow-up: ✅ advisor now nudges "Claim the '<title>' contract — +N Rep" when one is ready
         (extends the recommendation system); tab badge still optional.
 
+- [x] **R5.3 · Research auto-buyer** — new **Research Director** Reputation perk (cost 24) auto-buys
+      the cheapest affordable, prereq-met research node. Pure `applyAutoResearch` folded into `tick`
+      (so it works offline too); gated behind the perk → off by default → **sim byte-identical
+      (12m15s)**. Does exactly what an engaged player does by hand, so it can't outrun the curve.
+      New `automate` reputation-effect kind; +5 tests. The genre-standard automation layer the audit
+      ranked as the top idle convenience.
+
 > Full R0–R8 backlog (R3 active-engagement, R6 replayability, R7 content waves, R8 platform)
 > lives in `POST_LAUNCH_ROADMAP.md`.
 

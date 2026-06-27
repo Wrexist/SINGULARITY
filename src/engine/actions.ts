@@ -11,6 +11,7 @@ import {
 } from "./balance/config";
 import { derive } from "./derive";
 import { alignmentHeatMult } from "./alignment";
+import { autoResearchEnabled } from "./reputation";
 import { isRackId, floorFull, evictableRackFor } from "./hall";
 import type { ActiveModifier, GameState } from "./types";
 
@@ -224,6 +225,27 @@ export function canBuyResearch(state: GameState, id: string): boolean {
     state.resources.compute.gte(def.cost.compute) &&
     state.resources.data.gte(def.cost.data)
   );
+}
+
+/**
+ * Auto-buy research (R5.3, gated behind the Research Director reputation perk).
+ * Buys the cheapest affordable, prerequisite-met node repeatedly until none is
+ * affordable. Pure; runs in tick() so it also works during offline catch-up. Does
+ * exactly what an engaged player would do by hand, so it can't outrun the curve —
+ * and it's off until the (deep-endgame) perk is owned, so the sim is unaffected.
+ */
+export function applyAutoResearch(state: GameState): GameState {
+  if (!autoResearchEnabled(state)) return state;
+  let s = state;
+  let guard = 0;
+  while (guard++ < 500) {
+    const node = balance.research
+      .filter((r) => canBuyResearch(s, r.id))
+      .sort((a, b) => a.cost.compute + a.cost.data - (b.cost.compute + b.cost.data))[0];
+    if (!node) break;
+    s = buyResearch(s, node.id);
+  }
+  return s;
 }
 
 export function buyResearch(state: GameState, id: string): GameState {

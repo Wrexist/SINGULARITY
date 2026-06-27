@@ -75,8 +75,16 @@ export function reputationMods(state: GameState): ReputationMods {
     else if (kind === "moneyMult") moneyMult *= 1 + value;
     else if (kind === "globalMult") { computeMult *= 1 + value; dataMult *= 1 + value; moneyMult *= 1 + value; }
     else if (kind === "payrollMult") payrollMult *= 1 - value;
+    // "automate" perks are unlock flags (read by autoResearchEnabled), not multipliers.
   }
   return { computeMult, dataMult, moneyMult, payrollMult };
+}
+
+/** True when the player owns the Research Director perk (auto-buys research). */
+export function autoResearchEnabled(state: GameState): boolean {
+  return R.perks.some(
+    (p) => p.effect.kind === "automate" && p.id === "rep_autoresearch" && state.reputation.perks.includes(p.id),
+  );
 }
 
 /** As Big multipliers (convenience for derive). */
