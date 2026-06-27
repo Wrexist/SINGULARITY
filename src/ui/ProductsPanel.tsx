@@ -92,7 +92,7 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
                     );
                   })}
                   <p className="market-warn">
-                    Launches v1 for {num(B.releaseCost.compute)} compute · {num(B.releaseCost.data)} data.
+                    Launches instantly — free. You earned this model by shipping.
                   </p>
                 </div>
               )}

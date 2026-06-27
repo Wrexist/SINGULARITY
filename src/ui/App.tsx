@@ -251,6 +251,11 @@ export function App() {
       const gained = game.prestige.legacyWeights.sub(prevWeights.current);
       setCelebration({ gained, total: game.prestige.legacyWeights });
       haptics.celebrate();
+      // The flagship you just shipped is waiting as a free-to-launch product —
+      // make sure the player knows (a ship that "gave nothing" was the #1 confusion).
+      if (game.products.drafts.length > 0) {
+        pushToast("Your shipped model is ready — commercialise it free in Products", "good");
+      }
       // An AGI ascension (a ship in the Post-Singularity era) gets the grander beat:
       // the ascend fanfare + a gold screen flash + a big central particle bloom.
       if (game.stats.ascensions > prevAscensions.current) {
@@ -436,7 +441,12 @@ export function App() {
         <Celebration
           weightsGained={celebration.gained}
           totalWeights={celebration.total}
-          onDone={() => setCelebration(null)}
+          onDone={() => {
+            setCelebration(null);
+            // Land the player on their reward: a freshly-shipped model waiting to
+            // be commercialised. Removes the "I shipped and got nothing" dead-end.
+            if (productsUnlocked(game) && game.products.drafts.length > 0) setTab("products");
+          }}
         />
       )}
       {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} />}

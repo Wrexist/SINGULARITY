@@ -451,15 +451,16 @@ export function canLaunchDraft(state: GameState, draftId: string, type: ProductT
   if (!typeUnlocked(state, type)) return false;
   if (state.products.active.length >= B.maxActive) return false;
   if (!state.products.drafts.some((d) => d.id === draftId)) return false;
-  return (
-    state.resources.compute.gte(B.releaseCost.compute) &&
-    state.resources.data.gte(B.releaseCost.data)
-  );
+  // Commercialising a SHIPPED model is free — it's the reward for shipping. (A
+  // ship resets the lab to zero, so charging the heavy release cost here left the
+  // player's flagship un-launchable until they re-ground it all back — it felt like
+  // shipping gave you nothing.) The portfolio slot cap is the real limiter.
+  return true;
 }
 
 /** Commercialise a shipped "raw model" draft into an active product: pick its type
- *  + name, pay the launch cost. The product starts at the DRAFT's quality (the
- *  strength of the model you shipped), not the current frontier. */
+ *  + name. Free — you already earned it by shipping. The product starts at the
+ *  DRAFT's quality (the strength of the model you shipped), not the frontier. */
 export function launchDraft(
   state: GameState,
   opts: { draftId: string; type: ProductTypeId; name: string; id: string },
@@ -485,11 +486,6 @@ export function launchDraft(
   };
   return {
     ...state,
-    resources: {
-      ...state.resources,
-      compute: state.resources.compute.sub(B.releaseCost.compute),
-      data: state.resources.data.sub(B.releaseCost.data),
-    },
     products: {
       ...state.products,
       active: [...state.products.active, product],

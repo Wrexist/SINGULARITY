@@ -271,15 +271,18 @@ describe("products — drafts from shipping", () => {
     expect(s.products.drafts.length).toBe(B.maxDrafts);
   });
 
-  it("launches a draft into a product at the DRAFT's quality, paying the launch cost", () => {
+  it("launches a draft into a product at the DRAFT's quality, for free", () => {
     const s = shipped();
     s.products = { ...s.products, drafts: [{ id: "draft-1", quality: 12, ships: 1 }] };
+    // Free even from a zeroed-out post-ship lab — commercialising a shipped model
+    // must never be gated behind a re-grind.
+    s.resources = { ...s.resources, compute: Big.ZERO, data: Big.ZERO };
     expect(canLaunchDraft(s, "draft-1", "general")).toBe(true);
     const next = launchDraft(s, { draftId: "draft-1", type: "general", name: "Nimbus", id: "prod-1" });
     expect(next.products.active).toHaveLength(1);
     expect(next.products.active[0]!.quality).toBe(12); // not the frontier — the model you shipped
     expect(next.products.drafts).toHaveLength(0);
-    expect(next.resources.compute.lt(s.resources.compute)).toBe(true);
+    expect(next.resources.compute.eq(s.resources.compute)).toBe(true); // no cost charged
   });
 
   it("won't launch a locked type or past the slot cap", () => {
