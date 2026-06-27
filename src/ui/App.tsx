@@ -187,15 +187,31 @@ export function App() {
     if (notice.tone === "good") {
       if (notice.kind === "achievement") {
         haptics.success(); sound.achievement();
-        // Burst from the topbar trophy — "it went into your collection".
-        const el = document.querySelector('[aria-label="Achievements"]');
-        if (el) { const r = el.getBoundingClientRect(); fxBurst(r.left + r.width / 2, r.top + r.height / 2, { count: 22, power: 1.1, colors: ["#ff9f0a", "#ffd60a", "#9b51e0"] }); }
+        // Burst from the topbar trophy — "it went into your collection". If the
+        // trophy is scrolled off-screen, bloom from the screen centre so the
+        // celebration is never invisible.
+        if (!reducedMotion) {
+          const el = document.querySelector('[aria-label="Achievements"]');
+          const r = el?.getBoundingClientRect();
+          const onScreen = r && r.top >= 0 && r.bottom <= window.innerHeight && r.left >= 0 && r.right <= window.innerWidth;
+          const cx = onScreen ? r!.left + r!.width / 2 : window.innerWidth / 2;
+          const cy = onScreen ? r!.top + r!.height / 2 : window.innerHeight * 0.4;
+          fxBurst(cx, cy, { count: 22, power: 1.1, colors: ["#ff9f0a", "#ffd60a", "#9b51e0"] });
+        }
       }
       else {
         haptics.celebrate(); sound.success();
         // A milestone is a chase-ladder payoff — bloom gold from the screen centre.
         if (notice.kind === "milestone" && !reducedMotion) {
           fxBurst(window.innerWidth / 2, window.innerHeight * 0.4, { count: 30, power: 1.6, colors: ["#ff9f0a", "#ffd60a", "#16b364"] });
+        }
+        // A specialist levelling up gets a small gold star-pop near the Team tab.
+        if (notice.kind === "levelup" && !reducedMotion) {
+          const team = Array.from(document.querySelectorAll(".botnav-lbl")).find((n) => n.textContent === "Team")?.parentElement;
+          const r = team?.getBoundingClientRect();
+          const cx = r ? r.left + r.width / 2 : window.innerWidth / 2;
+          const cy = r ? r.top + r.height / 2 : window.innerHeight * 0.5;
+          fxBurst(cx, cy, { count: 18, power: 1.1, colors: ["#ffd60a", "#ff9f0a", "#16b364"] });
         }
       }
     }

@@ -655,9 +655,13 @@ svg { vertical-align: middle; }
   cursor: pointer;
   position: relative;
   overflow: hidden;
+  /* `backwards` (not `forwards`) so the filled transform doesn't override :hover
+     after the entrance finishes — items rise in once, then hover/press normally. */
+  animation: item-in 0.34s var(--ease-out) backwards;
   transition: transform 0.22s var(--ease-out), box-shadow 0.22s var(--ease-out),
     border-color 0.2s, background 0.2s;
 }
+@keyframes item-in { from { opacity: 0; transform: translateY(9px) scale(0.99); } }
 .card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 .card:active { transform: scale(0.97); }
 /* Affordable items breathe + catch a slow sheen, so the eye is always drawn to
@@ -665,7 +669,7 @@ svg { vertical-align: middle; }
 .card.affordable {
   border-color: color-mix(in srgb, var(--money) 45%, transparent);
   background: linear-gradient(180deg, rgba(22, 179, 100, 0.07), var(--glass-strong));
-  animation: afford-breathe 2.6s ease-in-out infinite;
+  animation: item-in 0.34s var(--ease-out) backwards, afford-breathe 2.6s ease-in-out 0.34s infinite;
 }
 .card.affordable::after, .node.affordable::after {
   content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
@@ -727,7 +731,7 @@ svg { vertical-align: middle; }
 
 /* Floor-capacity readout above the hardware list (rack purchases are gated by it). */
 .floor-meter {
-  font-size: 12px;
+  font-size: clamp(11px, 3.1vw, 12px); /* scale down on sub-360px phones */
   font-weight: 600;
   color: var(--ink-2);
   margin: -6px 0 12px;
@@ -861,6 +865,7 @@ svg { vertical-align: middle; }
   display: flex;
   flex-direction: column;
   gap: 4px;
+  animation: item-in 0.34s var(--ease-out) backwards;
   transition: transform 0.22s var(--ease-out), box-shadow 0.22s var(--ease-out);
   position: relative;
   overflow: hidden;
@@ -883,7 +888,7 @@ svg { vertical-align: middle; }
 .node.affordable {
   border-color: color-mix(in srgb, var(--data) 45%, transparent);
   background: linear-gradient(180deg, rgba(155, 81, 224, 0.09), var(--glass-strong));
-  animation: node-breathe 2.6s ease-in-out infinite;
+  animation: item-in 0.34s var(--ease-out) backwards, node-breathe 2.6s ease-in-out 0.34s infinite;
 }
 @keyframes node-breathe {
   0%, 100% { box-shadow: 0 1px 3px rgba(16, 24, 40, 0.04); }
@@ -1627,7 +1632,7 @@ svg { vertical-align: middle; }
   50% { box-shadow: 0 0 0 4px rgba(124, 92, 255, 0.14); }
 }
 .daily-ic { display: inline-flex; align-items: center; color: #7c5cff; }
-.daily-text { flex: 1; font-size: 13px; font-weight: 650; color: var(--ink); }
+.daily-text { flex: 1; min-width: 0; font-size: clamp(12px, 3.2vw, 13px); font-weight: 650; color: var(--ink); overflow-wrap: anywhere; }
 .daily-text b { font-weight: 800; }
 .daily-go { font-size: 12.5px; font-weight: 800; color: #fff; background: #7c5cff; border-radius: 999px; padding: 4px 12px; white-space: nowrap; }
 
@@ -1641,6 +1646,7 @@ svg { vertical-align: middle; }
   flex-direction: column;
   gap: 11px;
   box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05);
+  animation: item-in 0.34s var(--ease-out) backwards;
   transition: transform 0.22s var(--ease-out), box-shadow 0.22s var(--ease-out);
 }
 .prod-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
@@ -2173,13 +2179,30 @@ svg { vertical-align: middle; }
 .emp-proj.dragover { border-color: #7c5cff; border-style: solid; background: rgba(124, 92, 255, 0.05); transform: translateY(-1px); }
 
 /* Available-list role filter + drag grip */
-.emp-filter { font-size: 12px; font-weight: 700; color: var(--ink-2); background: #fff; border: 1px solid var(--glass-hairline); border-radius: 999px; padding: 5px 10px; cursor: pointer; }
+.emp-filter {
+  font-size: 12px; font-weight: 700; color: var(--ink-2); cursor: pointer;
+  background: var(--glass-strong); border: 1px solid var(--glass-hairline); border-radius: 999px;
+  padding: 5px 26px 5px 12px;
+  /* Drop the native chrome and draw our own caret so it matches the glass UI. */
+  -webkit-appearance: none; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b909c' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 9px center;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.emp-filter:focus { outline: none; border-color: color-mix(in srgb, var(--data) 50%, transparent); box-shadow: 0 0 0 3px rgba(124, 92, 255, 0.12); }
 .emp-avail-right { display: flex; align-items: center; gap: 8px; }
 .emp-grip { font-size: 16px; color: var(--ink-3); cursor: grab; touch-action: none; padding: 0 2px; user-select: none; line-height: 1; }
 .emp-grip:active { cursor: grabbing; }
 .emp-drag-ghost {
-  position: fixed; z-index: 200; transform: translate(-50%, -50%); pointer-events: none;
-  border-radius: 50%; box-shadow: var(--shadow-lg); opacity: 0.92;
+  position: fixed; z-index: 200; pointer-events: none;
+  /* Picked-up feel: bigger, tilted, with a deep shadow + a soft halo. */
+  transform: translate(-50%, -50%) scale(1.18) rotate(-6deg);
+  border-radius: 50%;
+  box-shadow: 0 16px 30px -10px rgba(16, 24, 40, 0.5), 0 0 0 4px rgba(124, 92, 255, 0.18);
+  animation: drag-grab 0.16s var(--ease-out);
+}
+@keyframes drag-grab {
+  from { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
 }
 
 /* ---------- Timed version research (in-flight upgrade) ---------- */
