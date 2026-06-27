@@ -32,11 +32,11 @@ export function Onboarding({ onDone }: Props) {
           ))}
         </div>
         <p className="onboard-foot">
-          Climb the research tree, then <b>Ship the Model</b> to reset with permanent boosts.
-          New panels reveal themselves as you grow — no manual required.
+          <b>First up:</b> start a training run in the Lab, then claim it for Data &amp; $.
+          The 💡 hint at the top always tells you what to do next — no manual required.
         </p>
         <button className="btn btn-primary" onClick={onDone}>
-          Start the grind
+          Open the Lab →
         </button>
       </div>
     </div>

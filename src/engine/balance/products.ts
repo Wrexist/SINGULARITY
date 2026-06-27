@@ -7,7 +7,8 @@
  */
 
 export type ProductTypeId =
-  | "general" | "code" | "reasoning" | "multimodal" | "small" | "domain";
+  | "general" | "code" | "reasoning" | "multimodal" | "small" | "domain"
+  | "companion" | "science";
 
 export type SegmentSkew = "consumer" | "prosumer" | "enterprise" | "api";
 
@@ -216,6 +217,20 @@ export const products = {
       baseConversion: 0.26, computePerUser: 0.096, virality: 0.002, hype: 0.4, heatPerSec: 0.02,
       unlockAtShips: 4,
     },
+    {
+      id: "companion", name: "AI Companion",
+      blurb: "Always-on social/roleplay app. Huge consumer reach, spreads virally, medium revenue/user — and a little Heat.",
+      segment: "consumer", tam: 4.0e6, baseArpu: 0.02, baseChurn: 0.0008,
+      baseConversion: 0.04, computePerUser: 0.008, virality: 0.035, hype: 1.3, heatPerSec: 0.005,
+      unlockAtShips: 2,
+    },
+    {
+      id: "science", name: "Science Co-Pilot",
+      blurb: "Drug discovery & research partner. Premium price, ultra-sticky, heavy to serve — and raises Heat.",
+      segment: "enterprise", tam: 3.0e5, baseArpu: 0.4, baseChurn: 0.00006,
+      baseConversion: 0.22, computePerUser: 0.08, virality: 0.002, hype: 0.5, heatPerSec: 0.015,
+      unlockAtShips: 5,
+    },
   ] satisfies ProductTypeDef[],
 };
 
@@ -246,6 +261,10 @@ export const productFeatures: FeatureDef[] = [
   { id: "trust", name: "Trust & Safety", desc: "Moderation & compliance → much less Regulatory Heat.", cost: 180_000, lane: "heat", factor: 0.5 },
   { id: "api", name: "Public API", desc: "Developers build on you → a bigger addressable market.", cost: 300_000, lane: "tam", factor: 1.4 },
   { id: "referral", name: "Referral Program", desc: "Users invite users → a standing acquisition boost.", cost: 260_000, lane: "acq", factor: 1.35 },
+  { id: "finetune", name: "Fine-Tuning Studio", desc: "Customers tune their own models → they pay much more.", cost: 280_000, lane: "arpu", factor: 1.35 },
+  { id: "ondevice", name: "On-Device Mode", desc: "Runs locally → dramatically cheaper to serve.", cost: 240_000, lane: "serveCost", factor: 0.7 },
+  { id: "community", name: "Community Forum", desc: "Users answer each other → fewer cancellations.", cost: 90_000, lane: "churn", factor: 0.82 },
+  { id: "localization", name: "Localization (50 langs)", desc: "Speaks every market → faster acquisition worldwide.", cost: 160_000, lane: "acq", factor: 1.3 },
 ];
 
 /** A metric a milestone is measured against (evaluated in the engine). */

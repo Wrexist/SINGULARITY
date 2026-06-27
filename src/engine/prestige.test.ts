@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { canPrestige, legacyWeightsGain, prestige } from "./prestige";
+import { canPrestige, legacyWeightsGain, legacyWeightsForMode, prestige } from "./prestige";
 import { applyOffline } from "./offline";
 import { createInitialState } from "./state";
 import { derive } from "./derive";
@@ -63,6 +63,54 @@ describe("prestige", () => {
   it("is a no-op when not eligible", () => {
     const s = createInitialState();
     expect(prestige(s)).toBe(s);
+  });
+
+  describe("ship modes (GDD §4 flavored choice)", () => {
+    const eligible = () => {
+      const s = createInitialState();
+      s.research = [balance.prestige.capabilityResearch];
+      s.lifetimeMoney = Big.of(1e8); // base gain = 100
+      s.products.frontier = 12;
+      return s;
+    };
+
+    it("defaults to deploy = the historical behavior (keeps a product draft, no cash)", () => {
+      const s = eligible();
+      const def = prestige(s);
+      const deploy = prestige(s, "deploy");
+      expect(def.prestige.legacyWeights.eq(deploy.prestige.legacyWeights)).toBe(true);
+      expect(def.products.drafts.length).toBe(1); // flagship banked as a draft
+      expect(def.resources.money.eq(0)).toBe(true);
+      expect(def.prestige.legacyWeights.eq(legacyWeightsGain(s))).toBe(true);
+    });
+
+    it("open-source banks more Legacy but leaves no product draft", () => {
+      const s = eligible();
+      const deploy = prestige(s, "deploy");
+      const os = prestige(s, "open_source");
+      expect(os.prestige.legacyWeights.gt(deploy.prestige.legacyWeights)).toBe(true);
+      expect(os.products.drafts.length).toBe(0);
+      expect(legacyWeightsForMode(s, "open_source").gt(legacyWeightsForMode(s, "deploy"))).toBe(true);
+    });
+
+    it("hard ship banks more Legacy but leaps the frontier (products start behind)", () => {
+      const s = eligible();
+      s.prestige.ships = 3; // hard mode is unlocked
+      const deploy = prestige(s, "deploy");
+      const hard = prestige(s, "hard");
+      expect(hard.prestige.legacyWeights.gt(deploy.prestige.legacyWeights)).toBe(true);
+      expect(hard.products.frontier).toBeGreaterThan(deploy.products.frontier);
+      expect(hard.products.drafts.length).toBe(1); // still keeps the draft
+    });
+
+    it("sell banks less Legacy, hands over cash, and leaves no draft", () => {
+      const s = eligible();
+      const deploy = prestige(s, "deploy");
+      const sell = prestige(s, "sell");
+      expect(sell.prestige.legacyWeights.lt(deploy.prestige.legacyWeights)).toBe(true);
+      expect(sell.resources.money.gt(0)).toBe(true);
+      expect(sell.products.drafts.length).toBe(0);
+    });
   });
 });
 

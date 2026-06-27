@@ -17,6 +17,7 @@ import {
   maybeHeatEvent,
   maybeWorldEvent,
   applyWorldEventChoice,
+  grantDailyBoost,
   type MarketOutcome,
   type WorldEventResult,
 } from "../engine/actions";
@@ -43,7 +44,7 @@ import {
 import { productMilestones as PRODUCT_MILESTONES, type ProductTypeId } from "../engine/balance/products";
 import { achievements as ACHIEVEMENT_DEFS } from "../engine/balance/achievements";
 import { buyReputationPerk } from "../engine/reputation";
-import { prestige } from "../engine/prestige";
+import { prestige, type ShipMode } from "../engine/prestige";
 import { applyOffline, type OfflineSummary } from "../engine/offline";
 import { serialize, deserialize } from "../engine/save";
 import { isPremium } from "./premium";
@@ -71,6 +72,10 @@ export interface Candidate {
   name: string;
   roleId: string;
   trait: string | null;
+  /** Rare "legendary" recruit — starts already trained with an elite trait. */
+  rare?: boolean;
+  /** Starting seniority level (1 for normal hires; higher for rares). */
+  level?: number;
 }
 
 interface GameStore {
@@ -134,8 +139,14 @@ interface GameStore {
   doRetireProduct: (id: string) => void;
   doResearch: (id: string) => void;
   doBuyData: (id: string) => MarketOutcome | null;
-  doPrestige: () => void;
+  doPrestige: (mode?: ShipMode) => void;
+  /** Claim the once-a-day output boost (temporary modifiers). */
+  doClaimDaily: () => void;
   hardReset: () => void;
+  /** A portable backup string of the current save (base64). */
+  exportSave: () => string;
+  /** Validate + persist a backup string (base64 or raw JSON). Returns ok. */
+  importSave: (blob: string) => boolean;
 }
 
 function now(): number {
@@ -173,11 +184,15 @@ function randomName(): string {
 function randomTrait(): string | null {
   return Math.random() < 0.25 ? null : pick(balance.staff.traits).id;
 }
-function mintEmployee(roleId: string, name: string, trait: string | null): Employee {
+function mintEmployee(roleId: string, name: string, trait: string | null, level = 1): Employee {
   empKey += 1;
-  return { id: `emp-${empKey}`, name, roleId, level: 1, trait, assignedProductId: null, training: null };
+  return { id: `emp-${empKey}`, name, roleId, level, trait, assignedProductId: null, training: null };
 }
 function rollCandidate(): Candidate {
+  const r = balance.staff.rare;
+  if (Math.random() < r.chance) {
+    return { name: randomName(), roleId: pick(balance.staff.roles).id, trait: pick(r.traits), rare: true, level: r.level };
+  }
   return { name: randomName(), roleId: pick(balance.staff.roles).id, trait: randomTrait() };
 }
 
@@ -389,7 +404,7 @@ export const useGame = create<GameStore>((set, get) => ({
     if (g.resources.money.lt(cost)) return false;
     set((s) => {
       const paid = { ...s.game, resources: { ...s.game.resources, money: s.game.resources.money.sub(cost) } };
-      const game = addEmployee(paid, mintEmployee(c.roleId, c.name, c.trait));
+      const game = addEmployee(paid, mintEmployee(c.roleId, c.name, c.trait, c.level ?? 1));
       const candidates = (s.candidates ?? []).filter((_, i) => i !== index);
       return { game, candidates: candidates.length ? candidates : null };
     });
@@ -436,7 +451,8 @@ export const useGame = create<GameStore>((set, get) => ({
     if (outcome) set({ game: next });
     return outcome;
   },
-  doPrestige: () => set((s) => ({ game: prestige(s.game) })),
+  doPrestige: (mode: ShipMode = "deploy") => set((s) => ({ game: prestige(s.game, mode) })),
+  doClaimDaily: () => set((s) => ({ game: grantDailyBoost(s.game) })),
 
   hardReset: () => {
     localStorage.removeItem(SAVE_KEY);
@@ -444,6 +460,36 @@ export const useGame = create<GameStore>((set, get) => ({
     // Clear transient UI state too, or a stale world-event card / claim burst
     // could survive into the fresh run.
     set({ game: createInitialState(), offline: null, event: null, notice: null, worldEvent: null, claimBurst: 0, candidates: null });
+  },
+
+  // ---- Save backup (local-only; the player owns their progress) ----
+  exportSave: () => {
+    const json = serialize(get().game);
+    try { return btoa(unescape(encodeURIComponent(json))); } catch { return json; }
+  },
+  importSave: (blob: string) => {
+    const raw = blob.trim();
+    if (!raw) return false;
+    // Accept either a base64 backup (preferred) or a raw JSON save.
+    const candidates: string[] = [];
+    try { candidates.push(decodeURIComponent(escape(atob(raw)))); } catch { /* not base64 */ }
+    candidates.push(raw);
+    for (const json of candidates) {
+      try {
+        let game = deserialize(json); // throws on bad shape; migrates + sanitizes
+        // Mirror init()'s post-load normalization so an imported save matches the
+        // runtime shape (legacy role-counts → people; ID counters seeded so new
+        // products/hires don't collide with existing prod-N / emp-N ids).
+        game = migrateStaffCounts(game);
+        seedProductKey(game);
+        seedEmpKey(game);
+        set({ game, offline: null, event: null, notice: null, worldEvent: null, claimBurst: 0, candidates: null });
+        localStorage.setItem(SAVE_KEY, serialize(game));
+        localStorage.setItem(TIME_KEY, String(now()));
+        return true;
+      } catch { /* try the next candidate */ }
+    }
+    return false;
   },
 }));
 

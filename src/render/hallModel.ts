@@ -46,7 +46,15 @@ export interface HallModel {
   /** Interior partition lines (tile coords) that split the floor into rooms, or null. */
   splitGx: number | null;
   splitGy: number | null;
+  /** Wall-mounted cooling units PER WALL — grows as you buy power/cooling gear so
+   *  the manifestation rule holds (GDD §5: "upgrade cooling, fans spin"). */
+  coolingUnits: number;
 }
+
+/** Power/cooling infrastructure ids (drive the visible wall units). Exported so
+ *  HallCanvas's cache signature derives from the same source and never goes
+ *  stale if a new powerCapacity upgrade is added. */
+export const POWER_IDS = balance.upgrades.filter((u) => u.effect.kind === "powerCapacity").map((u) => u.id);
 
 // Only the two OPEN sides are expandable — the back-left and back-right edges
 // have walls (see drawRoom). So no north/west expansion.
@@ -74,6 +82,12 @@ function sideMarkers(game: GameState): SideMarker[] {
 export function buildHallModel(game: GameState): HallModel {
   const { cols, rows, gxMin, gyMin } = hallDims(game);
   const capacity = hallCapacity(game);
+  const era = currentEra(game);
+
+  // Cooling/power gear manifests as wall units (per wall), capped so a huge
+  // facility still reads cleanly (parametric: many → one upgraded visual).
+  const powerLevels = POWER_IDS.reduce((s, id) => s + (game.upgrades[id] ?? 0), 0);
+  const coolingUnits = Math.min(3, (era >= 2 ? 1 : 0) + powerLevels);
 
   const owned = RACK_IDS.map((id) => game.upgrades[id] ?? 0);
   const totalOwned = owned[0]! + owned[1]! + owned[2]!;
@@ -117,8 +131,9 @@ export function buildHallModel(game: GameState): HallModel {
     active: game.run.active,
     readyToClaim: game.run.readyToClaim,
     progress: game.run.progress,
-    era: currentEra(game),
+    era,
     total: racks.length,
+    coolingUnits,
     ...hallRoomSplit(game),
   };
 }

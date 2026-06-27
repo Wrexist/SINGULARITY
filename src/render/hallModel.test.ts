@@ -82,6 +82,17 @@ describe("hall view-model", () => {
     expect(buildHallModel(shipped).era).toBe(2);
   });
 
+  it("manifests power/cooling gear as wall units (capped)", () => {
+    const bare = createInitialState();
+    expect(buildHallModel(bare).coolingUnits).toBe(0); // era 0, no power gear
+    const cooled = createInitialState();
+    cooled.upgrades = { psu_bay: 1, cooling_loop: 1 };
+    expect(buildHallModel(cooled).coolingUnits).toBe(2); // one unit per purchase
+    const overkill = createInitialState();
+    overkill.upgrades = { psu_bay: 5, cooling_loop: 5, substation: 5 };
+    expect(buildHallModel(overkill).coolingUnits).toBe(3); // capped for a clean read
+  });
+
   it("passes the run state through for the work pulse", () => {
     const s = createInitialState();
     s.run = { active: true, progress: 0.5, readyToClaim: false };

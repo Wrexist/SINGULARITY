@@ -14,9 +14,23 @@ function shipped() {
 }
 
 describe("advisor", () => {
-  it("stays silent before products unlock", () => {
-    expect(advisorItems(createInitialState())).toHaveLength(0);
-    expect(nextAction(createInitialState())).toBeNull();
+  it("guides a brand-new player to start their first training run", () => {
+    const top = nextAction(createInitialState());
+    expect(top?.tab).toBe("lab");
+    expect(top?.text.toLowerCase()).toContain("training run");
+  });
+
+  it("nudges to claim a finished run during the first session", () => {
+    const s = createInitialState();
+    s.run = { active: false, progress: 1, readyToClaim: true };
+    const top = nextAction(s);
+    expect(top?.text.toLowerCase()).toContain("claim");
+  });
+
+  it("drops the first-session hand-holding once you've shipped", () => {
+    const s = createInitialState();
+    s.prestige.ships = 1; // returning player — no more "start a run" nagging
+    expect(advisorItems(s).some((i) => i.text.includes("training run"))).toBe(false);
   });
 
   it("nudges to ship when products are unlocked but the portfolio is empty", () => {

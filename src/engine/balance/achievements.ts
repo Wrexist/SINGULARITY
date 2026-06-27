@@ -7,6 +7,11 @@
  *
  * Humour lives here (writing), never in the math — per the design spine.
  */
+import { balance } from "./config";
+
+/** Full research-tree size — the "own everything" capstone tracks this so it can
+ *  never drift out of sync when nodes are added/removed. */
+const RESEARCH_TREE_SIZE = balance.research.length;
 
 export type AchMetric =
   | "peakCompute"
@@ -80,16 +85,20 @@ export const achievements: AchievementDef[] = [
   { id: "ship_1", label: "Ship It", desc: "Ship the Model once", cat: "legacy", metric: "totalShips", threshold: 1 },
   { id: "ship_5", label: "Iteration", desc: "Ship the Model 5 times", cat: "legacy", metric: "totalShips", threshold: 5 },
   { id: "ship_25", label: "Relentless", desc: "Ship the Model 25 times", cat: "legacy", metric: "totalShips", threshold: 25 },
+  { id: "ship_50", label: "Veteran", desc: "Ship the Model 50 times", cat: "legacy", metric: "totalShips", threshold: 50 },
   { id: "ship_100", label: "Centurion", desc: "Ship the Model 100 times", cat: "legacy", metric: "totalShips", threshold: 100 },
   { id: "legacy_1k", label: "Heavy Weights", desc: "Bank 1K Legacy Weights", cat: "legacy", metric: "totalLegacy", threshold: 1_000 },
   { id: "legacy_1m", label: "Legend", desc: "Bank 1M Legacy Weights", cat: "legacy", metric: "totalLegacy", threshold: 1_000_000 },
+  { id: "legacy_1b", label: "Titan", desc: "Bank 1B Legacy Weights", cat: "legacy", metric: "totalLegacy", threshold: 1_000_000_000 },
   { id: "era_3", label: "Frontier Lab", desc: "Reach the Frontier Lab era", cat: "legacy", metric: "eraReached", threshold: 3 },
   { id: "era_4", label: "Hyperscaler", desc: "Reach the Hyperscaler era", cat: "legacy", metric: "eraReached", threshold: 4 },
   { id: "era_5", label: "Singularity", desc: "Reach the Post-Singularity era — you built AGI", cat: "legacy", metric: "eraReached", threshold: 5 },
 
   // ---- Meta ----
   { id: "research_15", label: "Well Read", desc: "Own 15 research nodes in one run", cat: "meta", metric: "peakResearch", threshold: 15 },
-  { id: "research_30", label: "Tech Tree Tourist", desc: "Own 30 research nodes in one run", cat: "meta", metric: "peakResearch", threshold: 30 },
+  // Capstone = the full tree, derived so it can't drift (was an unreachable
+  // hardcoded 30, then a brittle 17) — a true "own everything" badge.
+  { id: "research_30", label: "Completionist", desc: "Own every research node in a single run", cat: "meta", metric: "peakResearch", threshold: RESEARCH_TREE_SIZE },
   { id: "events_25", label: "Survivor", desc: "Resolve 25 world events", cat: "meta", metric: "worldEventsResolved", threshold: 25 },
   { id: "play_1h", label: "Hooked", desc: "Play for 1 hour", cat: "meta", metric: "playtimeSec", threshold: 3_600 },
   { id: "play_10h", label: "Dedicated", desc: "Play for 10 hours", cat: "meta", metric: "playtimeSec", threshold: 36_000 },

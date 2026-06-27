@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { canPrestige, legacyWeightsGain, ascensionMultiplier } from "../engine/prestige";
+import { canPrestige, legacyWeightsGain, legacyWeightsForMode, ascensionMultiplier, type ShipMode } from "../engine/prestige";
 import { currentEra } from "../engine/eras";
 import { reputationAvailable } from "../engine/reputation";
 import { balance } from "../engine/balance/config";
@@ -10,7 +10,7 @@ import { ReputationModal } from "./ReputationModal";
 
 interface Props {
   game: GameState;
-  onPrestige: () => void;
+  onPrestige: (mode: ShipMode) => void;
   onBuyReputationPerk: (id: string) => void;
 }
 
@@ -80,22 +80,36 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk }: Props) 
 
       {!confirming ? (
         <button className={`btn btn-ship${willAscend ? " btn-ascend" : ""}`} disabled={!ready} onClick={() => setConfirming(true)}>
-          {!ready ? "Locked — deploy a model first" : willAscend ? `✦ Ascend — gain ${fmt(gain)} weights` : `Ship — gain ${fmt(gain)} weights`}
+          {!ready ? "Locked — deploy a model first" : willAscend ? `✦ Ascend — choose how to ship` : `Ship — choose how`}
         </button>
       ) : (
-        <div className="confirm">
-          <p>
-            Reset Compute, Data, $, racks and research. <b>Keep</b> {fmt(gain)} new Legacy
-            Weights (total {fmt(have.add(gain))}). Sure?
-          </p>
-          <div className="confirm-row">
-            <button className="btn btn-ship" onClick={() => { onPrestige(); setConfirming(false); }}>
-              Ship it 🚀
-            </button>
-            <button className="btn btn-ghost" onClick={() => setConfirming(false)}>
-              Cancel
-            </button>
+        <div className="ship-choose">
+          <div className="ship-choose-head">
+            <span>How do you ship it?</span>
+            <button className="link-btn" onClick={() => setConfirming(false)}>cancel</button>
           </div>
+          <p className="ship-choose-tip">Resets Compute, Data, $, racks and research. Your team, products, achievements and Reputation stay.</p>
+          {Object.values(balance.prestige.shipModes).filter((m) => game.prestige.ships >= m.unlockShips).map((m) => {
+            const banked = legacyWeightsForMode(game, m.id as ShipMode);
+            const kickstart = m.moneyKickstartPerShip * (game.prestige.ships + 1);
+            return (
+              <button key={m.id} className="ship-mode" onClick={() => { onPrestige(m.id as ShipMode); setConfirming(false); }}>
+                <span className="ship-mode-ic">{m.glyph}</span>
+                <div className="ship-mode-text">
+                  <div className="ship-mode-top">
+                    <span className="ship-mode-label">{m.label}</span>
+                    <span className="ship-mode-gain">+{fmt(banked)} weights</span>
+                  </div>
+                  <span className="ship-mode-blurb">{m.blurb}</span>
+                  <div className="ship-mode-tags">
+                    {m.keepsDraft && <span className="ship-tag good">+ product draft</span>}
+                    {kickstart > 0 && <span className="ship-tag good">+ ${kickstart} cash</span>}
+                    {!m.keepsDraft && <span className="ship-tag muted">no draft</span>}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
         </div>
       )}
 

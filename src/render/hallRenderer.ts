@@ -135,7 +135,7 @@ export function drawHallStatic(ctx: CanvasRenderingContext2D, model: HallModel, 
 
   const L = computeLayout(model.cols, model.rows, model.gxMin, model.gyMin, W, H);
   // Fans are frozen in the cached layer (a tiny detail); the room itself is static.
-  drawRoom(ctx, L, model.era, H, 0, true);
+  drawRoom(ctx, L, model.era, H, 0, true, model.coolingUnits);
   drawFloor(ctx, L, model.era);
   drawPartitions(ctx, L, model);
 }
@@ -278,7 +278,7 @@ function fmtShort(n: number): string {
   return `$${Math.round(n)}`;
 }
 
-function drawRoom(ctx: CanvasRenderingContext2D, L: Layout, era: number, H: number, t: number, reducedMotion: boolean): void {
+function drawRoom(ctx: CanvasRenderingContext2D, L: Layout, era: number, H: number, t: number, reducedMotion: boolean, units: number): void {
   const { iso, gxMin, gyMin, gxMax, gyMax } = L;
   const a = iso(gxMin, gyMin), b = iso(gxMax, gyMin), d = iso(gxMin, gyMax);
   const base = eraFloor(era);
@@ -302,14 +302,15 @@ function drawRoom(ctx: CanvasRenderingContext2D, L: Layout, era: number, H: numb
   poly(ctx, [ga, gb, { x: gb.x, y: gb.y + wallH * 0.5 }, { x: ga.x, y: ga.y + wallH * 0.5 }], bloom);
   poly(ctx, [ga, gd, { x: gd.x, y: gd.y + wallH * 0.5 }, { x: ga.x, y: ga.y + wallH * 0.5 }], bloom);
 
-  const units = era >= 2 ? 2 : era >= 1 ? 1 : 0;
   const wallPt = (p0: Pt, p1: Pt, u: number, v: number): Pt => {
     const bp = lerp(p0, p1, u);
     return { x: bp.x, y: bp.y - v * wallH };
   };
   for (const [p0, p1] of [[a, b] as const, [a, d] as const]) {
     for (let k = 0; k < units; k++) {
-      const u = units === 1 ? 0.5 : 0.32 + k * 0.36;
+      // Evenly space within the open (0,1) interval so the last unit never runs
+      // off the wall edge (3 units → 0.25 / 0.5 / 0.75).
+      const u = (k + 1) / (units + 1);
       drawCoolingUnit(ctx, wallPt(p0, p1, u - 0.06, 0.66), wallPt(p0, p1, u + 0.06, 0.66), wallH * 0.3, t, reducedMotion);
     }
   }

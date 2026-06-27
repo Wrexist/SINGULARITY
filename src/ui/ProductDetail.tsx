@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Portal } from "./Portal";
 import type { GameState } from "../engine/types";
 import { products as B, productFeatures, type FeatureLane, type ProductTypeId } from "../engine/balance/products";
 import {
@@ -17,6 +18,7 @@ const LANE_LABEL: Record<FeatureLane, string> = {
 /** Glyph shown in the header app-icon, per product type. Shared with the list. */
 export const TYPE_GLYPH: Record<ProductTypeId, string> = {
   general: "💬", code: "⌘", reasoning: "🧠", multimodal: "🎨", small: "⚡", domain: "⚖️",
+  companion: "💞", science: "🔬",
 };
 
 /** Tinted icon chip per marketing channel (matches the design's coloured glyphs). */
@@ -101,7 +103,10 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
     </div>
   );
 
+  // Portal to <body> so the fixed backdrop overlays the true viewport — never
+  // trapped/clipped by an ancestor's containing block (panels carry filters).
   return (
+    <Portal>
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal pd-modal" role="dialog" aria-modal="true" aria-label={`${p.name} — manage`} onClick={(e) => e.stopPropagation()}>
         <div className="pd-head">
@@ -260,5 +265,6 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
         )}
       </div>
     </div>
+    </Portal>
   );
 }

@@ -3,10 +3,11 @@ import { useGame } from "../state/store";
 import { useSettings } from "./settings";
 import { haptics } from "./haptics";
 import { sound } from "./sound";
-import { buildHallModel } from "../render/hallModel";
+import { buildHallModel, POWER_IDS } from "../render/hallModel";
 import { drawHallStatic, drawHallDynamic, expansionMarkers, pointInPoly } from "../render/hallRenderer";
 import { currentEra, eraName } from "../engine/eras";
 import { hallRooms } from "../engine/hall";
+import { themeFilter } from "./hallThemes";
 
 /**
  * The 2.5D hall (Phase 1 pillar). A self-driving canvas: an rAF loop reads game
@@ -30,6 +31,12 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
   );
   const era = useGame((s) => currentEra(s.game));
   const rooms = useGame((s) => hallRooms(s.game));
+  const hallTheme = useSettings((s) => s.hallTheme);
+
+  // Cosmetic theme = a CSS filter on the canvas (purely visual; no render change).
+  useEffect(() => {
+    if (canvasRef.current) canvasRef.current.style.filter = themeFilter(hallTheme);
+  }, [hallTheme]);
 
   useEffect(() => {
     const canvas = canvasRef.current!;
@@ -94,7 +101,10 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       // Cheap signature of render-affecting fields (run.progress is excluded —
       // the renderer animates from the clock, not from progress).
       const u = game.upgrades;
-      const sig = `${u.rack_basic ?? 0}|${u.rack_server ?? 0}|${u.rack_tpu ?? 0}|${u.expand_n ?? 0}|${u.expand_s ?? 0}|${u.expand_e ?? 0}|${u.expand_w ?? 0}|${game.run.active ? 1 : 0}|${currentEra(game)}`;
+      // Power ids come from the same source buildHallModel uses, so adding a new
+      // powerCapacity upgrade automatically invalidates this cache too.
+      const powerSig = POWER_IDS.map((id) => u[id] ?? 0).join(",");
+      const sig = `${u.rack_basic ?? 0}|${u.rack_server ?? 0}|${u.rack_tpu ?? 0}|${u.expand_n ?? 0}|${u.expand_s ?? 0}|${u.expand_e ?? 0}|${u.expand_w ?? 0}|${powerSig}|${game.run.active ? 1 : 0}|${currentEra(game)}`;
       if (sig !== modelSig) {
         modelSig = sig;
         model = buildHallModel(game);
@@ -112,7 +122,7 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       const spawnT = Math.min(1, (timeMs - spawnStart) / SPAWN_MS);
 
       // Repaint the cached static room only when its inputs change.
-      const ssig = `${model.cols}|${model.rows}|${model.era}|${cssW}|${cssH}|${dpr}`;
+      const ssig = `${model.cols}|${model.rows}|${model.era}|${model.coolingUnits}|${cssW}|${cssH}|${dpr}`;
       if (ssig !== staticSig) {
         staticSig = ssig;
         off.width = canvas.width;

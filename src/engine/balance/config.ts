@@ -421,6 +421,113 @@ const WORLD_EVENTS: WorldEvent[] = [
       { label: "Spin it (Revenue ×1.7)", effect: { kind: "buff", target: "moneyMult", factor: 1.7, durationSec: 45 }, alignment: 0.28 },
     ],
   },
+
+  // --- Phase B content wave: more ambient satire for variety across runs. ---
+  {
+    id: "acquihire",
+    weight: 2,
+    tone: "good",
+    headline: "Acquihire Offer (Declined)",
+    body: "A megacorp offers to buy you just to shut you down. You decline, then leak the number. The press does the rest. +30% cash.",
+    effect: { kind: "grantPct", resource: "money", pct: 0.3 },
+  },
+  {
+    id: "synthetic_flywheel",
+    weight: 2,
+    tone: "good",
+    headline: "Synthetic Data Flywheel",
+    body: "The model trains on its own outputs and somehow improves. Nobody mentions model collapse out loud. Data yield ×1.7, briefly.",
+    effect: { kind: "buff", target: "dataMult", factor: 1.7, durationSec: 50 },
+  },
+  {
+    id: "tax_break",
+    weight: 2,
+    tone: "good",
+    headline: "Datacenter Tax Break",
+    body: "A small town gives you 20 years of free electricity to build next to the school. Compute ×1.5 while the goodwill lasts.",
+    effect: { kind: "buff", target: "computeMult", factor: 1.5, durationSec: 50 },
+  },
+  {
+    id: "enterprise_pilot",
+    weight: 2,
+    tone: "good",
+    headline: "Enterprise 'Pilot' Signs",
+    body: "A Fortune 500 commits to a six-figure pilot they will never roll out. The logo goes on your homepage anyway. +28% cash.",
+    effect: { kind: "grantPct", resource: "money", pct: 0.28 },
+  },
+  {
+    id: "token_price_war",
+    weight: 3,
+    tone: "bad",
+    headline: "Token Price War",
+    body: "A rival drops their API price below cost to 'buy market share.' You follow them off the cliff. Revenue ×0.7 for a while.",
+    effect: { kind: "buff", target: "moneyMult", factor: 0.7, durationSec: 45 },
+  },
+  {
+    id: "hardware_recall",
+    weight: 2,
+    tone: "bad",
+    headline: "Accelerator Recall",
+    body: "A whole GPU generation has a silent data-corruption bug. The vendor calls it a 'feature flag.' Compute ×0.65 until swapped.",
+    effect: { kind: "buff", target: "computeMult", factor: 0.65, durationSec: 45 },
+  },
+  {
+    id: "data_poisoned",
+    weight: 2,
+    tone: "bad",
+    headline: "Training Set Poisoned",
+    body: "Artists seeded the web with traps and your scraper ate every one. The model now thinks all cats are watermarks. −18% data.",
+    effect: { kind: "grantPct", resource: "data", pct: -0.18 },
+  },
+  {
+    id: "founder_tweets",
+    weight: 2,
+    tone: "bad",
+    headline: "The Founder Tweets",
+    body: "At 3am you promise AGI by Thursday and insult three governments. The apology costs more than the engagement was worth. −14% cash.",
+    effect: { kind: "grantPct", resource: "money", pct: -0.14 },
+  },
+  {
+    id: "rolling_blackouts",
+    weight: 2,
+    tone: "bad",
+    headline: "Grid Can't Keep Up",
+    body: "Your datacenter browned out the whole county. The utility 'requests' you curtail. Compute ×0.75 until the lights come back.",
+    effect: { kind: "buff", target: "computeMult", factor: 0.75, durationSec: 40 },
+  },
+  {
+    id: "choice_defense_contract",
+    weight: 2,
+    tone: "good",
+    headline: "Defense Contract on the Table",
+    body: "A three-letter agency wants your models for 'analysis.' The pay is absurd; half the company threatens to walk. Everyone's watching.",
+    choices: [
+      { label: "Sign it (+35% cash)", effect: { kind: "grantPct", resource: "money", pct: 0.35 }, alignment: 0.32 },
+      { label: "Walk away (+25% data, morale)", effect: { kind: "grantPct", resource: "data", pct: 0.25 }, alignment: -0.32 },
+    ],
+  },
+  {
+    id: "choice_eu_act",
+    weight: 2,
+    tone: "bad",
+    headline: "The AI Act Lands",
+    body: "Brussels mails you a compliance binder thicker than your seed deck. You can lawyer up, or quietly relocate the training run offshore.",
+    choices: [
+      { label: "Comply fully (−12% cash, clean record)", effect: { kind: "grantPct", resource: "money", pct: -0.12 }, alignment: -0.3 },
+      { label: "Move it offshore (Compute ×1.7)", effect: { kind: "buff", target: "computeMult", factor: 1.7, durationSec: 45 }, alignment: 0.3 },
+    ],
+  },
+  {
+    id: "choice_capability_eval",
+    weight: 2,
+    tone: "good",
+    headline: "Publish the Dangerous-Capabilities Eval?",
+    body: "Your red team found something genuinely alarming. Publishing builds trust and hands rivals a roadmap. The doc is one click from public.",
+    choices: [
+      { label: "Publish it (+30% data, transparency)", effect: { kind: "grantPct", resource: "data", pct: 0.3 }, alignment: -0.3 },
+      { label: "Bury it (Revenue ×1.8)", effect: { kind: "buff", target: "moneyMult", factor: 1.8, durationSec: 45 }, alignment: 0.3 },
+    ],
+  },
 ];
 
 export const balance = {
@@ -549,6 +656,11 @@ export const balance = {
      *  diminishes but payroll does NOT — so a small, trained, high-trait team beats
      *  zerg-hiring a wall of juniors. perLaneRate 0 = old linear behaviour. */
     diminishing: { perLaneRate: 0.18 },
+    /** Rare "legendary" recruits: occasionally a candidate rolls in already trained
+     *  (higher start level) with a guaranteed elite trait — a satisfying chase on
+     *  re-roll. Same signing bonus, so they're a genuine score (not pay-to-win;
+     *  recruiting is opt-in and doesn't touch the lab curve). */
+    rare: { chance: 0.12, level: 2, traits: ["tenx", "workaholic", "mentor"] },
     /** Personality/specialty traits rolled at hire. */
     traits: [
       { id: "tenx", name: "10×", desc: "Ships like ten people. Insufferable about it.", effectMult: 1.7, payrollMult: 1.3, tone: "good" },
@@ -694,6 +806,40 @@ export const balance = {
     exponent: 0.5,
     /** Each Legacy Weight grants this much permanent global production. */
     multiplierPerPoint: 0.05,
+
+    /**
+     * GDD §4 — shipping is a player-flavored choice with minor different bonuses.
+     * `deploy` is the default and MUST equal the historical behavior exactly
+     * (legacyMult 1, keeps the product draft, no kickstart) so the tuned curve /
+     * `npm run sim` stay byte-identical — the sim always ships via deploy. The
+     * other two are opt-in trade-offs, never the balanced baseline. First-pass
+     * numbers; tune against the sim if they prove too strong/weak.
+     */
+    shipModes: {
+      deploy: {
+        id: "deploy", label: "Deploy commercially", glyph: "🚀",
+        blurb: "Balanced. Bank full Legacy Weights and keep the model as a product draft to commercialise.",
+        legacyMult: 1, keepsDraft: true, moneyKickstartPerShip: 0, frontierPenalty: 0, unlockShips: 0,
+      },
+      open_source: {
+        id: "open_source", label: "Open-source it", glyph: "🌍",
+        blurb: "The community spreads your weights further — more Legacy — but you give the model away (no product draft).",
+        legacyMult: 1.3, keepsDraft: false, moneyKickstartPerShip: 0, frontierPenalty: 0, unlockShips: 0,
+      },
+      sell: {
+        id: "sell", label: "Sell to a hyperscaler", glyph: "💰",
+        blurb: "Cash up front to bootstrap the next run, but fewer Legacy Weights and no product draft.",
+        legacyMult: 0.5, keepsDraft: false, moneyKickstartPerShip: 200, frontierPenalty: 0, unlockShips: 0,
+      },
+      // B5 challenge: an OPTIONAL risk/reward ship, unlocked once you know the loop.
+      // Rivals start further ahead (your carried products begin behind), but you
+      // bank +50% Legacy. Lives in the same chooser — no new screen/mechanic.
+      hard: {
+        id: "hard", label: "Hard ship (challenge)", glyph: "⚔️",
+        blurb: "Rivals leap ahead — your products start behind — but bank +50% Legacy. For when the easy money bores you.",
+        legacyMult: 1.5, keepsDraft: true, moneyKickstartPerShip: 0, frontierPenalty: 6, unlockShips: 3,
+      },
+    },
   },
 
   offline: {
@@ -701,6 +847,16 @@ export const balance = {
     maxHours: 8,
     /** Premium QoL perk: a longer offline cap (GDD-sanctioned, not pay-for-power). */
     premiumMaxHours: 24,
+  },
+
+  /** Daily Boost — an HONEST once-a-day return reward (GDD §6: no fake-urgency
+   *  countdown, no penalty for missing a day). Claiming applies a short, global
+   *  output buff via the normal modifier system — purely temporary, so it never
+   *  inflates the permanent curve. Tracked in a UI-only localStorage key, so no
+   *  game-save migration. */
+  daily: {
+    factor: 1.5,
+    durationSec: 180,
   },
 
   upgrades: [
@@ -1105,6 +1261,58 @@ export const balance = {
       requires: ["moe"],
       cost: { compute: 300000, data: 0 },
       effect: { kind: "computeMult", factor: 2.5 },
+    },
+
+    // --- Late-era branch (Phase B2): gated behind Scaling Laws, so it's only
+    // reachable deep into a run (post-first-prestige). The early/mid curve and
+    // the sim are untouched; this is extra to chase in eras 3–6. ---
+    {
+      id: "synthetic_data",
+      name: "Synthetic Data Engine",
+      desc: "Models teach models. Nobody mentions model collapse. ×2 Data per run.",
+      requires: ["scaling_laws"],
+      cost: { compute: 250000, data: 20000 },
+      effect: { kind: "dataMult", factor: 2 },
+    },
+    {
+      id: "flash_attention",
+      name: "Flash Attention",
+      desc: "Attention, but it goes brrr. −25% run duration.",
+      requires: ["scaling_laws"],
+      cost: { compute: 450000, data: 0 },
+      effect: { kind: "runSpeed", factor: 0.75 },
+    },
+    {
+      id: "quantization",
+      name: "4-bit Quantization",
+      desc: "Half the bits, somehow still coherent. ×2 Money per run.",
+      requires: ["scaling_laws"],
+      cost: { compute: 600000, data: 15000 },
+      effect: { kind: "moneyMult", factor: 2 },
+    },
+    {
+      id: "multi_datacenter",
+      name: "Multi-Datacenter Run",
+      desc: "Your own power grid, your own problems. ×3 Compute.",
+      requires: ["flash_attention", "synthetic_data"],
+      cost: { compute: 1500000, data: 50000 },
+      effect: { kind: "computeMult", factor: 3 },
+    },
+    {
+      id: "world_model",
+      name: "World Model",
+      desc: "It dreams now. The dreams are mostly ads. ×2.5 Money per run.",
+      requires: ["multi_datacenter", "quantization"],
+      cost: { compute: 3000000, data: 120000 },
+      effect: { kind: "moneyMult", factor: 2.5 },
+    },
+    {
+      id: "recursive_self_improvement",
+      name: "Recursive Self-Improvement",
+      desc: "It writes its own training code. You watch, nervously. ×4 Compute.",
+      requires: ["world_model"],
+      cost: { compute: 8000000, data: 300000 },
+      effect: { kind: "computeMult", factor: 4 },
     },
   ] satisfies ResearchDef[],
 };
