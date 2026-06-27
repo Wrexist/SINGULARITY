@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { advisorItems, nextAction, attentionCounts } from "./advisor";
-import { releaseProduct } from "./products";
+import { releaseProduct, productsUnlocked } from "./products";
 import { createInitialState } from "./state";
+import { balance } from "./balance/config";
 import { Big } from "./math/Big";
 
 function shipped() {
@@ -96,6 +97,31 @@ describe("advisor", () => {
     expect(advisorItems(s).some((i) => i.text.includes("Lab Reputation"))).toBe(true);
     // …and not when there's nothing to spend.
     expect(advisorItems(createInitialState()).some((i) => i.text.includes("Lab Reputation"))).toBe(false);
+  });
+
+  it("never points the banner at a tab the player can't open yet", () => {
+    // The App renders the advisor item's `tab` as a tappable banner that jumps
+    // there. If an item targeted a still-locked tab, the tap would dead-end. Sweep
+    // a spread of representative states and assert every item resolves to a tab
+    // that is actually renderable given the same gates the UI uses.
+    const staffOpen = (s: ReturnType<typeof createInitialState>) =>
+      balance.staff.enabled && s.research.length >= balance.staff.revealAtResearch;
+
+    const states = [
+      createInitialState(), // fresh: products + staff locked
+      (() => { const s = createInitialState(); s.run = { active: false, progress: 1, readyToClaim: true }; return s; })(),
+      (() => { const s = shipped(); s.research = []; return s; })(), // products unlocked, staff locked
+      (() => { const s = shipped(); s.research = ["seed"]; s.employees = []; s.products.drafts = []; return s; })(), // staff open
+      (() => { const s = shipped(); s.products.drafts = [{ id: "d1", ships: 1, quality: s.products.frontier }]; return s; })(),
+    ];
+
+    for (const s of states) {
+      for (const item of advisorItems(s)) {
+        if (item.tab === "products") expect(productsUnlocked(s)).toBe(true);
+        if (item.tab === "employees") expect(staffOpen(s)).toBe(true);
+        // "lab" is always renderable — no assertion needed.
+      }
+    }
   });
 
   it("nudges the first hire once staff is unlocked", () => {

@@ -14,11 +14,14 @@ An AI compute tycoon (idle/incremental + management) with a 2.5D data-center hal
 5. Humor lives in writing/events; systems stay clean.
 
 ## The current phase (UPDATE THIS LINE EVERY SESSION)
-> **PHASE 3 — Endgame & spectacle (in progress).** Phases 1 (shippable MVP) and 2 (power/heat,
-> staff, events/factions, eras 0–4) are complete, plus a beyond-roadmap Products business. Phase 3
-> plan lives in `PHASE3_ENDGAME_PLAN.md`. Shipped this phase: **Step 0** lifetime-stats store,
-> **Step 1** achievements (37 badges), **Step 2** Era 6 "Post-Singularity" + AGI ascension, **Step 3**
-> Lab Reputation meta-layer. Remaining: **Step 4** polish & ship-prep (review, UX sweep, TestFlight).
+> **PHASE 4 — Post-launch growth (in progress).** The game is LIVE on TestFlight and stable.
+> Phases 0–3 complete (MVP + 2.5D hall, power/heat, staff, events/factions, eras 0–6 + AGI ascension,
+> Products business, achievements, Lab Reputation). The audit-driven growth plan lives in
+> `POST_LAUNCH_ROADMAP.md` (R0–R8: balance · friendliness · interactivity · fun). Active "five things"
+> path: **R0** foundation (kill the 10Hz re-render, extend the sim to the long game), **R1** friendliness
+> (✅ R1.1 advisor banner wired; R1.2 buy ×10/Max), **R2** the hall (tappable racks, manifestation fixes),
+> **R4** endgame balance (tame the Legacy snowball, close the retire windfall, re-couple the triangle),
+> **R5** depth (activate the dead `alignment` dial, contracts board). See `TASK.md` for live status.
 > Rendering: **Canvas 2D isometric** (parametric, no image assets). Hard rules still hold: 3 in-run
 > resources only (Legacy/Reputation are meta-currencies, not a 4th resource); engine pure/deterministic;
 > humor in writing not math; all new systems are data-in-`balance/` + pure folds + tests, and every

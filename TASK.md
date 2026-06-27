@@ -1,10 +1,52 @@
 # TASK.md — Singularity Inc.
 *Live task list. Claude Code updates this as work progresses. One source of truth for "what's next."*
 
-**Current phase:** PHASE 3 — Endgame & spectacle (Steps 0–3 done; Step 4 polish/ship-prep in progress).
-Phases 1–2 complete + a beyond-roadmap Products business. Plan: `PHASE3_ENDGAME_PLAN.md`. (Phase 0–2
-history retained below for context.)
+**Current phase:** PHASE 4 — Post-launch growth (live on TestFlight). Phases 0–3 complete.
+Plan: `POST_LAUNCH_ROADMAP.md` (audit-driven: balance · friendliness · interactivity · fun).
+Phase 0–3 history retained below for context.
 **Phase 0 exit gate:** PASSED — owner confirmed the loop is fun without art.
+
+---
+
+## PHASE 4 — Post-launch growth (active) · plan: `POST_LAUNCH_ROADMAP.md`
+*The "five things" critical path the owner approved first. Each obeys the design spine:
+3 in-run resources, pure/deterministic engine, data-in-`balance/`, hard-gated compounding,
+no dark patterns. Re-run `npm run sim` after any economy change.*
+
+### Step 1 — Foundation (R0)
+- [ ] **R0.1 · Kill the 10Hz whole-app re-render** (P1) — narrow store selectors + `React.memo`
+      on leaf panels; isolate the only truly-10Hz component (`ResourceBar`). Biggest perf/battery win.
+- [ ] **R0.2 · Extend the balance sim to the long game** (P1) — `scripts/balance-sim.ts` long-haul
+      policy (10–20 gens, buys products/versions/staff); report weights/hr + era cadence. The
+      instrument that unblocks all of R4.
+
+### Step 2 — Friendliness (R1)
+- [x] **R1.1 · Advisor "Next: …" banner** — wired the already-built/tested `nextAction()` as a
+      persistent, tappable banner above the stage that jumps to the resolving tab. UI-only (sim
+      byte-identical, 12m15s); +1 invariant test (the banner can never point at a locked tab). 250 tests.
+- [ ] **R1.2 · Buy ×1 / ×10 / Max** (P1) — batch `upgradeCost`; add a "Buy all affordable" sweep.
+
+### Step 3 — The hall (R2)
+- [ ] **R2.1 · Tappable, inspectable racks** (P1) — tap a rack → parametric callout + satirical name.
+- [ ] **R2.2 · Fix manifestation-rule violations** (P1) — overclock/cooling/auto/staff/products
+      get a physical echo in the hall.
+- [ ] **R2.5 · Juice the rack-buy moment** (P1, S) — wire `punch()` + burst + "+X/s" floater to buys.
+
+### Step 4 — Endgame balance (R4 — do after R0.2)
+- [ ] **R4.1 · Tame the Legacy snowball** (P1) — make `legacyMult` diminishing so Gen2/3 don't
+      collapse to sub-minute ships. Re-sim.
+- [ ] **R4.2 · Close the retire→relaunch windfall** (P1) — lower `retireValuationSec` (1800 → ~300–600).
+- [ ] **R4.3 · Re-couple the triangle** (P1) — late-game Compute/Data/Money sinks (reservoir cap /
+      data freshness decay / infra maintenance). Model in the R0.2 sim first.
+
+### Step 5 — Depth (R5)
+- [ ] **R5.1 · Activate the dead `alignment` dial** (P1, S) — wire it into `derive` as a real
+      Heat/acquisition/Reputation fork. Best depth-per-effort fix in the audit.
+- [ ] **R5.2 · Contracts / quests board** (P1) — rotating `contracts[]` in balance, pure fold in
+      `tick`, Reputation/Money payouts; persisted like achievements.
+
+> Full R0–R8 backlog (R3 active-engagement, R6 replayability, R7 content waves, R8 platform)
+> lives in `POST_LAUNCH_ROADMAP.md`.
 
 ---
 
