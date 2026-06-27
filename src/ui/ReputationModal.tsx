@@ -1,6 +1,6 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect } from "react";
 import { Portal } from "./Portal";
-import { burst } from "./fx";
+import { burst, punch } from "./fx";
 import type { GameState } from "../engine/types";
 import { reputationBalance, reputationAvailable, earnedReputation, canBuyReputationPerk } from "../engine/reputation";
 import { LandmarkIcon } from "./Icons";
@@ -16,14 +16,6 @@ export function ReputationModal({ game, onBuy, onClose }: {
   const available = reputationAvailable(game);
   const earned = earnedReputation(game);
   const owned = new Set(game.reputation.perks);
-
-  const [bought, setBought] = useState<string | null>(null);
-  const buyTimer = useRef<number | undefined>(undefined);
-  const flashBuy = useCallback((id: string) => {
-    setBought(id);
-    window.clearTimeout(buyTimer.current);
-    buyTimer.current = window.setTimeout(() => setBought(null), 500);
-  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -54,12 +46,12 @@ export function ReputationModal({ game, onBuy, onClose }: {
             return (
               <button
                 key={perk.id}
-                className={`card rep-card ${got ? "owned" : afford ? "affordable" : ""} ${bought === perk.id ? "bought" : ""}`}
+                className={`card rep-card ${got ? "owned" : afford ? "affordable" : ""}`}
                 disabled={got || !afford}
                 onClick={(e) => {
                   const r = e.currentTarget.getBoundingClientRect();
                   burst(r.right - 24, r.top + r.height / 2, { count: 16, power: 1, colors: ["#7c5cff", "#ffd60a", "#16b364"] });
-                  flashBuy(perk.id);
+                  punch(e.currentTarget);
                   onBuy(perk.id);
                 }}
               >

@@ -458,6 +458,48 @@ export function ChatIcon({ size = 18 }: IconProps) {
   );
 }
 
+/** Server rack — stacked units (hardware racks). */
+export function ServerIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <rect x="3.5" y="4" width="17" height="7" rx="2" />
+      <rect x="3.5" y="13" width="17" height="7" rx="2" />
+      <path d="M7 7.5h.01M7 16.5h.01" />
+      <path d="M10.5 7.5h6.5M10.5 16.5h6.5" />
+    </Icon>
+  );
+}
+
+/** Expand — corner arrows (floor/room growth). */
+export function ExpandIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="M4 8.5V4h4.5M15.5 4H20v4.5M20 15.5V20h-4.5M8.5 20H4v-4.5" />
+    </Icon>
+  );
+}
+
+/** Automation — circular arrows. */
+export function RepeatIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="M4 11.5a8 8 0 0 1 13.7-5.4L20 8M20 3.5V8h-4.5" />
+      <path d="M20 12.5a8 8 0 0 1-13.7 5.4L4 16M4 20.5V16h4.5" />
+    </Icon>
+  );
+}
+
+/** Power / capacity — a gauge. */
+export function GaugeIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="M4 17.5a8 8 0 1 1 16 0" />
+      <path d="M12 17.5l4.2-4.6" />
+      <circle cx="12" cy="17.5" r="1.2" />
+    </Icon>
+  );
+}
+
 /** Secret / unknown — a question mark. */
 export function HelpIcon({ size = 18 }: IconProps) {
   return (

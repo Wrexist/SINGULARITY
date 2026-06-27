@@ -863,7 +863,7 @@ export const balance = {
     {
       id: "rack_basic",
       name: "Consumer GPU Rack",
-      desc: "+2 Compute/sec. A shelf of gaming cards. It hums.",
+      desc: "A shelf of gaming cards. It hums.",
       cost: { resource: "money", base: 15, growth: 1.15 },
       max: Infinity,
       effect: { kind: "computeFlat", perLevel: 2 },
@@ -871,7 +871,7 @@ export const balance = {
     {
       id: "rack_server",
       name: "Server GPU Rack",
-      desc: "+12 Compute/sec. Proper datacenter silicon.",
+      desc: "Proper datacenter silicon.",
       cost: { resource: "money", base: 220, growth: 1.16 },
       max: Infinity,
       effect: { kind: "computeFlat", perLevel: 12 },
@@ -879,7 +879,7 @@ export const balance = {
     {
       id: "rack_tpu",
       name: "TPU Pod",
-      desc: "+80 Compute/sec. Tensor cores, allegedly.",
+      desc: "Tensor cores, allegedly.",
       cost: { resource: "money", base: 3500, growth: 1.17 },
       max: Infinity,
       effect: { kind: "computeFlat", perLevel: 80 },
@@ -887,7 +887,7 @@ export const balance = {
     {
       id: "overclock",
       name: "Overclock Firmware",
-      desc: "+8% total Compute production per level.",
+      desc: "Push the clocks past the warranty.",
       cost: { resource: "money", base: 600, growth: 1.5 },
       max: 25,
       effect: { kind: "computeMult", perLevel: 0.08 },
@@ -895,7 +895,7 @@ export const balance = {
     {
       id: "data_pipeline",
       name: "Data Pipeline",
-      desc: "+20% Data per run, per level.",
+      desc: "Cleaner inputs, fatter batches.",
       cost: { resource: "money", base: 120, growth: 1.4 },
       max: 25,
       effect: { kind: "dataMult", perLevel: 0.2 },
@@ -903,7 +903,7 @@ export const balance = {
     {
       id: "monetize",
       name: "Monetization Layer",
-      desc: "+20% Money per run, per level. ('Synergy.')",
+      desc: "Now with 'synergy.'",
       cost: { resource: "money", base: 150, growth: 1.4 },
       max: 25,
       effect: { kind: "moneyMult", perLevel: 0.2 },
@@ -911,7 +911,7 @@ export const balance = {
     {
       id: "batching",
       name: "Batch Scheduler",
-      desc: "-6% run duration per level. Trains faster.",
+      desc: "Pack the batches; finish sooner.",
       cost: { resource: "data", base: 40, growth: 1.6 },
       max: 12,
       effect: { kind: "runSpeedMult", perLevel: 0.06 },
@@ -937,7 +937,7 @@ export const balance = {
     {
       id: "expand_e",
       name: "Right Expansion",
-      desc: "Lease the open bay to your right. +2 floor columns.",
+      desc: "Lease the open bay to your right.",
       cost: { resource: "money", base: 5000, growth: 2.0 },
       max: 4,
       effect: { kind: "floorCols", perLevel: 2 },
@@ -945,7 +945,7 @@ export const balance = {
     {
       id: "expand_s",
       name: "Front Expansion",
-      desc: "Pour more slab toward the entrance. +2 floor rows.",
+      desc: "Pour more slab toward the entrance.",
       cost: { resource: "money", base: 7000, growth: 2.0 },
       max: 4,
       effect: { kind: "floorRows", perLevel: 2 },
@@ -954,7 +954,7 @@ export const balance = {
     {
       id: "psu_bay",
       name: "PSU Bay",
-      desc: "+40 kW power capacity. More racks run before they throttle.",
+      desc: "More racks run before they throttle.",
       cost: { resource: "money", base: 800, growth: 1.4 },
       max: Infinity,
       effect: { kind: "powerCapacity", perLevel: 40 },
@@ -962,7 +962,7 @@ export const balance = {
     {
       id: "cooling_loop",
       name: "Liquid Cooling Loop",
-      desc: "+150 kW. Keeps the racks cool enough to run flat out.",
+      desc: "Keeps the racks cool enough to run flat out.",
       cost: { resource: "money", base: 6000, growth: 1.45 },
       max: Infinity,
       effect: { kind: "powerCapacity", perLevel: 150 },
@@ -970,7 +970,7 @@ export const balance = {
     {
       id: "substation",
       name: "On-Site Substation",
-      desc: "+600 kW. Industrial power for an industrial lab.",
+      desc: "Industrial power for an industrial lab.",
       cost: { resource: "money", base: 50000, growth: 1.5 },
       max: Infinity,
       effect: { kind: "powerCapacity", perLevel: 600 },
@@ -1176,7 +1176,7 @@ export const balance = {
     {
       id: "backprop",
       name: "Backprop Refactor",
-      desc: "Someone finally read the paper. ×1.5 Compute.",
+      desc: "Someone finally read the paper.",
       requires: [],
       cost: { compute: 500, data: 0 },
       effect: { kind: "computeMult", factor: 1.5 },
@@ -1184,7 +1184,7 @@ export const balance = {
     {
       id: "curated_data",
       name: "Curated Dataset",
-      desc: "Less garbage in. ×1.6 Data per run.",
+      desc: "Less garbage in. Less garbage out.",
       requires: ["backprop"],
       cost: { compute: 0, data: 120 },
       effect: { kind: "dataMult", factor: 1.6 },
@@ -1192,7 +1192,7 @@ export const balance = {
     {
       id: "mixed_precision",
       name: "Mixed Precision",
-      desc: "Train in fp16 and pray. ×1.5 Compute.",
+      desc: "Train in fp16 and pray.",
       requires: ["backprop"],
       cost: { compute: 2500, data: 0 },
       effect: { kind: "computeMult", factor: 1.5 },
@@ -1200,7 +1200,7 @@ export const balance = {
     {
       id: "data_aug",
       name: "Data Augmentation",
-      desc: "Flip it, crop it, call it new. ×1.6 Data per run.",
+      desc: "Flip it, crop it, call it new.",
       requires: ["curated_data"],
       cost: { compute: 0, data: 700 },
       effect: { kind: "dataMult", factor: 1.6 },
@@ -1208,7 +1208,7 @@ export const balance = {
     {
       id: "distributed",
       name: "Distributed Training",
-      desc: "Many machines, one loss curve. ×1.8 Money per run.",
+      desc: "Many machines, one loss curve.",
       requires: ["mixed_precision", "curated_data"],
       cost: { compute: 6000, data: 400 },
       effect: { kind: "moneyMult", factor: 1.8 },
@@ -1216,7 +1216,7 @@ export const balance = {
     {
       id: "rlhf",
       name: "RLHF Pipeline",
-      desc: "Underpaid humans rank chatbot replies. ×1.8 Money per run.",
+      desc: "Underpaid humans rank chatbot replies.",
       requires: ["data_aug"],
       cost: { compute: 3000, data: 2200 },
       effect: { kind: "moneyMult", factor: 1.8 },
@@ -1224,7 +1224,7 @@ export const balance = {
     {
       id: "caching",
       name: "KV Cache",
-      desc: "Stop recomputing the obvious. -15% run duration.",
+      desc: "Stop recomputing the obvious.",
       requires: ["distributed"],
       cost: { compute: 9000, data: 0 },
       effect: { kind: "runSpeed", factor: 0.85 },
@@ -1232,7 +1232,7 @@ export const balance = {
     {
       id: "distillation",
       name: "Model Distillation",
-      desc: "Smaller, faster, mostly the same. -25% run duration.",
+      desc: "Smaller, faster, mostly the same.",
       requires: ["distributed"],
       cost: { compute: 22000, data: 1500 },
       effect: { kind: "runSpeed", factor: 0.75 },
@@ -1240,7 +1240,7 @@ export const balance = {
     {
       id: "moe",
       name: "Mixture of Experts",
-      desc: "A dozen mediocre models in a trench coat. ×2 Compute.",
+      desc: "A dozen mediocre models in a trench coat.",
       requires: ["caching", "distillation"],
       cost: { compute: 75000, data: 3000 },
       effect: { kind: "computeMult", factor: 2 },
@@ -1248,7 +1248,7 @@ export const balance = {
     {
       id: "inference_api",
       name: "Ship: Inference API",
-      desc: "Deploy the model as a product. Passive Money that scales with Compute.",
+      desc: "Deploy the model as a product. It earns while you sleep.",
       requires: ["distillation", "rlhf"],
       cost: { compute: 130000, data: 7000 },
       // Money/sec per unit of Compute/sec — a fraction of throughput becomes revenue.
@@ -1257,7 +1257,7 @@ export const balance = {
     {
       id: "scaling_laws",
       name: "Scaling Laws",
-      desc: "The graph only goes up. Probably. ×2.5 Compute.",
+      desc: "The graph only goes up. Probably.",
       requires: ["moe"],
       cost: { compute: 300000, data: 0 },
       effect: { kind: "computeMult", factor: 2.5 },
@@ -1269,7 +1269,7 @@ export const balance = {
     {
       id: "synthetic_data",
       name: "Synthetic Data Engine",
-      desc: "Models teach models. Nobody mentions model collapse. ×2 Data per run.",
+      desc: "Models teach models. Nobody mentions model collapse.",
       requires: ["scaling_laws"],
       cost: { compute: 250000, data: 20000 },
       effect: { kind: "dataMult", factor: 2 },
@@ -1277,7 +1277,7 @@ export const balance = {
     {
       id: "flash_attention",
       name: "Flash Attention",
-      desc: "Attention, but it goes brrr. −25% run duration.",
+      desc: "Attention, but it goes brrr.",
       requires: ["scaling_laws"],
       cost: { compute: 450000, data: 0 },
       effect: { kind: "runSpeed", factor: 0.75 },
@@ -1285,7 +1285,7 @@ export const balance = {
     {
       id: "quantization",
       name: "4-bit Quantization",
-      desc: "Half the bits, somehow still coherent. ×2 Money per run.",
+      desc: "Half the bits, somehow still coherent.",
       requires: ["scaling_laws"],
       cost: { compute: 600000, data: 15000 },
       effect: { kind: "moneyMult", factor: 2 },
@@ -1293,7 +1293,7 @@ export const balance = {
     {
       id: "multi_datacenter",
       name: "Multi-Datacenter Run",
-      desc: "Your own power grid, your own problems. ×3 Compute.",
+      desc: "Your own power grid, your own problems.",
       requires: ["flash_attention", "synthetic_data"],
       cost: { compute: 1500000, data: 50000 },
       effect: { kind: "computeMult", factor: 3 },
@@ -1301,7 +1301,7 @@ export const balance = {
     {
       id: "world_model",
       name: "World Model",
-      desc: "It dreams now. The dreams are mostly ads. ×2.5 Money per run.",
+      desc: "It dreams now. The dreams are mostly ads.",
       requires: ["multi_datacenter", "quantization"],
       cost: { compute: 3000000, data: 120000 },
       effect: { kind: "moneyMult", factor: 2.5 },
@@ -1309,7 +1309,7 @@ export const balance = {
     {
       id: "recursive_self_improvement",
       name: "Recursive Self-Improvement",
-      desc: "It writes its own training code. You watch, nervously. ×4 Compute.",
+      desc: "It writes its own training code. You watch, nervously.",
       requires: ["world_model"],
       cost: { compute: 8000000, data: 300000 },
       effect: { kind: "computeMult", factor: 4 },

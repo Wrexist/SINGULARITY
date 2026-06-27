@@ -48,6 +48,28 @@ export function floatText(x: number, y: number, text: string, color = "#16b364",
   wake();
 }
 
+/**
+ * A one-shot "purchase punch" on an element via the Web Animations API.
+ * Deliberately NOT a CSS class: toggling a class that owns the `animation`
+ * property fights the card's entrance/breathe animations and snaps the element
+ * back to its start position when the class is removed. WAA composes on top of
+ * the element's own transform and cleanly reverts (fill: none) with no snap.
+ */
+export function punch(el: Element | null) {
+  if (!el || typeof (el as HTMLElement).animate !== "function") return;
+  // Respect reduced-motion (the app sets this class on the root).
+  if (document.querySelector(".app.reduce-motion")) return;
+  (el as HTMLElement).animate(
+    [
+      { transform: "scale(1)" },
+      { transform: "scale(0.96)", offset: 0.28 },
+      { transform: "scale(1.03)", offset: 0.55 },
+      { transform: "scale(1)" },
+    ],
+    { duration: 460, easing: "cubic-bezier(0.34, 1.4, 0.64, 1)" },
+  );
+}
+
 /** Internal: live arrays for the renderer. */
 export function _fxState() { return { particles, floaters }; }
 /** Internal: register a wake callback so the renderer can restart its idle rAF. */

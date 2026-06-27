@@ -1,4 +1,3 @@
-import { useState, useRef, useCallback } from "react";
 import { balance } from "../engine/balance/config";
 import { upgradeCost, canBuyUpgrade } from "../engine/actions";
 import { hallCapacity, totalRacks, isRackId, evictableRackFor } from "../engine/hall";
@@ -8,7 +7,8 @@ import { Big } from "../engine/math/Big";
 import type { Derived, GameState } from "../engine/types";
 import { fmt, effRate, fmtEta } from "./format";
 import { BoltIcon } from "./Icons";
-import { burst } from "./fx";
+import { burst, punch } from "./fx";
+import { UpgradeIcon, EffectPill, upgradeGroup, UP_GROUP_ORDER } from "./effectVisual";
 
 const RES_HEX: Record<string, string> = { compute: "#2f7bf6", data: "#9b51e0", money: "#16b364" };
 
@@ -46,16 +46,6 @@ function PowerMeter({ draw, cap, factor, throttled }: { draw: number; cap: numbe
 }
 
 export function UpgradePanel({ game, derived, onBuy }: Props) {
-  // Transient "just bought" highlight (drives the buy-punch animation). Cleared on
-  // a short timer so the class is present only long enough for the keyframe.
-  const [bought, setBought] = useState<string | null>(null);
-  const buyTimer = useRef<number | undefined>(undefined);
-  const flashBuy = useCallback((id: string) => {
-    setBought(id);
-    window.clearTimeout(buyTimer.current);
-    buyTimer.current = window.setTimeout(() => setBought(null), 500);
-  }, []);
-
   // Hall expansions only matter once you have hardware to house — reveal them
   // when the closet starts to fill, rather than cluttering the first session.
   const racks = totalRacks(game);
@@ -75,6 +65,81 @@ export function UpgradePanel({ game, derived, onBuy }: Props) {
   const moneyRate = effRate(derived, "money").add(Big.of(prodMargin)).sub(derived.payrollPerSec);
   const rateFor = (r: "compute" | "data" | "money") => (r === "money" ? moneyRate : effRate(derived, r));
 
+  type Def = (typeof balance.upgrades)[number];
+  const defs = balance.upgrades
+    .filter((def) => def.market !== "darkweb")
+    .filter((def) => showExpansions || !isExpansion(def.effect.kind))
+    .filter((def) => showPower || def.effect.kind !== "powerCapacity");
+  const isMaxed = (def: Def) => (game.upgrades[def.id] ?? 0) >= def.max;
+  const costNum = (def: Def) => upgradeCost(def, game.upgrades[def.id] ?? 0).toNumber();
+
+  // Recommended next buy: the cheapest thing you can afford right now (an easy win,
+  // and a "what next?" anchor so the panel isn't a flat wall). Null if nothing's
+  // affordable yet — the recommendation only appears when it's actionable.
+  const affordableDefs = defs.filter((def) => !isMaxed(def) && canBuyUpgrade(game, def.id));
+  const hero = affordableDefs.length
+    ? affordableDefs.reduce((a, b) => (costNum(a) <= costNum(b) ? a : b))
+    : null;
+
+  const rest = defs.filter((def) => def.id !== hero?.id);
+  const groups = UP_GROUP_ORDER
+    .map((g) => ({ g, items: rest.filter((d) => upgradeGroup(d.id, d.effect.kind) === g) }))
+    .filter((x) => x.items.length > 0);
+
+  const renderCard = (def: Def, isHero = false) => {
+    const owned = game.upgrades[def.id] ?? 0;
+    const maxed = owned >= def.max;
+    const cost = upgradeCost(def, owned);
+    const affordable = canBuyUpgrade(game, def.id);
+    // On a full floor a higher-tier rack upgrades in place (evicts a lower one);
+    // only a rack with nothing lower to replace is truly blocked.
+    const rack = isRackId(def.id);
+    const willReplace = rack && floorFull && !maxed && !!evictableRackFor(game, def.id);
+    const blockedByFloor = rack && floorFull && !maxed && !willReplace;
+    return (
+      <button
+        key={def.id}
+        className={`card ${isHero ? "card-hero" : ""} ${affordable ? "affordable" : ""} ${maxed ? "maxed" : ""}`}
+        disabled={!affordable}
+        onClick={(e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          burst(r.right - 22, r.top + r.height / 2, { count: isHero ? 16 : 12, power: isHero ? 1.1 : 0.9, colors: [RES_HEX[def.cost.resource] ?? "#9b51e0"] });
+          punch(e.currentTarget);
+          onBuy(def.id);
+        }}
+      >
+        <UpgradeIcon id={def.id} kind={def.effect.kind} />
+        <div className="card-main">
+          <span className="card-name">
+            {def.name}
+            {def.max !== Infinity && <span key={owned} className="card-owned">{owned}/{def.max}</span>}
+            {def.max === Infinity && owned > 0 && <span key={owned} className="card-owned">×{owned}</span>}
+          </span>
+          <EffectPill effect={def.effect} />
+          <span className="card-desc">{def.desc}</span>
+          {willReplace && <span className="card-note">↑ replaces a lower-tier rack</span>}
+        </div>
+        <div className="card-cost">
+          {maxed ? (
+            <span className="cost-max">MAX</span>
+          ) : blockedByFloor ? (
+            <span className="cost-blocked">Floor full</span>
+          ) : (
+            <>
+              <span style={{ color: `var(${RESOURCE_VAR[def.cost.resource]})` }}>
+                {def.cost.resource === "money" ? `$${fmt(cost)}` : `${fmt(cost)} ${def.cost.resource}`}
+              </span>
+              {!affordable && (() => {
+                const eta = fmtEta(cost, game.resources[def.cost.resource], rateFor(def.cost.resource));
+                return eta ? <span className="cost-eta">{eta}</span> : null;
+              })()}
+            </>
+          )}
+        </div>
+      </button>
+    );
+  };
+
   return (
     <section className="panel">
       <h2 className="panel-title">Hardware &amp; Upgrades</h2>
@@ -85,63 +150,18 @@ export function UpgradePanel({ game, derived, onBuy }: Props) {
       {showPower && (
         <PowerMeter draw={power.drawKw} cap={power.capacityKw} factor={power.thermalFactor} throttled={power.throttled} />
       )}
-      <div className="list">
-        {balance.upgrades
-          .filter((def) => def.market !== "darkweb")
-          .filter((def) => showExpansions || !isExpansion(def.effect.kind))
-          .filter((def) => showPower || def.effect.kind !== "powerCapacity")
-          .map((def) => {
-          const owned = game.upgrades[def.id] ?? 0;
-          const maxed = owned >= def.max;
-          const cost = upgradeCost(def, owned);
-          const affordable = canBuyUpgrade(game, def.id);
-          // On a full floor a higher-tier rack upgrades in place (evicts a lower
-          // one); only a rack with nothing lower to replace is truly blocked.
-          const rack = isRackId(def.id);
-          const willReplace = rack && floorFull && !maxed && !!evictableRackFor(game, def.id);
-          const blockedByFloor = rack && floorFull && !maxed && !willReplace;
-          return (
-            <button
-              key={def.id}
-              className={`card ${affordable ? "affordable" : ""} ${maxed ? "maxed" : ""} ${bought === def.id ? "bought" : ""}`}
-              disabled={!affordable}
-              onClick={(e) => {
-                const r = e.currentTarget.getBoundingClientRect();
-                burst(r.right - 22, r.top + r.height / 2, { count: 12, power: 0.9, colors: [RES_HEX[def.cost.resource] ?? "#9b51e0"] });
-                flashBuy(def.id);
-                onBuy(def.id);
-              }}
-            >
-              <div className="card-main">
-                <span className="card-name">
-                  {def.name}
-                  {def.max !== Infinity && <span key={owned} className="card-owned">{owned}/{def.max}</span>}
-                  {def.max === Infinity && owned > 0 && <span key={owned} className="card-owned">×{owned}</span>}
-                </span>
-                <span className="card-desc">{def.desc}</span>
-                {willReplace && <span className="card-note">↑ replaces a lower-tier rack</span>}
-              </div>
-              <div className="card-cost">
-                {maxed ? (
-                  <span className="cost-max">MAX</span>
-                ) : blockedByFloor ? (
-                  <span className="cost-blocked">Floor full</span>
-                ) : (
-                  <>
-                    <span style={{ color: `var(${RESOURCE_VAR[def.cost.resource]})` }}>
-                      {def.cost.resource === "money" ? `$${fmt(cost)}` : `${fmt(cost)} ${def.cost.resource}`}
-                    </span>
-                    {!affordable && (() => {
-                      const eta = fmtEta(cost, game.resources[def.cost.resource], rateFor(def.cost.resource));
-                      return eta ? <span className="cost-eta">{eta}</span> : null;
-                    })()}
-                  </>
-                )}
-              </div>
-            </button>
-          );
-        })}
-      </div>
+      {hero && (
+        <div className="hero-wrap">
+          <div className="hero-kicker">Recommended next</div>
+          {renderCard(hero, true)}
+        </div>
+      )}
+      {groups.map(({ g, items }) => (
+        <div className="up-group" key={g}>
+          <div className="up-group-head">{g}</div>
+          <div className="list">{items.map((d) => renderCard(d))}</div>
+        </div>
+      ))}
     </section>
   );
 }

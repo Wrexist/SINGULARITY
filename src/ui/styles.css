@@ -686,18 +686,13 @@ svg { vertical-align: middle; }
   0% { background-position: 150% 0; }
   55%, 100% { background-position: -40% 0; }
 }
-/* A punchy confirmation the instant a purchase lands (JS adds .bought ~0.5s). */
-.card.bought, .node.bought { animation: buy-punch 0.5s var(--spring); }
-@keyframes buy-punch {
-  0% { transform: scale(1); }
-  28% { transform: scale(0.96); }
-  55% { transform: scale(1.025); box-shadow: 0 0 0 5px rgba(22, 179, 100, 0.32), var(--shadow-md); }
-  100% { transform: scale(1); }
-}
+/* The purchase "punch" is driven via the Web Animations API (see fx.ts punch()),
+   NOT a CSS class — toggling a class that owns `animation` re-triggered the card's
+   entrance animation on release and snapped it back to its start position. */
 .card:disabled:not(.affordable) { opacity: 0.5; cursor: not-allowed; }
 .card:disabled:not(.affordable):hover { transform: none; box-shadow: none; }
 .card.maxed { opacity: 0.65; }
-.card-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.card-main { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .card-name {
   font-weight: 700;
   font-size: 14px;
@@ -723,6 +718,34 @@ svg { vertical-align: middle; }
 }
 .card-desc { font-size: 12px; color: var(--ink-2); line-height: 1.35; }
 .card-note { font-size: 11px; font-weight: 700; color: var(--compute); margin-top: 2px; }
+
+/* Effect pill — the colour-coded "what it does", on its own line above the flavour. */
+.eff-pill {
+  align-self: flex-start; margin: 1px 0;
+  font-size: 11px; font-weight: 800; letter-spacing: -0.01em;
+  padding: 2.5px 9px; border-radius: 999px; white-space: nowrap; line-height: 1.3;
+}
+
+/* "Recommended next" hero — a clear anchor above the list, not just a flat wall. */
+.hero-wrap { margin-bottom: 16px; }
+.hero-kicker {
+  font-size: 10.5px; font-weight: 850; letter-spacing: 0.13em; text-transform: uppercase;
+  color: var(--ink-3); margin: 0 0 7px 3px;
+}
+.card-hero, .node-hero { padding: 16px; border-width: 1.5px; }
+.card-hero .card-name, .node-hero .node-name { font-size: 15.5px; }
+.node-hero:not(.affordable) {
+  border-color: color-mix(in srgb, var(--data) 32%, var(--glass-edge));
+  background: linear-gradient(135deg, rgba(124, 92, 255, 0.08), var(--glass-strong));
+}
+
+/* Upgrade category sections (Hardware / Boosts / Automation) */
+.up-group { margin-bottom: 14px; }
+.up-group:last-child { margin-bottom: 0; }
+.up-group-head {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink-3); margin: 0 0 9px 3px;
+}
 .card-cost { font-size: 13px; font-weight: 750; white-space: nowrap; text-align: right; display: flex; flex-direction: column; gap: 2px; align-items: flex-end; }
 .cost-max { color: var(--ship); }
 .cost-eta { font-size: 10.5px; font-weight: 650; color: var(--ink-3); }
@@ -864,13 +887,22 @@ svg { vertical-align: middle; }
   color: var(--ink);
   cursor: pointer;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
   animation: item-in 0.34s var(--ease-out) backwards;
   transition: transform 0.22s var(--ease-out), box-shadow 0.22s var(--ease-out);
   position: relative;
   overflow: hidden;
 }
+.node-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+/* Effect-coloured icon chips give each buy a visual identity (no more wall of
+   identical cards): blue = compute, violet = data, green = money, etc. */
+.card-ic, .node-ic {
+  flex: 0 0 auto; width: 42px; height: 42px; border-radius: 12px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.node.owned .node-ic, .node.locked .node-ic { filter: saturate(0.6); opacity: 0.75; }
 .node::before {
   content: "";
   position: absolute;
