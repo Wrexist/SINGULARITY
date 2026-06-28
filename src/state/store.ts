@@ -54,9 +54,17 @@ import { applyOffline, type OfflineSummary } from "../engine/offline";
 import { serialize, deserialize } from "../engine/save";
 import { isPremium } from "./premium";
 import { balance } from "../engine/balance/config";
+import { recordTelemetry } from "./telemetry";
+import { purchaseSignature } from "../engine/telemetry";
+import { currentEra } from "../engine/eras";
 
 const SAVE_KEY = "singularity.save.v1";
 const TIME_KEY = "singularity.lastSeen.v1";
+
+/** Last-seen progress signature + era for telemetry purchase/era-arrival detection.
+ *  Module-level (like the event-key counters) — diffed across ticks in advance(). */
+let lastSig = -1;
+let lastEra = -1;
 
 /**
  * The single bridge between the pure engine and React (CLAUDE.md: keep game
@@ -271,6 +279,12 @@ export const useGame = create<GameStore>((set, get) => ({
     seedEmpKey(game);
     set({ game, offline, initialized: true });
     localStorage.setItem(TIME_KEY, String(now()));
+    // Telemetry (R8.1): seed the diff baselines from the loaded save so a returning
+    // player's first tick doesn't register a phantom purchase/era-arrival, then log
+    // the session start. On-device only — see src/state/telemetry.ts.
+    lastSig = purchaseSignature(game.upgrades, game.research);
+    lastEra = currentEra(game);
+    recordTelemetry({ kind: "session", t: now() });
   },
 
   advance: (elapsedMs) =>
@@ -386,6 +400,20 @@ export const useGame = create<GameStore>((set, get) => ({
         }
       }
 
+      // Telemetry (R8.1): detect a progress purchase or era arrival by diffing across
+      // ticks — one hook instead of touching every buy action. Only fires on the rare
+      // transition (signature/era increase), never the 10Hz trickle. On-device only.
+      const sig = purchaseSignature(game.upgrades, game.research);
+      if (lastSig >= 0 && sig > lastSig) {
+        recordTelemetry({ kind: "purchase", t: now(), gen: game.prestige.ships, playtimeSec: game.stats.playtimeSec });
+      }
+      lastSig = sig;
+      const era = currentEra(game);
+      if (lastEra >= 0 && era > lastEra) {
+        recordTelemetry({ kind: "era", t: now(), era, playtimeSec: game.stats.playtimeSec });
+      }
+      lastEra = era;
+
       return patch;
     }),
 
@@ -471,7 +499,25 @@ export const useGame = create<GameStore>((set, get) => ({
     return outcome;
   },
   doLobby: () => set((s) => ({ game: lobby(s.game) })),
-  doPrestige: (mode: ShipMode = "deploy") => set((s) => ({ game: prestige(s.game, mode) })),
+  doPrestige: (mode: ShipMode = "deploy") =>
+    set((s) => {
+      // Capture the run length BEFORE the reset: playtimeSec survives prestige (it's a
+      // lifetime stat), so the gen's run time is derived from the cumulative value.
+      const game = prestige(s.game, mode);
+      recordTelemetry({
+        kind: "prestige",
+        t: now(),
+        gen: game.prestige.ships,
+        playtimeSec: game.stats.playtimeSec,
+        weights: game.prestige.legacyWeights.toNumber(),
+        era: currentEra(s.game), // the era reached in the run just shipped
+      });
+      // The fresh run starts with no upgrades/research and at era 0 — reset baselines
+      // so the reset itself isn't mis-read as a purchase/era change next tick.
+      lastSig = purchaseSignature(game.upgrades, game.research);
+      lastEra = currentEra(game);
+      return { game };
+    }),
   doClaimDaily: () => set((s) => ({ game: grantDailyBoost(s.game) })),
 
   hardReset: () => {

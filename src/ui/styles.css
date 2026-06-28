@@ -1595,6 +1595,10 @@ svg { vertical-align: middle; }
 }
 .set-backup-text:focus { border-color: color-mix(in srgb, var(--data) 50%, transparent); }
 .set-backup-status { font-size: 12px; font-weight: 650; color: var(--money); margin: 2px; line-height: 1.4; }
+.set-diag-grid { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }
+.set-diag-row { display: flex; justify-content: space-between; gap: 12px; font-size: 12.5px; padding: 5px 2px; border-bottom: 1px solid rgba(0,0,0,0.05); }
+.set-diag-row span:first-child { color: var(--ink-2); }
+.set-diag-row span:last-child { font-weight: 650; color: var(--ink-1); text-align: right; }
 .set-row {
   display: flex;
   align-items: center;

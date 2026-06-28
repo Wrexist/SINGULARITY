@@ -348,3 +348,27 @@ collapse (same trap as Compute). 2.3% is the greedy-sim lower bound — a human 
 Data, so it binds more often. Lesson: re-coupling works on the resource the core loop
 does NOT instantly re-spend; tie the cost to that resource's OUTPUT, and find the peak
 before the affordability cliff with the sink metric.
+
+### R8.1 — on-device telemetry without breaking purity OR the privacy label (2026-06-28)
+- **Split pure/impure exactly like the clock + RNG already are.** The summarizer
+  (`src/engine/telemetry.ts`) is a pure `summarize(events)` fold — no clock, storage, or RNG — so
+  it's unit-testable and the engine-purity guardrail passes. The recorder (`src/state/telemetry.ts`)
+  owns the wall clock + `localStorage`. Same boundary as `store.ts`/`useGameLoop.ts` and the
+  data-market roll. The store supplies `t` to `recordTelemetry`, so even the recorder has no clock
+  call of its own.
+- **One diff-hook beats touching every action.** Instead of instrumenting each buy action, `advance()`
+  diffs a `purchaseSignature(upgrades, research)` (sum of upgrade levels + owned research) across
+  ticks and emits a `purchase` event only when it INCREASES. Same trick for era arrival via
+  `currentEra` diff. Reseed the baselines in `init()` (loaded save) and `doPrestige()` (post-reset) so
+  a load or a prestige reset isn't mis-read as a purchase/era change. Fires only on the rare
+  transition — not the 10Hz trickle.
+- **Time runs off engine `playtimeSec`, not the wall clock.** `stats.playtimeSec` is cumulative and
+  survives prestige, so per-gen run time = delta between consecutive prestige events' playtime. This
+  makes telemetry immune to offline/backgrounding distortion AND lines it up with the balance sim
+  (first prestige ≈ 12m15s). Wall-clock `t` is kept only for ordering/sessions.
+- **Privacy is an architectural invariant, not a toggle.** The shipped App Store label is "Data Not
+  Collected". Telemetry stays that way by having ZERO network code in the path — it's local-only,
+  shown back to the player in a Settings "Diagnostics (on-device)" panel, opt-out clears it. Any
+  future *transmission* is a separate owner-greenlit decision + a privacy-label change; don't sneak a
+  send into the recorder. Stored in its own `localStorage` keys (never `SAVE_KEY`), so it can't
+  corrupt a save — same isolation `daily.ts`/`settings.ts` use.

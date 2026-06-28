@@ -18,12 +18,18 @@ no dark patterns. Re-run `npm run sim` after any economy change.*
 into data, makes the save durable, and widens the platform. R8 touches NO balance → sim stays 12m15s
 at every step (a regression check of the wave). Engine stays pure: telemetry/sync/platform glue live
 in the store/UI layer, never `src/engine/`.*
-- [~] **R8.1 · Local telemetry instrument** (P2) — IN PROGRESS. Pure `summarize()` fold in
-      `src/engine/telemetry.ts` (data→data, testable) + impure recorder `src/state/telemetry.ts`
-      (own `localStorage` key, never touches `SAVE_KEY`) + store hooks on the existing prev→next diff
-      (prestige/era/wall/session/tab) + a "Diagnostics (on-device)" Settings panel with summary +
-      Clear + opt-out. **100% on-device, no transmission → App Store "Data Not Collected" label
-      preserved.** The instrument for the next evidence-driven balance pass (humans ≠ the greedy sim).
+- [x] **R8.1 · Local telemetry instrument** (P2) — SHIPPED. Pure `summarize()` + `purchaseSignature()`
+      in `src/engine/telemetry.ts` (data→data, no clock/storage/RNG — engine-pure) + impure recorder
+      `src/state/telemetry.ts` (own `localStorage` keys, never touches `SAVE_KEY`, opt-out clears data).
+      Store hooks ride the EXISTING prev→next diff: `init` (session + baselines), `advance` (purchase
+      via signature-diff + era-arrival via `currentEra` diff — fires only on the rare transition, not
+      the 10Hz trickle), `doPrestige` (gen run-time from cumulative `playtimeSec`), and a `goTab` wrap
+      in App for tab usage. "Diagnostics (on-device)" Settings panel shows the summary (time-to-first-
+      ship, run times, era reached, longest idle stretch, most-used tab) + Clear + opt-out toggle.
+      **100% on-device, no transmission → App Store "Data Not Collected" label preserved** (verified:
+      zero network code in the telemetry path). Run timing uses engine `playtimeSec`, not wall-clock,
+      so offline/backgrounding can't distort it and it lines up with the sim. +12 tests (359 total);
+      typecheck + build clean; **sim 12m15s (byte-identical — no balance touched).**
 - [ ] **R8.2 · Durable save** (P3) — Stage A: harden the existing `exportSave`/`importSave` into a
       real backup UX (Share sheet, import preview+confirm, gentle backup nudge) — no backend, no
       privacy change. Stage B (OWNER DECISION): optional cloud sync behind a `SaveSync` interface
