@@ -144,4 +144,48 @@ describe("world events — firing & gating", () => {
       expect(Math.sign(a!.alignment) !== Math.sign(b!.alignment) || a!.alignment === 0 || b!.alignment === 0).toBe(true);
     }
   });
+
+  describe("R6.2 — faction-branched pools", () => {
+    const ids = () => balance.worldEvents.list.map((e) => e.id);
+    const sweep = (alignment: number): Set<string> => {
+      const seen = new Set<string>();
+      for (let r = 0; r < 1; r += 0.002) seen.add(pickWorldEvent(r, alignment).id);
+      return seen;
+    };
+    const doomerIds = balance.worldEvents.list.filter((e) => e.faction === "doomer").map((e) => e.id);
+    const accelIds = balance.worldEvents.list.filter((e) => e.faction === "accel").map((e) => e.id);
+
+    it("the data has both faction pools defined", () => {
+      expect(doomerIds.length).toBeGreaterThan(0);
+      expect(accelIds.length).toBeGreaterThan(0);
+    });
+
+    it("neutral players never see ANY faction-tagged event (base pool = curve-safe)", () => {
+      const seen = sweep(0);
+      for (const id of [...doomerIds, ...accelIds]) expect(seen.has(id)).toBe(false);
+    });
+
+    it("a committed doomer sees doomer events but no accelerationist ones", () => {
+      const seen = sweep(-1);
+      expect(doomerIds.some((id) => seen.has(id))).toBe(true);
+      for (const id of accelIds) expect(seen.has(id)).toBe(false);
+    });
+
+    it("a committed accelerationist sees accel events but no doomer ones", () => {
+      const seen = sweep(1);
+      expect(accelIds.some((id) => seen.has(id))).toBe(true);
+      for (const id of doomerIds) expect(seen.has(id)).toBe(false);
+    });
+
+    it("maybeWorldEvent routes through the aligned pool", () => {
+      const s = createInitialState();
+      s.research = ["backprop"];
+      s.alignment = -1; // committed doomer
+      // Fire deterministically; the only-doomer-or-untagged guarantee is covered above —
+      // here we just assert it still produces a valid event id with alignment set.
+      const res = maybeWorldEvent(s, balance.worldEvents.meanIntervalSec, 0, 0.999);
+      expect(res).not.toBeNull();
+      expect(ids()).toContain(res!.event.id);
+    });
+  });
 });

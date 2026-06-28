@@ -480,15 +480,27 @@ export interface WorldEventResult {
 }
 
 const WORLD_EVENTS = balance.worldEvents.list as WorldEvent[];
-const TOTAL_WORLD_WEIGHT = WORLD_EVENTS.reduce((sum, e) => sum + e.weight, 0);
 
-export function pickWorldEvent(roll: number): WorldEvent {
-  let target = roll * TOTAL_WORLD_WEIGHT;
-  for (const e of WORLD_EVENTS) {
+/** Events eligible at the player's current alignment (R6.2). Untagged events always
+ *  qualify; a faction-tagged event only joins the pool once you've committed to that
+ *  side. At neutral (incl. the sim) only untagged events are eligible → base pool. */
+function eligibleWorldEvents(alignment: number): WorldEvent[] {
+  const t = balance.worldEvents.factionThreshold;
+  return WORLD_EVENTS.filter((e) => {
+    if (!e.faction) return true;
+    return e.faction === "doomer" ? alignment <= -t : alignment >= t;
+  });
+}
+
+export function pickWorldEvent(roll: number, alignment = 0): WorldEvent {
+  const pool = eligibleWorldEvents(alignment);
+  const total = pool.reduce((sum, e) => sum + e.weight, 0);
+  let target = roll * total;
+  for (const e of pool) {
     if (target < e.weight) return e;
     target -= e.weight;
   }
-  return WORLD_EVENTS[WORLD_EVENTS.length - 1]!;
+  return pool[pool.length - 1]!;
 }
 
 const TARGET_LABEL: Record<string, string> = {
@@ -617,5 +629,6 @@ export function maybeWorldEvent(
   if (state.research.length < balance.worldEvents.minResearch) return null;
   const chance = Math.min(seconds / balance.worldEvents.meanIntervalSec, 0.4);
   if (fireRoll >= chance) return null;
-  return applyWorldEvent(state, pickWorldEvent(pickRoll).id);
+  // R6.2 — the eligible pool branches on the player's committed alignment.
+  return applyWorldEvent(state, pickWorldEvent(pickRoll, state.alignment).id);
 }

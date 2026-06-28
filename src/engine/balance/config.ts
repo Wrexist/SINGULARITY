@@ -178,6 +178,11 @@ export interface WorldEvent {
   body: string;
   effect?: WorldEventEffect;
   choices?: WorldEventChoice[];
+  /** R6.2 — faction-branched pool. Untagged events can always fire; a tagged event
+   *  only enters the pool once the player has committed to that side (alignment past
+   *  `worldEvents.factionThreshold`). At neutral, no tagged event is eligible, so the
+   *  base pool — and the tuned curve — is unchanged. */
+  faction?: "doomer" | "accel";
 }
 
 const WORLD_EVENTS: WorldEvent[] = [
@@ -683,6 +688,66 @@ const WORLD_EVENTS: WorldEvent[] = [
       { label: "Honor the halt (careful, Revenue ×1.6)", effect: { kind: "buff", target: "moneyMult", factor: 1.6, durationSec: 50 }, alignment: -0.34 },
       { label: "Override it (Compute ×2 briefly)", effect: { kind: "buff", target: "computeMult", factor: 2, durationSec: 45 }, alignment: 0.34 },
     ],
+  },
+
+  // --- R6.2: faction-branched pools. These only enter the table once you've COMMITTED
+  //     to a side (alignment past worldEvents.factionThreshold), so a "safety run" and a
+  //     "send-it run" see genuinely different events. Untagged events above always fire. ---
+  // Doomer pool — caution compounds: clean data, grants, goodwill.
+  {
+    id: "doomer_safety_grant",
+    weight: 3,
+    tone: "good",
+    faction: "doomer",
+    headline: "Safety Institute Funds You",
+    body: "Your published evals and refusal to set the world on fire earn a no-strings research grant. Turns out caution has a budget line now. +30% data.",
+    effect: { kind: "grantPct", resource: "data", pct: 0.3 },
+  },
+  {
+    id: "doomer_trust_premium",
+    weight: 3,
+    tone: "good",
+    faction: "doomer",
+    headline: "Enterprises Pay for 'The Safe One'",
+    body: "Risk-averse Fortune 500s route their contracts to the lab that won't end up in a hearing. Boring is, briefly, very profitable. Revenue ×1.7.",
+    effect: { kind: "buff", target: "moneyMult", factor: 1.7, durationSec: 50 },
+  },
+  {
+    id: "doomer_interpretability",
+    weight: 2,
+    tone: "good",
+    faction: "doomer",
+    headline: "Interpretability Breakthrough",
+    body: "You actually understand a layer now. The findings make the model both safer AND faster — a rare day where the cautious path also wins the race. Compute ×1.6.",
+    effect: { kind: "buff", target: "computeMult", factor: 1.6, durationSec: 50 },
+  },
+  // Accelerationist pool — speed compounds: raw compute, hype, raises.
+  {
+    id: "accel_scaling_run",
+    weight: 3,
+    tone: "good",
+    faction: "accel",
+    headline: "The 10× Run Pays Off",
+    body: "You sent it. No eval freeze, no committee, just a glorious wall of GPUs and a prayer. It worked. (This time.) Compute ×2 while it's hot.",
+    effect: { kind: "buff", target: "computeMult", factor: 2, durationSec: 45 },
+  },
+  {
+    id: "accel_hype_raise",
+    weight: 3,
+    tone: "good",
+    faction: "accel",
+    headline: "Momentum Round at a Silly Valuation",
+    body: "Going fast is its own pitch deck. Investors throw money at the lab that ships weekly and apologizes never. +40% cash.",
+    effect: { kind: "grantPct", resource: "money", pct: 0.4 },
+  },
+  {
+    id: "accel_viral_launch",
+    weight: 2,
+    tone: "good",
+    faction: "accel",
+    headline: "Ship-First Goes Viral",
+    body: "You launched the half-baked feature on a Friday and the internet did your QA for free. The buzz is enormous; the bug reports are tomorrow's problem.",
+    effect: { kind: "productBuzz", durationSec: 60 },
   },
 ];
 
@@ -1296,6 +1361,9 @@ export const balance = {
     meanIntervalSec: 150,
     /** Don't begin firing until the player has done some research. */
     minResearch: 1,
+    /** R6.2 — |alignment| past this commits you to a faction's event pool. Neutral
+     *  players (incl. the balance sim) never see tagged events → base pool unchanged. */
+    factionThreshold: 0.4,
     list: WORLD_EVENTS,
   },
 
