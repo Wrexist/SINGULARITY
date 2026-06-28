@@ -138,9 +138,10 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyLega
                   </div>
                   <span className="ship-mode-blurb">{m.blurb}</span>
                   <div className="ship-mode-tags">
-                    {m.keepsDraft && <span className="ship-tag good">+ product draft</span>}
+                    {m.keepsDraft
+                      ? <span className="ship-tag good">✓ Product to sell in Products</span>
+                      : <span className="ship-tag warn">✗ No product — you gave the model away</span>}
                     {kickstart > 0 && <span className="ship-tag good">+ ${kickstart} cash</span>}
-                    {!m.keepsDraft && <span className="ship-tag muted">no draft</span>}
                   </div>
                 </div>
               </button>

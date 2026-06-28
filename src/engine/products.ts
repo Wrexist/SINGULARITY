@@ -307,7 +307,9 @@ export function maybeProductEvent(
 
   const np: ProductState = {
     ...p,
-    mau: clamp(p.mau * (ev.mauMult ?? 1), 0, t.tam),
+    // Cap at the EFFECTIVE TAM (incl. feature boosts), matching the growth cap in
+    // simulateProducts so MAU can never exceed the addressable market.
+    mau: clamp(p.mau * (ev.mauMult ?? 1), 0, t.tam * featureMods(p).tam),
     paid: Math.max(0, Math.min(p.paid * (ev.paidMult ?? 1), p.mau * (ev.mauMult ?? 1))),
     buzzSec: ev.buzz ? B.buzzDurationSec : p.buzzSec,
   };
