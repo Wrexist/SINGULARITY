@@ -104,6 +104,16 @@ export function researchCostMult(state: GameState): number {
   return Math.max(R.researchDiscountFloor, mult);
 }
 
+/** Free basic racks a fresh run starts with, from owned `startingRacks` perks (R5.6).
+ *  Zero with no perk → the first run's cold open is unchanged (curve-safe). */
+export function startingRacks(state: GameState): number {
+  let n = 0;
+  for (const p of R.perks) {
+    if (p.effect.kind === "startingRacks" && state.reputation.perks.includes(p.id)) n += p.effect.value;
+  }
+  return n;
+}
+
 /** Extra concurrent product slots from owned `productSlot` perks (R5.6). */
 export function bonusProductSlots(state: GameState): number {
   let n = 0;

@@ -2,6 +2,8 @@ import { Big } from "./math/Big";
 import { balance } from "./balance/config";
 import { products as P } from "./balance/products";
 import { createInitialState } from "./state";
+import { startingRacks } from "./reputation";
+import { hallCapacity } from "./hall";
 import type { DraftModel, GameState } from "./types";
 
 /**
@@ -56,6 +58,12 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
   const fresh = createInitialState();
   const ships = state.prestige.ships + 1;
 
+  // Founder's Stockpile (reputation perk): begin the fresh run with some basic racks
+  // already humming — bounded by the starting floor so it never breaks the capacity
+  // rule. Zero with no perk owned, so the first run's cold open is byte-identical.
+  const freeRacks = Math.min(startingRacks(state), hallCapacity(fresh));
+  const freshUpgrades = freeRacks > 0 ? { ...fresh.upgrades, rack_basic: freeRacks } : fresh.upgrades;
+
   // AGI ascension: this ship counts as an ascension if it lands you in the
   // Post-Singularity era (by ship count) AND your lifetime Legacy clears the floor.
   // Hard-gated so it stays 0 through the whole early/mid game (no curve impact).
@@ -100,6 +108,7 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
 
   return {
     ...fresh,
+    upgrades: freshUpgrades,
     modifiers: momentumMods,
     resources: kickstart > 0
       ? { ...fresh.resources, money: fresh.resources.money.add(kickstart) }

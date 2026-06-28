@@ -115,7 +115,11 @@ no dark patterns. Re-run `npm run sim` after any economy change.*
       `researchDiscount` effect kind + pure `researchCostMult` (floored at 0.25 so research can't go
       free). Folded into `researchCost`/`canBuyResearch`/`buyResearch`; the Research panel shows the
       discounted price + ETA. Neutral (mult=1) with no perk → **sim byte-identical (12m15s)**. +4 tests.
-      *Remaining (optional): free starting racks and mutually-exclusive build branches.*
+      ↳ Follow-up (done): **Founder's Stockpile** (cost 32, requires Compute Grant) — a third
+      cross-system perk (`startingRacks` effect): every fresh run begins with 3 `rack_basic` already
+      humming, bounded by the starting floor capacity so it can't break the floor-space rule. Wired in
+      `prestige` (injects into the fresh upgrades map); zero with no perk → first run's cold open is
+      byte-identical (sim 12m15s). +3 tests. *Remaining (optional): mutually-exclusive build branches.*
 - [x] **R5.3 · Research auto-buyer** — new **Research Director** Reputation perk (cost 24) auto-buys
       the cheapest affordable, prereq-met research node. Pure `applyAutoResearch` folded into `tick`
       (so it works offline too); gated behind the perk → off by default → **sim byte-identical

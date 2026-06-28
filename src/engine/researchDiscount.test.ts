@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { createInitialState } from "./state";
-import { buyReputationPerk, researchCostMult } from "./reputation";
+import { buyReputationPerk, researchCostMult, startingRacks } from "./reputation";
 import { canBuyResearch, buyResearch, researchCost } from "./actions";
+import { prestige } from "./prestige";
 import { reputation as R } from "./balance/reputation";
 import { balance } from "./balance/config";
 import { Big } from "./math/Big";
@@ -61,5 +62,35 @@ describe("Research Fellowship reputation perk (R5.6 cross-system discount)", () 
     const s = createInitialState();
     s.reputation.perks = ["rep_research1"];
     expect(researchCostMult(s)).toBeGreaterThanOrEqual(R.researchDiscountFloor);
+  });
+});
+
+describe("Founder's Stockpile reputation perk (R5.6 free starting racks)", () => {
+  const RACKS = R.perks.find((p) => p.id === "rep_startrack")!.effect.value;
+
+  it("a fresh run owns no stockpile → starts with zero racks (curve-neutral)", () => {
+    const s = createInitialState();
+    expect(startingRacks(s)).toBe(0);
+    expect(createInitialState().upgrades.rack_basic ?? 0).toBe(0);
+  });
+
+  it("owning the perk seeds the next run with basic racks", () => {
+    let s = createInitialState();
+    // become ship-eligible and own the perk
+    s.research = [...s.research, balance.prestige.capabilityResearch];
+    s.lifetimeMoney = Big.of(1e9);
+    s.reputation.perks = ["rep_compute1", "rep_startrack"];
+    expect(startingRacks(s)).toBe(RACKS);
+
+    const after = prestige(s, "deploy");
+    expect(after.upgrades.rack_basic).toBe(RACKS);
+  });
+
+  it("the grant never exceeds the starting floor capacity", () => {
+    // Owning many stockpiles can't break the floor-space rule.
+    const s = createInitialState();
+    s.reputation.perks = ["rep_startrack"];
+    expect(startingRacks(s)).toBe(RACKS);
+    // (RACKS is well under the 30-tile base floor, so it seeds exactly RACKS.)
   });
 });
