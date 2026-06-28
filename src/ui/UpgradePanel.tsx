@@ -2,6 +2,7 @@ import { useState } from "react";
 import { balance } from "../engine/balance/config";
 import { upgradeCost, canBuyUpgrade, planBulkUpgrade } from "../engine/actions";
 import { recommendedUpgrade } from "../engine/recommend";
+import { upgradeFlavor } from "../engine/flavor";
 import { hallCapacity, totalRacks, isRackId, evictableRackFor } from "../engine/hall";
 import { powerStats } from "../engine/power";
 import { productMetrics } from "../engine/products";
@@ -128,7 +129,7 @@ export function UpgradePanel({ game, derived, onBuy }: Props) {
             {def.max === Infinity && owned > 0 && <span key={owned} className="card-owned">×{owned}</span>}
           </span>
           <EffectPill effect={def.effect} />
-          <span className="card-desc">{def.desc}</span>
+          <span className="card-desc">{upgradeFlavor(def.id, owned, def.desc)}</span>
           {willReplace && <span className="card-note">↑ replaces a lower-tier rack</span>}
         </div>
         <div className="card-cost">

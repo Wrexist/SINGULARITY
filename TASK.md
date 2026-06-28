@@ -118,6 +118,12 @@ no dark patterns. Re-run `npm run sim` after any economy change.*
       New `automate` reputation-effect kind; +5 tests. The genre-standard automation layer the audit
       ranked as the top idle convenience.
 
+- [x] **R7.1 · Tiered upgrade flavor** — the most-bought upgrades (racks, overclock) now have
+      *escalating* satirical descriptions at owned-count breakpoints ("Your landlord has questions
+      about the power bill.") instead of one static line. Pure `upgradeFlavor(id, owned, fallback)`
+      + data in `src/engine/flavor.ts`; the upgrade card shows it. +3 tests. UI text only — no curve
+      impact. High personality-per-byte (the GDD's satire wedge).
+
 > Full R0–R8 backlog (R3 active-engagement, R6 replayability, R7 content waves, R8 platform)
 > lives in `POST_LAUNCH_ROADMAP.md`.
 
