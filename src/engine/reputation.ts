@@ -87,6 +87,15 @@ export function autoResearchEnabled(state: GameState): boolean {
   );
 }
 
+/** Extra concurrent product slots from owned `productSlot` perks (R5.6). */
+export function bonusProductSlots(state: GameState): number {
+  let n = 0;
+  for (const p of R.perks) {
+    if (p.effect.kind === "productSlot" && state.reputation.perks.includes(p.id)) n += p.effect.value;
+  }
+  return n;
+}
+
 /** As Big multipliers (convenience for derive). */
 export function reputationBigMods(state: GameState) {
   const m = reputationMods(state);

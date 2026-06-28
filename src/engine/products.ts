@@ -3,9 +3,15 @@ import {
   type ProductTypeId, type ProductTypeDef, type MilestoneDef, type FeatureLane,
 } from "./balance/products";
 import type { GameState, ProductMods, ProductState, ProductsState, UpgradeState } from "./types";
+import { bonusProductSlots } from "./reputation";
 
 /** No employees hired → no product buffs. */
 export const NEUTRAL_MODS: ProductMods = { upgradeSpeed: 1, serveCost: 1, churn: 1, acq: 1, arpu: 1, heat: 1 };
+
+/** Concurrent product slots: the base plus any from Reputation perks (R5.6). */
+export function maxActiveProducts(state: GameState): number {
+  return B.maxActive + bonusProductSlots(state);
+}
 
 /**
  * PHASE 3 — AI Product / Deployment engine. Pure & deterministic (time passed in,
@@ -377,7 +383,7 @@ export function maybeChurnFlavor(
 export function canReleaseProduct(state: GameState, type: ProductTypeId): boolean {
   if (!productsUnlocked(state)) return false;
   if (!typeUnlocked(state, type)) return false;
-  if (state.products.active.length >= B.maxActive) return false;
+  if (state.products.active.length >= maxActiveProducts(state)) return false;
   return (
     state.resources.compute.gte(B.releaseCost.compute) &&
     state.resources.data.gte(B.releaseCost.data)
@@ -450,7 +456,7 @@ export function pushVersion(state: GameState, id: string): GameState {
 export function canLaunchDraft(state: GameState, draftId: string, type: ProductTypeId): boolean {
   if (!productsUnlocked(state)) return false;
   if (!typeUnlocked(state, type)) return false;
-  if (state.products.active.length >= B.maxActive) return false;
+  if (state.products.active.length >= maxActiveProducts(state)) return false;
   if (!state.products.drafts.some((d) => d.id === draftId)) return false;
   // Commercialising a SHIPPED model is free — it's the reward for shipping. (A
   // ship resets the lab to zero, so charging the heavy release cost here left the

@@ -104,6 +104,13 @@ no dark patterns. Re-run `npm run sim` after any economy change.*
       `derive`'s product mods (so `simulateProducts` picks them up with no signature change), identity
       at neutral/cold → **sim byte-identical (12m15s)**. +5 tests.
       ↳ Optional polish: surface these in the Lab Stats "Stance effects" line.
+- [~] **R5.6 · Reputation → cross-system perks** — 🟡 *started*: added **Portfolio Expansion** (cost
+      40) — a Reputation perk that grants **+1 concurrent product slot** (`maxActiveProducts` =
+      base + perk-granted slots), the first reputation perk that touches another system instead of a
+      flat global mult. New `productSlot` effect kind + `bonusProductSlots`; wired through the slot
+      checks, advisor free-slot nudge, and the Products header. Gated → sim byte-identical (12m15s).
+      +2 tests. *Remaining (optional): more cross-system perks (research discount, free starting
+      racks) and mutually-exclusive build branches.*
 - [x] **R5.3 · Research auto-buyer** — new **Research Director** Reputation perk (cost 24) auto-buys
       the cheapest affordable, prereq-met research node. Pure `applyAutoResearch` folded into `tick`
       (so it works offline too); gated behind the perk → off by default → **sim byte-identical

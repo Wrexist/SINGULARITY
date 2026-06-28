@@ -4,7 +4,7 @@ import { products as B, type ProductTypeId } from "../engine/balance/products";
 import { productMilestones } from "../engine/balance/products";
 import {
   typeDef, productMetrics, canLaunchDraft, canStartUpgrade,
-  upgradeProgress, milestoneValue,
+  upgradeProgress, milestoneValue, maxActiveProducts,
 } from "../engine/products";
 import { m$, numOf as num, fmtDur } from "./format";
 import { ProductDetail, TYPE_GLYPH } from "./ProductDetail";
@@ -37,7 +37,8 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
   const [msOpen, setMsOpen] = useState(false);
   const ps = game.products;
   const frontier = ps.frontier;
-  const slotsFull = ps.active.length >= B.maxActive;
+  const maxSlots = maxActiveProducts(game);
+  const slotsFull = ps.active.length >= maxSlots;
   // One metrics pass per product (was computed up to 3× each, every 10Hz tick).
   const metrics = useMemo(
     () => new Map(ps.active.map((p) => [p.id, productMetrics(p, frontier)])),
@@ -50,7 +51,7 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
     <section className="panel">
       <h2 className="panel-title">Products</h2>
       <p className="floor-meter">
-        Portfolio: <b>{m$(totalMrr)}/s</b> revenue · {totalMargin >= 0 ? "+" : ""}{m$(totalMargin)}/s profit · {ps.active.length}/{B.maxActive} slots
+        Portfolio: <b>{m$(totalMrr)}/s</b> revenue · {totalMargin >= 0 ? "+" : ""}{m$(totalMargin)}/s profit · {ps.active.length}/{maxSlots} slots
         {ps.sold > 0 && <> · <span className="prod-sold-badge"><TagIcon size={12} /> {ps.sold} sold</span></>}
       </p>
 

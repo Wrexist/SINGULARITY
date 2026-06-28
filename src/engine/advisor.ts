@@ -1,6 +1,5 @@
 import { balance } from "./balance/config";
-import { products as PB } from "./balance/products";
-import { productMetrics, productsUnlocked, canStartUpgrade } from "./products";
+import { productMetrics, productsUnlocked, canStartUpgrade, maxActiveProducts } from "./products";
 import { reputationBalance, canBuyReputationPerk } from "./reputation";
 import { contractBoard } from "./contracts";
 import { canBuyResearch } from "./actions";
@@ -69,7 +68,7 @@ export function advisorItems(state: GameState): AdvisorItem[] {
   if (productsUnlocked(state)) {
     // A raw model from Ship the Model is sitting un-commercialised — but only
     // actionable while a portfolio slot is free (else launching is blocked).
-    const freeSlot = ps.active.length < PB.maxActive;
+    const freeSlot = ps.active.length < maxActiveProducts(state);
     if (ps.drafts.length > 0 && freeSlot) {
       items.push({
         tab: "products",
