@@ -1,12 +1,13 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useGame } from "../state/store";
 import { useSettings } from "./settings";
 import { haptics } from "./haptics";
 import { sound } from "./sound";
 import { buildHallModel, POWER_IDS } from "../render/hallModel";
-import { drawHallStatic, drawHallDynamic, expansionMarkers, pointInPoly } from "../render/hallRenderer";
+import { drawHallStatic, drawHallDynamic, expansionMarkers, rackHitAreas, pointInPoly, type RackHit } from "../render/hallRenderer";
 import { currentEra, eraName } from "../engine/eras";
 import { hallRooms } from "../engine/hall";
+import { rackInfo } from "../engine/rackInfo";
 import { themeFilter } from "./hallThemes";
 
 /**
@@ -21,6 +22,9 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
   // Keep the latest callback reachable from the (mount-only) pointer handler.
   const onExpandRef = useRef(onExpand);
   onExpandRef.current = onExpand;
+  // Live rack hit-areas (refreshed each frame) + the tapped rack's tier (R2.1).
+  const rackHitsRef = useRef<RackHit[]>([]);
+  const [selectedTier, setSelectedTier] = useState<number | null>(null);
 
   // Lightweight label state (re-renders only when these change, not per frame).
   const rackCount = useGame(
@@ -32,6 +36,15 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
   const era = useGame((s) => currentEra(s.game));
   const rooms = useGame((s) => hallRooms(s.game));
   const hallTheme = useSettings((s) => s.hallTheme);
+  // Live info for the tapped rack tier (re-subscribes on the count so the card
+  // updates if you buy more while it's open). Null tier → no card.
+  const selected = useGame((s) =>
+    selectedTier === null ? null : rackInfo(s.game, selectedTier),
+  );
+  // A tier the player has zero of can't really be "on screen"; close stale cards.
+  useEffect(() => {
+    if (selectedTier !== null && (selected === null || selected.owned === 0)) setSelectedTier(null);
+  }, [selectedTier, selected]);
 
   // Cosmetic theme = a CSS filter on the canvas (purely visual; no render change).
   useEffect(() => {
@@ -144,6 +157,8 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       // Debug/test aid (screenshot harness reads marker centroids); harmless.
       markers = expansionMarkers(model, cssW, cssH);
       (window as unknown as { __HALL_MARKERS__?: typeof markers }).__HALL_MARKERS__ = markers;
+      // Keep the rack hit-areas current so a tap maps to the rack on screen (R2.1).
+      rackHitsRef.current = rackHitAreas(model, cssW, cssH);
       raf = requestAnimationFrame(frame);
     };
 
@@ -169,17 +184,39 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       const px = ev.clientX - rect.left, py = ev.clientY - rect.top;
       return markers.find((mk) => !mk.maxed && pointInPoly(px, py, mk.quad));
     };
+    // Hit-test the racks front-to-back (last drawn = frontmost wins the tap).
+    const rackAt = (ev: PointerEvent): RackHit | undefined => {
+      const rect = canvas.getBoundingClientRect();
+      const px = ev.clientX - rect.left, py = ev.clientY - rect.top;
+      const hits = rackHitsRef.current;
+      for (let i = hits.length - 1; i >= 0; i--) {
+        if (pointInPoly(px, py, hits[i]!.quad)) return hits[i];
+      }
+      return undefined;
+    };
     const onDown = (ev: PointerEvent) => {
       const hit = markerAt(ev);
-      if (!hit) return;
-      ev.preventDefault();
-      // Don't buy on tap — ask for confirmation first (App shows the popup).
-      haptics.tap();
-      sound.tap();
-      onExpandRef.current(hit.id);
+      if (hit) {
+        ev.preventDefault();
+        // Don't buy on tap — ask for confirmation first (App shows the popup).
+        haptics.tap();
+        sound.tap();
+        onExpandRef.current(hit.id);
+        return;
+      }
+      // Otherwise: tapping a rack opens its info card; tapping empty floor closes it.
+      const rack = rackAt(ev);
+      if (rack) {
+        ev.preventDefault();
+        haptics.tap();
+        sound.tap();
+        setSelectedTier(rack.tier);
+      } else {
+        setSelectedTier(null);
+      }
     };
     const onMove = (ev: PointerEvent) => {
-      canvas.style.cursor = markerAt(ev) ? "pointer" : "default";
+      canvas.style.cursor = markerAt(ev) || rackAt(ev) ? "pointer" : "default";
     };
     canvas.addEventListener("pointerdown", onDown);
     canvas.addEventListener("pointermove", onMove);
@@ -203,6 +240,21 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
           {rooms > 1 && ` · ${rooms} rooms`}
         </span>
       </div>
+      {selected && selected.owned > 0 && (
+        <div className="rack-card" role="dialog" aria-label={`${selected.name} info`} onClick={() => setSelectedTier(null)}>
+          <div className="rack-card-head">
+            <span className={`rack-swatch tier-${selected.tier}`} aria-hidden="true" />
+            <span className="rack-card-name">{selected.name}</span>
+            <button className="rack-card-x" aria-label="Close" onClick={(e) => { e.stopPropagation(); setSelectedTier(null); }}>×</button>
+          </div>
+          <p className="rack-card-desc">{selected.desc}</p>
+          <div className="rack-card-stats">
+            <span><b>{selected.owned}</b> owned</span>
+            <span><b>+{selected.computeEach}</b> compute/s each</span>
+            <span><b>+{selected.computeTotal.toLocaleString()}</b> compute/s total</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

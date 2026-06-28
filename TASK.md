@@ -132,6 +132,12 @@ no dark patterns. Re-run `npm run sim` after any economy change.*
       New `automate` reputation-effect kind; +5 tests. The genre-standard automation layer the audit
       ranked as the top idle convenience.
 
+- [x] **R2.1 · Tappable racks** — the hall is now interactive: tapping a rack opens a small info card
+      (tier name + flavor, count owned, Compute/s each, tier total); tap empty floor or × to dismiss.
+      Pure hit-testing — `rackHitAreas(model,W,H)` in the renderer mirrors `drawHallDynamic`'s placement
+      exactly (same tile order, floor-diamond quads), and `rackInfo(state,tier)` is a pure engine read
+      model. Front-to-back hit order so the frontmost rack wins a tap; markers still take precedence.
+      Read-only → sim/curve untouched (12m15s). +4 tests.
 - [x] **R7.2 · Codex lore for the new systems** — the Field Notes encyclopedia (15→21 entries) now
       covers this session's systems: charters (Mission Statements), contracts (Enterprise Sales /
       Always Be Closing), the market leaderboard (The Leaderboard / Market Leader), and the Legacy

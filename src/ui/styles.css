@@ -992,6 +992,34 @@ svg { vertical-align: middle; }
 .hall-era { font-size: 12px; font-weight: 750; color: #fff; letter-spacing: -0.01em; }
 .hall-count { font-size: 11px; font-weight: 650; color: rgba(255, 255, 255, 0.65); }
 
+/* Tappable-rack info card (R2.1) — a tap on a rack opens this; tap to dismiss. */
+.rack-card {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  max-width: 240px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(10, 14, 28, 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  z-index: 3;
+  animation: rack-card-in 0.16s ease-out;
+}
+@keyframes rack-card-in { from { opacity: 0; transform: translateY(6px) scale(0.97); } to { opacity: 1; transform: none; } }
+.rack-card-head { display: flex; align-items: center; gap: 8px; }
+.rack-swatch { width: 12px; height: 12px; border-radius: 4px; flex: 0 0 auto; }
+.rack-swatch.tier-0 { background: rgb(52, 210, 126); }
+.rack-swatch.tier-1 { background: rgb(63, 134, 240); }
+.rack-swatch.tier-2 { background: rgb(155, 81, 224); }
+.rack-card-name { font-size: 13px; font-weight: 750; color: #fff; flex: 1 1 auto; }
+.rack-card-x { background: none; border: none; color: rgba(255, 255, 255, 0.6); font-size: 18px; line-height: 1; padding: 0 2px; cursor: pointer; }
+.rack-card-desc { margin: 6px 0 8px; font-size: 11px; color: rgba(255, 255, 255, 0.6); font-style: italic; }
+.rack-card-stats { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: rgba(255, 255, 255, 0.82); }
+.rack-card-stats b { color: #fff; font-weight: 750; }
+
 /* ---------- Lab Stats (collapsible) ---------- */
 .stats { padding: 6px 18px; }
 .stats.open { padding-bottom: 16px; }

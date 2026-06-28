@@ -109,6 +109,38 @@ export function expansionMarkers(model: HallModel, W: number, H: number): Placed
   });
 }
 
+/** A tappable rack: its draw index, tier, and the floor-diamond polygon it sits
+ *  on (the hit target). Mirrors drawHallDynamic's placement EXACTLY so a tap maps
+ *  to the same rack the player sees. Pure — safe to compute on demand for hit-test. */
+export interface RackHit {
+  index: number;
+  tier: number;
+  quad: [Pt, Pt, Pt, Pt];
+  centroid: Pt;
+}
+
+export function rackHitAreas(model: HallModel, W: number, H: number): RackHit[] {
+  const L = computeLayout(model.cols, model.rows, model.gxMin, model.gyMin, W, H);
+  const { iso, gxMin, gyMin, gxMax, gyMax } = L;
+  // Same tile order as drawHallDynamic: row-major, skipping the partition walkways.
+  const tiles: { gx: number; gy: number }[] = [];
+  for (let gy = gyMin; gy < gyMax; gy++) {
+    if (gy === model.splitGy) continue;
+    for (let gx = gxMin; gx < gxMax; gx++) {
+      if (gx === model.splitGx) continue;
+      tiles.push({ gx, gy });
+    }
+  }
+  const hits: RackHit[] = [];
+  for (let i = 0; i < model.racks.length && i < tiles.length; i++) {
+    const { gx, gy } = tiles[i]!;
+    const quad: [Pt, Pt, Pt, Pt] = [iso(gx, gy), iso(gx + 1, gy), iso(gx + 1, gy + 1), iso(gx, gy + 1)];
+    const centroid = { x: (quad[0].x + quad[2].x) / 2, y: (quad[0].y + quad[2].y) / 2 };
+    hits.push({ index: i, tier: model.racks[i]!.tier, quad, centroid });
+  }
+  return hits;
+}
+
 export function pointInPoly(x: number, y: number, poly: Pt[]): boolean {
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
