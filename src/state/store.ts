@@ -47,6 +47,7 @@ import { achievements as ACHIEVEMENT_DEFS } from "../engine/balance/achievements
 import { buyReputationPerk } from "../engine/reputation";
 import { claimContract } from "../engine/contracts";
 import { setCharter } from "../engine/charter";
+import { buyLegacyPerk } from "../engine/legacyTree";
 import { prestige, type ShipMode } from "../engine/prestige";
 import { applyOffline, type OfflineSummary } from "../engine/offline";
 import { serialize, deserialize } from "../engine/save";
@@ -113,6 +114,7 @@ interface GameStore {
   doBuyUpgradeBulk: (id: string, count: number) => void;
   doClaimContract: (id: string) => void;
   doSetCharter: (id: string | null) => void;
+  doBuyLegacyPerk: (id: string) => void;
   /** Open recruiting (rolls 3 candidates) / re-roll / close. */
   doRecruit: () => void;
   doRefreshCandidates: () => void;
@@ -407,6 +409,7 @@ export const useGame = create<GameStore>((set, get) => ({
   doBuyUpgradeBulk: (id, count) => set((s) => ({ game: buyUpgradeBulk(s.game, id, count) })),
   doClaimContract: (id) => set((s) => ({ game: claimContract(s.game, id) })),
   doSetCharter: (id) => set((s) => ({ game: setCharter(s.game, id) })),
+  doBuyLegacyPerk: (id) => set((s) => ({ game: buyLegacyPerk(s.game, id) })),
   doRecruit: () => set({ candidates: [rollCandidate(), rollCandidate(), rollCandidate()] }),
   doRefreshCandidates: () => set({ candidates: [rollCandidate(), rollCandidate(), rollCandidate()] }),
   doCloseRecruit: () => set({ candidates: null }),

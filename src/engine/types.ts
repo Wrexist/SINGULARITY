@@ -78,6 +78,10 @@ export interface GameState {
   /** Phase 4 — Lab Charter: the current run's chosen modifier id (or null). Picked
    *  at the start of a run (post-first-ship); resets to null each prestige. */
   charter: string | null;
+  /** Phase 4 — Legacy Investments: owned prestige-tree perk ids. Spending weights
+   *  here removes them from the global multiplier (a focus-vs-breadth trade-off).
+   *  Persists across prestige. */
+  legacyInvestments: string[];
 }
 
 /**

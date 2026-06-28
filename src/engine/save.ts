@@ -183,6 +183,7 @@ interface SavedShape {
   reputation: { spent: number; perks: string[] };
   contracts: { completed: string[] };
   charter: string | null;
+  legacyInvestments: string[];
 }
 
 export function serialize(state: GameState): string {
@@ -225,6 +226,7 @@ export function serialize(state: GameState): string {
     reputation: state.reputation,
     contracts: state.contracts,
     charter: state.charter,
+    legacyInvestments: state.legacyInvestments,
   };
   return JSON.stringify(shape);
 }
@@ -305,6 +307,9 @@ export function deserialize(json: string): GameState {
     reputation: sanitizeReputation(raw.reputation),
     contracts: sanitizeContracts(raw.contracts),
     charter: typeof raw.charter === "string" ? raw.charter : null,
+    legacyInvestments: Array.isArray(raw.legacyInvestments)
+      ? raw.legacyInvestments.filter((x): x is string => typeof x === "string")
+      : [],
   };
 }
 
@@ -402,6 +407,10 @@ export function migrate(raw: any): SavedShape {
   if (s.version === 12) {
     // v12 → v13: Lab Charter (Phase 4). No charter on existing runs.
     s = { ...s, version: 13, charter: s.charter ?? null };
+  }
+  if (s.version === 13) {
+    // v13 → v14: Legacy Investments tree (Phase 4). Nothing invested yet.
+    s = { ...s, version: 14, legacyInvestments: s.legacyInvestments ?? [] };
   }
   return s as SavedShape;
 }

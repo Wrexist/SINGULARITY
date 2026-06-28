@@ -1734,6 +1734,22 @@ svg { vertical-align: middle; }
 .charter-locked { font-size: 12.5px; color: var(--ink-2); }
 .charter-locked-note { color: var(--ink-3); }
 
+/* ---------- Legacy Investments tree (Phase 4 / R5.4) ---------- */
+.legacy-tree { margin: 10px 0; display: flex; flex-direction: column; gap: 7px; }
+.legacy-tree-head { font-size: 13px; font-weight: 800; color: var(--ink); }
+.legacy-tree-note { font-size: 11.5px; color: var(--ink-3); margin: -2px 0 4px; }
+.legacy-perk {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; cursor: pointer;
+  background: #fff; border: 1px solid rgba(17, 24, 39, 0.07); border-radius: 12px; padding: 10px 12px;
+}
+.legacy-perk:disabled { cursor: default; opacity: 0.6; }
+.legacy-perk.owned { opacity: 1; border-color: rgba(124, 92, 255, 0.4); background: linear-gradient(100deg, rgba(124, 92, 255, 0.07), #fff); }
+.legacy-perk-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.legacy-perk-name { font-weight: 800; font-size: 13px; color: var(--ink); }
+.legacy-perk-desc { font-size: 11.5px; color: var(--ink-2); }
+.legacy-perk-req { font-size: 11px; color: var(--ink-3); }
+.legacy-perk-cost { font-size: 12px; font-weight: 800; color: #7c5cff; white-space: nowrap; }
+
 /* ---------- Products (Phase 3) ---------- */
 .prod-card {
   background: #fff;

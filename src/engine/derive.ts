@@ -4,6 +4,7 @@ import { computeStaffEffects, teamMorale, type StaffEffects } from "./employees"
 import { reputationMods } from "./reputation";
 import { alignmentProductionMods, alignmentProductMods } from "./alignment";
 import { charterMods } from "./charter";
+import { legacyAvailable, legacyTreeMods } from "./legacyTree";
 import { ascensionMultiplier } from "./prestige";
 import { powerStats } from "./power";
 import type { Derived, Employee, GameState } from "./types";
@@ -166,9 +167,11 @@ export function derive(state: GameState): Derived {
   // Prestige: permanent global multiplier from Legacy Weights.
   // Diminishing in weights (R4.1): worth exactly 1 at zero weights (first prestige
   // untouched), and each later weight is worth a little less so the meta-loop
-  // doesn't collapse to sub-minute ships.
+  // doesn't collapse to sub-minute ships. R5.4: weights INVESTED in the legacy tree
+  // are removed from this pool (legacyAvailable) — the focus-vs-breadth trade-off.
+  // With nothing invested, available === total, so the curve is unchanged.
   const legacyMult = Big.ONE.add(
-    state.prestige.legacyWeights.pow(balance.prestige.multiplierExponent).mul(balance.prestige.multiplierPerPoint),
+    legacyAvailable(state).pow(balance.prestige.multiplierExponent).mul(balance.prestige.multiplierPerPoint),
   );
   computeMult = computeMult.mul(legacyMult);
   dataMult = dataMult.mul(legacyMult);
@@ -211,6 +214,13 @@ export function derive(state: GameState): Derived {
   computeMult = computeMult.mul(ch.computeMult);
   dataMult = dataMult.mul(ch.dataMult);
   moneyMult = moneyMult.mul(ch.moneyMult);
+
+  // Legacy Investments (R5.4): owned prestige-tree lane biases. All 1.0 with
+  // nothing invested, so this is identity until the player spends weights.
+  const lt = legacyTreeMods(state);
+  computeMult = computeMult.mul(lt.computeMult);
+  dataMult = dataMult.mul(lt.dataMult);
+  moneyMult = moneyMult.mul(lt.moneyMult);
 
   let computePerSec = computeFlat.mul(computeMult);
   // PHASE 2 (flagged off): power/heat soft-cap throttles Compute when the racks

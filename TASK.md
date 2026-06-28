@@ -132,6 +132,17 @@ no dark patterns. Re-run `npm run sim` after any economy change.*
       derive; save v12→v13; CharterPanel in the Lab. Identity when none/first-run → **sim
       byte-identical (12m15s)**. +7 tests. The audit's core replayability lever.
 
+- [x] **R5.4 · Spendable Legacy / prestige skill tree** — turns the flat "weights → one global
+      multiplier" into a focus-vs-breadth CHOICE. A small **Legacy Investments** tree (in the Prestige
+      panel) lets you spend weights on permanent lane biases (Compute/Data/Money specialist → mastery);
+      invested weights are REMOVED from the global-multiplier pool (`legacyAvailable` = total −
+      invested), so it's a real trade-off — concentrate a lane or keep the broad boost. Owned perks
+      persist across prestige; `spent` is derived (can't desync). Save v13→v14. **Curve-safe by
+      construction:** nothing invested → available = total → identical legacyMult, so first prestige
+      (12m15s) and the sim are byte-identical until the player chooses to invest. +5 tests
+      (identity-when-unspent, spend trade-off + lane bias, affordability/prereqs, no double-buy/
+      overspend, persist + save migration).
+
 > Full R0–R8 backlog (R3 active-engagement, R6 replayability, R7 content waves, R8 platform)
 > lives in `POST_LAUNCH_ROADMAP.md`.
 

@@ -112,5 +112,7 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     reputation: state.reputation,
     // Contracts completed are career progress (and feed Reputation) — they persist.
     contracts: state.contracts,
+    // Legacy Investments are permanent prestige-tree progress — they persist.
+    legacyInvestments: state.legacyInvestments,
   };
 }
