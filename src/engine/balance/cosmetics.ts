@@ -48,3 +48,16 @@ export const themes: ThemeDef[] = [
   // — Premium nod —
   { id: "gold", name: "Founder Gold", blurb: "You backed the lab early. Wear it.", unlock: { kind: "premium" } },
 ];
+
+/** Rack skins (R6.3) — a SECOND cosmetic axis, independent of the hall theme: recolours
+ *  the server racks themselves (parametric HSL tint in the renderer, no assets). Same
+ *  earn-by-play model + monotonic unlocks. id "classic" is the default (identity). */
+export const rackSkins: ThemeDef[] = [
+  { id: "classic", name: "Classic", blurb: "Honest factory colours, tier by tier.", unlock: { kind: "free" } },
+  { id: "mono", name: "Matte Black", blurb: "Ship one model; paint everything the colour of focus (and fingerprints).", unlock: { kind: "ships", n: 1 } },
+  { id: "frost", name: "Frostbyte", blurb: "Hit 100K Compute/s. Run them cold, run them blue.", unlock: { kind: "peakCompute", n: 100_000 } },
+  { id: "ember", name: "Overclocked", blurb: "Survive 10 events; let the racks glow like they feel it.", unlock: { kind: "worldEvents", n: 10 } },
+  { id: "synth", name: "Hotpink HPC", blurb: "Launch four products. Compute, but make it a personality.", unlock: { kind: "productsLaunched", n: 4 } },
+  { id: "aurora", name: "Aurora", blurb: "Ascend to AGI. The racks shimmer in colours that don't have names yet.", unlock: { kind: "ascensions", n: 1 } },
+  { id: "gold", name: "Gold-Plated", blurb: "Founder flex: solid-gold heatsinks, terrible thermals.", unlock: { kind: "premium" } },
+];

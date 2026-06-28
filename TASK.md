@@ -59,8 +59,22 @@ tuned curve is byte-identical (sim 12m15s).*
       Genius** (+compute +money −data). Data-only addition to `balance/charters.ts`; `charterMods`
       folds them via the existing path; identity at none/first-run → sim byte-identical (12m15s).
       +2 tests (unique ids, advertised tilts).
-      ↳ Follow-up (optional): rack skins (a 2nd cosmetic axis) — needs a renderer change + on-device
-        verification, so deferred; faction-branched event pools (R6.2) once it's worth a wave.
+      ↳ Follow-up (done): **rack skins** — a 2nd cosmetic axis (recolours the racks, independent of the
+        hall theme). 7 earn-by-play skins (`balance/cosmetics.rackSkins` + `skinUnlocked`/`skinProgress`).
+        Renderer applies a pure HSL tint to the ONE tier-base RGB each rack derives from, so faces/LEDs/
+        rim/spill all follow and per-tier contrast is preserved; "classic"/undefined is an early-return
+        identity → default render byte-identical (no static-cache key change). `settings.rackSkin` +
+        a second Settings collection grid. ⚠️ wants an on-device look before the next TestFlight push.
+        +1 test; sim 12m15s.
+- [x] **R6.2 · Faction-branched event pools** — committing to a side (|alignment| past
+      `worldEvents.factionThreshold` = 0.4) opens a themed event pool, so a safety run and a send-it run
+      diverge. Doomer pool (safety grant / 'the safe one' premium / interpretability) vs accel pool
+      (the 10× run / momentum raise / ship-first viral). `WorldEvent.faction` tag; `pickWorldEvent(roll,
+      alignment)` filters the eligible pool; neutral (incl. the sim) sees no tagged event → curve-safe.
+      +5 tests; sim 12m15s.
+- [x] **R6.3 follow-up · Collection achievements + codex** — `themesUnlocked` metric (themes earned by
+      play, premium excluded) feeds both achievements (Wardrobe 6 / Haute Couture 10) and the codex
+      (Interior Decorating + Picking Sides field notes). Monotonic; no new persisted state. +1 test.
 - [x] **R3.4 · More world-event dilemmas + dead-content fix** — 4 new two-choice dilemmas (Mine the
       Chat Logs / Automate Your Researchers / Power the Datacenter / Emergency-Brake Eval), each
       feeding the now-active alignment fork (doomer − / accelerationist +) → more player agency, not

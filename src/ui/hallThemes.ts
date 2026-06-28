@@ -32,6 +32,22 @@ export function themeStyle(id: string): ThemeStyle {
   return STYLES[id] ?? STYLES.classic!;
 }
 
+/** Picker swatches for rack skins (R6.3) — approximate the in-hall tint so the chip
+ *  previews the look. Purely presentational. */
+const SKIN_SWATCH: Record<string, string> = {
+  classic: "linear-gradient(135deg,#34d27e,#3f86f0,#9b51e0)",
+  mono: "linear-gradient(135deg,#5b6472,#2b3039)",
+  frost: "linear-gradient(135deg,#7ee8ff,#3f86f0)",
+  ember: "linear-gradient(135deg,#ff7a3d,#e83a2e)",
+  synth: "linear-gradient(135deg,#ff5fd2,#a855f7)",
+  aurora: "linear-gradient(135deg,#5effc0,#7ee8ff,#c08bff)",
+  gold: "linear-gradient(135deg,#f5d020,#f5b40a)",
+};
+
+export function skinSwatch(id: string): string {
+  return SKIN_SWATCH[id] ?? SKIN_SWATCH.classic!;
+}
+
 export function themeFilter(id: string): string {
   return themeStyle(id).filter;
 }

@@ -5,8 +5,8 @@ import { haptics as hpt } from "./haptics";
 import { sound as snd } from "./sound";
 import { balance } from "../engine/balance/config";
 import { useGame } from "../state/store";
-import { themeStyle } from "./hallThemes";
-import { themes, themeUnlocked, collectionProgress, unlockHint } from "../engine/cosmetics";
+import { themeStyle, skinSwatch } from "./hallThemes";
+import { themes, rackSkins, themeUnlocked, skinUnlocked, collectionProgress, skinProgress, unlockHint } from "../engine/cosmetics";
 import { PaletteIcon, DownloadIcon, LockIcon, CheckIcon } from "./Icons";
 import { telemetryEnabled, setTelemetryEnabled, getTelemetryEvents, clearTelemetry } from "../state/telemetry";
 import { summarize } from "../engine/telemetry";
@@ -48,7 +48,7 @@ interface Props {
 
 /** iOS-style bottom sheet for feel preferences (clean-to-play, GAMEPLAN §8). */
 export function SettingsSheet({ onClose }: Props) {
-  const { sound, music, haptics, reducedMotion, hallTheme, toggle, setHallTheme } = useSettings();
+  const { sound, music, haptics, reducedMotion, hallTheme, rackSkin, toggle, setHallTheme, setRackSkin } = useSettings();
   const rows: { key: ToggleKey; label: string; hint: string; value: boolean }[] = [
     { key: "sound", label: "Sound effects", hint: "Synthesized taps, claims & ship chimes", value: sound },
     { key: "music", label: "Music", hint: "Ambient bed + era & ship swells", value: music },
@@ -61,6 +61,7 @@ export function SettingsSheet({ onClose }: Props) {
   // a one-shot read at render is enough (no need to re-check at 10Hz while the sheet is open).
   const game = useGame.getState().game;
   const themeProgress = collectionProgress(game, premium);
+  const skinProg = skinProgress(game, premium);
   const [busy, setBusy] = useState(false);
   const [backupOpen, setBackupOpen] = useState(false);
   const [exportText, setExportText] = useState("");
@@ -168,6 +169,33 @@ export function SettingsSheet({ onClose }: Props) {
                   title={unlocked ? t.blurb : `${t.name} — ${unlockHint(t.unlock)}`}
                 >
                   <span className="set-theme-swatch" style={{ background: style.swatch }}>{!unlocked ? <LockIcon size={16} /> : active ? <CheckIcon size={16} /> : ""}</span>
+                  <span className="set-theme-name">{unlocked ? t.name : unlockHint(t.unlock)}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Rack skins — a second cosmetic axis: recolour the racks themselves (R6.3). */}
+        <div className="set-theme">
+          <div className="set-theme-head">
+            <PaletteIcon size={16} /> Rack skins
+            <span className="set-theme-count">{skinProg.owned}/{skinProg.total}</span>
+          </div>
+          <div className="set-theme-row">
+            {rackSkins.map((t) => {
+              const unlocked = skinUnlocked(game, premium, t.id);
+              const active = rackSkin === t.id;
+              return (
+                <button
+                  key={t.id}
+                  className={`set-theme-chip ${active ? "on" : ""} ${!unlocked ? "locked" : ""}`}
+                  onClick={() => { if (!unlocked) return; snd.tap(); setRackSkin(t.id); }}
+                  aria-pressed={active}
+                  disabled={!unlocked}
+                  title={unlocked ? t.blurb : `${t.name} — ${unlockHint(t.unlock)}`}
+                >
+                  <span className="set-theme-swatch" style={{ background: skinSwatch(t.id) }}>{!unlocked ? <LockIcon size={16} /> : active ? <CheckIcon size={16} /> : ""}</span>
                   <span className="set-theme-name">{unlocked ? t.name : unlockHint(t.unlock)}</span>
                 </button>
               );

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { createInitialState } from "./state";
 import { prestige } from "./prestige";
 import { Big } from "./math/Big";
-import { themeUnlocked, isUnlocked, collectionProgress, unlockHint, themes } from "./cosmetics";
+import { themeUnlocked, isUnlocked, collectionProgress, unlockHint, themes, rackSkins, skinUnlocked, skinProgress } from "./cosmetics";
 import { metricValue } from "./achievements";
 import { codexMetricValue } from "./codex";
 
@@ -56,6 +56,19 @@ describe("R6.3 — cosmetic unlocks (pure)", () => {
     s.stats.totalShips = 4; // unlocks vaporwave (2 ships) + carbon (4 ships)
     expect(metricValue(s, "themesUnlocked").toNumber()).toBe(free + 2);
     expect(codexMetricValue(s, "themesUnlocked")).toBe(free + 2);
+  });
+
+  it("rack skins are a second earn-by-play axis (classic free, others gated, monotonic)", () => {
+    const s = createInitialState();
+    expect(rackSkins[0]!.id).toBe("classic");
+    expect(skinUnlocked(s, false, "classic")).toBe(true);
+    expect(skinUnlocked(s, false, "mono")).toBe(false); // needs 1 ship
+    expect(skinUnlocked(s, false, "gold")).toBe(false); // premium
+    expect(skinUnlocked(s, true, "gold")).toBe(true);
+    expect(skinProgress(s, false).owned).toBe(1); // just classic at a fresh start
+    s.stats.totalShips = 1;
+    expect(skinUnlocked(s, false, "mono")).toBe(true);
+    expect(skinProgress(s, false).owned).toBe(2);
   });
 
   it("unlockHint gives readable 'how to earn' text", () => {

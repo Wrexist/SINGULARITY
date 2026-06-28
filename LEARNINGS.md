@@ -349,6 +349,33 @@ Data, so it binds more often. Lesson: re-coupling works on the resource the core
 does NOT instantly re-spend; tie the cost to that resource's OUTPUT, and find the peak
 before the affordability cliff with the sink metric.
 
+### Cosmetics as a 2nd customization axis without renderer risk (R6.3 rack skins)
+- **Tint the ONE base colour, not every face.** Each rack derives every colour (faces, LEDs,
+  light-spill, rim) from a single `tierBase(tier)` RGB via `shade()`. So a "skin" is just a pure
+  HSL transform on that one base — recolours the whole rack consistently and preserves per-tier hue
+  contrast (green/blue/violet stay distinct) for free. Don't recolour toward a FIXED target colour —
+  that collapses the tier distinction; use hue-rotate / sat / light multipliers instead.
+- **Make the default an early-return identity.** `skinTint(base, skin)` returns `base` unchanged for
+  `undefined`/`"classic"`/unknown ids (before any rgb→hsl→rgb round-trip, which is lossy). So the
+  default render is byte-identical and the static-cache key (sky/walls/floor) needs no change — skins
+  only touch the dynamic rack layer. This is what let a renderer change ship without a curve/visual
+  regression for existing players (still wants an on-device look for the *non*-default skins).
+- **Unlock logic stays pure + monotonic + shared.** Themes and rack skins reuse the same `ThemeDef`
+  shape + `isUnlocked` over monotonic lifetime stats, so neither can re-lock after prestige and there's
+  no unlocked-set to persist. The same `collectionProgress`/`skinProgress` count feeds achievements and
+  the codex via a `themesUnlocked` metric — one source of truth, three surfaces.
+
+### Faction-branched event pools (R6.2) — gate the POOL, keep neutral == baseline
+- A `faction?: "doomer"|"accel"` tag on world events + `pickWorldEvent(roll, alignment)` that filters
+  to the eligible pool (untagged always eligible) gives divergent content per playstyle. The key to
+  curve-safety: at neutral alignment NO tagged event is eligible, so the base pool — and the balance
+  sim (which never moves alignment) — is unchanged. The threshold (`worldEvents.factionThreshold`)
+  lives in balance. Pass alignment in (it's state) — same purity boundary as the rolls.
+- **Duplicate event ids are silent dead content.** `applyWorldEvent` resolves by `find` (first match),
+  so a second entry sharing an id is never shown even though `pickWorldEvent` (by weight) can select
+  it — it just renders the first entry's headline/effect. Found two (`gpu_shortage`, `benchmark_win`);
+  a one-line uniqueness test over `balance.worldEvents.list` now guards the whole class.
+
 ### R8.1 — on-device telemetry without breaking purity OR the privacy label (2026-06-28)
 - **Split pure/impure exactly like the clock + RNG already are.** The summarizer
   (`src/engine/telemetry.ts`) is a pure `summarize(events)` fold — no clock, storage, or RNG — so

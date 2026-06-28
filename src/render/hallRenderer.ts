@@ -16,6 +16,9 @@ export interface DrawOpts {
   spawnT: number; // 0..1
   burst: number; // 1 just after a claim → 0
   dpr: number;
+  /** Cosmetic rack skin id (R6.3) — recolours the rack bodies. Undefined/"classic"
+   *  is identity, so the default render is byte-identical. */
+  rackSkin?: string;
 }
 
 type Pt = { x: number; y: number };
@@ -71,6 +74,55 @@ const rgb = (c: RGB) => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
 const rgba = (c: RGB, a: number) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${clamp(a, 0, 1)})`;
 
 const tierBase = (tier: number): RGB => TIER_BASE[tier] ?? TIER_BASE[0]!;
+
+// --- Rack skins (R6.3): a pure HSL transform on the tier base colour. Applied to the
+// ONE base RGB each rack derives from (faces, LEDs, spill, rim all follow), so a skin
+// recolours the whole rack consistently while preserving per-tier hue contrast. An
+// absent/"classic" id is identity → the default render is byte-identical. ---
+const SKIN_TINTS: Record<string, { h?: number; s?: number; l?: number }> = {
+  mono: { s: 0.1, l: 0.95 },
+  frost: { h: 35, s: 1.0, l: 1.12 },
+  ember: { h: -120, s: 1.25, l: 1.0 },
+  synth: { h: 150, s: 1.3, l: 1.05 },
+  aurora: { h: 80, s: 1.4, l: 1.08 },
+  gold: { h: -105, s: 1.1, l: 1.05 },
+};
+
+function rgbToHsl(c: RGB): [number, number, number] {
+  const r = c[0] / 255, g = c[1] / 255, b = c[2] / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  const d = max - min;
+  if (d === 0) return [0, 0, l];
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h: number;
+  if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+  else if (max === g) h = (b - r) / d + 2;
+  else h = (r - g) / d + 4;
+  return [h * 60, s, l];
+}
+
+function hslToRgb(h: number, s: number, l: number): RGB {
+  h = ((h % 360) + 360) % 360 / 360;
+  if (s === 0) { const v = l * 255; return [v, v, v]; }
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  const hue = (t: number): number => {
+    if (t < 0) t += 1; if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  };
+  return [hue(h + 1 / 3) * 255, hue(h) * 255, hue(h - 1 / 3) * 255];
+}
+
+function skinTint(base: RGB, skinId?: string): RGB {
+  const t = skinId ? SKIN_TINTS[skinId] : undefined;
+  if (!t) return base; // classic / unknown → identity
+  const [h, s, l] = rgbToHsl(base);
+  return hslToRgb(h + (t.h ?? 0), clamp(s * (t.s ?? 1), 0, 1), clamp(l * (t.l ?? 1), 0, 1));
+}
 const eraBg = (era: number): [string, string] => ERA_BG[era] ?? ERA_BG[0]!;
 const eraFloor = (era: number): RGB => ERA_FLOOR[era] ?? ERA_FLOOR[0]!;
 
@@ -259,7 +311,7 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
     // Overclock manifests as a hotter rack: lift the work-pulse (which already
     // drives rim/LED glow) so the upgrade you bought is visible in the room.
     const workPulse = Math.min(1.2, basePulse + model.overclock * 0.45);
-    drawRack(ctx, c.x, c.y, tileW, tileH, rack.tier, rack.density, scale, blink, workPulse, model.active, powerOn);
+    drawRack(ctx, c.x, c.y, tileW, tileH, rack.tier, rack.density, scale, blink, workPulse, model.active, powerOn, o.rackSkin);
   }
 
   // Auto-train "ops bot": a small glowing dot that patrols the floor, so the
@@ -467,8 +519,9 @@ function drawRack(
   sx: number, sy: number, tileW: number, tileH: number,
   tier: number, density: number, scale: number,
   blink: number, workPulse: number, active: boolean, powerOn: number,
+  skin?: string,
 ): void {
-  const base = tierBase(tier);
+  const base = skinTint(tierBase(tier), skin);
   const led = shade(base, 2.0);
   const hw = (tileW / 2) * 0.64 * scale;
   const hh = (tileH / 2) * 0.64 * scale;

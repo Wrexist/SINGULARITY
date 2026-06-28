@@ -8,12 +8,14 @@ export interface Settings {
   reducedMotion: boolean;
   /** Cosmetic hall theme id (purely visual; never affects gameplay). */
   hallTheme: string;
+  /** Cosmetic rack skin id (R6.3; recolours the racks, never affects gameplay). */
+  rackSkin: string;
   /** First-run onboarding seen? Persisted so it shows exactly once. */
   onboarded: boolean;
 }
 
 const KEY = "singularity.settings.v1";
-const DEFAULTS: Settings = { sound: true, music: true, haptics: true, reducedMotion: false, hallTheme: "classic", onboarded: false };
+const DEFAULTS: Settings = { sound: true, music: true, haptics: true, reducedMotion: false, hallTheme: "classic", rackSkin: "classic", onboarded: false };
 
 function load(): Settings {
   try {
@@ -29,7 +31,7 @@ function persist(s: Settings): void {
   try {
     localStorage.setItem(
       KEY,
-      JSON.stringify({ sound: s.sound, music: s.music, haptics: s.haptics, reducedMotion: s.reducedMotion, hallTheme: s.hallTheme, onboarded: s.onboarded }),
+      JSON.stringify({ sound: s.sound, music: s.music, haptics: s.haptics, reducedMotion: s.reducedMotion, hallTheme: s.hallTheme, rackSkin: s.rackSkin, onboarded: s.onboarded }),
     );
   } catch {
     /* ignore */
@@ -39,6 +41,7 @@ function persist(s: Settings): void {
 interface SettingsStore extends Settings {
   toggle: (key: "sound" | "music" | "haptics" | "reducedMotion") => void;
   setHallTheme: (id: string) => void;
+  setRackSkin: (id: string) => void;
   completeOnboarding: () => void;
 }
 
@@ -51,6 +54,10 @@ export const useSettings = create<SettingsStore>((set, get) => ({
   },
   setHallTheme: (id) => {
     set({ hallTheme: id });
+    persist(get());
+  },
+  setRackSkin: (id) => {
+    set({ rackSkin: id });
     persist(get());
   },
   completeOnboarding: () => {

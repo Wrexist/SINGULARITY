@@ -10,11 +10,12 @@
  */
 import { Big } from "./math/Big";
 import type { GameState } from "./types";
-import { themes, type CosmeticUnlock, type ThemeDef } from "./balance/cosmetics";
+import { themes, rackSkins, type CosmeticUnlock, type ThemeDef } from "./balance/cosmetics";
 
-export { themes };
+export { themes, rackSkins };
 
 const BY_ID = new Map(themes.map((t) => [t.id, t]));
+const SKIN_BY_ID = new Map(rackSkins.map((t) => [t.id, t]));
 
 export function themeDef(id: string): ThemeDef | undefined {
   return BY_ID.get(id);
@@ -42,11 +43,27 @@ export function themeUnlocked(state: GameState, isPremium: boolean, id: string):
   return def ? isUnlocked(state, isPremium, def.unlock) : false;
 }
 
-/** How many of the collection the player owns, and the total (for an "N/M" chip). */
-export function collectionProgress(state: GameState, isPremium: boolean): { owned: number; total: number } {
+/** Is a rack skin (by id) unlocked? Unknown ids are treated as locked. */
+export function skinUnlocked(state: GameState, isPremium: boolean, id: string): boolean {
+  const def = SKIN_BY_ID.get(id);
+  return def ? isUnlocked(state, isPremium, def.unlock) : false;
+}
+
+/** Owned/total over a cosmetic list (themes or rack skins). */
+function progressOver(list: ThemeDef[], state: GameState, isPremium: boolean): { owned: number; total: number } {
   let owned = 0;
-  for (const t of themes) if (isUnlocked(state, isPremium, t.unlock)) owned += 1;
-  return { owned, total: themes.length };
+  for (const t of list) if (isUnlocked(state, isPremium, t.unlock)) owned += 1;
+  return { owned, total: list.length };
+}
+
+/** How many hall themes the player owns, and the total (for an "N/M" chip). */
+export function collectionProgress(state: GameState, isPremium: boolean): { owned: number; total: number } {
+  return progressOver(themes, state, isPremium);
+}
+
+/** How many rack skins the player owns, and the total. */
+export function skinProgress(state: GameState, isPremium: boolean): { owned: number; total: number } {
+  return progressOver(rackSkins, state, isPremium);
 }
 
 /** Human-readable "how to earn this" line for a LOCKED theme. Pure string mapping. */
