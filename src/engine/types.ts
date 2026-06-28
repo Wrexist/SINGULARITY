@@ -75,6 +75,9 @@ export interface GameState {
   /** Phase 4 — Contracts: completed objective ids (the board is derived from this).
    *  Persists across prestige; completed contracts feed earned Reputation. */
   contracts: { completed: string[] };
+  /** Phase 4 — Lab Charter: the current run's chosen modifier id (or null). Picked
+   *  at the start of a run (post-first-ship); resets to null each prestige. */
+  charter: string | null;
 }
 
 /**

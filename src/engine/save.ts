@@ -182,6 +182,7 @@ interface SavedShape {
   achievements: string[];
   reputation: { spent: number; perks: string[] };
   contracts: { completed: string[] };
+  charter: string | null;
 }
 
 export function serialize(state: GameState): string {
@@ -223,6 +224,7 @@ export function serialize(state: GameState): string {
     achievements: state.achievements,
     reputation: state.reputation,
     contracts: state.contracts,
+    charter: state.charter,
   };
   return JSON.stringify(shape);
 }
@@ -302,6 +304,7 @@ export function deserialize(json: string): GameState {
       : [],
     reputation: sanitizeReputation(raw.reputation),
     contracts: sanitizeContracts(raw.contracts),
+    charter: typeof raw.charter === "string" ? raw.charter : null,
   };
 }
 
@@ -395,6 +398,10 @@ export function migrate(raw: any): SavedShape {
     // v11 → v12: Contracts board (Phase 4). Nothing completed yet; the board
     // derives from the empty completed list on load.
     s = { ...s, version: 12, contracts: s.contracts ?? { completed: [] } };
+  }
+  if (s.version === 12) {
+    // v12 → v13: Lab Charter (Phase 4). No charter on existing runs.
+    s = { ...s, version: 13, charter: s.charter ?? null };
   }
   return s as SavedShape;
 }

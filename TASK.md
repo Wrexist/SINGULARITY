@@ -124,6 +124,14 @@ no dark patterns. Re-run `npm run sim` after any economy change.*
       + data in `src/engine/flavor.ts`; the upgrade card shows it. +3 tests. UI text only — no curve
       impact. High personality-per-byte (the GDD's satire wedge).
 
+- [x] **R6.1 · Lab Charters** — a per-run modifier you pick at the start of each generation (after
+      the first ship): **Open-Source Crusade** (+data −money), **Bootstrapped** (+money −compute),
+      **Moonshot** (+compute −data). Each tilts the triangle so runs play differently. Charter is
+      chosen while the run is fresh, then locks once you research; resets to null each prestige.
+      Pure `charterMods`/`setCharter` (`balance/charters.ts` + `src/engine/charter.ts`), folded into
+      derive; save v12→v13; CharterPanel in the Lab. Identity when none/first-run → **sim
+      byte-identical (12m15s)**. +7 tests. The audit's core replayability lever.
+
 > Full R0–R8 backlog (R3 active-engagement, R6 replayability, R7 content waves, R8 platform)
 > lives in `POST_LAUNCH_ROADMAP.md`.
 

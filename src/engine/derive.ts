@@ -3,6 +3,7 @@ import { balance } from "./balance/config";
 import { computeStaffEffects, teamMorale, type StaffEffects } from "./employees";
 import { reputationMods } from "./reputation";
 import { alignmentProductionMods, alignmentProductMods } from "./alignment";
+import { charterMods } from "./charter";
 import { ascensionMultiplier } from "./prestige";
 import { powerStats } from "./power";
 import type { Derived, Employee, GameState } from "./types";
@@ -203,6 +204,13 @@ export function derive(state: GameState): Derived {
   const align = alignmentProductionMods(state);
   computeMult = computeMult.mul(align.computeMult);
   moneyMult = moneyMult.mul(align.moneyMult);
+
+  // Lab Charter (R6.1): the run's chosen triangle tilt. Identity (1.0) on a
+  // charter-less run — including the first — so the tuned curve is untouched.
+  const ch = charterMods(state);
+  computeMult = computeMult.mul(ch.computeMult);
+  dataMult = dataMult.mul(ch.dataMult);
+  moneyMult = moneyMult.mul(ch.moneyMult);
 
   let computePerSec = computeFlat.mul(computeMult);
   // PHASE 2 (flagged off): power/heat soft-cap throttles Compute when the racks

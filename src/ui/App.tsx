@@ -24,6 +24,7 @@ import { EmployeesPanel } from "./EmployeesPanel";
 import { ProductsPanel } from "./ProductsPanel";
 import { AchievementsModal } from "./AchievementsModal";
 import { ContractsPanel } from "./ContractsPanel";
+import { CharterPanel } from "./CharterPanel";
 import { EventLog } from "./EventLog";
 import { FxCanvas } from "./FxCanvas";
 import { burst as fxBurst } from "./fx";
@@ -55,7 +56,7 @@ export function App() {
   const { doStartRun, doClaim, doBuyUpgrade, doBuyUpgradeBulk, doBuyOfficePerk, doBuyReputationPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
-    doClaimContract, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset } =
+    doClaimContract, doSetCharter, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset } =
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
@@ -428,6 +429,7 @@ export function App() {
           <>
             <HallCanvas onExpand={setPendingExpansion} />
             <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} onSetFocus={setComputeFocus} />
+            <CharterPanel game={game} onSet={(id) => { haptics.tap(); sound.tap(); doSetCharter(id); }} />
             <UpgradePanel game={game} derived={d} onBuy={onBuy} />
             {showResearch && <ResearchPanel game={game} derived={d} onResearch={onResearch} />}
             {showMarket && <DataMarketPanel game={game} onBuyData={onBuyData} onBuyTool={onBuy} />}
