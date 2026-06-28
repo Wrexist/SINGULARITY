@@ -8,10 +8,22 @@
  * Humour lives here (writing), never in the math — per the design spine.
  */
 import { balance } from "./config";
+import { market } from "./market";
 
-/** Full research-tree size — the "own everything" capstone tracks this so it can
- *  never drift out of sync when nodes are added/removed. */
-const RESEARCH_TREE_SIZE = balance.research.length;
+/** Number of named rivals on the AI market — the "outrank everyone" badge derives
+ *  its threshold from this so it can't drift when the roster changes (same pattern
+ *  as RESEARCH_TREE_SIZE below). */
+const NAMED_RIVALS = market.rivals.length;
+
+/** Max research nodes OWNABLE in one run — the "own everything" capstone tracks
+ *  this so it can't drift when nodes are added/removed. Mutually-exclusive groups
+ *  only let you own one sibling, so each group of size G costs (G−1) off the total. */
+const RESEARCH_TREE_SIZE = (() => {
+  const groupSize: Record<string, number> = {};
+  for (const r of balance.research) if (r.exclusiveGroup) groupSize[r.exclusiveGroup] = (groupSize[r.exclusiveGroup] ?? 0) + 1;
+  const lockedOut = Object.values(groupSize).reduce((sum, g) => sum + (g - 1), 0);
+  return balance.research.length - lockedOut;
+})();
 
 export type AchMetric =
   | "peakCompute"
@@ -29,7 +41,12 @@ export type AchMetric =
   | "eraReached"
   | "peakResearch"
   | "worldEventsResolved"
-  | "playtimeSec";
+  | "playtimeSec"
+  | "openSourceShips"
+  | "contractsDone"
+  | "legacyInvested"
+  | "rivalsBeaten"
+  | "ascensions";
 
 export type AchCategory = "scale" | "business" | "team" | "legacy" | "meta";
 
@@ -102,6 +119,18 @@ export const achievements: AchievementDef[] = [
   { id: "events_25", label: "Survivor", desc: "Resolve 25 world events", cat: "meta", metric: "worldEventsResolved", threshold: 25 },
   { id: "play_1h", label: "Hooked", desc: "Play for 1 hour", cat: "meta", metric: "playtimeSec", threshold: 3_600 },
   { id: "play_10h", label: "Dedicated", desc: "Play for 10 hours", cat: "meta", metric: "playtimeSec", threshold: 36_000 },
+
+  // ---- New systems (open-source · market · contracts · legacy tree · ascension) ----
+  { id: "os_1", label: "People's Champion", desc: "Open-source a model — give it to the world", cat: "business", metric: "openSourceShips", threshold: 1 },
+  { id: "os_5", label: "For the Culture", desc: "Open-source 5 models", cat: "business", metric: "openSourceShips", threshold: 5 },
+  { id: "market_3", label: "Podium Finish", desc: "Outrank 3 named rivals on the AI market", cat: "business", metric: "rivalsBeaten", threshold: 3 },
+  { id: "market_1", label: "Market Leader", desc: "Outrank every named rival — top the AI market", cat: "business", metric: "rivalsBeaten", threshold: NAMED_RIVALS },
+  { id: "contracts_5", label: "Deal Maker", desc: "Complete 5 contracts", cat: "meta", metric: "contractsDone", threshold: 5 },
+  { id: "contracts_10", label: "Always Be Closing", desc: "Complete 10 contracts", cat: "meta", metric: "contractsDone", threshold: 10 },
+  { id: "legacy_1", label: "Specialist", desc: "Invest in the Legacy tree", cat: "legacy", metric: "legacyInvested", threshold: 1 },
+  { id: "legacy_3", label: "Min-Maxer", desc: "Own 3 Legacy investments at once", cat: "legacy", metric: "legacyInvested", threshold: 3 },
+  { id: "ascend_1", label: "Transcendence", desc: "Ascend once in the Post-Singularity era", cat: "legacy", metric: "ascensions", threshold: 1 },
+  { id: "ascend_5", label: "Beyond", desc: "Ascend 5 times", cat: "legacy", metric: "ascensions", threshold: 5 },
 
   // ---- Secret / satirical ----
   { id: "secret_idle", label: "Touch Grass", desc: "Play for 24 hours total. We're not judging.", cat: "meta", metric: "playtimeSec", threshold: 86_400, secret: true },

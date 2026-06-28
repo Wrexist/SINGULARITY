@@ -1,6 +1,7 @@
 import { Big } from "./math/Big";
 import { achievements as DEFS, type AchievementDef, type AchMetric } from "./balance/achievements";
 import { currentEra } from "./eras";
+import { rivalsBeaten } from "./market";
 import type { GameState } from "./types";
 
 /**
@@ -32,6 +33,11 @@ export function metricValue(state: GameState, metric: AchMetric): Big {
     case "peakResearch": return Big.of(s.peakResearchCount);
     case "worldEventsResolved": return Big.of(s.worldEventsResolved);
     case "playtimeSec": return Big.of(s.playtimeSec);
+    case "openSourceShips": return Big.of(s.openSourceShips);
+    case "contractsDone": return Big.of(state.contracts.completed.length);
+    case "legacyInvested": return Big.of(state.legacyInvestments.length);
+    case "rivalsBeaten": return Big.of(rivalsBeaten(state));
+    case "ascensions": return Big.of(s.ascensions);
   }
 }
 

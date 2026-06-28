@@ -4,6 +4,7 @@ import { fmt, fmtMoney, m$, numOf, fmtDur } from "./format";
 import { achievementDefs } from "../engine/achievements";
 import { reputationAvailable } from "../engine/reputation";
 import { alignmentProductionMods, alignmentHeatMult, alignmentProductMods } from "../engine/alignment";
+import { charterDef, charterMods } from "../engine/charter";
 import { balance } from "../engine/balance/config";
 import { ascensionMultiplier } from "../engine/prestige";
 
@@ -37,6 +38,20 @@ function stanceEffects(game: GameState): string | null {
   return `${pct(mods.computeMult - 1)} cmp · ${pct(mods.moneyMult - 1)} $ · ${pct(heat - 1)} heat`;
 }
 
+/** Active per-run Lab Charter as "Name · +X% cmp · −Y% $", or null when none is
+ *  chosen. Surfaces the run's build choice so the tilt isn't invisible. */
+function charterRow(game: GameState): Row | null {
+  const def = charterDef(game.charter);
+  if (!def) return null;
+  const m = charterMods(game);
+  const parts = [
+    m.computeMult !== 1 ? `${pct(m.computeMult - 1)} cmp` : null,
+    m.dataMult !== 1 ? `${pct(m.dataMult - 1)} data` : null,
+    m.moneyMult !== 1 ? `${pct(m.moneyMult - 1)} $` : null,
+  ].filter(Boolean);
+  return { label: "Charter", value: `${def.name} · ${parts.join(" · ")}` };
+}
+
 /** R5.5 cross-system effects, surfaced only when active (else they'd clutter the
  *  common case). Keeps the new depth legible — "legibility is the feature". */
 function crossSystemRows(game: GameState): Row[] {
@@ -59,6 +74,7 @@ export function StatsPanel({ game, derived }: Props) {
   const [open, setOpen] = useState(false);
   const s = game.stats;
   const stance = stanceEffects(game);
+  const charter = charterRow(game);
 
   const now: Row[] = [
     { label: "Compute / sec", value: fmt(derived.computePerSec) },
@@ -71,6 +87,7 @@ export function StatsPanel({ game, derived }: Props) {
     { label: "Passive income", value: `${fmtMoney(derived.passiveMoneyPerSec)}/s` },
     { label: "Faction stance", value: alignmentLabel(game.alignment) },
     ...(stance ? [{ label: "Stance effects", value: stance }] : []),
+    ...(charter ? [charter] : []),
     ...crossSystemRows(game),
   ];
 
@@ -82,6 +99,7 @@ export function StatsPanel({ game, derived }: Props) {
     { label: "Models shipped", value: String(s.totalShips) },
     { label: "Legacy Weights", value: fmt(game.prestige.legacyWeights) },
     ...(s.ascensions > 0 ? [{ label: "AGI ascensions", value: `${s.ascensions} (×${ascensionMultiplier(game).toFixed(2)})` }] : []),
+    ...(s.openSourceShips > 0 ? [{ label: "Models open-sourced", value: String(s.openSourceShips) }] : []),
     { label: "Products launched", value: String(s.productsLaunched) },
     { label: "Employees hired", value: String(s.employeesHired) },
     { label: "World events", value: String(s.worldEventsResolved) },

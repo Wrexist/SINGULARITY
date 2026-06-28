@@ -82,6 +82,15 @@ export interface GameState {
    *  here removes them from the global multiplier (a focus-vs-breadth trade-off).
    *  Persists across prestige. */
   legacyInvestments: string[];
+  /** Peak Compute/sec achieved since the last ship (generation-scoped; reset by
+   *  prestige). Feeds the Generation Report so it shows THIS run's high-water mark,
+   *  not the all-time career peak. Not persisted — a mid-run reload simply re-accrues. */
+  runPeakCompute: Big;
+  /** Peak total product revenue/sec since the last ship (generation-scoped). */
+  runPeakMrr: number;
+  /** Snapshot of the just-finished run's peaks, captured by prestige() before the
+   *  reset so the post-reset UI can show an accurate Generation Report. Transient. */
+  lastShipReport: { peakCompute: Big; peakMrr: number } | null;
 }
 
 /**
@@ -115,6 +124,11 @@ export interface LifetimeStats {
   /** AGI ascensions — ships taken in the Post-Singularity era past the Legacy floor.
    *  Each grants a permanent compounding boost (derive's ascensionMult). */
   ascensions: number;
+  /** Models open-sourced (ships in the open-source mode). Feeds Lab Reputation. */
+  openSourceShips: number;
+  /** Best number of named rivals ever outranked (monotonic). Drives Codex unlocks so
+   *  a collected entry can't re-lock when live rank slips (live rivalsBeaten can fall). */
+  bestRivalsBeaten: number;
 }
 
 /** An individual employee. roleId names a job (balance.staff.roles); the person's

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Portal } from "./Portal";
 import { balance } from "../engine/balance/config";
 import { canBuyOfficePerk } from "../engine/actions";
@@ -33,17 +33,20 @@ const TRAIT_TONE: Record<string, string> = { good: "var(--money)", bad: "var(--c
 const hueOf = (name: string) => { let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360; return h; };
 const initialsOf = (name: string) => name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
 
-function Avatar({ name, size = 38 }: { name: string; size?: number }) {
+// Pure presentational leaves with primitive props → memoized so a roster of N
+// people doesn't reconcile N avatars/star-rows every 10Hz tick when only live
+// numbers elsewhere changed (R0.1: cheapen the inherent per-tick re-render).
+const Avatar = memo(function Avatar({ name, size = 38 }: { name: string; size?: number }) {
   const h = hueOf(name);
   return (
     <span className="emp-av" style={{ width: size, height: size, fontSize: size * 0.34, background: `hsl(${h} 62% 88%)`, color: `hsl(${h} 55% 32%)` }}>
       {initialsOf(name)}
     </span>
   );
-}
+});
 
 /** Level shown as filled pips out of MAX_LEVEL (the mockup's star rating). */
-function Stars({ level }: { level: number }) {
+const Stars = memo(function Stars({ level }: { level: number }) {
   return (
     <span className="emp-stars" aria-label={`Level ${level} of ${MAX_LEVEL}`}>
       {Array.from({ length: MAX_LEVEL }, (_, i) => (
@@ -51,7 +54,7 @@ function Stars({ level }: { level: number }) {
       ))}
     </span>
   );
-}
+});
 
 /** Quality tier badge from a product's competitiveness (qf 0..1). */
 function tier(qf: number): { label: string; cls: string } {

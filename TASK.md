@@ -14,8 +14,19 @@ Phase 0–3 history retained below for context.
 no dark patterns. Re-run `npm run sim` after any economy change.*
 
 ### Step 1 — Foundation (R0)
-- [ ] **R0.1 · Kill the 10Hz whole-app re-render** (P1) — narrow store selectors + `React.memo`
-      on leaf panels; isolate the only truly-10Hz component (`ResourceBar`). Biggest perf/battery win.
+- [~] **R0.1 · Kill the 10Hz whole-app re-render** (P1) — INVESTIGATED + partially done. Finding
+      overturns the original premise: (a) derive's expensive O(employees×products) staff fold is
+      ALREADY cross-tick cached (`staffCache`), so derive is cheap per tick; (b) store subscriptions
+      are already narrow — only `App` reads whole `game` (it must, to compute `d`), the rest use
+      slices; (c) the active panel's per-tick re-render is largely INHERENT — it shows live 10Hz
+      numbers (resource counts, rates, affordability, MAU/MRR, training bars), so it legitimately
+      updates. The residual win is keeping each re-render CHEAP. Safe slice DONE: memoized the pure
+      presentational leaves (`Avatar`, `Stars`) so a big roster doesn't reconcile N avatars/star-rows
+      every tick when only numbers changed. Remaining (deferred, on-device-profiler-gated): memoizing
+      interactive list ROWS (employee/upgrade/product cards) needs stabilizing their drag/selection
+      closures — real risk of breaking drag-to-assign/selection that can't be validated blind, and the
+      benefit is unmeasurable without a device profiler. Not shipping that part blind (per CLAUDE.md:
+      rigorous partner, smallest proving change, no risky premature optimization).
 - [x] **R0.2 · Extend the balance sim to the long game** — new `runLongHaul()` in
       `scripts/balance-sim.ts`: 20 generations driving the lab loop + the products business
       (commercialise deployed drafts, push versions). Reports per-gen ship time, total weights,
@@ -26,9 +37,10 @@ no dark patterns. Re-run `npm run sim` after any economy change.*
       scope — documented, same as the baseline.)
 
 ### Step 2 — Friendliness (R1)
-- [x] **R1.1 · Advisor "Next: …" banner** — wired the already-built/tested `nextAction()` as a
-      persistent, tappable banner above the stage that jumps to the resolving tab. UI-only (sim
-      byte-identical, 12m15s); +1 invariant test (the banner can never point at a locked tab). 250 tests.
+- [~] **R1.1 · Advisor "Next: …" banner** — built it, then **removed it per owner UX feedback**
+      (2026-06-28 TestFlight screenshot): the persistent "Next:" banner cluttered the top of the
+      stage. The advisor engine (`nextAction`/`advisorItems`, still tested) stays and continues to
+      drive the bottom-nav attention badges; only the banner UI was taken out.
 - [x] **R1.2 · Buy ×1 / ×10 / Max** — segmented selector in the Hardware panel; pure engine
       `planBulkUpgrade` / `buyUpgradeBulk` (simulate real buys → exact total cost, honor
       affordability + floor space + rack auto-eviction; Max capped at floor). Cards show the batched
@@ -96,6 +108,11 @@ no dark patterns. Re-run `npm run sim` after any economy change.*
       no double-claim, off-board guard, rep accounting, save round-trip + migration). Sim 12m15s.
       ↳ Follow-up: ✅ advisor now nudges "Claim the '<title>' contract — +N Rep" when one is ready
         (extends the recommendation system); tab badge still optional.
+      ↳ Follow-up (done): **endgame ladder** — extended the pool 15→25 so the board no longer runs dry
+        mid-game. New rungs reach into the deep/endgame (10M users, 50 racks, $1B earned, 1B Compute/s,
+        15 ships, 25 staff, and a capstone AGI **ascension** contract). Added `peakMau`/`ascensions`
+        contract metrics (read from stats). Rep rewards escalate 5→10. Reputation-only payout → still
+        curve-safe (sim 12m15s). +1 test (339 total).
 
 - [x] **R5.5 · Cross-system interactions** — existing systems now ripple into the product business
       (emergent depth, ~no new content): **alignment → products** (accelerationist markets harder →
@@ -109,8 +126,16 @@ no dark patterns. Re-run `npm run sim` after any economy change.*
       base + perk-granted slots), the first reputation perk that touches another system instead of a
       flat global mult. New `productSlot` effect kind + `bonusProductSlots`; wired through the slot
       checks, advisor free-slot nudge, and the Products header. Gated → sim byte-identical (12m15s).
-      +2 tests. *Remaining (optional): more cross-system perks (research discount, free starting
-      racks) and mutually-exclusive build branches.*
+      +2 tests. ↳ Follow-up (done): **Research Fellowship** (cost 28, requires Data Partnership) — a
+      second cross-system perk that discounts every research node −20% Compute & Data via a new
+      `researchDiscount` effect kind + pure `researchCostMult` (floored at 0.25 so research can't go
+      free). Folded into `researchCost`/`canBuyResearch`/`buyResearch`; the Research panel shows the
+      discounted price + ETA. Neutral (mult=1) with no perk → **sim byte-identical (12m15s)**. +4 tests.
+      ↳ Follow-up (done): **Founder's Stockpile** (cost 32, requires Compute Grant) — a third
+      cross-system perk (`startingRacks` effect): every fresh run begins with 3 `rack_basic` already
+      humming, bounded by the starting floor capacity so it can't break the floor-space rule. Wired in
+      `prestige` (injects into the fresh upgrades map); zero with no perk → first run's cold open is
+      byte-identical (sim 12m15s). +3 tests. *Remaining (optional): mutually-exclusive build branches.*
 - [x] **R5.3 · Research auto-buyer** — new **Research Director** Reputation perk (cost 24) auto-buys
       the cheapest affordable, prereq-met research node. Pure `applyAutoResearch` folded into `tick`
       (so it works offline too); gated behind the perk → off by default → **sim byte-identical
@@ -118,6 +143,26 @@ no dark patterns. Re-run `npm run sim` after any economy change.*
       New `automate` reputation-effect kind; +5 tests. The genre-standard automation layer the audit
       ranked as the top idle convenience.
 
+- [x] **R4.3 · Re-couple the resource triangle (Data lever)** — Compute is auto-train-pinned and
+      can't be a sink without a core-loop change (documented), but **Data accumulates**, so it CAN.
+      `versionCostFor(state, v)` adds 600s of current Data output to each version push ("AI R&D runs
+      on data"), tying the cost to the Data economy so it stays a real sink instead of decaying to
+      nothing. Curve-safe by construction (no products pre-first-ship → first-prestige 12m15s, Gen2
+      2m11s byte-identical). Sim-validated sweet spot: Data sink **0.0%→2.3%** with products still
+      pushing (Compute sink stays 6.3%); past N=600 the cost starves products and both sinks collapse
+      (the documented backfire — peak found via the sink metric). +3 tests; LEARNINGS updated.
+- [x] **R2.1 · Tappable racks** — the hall is now interactive: tapping a rack opens a small info card
+      (tier name + flavor, count owned, Compute/s each, tier total); tap empty floor or × to dismiss.
+      Pure hit-testing — `rackHitAreas(model,W,H)` in the renderer mirrors `drawHallDynamic`'s placement
+      exactly (same tile order, floor-diamond quads), and `rackInfo(state,tier)` is a pure engine read
+      model. Front-to-back hit order so the frontmost rack wins a tap; markers still take precedence.
+      Read-only → sim/curve untouched (12m15s). +4 tests.
+- [x] **R7.2 · Codex lore for the new systems** — the Field Notes encyclopedia (15→21 entries) now
+      covers this session's systems: charters (Mission Statements), contracts (Enterprise Sales /
+      Always Be Closing), the market leaderboard (The Leaderboard / Market Leader), and the Legacy
+      tree (Specialisation). Extended `CodexMetric` to read live state (`contractsCompleted`/
+      `rivalsBeaten`/`legacyInvested`) like achievements do, so each new system has discoverable,
+      threshold-gated lore. Pure data + a 3-case switch extension; zero curve impact. +1 test.
 - [x] **R7.1 · Tiered upgrade flavor** — the most-bought upgrades (racks, overclock) now have
       *escalating* satirical descriptions at owned-count breakpoints ("Your landlord has questions
       about the power bill.") instead of one static line. Pure `upgradeFlavor(id, owned, fallback)`

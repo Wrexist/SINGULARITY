@@ -11,7 +11,7 @@ import {
 } from "./balance/config";
 import { derive } from "./derive";
 import { alignmentHeatMult } from "./alignment";
-import { autoResearchEnabled } from "./reputation";
+import { autoResearchEnabled, researchCostMult } from "./reputation";
 import { isRackId, floorFull, evictableRackFor } from "./hall";
 import type { ActiveModifier, GameState } from "./types";
 
@@ -215,16 +215,41 @@ export function researchAvailable(state: GameState, id: string): boolean {
   const def = RESEARCH_BY_ID[id];
   if (!def) return false;
   if (state.research.includes(id)) return false;
-  return def.requires.every((req) => state.research.includes(req));
+  if (!def.requires.every((req) => state.research.includes(req))) return false;
+  // Mutually-exclusive: locked once a sibling in the same group is owned (R-depth).
+  if (def.exclusiveGroup) {
+    const siblingOwned = balance.research.some(
+      (r) => r.id !== id && r.exclusiveGroup === def.exclusiveGroup && state.research.includes(r.id),
+    );
+    if (siblingOwned) return false;
+  }
+  return true;
+}
+
+/** A research node is "locked out" if a mutually-exclusive sibling was chosen. */
+export function researchLockedOut(state: GameState, id: string): boolean {
+  const def = RESEARCH_BY_ID[id];
+  if (!def?.exclusiveGroup || state.research.includes(id)) return false;
+  return balance.research.some(
+    (r) => r.id !== id && r.exclusiveGroup === def.exclusiveGroup && state.research.includes(r.id),
+  );
+}
+
+/** Effective research cost after the Research Fellowship reputation discount (R5.6).
+ *  Mult is 1 with no perk owned, so a fresh run pays the tuned full price. */
+export function researchCost(state: GameState, def: ResearchDef): { compute: Big; data: Big } {
+  const mult = researchCostMult(state);
+  return {
+    compute: Big.of(def.cost.compute).mul(mult),
+    data: Big.of(def.cost.data).mul(mult),
+  };
 }
 
 export function canBuyResearch(state: GameState, id: string): boolean {
   const def = RESEARCH_BY_ID[id];
   if (!def || !researchAvailable(state, id)) return false;
-  return (
-    state.resources.compute.gte(def.cost.compute) &&
-    state.resources.data.gte(def.cost.data)
-  );
+  const cost = researchCost(state, def);
+  return state.resources.compute.gte(cost.compute) && state.resources.data.gte(cost.data);
 }
 
 /**
@@ -251,12 +276,13 @@ export function applyAutoResearch(state: GameState): GameState {
 export function buyResearch(state: GameState, id: string): GameState {
   if (!canBuyResearch(state, id)) return state;
   const def = RESEARCH_BY_ID[id]!;
+  const cost = researchCost(state, def);
   return {
     ...state,
     resources: {
       ...state.resources,
-      compute: state.resources.compute.sub(def.cost.compute),
-      data: state.resources.data.sub(def.cost.data),
+      compute: state.resources.compute.sub(cost.compute),
+      data: state.resources.data.sub(cost.data),
     },
     research: [...state.research, id],
   };
@@ -354,6 +380,30 @@ export function buyDataOffer(
     heat,
   };
   return { state: next, outcome: { kind, dataGained, moneyLost, message } };
+}
+
+// ---------- Lobbying (Money → cool Heat) ----------
+
+/** Money cost to lobby right now — rises with current Heat (a hotter lab costs
+ *  more to clean up). Big-valued (economy contract); the UI shows it live. */
+export function lobbyCost(state: GameState): Big {
+  return Big.of(Math.round(balance.heat.lobby.baseCost + state.heat * balance.heat.lobby.costPerHeat));
+}
+
+/** Lobbying only makes sense when you're actually warm and can afford it. The heat
+ *  gate is a tunable, so it lives in balance (shared with the UI), not in logic. */
+export function canLobby(state: GameState): boolean {
+  return state.heat > balance.heat.lobby.minHeat && state.resources.money.gte(lobbyCost(state));
+}
+
+/** Spend Money to buy regulatory goodwill: cut Heat by a fraction. No-op-safe. */
+export function lobby(state: GameState): GameState {
+  if (!canLobby(state)) return state;
+  return {
+    ...state,
+    resources: { ...state.resources, money: state.resources.money.sub(lobbyCost(state)) },
+    heat: clampHeat(state.heat * (1 - balance.heat.lobby.reductionFraction)),
+  };
 }
 
 // ---------- Regulatory Heat events ----------

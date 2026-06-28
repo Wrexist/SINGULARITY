@@ -2,6 +2,8 @@ import { Big } from "./math/Big";
 import { balance } from "./balance/config";
 import { products as P } from "./balance/products";
 import { createInitialState } from "./state";
+import { startingRacks } from "./reputation";
+import { hallCapacity } from "./hall";
 import type { DraftModel, GameState } from "./types";
 
 /**
@@ -56,6 +58,12 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
   const fresh = createInitialState();
   const ships = state.prestige.ships + 1;
 
+  // Founder's Stockpile (reputation perk): begin the fresh run with some basic racks
+  // already humming — bounded by the starting floor so it never breaks the capacity
+  // rule. Zero with no perk owned, so the first run's cold open is byte-identical.
+  const freeRacks = Math.min(startingRacks(state), hallCapacity(fresh));
+  const freshUpgrades = freeRacks > 0 ? { ...fresh.upgrades, rack_basic: freeRacks } : fresh.upgrades;
+
   // AGI ascension: this ship counts as an ascension if it lands you in the
   // Post-Singularity era (by ship count) AND your lifetime Legacy clears the floor.
   // Hard-gated so it stays 0 through the whole early/mid game (no curve impact).
@@ -83,8 +91,25 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
   // by ship count so it can't snowball). Other modes start from the clean slate.
   const kickstart = modeDef.moneyKickstartPerShip * ships;
 
+  // Open-source "community momentum": some ship modes leave the next run with a
+  // short, temporary all-lane buff (the community iterating on your release).
+  // Temporary modifiers can't inflate the permanent curve; only open-source sets one.
+  const momentum = modeDef.momentum;
+  const momentumMods: GameState["modifiers"] = momentum
+    ? (["computeMult", "dataMult", "moneyMult"] as const).map((target) => ({
+        id: `momentum_${target}`,
+        target,
+        factor: momentum.factor,
+        remainingSec: momentum.durationSec,
+        label: `Community momentum ×${momentum.factor}`,
+        tone: "good" as const,
+      }))
+    : fresh.modifiers;
+
   return {
     ...fresh,
+    upgrades: freshUpgrades,
+    modifiers: momentumMods,
     resources: kickstart > 0
       ? { ...fresh.resources, money: fresh.resources.money.add(kickstart) }
       : fresh.resources,
@@ -105,6 +130,10 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
       totalShips: state.stats.totalShips + 1,
       totalLegacy: newTotalLegacy,
       ascensions: state.stats.ascensions + (isAscension ? 1 : 0),
+      // Open-sourcing earns community goodwill → Lab Reputation (via earnedReputation).
+      // Keyed off the mode id (not `reputationBonus > 0`) so adding a future bonus-bearing
+      // mode can't silently miscount this stat or the reputation it feeds.
+      openSourceShips: state.stats.openSourceShips + (mode === "open_source" ? 1 : 0),
     },
     // Achievements are a permanent collection — they survive the reset.
     achievements: state.achievements,
@@ -114,5 +143,9 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     contracts: state.contracts,
     // Legacy Investments are permanent prestige-tree progress — they persist.
     legacyInvestments: state.legacyInvestments,
+    // Snapshot the just-finished run's peaks for the Generation Report (the fresh
+    // run's own peaks reset to 0 via ...fresh). This is what makes the report show
+    // THIS generation's high-water marks instead of all-time career peaks.
+    lastShipReport: { peakCompute: state.runPeakCompute, peakMrr: state.runPeakMrr },
   };
 }

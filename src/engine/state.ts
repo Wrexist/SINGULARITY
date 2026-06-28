@@ -34,5 +34,8 @@ export function createInitialState(): GameState {
     contracts: { completed: [] },
     charter: null,
     legacyInvestments: [],
+    runPeakCompute: Big.ZERO,
+    runPeakMrr: 0,
+    lastShipReport: null,
   };
 }

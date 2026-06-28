@@ -1,5 +1,5 @@
 import { balance } from "../engine/balance/config";
-import { canBuyDataOffer, canBuyUpgrade, upgradeCost, effectiveRaidChance } from "../engine/actions";
+import { canBuyDataOffer, canBuyUpgrade, upgradeCost, effectiveRaidChance, canLobby, lobbyCost } from "../engine/actions";
 import { Big } from "../engine/math/Big";
 import type { GameState } from "../engine/types";
 import { fmt, fmtMoney } from "./format";
@@ -33,10 +33,11 @@ interface Props {
   game: GameState;
   onBuyData: (id: string) => void;
   onBuyTool: (id: string) => void;
+  onLobby: () => void;
 }
 
 /** Money → Data marketplace: clean licensed vendors vs. the risky dark web. */
-export function DataMarketPanel({ game, onBuyData, onBuyTool }: Props) {
+export function DataMarketPanel({ game, onBuyData, onBuyTool, onLobby }: Props) {
   const legit = balance.dataMarket.filter((o) => !o.shady);
   const shady = balance.dataMarket.filter((o) => o.shady);
   const tools = balance.upgrades.filter((u) => u.market === "darkweb");
@@ -78,6 +79,12 @@ export function DataMarketPanel({ game, onBuyData, onBuyTool }: Props) {
         </h3>
         <p className="market-warn">Cheaper data. Caveat emptor — batches can be poisoned, or raided.</p>
         <HeatMeter heat={game.heat} />
+        {game.heat > balance.heat.lobby.minHeat && (
+          <button className="lobby-btn" disabled={!canLobby(game)} onClick={onLobby}>
+            <span className="lobby-text">🤝 Lobby regulators — cool Heat by {Math.round(balance.heat.lobby.reductionFraction * 100)}%</span>
+            <span className="lobby-cost">{fmtMoney(lobbyCost(game))}</span>
+          </button>
+        )}
         {shady.map((o) => {
           const affordable = canBuyDataOffer(game, o.id);
           const risk = o.risk!;

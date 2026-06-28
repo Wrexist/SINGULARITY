@@ -77,6 +77,22 @@ describe("contracts — readiness & claiming", () => {
   });
 });
 
+describe("contracts — endgame metrics", () => {
+  it("evaluates the new peakMau and ascensions contracts from stats", () => {
+    const s = createInitialState();
+    // Complete everything up to the endgame entries so they reach the board.
+    const ascended = contractsBalance.pool.find((d) => d.metric === "ascensions")!;
+    const mau = contractsBalance.pool.find((d) => d.metric === "peakMau")!;
+    s.contracts.completed = contractsBalance.pool
+      .filter((d) => d.id !== ascended.id && d.id !== mau.id)
+      .map((d) => d.id);
+    s.stats.ascensions = ascended.target;
+    s.stats.peakMau = mau.target;
+    expect(contractReady(s, ascended.id)).toBe(true);
+    expect(contractReady(s, mau.id)).toBe(true);
+  });
+});
+
 describe("contracts — reputation accounting", () => {
   it("sums only completed contracts' rewards", () => {
     const s = createInitialState();

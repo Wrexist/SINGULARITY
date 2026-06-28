@@ -3,7 +3,7 @@ import { Portal } from "./Portal";
 import type { GameState } from "../engine/types";
 import { products as B, productFeatures, type FeatureLane, type ProductTypeId } from "../engine/balance/products";
 import {
-  typeDef, productMetrics, canStartUpgrade, canBuyFeature, versionCost,
+  typeDef, productMetrics, canStartUpgrade, canBuyFeature, versionCostFor, featureMods,
   upgradeDurationSec, upgradeProgress, retirePayout, enterpriseUnlocked, suggestChannelMix,
 } from "../engine/products";
 import { m$, numOf as num, fmtDur } from "./format";
@@ -64,6 +64,14 @@ function featureEffect(lane: FeatureLane, factor: number): string {
   return `${factor < 1 ? "−" : "+"}${pct}% ${LANE_LABEL[lane]}`;
 }
 
+/** Revenue per paying user as a real $/sec figure (the dial used to show only an
+ *  abstract ×multiplier, so "35 users → $1/s" was a mystery). */
+function perUserPrice(arpuPerSec: number): string {
+  if (arpuPerSec >= 1) return `$${arpuPerSec.toFixed(arpuPerSec >= 10 ? 0 : 1)}/s ea.`;
+  if (arpuPerSec >= 0.01) return `$${arpuPerSec.toFixed(2)}/s ea.`;
+  return `$${arpuPerSec.toFixed(3)}/s ea.`;
+}
+
 type Tab = "overview" | "pricing" | "marketing" | "upgrades";
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" }, { id: "pricing", label: "Pricing" },
@@ -89,7 +97,10 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
   const frontier = game.products.frontier;
   const me = productMetrics(p, frontier);
   const up = p.upgrade;
-  const penetration = t.tam > 0 ? p.mau / t.tam : 0;
+  // Effective TAM includes feature boosts (e.g. Localization), which is also what
+  // the sim caps MAU at — so penetration can't read >100% any more.
+  const effTam = t.tam * featureMods(p).tam;
+  const penetration = effTam > 0 ? Math.min(1, p.mau / effTam) : 0;
   const mktCap = Math.max(1, Math.round(p.quality * B.marketingCapPerQuality));
   const qfColor = me.qf > 0.66 ? "var(--money)" : me.qf > 0.33 ? "#f97316" : "var(--coral)";
   const crew = game.employees.filter((e) => e.assignedProductId === p.id);
@@ -147,7 +158,7 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
               {statCard("Total users", num(me.mau))}
             </div>
             {barCard("Competitiveness vs rivals", me.qf * 100, qfColor, `${Math.round(me.qf * 100)}%`)}
-            {barCard(`Market share (of ${num(t.tam)})`, penetration * 100, "var(--data)", `${(penetration * 100).toFixed(penetration < 0.01 ? 2 : 1)}%`)}
+            {barCard(`Market penetration (of ${num(effTam)})`, penetration * 100, "var(--data)", `${(penetration * 100).toFixed(penetration < 0.01 ? 2 : 1)}%`)}
             {me.qf < 0.5 && <p className="pd-hint"><TrendDownIcon size={14} /> Rivals are pulling ahead — research a new version to catch up.</p>}
             {up ? (
               <div className="pd-card">
@@ -157,7 +168,7 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
             ) : (
               <button className="pd-primary" disabled={!canStartUpgrade(game, p.id)} onClick={() => onStartUpgrade(p.id)}>
                 <span>Research v{p.version + 1}</span>
-                <span className="pd-primary-sub">{num(versionCost(p.version).compute * B.upgrade.upfrontFrac)}+{num(versionCost(p.version).data * B.upgrade.upfrontFrac)} upfront · ~{fmtDur(upgradeDurationSec(p.version))}</span>
+                <span className="pd-primary-sub">{num(versionCostFor(game, p.version).compute * B.upgrade.upfrontFrac)}+{num(versionCostFor(game, p.version).data * B.upgrade.upfrontFrac)} upfront · ~{fmtDur(upgradeDurationSec(p.version))}</span>
               </button>
             )}
             {crew.length > 0 && (
@@ -172,8 +183,8 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
             {info(<CoinIcon size={18} />, "Pricing strategy", "Higher prices earn more per user but fewer convert. Free users are everyone who hasn't paid.")}
             <div className="pd-card">
               <div className="pd-card-row">
-                <span className="pd-card-label">Pro price</span>
-                <span className="pd-card-value">×{p.priceMult.toFixed(1)}{p.priceMult > 1 ? " · premium" : p.priceMult < 1 ? " · value" : ""}</span>
+                <span className="pd-card-label">Pro price{p.priceMult > 1 ? " · premium" : p.priceMult < 1 ? " · value" : ""}</span>
+                <span className="pd-card-value">{perUserPrice(t.baseArpu * p.priceMult * p.quality * featureMods(p).arpu)} <span className="pd-mult-note">×{p.priceMult.toFixed(1)}</span></span>
               </div>
               <input className="pd-slider" type="range" min={Math.round(B.priceMin * 10)} max={Math.round(B.priceMax * 10)} step={1}
                 style={fill(((p.priceMult - B.priceMin) / (B.priceMax - B.priceMin)) * 100)}

@@ -4,6 +4,7 @@ import {
 } from "./balance/products";
 import type { GameState, ProductMods, ProductState, ProductsState, UpgradeState } from "./types";
 import { bonusProductSlots } from "./reputation";
+import { derive } from "./derive";
 
 /** No employees hired → no product buffs. */
 export const NEUTRAL_MODS: ProductMods = { upgradeSpeed: 1, serveCost: 1, churn: 1, acq: 1, arpu: 1, heat: 1 };
@@ -75,10 +76,27 @@ export function typeUnlocked(state: GameState, id: ProductTypeId): boolean {
   return state.prestige.ships >= typeDef(id).unlockAtShips;
 }
 
-/** Compute+Data cost to push from the given current version to the next. */
+/** Compute+Data cost to push from the given current version to the next (base curve,
+ *  flat in the economy). Use `versionCostFor` for the live cost a player actually pays. */
 export function versionCost(version: number): { compute: number; data: number } {
   const g = Math.pow(B.versionCostGrowth, Math.max(0, version - 1));
   return { compute: B.versionCost.compute * g, data: B.versionCost.data * g };
+}
+
+/** Live version cost (R4.3 re-coupling): the base curve PLUS a Data term equal to
+ *  `versionDataSecondsOfOutput` seconds of the player's current Data output. The flat
+ *  base decays to nothing against exponential late-game Data production, so without
+ *  this term Data stops being a sink; with it, keeping models fresh genuinely consumes
+ *  Data. Identity-safe for the curve: no products exist before the first ship, so this
+ *  never touches the first-prestige run. */
+export function versionCostFor(state: GameState, version: number): { compute: number; data: number } {
+  const base = versionCost(version);
+  const dataPerSec = derive(state).dataPerSec.toNumber();
+  // Fall back to the flat base when Data output is so large the term overflows JS
+  // number (>~1e308): at that scale the player's Data is effectively unbounded, so a
+  // cheaper push is the gameplay-safe choice (an Infinity cost would just block pushes).
+  const economyData = Number.isFinite(dataPerSec) ? Math.max(0, dataPerSec) * B.versionDataSecondsOfOutput : 0;
+  return { compute: base.compute, data: base.data + economyData };
 }
 
 /** Whether a state has shipped enough to OFFER the Enterprise tier. */
@@ -305,10 +323,14 @@ export function maybeProductEvent(
   const ev = B.events.list[Math.min(B.events.list.length - 1, Math.floor(rollEvent * B.events.list.length))]!;
   const t = typeDef(p.type);
 
+  // Cap at the EFFECTIVE TAM (incl. feature boosts), matching the growth cap in
+  // simulateProducts so MAU can never exceed the addressable market.
+  const mau = clamp(p.mau * (ev.mauMult ?? 1), 0, t.tam * featureMods(p).tam);
   const np: ProductState = {
     ...p,
-    mau: clamp(p.mau * (ev.mauMult ?? 1), 0, t.tam),
-    paid: Math.max(0, Math.min(p.paid * (ev.paidMult ?? 1), p.mau * (ev.mauMult ?? 1))),
+    mau,
+    // Bound paid by the CAPPED mau (not the uncapped growth) so paid ≤ mau always holds.
+    paid: Math.max(0, Math.min(p.paid * (ev.paidMult ?? 1), mau)),
     buzzSec: ev.buzz ? B.buzzDurationSec : p.buzzSec,
   };
   const heat = ev.heat ? state.heat + ev.heat : state.heat;
@@ -427,14 +449,14 @@ export function releaseProduct(
 export function canPushVersion(state: GameState, id: string): boolean {
   const p = state.products.active.find((x) => x.id === id);
   if (!p) return false;
-  const c = versionCost(p.version);
+  const c = versionCostFor(state, p.version);
   return state.resources.compute.gte(c.compute) && state.resources.data.gte(c.data);
 }
 
 export function pushVersion(state: GameState, id: string): GameState {
   if (!canPushVersion(state, id)) return state;
   const p = state.products.active.find((x) => x.id === id)!;
-  const c = versionCost(p.version);
+  const c = versionCostFor(state, p.version);
   const active = state.products.active.map((x) =>
     x.id === id
       ? { ...x, version: x.version + 1, quality: state.products.frontier, buzzSec: B.buzzDurationSec }
@@ -514,7 +536,7 @@ export function upgradeDurationSec(version: number): number {
 export function canStartUpgrade(state: GameState, id: string): boolean {
   const p = state.products.active.find((x) => x.id === id);
   if (!p || p.upgrade) return false; // one upgrade per product at a time
-  const c = versionCost(p.version);
+  const c = versionCostFor(state, p.version);
   return (
     state.resources.compute.gte(c.compute * B.upgrade.upfrontFrac) &&
     state.resources.data.gte(c.data * B.upgrade.upfrontFrac)
@@ -526,7 +548,7 @@ export function canStartUpgrade(state: GameState, id: string): boolean {
 export function startUpgrade(state: GameState, id: string): GameState {
   if (!canStartUpgrade(state, id)) return state;
   const p = state.products.active.find((x) => x.id === id)!;
-  const c = versionCost(p.version);
+  const c = versionCostFor(state, p.version);
   const upfrontC = c.compute * B.upgrade.upfrontFrac;
   const upfrontD = c.data * B.upgrade.upfrontFrac;
   const dur = upgradeDurationSec(p.version);

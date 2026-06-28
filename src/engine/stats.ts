@@ -23,6 +23,8 @@ export function initialStats(): LifetimeStats {
     worldEventsResolved: 0,
     playtimeSec: 0,
     ascensions: 0,
+    openSourceShips: 0,
+    bestRivalsBeaten: 0,
   };
 }
 
@@ -34,6 +36,7 @@ export function accrueStats(
   computePerSec: Big,
   earnedThisTick: Big,
   seconds: number,
+  rivalsBeatenNow: number,
 ): LifetimeStats {
   let mrr = 0;
   let mau = 0;
@@ -49,6 +52,7 @@ export function accrueStats(
     peakMrr: Math.max(prev.peakMrr, mrr),
     peakMau: Math.max(prev.peakMau, mau),
     peakResearchCount: Math.max(prev.peakResearchCount, researchCount),
+    bestRivalsBeaten: Math.max(prev.bestRivalsBeaten, Math.max(0, rivalsBeatenNow)),
     playtimeSec: prev.playtimeSec + Math.max(0, seconds),
   };
 }

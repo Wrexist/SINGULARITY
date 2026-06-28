@@ -13,7 +13,7 @@ import { UpgradePanel } from "./UpgradePanel";
 import { ResearchPanel } from "./ResearchPanel";
 import { PrestigePanel } from "./PrestigePanel";
 import { OfflineModal } from "./OfflineModal";
-import { Celebration } from "./Celebration";
+import { Celebration, type ShipReport } from "./Celebration";
 import { SettingsSheet } from "./SettingsSheet";
 import { ToastStack, type ToastData } from "./Toast";
 import { StatsPanel } from "./StatsPanel";
@@ -25,12 +25,14 @@ import { ProductsPanel } from "./ProductsPanel";
 import { AchievementsModal } from "./AchievementsModal";
 import { ContractsPanel } from "./ContractsPanel";
 import { CharterPanel } from "./CharterPanel";
+import { CodexPanel } from "./CodexPanel";
 import { EventLog } from "./EventLog";
 import { FxCanvas } from "./FxCanvas";
 import { burst as fxBurst } from "./fx";
 import { ProductLaunch } from "./ProductLaunch";
 import { productsUnlocked, productMetrics, typeDef, retirePayout } from "../engine/products";
-import { attentionCounts, nextAction } from "../engine/advisor";
+import { attentionCounts } from "../engine/advisor";
+import { marketLeaderboard, playerMarketRank } from "../engine/market";
 import { FlaskIcon, BoxIcon, TeamIcon, TrophyIcon, GearIcon, GiftIcon } from "./Icons";
 import { fmtMoney } from "./format";
 import type { ProductTypeId } from "../engine/balance/products";
@@ -56,23 +58,19 @@ export function App() {
   const { doStartRun, doClaim, doBuyUpgrade, doBuyUpgradeBulk, doBuyOfficePerk, doBuyReputationPerk, doBuyLegacyPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
-    doClaimContract, doSetCharter, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset } =
+    doClaimContract, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset } =
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
   // Per-tab attention counts (the small badges on the bottom nav). Memoized per
   // tick (same cadence as derive) — a handful of product checks, no clock.
   const attention = useMemo(() => attentionCounts(game), [game]);
-  // The single most important "do this next" nudge (pure advisor, already tested).
-  // Surfaced as a persistent, tappable banner so a player is never lost. Every
-  // item's tab is gated to an unlocked tab, so tapping never jumps somewhere hidden.
-  const next = useMemo(() => nextAction(game), [game]);
 
   // Detect a ship (prestige) and fire the celebration moment + haptics.
   const prevShips = useRef(game.prestige.ships);
   const prevWeights = useRef<Big>(game.prestige.legacyWeights);
   const prevAscensions = useRef(game.stats.ascensions);
-  const [celebration, setCelebration] = useState<{ gained: Big; total: Big } | null>(null);
+  const [celebration, setCelebration] = useState<{ gained: Big; total: Big; report: ShipReport } | null>(null);
   const [eraMoment, setEraMoment] = useState<number | null>(null);
   const [launch, setLaunch] = useState<{ type: ProductTypeId; name: string } | null>(null);
   const [pendingExpansion, setPendingExpansion] = useState<string | null>(null);
@@ -108,8 +106,6 @@ export function App() {
   const [tab, setTab] = useState<"lab" | "products" | "employees">("lab");
   const shipReady = canPrestige(game);
   const era = currentEra(game);
-  // Where the advisor banner takes you when tapped (matches the bottom-nav labels).
-  const nextDest = next ? (next.tab === "employees" ? "Team" : next.tab === "products" ? "Products" : "Lab") : "";
 
   // Transient unlock toasts.
   const [toasts, setToasts] = useState<ToastData[]>([]);
@@ -165,6 +161,23 @@ export function App() {
     if (era > seenEra.current) { setEraMoment(era); haptics.celebrate(); sound.ship(); sound.era(); }
     seenEra.current = era;
   }, [initialized, era]);
+
+  // Market climbing: a celebratory beat each time you reach a NEW best rank on the
+  // AI leaderboard (overtaking a named rival). Best-rank-only so it never spams on
+  // rank wobble; hydration-synced so it never fires on a returning load.
+  const myRank = useMemo(() => playerMarketRank(game), [game]);
+  const bestRank = useRef<number | null>(null);
+  const syncedRank = useRef(false);
+  useEffect(() => {
+    if (!initialized || myRank == null) return;
+    if (!syncedRank.current) { bestRank.current = myRank; syncedRank.current = true; return; }
+    if (bestRank.current != null && myRank < bestRank.current) {
+      bestRank.current = myRank;
+      const passed = marketLeaderboard(game).slice(myRank).find((e) => !e.isYou);
+      pushToast(myRank === 1 ? "🏆 You're #1 on the AI market!" : `📈 You overtook ${passed?.name ?? "a rival"} — now #${myRank} on the market!`, "good");
+      haptics.celebrate(); sound.success();
+    }
+  }, [initialized, myRank]);
 
   // Ambient world events: feedback when a new card appears.
   useEffect(() => {
@@ -273,7 +286,17 @@ export function App() {
     }
     if (game.prestige.ships > prevShips.current) {
       const gained = game.prestige.legacyWeights.sub(prevWeights.current);
-      setCelebration({ gained, total: game.prestige.legacyWeights });
+      // Prefer the just-finished run's peaks (captured by prestige before the reset)
+      // so the report reflects THIS generation, not all-time career bests. Fall back
+      // to career stats only if the snapshot is somehow absent.
+      const ship = game.lastShipReport;
+      const report = {
+        gen: game.prestige.ships,
+        rank: playerMarketRank(game),
+        peakCompute: ship?.peakCompute ?? game.stats.peakComputePerSec,
+        peakMrr: ship?.peakMrr ?? game.stats.peakMrr,
+      };
+      setCelebration({ gained, total: game.prestige.legacyWeights, report });
       haptics.celebrate();
       // The flagship you just shipped is waiting as a free-to-launch product —
       // make sure the player knows (a ship that "gave nothing" was the #1 confusion).
@@ -388,17 +411,6 @@ export function App() {
             <span className="daily-go">Claim</span>
           </button>
         )}
-        {next && (
-          <button
-            className="next-bar"
-            onClick={() => { haptics.tap(); setTab(next.tab); }}
-            aria-label={`Suggested next step: ${next.text}. Tap to go to ${nextDest}.`}
-          >
-            <span className="next-ic" aria-hidden="true">💡</span>
-            <span className="next-text"><b>Next:</b> {next.text}</span>
-            <span className="next-go" aria-hidden="true">{nextDest} →</span>
-          </button>
-        )}
         {tab === "products" && showProducts ? (
           <ProductsPanel
             game={game}
@@ -432,10 +444,11 @@ export function App() {
             <CharterPanel game={game} onSet={(id) => { haptics.tap(); sound.tap(); doSetCharter(id); }} />
             <UpgradePanel game={game} derived={d} onBuy={onBuy} />
             {showResearch && <ResearchPanel game={game} derived={d} onResearch={onResearch} />}
-            {showMarket && <DataMarketPanel game={game} onBuyData={onBuyData} onBuyTool={onBuy} />}
+            {showMarket && <DataMarketPanel game={game} onBuyData={onBuyData} onBuyTool={onBuy} onLobby={() => { haptics.tap(); sound.purchase(); doLobby(); }} />}
             {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} onBuyLegacyPerk={(id) => { haptics.success(); sound.purchase(); doBuyLegacyPerk(id); }} />}
             {showResearch && <ContractsPanel game={game} onClaim={onClaimContract} />}
             <StatsPanel game={game} derived={d} />
+            {game.prestige.ships > 0 && <CodexPanel game={game} />}
             <EventLog log={log} />
           </>
         )}
@@ -484,6 +497,7 @@ export function App() {
         <Celebration
           weightsGained={celebration.gained}
           totalWeights={celebration.total}
+          report={celebration.report}
           onDone={() => {
             setCelebration(null);
             // Land the player on their reward: a freshly-shipped model waiting to

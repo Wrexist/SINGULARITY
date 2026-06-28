@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { GameState } from "../engine/types";
 import { products as B, type ProductTypeId } from "../engine/balance/products";
 import { productMilestones } from "../engine/balance/products";
+import { marketLeaderboard, playerMarketRank } from "../engine/market";
 import {
   typeDef, productMetrics, canLaunchDraft, canStartUpgrade,
   upgradeProgress, milestoneValue, maxActiveProducts,
@@ -9,7 +10,7 @@ import {
 import { m$, numOf as num, fmtDur } from "./format";
 import { ProductDetail, TYPE_GLYPH } from "./ProductDetail";
 import { EditableName } from "./EditableName";
-import { TagIcon, AtomIcon, LockIcon, SparkIcon, TrendDownIcon, TrophyIcon } from "./Icons";
+import { TagIcon, AtomIcon, LockIcon, SparkIcon, TrendDownIcon, TrophyIcon, BarsIcon } from "./Icons";
 
 const FUN_NAMES = ["Nimbus", "Oracle", "Synthia", "Cortex", "Lumen", "Vertex", "Sage", "Atlas", "Echo", "Prism", "Nova", "Helix", "Quasar", "Mirage"];
 
@@ -35,7 +36,10 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
   // Which product's deep-management screen is open, if any.
   const [detailId, setDetailId] = useState<string | null>(null);
   const [msOpen, setMsOpen] = useState(false);
+  const [mktOpen, setMktOpen] = useState(true);
   const ps = game.products;
+  const board = useMemo(() => marketLeaderboard(game).slice(0, 8), [game.products.active, game.products.frontier]);
+  const myRank = playerMarketRank(game);
   const frontier = ps.frontier;
   const maxSlots = maxActiveProducts(game);
   const slotsFull = ps.active.length >= maxSlots;
@@ -197,6 +201,31 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
           )}
         </div>
       )}
+
+      <div className="market-board">
+        <button className="prod-ms-head" onClick={() => setMktOpen((o) => !o)} aria-expanded={mktOpen}>
+          <span className="prod-ms-title"><BarsIcon size={15} /> Top AIs on the market</span>
+          {myRank != null && <span className="prod-ms-count">you're #{myRank}</span>}
+          <span className="prod-ms-toggle">{mktOpen ? "▾" : "▸"}</span>
+        </button>
+        {mktOpen && (
+          <div className="market-list">
+            {board.map((e, i) => (
+              <div className={`market-row ${e.isYou ? "you" : ""}`} key={`${e.name}-${i}`}>
+                <span className="market-rank">{i + 1}</span>
+                <div className="market-main">
+                  <div className="market-top">
+                    <span className="market-name">{e.name}</span>
+                    <span className="market-share">{(e.share * 100).toFixed(e.share < 0.01 ? 2 : 1)}%</span>
+                  </div>
+                  <div className="market-bar"><div className="market-bar-fill" style={{ width: `${Math.min(100, e.share * 100)}%` }} /></div>
+                  <span className="market-vendor">{e.isYou ? "Your lab" : e.vendor} · {num(e.users)} users</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {detailId && (
         <ProductDetail

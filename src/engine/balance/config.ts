@@ -138,6 +138,9 @@ export interface ResearchDef {
   desc: string;
   requires: string[];
   cost: { compute: number; data: number };
+  /** Mutually-exclusive choice: buying any node in this group locks its siblings
+   *  for the run (research resets each prestige, so it's a per-run build pick). */
+  exclusiveGroup?: string;
   effect:
     | { kind: "computeMult"; factor: number }
     | { kind: "dataMult"; factor: number }
@@ -363,6 +366,112 @@ const WORLD_EVENTS: WorldEvent[] = [
     headline: "AI Is Having A Moment (Again)",
     body: "Every outlet runs the same breathless segment. Signups pour into anything with 'AI' on the box. Your products get a buzz wave.",
     effect: { kind: "productBuzz", durationSec: 60 },
+  },
+  // Named-rival ships — the leaderboard competitors do things, so the frontier
+  // drift feels like a market, not a faceless number.
+  {
+    id: "rival_closedai",
+    weight: 2,
+    tone: "bad",
+    headline: "ClosedAI Ships Cortex-5",
+    body: "ClosedAI's keynote runs three hours and announces one feature. It still moves the frontier — your models suddenly look dated.",
+    effect: { kind: "frontierJump", amount: 2 },
+  },
+  {
+    id: "rival_goggle",
+    weight: 2,
+    tone: "bad",
+    headline: "Goggle Unveils Gemiknight",
+    body: "Goggle bolts an AI onto seven products nobody uses. Analysts swoon anyway and the bar creeps up.",
+    effect: { kind: "frontierJump", amount: 2 },
+  },
+  {
+    id: "rival_anthropos",
+    weight: 2,
+    tone: "bad",
+    headline: "Anthropos Releases Claudius",
+    body: "Anthropos publishes a 90-page safety card and a model that's annoyingly good. The frontier nudges higher.",
+    effect: { kind: "frontierJump", amount: 2 },
+  },
+  // --- More ambient events (variety pass) ---
+  {
+    id: "gpu_shortage",
+    weight: 3,
+    tone: "bad",
+    headline: "Global GPU Shortage",
+    body: "Every lab on Earth wants the same chip. Your supplier 'prioritises strategic partners' (read: whoever pays double). Compute ×0.6 for a bit.",
+    effect: { kind: "buff", target: "computeMult", factor: 0.6, durationSec: 40 },
+  },
+  {
+    id: "power_bill",
+    weight: 2,
+    tone: "bad",
+    headline: "The Power Bill Arrives",
+    body: "Accounting opens the envelope and goes very quiet. Turns out 'compute' is a polite word for 'electricity'. −15% cash.",
+    effect: { kind: "grantPct", resource: "money", pct: -0.15 },
+  },
+  {
+    id: "benchmark_win",
+    weight: 2,
+    tone: "good",
+    headline: "You Top a Benchmark Nobody Asked For",
+    body: "Your model edges out the field on 'Vibes-Bench v3'. The leaderboard screenshot does numbers on social. Revenue ×1.6, briefly.",
+    effect: { kind: "buff", target: "moneyMult", factor: 1.6, durationSec: 45 },
+  },
+  {
+    id: "synthetic_breakthrough",
+    weight: 2,
+    tone: "good",
+    headline: "Synthetic Data Breakthrough",
+    body: "An intern trains the model on its own output and, against all advice, it works this time. Data yield ×1.8, briefly.",
+    effect: { kind: "buff", target: "dataMult", factor: 1.8, durationSec: 50 },
+  },
+  {
+    id: "hallucination_scandal",
+    weight: 2,
+    tone: "bad",
+    headline: "Your Model Confidently Invents a Court Case",
+    body: "A lawyer cited it. The judge was not amused. Your products take a reputational knock as the clip goes viral.",
+    effect: { kind: "frontierJump", amount: 1 },
+  },
+  {
+    id: "viral_jailbreak",
+    weight: 2,
+    tone: "good",
+    headline: "Someone Jailbreaks Your Model Into Writing Poetry",
+    body: "It's actually beautiful. The press calls it 'soul'. You call it 'an undocumented feature'. Signups spike across your products.",
+    effect: { kind: "productBuzz", durationSec: 55 },
+  },
+  {
+    id: "datacenter_cooling",
+    weight: 2,
+    tone: "good",
+    headline: "A Cold Snap Cuts the Cooling Bill",
+    body: "Winter does your thermal management for free. The fans idle; the ops team naps. Compute ×1.4 while it lasts.",
+    effect: { kind: "buff", target: "computeMult", factor: 1.4, durationSec: 40 },
+  },
+  // --- More faction choices (doomer ↔ accelerationist) ---
+  {
+    id: "faction_redteam",
+    weight: 2,
+    tone: "bad",
+    headline: "Red Team Finds Something",
+    body: "Your safety team found a way to make the model do something genuinely alarming. Do you delay to fix it, or ship and patch later?",
+    choices: [
+      { label: "Delay & fix it (+20% data, careful)", effect: { kind: "grantPct", resource: "data", pct: 0.2 }, alignment: -0.3 },
+      { label: "Ship and patch later (Compute ×1.8)", effect: { kind: "buff", target: "computeMult", factor: 1.8, durationSec: 45 }, alignment: 0.3 },
+    ],
+  },
+  {
+    id: "faction_compute_deal",
+    weight: 2,
+    tone: "good",
+    headline: "A Hyperscaler Offers Cheap Compute",
+    body: "The catch: their terms let them train on your usage. Sign for the compute, or walk for the principle?",
+    choices: [
+      { label: "Walk away (+25% data, integrity)", effect: { kind: "grantPct", resource: "data", pct: 0.25 }, alignment: -0.28 },
+      { label: "Sign it (Compute ×2 briefly)", effect: { kind: "buff", target: "computeMult", factor: 2, durationSec: 40 }, alignment: 0.32 },
+    ],
   },
 
   // --- Faction events (Phase 2): two choices, diverging effects + alignment. ---
@@ -831,21 +940,28 @@ export const balance = {
      * other two are opt-in trade-offs, never the balanced baseline. First-pass
      * numbers; tune against the sim if they prove too strong/weak.
      */
+    // `reputationBonus` = Lab Reputation earned per ship in this mode (community
+    // goodwill). `momentum` = a temporary all-lane buff applied at the START of the
+    // next run (the community iterating on your release), or null. Both are 0/null
+    // for every mode the sim uses, so the tuned curve is untouched.
     shipModes: {
       deploy: {
         id: "deploy", label: "Deploy commercially",
         blurb: "Balanced. Bank full Legacy Weights and keep the model as a product draft to commercialise.",
         legacyMult: 1, keepsDraft: true, moneyKickstartPerShip: 0, frontierPenalty: 0, unlockShips: 0,
+        reputationBonus: 0, momentum: null as null | { factor: number; durationSec: number },
       },
       open_source: {
         id: "open_source", label: "Open-source it",
-        blurb: "The community spreads your weights further — more Legacy — but you give the model away (no product draft).",
+        blurb: "Give the model to the world: no product draft, but the community rewards you — bonus Legacy, Lab Reputation, and a wave of contributions that supercharges your next run.",
         legacyMult: 1.3, keepsDraft: false, moneyKickstartPerShip: 0, frontierPenalty: 0, unlockShips: 0,
+        reputationBonus: 5, momentum: { factor: 1.4, durationSec: 120 } as null | { factor: number; durationSec: number },
       },
       sell: {
         id: "sell", label: "Sell to a hyperscaler",
         blurb: "Cash up front to bootstrap the next run, but fewer Legacy Weights and no product draft.",
         legacyMult: 0.5, keepsDraft: false, moneyKickstartPerShip: 200, frontierPenalty: 0, unlockShips: 0,
+        reputationBonus: 0, momentum: null as null | { factor: number; durationSec: number },
       },
       // B5 challenge: an OPTIONAL risk/reward ship, unlocked once you know the loop.
       // Rivals start further ahead (your carried products begin behind), but you
@@ -854,6 +970,7 @@ export const balance = {
         id: "hard", label: "Hard ship (challenge)",
         blurb: "Rivals leap ahead — your products start behind — but bank +50% Legacy. For when the easy money bores you.",
         legacyMult: 1.5, keepsDraft: true, moneyKickstartPerShip: 0, frontierPenalty: 6, unlockShips: 3,
+        reputationBonus: 0, momentum: null as null | { factor: number; durationSec: number },
       },
     },
   },
@@ -1044,6 +1161,9 @@ export const balance = {
     /** R5.5 cross-system: regulatory pressure scares off customers — product churn
      *  rises by up to this fraction at MAX Heat (×(1+this), linear in heat). */
     productChurnAtMax: 0.35,
+    /** Lobbying: spend Money to cool Heat (buy goodwill). Cost rises with current
+     *  Heat (a hotter lab is harder to clean up); one lobby cuts Heat by a fraction. */
+    lobby: { baseCost: 500, costPerHeat: 80, reductionFraction: 0.4, minHeat: 1 },
     /** UI meter tiers: label + color, picked by the lowest `upTo` heat value the meter is under. */
     tiers: [
       { upTo: 25, label: "Cold", color: "#22c55e" },
@@ -1367,6 +1487,45 @@ export const balance = {
       requires: ["world_model"],
       cost: { compute: 8000000, data: 300000 },
       effect: { kind: "computeMult", factor: 4 },
+    },
+    // --- "Pick one" specialisation (off Scaling Laws) — a per-run build choice.
+    // Both are leaves (nothing depends on them), so the existing chains are intact.
+    {
+      id: "sparse_arch",
+      name: "Sparse Activation",
+      desc: "Only wake the neurons you need. Lean, mean, cheaper compute.",
+      requires: ["scaling_laws"],
+      exclusiveGroup: "architecture",
+      cost: { compute: 500000, data: 10000 },
+      effect: { kind: "computeMult", factor: 2.2 },
+    },
+    {
+      id: "dense_scaling",
+      name: "Dense Scaling",
+      desc: "No tricks. Just a wall of parameters and conviction. Richer outputs.",
+      requires: ["scaling_laws"],
+      exclusiveGroup: "architecture",
+      cost: { compute: 500000, data: 10000 },
+      effect: { kind: "moneyMult", factor: 2.2 },
+    },
+    // --- Capstone fork (off RSI) — the thematic alignment choice.
+    {
+      id: "aligned_path",
+      name: "The Aligned Path",
+      desc: "Slow, careful, auditable. The model is safe, profitable, and a little smug.",
+      requires: ["recursive_self_improvement"],
+      exclusiveGroup: "doctrine",
+      cost: { compute: 12000000, data: 600000 },
+      effect: { kind: "moneyMult", factor: 4 },
+    },
+    {
+      id: "accelerationist_path",
+      name: "The Accelerationist Path",
+      desc: "Foot down, eyes forward, brakes optional. Raw capability, consequences TBD.",
+      requires: ["recursive_self_improvement"],
+      exclusiveGroup: "doctrine",
+      cost: { compute: 12000000, data: 600000 },
+      effect: { kind: "computeMult", factor: 5 },
     },
   ] satisfies ResearchDef[],
 };

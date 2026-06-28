@@ -2,7 +2,10 @@ import { Big } from "./math/Big";
 import { achievements as ACH_DEFS, achievementRep } from "./balance/achievements";
 import { reputation as R } from "./balance/reputation";
 import { contractsReputation } from "./contracts";
+import { balance } from "./balance/config";
 import type { GameState } from "./types";
+
+const shipModes = balance.prestige.shipModes;
 
 /**
  * Lab Reputation (Phase 3) — pure meta-currency logic. Points are derivable
@@ -21,6 +24,7 @@ export function earnedReputation(state: GameState): number {
   pts += state.stats.totalShips * R.perShip;
   pts += state.stats.ascensions * R.perAscension;
   pts += contractsReputation(state); // completed contracts grant Reputation
+  pts += state.stats.openSourceShips * shipModes.open_source.reputationBonus; // open-source goodwill
   return pts;
 }
 
@@ -85,6 +89,29 @@ export function autoResearchEnabled(state: GameState): boolean {
   return R.perks.some(
     (p) => p.effect.kind === "automate" && p.id === "rep_autoresearch" && state.reputation.perks.includes(p.id),
   );
+}
+
+/** Research-cost multiplier from owned `researchDiscount` perks (≤ 1). Neutral = 1,
+ *  so a fresh run (no perks) pays full price and the early curve is untouched. The
+ *  discounts stack multiplicatively and are floored so research can't become free. */
+export function researchCostMult(state: GameState): number {
+  let mult = 1;
+  for (const p of R.perks) {
+    if (p.effect.kind === "researchDiscount" && state.reputation.perks.includes(p.id)) {
+      mult *= 1 - p.effect.value;
+    }
+  }
+  return Math.max(R.researchDiscountFloor, mult);
+}
+
+/** Free basic racks a fresh run starts with, from owned `startingRacks` perks (R5.6).
+ *  Zero with no perk → the first run's cold open is unchanged (curve-safe). */
+export function startingRacks(state: GameState): number {
+  let n = 0;
+  for (const p of R.perks) {
+    if (p.effect.kind === "startingRacks" && state.reputation.perks.includes(p.id)) n += p.effect.value;
+  }
+  return n;
 }
 
 /** Extra concurrent product slots from owned `productSlot` perks (R5.6). */

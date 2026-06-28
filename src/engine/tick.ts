@@ -1,11 +1,12 @@
 import { Big } from "./math/Big";
 import { balance } from "./balance/config";
 import { derive } from "./derive";
-import { simulateProducts, advanceUpgrades, applyMilestones } from "./products";
+import { simulateProducts, advanceUpgrades, applyMilestones, productMetrics } from "./products";
 import { advanceTraining } from "./employees";
 import { accrueStats } from "./stats";
 import { applyAchievements } from "./achievements";
 import { applyAutoResearch } from "./actions";
+import { rivalsBeaten } from "./market";
 import type { Derived, GameState } from "./types";
 
 /**
@@ -138,10 +139,20 @@ export function tick(state: GameState, elapsedMs: number): GameState {
 
   // Accrue lifetime stats (peaks/totals/playtime) from this tick's finished numbers.
   // earnedThisTick = the run-money added to lifetimeMoney this tick (already ≥ 0).
+  // rivalsBeaten reads only .products, so evaluate it against THIS tick's updated
+  // products (best-so-far is tracked monotonically inside accrueStats).
+  const rivalsNow = rivalsBeaten({ ...state, products });
   const stats = accrueStats(
     state.stats, products, state.research.length, d.computePerSec,
-    lifetimeMoney.sub(state.lifetimeMoney), seconds,
+    lifetimeMoney.sub(state.lifetimeMoney), seconds, rivalsNow,
   );
+
+  // Generation-scoped peaks (reset by prestige) for the Generation Report: this run's
+  // high-water Compute/sec and total product revenue/sec, NOT the all-time career peaks.
+  let curMrr = 0;
+  for (const p of products.active) curMrr += productMetrics(p, products.frontier).mrr;
+  const runPeakCompute = state.runPeakCompute.max(d.computePerSec);
+  const runPeakMrr = Math.max(state.runPeakMrr, curMrr);
 
   // Award any newly-reached product milestones (one-time Money rewards). Folded in
   // last so it sees this tick's fresh user/MRR/version totals.
@@ -155,6 +166,8 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     products,
     employees: trained.employees,
     stats,
+    runPeakCompute,
+    runPeakMrr,
   });
   // Award any newly-unlocked achievements (reads the fresh stats above). Pure +
   // idempotent; the store diffs achievements to surface a toast.

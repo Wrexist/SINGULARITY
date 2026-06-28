@@ -329,3 +329,22 @@ lever is letting Compute ACCUMULATE (a "Compute Reservoir" / changing the
 auto-train/computeFocus banking) — a core-loop change, not a pricing tweak. Do it
 with owner sign-off + on-device feel. Both pricing experiments were reverted; only
 the sink metric was kept (it's how we'll validate any future banking change).
+
+### R4.3 follow-up — DATA *can* be re-coupled (Compute still can't), 2026
+Compute is auto-train-pinned, but **Data accumulates** (after research it just piles up,
+sink 0%). So scaling the version-push DATA cost to the Data ECONOMY works where the
+Compute version failed. `versionCostFor(state, v)` adds `versionDataSecondsOfOutput`
+(=600) seconds of current `derive().dataPerSec` on top of the flat base — "AI product
+R&D runs on data". Curve-safe BY CONSTRUCTION: no products exist before the first ship,
+so the first-prestige run never sees it (sim stays 12m15s, Gen2 2m11s byte-identical).
+Sweep result (long-haul "Products sink %"): the SAME backfire curve as Compute, but with
+a usable peak first —
+  N=0 → Data 0.0% / Compute 6.3%   (vestigial)
+  N=600 → Data 2.3% / Compute 6.3% (peak: Data re-coupled, products still push)
+  N=3000 → Data 1.1% / Compute 0.3% (cost starves products — backfire begins)
+  N=12000 → both 0.0% (products unaffordable)
+So 600 is the validated peak; past it the cost starves the product loop and BOTH sinks
+collapse (same trap as Compute). 2.3% is the greedy-sim lower bound — a human banks less
+Data, so it binds more often. Lesson: re-coupling works on the resource the core loop
+does NOT instantly re-spend; tie the cost to that resource's OUTPUT, and find the peak
+before the affordability cliff with the sink metric.

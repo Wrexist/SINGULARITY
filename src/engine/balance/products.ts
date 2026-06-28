@@ -49,6 +49,13 @@ export const products = {
   /** Base Compute + Data to push the next version; ×growth^(version-1). */
   versionCost: { compute: 30_000, data: 3_000 },
   versionCostGrowth: 1.6,
+  /** R4.3 re-coupling: a new version also costs this many SECONDS of your current
+   *  Data output — "AI product R&D runs on data". The flat base above decays to
+   *  nothing vs exponential late-game Data production; this term scales WITH the
+   *  economy so Data stays a real sink in the endgame instead of going vestigial.
+   *  Pre-first-ship there are no products, so the first-prestige curve is untouched
+   *  by construction; validated by the long-haul sim's "Products sink %" metric. */
+  versionDataSecondsOfOutput: 600,
 
   /** Competitor capability drifts up over time; your quality is set to the
    *  frontier each time you release/version, then falls behind. */

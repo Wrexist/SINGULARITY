@@ -109,6 +109,46 @@ export function expansionMarkers(model: HallModel, W: number, H: number): Placed
   });
 }
 
+/** The integer tile coordinates racks fill, in paint order: row-major, back-to-front,
+ *  skipping the partition walkways. SINGLE SOURCE for rack placement — both the
+ *  renderer (drawHallDynamic) and hit-testing (rackHitAreas) consume this, so a tap
+ *  can never land on a different tile than the rack the player sees. Pure on the model. */
+export function rackTileOrder(model: HallModel): { gx: number; gy: number }[] {
+  const gxMax = model.gxMin + model.cols, gyMax = model.gyMin + model.rows;
+  const tiles: { gx: number; gy: number }[] = [];
+  for (let gy = model.gyMin; gy < gyMax; gy++) {
+    if (gy === model.splitGy) continue;
+    for (let gx = model.gxMin; gx < gxMax; gx++) {
+      if (gx === model.splitGx) continue;
+      tiles.push({ gx, gy });
+    }
+  }
+  return tiles;
+}
+
+/** A tappable rack: its draw index, tier, and the floor-diamond polygon it sits
+ *  on (the hit target). Built from the SAME `rackTileOrder` the renderer uses, so a
+ *  tap maps to the rack the player sees. Pure — safe to compute on demand for hit-test. */
+export interface RackHit {
+  index: number;
+  tier: number;
+  quad: [Pt, Pt, Pt, Pt];
+  centroid: Pt;
+}
+
+export function rackHitAreas(model: HallModel, W: number, H: number): RackHit[] {
+  const { iso } = computeLayout(model.cols, model.rows, model.gxMin, model.gyMin, W, H);
+  const tiles = rackTileOrder(model);
+  const hits: RackHit[] = [];
+  for (let i = 0; i < model.racks.length && i < tiles.length; i++) {
+    const { gx, gy } = tiles[i]!;
+    const quad: [Pt, Pt, Pt, Pt] = [iso(gx, gy), iso(gx + 1, gy), iso(gx + 1, gy + 1), iso(gx, gy + 1)];
+    const centroid = { x: (quad[0].x + quad[2].x) / 2, y: (quad[0].y + quad[2].y) / 2 };
+    hits.push({ index: i, tier: model.racks[i]!.tier, quad, centroid });
+  }
+  return hits;
+}
+
 export function pointInPoly(x: number, y: number, poly: Pt[]): boolean {
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -191,16 +231,10 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
   const lively = model.active || model.busy;
   drawMotes(ctx, W, H, originY, o.timeMs, lively, model.total, o.reducedMotion, 0.6);
 
-  // Place racks in orderly rows, back-to-front (valid iso paint order). Leave the
-  // partition column/row empty as a walkway so the rooms read as separate.
-  const tiles: Pt[] = [];
-  for (let gy = gyMin; gy < gyMax; gy++) {
-    if (gy === model.splitGy) continue;
-    for (let gx = gxMin; gx < gxMax; gx++) {
-      if (gx === model.splitGx) continue;
-      tiles.push(iso(gx + 0.5, gy + 0.5));
-    }
-  }
+  // Place racks in orderly rows, back-to-front (valid iso paint order). Tile order
+  // comes from the shared rackTileOrder helper (also used for hit-testing) so the
+  // boxes drawn here and the tap targets can never drift apart.
+  const tiles: Pt[] = rackTileOrder(model).map(({ gx, gy }) => iso(gx + 0.5, gy + 0.5));
 
   const t = o.timeMs;
   for (let i = 0; i < model.racks.length && i < tiles.length; i++) {
