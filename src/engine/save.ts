@@ -314,6 +314,11 @@ export function deserialize(json: string): GameState {
     legacyInvestments: Array.isArray(raw.legacyInvestments)
       ? raw.legacyInvestments.filter((x): x is string => typeof x === "string")
       : [],
+    // Generation-scoped (not persisted): a mid-run reload simply re-accrues the run
+    // peaks, and the ship report is transient — both start fresh on load.
+    runPeakCompute: fresh.runPeakCompute,
+    runPeakMrr: fresh.runPeakMrr,
+    lastShipReport: fresh.lastShipReport,
   };
 }
 

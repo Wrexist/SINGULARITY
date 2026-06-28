@@ -143,5 +143,9 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     contracts: state.contracts,
     // Legacy Investments are permanent prestige-tree progress — they persist.
     legacyInvestments: state.legacyInvestments,
+    // Snapshot the just-finished run's peaks for the Generation Report (the fresh
+    // run's own peaks reset to 0 via ...fresh). This is what makes the report show
+    // THIS generation's high-water marks instead of all-time career peaks.
+    lastShipReport: { peakCompute: state.runPeakCompute, peakMrr: state.runPeakMrr },
   };
 }

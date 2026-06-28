@@ -286,11 +286,15 @@ export function App() {
     }
     if (game.prestige.ships > prevShips.current) {
       const gained = game.prestige.legacyWeights.sub(prevWeights.current);
+      // Prefer the just-finished run's peaks (captured by prestige before the reset)
+      // so the report reflects THIS generation, not all-time career bests. Fall back
+      // to career stats only if the snapshot is somehow absent.
+      const ship = game.lastShipReport;
       const report = {
         gen: game.prestige.ships,
         rank: playerMarketRank(game),
-        peakCompute: game.stats.peakComputePerSec,
-        peakMrr: game.stats.peakMrr,
+        peakCompute: ship?.peakCompute ?? game.stats.peakComputePerSec,
+        peakMrr: ship?.peakMrr ?? game.stats.peakMrr,
       };
       setCelebration({ gained, total: game.prestige.legacyWeights, report });
       haptics.celebrate();

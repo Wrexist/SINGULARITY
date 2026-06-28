@@ -82,6 +82,15 @@ export interface GameState {
    *  here removes them from the global multiplier (a focus-vs-breadth trade-off).
    *  Persists across prestige. */
   legacyInvestments: string[];
+  /** Peak Compute/sec achieved since the last ship (generation-scoped; reset by
+   *  prestige). Feeds the Generation Report so it shows THIS run's high-water mark,
+   *  not the all-time career peak. Not persisted — a mid-run reload simply re-accrues. */
+  runPeakCompute: Big;
+  /** Peak total product revenue/sec since the last ship (generation-scoped). */
+  runPeakMrr: number;
+  /** Snapshot of the just-finished run's peaks, captured by prestige() before the
+   *  reset so the post-reset UI can show an accurate Generation Report. Transient. */
+  lastShipReport: { peakCompute: Big; peakMrr: number } | null;
 }
 
 /**
