@@ -5,7 +5,8 @@ import { haptics as hpt } from "./haptics";
 import { sound as snd } from "./sound";
 import { balance } from "../engine/balance/config";
 import { useGame } from "../state/store";
-import { HALL_THEMES } from "./hallThemes";
+import { themeStyle } from "./hallThemes";
+import { themes, themeUnlocked, collectionProgress, unlockHint } from "../engine/cosmetics";
 import { PaletteIcon, DownloadIcon, LockIcon, CheckIcon } from "./Icons";
 import { telemetryEnabled, setTelemetryEnabled, getTelemetryEvents, clearTelemetry } from "../state/telemetry";
 import { summarize } from "../engine/telemetry";
@@ -56,6 +57,10 @@ export function SettingsSheet({ onClose }: Props) {
   ];
 
   const [premium, setPremiumState] = useState(iap.isPremium());
+  // Cosmetic collection (R6.3): unlocks are derived from monotonic lifetime stats, so
+  // a one-shot read at render is enough (no need to re-check at 10Hz while the sheet is open).
+  const game = useGame.getState().game;
+  const themeProgress = collectionProgress(game, premium);
   const [busy, setBusy] = useState(false);
   const [backupOpen, setBackupOpen] = useState(false);
   const [exportText, setExportText] = useState("");
@@ -141,23 +146,29 @@ export function SettingsSheet({ onClose }: Props) {
             />
           ))}
         </div>
-        {/* Hall theme — cosmetic only (never affects gameplay). */}
+        {/* Hall theme collection — cosmetic only (never affects gameplay). Earn themes
+            by playing (R6.3); locked chips show how to unlock them. */}
         <div className="set-theme">
-          <div className="set-theme-head"><PaletteIcon size={16} /> Hall theme</div>
+          <div className="set-theme-head">
+            <PaletteIcon size={16} /> Hall themes
+            <span className="set-theme-count">{themeProgress.owned}/{themeProgress.total}</span>
+          </div>
           <div className="set-theme-row">
-            {HALL_THEMES.map((t) => {
-              const locked = t.premium && !premium;
+            {themes.map((t) => {
+              const unlocked = themeUnlocked(game, premium, t.id);
               const active = hallTheme === t.id;
+              const style = themeStyle(t.id);
               return (
                 <button
                   key={t.id}
-                  className={`set-theme-chip ${active ? "on" : ""} ${locked ? "locked" : ""}`}
-                  onClick={() => { if (locked) return; snd.tap(); setHallTheme(t.id); }}
+                  className={`set-theme-chip ${active ? "on" : ""} ${!unlocked ? "locked" : ""}`}
+                  onClick={() => { if (!unlocked) return; snd.tap(); setHallTheme(t.id); }}
                   aria-pressed={active}
-                  title={locked ? `${t.name} — unlock with Premium` : t.name}
+                  disabled={!unlocked}
+                  title={unlocked ? t.blurb : `${t.name} — ${unlockHint(t.unlock)}`}
                 >
-                  <span className="set-theme-swatch" style={{ background: t.swatch }}>{locked ? <LockIcon size={16} /> : active ? <CheckIcon size={16} /> : ""}</span>
-                  <span className="set-theme-name">{t.name}</span>
+                  <span className="set-theme-swatch" style={{ background: style.swatch }}>{!unlocked ? <LockIcon size={16} /> : active ? <CheckIcon size={16} /> : ""}</span>
+                  <span className="set-theme-name">{unlocked ? t.name : unlockHint(t.unlock)}</span>
                 </button>
               );
             })}

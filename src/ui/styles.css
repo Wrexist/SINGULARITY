@@ -1562,6 +1562,7 @@ svg { vertical-align: middle; }
 /* Hall theme picker (cosmetic) */
 .set-theme { margin-bottom: 16px; }
 .set-theme-head { display: flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 750; color: var(--ink); margin-bottom: 10px; }
+.set-theme-count { margin-left: auto; font-size: 11.5px; font-weight: 800; color: var(--ink-2); background: rgba(0,0,0,0.06); border-radius: 999px; padding: 2px 8px; }
 .set-theme-head svg, .set-backup-title svg { color: var(--ink-2); }
 .set-backup-title { display: inline-flex; align-items: center; gap: 7px; }
 .set-theme-row { display: flex; flex-wrap: wrap; gap: 10px; }
