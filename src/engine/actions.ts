@@ -215,7 +215,24 @@ export function researchAvailable(state: GameState, id: string): boolean {
   const def = RESEARCH_BY_ID[id];
   if (!def) return false;
   if (state.research.includes(id)) return false;
-  return def.requires.every((req) => state.research.includes(req));
+  if (!def.requires.every((req) => state.research.includes(req))) return false;
+  // Mutually-exclusive: locked once a sibling in the same group is owned (R-depth).
+  if (def.exclusiveGroup) {
+    const siblingOwned = balance.research.some(
+      (r) => r.id !== id && r.exclusiveGroup === def.exclusiveGroup && state.research.includes(r.id),
+    );
+    if (siblingOwned) return false;
+  }
+  return true;
+}
+
+/** A research node is "locked out" if a mutually-exclusive sibling was chosen. */
+export function researchLockedOut(state: GameState, id: string): boolean {
+  const def = RESEARCH_BY_ID[id];
+  if (!def?.exclusiveGroup || state.research.includes(id)) return false;
+  return balance.research.some(
+    (r) => r.id !== id && r.exclusiveGroup === def.exclusiveGroup && state.research.includes(r.id),
+  );
 }
 
 export function canBuyResearch(state: GameState, id: string): boolean {

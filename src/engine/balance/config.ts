@@ -138,6 +138,9 @@ export interface ResearchDef {
   desc: string;
   requires: string[];
   cost: { compute: number; data: number };
+  /** Mutually-exclusive choice: buying any node in this group locks its siblings
+   *  for the run (research resets each prestige, so it's a per-run build pick). */
+  exclusiveGroup?: string;
   effect:
     | { kind: "computeMult"; factor: number }
     | { kind: "dataMult"; factor: number }
@@ -1481,6 +1484,45 @@ export const balance = {
       requires: ["world_model"],
       cost: { compute: 8000000, data: 300000 },
       effect: { kind: "computeMult", factor: 4 },
+    },
+    // --- "Pick one" specialisation (off Scaling Laws) — a per-run build choice.
+    // Both are leaves (nothing depends on them), so the existing chains are intact.
+    {
+      id: "sparse_arch",
+      name: "Sparse Activation",
+      desc: "Only wake the neurons you need. Lean, mean, cheaper compute.",
+      requires: ["scaling_laws"],
+      exclusiveGroup: "architecture",
+      cost: { compute: 500000, data: 10000 },
+      effect: { kind: "computeMult", factor: 2.2 },
+    },
+    {
+      id: "dense_scaling",
+      name: "Dense Scaling",
+      desc: "No tricks. Just a wall of parameters and conviction. Richer outputs.",
+      requires: ["scaling_laws"],
+      exclusiveGroup: "architecture",
+      cost: { compute: 500000, data: 10000 },
+      effect: { kind: "moneyMult", factor: 2.2 },
+    },
+    // --- Capstone fork (off RSI) — the thematic alignment choice.
+    {
+      id: "aligned_path",
+      name: "The Aligned Path",
+      desc: "Slow, careful, auditable. The model is safe, profitable, and a little smug.",
+      requires: ["recursive_self_improvement"],
+      exclusiveGroup: "doctrine",
+      cost: { compute: 12000000, data: 600000 },
+      effect: { kind: "moneyMult", factor: 4 },
+    },
+    {
+      id: "accelerationist_path",
+      name: "The Accelerationist Path",
+      desc: "Foot down, eyes forward, brakes optional. Raw capability, consequences TBD.",
+      requires: ["recursive_self_improvement"],
+      exclusiveGroup: "doctrine",
+      cost: { compute: 12000000, data: 600000 },
+      effect: { kind: "computeMult", factor: 5 },
     },
   ] satisfies ResearchDef[],
 };

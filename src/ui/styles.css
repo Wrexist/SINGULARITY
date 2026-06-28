@@ -920,6 +920,8 @@ svg { vertical-align: middle; }
   opacity: 0.25;
 }
 .node.locked { opacity: 0.5; cursor: not-allowed; }
+.node.excluded { opacity: 0.42; cursor: not-allowed; }
+.node-tag.excl { color: #7c5cff; font-weight: 800; }
 .node.available::before { background: var(--data); opacity: 1; }
 .node:active { transform: scale(0.97); }
 .node.available:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }

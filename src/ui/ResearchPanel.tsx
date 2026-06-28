@@ -1,5 +1,5 @@
 import { balance } from "../engine/balance/config";
-import { canBuyResearch, researchAvailable } from "../engine/actions";
+import { canBuyResearch, researchAvailable, researchLockedOut } from "../engine/actions";
 import type { Derived, GameState } from "../engine/types";
 import { fmt, fmtDur, etaSecs, effRate } from "./format";
 import { burst, punch } from "./fx";
@@ -47,7 +47,8 @@ export function ResearchPanel({ game, derived, onResearch }: Props) {
     const owned = game.research.includes(def.id);
     const avail = researchAvailable(game, def.id);
     const canBuy = canBuyResearch(game, def.id);
-    const state = owned ? "owned" : avail ? "available" : "locked";
+    const lockedOut = !owned && researchLockedOut(game, def.id);
+    const state = owned ? "owned" : lockedOut ? "excluded" : avail ? "available" : "locked";
     const eta = !owned && avail && !canBuy ? etaFor(def) : null;
     return (
       <button
@@ -66,7 +67,9 @@ export function ResearchPanel({ game, derived, onResearch }: Props) {
           <div className="node-head">
             <span className="node-name">{def.name}</span>
             {owned && <span className="node-tag"><CheckIcon size={12} /> done</span>}
-            {!owned && !avail && <span className="node-tag"><LockIcon size={12} /> locked</span>}
+            {lockedOut && <span className="node-tag">✗ not chosen</span>}
+            {!owned && !lockedOut && def.exclusiveGroup && avail && <span className="node-tag excl">⊻ pick one</span>}
+            {!owned && !avail && !lockedOut && <span className="node-tag"><LockIcon size={12} /> locked</span>}
           </div>
           <EffectPill effect={def.effect} />
           <span className="node-desc">{def.desc}</span>
