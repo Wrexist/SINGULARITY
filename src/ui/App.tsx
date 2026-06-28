@@ -30,7 +30,7 @@ import { FxCanvas } from "./FxCanvas";
 import { burst as fxBurst } from "./fx";
 import { ProductLaunch } from "./ProductLaunch";
 import { productsUnlocked, productMetrics, typeDef, retirePayout } from "../engine/products";
-import { attentionCounts, nextAction } from "../engine/advisor";
+import { attentionCounts } from "../engine/advisor";
 import { FlaskIcon, BoxIcon, TeamIcon, TrophyIcon, GearIcon, GiftIcon } from "./Icons";
 import { fmtMoney } from "./format";
 import type { ProductTypeId } from "../engine/balance/products";
@@ -63,10 +63,6 @@ export function App() {
   // Per-tab attention counts (the small badges on the bottom nav). Memoized per
   // tick (same cadence as derive) — a handful of product checks, no clock.
   const attention = useMemo(() => attentionCounts(game), [game]);
-  // The single most important "do this next" nudge (pure advisor, already tested).
-  // Surfaced as a persistent, tappable banner so a player is never lost. Every
-  // item's tab is gated to an unlocked tab, so tapping never jumps somewhere hidden.
-  const next = useMemo(() => nextAction(game), [game]);
 
   // Detect a ship (prestige) and fire the celebration moment + haptics.
   const prevShips = useRef(game.prestige.ships);
@@ -108,8 +104,6 @@ export function App() {
   const [tab, setTab] = useState<"lab" | "products" | "employees">("lab");
   const shipReady = canPrestige(game);
   const era = currentEra(game);
-  // Where the advisor banner takes you when tapped (matches the bottom-nav labels).
-  const nextDest = next ? (next.tab === "employees" ? "Team" : next.tab === "products" ? "Products" : "Lab") : "";
 
   // Transient unlock toasts.
   const [toasts, setToasts] = useState<ToastData[]>([]);
@@ -386,17 +380,6 @@ export function App() {
             <span className="daily-ic"><GiftIcon size={18} /></span>
             <span className="daily-text"><b>Daily boost ready</b> — +{Math.round((balance.daily.factor - 1) * 100)}% output for {Math.round(balance.daily.durationSec / 60)} min</span>
             <span className="daily-go">Claim</span>
-          </button>
-        )}
-        {next && (
-          <button
-            className="next-bar"
-            onClick={() => { haptics.tap(); setTab(next.tab); }}
-            aria-label={`Suggested next step: ${next.text}. Tap to go to ${nextDest}.`}
-          >
-            <span className="next-ic" aria-hidden="true">💡</span>
-            <span className="next-text"><b>Next:</b> {next.text}</span>
-            <span className="next-go" aria-hidden="true">{nextDest} →</span>
           </button>
         )}
         {tab === "products" && showProducts ? (

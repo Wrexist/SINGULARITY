@@ -26,9 +26,10 @@ no dark patterns. Re-run `npm run sim` after any economy change.*
       scope — documented, same as the baseline.)
 
 ### Step 2 — Friendliness (R1)
-- [x] **R1.1 · Advisor "Next: …" banner** — wired the already-built/tested `nextAction()` as a
-      persistent, tappable banner above the stage that jumps to the resolving tab. UI-only (sim
-      byte-identical, 12m15s); +1 invariant test (the banner can never point at a locked tab). 250 tests.
+- [~] **R1.1 · Advisor "Next: …" banner** — built it, then **removed it per owner UX feedback**
+      (2026-06-28 TestFlight screenshot): the persistent "Next:" banner cluttered the top of the
+      stage. The advisor engine (`nextAction`/`advisorItems`, still tested) stays and continues to
+      drive the bottom-nav attention badges; only the banner UI was taken out.
 - [x] **R1.2 · Buy ×1 / ×10 / Max** — segmented selector in the Hardware panel; pure engine
       `planBulkUpgrade` / `buyUpgradeBulk` (simulate real buys → exact total cost, honor
       affordability + floor space + rack auto-eviction; Max capped at floor). Cards show the batched

@@ -1669,21 +1669,6 @@ svg { vertical-align: middle; }
 .daily-text b { font-weight: 800; }
 .daily-go { font-size: 12.5px; font-weight: 800; color: #fff; background: #7c5cff; border-radius: 999px; padding: 4px 12px; white-space: nowrap; }
 
-/* Advisor "do this next" banner — persistent guidance, so a calmer tone than the
-   daily claim (no pulsing glow). Tappable: jumps to the resolving tab. */
-.next-bar {
-  display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
-  padding: 10px 13px; border-radius: 12px; cursor: pointer; min-height: 44px;
-  background: linear-gradient(100deg, rgba(47, 123, 246, 0.12), rgba(22, 179, 100, 0.08));
-  border: 1px solid rgba(47, 123, 246, 0.28);
-  box-shadow: var(--shadow-sm);
-}
-.next-bar:active { transform: scale(0.992); }
-.next-ic { display: inline-flex; align-items: center; font-size: 16px; line-height: 1; }
-.next-text { flex: 1; min-width: 0; font-size: clamp(12px, 3.2vw, 13px); font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
-.next-text b { font-weight: 800; color: #2f7bf6; margin-right: 3px; }
-.next-go { font-size: 12px; font-weight: 800; color: #2f7bf6; white-space: nowrap; opacity: 0.85; }
-
 /* Buy-quantity selector (×1 / ×10 / Max) for the Hardware panel. */
 .buy-qty { display: flex; gap: 6px; margin: 2px 0 4px; }
 .buy-qty-btn {
