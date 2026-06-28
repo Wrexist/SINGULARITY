@@ -14,8 +14,19 @@ Phase 0–3 history retained below for context.
 no dark patterns. Re-run `npm run sim` after any economy change.*
 
 ### Step 1 — Foundation (R0)
-- [ ] **R0.1 · Kill the 10Hz whole-app re-render** (P1) — narrow store selectors + `React.memo`
-      on leaf panels; isolate the only truly-10Hz component (`ResourceBar`). Biggest perf/battery win.
+- [~] **R0.1 · Kill the 10Hz whole-app re-render** (P1) — INVESTIGATED + partially done. Finding
+      overturns the original premise: (a) derive's expensive O(employees×products) staff fold is
+      ALREADY cross-tick cached (`staffCache`), so derive is cheap per tick; (b) store subscriptions
+      are already narrow — only `App` reads whole `game` (it must, to compute `d`), the rest use
+      slices; (c) the active panel's per-tick re-render is largely INHERENT — it shows live 10Hz
+      numbers (resource counts, rates, affordability, MAU/MRR, training bars), so it legitimately
+      updates. The residual win is keeping each re-render CHEAP. Safe slice DONE: memoized the pure
+      presentational leaves (`Avatar`, `Stars`) so a big roster doesn't reconcile N avatars/star-rows
+      every tick when only numbers changed. Remaining (deferred, on-device-profiler-gated): memoizing
+      interactive list ROWS (employee/upgrade/product cards) needs stabilizing their drag/selection
+      closures — real risk of breaking drag-to-assign/selection that can't be validated blind, and the
+      benefit is unmeasurable without a device profiler. Not shipping that part blind (per CLAUDE.md:
+      rigorous partner, smallest proving change, no risky premature optimization).
 - [x] **R0.2 · Extend the balance sim to the long game** — new `runLongHaul()` in
       `scripts/balance-sim.ts`: 20 generations driving the lab loop + the products business
       (commercialise deployed drafts, push versions). Reports per-gen ship time, total weights,
