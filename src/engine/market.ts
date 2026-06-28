@@ -39,3 +39,12 @@ export function playerMarketRank(state: GameState): number | null {
   const idx = board.findIndex((e) => e.isYou);
   return idx === -1 ? null : idx + 1;
 }
+
+/** How many named rivals the player's strongest product currently outranks (0..N).
+ *  Monotonic-ish as you grow, so it's a clean achievement metric. */
+export function rivalsBeaten(state: GameState): number {
+  const board = marketLeaderboard(state);
+  const myBest = board.find((e) => e.isYou);
+  if (!myBest) return 0;
+  return board.filter((e) => !e.isYou && e.users < myBest.users).length;
+}
