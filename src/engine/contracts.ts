@@ -26,6 +26,8 @@ export function contractMetric(state: GameState, metric: ContractDef["metric"]):
     case "ships": return state.prestige.ships;
     case "research": return Math.max(state.research.length, state.stats.peakResearchCount);
     case "peakMrr": return state.stats.peakMrr;
+    case "peakMau": return state.stats.peakMau;
+    case "ascensions": return state.stats.ascensions;
   }
 }
 

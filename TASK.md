@@ -97,6 +97,11 @@ no dark patterns. Re-run `npm run sim` after any economy change.*
       no double-claim, off-board guard, rep accounting, save round-trip + migration). Sim 12m15s.
       ↳ Follow-up: ✅ advisor now nudges "Claim the '<title>' contract — +N Rep" when one is ready
         (extends the recommendation system); tab badge still optional.
+      ↳ Follow-up (done): **endgame ladder** — extended the pool 15→25 so the board no longer runs dry
+        mid-game. New rungs reach into the deep/endgame (10M users, 50 racks, $1B earned, 1B Compute/s,
+        15 ships, 25 staff, and a capstone AGI **ascension** contract). Added `peakMau`/`ascensions`
+        contract metrics (read from stats). Rep rewards escalate 5→10. Reputation-only payout → still
+        curve-safe (sim 12m15s). +1 test (339 total).
 
 - [x] **R5.5 · Cross-system interactions** — existing systems now ripple into the product business
       (emergent depth, ~no new content): **alignment → products** (accelerationist markets harder →

@@ -21,7 +21,9 @@ export type ContractMetric =
   | "employees"
   | "ships"
   | "research"
-  | "peakMrr";
+  | "peakMrr"
+  | "peakMau"
+  | "ascensions";
 
 export interface ContractDef {
   id: string;
@@ -54,5 +56,17 @@ export const contracts = {
     { id: "serial_shipper", title: "Serial Shipper", desc: "Ship 5 models.", metric: "ships", target: 5, rep: 4 },
     { id: "org_chart", title: "Org Chart", desc: "Employ 10 specialists.", metric: "employees", target: 10, rep: 4 },
     { id: "megacluster", title: "Megacluster", desc: "Reach 1,000,000 Compute/sec.", metric: "peakComputePerSec", target: 1_000_000, rep: 5 },
+
+    // ---- Endgame ladder: the board no longer runs dry mid-game ----
+    { id: "household_name", title: "Household Name", desc: "Reach 10,000,000 total users.", metric: "peakMau", target: 10_000_000, rep: 5 },
+    { id: "warehouse", title: "Warehouse Scale", desc: "Run 50 GPU racks.", metric: "totalRacks", target: 50, rep: 5 },
+    { id: "cash_machine", title: "Cash Machine", desc: "Reach $10,000/sec product revenue.", metric: "peakMrr", target: 10_000, rep: 6 },
+    { id: "five_nines", title: "Nine Figures", desc: "Earn $100,000,000 in total.", metric: "totalMoney", target: 100_000_000, rep: 6 },
+    { id: "research_lab", title: "Frontier Lab", desc: "Own 10 research nodes.", metric: "research", target: 10, rep: 6 },
+    { id: "veteran_shipper", title: "Veteran Shipper", desc: "Ship 15 models.", metric: "ships", target: 15, rep: 7 },
+    { id: "gigacluster", title: "Gigacluster", desc: "Reach 1,000,000,000 Compute/sec.", metric: "peakComputePerSec", target: 1_000_000_000, rep: 7 },
+    { id: "big_org", title: "Real Company Now", desc: "Employ 25 specialists.", metric: "employees", target: 25, rep: 7 },
+    { id: "ten_figures", title: "Ten Figures", desc: "Earn $1,000,000,000 in total.", metric: "totalMoney", target: 1_000_000_000, rep: 8 },
+    { id: "ascended", title: "Beyond Human", desc: "Ascend in the Post-Singularity era.", metric: "ascensions", target: 1, rep: 10 },
   ] as ContractDef[],
 };
