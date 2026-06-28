@@ -60,4 +60,27 @@ describe("R6.1 — Lab Charters", () => {
     delete old.charter; old.version = 12;
     expect(deserialize(JSON.stringify(old)).charter).toBeNull();
   });
+
+  it("every charter is a real, non-neutral build with unique id + finite mods", () => {
+    const ids = chartersBalance.list.map((c) => c.id);
+    expect(new Set(ids).size).toBe(ids.length); // no dup ids
+    expect(ids.length).toBeGreaterThanOrEqual(7); // expanded pool (more build options)
+    for (const c of chartersBalance.list) {
+      const m = charterMods(setCharter(shipped(), c.id));
+      // finite, positive lane mults
+      for (const v of [m.computeMult, m.dataMult, m.moneyMult]) {
+        expect(Number.isFinite(v)).toBe(true);
+        expect(v).toBeGreaterThan(0);
+      }
+      // at least one lane actually tilts (it's a real choice, not a no-op)
+      expect(m.computeMult !== 1 || m.dataMult !== 1 || m.moneyMult !== 1).toBe(true);
+    }
+  });
+
+  it("new charters tilt the lanes they advertise", () => {
+    expect(charterMods(setCharter(shipped(), "data_monopoly")).dataMult).toBeGreaterThan(1);
+    expect(charterMods(setCharter(shipped(), "data_monopoly")).computeMult).toBeLessThan(1);
+    expect(charterMods(setCharter(shipped(), "cash_machine")).moneyMult).toBeGreaterThan(1);
+    expect(charterMods(setCharter(shipped(), "mad_science")).computeMult).toBeGreaterThan(1);
+  });
 });

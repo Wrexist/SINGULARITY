@@ -43,6 +43,25 @@ in the store/UI layer, never `src/engine/`.*
 - [ ] **R8.4 · Steam/desktop port eval** (P3) — write `STEAM_EVAL.md` (Tauri vs Electron, save paths,
       premium model, effort, go/no-go tied to observed retention). Memo, not code; do last.
 
+### Content & customization wave (owner-directed 2026-06-28 — "more options & customizability")
+*Player-facing content on the R6 replayability track. All cosmetic-only or post-first-ship → the
+tuned curve is byte-identical (sim 12m15s).*
+- [x] **R6.3 · Earnable hall-theme collection** — the cosmetic layer is now a cross-reset chase:
+      8 new themes earned by play (ships, 1M Compute/s, 5 products, $1B all-time, 15 events, 5h,
+      AGI ascension) on top of 4 free + 1 premium. Data in `balance/cosmetics.ts`; pure
+      `src/engine/cosmetics.ts` (`themeUnlocked`/`collectionProgress`/`unlockHint`) reads ONLY
+      monotonic lifetime stats → unlocks never re-lock after prestige (no unlocked-set to persist);
+      cosmetic-only → not in derive. `hallThemes.ts` is now pure presentation. Settings theme picker →
+      a collection grid (locked chips show their unlock hint + a lock glyph, plus an owned/total count).
+      +6 tests; sim 12m15s.
+- [x] **R6.1+ · Expanded Lab Charters** — the per-run build-choice pool grows 3 → 7: **Data Monopoly**
+      (+data −compute), **Cash Machine** (+money −data), **Mad Science** (+compute −money), **Frugal
+      Genius** (+compute +money −data). Data-only addition to `balance/charters.ts`; `charterMods`
+      folds them via the existing path; identity at none/first-run → sim byte-identical (12m15s).
+      +2 tests (unique ids, advertised tilts).
+      ↳ Follow-up (optional): rack skins (a 2nd cosmetic axis) — needs a renderer change + on-device
+        verification, so deferred; faction-branched event pools (R6.2) once it's worth a wave.
+
 ### Step 1 — Foundation (R0)
 - [~] **R0.1 · Kill the 10Hz whole-app re-render** (P1) — INVESTIGATED + partially done. Finding
       overturns the original premise: (a) derive's expensive O(employees×products) staff fold is
