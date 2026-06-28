@@ -1041,6 +1041,9 @@ export const balance = {
     toolBuyHeat: 5,
     /** Getting raided cools you off this much (×) — you lay low afterwards. */
     postRaidHeatMult: 0.4,
+    /** R5.5 cross-system: regulatory pressure scares off customers — product churn
+     *  rises by up to this fraction at MAX Heat (×(1+this), linear in heat). */
+    productChurnAtMax: 0.35,
     /** UI meter tiers: label + color, picked by the lowest `upTo` heat value the meter is under. */
     tiers: [
       { upTo: 25, label: "Cold", color: "#22c55e" },
@@ -1075,6 +1078,12 @@ export const balance = {
     heatGenAtAccel: 1.5,
     /** Heat-generation multiplier at full doomer (you keep your nose clean). */
     heatGenAtDoomer: 0.5,
+    /** R5.5 cross-system: accelerationist labs market harder — product acquisition
+     *  bonus at full +1 (×(1+this)). */
+    productAcqBonus: 0.2,
+    /** R5.5 cross-system: doomer labs ship cautiously — product Heat-generation is
+     *  reduced by up to this fraction at full −1. */
+    productHeatReduction: 0.4,
   },
 
   /** Regulatory events, weighted. Picked when an event fires (see actions). */

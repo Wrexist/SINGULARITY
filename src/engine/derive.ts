@@ -2,7 +2,7 @@ import { Big } from "./math/Big";
 import { balance } from "./balance/config";
 import { computeStaffEffects, teamMorale, type StaffEffects } from "./employees";
 import { reputationMods } from "./reputation";
-import { alignmentProductionMods } from "./alignment";
+import { alignmentProductionMods, alignmentProductMods } from "./alignment";
 import { ascensionMultiplier } from "./prestige";
 import { powerStats } from "./power";
 import type { Derived, Employee, GameState } from "./types";
@@ -137,8 +137,21 @@ export function derive(state: GameState): Derived {
   dataMult = dataMult.mul(fx.dataMultF);
   moneyMult = moneyMult.mul(fx.moneyMultF);
   let payrollPerSec = Big.of(fx.payroll).mul(officePayrollMult(state));
-  const productMods = fx.productMods;
-  const productModsById = fx.productModsById;
+  // R5.5 cross-system folds: alignment → product acquisition/Heat, and regulatory
+  // Heat → product churn (a sketchy lab bleeds customers). All identity at
+  // neutral/cold, so a fresh run's product economics — and the sim — are untouched.
+  const ap = alignmentProductMods(state);
+  const heatChurnMult = 1 + (state.heat / balance.heat.max) * balance.heat.productChurnAtMax;
+  const applyCross = (m: typeof fx.productMods) => ({
+    ...m,
+    acq: m.acq * ap.acq,
+    heat: m.heat * ap.heat,
+    churn: m.churn * heatChurnMult,
+  });
+  const productMods = applyCross(fx.productMods);
+  const productModsById = Object.fromEntries(
+    Object.entries(fx.productModsById).map(([id, m]) => [id, applyCross(m)]),
+  );
   const hireDiscount = Math.max(balance.staff.hireDiscountFloor, 1 - fx.hireCut); // floored hire discount
 
   // World-event modifiers: time-limited global multipliers (buffs/debuffs).

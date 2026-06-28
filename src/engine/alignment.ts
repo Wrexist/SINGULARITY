@@ -34,3 +34,20 @@ export function alignmentHeatMult(state: GameState): number {
     ? 1 + state.alignment * (cfg.heatGenAtAccel - 1)
     : 1 + -state.alignment * (cfg.heatGenAtDoomer - 1);
 }
+
+/**
+ * R5.5 cross-system: alignment ripples into the PRODUCT business. Accelerationist
+ * labs market harder (more acquisition); doomer labs ship cautiously (less product
+ * Heat). Both 1.0 at neutral, so the curve is untouched. Folded into derive's
+ * product mods so the product sim picks them up with no signature change.
+ */
+export function alignmentProductMods(state: GameState): { acq: number; heat: number } {
+  const cfg = balance.alignment;
+  if (!cfg.enabled || state.alignment === 0) return { acq: 1, heat: 1 };
+  const accel = Math.max(0, state.alignment);
+  const doom = Math.max(0, -state.alignment);
+  return {
+    acq: 1 + accel * cfg.productAcqBonus,
+    heat: 1 - doom * cfg.productHeatReduction,
+  };
+}

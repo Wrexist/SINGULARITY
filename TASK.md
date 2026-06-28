@@ -97,6 +97,13 @@ no dark patterns. Re-run `npm run sim` after any economy change.*
       ↳ Follow-up: ✅ advisor now nudges "Claim the '<title>' contract — +N Rep" when one is ready
         (extends the recommendation system); tab badge still optional.
 
+- [x] **R5.5 · Cross-system interactions** — existing systems now ripple into the product business
+      (emergent depth, ~no new content): **alignment → products** (accelerationist markets harder →
+      +product acquisition; doomer ships cautiously → −product Heat) and **Heat → product churn**
+      (a sketchy lab under regulatory pressure bleeds customers, linear in Heat). Both fold into
+      `derive`'s product mods (so `simulateProducts` picks them up with no signature change), identity
+      at neutral/cold → **sim byte-identical (12m15s)**. +5 tests.
+      ↳ Optional polish: surface these in the Lab Stats "Stance effects" line.
 - [x] **R5.3 · Research auto-buyer** — new **Research Director** Reputation perk (cost 24) auto-buys
       the cheapest affordable, prereq-met research node. Pure `applyAutoResearch` folded into `tick`
       (so it works offline too); gated behind the perk → off by default → **sim byte-identical
