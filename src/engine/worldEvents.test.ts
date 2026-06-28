@@ -128,4 +128,20 @@ describe("world events — firing & gating", () => {
     expect(typeof pickWorldEvent(0).id).toBe("string");
     expect(typeof pickWorldEvent(0.999).id).toBe("string");
   });
+
+  it("every world-event id is unique (a dup id makes the later entry dead content — applyWorldEvent resolves by find)", () => {
+    const ids = balance.worldEvents.list.map((e) => e.id);
+    const dups = ids.filter((id, i) => ids.indexOf(id) !== i);
+    expect(dups).toEqual([]);
+  });
+
+  it("every choice dilemma has exactly two branches that move alignment opposite ways", () => {
+    for (const e of balance.worldEvents.list) {
+      if (!e.choices) continue;
+      expect(e.choices).toHaveLength(2);
+      const [a, b] = e.choices;
+      // one branch leans doomer (≤0), the other accelerationist (≥0); never both same sign
+      expect(Math.sign(a!.alignment) !== Math.sign(b!.alignment) || a!.alignment === 0 || b!.alignment === 0).toBe(true);
+    }
+  });
 });

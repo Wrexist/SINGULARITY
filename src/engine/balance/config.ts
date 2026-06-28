@@ -395,7 +395,7 @@ const WORLD_EVENTS: WorldEvent[] = [
   },
   // --- More ambient events (variety pass) ---
   {
-    id: "gpu_shortage",
+    id: "gpu_shortage_global",
     weight: 3,
     tone: "bad",
     headline: "Global GPU Shortage",
@@ -411,7 +411,7 @@ const WORLD_EVENTS: WorldEvent[] = [
     effect: { kind: "grantPct", resource: "money", pct: -0.15 },
   },
   {
-    id: "benchmark_win",
+    id: "benchmark_vibes",
     weight: 2,
     tone: "good",
     headline: "You Top a Benchmark Nobody Asked For",
@@ -635,6 +635,53 @@ const WORLD_EVENTS: WorldEvent[] = [
     choices: [
       { label: "Publish it (+30% data, transparency)", effect: { kind: "grantPct", resource: "data", pct: 0.3 }, alignment: -0.3 },
       { label: "Bury it (Revenue ×1.8)", effect: { kind: "buff", target: "moneyMult", factor: 1.8, durationSec: 45 }, alignment: 0.3 },
+    ],
+  },
+
+  // --- Content wave (2026-06-28): more 2-choice dilemmas → more player agency, each
+  //     feeding the now-active alignment fork (doomer − / accelerationist +). ---
+  {
+    id: "choice_chat_logs",
+    weight: 2,
+    tone: "good",
+    headline: "Mine the Chat Logs?",
+    body: "Every conversation users had with your model is sitting in a bucket, unlabeled and legally grey. The data team is salivating; Legal has gone pale.",
+    choices: [
+      { label: "Delete them (privacy-first, +20% data the honest way)", effect: { kind: "grantPct", resource: "data", pct: 0.2 }, alignment: -0.3 },
+      { label: "Train on everything (Data yield ×1.9)", effect: { kind: "buff", target: "dataMult", factor: 1.9, durationSec: 45 }, alignment: 0.32 },
+    ],
+  },
+  {
+    id: "choice_automate_staff",
+    weight: 2,
+    tone: "good",
+    headline: "Automate Your Own Researchers?",
+    body: "The model is now good enough to write most of the code. Finance has drawn up a very tidy org chart with a lot of empty boxes.",
+    choices: [
+      { label: "Keep the humans (morale, +25% data)", effect: { kind: "grantPct", resource: "data", pct: 0.25 }, alignment: -0.28 },
+      { label: "Replace them (slash costs, +35% cash)", effect: { kind: "grantPct", resource: "money", pct: 0.35 }, alignment: 0.32 },
+    ],
+  },
+  {
+    id: "choice_power_source",
+    weight: 2,
+    tone: "good",
+    headline: "Power the New Datacenter",
+    body: "The grid can't feed your next training run. You can fast-track a gas turbine, or wait on solar-plus-storage and a stack of permits.",
+    choices: [
+      { label: "Solar + storage (clean, +25% data)", effect: { kind: "grantPct", resource: "data", pct: 0.25 }, alignment: -0.3 },
+      { label: "Fire up the gas turbine (Compute ×2)", effect: { kind: "buff", target: "computeMult", factor: 2, durationSec: 40 }, alignment: 0.33 },
+    ],
+  },
+  {
+    id: "choice_emergency_brake",
+    weight: 2,
+    tone: "bad",
+    headline: "The Eval Trips the Emergency Brake",
+    body: "An automated safety eval just flagged the new checkpoint and halted the run on its own. You can honor the halt, or override it and keep training.",
+    choices: [
+      { label: "Honor the halt (careful, Revenue ×1.6)", effect: { kind: "buff", target: "moneyMult", factor: 1.6, durationSec: 50 }, alignment: -0.34 },
+      { label: "Override it (Compute ×2 briefly)", effect: { kind: "buff", target: "computeMult", factor: 2, durationSec: 45 }, alignment: 0.34 },
     ],
   },
 ];

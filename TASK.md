@@ -61,6 +61,13 @@ tuned curve is byte-identical (sim 12m15s).*
       +2 tests (unique ids, advertised tilts).
       ↳ Follow-up (optional): rack skins (a 2nd cosmetic axis) — needs a renderer change + on-device
         verification, so deferred; faction-branched event pools (R6.2) once it's worth a wave.
+- [x] **R3.4 · More world-event dilemmas + dead-content fix** — 4 new two-choice dilemmas (Mine the
+      Chat Logs / Automate Your Researchers / Power the Datacenter / Emergency-Brake Eval), each
+      feeding the now-active alignment fork (doomer − / accelerationist +) → more player agency, not
+      dismiss-only. **Bug fix:** found two duplicate event ids (`gpu_shortage`, `benchmark_win`) — since
+      `applyWorldEvent` resolves by `find` (first match), the later entries' unique headlines were dead
+      content; renamed to `gpu_shortage_global`/`benchmark_vibes` so they're reachable. +2 guard tests
+      (id-uniqueness; every dilemma has 2 oppositely-signed branches). Data-only; sim 12m15s.
 
 ### Step 1 — Foundation (R0)
 - [~] **R0.1 · Kill the 10Hz whole-app re-render** (P1) — INVESTIGATED + partially done. Finding
