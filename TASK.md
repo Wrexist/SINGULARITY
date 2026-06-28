@@ -132,6 +132,14 @@ no dark patterns. Re-run `npm run sim` after any economy change.*
       New `automate` reputation-effect kind; +5 tests. The genre-standard automation layer the audit
       ranked as the top idle convenience.
 
+- [x] **R4.3 · Re-couple the resource triangle (Data lever)** — Compute is auto-train-pinned and
+      can't be a sink without a core-loop change (documented), but **Data accumulates**, so it CAN.
+      `versionCostFor(state, v)` adds 600s of current Data output to each version push ("AI R&D runs
+      on data"), tying the cost to the Data economy so it stays a real sink instead of decaying to
+      nothing. Curve-safe by construction (no products pre-first-ship → first-prestige 12m15s, Gen2
+      2m11s byte-identical). Sim-validated sweet spot: Data sink **0.0%→2.3%** with products still
+      pushing (Compute sink stays 6.3%); past N=600 the cost starves products and both sinks collapse
+      (the documented backfire — peak found via the sink metric). +3 tests; LEARNINGS updated.
 - [x] **R2.1 · Tappable racks** — the hall is now interactive: tapping a rack opens a small info card
       (tier name + flavor, count owned, Compute/s each, tier total); tap empty floor or × to dismiss.
       Pure hit-testing — `rackHitAreas(model,W,H)` in the renderer mirrors `drawHallDynamic`'s placement

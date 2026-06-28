@@ -3,7 +3,7 @@ import { Portal } from "./Portal";
 import type { GameState } from "../engine/types";
 import { products as B, productFeatures, type FeatureLane, type ProductTypeId } from "../engine/balance/products";
 import {
-  typeDef, productMetrics, canStartUpgrade, canBuyFeature, versionCost, featureMods,
+  typeDef, productMetrics, canStartUpgrade, canBuyFeature, versionCostFor, featureMods,
   upgradeDurationSec, upgradeProgress, retirePayout, enterpriseUnlocked, suggestChannelMix,
 } from "../engine/products";
 import { m$, numOf as num, fmtDur } from "./format";
@@ -168,7 +168,7 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
             ) : (
               <button className="pd-primary" disabled={!canStartUpgrade(game, p.id)} onClick={() => onStartUpgrade(p.id)}>
                 <span>Research v{p.version + 1}</span>
-                <span className="pd-primary-sub">{num(versionCost(p.version).compute * B.upgrade.upfrontFrac)}+{num(versionCost(p.version).data * B.upgrade.upfrontFrac)} upfront · ~{fmtDur(upgradeDurationSec(p.version))}</span>
+                <span className="pd-primary-sub">{num(versionCostFor(game, p.version).compute * B.upgrade.upfrontFrac)}+{num(versionCostFor(game, p.version).data * B.upgrade.upfrontFrac)} upfront · ~{fmtDur(upgradeDurationSec(p.version))}</span>
               </button>
             )}
             {crew.length > 0 && (
