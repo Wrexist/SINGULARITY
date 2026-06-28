@@ -390,6 +390,86 @@ const WORLD_EVENTS: WorldEvent[] = [
     body: "Anthropos publishes a 90-page safety card and a model that's annoyingly good. The frontier nudges higher.",
     effect: { kind: "frontierJump", amount: 2 },
   },
+  // --- More ambient events (variety pass) ---
+  {
+    id: "gpu_shortage",
+    weight: 3,
+    tone: "bad",
+    headline: "Global GPU Shortage",
+    body: "Every lab on Earth wants the same chip. Your supplier 'prioritises strategic partners' (read: whoever pays double). Compute ×0.6 for a bit.",
+    effect: { kind: "buff", target: "computeMult", factor: 0.6, durationSec: 40 },
+  },
+  {
+    id: "power_bill",
+    weight: 2,
+    tone: "bad",
+    headline: "The Power Bill Arrives",
+    body: "Accounting opens the envelope and goes very quiet. Turns out 'compute' is a polite word for 'electricity'. −15% cash.",
+    effect: { kind: "grantPct", resource: "money", pct: -0.15 },
+  },
+  {
+    id: "benchmark_win",
+    weight: 2,
+    tone: "good",
+    headline: "You Top a Benchmark Nobody Asked For",
+    body: "Your model edges out the field on 'Vibes-Bench v3'. The leaderboard screenshot does numbers on social. Revenue ×1.6, briefly.",
+    effect: { kind: "buff", target: "moneyMult", factor: 1.6, durationSec: 45 },
+  },
+  {
+    id: "synthetic_breakthrough",
+    weight: 2,
+    tone: "good",
+    headline: "Synthetic Data Breakthrough",
+    body: "An intern trains the model on its own output and, against all advice, it works this time. Data yield ×1.8, briefly.",
+    effect: { kind: "buff", target: "dataMult", factor: 1.8, durationSec: 50 },
+  },
+  {
+    id: "hallucination_scandal",
+    weight: 2,
+    tone: "bad",
+    headline: "Your Model Confidently Invents a Court Case",
+    body: "A lawyer cited it. The judge was not amused. Your products take a reputational knock as the clip goes viral.",
+    effect: { kind: "frontierJump", amount: 1 },
+  },
+  {
+    id: "viral_jailbreak",
+    weight: 2,
+    tone: "good",
+    headline: "Someone Jailbreaks Your Model Into Writing Poetry",
+    body: "It's actually beautiful. The press calls it 'soul'. You call it 'an undocumented feature'. Signups spike across your products.",
+    effect: { kind: "productBuzz", durationSec: 55 },
+  },
+  {
+    id: "datacenter_cooling",
+    weight: 2,
+    tone: "good",
+    headline: "A Cold Snap Cuts the Cooling Bill",
+    body: "Winter does your thermal management for free. The fans idle; the ops team naps. Compute ×1.4 while it lasts.",
+    effect: { kind: "buff", target: "computeMult", factor: 1.4, durationSec: 40 },
+  },
+  // --- More faction choices (doomer ↔ accelerationist) ---
+  {
+    id: "faction_redteam",
+    weight: 2,
+    tone: "bad",
+    headline: "Red Team Finds Something",
+    body: "Your safety team found a way to make the model do something genuinely alarming. Do you delay to fix it, or ship and patch later?",
+    choices: [
+      { label: "Delay & fix it (+20% data, careful)", effect: { kind: "grantPct", resource: "data", pct: 0.2 }, alignment: -0.3 },
+      { label: "Ship and patch later (Compute ×1.8)", effect: { kind: "buff", target: "computeMult", factor: 1.8, durationSec: 45 }, alignment: 0.3 },
+    ],
+  },
+  {
+    id: "faction_compute_deal",
+    weight: 2,
+    tone: "good",
+    headline: "A Hyperscaler Offers Cheap Compute",
+    body: "The catch: their terms let them train on your usage. Sign for the compute, or walk for the principle?",
+    choices: [
+      { label: "Walk away (+25% data, integrity)", effect: { kind: "grantPct", resource: "data", pct: 0.25 }, alignment: -0.28 },
+      { label: "Sign it (Compute ×2 briefly)", effect: { kind: "buff", target: "computeMult", factor: 2, durationSec: 40 }, alignment: 0.32 },
+    ],
+  },
 
   // --- Faction events (Phase 2): two choices, diverging effects + alignment. ---
   {
