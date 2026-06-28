@@ -202,6 +202,16 @@ export function LockIcon({ size = 18 }: IconProps) {
   );
 }
 
+/** Open book — Field Notes / Codex. */
+export function BookIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="M12 6.5C10.5 5.3 8.5 4.8 4.5 5v13c4-0.2 6 0.3 7.5 1.5 1.5-1.2 3.5-1.7 7.5-1.5V5c-4-0.2-6 0.3-7.5 1.5z" />
+      <path d="M12 6.5v13" />
+    </Icon>
+  );
+}
+
 /** Check / active. */
 export function CheckIcon({ size = 18 }: IconProps) {
   return (

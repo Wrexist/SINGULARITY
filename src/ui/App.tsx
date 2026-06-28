@@ -25,6 +25,7 @@ import { ProductsPanel } from "./ProductsPanel";
 import { AchievementsModal } from "./AchievementsModal";
 import { ContractsPanel } from "./ContractsPanel";
 import { CharterPanel } from "./CharterPanel";
+import { CodexPanel } from "./CodexPanel";
 import { EventLog } from "./EventLog";
 import { FxCanvas } from "./FxCanvas";
 import { burst as fxBurst } from "./fx";
@@ -437,6 +438,7 @@ export function App() {
             {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} onBuyLegacyPerk={(id) => { haptics.success(); sound.purchase(); doBuyLegacyPerk(id); }} />}
             {showResearch && <ContractsPanel game={game} onClaim={onClaimContract} />}
             <StatsPanel game={game} derived={d} />
+            {game.prestige.ships > 0 && <CodexPanel game={game} />}
             <EventLog log={log} />
           </>
         )}
