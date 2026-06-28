@@ -15,7 +15,10 @@ export type CodexMetric =
   | "peakMau"
   | "peakMrr"
   | "worldEventsResolved"
-  | "peakResearchCount";
+  | "peakResearchCount"
+  | "contractsCompleted" // live: state.contracts.completed.length
+  | "rivalsBeaten" // live: named rivals your best product outranks
+  | "legacyInvested"; // live: state.legacyInvestments.length
 
 export interface CodexEntry {
   id: string;
@@ -43,5 +46,13 @@ export const codex = {
     { id: "rsi", title: "Recursive Self-Improvement", body: "The model starts suggesting improvements to itself, and they're good. The team debates whether to be excited or to back away slowly. They choose 'ship it'.", metric: "peakResearchCount", threshold: 15 },
     { id: "singularity", title: "Post-Singularity", body: "The graphs go vertical. The board asks what comes after exponential. Marketing suggests 'Singularity Inc. Plus'. The model, politely, has other ideas.", metric: "ascensions", threshold: 1 },
     { id: "agi", title: "AGI, Probably", body: "You've ascended more than once now, which raises the awkward question of what, exactly, keeps shipping. You don't ask. It seems happy. The quarterly numbers are extraordinary.", metric: "ascensions", threshold: 3 },
+
+    // ---- This session's new systems get their own lore ----
+    { id: "the_charter", title: "Mission Statements", body: "Each new lab opens with a charter — a single sentence the founder will violate by the second board meeting. 'Open-source crusade' lasts exactly until the cloud bill arrives. Still, it feels good to pick one.", metric: "totalShips", threshold: 2 },
+    { id: "the_contract", title: "Enterprise Sales", body: "Somewhere a procurement department wants 'AI', defined as 'the thing from the news, but compliant'. You sign a contract, deliver against a checklist, and bank the goodwill. Reputation is the only currency that survives a reset.", metric: "contractsCompleted", threshold: 1 },
+    { id: "closing", title: "Always Be Closing", body: "Ten contracts in, you have a sales motion: a deck, a demo that works on the third try, and a clause nobody reads. The model does the work; the founder does the LinkedIn post about the work.", metric: "contractsCompleted", threshold: 5 },
+    { id: "the_board", title: "The Leaderboard", body: "There's a ranking now — you, ClosedAI, Anthropos, Goggle, the rest — sorted by users like a high-score table for civilisation. You've passed your first rival. They will release a blog post about 'focusing on safety'.", metric: "rivalsBeaten", threshold: 1 },
+    { id: "market_king", title: "Market Leader", body: "You're #1. Every other lab is now 'the company trying to catch up to Singularity Inc.' Enjoy it: market leadership in this industry has the half-life of a press cycle, and everyone is one demo away from dethroning you.", metric: "rivalsBeaten", threshold: 5 },
+    { id: "the_tree", title: "Specialisation", body: "You start spending Legacy on a focus instead of a flat boost — a Compute lab, a Data lab, a Money lab. Breadth or mastery; you can't have both. The first real strategic regret of the late game, and it's a good one.", metric: "legacyInvested", threshold: 1 },
   ] satisfies CodexEntry[],
 };

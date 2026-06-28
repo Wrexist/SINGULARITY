@@ -21,6 +21,19 @@ describe("codex (Field Notes)", () => {
     expect(codexUnlocked(s, codexBalance.entries.find((e) => e.id === "scaling")!)).toBe(true);
   });
 
+  it("unlocks entries from live (non-stats) state: contracts, market, legacy tree", () => {
+    const s = createInitialState();
+    const contract = codexBalance.entries.find((e) => e.id === "the_contract")!;
+    const tree = codexBalance.entries.find((e) => e.id === "the_tree")!;
+    expect(codexUnlocked(s, contract)).toBe(false);
+    expect(codexUnlocked(s, tree)).toBe(false);
+
+    s.contracts.completed = ["c1"];
+    s.legacyInvestments = ["compute_focus"];
+    expect(codexUnlocked(s, contract)).toBe(true);
+    expect(codexUnlocked(s, tree)).toBe(true);
+  });
+
   it("orders unlocked entries before locked ones, and counts correctly", () => {
     const s = createInitialState();
     s.stats.totalShips = 5; // unlocks several

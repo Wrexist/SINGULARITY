@@ -127,6 +127,12 @@ no dark patterns. Re-run `npm run sim` after any economy change.*
       New `automate` reputation-effect kind; +5 tests. The genre-standard automation layer the audit
       ranked as the top idle convenience.
 
+- [x] **R7.2 · Codex lore for the new systems** — the Field Notes encyclopedia (15→21 entries) now
+      covers this session's systems: charters (Mission Statements), contracts (Enterprise Sales /
+      Always Be Closing), the market leaderboard (The Leaderboard / Market Leader), and the Legacy
+      tree (Specialisation). Extended `CodexMetric` to read live state (`contractsCompleted`/
+      `rivalsBeaten`/`legacyInvested`) like achievements do, so each new system has discoverable,
+      threshold-gated lore. Pure data + a 3-case switch extension; zero curve impact. +1 test.
 - [x] **R7.1 · Tiered upgrade flavor** — the most-bought upgrades (racks, overclock) now have
       *escalating* satirical descriptions at owned-count breakpoints ("Your landlord has questions
       about the power bill.") instead of one static line. Pure `upgradeFlavor(id, owned, fallback)`

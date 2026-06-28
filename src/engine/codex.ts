@@ -1,4 +1,5 @@
 import { codex as C, type CodexEntry } from "./balance/codex";
+import { rivalsBeaten } from "./market";
 import type { GameState } from "./types";
 
 /**
@@ -22,6 +23,9 @@ export function codexMetricValue(state: GameState, metric: CodexEntry["metric"])
     case "peakMrr": return s.peakMrr;
     case "worldEventsResolved": return s.worldEventsResolved;
     case "peakResearchCount": return s.peakResearchCount;
+    case "contractsCompleted": return state.contracts.completed.length;
+    case "rivalsBeaten": return rivalsBeaten(state);
+    case "legacyInvested": return state.legacyInvestments.length;
   }
 }
 
