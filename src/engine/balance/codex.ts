@@ -18,7 +18,8 @@ export type CodexMetric =
   | "peakResearchCount"
   | "contractsCompleted" // live: state.contracts.completed.length
   | "rivalsBeaten" // live: named rivals your best product outranks
-  | "legacyInvested"; // live: state.legacyInvestments.length
+  | "legacyInvested" // live: state.legacyInvestments.length
+  | "themesUnlocked"; // live: hall themes earned by play (R6.3)
 
 export interface CodexEntry {
   id: string;
@@ -54,5 +55,9 @@ export const codex = {
     { id: "the_board", title: "The Leaderboard", body: "There's a ranking now — you, ClosedAI, Anthropos, Goggle, the rest — sorted by users like a high-score table for civilisation. You've passed your first rival. They will release a blog post about 'focusing on safety'.", metric: "rivalsBeaten", threshold: 1 },
     { id: "market_king", title: "Market Leader", body: "You're #1. Every other lab is now 'the company trying to catch up to Singularity Inc.' Enjoy it: market leadership in this industry has the half-life of a press cycle, and everyone is one demo away from dethroning you.", metric: "rivalsBeaten", threshold: 5 },
     { id: "the_tree", title: "Specialisation", body: "You start spending Legacy on a focus instead of a flat boost — a Compute lab, a Data lab, a Money lab. Breadth or mastery; you can't have both. The first real strategic regret of the late game, and it's a good one.", metric: "legacyInvested", threshold: 1 },
+
+    // ---- Customization & faction content (this wave) ----
+    { id: "interior_design", title: "Interior Decorating", body: "At some point the racks stop being equipment and start being decor. You recolour the hall for nobody but yourself, which is the purest reason to do anything. The compute does not run faster in Vaporwave. You keep it on Vaporwave.", metric: "themesUnlocked", threshold: 6 },
+    { id: "picking_sides", title: "Picking Sides", body: "Drift far enough toward doom or acceleration and the world starts treating you differently — different grants, different headlines, different people in your mentions. The fence was always the most boring place to stand.", metric: "worldEventsResolved", threshold: 20 },
   ] satisfies CodexEntry[],
 };

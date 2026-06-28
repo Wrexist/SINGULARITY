@@ -1,4 +1,5 @@
 import { codex as C, type CodexEntry } from "./balance/codex";
+import { collectionProgress } from "./cosmetics";
 import type { GameState } from "./types";
 
 /**
@@ -28,6 +29,8 @@ export function codexMetricValue(state: GameState, metric: CodexEntry["metric"])
     case "contractsCompleted": return state.contracts.completed.length;
     case "rivalsBeaten": return state.stats.bestRivalsBeaten;
     case "legacyInvested": return state.legacyInvestments.length;
+    // Hall themes earned by play (R6.3) — monotonic (reads lifetime stats), premium excluded.
+    case "themesUnlocked": return collectionProgress(state, false).owned;
   }
 }
 

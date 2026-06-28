@@ -3,6 +3,8 @@ import { createInitialState } from "./state";
 import { prestige } from "./prestige";
 import { Big } from "./math/Big";
 import { themeUnlocked, isUnlocked, collectionProgress, unlockHint, themes } from "./cosmetics";
+import { metricValue } from "./achievements";
+import { codexMetricValue } from "./codex";
 
 describe("R6.3 — cosmetic unlocks (pure)", () => {
   it("free themes are always unlocked; premium gates on the flag", () => {
@@ -44,6 +46,16 @@ describe("R6.3 — cosmetic unlocks (pure)", () => {
     const p = collectionProgress(createInitialState(), false);
     expect(p.total).toBe(themes.length);
     expect(p.owned).toBe(free);
+  });
+
+  it("the themesUnlocked metric feeds both achievements and the codex (R6.3 → collection)", () => {
+    const s = createInitialState();
+    const free = themes.filter((t) => t.unlock.kind === "free").length;
+    expect(metricValue(s, "themesUnlocked").toNumber()).toBe(free);
+    expect(codexMetricValue(s, "themesUnlocked")).toBe(free);
+    s.stats.totalShips = 4; // unlocks vaporwave (2 ships) + carbon (4 ships)
+    expect(metricValue(s, "themesUnlocked").toNumber()).toBe(free + 2);
+    expect(codexMetricValue(s, "themesUnlocked")).toBe(free + 2);
   });
 
   it("unlockHint gives readable 'how to earn' text", () => {

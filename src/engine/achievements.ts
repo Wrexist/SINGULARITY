@@ -2,6 +2,7 @@ import { Big } from "./math/Big";
 import { achievements as DEFS, type AchievementDef, type AchMetric } from "./balance/achievements";
 import { currentEra } from "./eras";
 import { rivalsBeaten } from "./market";
+import { collectionProgress } from "./cosmetics";
 import type { GameState } from "./types";
 
 /**
@@ -38,6 +39,9 @@ export function metricValue(state: GameState, metric: AchMetric): Big {
     case "legacyInvested": return Big.of(state.legacyInvestments.length);
     case "rivalsBeaten": return Big.of(rivalsBeaten(state));
     case "ascensions": return Big.of(s.ascensions);
+    // Cosmetic collection (R6.3): count themes earned by PLAY (premium excluded, so it's
+    // a genuine play achievement, not a purchase). Derived from monotonic lifetime stats.
+    case "themesUnlocked": return Big.of(collectionProgress(state, false).owned);
   }
 }
 
