@@ -1,9 +1,8 @@
 import { balance } from "../engine/balance/config";
-import { canBuyResearch, researchAvailable, researchLockedOut } from "../engine/actions";
+import { canBuyResearch, researchAvailable, researchLockedOut, researchCost } from "../engine/actions";
 import type { Derived, GameState } from "../engine/types";
 import { fmt, fmtDur, etaSecs, effRate } from "./format";
 import { burst, punch } from "./fx";
-import { Big } from "../engine/math/Big";
 import { CheckIcon, LockIcon } from "./Icons";
 import { ResearchIcon, EffectPill } from "./effectVisual";
 
@@ -24,9 +23,10 @@ export function ResearchPanel({ game, derived, onResearch }: Props) {
 
   type Def = (typeof balance.research)[number];
   const etaFor = (def: Def): number | null => {
+    const c = researchCost(game, def); // discounted by Research Fellowship if owned
     const legs = [
-      def.cost.compute > 0 ? etaSecs(Big.of(def.cost.compute), game.resources.compute, effRate(derived, "compute")) : null,
-      def.cost.data > 0 ? etaSecs(Big.of(def.cost.data), game.resources.data, effRate(derived, "data")) : null,
+      def.cost.compute > 0 ? etaSecs(c.compute, game.resources.compute, effRate(derived, "compute")) : null,
+      def.cost.data > 0 ? etaSecs(c.data, game.resources.data, effRate(derived, "data")) : null,
     ].filter((x): x is number => x !== null);
     return legs.length > 0 ? Math.max(...legs) : null;
   };
@@ -73,17 +73,20 @@ export function ResearchPanel({ game, derived, onResearch }: Props) {
           </div>
           <EffectPill effect={def.effect} />
           <span className="node-desc">{def.desc}</span>
-          {!owned && (
-            <span className="node-cost">
-              {def.cost.compute > 0 && (
-                <span style={{ color: "var(--compute)" }}>{fmt(Big.of(def.cost.compute))} compute </span>
-              )}
-              {def.cost.data > 0 && (
-                <span style={{ color: "var(--data)" }}>{fmt(Big.of(def.cost.data))} data</span>
-              )}
-              {eta != null && <span className="cost-eta">~{fmtDur(eta)}</span>}
-            </span>
-          )}
+          {!owned && (() => {
+            const c = researchCost(game, def); // reflects the Research Fellowship discount
+            return (
+              <span className="node-cost">
+                {def.cost.compute > 0 && (
+                  <span style={{ color: "var(--compute)" }}>{fmt(c.compute)} compute </span>
+                )}
+                {def.cost.data > 0 && (
+                  <span style={{ color: "var(--data)" }}>{fmt(c.data)} data</span>
+                )}
+                {eta != null && <span className="cost-eta">~{fmtDur(eta)}</span>}
+              </span>
+            );
+          })()}
         </div>
       </button>
     );

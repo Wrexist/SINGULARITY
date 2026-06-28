@@ -16,7 +16,8 @@ export type ReputationEffectKind =
   | "moneyMult"
   | "payrollMult" // multiplies payroll (value 0.15 → −15% wage bill)
   | "automate" // unlocks an automation (value unused) — e.g. auto-buy research
-  | "productSlot"; // grants `value` extra concurrent product slots
+  | "productSlot" // grants `value` extra concurrent product slots
+  | "researchDiscount"; // every research node costs `value` less Compute & Data (0.2 → −20%)
 
 export interface ReputationPerk {
   id: string;
@@ -34,6 +35,9 @@ export const reputation = {
   perShip: 1,
   perAscension: 8,
 
+  /** Floor for stacked research-cost discounts (research can get cheap, never free). */
+  researchDiscountFloor: 0.25,
+
   perks: [
     // --- Tier 1: single-lane boosts (entry-level) ---
     { id: "rep_compute1", name: "Compute Grant", desc: "+10% Compute, permanently.", cost: 8, effect: { kind: "computeMult", value: 0.1 } },
@@ -46,6 +50,7 @@ export const reputation = {
     { id: "rep_global1", name: "Industry Standard", desc: "+8% to all production.", cost: 36, requires: "rep_money1", effect: { kind: "globalMult", value: 0.08 } },
     { id: "rep_autoresearch", name: "Research Director", desc: "Auto-buys affordable research for you — no more babysitting the tree.", cost: 24, effect: { kind: "automate", value: 0 } },
     { id: "rep_slot", name: "Portfolio Expansion", desc: "+1 concurrent product slot — run a broader business.", cost: 40, effect: { kind: "productSlot", value: 1 } },
+    { id: "rep_research1", name: "Research Fellowship", desc: "Every research node costs 20% less Compute & Data — climb the tree faster every run.", cost: 28, requires: "rep_data1", effect: { kind: "researchDiscount", value: 0.2 } },
 
     // --- Tier 3: capstones ---
     { id: "rep_global2", name: "Household Name", desc: "+15% to all production.", cost: 90, requires: "rep_global1", effect: { kind: "globalMult", value: 0.15 } },

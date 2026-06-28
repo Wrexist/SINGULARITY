@@ -91,6 +91,19 @@ export function autoResearchEnabled(state: GameState): boolean {
   );
 }
 
+/** Research-cost multiplier from owned `researchDiscount` perks (≤ 1). Neutral = 1,
+ *  so a fresh run (no perks) pays full price and the early curve is untouched. The
+ *  discounts stack multiplicatively and are floored so research can't become free. */
+export function researchCostMult(state: GameState): number {
+  let mult = 1;
+  for (const p of R.perks) {
+    if (p.effect.kind === "researchDiscount" && state.reputation.perks.includes(p.id)) {
+      mult *= 1 - p.effect.value;
+    }
+  }
+  return Math.max(R.researchDiscountFloor, mult);
+}
+
 /** Extra concurrent product slots from owned `productSlot` perks (R5.6). */
 export function bonusProductSlots(state: GameState): number {
   let n = 0;

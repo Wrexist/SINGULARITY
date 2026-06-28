@@ -110,8 +110,12 @@ no dark patterns. Re-run `npm run sim` after any economy change.*
       base + perk-granted slots), the first reputation perk that touches another system instead of a
       flat global mult. New `productSlot` effect kind + `bonusProductSlots`; wired through the slot
       checks, advisor free-slot nudge, and the Products header. Gated → sim byte-identical (12m15s).
-      +2 tests. *Remaining (optional): more cross-system perks (research discount, free starting
-      racks) and mutually-exclusive build branches.*
+      +2 tests. ↳ Follow-up (done): **Research Fellowship** (cost 28, requires Data Partnership) — a
+      second cross-system perk that discounts every research node −20% Compute & Data via a new
+      `researchDiscount` effect kind + pure `researchCostMult` (floored at 0.25 so research can't go
+      free). Folded into `researchCost`/`canBuyResearch`/`buyResearch`; the Research panel shows the
+      discounted price + ETA. Neutral (mult=1) with no perk → **sim byte-identical (12m15s)**. +4 tests.
+      *Remaining (optional): free starting racks and mutually-exclusive build branches.*
 - [x] **R5.3 · Research auto-buyer** — new **Research Director** Reputation perk (cost 24) auto-buys
       the cheapest affordable, prereq-met research node. Pure `applyAutoResearch` folded into `tick`
       (so it works offline too); gated behind the perk → off by default → **sim byte-identical
