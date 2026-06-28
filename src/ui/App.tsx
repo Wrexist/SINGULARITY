@@ -58,7 +58,7 @@ export function App() {
   const { doStartRun, doClaim, doBuyUpgrade, doBuyUpgradeBulk, doBuyOfficePerk, doBuyReputationPerk, doBuyLegacyPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
-    doClaimContract, doSetCharter, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset } =
+    doClaimContract, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset } =
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
@@ -434,7 +434,7 @@ export function App() {
             <CharterPanel game={game} onSet={(id) => { haptics.tap(); sound.tap(); doSetCharter(id); }} />
             <UpgradePanel game={game} derived={d} onBuy={onBuy} />
             {showResearch && <ResearchPanel game={game} derived={d} onResearch={onResearch} />}
-            {showMarket && <DataMarketPanel game={game} onBuyData={onBuyData} onBuyTool={onBuy} />}
+            {showMarket && <DataMarketPanel game={game} onBuyData={onBuyData} onBuyTool={onBuy} onLobby={() => { haptics.tap(); sound.purchase(); doLobby(); }} />}
             {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} onBuyLegacyPerk={(id) => { haptics.success(); sound.purchase(); doBuyLegacyPerk(id); }} />}
             {showResearch && <ContractsPanel game={game} onClaim={onClaimContract} />}
             <StatsPanel game={game} derived={d} />

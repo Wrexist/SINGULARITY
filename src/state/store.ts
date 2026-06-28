@@ -15,6 +15,7 @@ import {
   buyOfficePerk,
   buyResearch,
   buyDataOffer,
+  lobby,
   maybeHeatEvent,
   maybeWorldEvent,
   applyWorldEventChoice,
@@ -150,6 +151,7 @@ interface GameStore {
   doRetireProduct: (id: string) => void;
   doResearch: (id: string) => void;
   doBuyData: (id: string) => MarketOutcome | null;
+  doLobby: () => void;
   doPrestige: (mode?: ShipMode) => void;
   /** Claim the once-a-day output boost (temporary modifiers). */
   doClaimDaily: () => void;
@@ -468,6 +470,7 @@ export const useGame = create<GameStore>((set, get) => ({
     if (outcome) set({ game: next });
     return outcome;
   },
+  doLobby: () => set((s) => ({ game: lobby(s.game) })),
   doPrestige: (mode: ShipMode = "deploy") => set((s) => ({ game: prestige(s.game, mode) })),
   doClaimDaily: () => set((s) => ({ game: grantDailyBoost(s.game) })),
 

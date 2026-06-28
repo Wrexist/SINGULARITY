@@ -1161,6 +1161,9 @@ export const balance = {
     /** R5.5 cross-system: regulatory pressure scares off customers — product churn
      *  rises by up to this fraction at MAX Heat (×(1+this), linear in heat). */
     productChurnAtMax: 0.35,
+    /** Lobbying: spend Money to cool Heat (buy goodwill). Cost rises with current
+     *  Heat (a hotter lab is harder to clean up); one lobby cuts Heat by a fraction. */
+    lobby: { baseCost: 500, costPerHeat: 80, reductionFraction: 0.4 },
     /** UI meter tiers: label + color, picked by the lowest `upTo` heat value the meter is under. */
     tiers: [
       { upTo: 25, label: "Cold", color: "#22c55e" },
