@@ -31,7 +31,7 @@ describe("achievements", () => {
   it("reads live state (not just stats) for liveProducts / peakVersion", () => {
     const s = createInitialState();
     s.products.active = [
-      { id: "a", name: "A", type: "general", version: 10, quality: 1, priceMult: 1, enterprise: false, enterprisePrice: 1, marketingPerSec: 0, channelMix: { ads: 1 }, mau: 0, paid: 0, buzzSec: 0, upgrade: null, features: [] },
+      { id: "a", name: "A", type: "general", version: 10, quality: 1, priceMult: 1, enterprise: false, enterprisePrice: 1, marketingPerSec: 0, channelMix: { ads: 1 }, mau: 0, paid: 0, buzzSec: 0, ageSec: 0, upgrade: null, features: [] },
     ];
     const ids = evaluateAchievements(s);
     expect(ids).toContain("version_10");

@@ -2,6 +2,9 @@ import { Big } from "./math/Big";
 import { balance } from "./balance/config";
 import { computeStaffEffects, teamMorale, type StaffEffects } from "./employees";
 import { reputationMods } from "./reputation";
+import { alignmentProductionMods, alignmentProductMods } from "./alignment";
+import { charterMods } from "./charter";
+import { legacyAvailable, legacyTreeMods } from "./legacyTree";
 import { ascensionMultiplier } from "./prestige";
 import { powerStats } from "./power";
 import type { Derived, Employee, GameState } from "./types";
@@ -136,9 +139,22 @@ export function derive(state: GameState): Derived {
   dataMult = dataMult.mul(fx.dataMultF);
   moneyMult = moneyMult.mul(fx.moneyMultF);
   let payrollPerSec = Big.of(fx.payroll).mul(officePayrollMult(state));
-  const productMods = fx.productMods;
-  const productModsById = fx.productModsById;
-  const hireDiscount = Math.max(0.25, 1 - fx.hireCut); // hires never cheaper than 25% of base
+  // R5.5 cross-system folds: alignment → product acquisition/Heat, and regulatory
+  // Heat → product churn (a sketchy lab bleeds customers). All identity at
+  // neutral/cold, so a fresh run's product economics — and the sim — are untouched.
+  const ap = alignmentProductMods(state);
+  const heatChurnMult = 1 + (state.heat / balance.heat.max) * balance.heat.productChurnAtMax;
+  const applyCross = (m: typeof fx.productMods) => ({
+    ...m,
+    acq: m.acq * ap.acq,
+    heat: m.heat * ap.heat,
+    churn: m.churn * heatChurnMult,
+  });
+  const productMods = applyCross(fx.productMods);
+  const productModsById = Object.fromEntries(
+    Object.entries(fx.productModsById).map(([id, m]) => [id, applyCross(m)]),
+  );
+  const hireDiscount = Math.max(balance.staff.hireDiscountFloor, 1 - fx.hireCut); // floored hire discount
 
   // World-event modifiers: time-limited global multipliers (buffs/debuffs).
   for (const m of state.modifiers) {
@@ -149,8 +165,13 @@ export function derive(state: GameState): Derived {
   }
 
   // Prestige: permanent global multiplier from Legacy Weights.
+  // Diminishing in weights (R4.1): worth exactly 1 at zero weights (first prestige
+  // untouched), and each later weight is worth a little less so the meta-loop
+  // doesn't collapse to sub-minute ships. R5.4: weights INVESTED in the legacy tree
+  // are removed from this pool (legacyAvailable) — the focus-vs-breadth trade-off.
+  // With nothing invested, available === total, so the curve is unchanged.
   const legacyMult = Big.ONE.add(
-    state.prestige.legacyWeights.mul(balance.prestige.multiplierPerPoint),
+    legacyAvailable(state).pow(balance.prestige.multiplierExponent).mul(balance.prestige.multiplierPerPoint),
   );
   computeMult = computeMult.mul(legacyMult);
   dataMult = dataMult.mul(legacyMult);
@@ -180,6 +201,27 @@ export function derive(state: GameState): Derived {
   // Legacy, ascension, AND reputation data perks — must be applied to it directly.
   const dataPerSec = dataPerSecFlat.mul(legacyMult).mul(ascensionMult).mul(rep.dataMult);
 
+  // Faction alignment: a strategic lane-tilt (accelerationist trades money for
+  // compute, doomer the reverse). Identity at neutral, so the curve/sim are
+  // untouched. Applied to compute & money only — not the scraper data lane.
+  const align = alignmentProductionMods(state);
+  computeMult = computeMult.mul(align.computeMult);
+  moneyMult = moneyMult.mul(align.moneyMult);
+
+  // Lab Charter (R6.1): the run's chosen triangle tilt. Identity (1.0) on a
+  // charter-less run — including the first — so the tuned curve is untouched.
+  const ch = charterMods(state);
+  computeMult = computeMult.mul(ch.computeMult);
+  dataMult = dataMult.mul(ch.dataMult);
+  moneyMult = moneyMult.mul(ch.moneyMult);
+
+  // Legacy Investments (R5.4): owned prestige-tree lane biases. All 1.0 with
+  // nothing invested, so this is identity until the player spends weights.
+  const lt = legacyTreeMods(state);
+  computeMult = computeMult.mul(lt.computeMult);
+  dataMult = dataMult.mul(lt.dataMult);
+  moneyMult = moneyMult.mul(lt.moneyMult);
+
   let computePerSec = computeFlat.mul(computeMult);
   // PHASE 2 (flagged off): power/heat soft-cap throttles Compute when the racks
   // draw more than your capacity. Dormant until balance.power.enabled is true.
@@ -196,7 +238,7 @@ export function derive(state: GameState): Derived {
     computePerSec,
     dataMult,
     moneyMult,
-    runDurationSec: Math.max(0.5, runDurationSec),
+    runDurationSec: Math.max(balance.run.minDurationSec, runDurationSec),
     passiveMoneyPerSec: passiveMoneyPerSec.mul(computePerSec),
     dataPerSec,
     autoClaim,

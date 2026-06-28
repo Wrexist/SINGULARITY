@@ -3,6 +3,8 @@ import type { Derived, GameState } from "../engine/types";
 import { fmt, fmtMoney, m$, numOf, fmtDur } from "./format";
 import { achievementDefs } from "../engine/achievements";
 import { reputationAvailable } from "../engine/reputation";
+import { alignmentProductionMods, alignmentHeatMult, alignmentProductMods } from "../engine/alignment";
+import { balance } from "../engine/balance/config";
 import { ascensionMultiplier } from "../engine/prestige";
 
 interface Props {
@@ -24,9 +26,39 @@ type Row = { label: string; value: string };
 /** Collapsible "Lab Stats" — surfaces the math (legibility is the feature, GDD).
  *  Two groups: NOW (current per-second rates + multipliers) and ALL-TIME (the
  *  lifetime career: peaks, totals, and meta-progression earned across every run). */
+/** Compact "+9% cmp · −6% $ · +30% heat" summary of the active stance, or null
+ *  at neutral. Makes the (now real) faction tilt legible instead of invisible. */
+const pct = (x: number) => `${x >= 0 ? "+" : ""}${Math.round(x * 100)}%`;
+
+function stanceEffects(game: GameState): string | null {
+  if (game.alignment === 0) return null;
+  const mods = alignmentProductionMods(game);
+  const heat = alignmentHeatMult(game);
+  return `${pct(mods.computeMult - 1)} cmp · ${pct(mods.moneyMult - 1)} $ · ${pct(heat - 1)} heat`;
+}
+
+/** R5.5 cross-system effects, surfaced only when active (else they'd clutter the
+ *  common case). Keeps the new depth legible — "legibility is the feature". */
+function crossSystemRows(game: GameState): Row[] {
+  const rows: Row[] = [];
+  if (game.alignment !== 0) {
+    const ap = alignmentProductMods(game);
+    const parts: string[] = [];
+    if (ap.acq !== 1) parts.push(`${pct(ap.acq - 1)} acquisition`);
+    if (ap.heat !== 1) parts.push(`${pct(ap.heat - 1)} product heat`);
+    if (parts.length) rows.push({ label: "Faction → products", value: parts.join(" · ") });
+  }
+  if (game.heat > 0) {
+    const churn = (game.heat / balance.heat.max) * balance.heat.productChurnAtMax;
+    if (churn > 0.001) rows.push({ label: "Regulatory drag", value: `${pct(churn)} product churn` });
+  }
+  return rows;
+}
+
 export function StatsPanel({ game, derived }: Props) {
   const [open, setOpen] = useState(false);
   const s = game.stats;
+  const stance = stanceEffects(game);
 
   const now: Row[] = [
     { label: "Compute / sec", value: fmt(derived.computePerSec) },
@@ -38,6 +70,8 @@ export function StatsPanel({ game, derived }: Props) {
     { label: "Run payout", value: `${fmt(derived.runDataYield)} data · ${fmtMoney(derived.runMoneyYield)}` },
     { label: "Passive income", value: `${fmtMoney(derived.passiveMoneyPerSec)}/s` },
     { label: "Faction stance", value: alignmentLabel(game.alignment) },
+    ...(stance ? [{ label: "Stance effects", value: stance }] : []),
+    ...crossSystemRows(game),
   ];
 
   const allTime: Row[] = [

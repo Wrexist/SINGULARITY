@@ -72,6 +72,16 @@ export interface GameState {
    *  earned − spent (earned is derived from achievements/ships/ascensions). Survives
    *  prestige AND ascension. */
   reputation: { spent: number; perks: string[] };
+  /** Phase 4 — Contracts: completed objective ids (the board is derived from this).
+   *  Persists across prestige; completed contracts feed earned Reputation. */
+  contracts: { completed: string[] };
+  /** Phase 4 — Lab Charter: the current run's chosen modifier id (or null). Picked
+   *  at the start of a run (post-first-ship); resets to null each prestige. */
+  charter: string | null;
+  /** Phase 4 — Legacy Investments: owned prestige-tree perk ids. Spending weights
+   *  here removes them from the global multiplier (a focus-vs-breadth trade-off).
+   *  Persists across prestige. */
+  legacyInvestments: string[];
 }
 
 /**
@@ -147,6 +157,9 @@ export interface ProductState {
   paid: number;
   /** Remaining launch-buzz seconds (acquisition spike + churn cut). */
   buzzSec: number;
+  /** Seconds this product has been live (accrues in the sim). Gates the retire
+   *  valuation so a freshly-launched product can't be pump-and-dumped for cash. */
+  ageSec: number;
   /** An in-progress timed version upgrade (research), or null. The model keeps
    *  earning at its current quality until the upgrade completes. */
   upgrade: UpgradeState | null;

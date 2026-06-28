@@ -147,7 +147,7 @@ describe("save/load", () => {
       sold: 0,
       drafts: [],
       milestones: [],
-      active: [{ id: "prod-1", name: "Nimbus", type: "general", version: 1, quality: 2, priceMult: 1, marketingPerSec: 0, mau: 10, paid: 2, buzzSec: 0, upgrade: null, features: [], enterprise: false, enterprisePrice: 1, channelMix: { ads: 1 } }],
+      active: [{ id: "prod-1", name: "Nimbus", type: "general", version: 1, quality: 2, priceMult: 1, marketingPerSec: 0, mau: 10, paid: 2, buzzSec: 0, ageSec: 0, upgrade: null, features: [], enterprise: false, enterprisePrice: 1, channelMix: { ads: 1 } }],
     };
     expect(deserialize(serialize(good)).products.active).toHaveLength(1);
 
@@ -169,7 +169,7 @@ describe("save/load", () => {
       milestones: [],
       active: [{
         id: "prod-1", name: "Cortex", type: "code", version: 3, quality: 4,
-        priceMult: 1, marketingPerSec: 0, mau: 100, paid: 20, buzzSec: 0,
+        priceMult: 1, marketingPerSec: 0, mau: 100, paid: 20, buzzSec: 0, ageSec: 0,
         upgrade: { targetVersion: 4, remainingCompute: 1000, remainingData: 100, remainingSec: 30, totalSec: 90 },
         features: [],
         enterprise: false, enterprisePrice: 1,

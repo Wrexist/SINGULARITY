@@ -10,6 +10,8 @@ import {
   type StaffRole,
 } from "./balance/config";
 import { derive } from "./derive";
+import { alignmentHeatMult } from "./alignment";
+import { autoResearchEnabled } from "./reputation";
 import { isRackId, floorFull, evictableRackFor } from "./hall";
 import type { ActiveModifier, GameState } from "./types";
 
@@ -85,8 +87,11 @@ export function buyUpgrade(state: GameState, id: string): GameState {
   const def = UPGRADE_BY_ID[id]!;
   const owned = state.upgrades[id] ?? 0;
   const cost = upgradeCost(def, owned);
-  // Buying dark-web tools puts you on a list — a little heat each time.
-  const heat = def.market === "darkweb" ? clampHeat(state.heat + balance.heat.toolBuyHeat) : state.heat;
+  // Buying dark-web tools puts you on a list — a little heat each time, scaled
+  // by your faction stance (accelerationist runs hotter, doomer keeps it clean).
+  const heat = def.market === "darkweb"
+    ? clampHeat(state.heat + balance.heat.toolBuyHeat * alignmentHeatMult(state))
+    : state.heat;
   const upgrades = { ...state.upgrades, [id]: owned + 1 };
   // Full floor + a higher-tier rack → upgrade in place: evict the lowest
   // lower-tier rack to free its slot (canBuyUpgrade guaranteed one exists).
@@ -105,6 +110,45 @@ export function buyUpgrade(state: GameState, id: string): GameState {
   };
 }
 
+/**
+ * Plan a bulk buy of `id`: how many levels you can actually buy (up to `want`,
+ * or Infinity for "Max") and their total cost — honoring affordability, max
+ * level, floor space and rack auto-eviction. Pure: it simulates real buys (each
+ * `buyUpgrade` is cheap — no `derive`), so the plan can never diverge from what
+ * `buyUpgradeBulk` does. Used by the panel to label the ×10 / Max buttons.
+ */
+export function planBulkUpgrade(
+  state: GameState,
+  id: string,
+  want: number,
+): { count: number; totalCost: Big; resource: UpgradeDef["cost"]["resource"] } {
+  const def = UPGRADE_BY_ID[id];
+  if (!def) return { count: 0, totalCost: Big.ZERO, resource: "money" };
+  const cap = Math.min(want, 10000); // safety bound for low-growth infinite-max upgrades
+  let s = state;
+  let count = 0;
+  let totalCost = Big.ZERO;
+  while (count < cap && canBuyUpgrade(s, id)) {
+    totalCost = totalCost.add(upgradeCost(def, s.upgrades[id] ?? 0));
+    s = buyUpgrade(s, id);
+    count += 1;
+  }
+  return { count, totalCost, resource: def.cost.resource };
+}
+
+/** Buy up to `want` levels of `id` (Infinity = as many as affordable). Stops at
+ *  the first level you can't buy. No-op-safe (returns the same state if count 0). */
+export function buyUpgradeBulk(state: GameState, id: string, want: number): GameState {
+  const cap = Math.min(want, 10000);
+  let s = state;
+  let n = 0;
+  while (n < cap && canBuyUpgrade(s, id)) {
+    s = buyUpgrade(s, id);
+    n += 1;
+  }
+  return s;
+}
+
 // ---------- Staff (Phase 2) ----------
 
 const STAFF_BY_ID: Record<string, StaffRole> = Object.fromEntries(
@@ -120,7 +164,7 @@ export function staffHireDiscount(state: GameState): number {
       cut += role.effect.perLevel * (state.upgrades[role.id] ?? 0);
     }
   }
-  return Math.max(0.25, 1 - cut);
+  return Math.max(balance.staff.hireDiscountFloor, 1 - cut);
 }
 
 /** Cost to hire the next of a role: base * growth^owned, after any Recruiter discount. */
@@ -181,6 +225,27 @@ export function canBuyResearch(state: GameState, id: string): boolean {
     state.resources.compute.gte(def.cost.compute) &&
     state.resources.data.gte(def.cost.data)
   );
+}
+
+/**
+ * Auto-buy research (R5.3, gated behind the Research Director reputation perk).
+ * Buys the cheapest affordable, prerequisite-met node repeatedly until none is
+ * affordable. Pure; runs in tick() so it also works during offline catch-up. Does
+ * exactly what an engaged player would do by hand, so it can't outrun the curve —
+ * and it's off until the (deep-endgame) perk is owned, so the sim is unaffected.
+ */
+export function applyAutoResearch(state: GameState): GameState {
+  if (!autoResearchEnabled(state)) return state;
+  let s = state;
+  let guard = 0;
+  while (guard++ < 500) {
+    const node = balance.research
+      .filter((r) => canBuyResearch(s, r.id))
+      .sort((a, b) => a.cost.compute + a.cost.data - (b.cost.compute + b.cost.data))[0];
+    if (!node) break;
+    s = buyResearch(s, node.id);
+  }
+  return s;
 }
 
 export function buyResearch(state: GameState, id: string): GameState {
@@ -252,7 +317,7 @@ export function buyDataOffer(
 
   let raided = false;
   if (def.risk) {
-    heat = clampHeat(state.heat + (def.heat ?? 0));
+    heat = clampHeat(state.heat + (def.heat ?? 0) * alignmentHeatMult(state));
     const raidChance = effectiveRaidChance(state, id);
     const { fine, raidDataFactor, poisonChance, poisonDataFactor } = def.risk;
     if (roll < raidChance) {
@@ -260,7 +325,7 @@ export function buyDataOffer(
       raided = true;
       dataGained = dataGained.mul(raidDataFactor);
       moneyLost = moneyLost.add(fine);
-      heat = clampHeat(state.heat * 0.4); // caught → lay low
+      heat = clampHeat(state.heat * balance.heat.postRaidHeatMult); // caught → lay low
     } else if (roll < raidChance + poisonChance) {
       kind = "poisoned";
       dataGained = dataGained.mul(poisonDataFactor);

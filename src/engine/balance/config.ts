@@ -544,6 +544,8 @@ export const balance = {
     costSeconds: 2,
     minCompute: 10,
     durationSec: 5,
+    /** A run can never resolve faster than this, however much run-speed you stack. */
+    minDurationSec: 0.5,
     // Difficulty pass: leaner run payouts so scaling the operation (more/better
     // racks + expansions) matters more. Tuned against the sim to stay wall-free.
     dataPerCompute: 0.28,
@@ -651,6 +653,12 @@ export const balance = {
     trainCostMult: 6, // cost = role.hire.base × trainCostMult × level
     /** Signing bonus to hire a candidate = role.hire.base × this. */
     hireSigningMult: 1,
+    /** Recruiter hire-cost discount is floored here (hires never cheaper than this
+     *  fraction of base). */
+    hireDiscountFloor: 0.25,
+    /** Product-team effect reductions are floored so a stacked roster can't drive a
+     *  lane to zero/negative (serveCost/churn/heat multipliers). */
+    productModFloors: { serveCost: 0.2, churn: 0.2, heat: 0.1 },
     /** Diminishing returns on stacking one lane. Contributors to a lane are ranked
      *  by raw output; the k-th (0-indexed) counts at 1/(1 + k·perLaneRate). Output
      *  diminishes but payroll does NOT — so a small, trained, high-trait team beats
@@ -806,6 +814,14 @@ export const balance = {
     exponent: 0.5,
     /** Each Legacy Weight grants this much permanent global production. */
     multiplierPerPoint: 0.05,
+    /**
+     * Diminishing exponent on the Legacy multiplier: legacyMult = 1 + perPoint ×
+     * weights^multiplierExponent. <1 means each extra weight is worth a little
+     * less, so prestige still feels like a jump but late generations don't
+     * collapse to sub-minute ships (R4.1). At 0 weights it's exactly 1 (first
+     * prestige unchanged); the meta-loop past the first ship is what this retunes.
+     */
+    multiplierExponent: 0.8,
 
     /**
      * GDD §4 — shipping is a player-flavored choice with minor different bonuses.
@@ -1023,6 +1039,11 @@ export const balance = {
     eventChanceCap: 0.5,
     /** Heat added when buying a dark-web tool (scraper/botnet — you're on a list now). */
     toolBuyHeat: 5,
+    /** Getting raided cools you off this much (×) — you lay low afterwards. */
+    postRaidHeatMult: 0.4,
+    /** R5.5 cross-system: regulatory pressure scares off customers — product churn
+     *  rises by up to this fraction at MAX Heat (×(1+this), linear in heat). */
+    productChurnAtMax: 0.35,
     /** UI meter tiers: label + color, picked by the lowest `upTo` heat value the meter is under. */
     tiers: [
       { upTo: 25, label: "Cold", color: "#22c55e" },
@@ -1030,6 +1051,39 @@ export const balance = {
       { upTo: 80, label: "Hot", color: "#f97316" },
       { upTo: Infinity, label: "Blazing", color: "#ef4444" },
     ],
+  },
+
+  /**
+   * Faction alignment (−1 doomer … 0 neutral … +1 accelerationist), shifted by
+   * faction-event choices. It used to be a dead dial (set, never read). Now it's
+   * a real strategic lane-tilt, folded into derive() + the Heat sites. Every value
+   * scales LINEARLY with |alignment| and is 0 at neutral, so a fresh run and the
+   * balance sim (which never fires faction events) are byte-identical.
+   *
+   * Theme: accelerationist races capability — more Compute, but it burns cash and
+   * draws regulators (more Heat). Doomer is cautious & commercial — more Money and
+   * far less Heat, but slower Compute. A genuine "send it vs play it safe" choice.
+   */
+  alignment: {
+    enabled: true,
+    /** +Compute at full accelerationist (+1). */
+    accelComputeBonus: 0.15,
+    /** −Money at full accelerationist (the cost of moving fast). */
+    accelMoneyPenalty: 0.1,
+    /** +Money at full doomer (−1): careful, enterprise-friendly, profitable. */
+    doomerMoneyBonus: 0.15,
+    /** −Compute at full doomer (you move deliberately). */
+    doomerComputePenalty: 0.1,
+    /** Heat-generation multiplier from shady buys at full accelerationist (hotter). */
+    heatGenAtAccel: 1.5,
+    /** Heat-generation multiplier at full doomer (you keep your nose clean). */
+    heatGenAtDoomer: 0.5,
+    /** R5.5 cross-system: accelerationist labs market harder — product acquisition
+     *  bonus at full +1 (×(1+this)). */
+    productAcqBonus: 0.2,
+    /** R5.5 cross-system: doomer labs ship cautiously — product Heat-generation is
+     *  reduced by up to this fraction at full −1. */
+    productHeatReduction: 0.4,
   },
 
   /** Regulatory events, weighted. Picked when an event fires (see actions). */

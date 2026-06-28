@@ -1,10 +1,150 @@
 # TASK.md — Singularity Inc.
 *Live task list. Claude Code updates this as work progresses. One source of truth for "what's next."*
 
-**Current phase:** PHASE 3 — Endgame & spectacle (Steps 0–3 done; Step 4 polish/ship-prep in progress).
-Phases 1–2 complete + a beyond-roadmap Products business. Plan: `PHASE3_ENDGAME_PLAN.md`. (Phase 0–2
-history retained below for context.)
+**Current phase:** PHASE 4 — Post-launch growth (live on TestFlight). Phases 0–3 complete.
+Plan: `POST_LAUNCH_ROADMAP.md` (audit-driven: balance · friendliness · interactivity · fun).
+Phase 0–3 history retained below for context.
 **Phase 0 exit gate:** PASSED — owner confirmed the loop is fun without art.
+
+---
+
+## PHASE 4 — Post-launch growth (active) · plan: `POST_LAUNCH_ROADMAP.md`
+*The "five things" critical path the owner approved first. Each obeys the design spine:
+3 in-run resources, pure/deterministic engine, data-in-`balance/`, hard-gated compounding,
+no dark patterns. Re-run `npm run sim` after any economy change.*
+
+### Step 1 — Foundation (R0)
+- [ ] **R0.1 · Kill the 10Hz whole-app re-render** (P1) — narrow store selectors + `React.memo`
+      on leaf panels; isolate the only truly-10Hz component (`ResourceBar`). Biggest perf/battery win.
+- [x] **R0.2 · Extend the balance sim to the long game** — new `runLongHaul()` in
+      `scripts/balance-sim.ts`: 20 generations driving the lab loop + the products business
+      (commercialise deployed drafts, push versions). Reports per-gen ship time, total weights,
+      legacyMult, era, weights/hr, and the data/compute + $/compute ratios; plus era-arrival times
+      and a "sub-minute ships" collapse flag. **Immediately quantified the R4 targets:** 18/20 ships
+      are sub-minute (meta-loop collapsing → R4.1), legacyMult ×1→×18. Baseline run() untouched
+      (first prestige still 12m15s). (Staff = RNG-rolled employees in the store, out of a pure sim's
+      scope — documented, same as the baseline.)
+
+### Step 2 — Friendliness (R1)
+- [x] **R1.1 · Advisor "Next: …" banner** — wired the already-built/tested `nextAction()` as a
+      persistent, tappable banner above the stage that jumps to the resolving tab. UI-only (sim
+      byte-identical, 12m15s); +1 invariant test (the banner can never point at a locked tab). 250 tests.
+- [x] **R1.2 · Buy ×1 / ×10 / Max** — segmented selector in the Hardware panel; pure engine
+      `planBulkUpgrade` / `buyUpgradeBulk` (simulate real buys → exact total cost, honor
+      affordability + floor space + rack auto-eviction; Max capped at floor). Cards show the batched
+      total + "×N" for the qty that will actually buy. +5 tests; UI/engine-additive (sim 12m15s).
+- [x] **Bonus · "Recommended next" = best value, not cheapest** — fixed the panel hero surfacing a
+      strictly-worse rack (+2/s $106 over +12/s $220). New pure/tested `recommendedUpgrade()` scores
+      by marginal money-equivalent throughput per cost. +4 tests.
+
+### Step 3 — The hall (R2)
+- [ ] **R2.1 · Tappable, inspectable racks** (P1) — tap a rack → parametric callout + satirical name.
+      *(Canvas hit-testing/interaction — best done with on-device verification.)*
+- [~] **R2.2 · Fix manifestation-rule violations** (P1) — 🟡 *partial*: **overclock** now manifests
+      (racks visibly run hotter — folds into the existing work-pulse glow, GDD §5's exact example)
+      and **auto-train** spawns a roaming "ops bot" dot. Pure model fields (`overclock`, `autoBot`)
+      + 2 tests; renderer changes are additive/reduced-motion-aware. ⚠️ visuals want an on-device
+      check before the next TestFlight push. *Remaining: staff desks, live-product uplink beams.*
+- [x] **R2.5 · Rack-buy juice** — audit's "no celebration" was stale: `UpgradePanel` already fires
+      `burst()` + `punch()` on every buy card. Left as-is (already covered).
+
+### Step 4 — Endgame balance (R4 — do after R0.2)
+- [x] **R4.1 · Tame the Legacy snowball** — `legacyMult` is now diminishing:
+      `1 + perPoint × weights^multiplierExponent` (0.8), tunable in `balance.prestige`. At 0 weights
+      it's exactly 1, so **first prestige is unchanged (12m15s)**; the meta-loop past it is retuned:
+      lab-baseline **Gen2 1m03s → 2m11s, Gen3 0m59s → 1m49s** (no longer collapsing), and the
+      long-run multiplier ceiling is bounded (gen20 ×18 → ×6.4). Validated via the R0.2 long-haul.
+      ↳ Note: sub-minute *gen times* in the product-heavy long-haul are gate-driven (how fast you
+        re-reach the ship gate), a deeper balance item separate from the multiplier ceiling R4.1 fixes.
+- [x] **R4.2 · Close the retire→relaunch windfall** — lowered `retireValuationSec` 1800 → 900 AND
+      added a maturity gate: a new `ProductState.ageSec` accrues in the sim and the retire payout
+      ramps linearly to full value over `retireMaturitySec` (1200s). A freshly-launched/relaunched
+      product is worth ~nothing to sell, so the pump-a-free-draft→dump-for-cash loop is closed; genuine
+      cash cows still retire fairly. Old saves' products default to mature (no returning-player penalty).
+      +3 product tests; existing retire test matured. 279 tests; sim 12m15s.
+- [~] **R4.3 · Re-couple the triangle** — 🟡 *investigated with the instrument; needs an owner
+      design call before shipping.* Added a "Products sink %" metric to the long-haul (how much
+      produced Compute/Data the product business consumes). Findings (measured, not guessed):
+      • Products today sink only **6.4% of Compute, 0% of Data** — confirms F1/F4 decoupling.
+      • The audit's lever (raise version costs) **backfires**: higher prices → fewer affordable
+        pushes → *less* sink (6.4% → 4.1% → 1.9%).
+      • Pricing versions/releases in "seconds of current production" made them **unaffordable** (0%
+        sink) — because **auto-train pins spendable Compute near one run's cost**, so there's no
+        Compute bank to sink into products at all. *(Both pricing experiments reverted.)*
+      → Real re-coupling requires changing how Compute BANKS (the audit's "Compute Reservoir" — let
+        compute accumulate so it can be spent), which is a **core-loop change** (touches the
+        auto-train/computeFocus flow) that wants an owner design call + on-device feel. Not shipped.
+- [x] **R4.6 · Lift hardcoded balance constants into `balance/`** — moved the staff hire-discount
+      floor (0.25), product-mod floors (serveCost/churn/heat), the post-raid heat ×0.4, and the min
+      run duration (0.5s) out of logic into `balance.staff`/`balance.heat`/`balance.run` (CLAUDE.md
+      data-driven rule). Values unchanged → pure refactor, sim byte-identical (12m15s). 281 tests.
+
+### Step 5 — Depth (R5)
+- [x] **R5.1 · Activate the dead `alignment` dial** — was set by faction choices but read nowhere.
+      Now a real, data-driven strategic fork (`balance.alignment` + pure `src/engine/alignment.ts`):
+      **accelerationist** trades money for compute and runs hotter (+Heat on shady buys);
+      **doomer** trades compute for money and stays clean (−Heat). Folded into `derive` (compute/$
+      tilt) + the two Heat sites; surfaced as "Stance effects" in Lab Stats so it's legible.
+      Hard-gated — neutral (0) is identity, so the sim is **byte-identical** (12m15s). +6 tests.
+      ↳ Follow-up (optional): alignment→Reputation-gain and alignment→product-acquisition forks.
+- [x] **R5.2 · Contracts board** — a guided ladder of accept-and-fulfill objectives
+      (`balance/contracts.ts` 15-deep pool + pure `src/engine/contracts.ts`). The board is DERIVED
+      from a single persisted `completed[]` (first N uncompleted, like achievements — minimal save
+      surface), shows live progress bars, and pays **Lab Reputation** (meta-currency → no in-run cash
+      injection, curve-safe). Completed contracts feed `earnedReputation`. Save v11→v12; persists
+      through prestige. ContractsPanel in the Lab tab. +10 tests (board derivation, readiness,
+      no double-claim, off-board guard, rep accounting, save round-trip + migration). Sim 12m15s.
+      ↳ Follow-up: ✅ advisor now nudges "Claim the '<title>' contract — +N Rep" when one is ready
+        (extends the recommendation system); tab badge still optional.
+
+- [x] **R5.5 · Cross-system interactions** — existing systems now ripple into the product business
+      (emergent depth, ~no new content): **alignment → products** (accelerationist markets harder →
+      +product acquisition; doomer ships cautiously → −product Heat) and **Heat → product churn**
+      (a sketchy lab under regulatory pressure bleeds customers, linear in Heat). Both fold into
+      `derive`'s product mods (so `simulateProducts` picks them up with no signature change), identity
+      at neutral/cold → **sim byte-identical (12m15s)**. +5 tests.
+      ↳ Optional polish: surface these in the Lab Stats "Stance effects" line.
+- [~] **R5.6 · Reputation → cross-system perks** — 🟡 *started*: added **Portfolio Expansion** (cost
+      40) — a Reputation perk that grants **+1 concurrent product slot** (`maxActiveProducts` =
+      base + perk-granted slots), the first reputation perk that touches another system instead of a
+      flat global mult. New `productSlot` effect kind + `bonusProductSlots`; wired through the slot
+      checks, advisor free-slot nudge, and the Products header. Gated → sim byte-identical (12m15s).
+      +2 tests. *Remaining (optional): more cross-system perks (research discount, free starting
+      racks) and mutually-exclusive build branches.*
+- [x] **R5.3 · Research auto-buyer** — new **Research Director** Reputation perk (cost 24) auto-buys
+      the cheapest affordable, prereq-met research node. Pure `applyAutoResearch` folded into `tick`
+      (so it works offline too); gated behind the perk → off by default → **sim byte-identical
+      (12m15s)**. Does exactly what an engaged player does by hand, so it can't outrun the curve.
+      New `automate` reputation-effect kind; +5 tests. The genre-standard automation layer the audit
+      ranked as the top idle convenience.
+
+- [x] **R7.1 · Tiered upgrade flavor** — the most-bought upgrades (racks, overclock) now have
+      *escalating* satirical descriptions at owned-count breakpoints ("Your landlord has questions
+      about the power bill.") instead of one static line. Pure `upgradeFlavor(id, owned, fallback)`
+      + data in `src/engine/flavor.ts`; the upgrade card shows it. +3 tests. UI text only — no curve
+      impact. High personality-per-byte (the GDD's satire wedge).
+
+- [x] **R6.1 · Lab Charters** — a per-run modifier you pick at the start of each generation (after
+      the first ship): **Open-Source Crusade** (+data −money), **Bootstrapped** (+money −compute),
+      **Moonshot** (+compute −data). Each tilts the triangle so runs play differently. Charter is
+      chosen while the run is fresh, then locks once you research; resets to null each prestige.
+      Pure `charterMods`/`setCharter` (`balance/charters.ts` + `src/engine/charter.ts`), folded into
+      derive; save v12→v13; CharterPanel in the Lab. Identity when none/first-run → **sim
+      byte-identical (12m15s)**. +7 tests. The audit's core replayability lever.
+
+- [x] **R5.4 · Spendable Legacy / prestige skill tree** — turns the flat "weights → one global
+      multiplier" into a focus-vs-breadth CHOICE. A small **Legacy Investments** tree (in the Prestige
+      panel) lets you spend weights on permanent lane biases (Compute/Data/Money specialist → mastery);
+      invested weights are REMOVED from the global-multiplier pool (`legacyAvailable` = total −
+      invested), so it's a real trade-off — concentrate a lane or keep the broad boost. Owned perks
+      persist across prestige; `spent` is derived (can't desync). Save v13→v14. **Curve-safe by
+      construction:** nothing invested → available = total → identical legacyMult, so first prestige
+      (12m15s) and the sim are byte-identical until the player chooses to invest. +5 tests
+      (identity-when-unspent, spend trade-off + lane bias, affordability/prereqs, no double-buy/
+      overspend, persist + save migration).
+
+> Full R0–R8 backlog (R3 active-engagement, R6 replayability, R7 content waves, R8 platform)
+> lives in `POST_LAUNCH_ROADMAP.md`.
 
 ---
 

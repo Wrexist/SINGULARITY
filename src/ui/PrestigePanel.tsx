@@ -2,6 +2,7 @@ import { useState } from "react";
 import { canPrestige, legacyWeightsGain, legacyWeightsForMode, ascensionMultiplier, type ShipMode } from "../engine/prestige";
 import { currentEra } from "../engine/eras";
 import { reputationAvailable } from "../engine/reputation";
+import { legacyTreeBalance, legacyAvailable, canBuyLegacyPerk } from "../engine/legacyTree";
 import { balance } from "../engine/balance/config";
 import type { GameState } from "../engine/types";
 import { fmt } from "./format";
@@ -22,9 +23,12 @@ interface Props {
   game: GameState;
   onPrestige: (mode: ShipMode) => void;
   onBuyReputationPerk: (id: string) => void;
+  onBuyLegacyPerk: (id: string) => void;
 }
 
-export function PrestigePanel({ game, onPrestige, onBuyReputationPerk }: Props) {
+const legacyPerkName = (id?: string) => legacyTreeBalance.perks.find((p) => p.id === id)?.name ?? "a prerequisite";
+
+export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyLegacyPerk }: Props) {
   const [confirming, setConfirming] = useState(false);
   const [repOpen, setRepOpen] = useState(false);
   const repPoints = reputationAvailable(game);
@@ -86,6 +90,28 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk }: Props) 
           <span className="rep-strip-text">Lab Reputation — <b>{repPoints}</b> point{repPoints === 1 ? "" : "s"} to spend{repOwned > 0 ? ` · ${repOwned} perk${repOwned === 1 ? "" : "s"} owned` : ""}</span>
           <span className="rep-strip-go">open ▸</span>
         </button>
+      )}
+
+      {have.gt(0) && legacyTreeBalance.enabled && (
+        <div className="legacy-tree">
+          <div className="legacy-tree-head">Legacy Investments — <b>{fmt(legacyAvailable(game))}</b> weights free</div>
+          <p className="legacy-tree-note">Invest to specialise a lane — but invested weights stop feeding your global boost.</p>
+          {legacyTreeBalance.perks.map((p) => {
+            const owned = game.legacyInvestments.includes(p.id);
+            const can = canBuyLegacyPerk(game, p.id);
+            const lockedByReq = !!p.requires && !game.legacyInvestments.includes(p.requires);
+            return (
+              <button key={p.id} className={`legacy-perk ${owned ? "owned" : ""}`} disabled={owned || !can} onClick={() => onBuyLegacyPerk(p.id)}>
+                <div className="legacy-perk-main">
+                  <span className="legacy-perk-name">{p.name}{owned ? " ✓" : ""}</span>
+                  <span className="legacy-perk-desc">{p.desc}</span>
+                  {lockedByReq && <span className="legacy-perk-req">needs {legacyPerkName(p.requires)}</span>}
+                </div>
+                <span className="legacy-perk-cost">{owned ? "owned" : `${p.cost} wt`}</span>
+              </button>
+            );
+          })}
+        </div>
       )}
 
       {!confirming ? (

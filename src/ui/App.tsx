@@ -23,12 +23,14 @@ import { DataMarketPanel } from "./DataMarketPanel";
 import { EmployeesPanel } from "./EmployeesPanel";
 import { ProductsPanel } from "./ProductsPanel";
 import { AchievementsModal } from "./AchievementsModal";
+import { ContractsPanel } from "./ContractsPanel";
+import { CharterPanel } from "./CharterPanel";
 import { EventLog } from "./EventLog";
 import { FxCanvas } from "./FxCanvas";
 import { burst as fxBurst } from "./fx";
 import { ProductLaunch } from "./ProductLaunch";
 import { productsUnlocked, productMetrics, typeDef, retirePayout } from "../engine/products";
-import { attentionCounts } from "../engine/advisor";
+import { attentionCounts, nextAction } from "../engine/advisor";
 import { FlaskIcon, BoxIcon, TeamIcon, TrophyIcon, GearIcon, GiftIcon } from "./Icons";
 import { fmtMoney } from "./format";
 import type { ProductTypeId } from "../engine/balance/products";
@@ -51,16 +53,20 @@ export function App() {
   const notice = useGame((s) => s.notice);
   const worldEvent = useGame((s) => s.worldEvent);
   const candidates = useGame((s) => s.candidates);
-  const { doStartRun, doClaim, doBuyUpgrade, doBuyOfficePerk, doBuyReputationPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
+  const { doStartRun, doClaim, doBuyUpgrade, doBuyUpgradeBulk, doBuyOfficePerk, doBuyReputationPerk, doBuyLegacyPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
-    dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset } =
+    doClaimContract, doSetCharter, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset } =
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
   // Per-tab attention counts (the small badges on the bottom nav). Memoized per
   // tick (same cadence as derive) — a handful of product checks, no clock.
   const attention = useMemo(() => attentionCounts(game), [game]);
+  // The single most important "do this next" nudge (pure advisor, already tested).
+  // Surfaced as a persistent, tappable banner so a player is never lost. Every
+  // item's tab is gated to an unlocked tab, so tapping never jumps somewhere hidden.
+  const next = useMemo(() => nextAction(game), [game]);
 
   // Detect a ship (prestige) and fire the celebration moment + haptics.
   const prevShips = useRef(game.prestige.ships);
@@ -102,6 +108,8 @@ export function App() {
   const [tab, setTab] = useState<"lab" | "products" | "employees">("lab");
   const shipReady = canPrestige(game);
   const era = currentEra(game);
+  // Where the advisor banner takes you when tapped (matches the bottom-nav labels).
+  const nextDest = next ? (next.tab === "employees" ? "Team" : next.tab === "products" ? "Products" : "Lab") : "";
 
   // Transient unlock toasts.
   const [toasts, setToasts] = useState<ToastData[]>([]);
@@ -292,7 +300,7 @@ export function App() {
     haptics.celebrate(); sound.success(); doClaimDaily(); markDailyClaimed(); setDailyOn(false);
     if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.32, { count: 30, power: 1.5, colors: ["#7c5cff", "#ffd60a", "#16b364", "#2f7bf6"] });
   };
-  const onBuy = (id: string) => { haptics.tap(); sound.purchase(); doBuyUpgrade(id); };
+  const onBuy = (id: string, count = 1) => { haptics.tap(); sound.purchase(); if (count > 1) doBuyUpgradeBulk(id, count); else doBuyUpgrade(id); };
   const onHireCandidate = (i: number) => { haptics.celebrate(); sound.purchase(); doHireCandidate(i); };
   const onTrain = (id: string) => { haptics.tap(); sound.tap(); doTrainEmployee(id); };
   const onAssignEmp = (id: string, productId: string | null) => { haptics.tap(); doAssignEmployeeToProduct(id, productId); };
@@ -321,6 +329,12 @@ export function App() {
     doRetireProduct(id);
     haptics.success(); sound.purchase();
     pushToast(`Sold ${p.name} for ${fmtMoney(Big.of(Math.round(payout)))}`, "neutral");
+  };
+  const onClaimContract = (id: string, rep: number) => {
+    doClaimContract(id);
+    haptics.celebrate(); sound.success();
+    pushToast(`Contract complete — +${rep} Lab Reputation`, "good");
+    if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.4, { count: 24, power: 1.3, colors: ["#ff9f0a", "#ffd60a", "#16b364"] });
   };
   const onResearch = (id: string) => { haptics.tap(); sound.purchase(); doResearch(id); };
   const onBuyData = (id: string) => {
@@ -374,6 +388,17 @@ export function App() {
             <span className="daily-go">Claim</span>
           </button>
         )}
+        {next && (
+          <button
+            className="next-bar"
+            onClick={() => { haptics.tap(); setTab(next.tab); }}
+            aria-label={`Suggested next step: ${next.text}. Tap to go to ${nextDest}.`}
+          >
+            <span className="next-ic" aria-hidden="true">💡</span>
+            <span className="next-text"><b>Next:</b> {next.text}</span>
+            <span className="next-go" aria-hidden="true">{nextDest} →</span>
+          </button>
+        )}
         {tab === "products" && showProducts ? (
           <ProductsPanel
             game={game}
@@ -404,10 +429,12 @@ export function App() {
           <>
             <HallCanvas onExpand={setPendingExpansion} />
             <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} onSetFocus={setComputeFocus} />
+            <CharterPanel game={game} onSet={(id) => { haptics.tap(); sound.tap(); doSetCharter(id); }} />
             <UpgradePanel game={game} derived={d} onBuy={onBuy} />
             {showResearch && <ResearchPanel game={game} derived={d} onResearch={onResearch} />}
             {showMarket && <DataMarketPanel game={game} onBuyData={onBuyData} onBuyTool={onBuy} />}
-            {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} />}
+            {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} onBuyLegacyPerk={(id) => { haptics.success(); sound.purchase(); doBuyLegacyPerk(id); }} />}
+            {showResearch && <ContractsPanel game={game} onClaim={onClaimContract} />}
             <StatsPanel game={game} derived={d} />
             <EventLog log={log} />
           </>

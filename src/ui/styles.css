@@ -1669,6 +1669,87 @@ svg { vertical-align: middle; }
 .daily-text b { font-weight: 800; }
 .daily-go { font-size: 12.5px; font-weight: 800; color: #fff; background: #7c5cff; border-radius: 999px; padding: 4px 12px; white-space: nowrap; }
 
+/* Advisor "do this next" banner — persistent guidance, so a calmer tone than the
+   daily claim (no pulsing glow). Tappable: jumps to the resolving tab. */
+.next-bar {
+  display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
+  padding: 10px 13px; border-radius: 12px; cursor: pointer; min-height: 44px;
+  background: linear-gradient(100deg, rgba(47, 123, 246, 0.12), rgba(22, 179, 100, 0.08));
+  border: 1px solid rgba(47, 123, 246, 0.28);
+  box-shadow: var(--shadow-sm);
+}
+.next-bar:active { transform: scale(0.992); }
+.next-ic { display: inline-flex; align-items: center; font-size: 16px; line-height: 1; }
+.next-text { flex: 1; min-width: 0; font-size: clamp(12px, 3.2vw, 13px); font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+.next-text b { font-weight: 800; color: #2f7bf6; margin-right: 3px; }
+.next-go { font-size: 12px; font-weight: 800; color: #2f7bf6; white-space: nowrap; opacity: 0.85; }
+
+/* Buy-quantity selector (×1 / ×10 / Max) for the Hardware panel. */
+.buy-qty { display: flex; gap: 6px; margin: 2px 0 4px; }
+.buy-qty-btn {
+  flex: 1; min-height: 36px; padding: 7px 10px; border-radius: 10px;
+  font-size: 13px; font-weight: 800; cursor: pointer;
+  color: var(--ink-2); background: rgba(17, 24, 39, 0.04);
+  border: 1px solid rgba(17, 24, 39, 0.08);
+}
+.buy-qty-btn.on { color: #fff; background: #2f7bf6; border-color: #2f7bf6; }
+.cost-mult { font-weight: 800; opacity: 0.8; font-size: 0.86em; }
+
+/* ---------- Contracts (Phase 4) ---------- */
+.contract-card {
+  display: flex; align-items: center; gap: 12px;
+  background: #fff; border: 1px solid rgba(17, 24, 39, 0.06); border-radius: 14px;
+  padding: 13px 14px; box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05);
+}
+.contract-card.ready { border-color: rgba(22, 179, 100, 0.5); background: linear-gradient(100deg, rgba(22, 179, 100, 0.08), rgba(255, 255, 255, 0.6)); }
+.contract-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.contract-title { font-weight: 800; font-size: 14px; color: var(--ink); }
+.contract-desc { font-size: 12px; color: var(--ink-2); }
+.contract-bar { height: 6px; border-radius: 999px; background: rgba(17, 24, 39, 0.08); overflow: hidden; }
+.contract-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #2f7bf6, #16b364); transition: width 0.3s var(--ease-out); }
+.contract-prog { font-size: 11px; font-weight: 700; color: var(--ink-3); }
+.contract-side { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; }
+.contract-rep { font-size: 12px; font-weight: 800; color: #ff9f0a; white-space: nowrap; }
+.contract-claim {
+  min-height: 36px; padding: 7px 14px; border-radius: 10px; font-size: 13px; font-weight: 800;
+  color: #fff; background: #16b364; border: none; cursor: pointer; white-space: nowrap;
+}
+.contract-claim:disabled { color: var(--ink-3); background: rgba(17, 24, 39, 0.06); cursor: default; }
+.contracts-empty { font-size: 13px; color: var(--ink-2); padding: 6px 2px; }
+.contracts-foot { font-size: 11.5px; color: var(--ink-3); margin-top: 10px; }
+
+/* ---------- Lab Charters (Phase 4 / R6.1) ---------- */
+.charter-intro { font-size: 12.5px; color: var(--ink-2); margin: 2px 0 8px; }
+.charter-card {
+  display: flex; width: 100%; text-align: left; cursor: pointer;
+  background: #fff; border: 1px solid rgba(17, 24, 39, 0.07); border-radius: 14px;
+  padding: 13px 14px; box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05);
+}
+.charter-card.on { border-color: rgba(124, 92, 255, 0.55); background: linear-gradient(100deg, rgba(124, 92, 255, 0.08), rgba(255, 255, 255, 0.6)); }
+.charter-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.charter-name { font-weight: 800; font-size: 14px; color: var(--ink); }
+.charter-pick { color: #7c5cff; }
+.charter-blurb { font-size: 12px; color: var(--ink-2); }
+.charter-effects { font-size: 11.5px; font-weight: 700; color: #7c5cff; }
+.charter-locked { font-size: 12.5px; color: var(--ink-2); }
+.charter-locked-note { color: var(--ink-3); }
+
+/* ---------- Legacy Investments tree (Phase 4 / R5.4) ---------- */
+.legacy-tree { margin: 10px 0; display: flex; flex-direction: column; gap: 7px; }
+.legacy-tree-head { font-size: 13px; font-weight: 800; color: var(--ink); }
+.legacy-tree-note { font-size: 11.5px; color: var(--ink-3); margin: -2px 0 4px; }
+.legacy-perk {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; cursor: pointer;
+  background: #fff; border: 1px solid rgba(17, 24, 39, 0.07); border-radius: 12px; padding: 10px 12px;
+}
+.legacy-perk:disabled { cursor: default; opacity: 0.6; }
+.legacy-perk.owned { opacity: 1; border-color: rgba(124, 92, 255, 0.4); background: linear-gradient(100deg, rgba(124, 92, 255, 0.07), #fff); }
+.legacy-perk-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.legacy-perk-name { font-weight: 800; font-size: 13px; color: var(--ink); }
+.legacy-perk-desc { font-size: 11.5px; color: var(--ink-2); }
+.legacy-perk-req { font-size: 11px; color: var(--ink-3); }
+.legacy-perk-cost { font-size: 12px; font-weight: 800; color: #7c5cff; white-space: nowrap; }
+
 /* ---------- Products (Phase 3) ---------- */
 .prod-card {
   background: #fff;

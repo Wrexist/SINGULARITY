@@ -5,6 +5,7 @@ import { simulateProducts, advanceUpgrades, applyMilestones } from "./products";
 import { advanceTraining } from "./employees";
 import { accrueStats } from "./stats";
 import { applyAchievements } from "./achievements";
+import { applyAutoResearch } from "./actions";
 import type { Derived, GameState } from "./types";
 
 /**
@@ -157,7 +158,12 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   });
   // Award any newly-unlocked achievements (reads the fresh stats above). Pure +
   // idempotent; the store diffs achievements to surface a toast.
-  return applyAchievements(ms.state).state;
+  const awarded = applyAchievements(ms.state).state;
+
+  // Research Director (R5.3): if owned, auto-buy affordable research from the
+  // freshly-updated pools. No-op (same reference) until the perk is bought, so
+  // the tuned curve / sim are untouched. Runs here so it works offline too.
+  return applyAutoResearch(awarded);
 }
 
 function claimInto(d: Derived, data: Big, money: Big, lifetimeMoney: Big) {

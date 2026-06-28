@@ -143,9 +143,9 @@ const buildMods = (u: Record<ProductStaffLane, number>): ProductMods => ({
   upgradeSpeed: 1 + u.upgradeSpeed,
   acq: 1 + u.acquisition,
   arpu: 1 + u.arpu,
-  serveCost: Math.max(0.2, 1 - u.serveCost),
-  churn: Math.max(0.2, 1 - u.churn),
-  heat: Math.max(0.1, 1 - u.heat),
+  serveCost: Math.max(S.productModFloors.serveCost, 1 - u.serveCost),
+  churn: Math.max(S.productModFloors.churn, 1 - u.churn),
+  heat: Math.max(S.productModFloors.heat, 1 - u.heat),
 });
 
 /** Fold the whole roster into lane multipliers, payroll, and product buffs. `morale`

@@ -133,8 +133,15 @@ export const products = {
   buzzDurationSec: 45,
   buzzAcqMult: 3,
   buzzChurnMult: 0.4,
-  /** Retiring (selling) a product pays out this many seconds of its current MRR. */
-  retireValuationSec: 1800,
+  /** Retiring (selling) a product pays out this many seconds of its current MRR,
+   *  at full maturity. Lowered from 1800 (30 min was a windfall well above a fair
+   *  "discounted future earnings" price). */
+  retireValuationSec: 900,
+  /** A product must be live this long to be worth its full valuation; the payout
+   *  ramps linearly from 0 over this window. Stops the pump-and-dump exploit
+   *  (relaunch a free draft → crank marketing → retire for a lump → repeat): a
+   *  freshly-launched product is worth almost nothing to sell. */
+  retireMaturitySec: 1200,
 
   /** Player pricing strategy bounds (×revenue/user; higher = more $/user, less conversion). */
   priceMin: 0.5,

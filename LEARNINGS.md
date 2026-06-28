@@ -311,3 +311,21 @@ Deferred on purpose (documented, not fixed unsupervised — current balance does
   GameState fields, which DO get a migration step. Rule: sanitizer-defaulted nested fields are
   backward-compatible for free; only bump the version when load logic would otherwise dereference a
   missing field.
+
+## R4.3 — Compute re-coupling: product pricing CAN'T fix it (measured, 2026)
+The long-haul sim's "Products sink %" metric (how much produced Compute/Data the
+product business consumes) made this concrete:
+- Baseline: products sink ~6.4% of Compute, 0% of Data. Compute/Data are decoupled
+  after the first ship (F1/F4).
+- RAISING fixed version/release costs *reduces* the sink (6.4% → 1.9%): the greedy
+  player can afford fewer pushes, so products absorb less Compute, not more.
+- Pricing version/release in "seconds of current Compute production" drove the sink
+  to 0%: the costs became unaffordable because **auto-train pins spendable Compute
+  near one run's cost** — there is no Compute bank to spend on products.
+Root cause: auto-train immediately converts produced Compute into Data/Money via
+runs, so standing Compute stays ~one-run-cost regardless of production. No
+product price (fixed or scaled) can make Compute a sink while that holds. The real
+lever is letting Compute ACCUMULATE (a "Compute Reservoir" / changing the
+auto-train/computeFocus banking) — a core-loop change, not a pricing tweak. Do it
+with owner sign-off + on-device feel. Both pricing experiments were reverted; only
+the sink metric was kept (it's how we'll validate any future banking change).

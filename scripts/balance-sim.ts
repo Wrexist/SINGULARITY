@@ -34,7 +34,9 @@ import { powerStats } from "../src/engine/power";
 import { floorFull } from "../src/engine/hall";
 import {
   releaseProduct, setProductMarketing, pushVersion, canPushVersion, productMetrics,
+  launchDraft, canLaunchDraft,
 } from "../src/engine/products";
+import { currentEra } from "../src/engine/eras";
 import { products as PRODUCTS, type ProductTypeId } from "../src/engine/balance/products";
 import { Big } from "../src/engine/math/Big";
 import { balance } from "../src/engine/balance/config";
@@ -330,6 +332,127 @@ function run(useMarket = false) {
 run(false);
 run(true);
 analyzeMarket();
+
+/**
+ * R0.2 — LONG-HAUL sim. The baseline `run()` only times 3 lab-only generations;
+ * this models the actual long game so we can SEE (not guess) the endgame the R4
+ * work targets: the legacy-multiplier snowball (do generations collapse to
+ * sub-minute ships?), the era cadence, the Compute/Data/Money decoupling, and
+ * whether products are a real Compute/Data sink. Staff are individual employees
+ * rolled in the store (RNG, not pure), so — like the baseline — they're out of
+ * scope here; this drives the lab loop + the products business (launch deployed
+ * drafts, push versions to catch the frontier).
+ */
+function autoBuyProducts(state: GameState): GameState {
+  let s = state;
+  // Commercialise any deployed draft into a free slot (deploy ships deposit one).
+  for (const draft of [...s.products.drafts]) {
+    if (canLaunchDraft(s, draft.id, "general")) {
+      const next = launchDraft(s, { draftId: draft.id, type: "general", name: `Sim ${draft.id}`, id: `p_${draft.id}` });
+      if (next !== s) s = next;
+    }
+  }
+  // Keep each product near the frontier (the Compute/Data sink we want to weigh),
+  // and run a light marketing budget capped by quality.
+  for (const p of s.products.active) {
+    if (canPushVersion(s, p.id)) s = pushVersion(s, p.id);
+    const mktCap = Math.max(1, p.quality * PRODUCTS.marketingCapPerQuality * 0.3);
+    s = setProductMarketing(s, p.id, mktCap);
+  }
+  return s;
+}
+
+function runLongHaul(maxGen = 20): void {
+  let state = createInitialState();
+  let t = 0;
+  let genStartMs = 0;
+  let lastWeights = 0;
+  let seenEra = currentEra(state);
+  // Re-coupling instrument (R4.3): how much of the Compute/Data you PRODUCE the
+  // product business actually consumes (launch + version pushes). If products are
+  // a real sink, these fractions are non-trivial; if Compute is vestigial, ~0.
+  let computeProduced = 0, dataProduced = 0, computeOnProducts = 0, dataOnProducts = 0;
+  const eraArrivals: { era: number; atMs: number }[] = [];
+  const gens: {
+    gen: number; durationMs: number; weights: number; legacyMult: number; era: number;
+    perHr: number; ratioDC: number; ratioMC: number;
+  }[] = [];
+
+  while (t < MAX_MS && gens.length < maxGen) {
+    state = tick(state, STEP_MS);
+    if (state.run.readyToClaim) state = claimRun(state);
+    if (!state.run.active && !state.run.readyToClaim) {
+      const started = startRun(state);
+      if (started !== state) state = started;
+    }
+    state = autoBuy(state, true).state;
+    const dd = derive(state);
+    computeProduced += dd.computePerSec.toNumber() * (STEP_MS / 1000);
+    dataProduced += (dd.dataPerSec.toNumber() + dd.runDataYield.toNumber() / Math.max(0.5, dd.runDurationSec)) * (STEP_MS / 1000);
+    const cBefore = state.resources.compute.toNumber(), dBefore = state.resources.data.toNumber();
+    state = autoBuyProducts(state);
+    computeOnProducts += Math.max(0, cBefore - state.resources.compute.toNumber());
+    dataOnProducts += Math.max(0, dBefore - state.resources.data.toNumber());
+
+    const era = currentEra(state);
+    if (era > seenEra) { eraArrivals.push({ era, atMs: t }); seenEra = era; }
+
+    if (canPrestige(state)) {
+      const total = state.prestige.legacyWeights.add(legacyWeightsGain(state));
+      const totalN = Number(total.toNumber());
+      const dur = t - genStartMs;
+      const d = derive(state);
+      const c = Math.max(1, d.computePerSec.toNumber());
+      gens.push({
+        gen: gens.length + 1,
+        durationMs: dur,
+        weights: totalN,
+        legacyMult: d.legacyMult.toNumber(),
+        era,
+        perHr: dur > 0 ? ((totalN - lastWeights) / (dur / 3_600_000)) : 0,
+        ratioDC: state.resources.data.toNumber() / c,
+        ratioMC: state.resources.money.toNumber() / c,
+      });
+      lastWeights = totalN;
+      genStartMs = t;
+      state = prestige(state);
+    }
+    t += STEP_MS;
+  }
+
+  console.log("\n=== SINGULARITY INC — LONG-HAUL (lab + products, market on) ===");
+  console.log(`Policy: greedy player + commercialise drafts + push versions. ${maxGen} gens or ${MAX_MINUTES}m cap.\n`);
+  console.log("  gen | ship time | tot weights | legacyMult | era | weights/hr |  data/cmp |  $/cmp");
+  for (const g of gens) {
+    console.log(
+      `  ${String(g.gen).padStart(3)} | ${fmtClock(g.durationMs).padStart(9)} | ` +
+      `${g.weights.toExponential(2).padStart(11)} | ${("×" + g.legacyMult.toFixed(1)).padStart(10)} | ` +
+      `${String(g.era).padStart(3)} | ${g.perHr.toExponential(1).padStart(10)} | ` +
+      `${g.ratioDC.toExponential(1).padStart(9)} | ${g.ratioMC.toExponential(1).padStart(7)}`,
+    );
+  }
+
+  console.log("\nEra arrivals:");
+  if (eraArrivals.length === 0) console.log("  (no new era reached past the start era)");
+  for (const e of eraArrivals) console.log(`  Era ${e.era} at ${fmtClock(e.atMs)}`);
+
+  console.log("\nLong-haul summary:");
+  const subMinute = gens.filter((g) => g.durationMs < 60_000).length;
+  console.log(`  Generations simulated: ${gens.length}`);
+  console.log(`  Sub-minute ships: ${subMinute}/${gens.length}  ${subMinute > gens.length / 2 ? "<-- meta-loop collapsing (R4.1 target)" : ""}`);
+  if (gens.length > 1) {
+    const first = gens[0]!, last = gens[gens.length - 1]!;
+    console.log(`  Gen 1 ship ${fmtClock(first.durationMs)} -> Gen ${last.gen} ship ${fmtClock(last.durationMs)}`);
+    console.log(`  data/compute ratio: ${first.ratioDC.toExponential(1)} -> ${last.ratioDC.toExponential(1)}  (rising = Data decoupling, R4.3)`);
+    console.log(`  money/compute ratio: ${first.ratioMC.toExponential(1)} -> ${last.ratioMC.toExponential(1)}`);
+  }
+  const cPct = computeProduced > 0 ? (computeOnProducts / computeProduced) * 100 : 0;
+  const dPct = dataProduced > 0 ? (dataOnProducts / dataProduced) * 100 : 0;
+  console.log(`  Products sink: ${cPct.toFixed(1)}% of Compute produced, ${dPct.toFixed(1)}% of Data produced  (R4.3: higher = better-coupled)`);
+  console.log("");
+}
+
+runLongHaul(20);
 
 /**
  * PHASE 3 — product economics check. Release one product, set a marketing budget,

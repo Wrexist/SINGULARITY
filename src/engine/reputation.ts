@@ -1,6 +1,7 @@
 import { Big } from "./math/Big";
 import { achievements as ACH_DEFS, achievementRep } from "./balance/achievements";
 import { reputation as R } from "./balance/reputation";
+import { contractsReputation } from "./contracts";
 import type { GameState } from "./types";
 
 /**
@@ -19,6 +20,7 @@ export function earnedReputation(state: GameState): number {
   for (const def of ACH_DEFS) if (have.has(def.id)) pts += achievementRep(def);
   pts += state.stats.totalShips * R.perShip;
   pts += state.stats.ascensions * R.perAscension;
+  pts += contractsReputation(state); // completed contracts grant Reputation
   return pts;
 }
 
@@ -73,8 +75,25 @@ export function reputationMods(state: GameState): ReputationMods {
     else if (kind === "moneyMult") moneyMult *= 1 + value;
     else if (kind === "globalMult") { computeMult *= 1 + value; dataMult *= 1 + value; moneyMult *= 1 + value; }
     else if (kind === "payrollMult") payrollMult *= 1 - value;
+    // "automate" perks are unlock flags (read by autoResearchEnabled), not multipliers.
   }
   return { computeMult, dataMult, moneyMult, payrollMult };
+}
+
+/** True when the player owns the Research Director perk (auto-buys research). */
+export function autoResearchEnabled(state: GameState): boolean {
+  return R.perks.some(
+    (p) => p.effect.kind === "automate" && p.id === "rep_autoresearch" && state.reputation.perks.includes(p.id),
+  );
+}
+
+/** Extra concurrent product slots from owned `productSlot` perks (R5.6). */
+export function bonusProductSlots(state: GameState): number {
+  let n = 0;
+  for (const p of R.perks) {
+    if (p.effect.kind === "productSlot" && state.reputation.perks.includes(p.id)) n += p.effect.value;
+  }
+  return n;
 }
 
 /** As Big multipliers (convenience for derive). */

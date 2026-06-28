@@ -1,7 +1,7 @@
 import { balance } from "./balance/config";
-import { products as PB } from "./balance/products";
-import { productMetrics, productsUnlocked, canStartUpgrade } from "./products";
+import { productMetrics, productsUnlocked, canStartUpgrade, maxActiveProducts } from "./products";
 import { reputationBalance, canBuyReputationPerk } from "./reputation";
+import { contractBoard } from "./contracts";
 import { canBuyResearch } from "./actions";
 import { canPrestige } from "./prestige";
 import type { GameState } from "./types";
@@ -68,7 +68,7 @@ export function advisorItems(state: GameState): AdvisorItem[] {
   if (productsUnlocked(state)) {
     // A raw model from Ship the Model is sitting un-commercialised — but only
     // actionable while a portfolio slot is free (else launching is blocked).
-    const freeSlot = ps.active.length < PB.maxActive;
+    const freeSlot = ps.active.length < maxActiveProducts(state);
     if (ps.drafts.length > 0 && freeSlot) {
       items.push({
         tab: "products",
@@ -101,6 +101,16 @@ export function advisorItems(state: GameState): AdvisorItem[] {
   // First hire: a strong early nudge once the team is unlocked.
   if (staffUnlocked(state) && state.employees.length === 0) {
     items.push({ tab: "employees", text: "Hire your first specialist", priority: 85 });
+  }
+
+  // A contract is met and waiting — a free Reputation reward sitting on the board.
+  const readyContract = contractBoard(state).find((c) => c.ready);
+  if (readyContract) {
+    items.push({
+      tab: "lab",
+      text: `Claim the "${readyContract.def.title}" contract — +${readyContract.def.rep} Rep`,
+      priority: 78,
+    });
   }
 
   // Lab Reputation: a gentle nudge when a permanent perk is affordable (surfaces the

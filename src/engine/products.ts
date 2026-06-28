@@ -3,9 +3,15 @@ import {
   type ProductTypeId, type ProductTypeDef, type MilestoneDef, type FeatureLane,
 } from "./balance/products";
 import type { GameState, ProductMods, ProductState, ProductsState, UpgradeState } from "./types";
+import { bonusProductSlots } from "./reputation";
 
 /** No employees hired → no product buffs. */
 export const NEUTRAL_MODS: ProductMods = { upgradeSpeed: 1, serveCost: 1, churn: 1, acq: 1, arpu: 1, heat: 1 };
+
+/** Concurrent product slots: the base plus any from Reputation perks (R5.6). */
+export function maxActiveProducts(state: GameState): number {
+  return B.maxActive + bonusProductSlots(state);
+}
 
 /**
  * PHASE 3 — AI Product / Deployment engine. Pure & deterministic (time passed in,
@@ -201,7 +207,7 @@ export function simulateProducts(
     moneyDelta += mrr - serve - p.marketingPerSec * seconds;
     if (paid > 0) heatDelta += t.heatPerSec * fm.heat * mods.heat * seconds;
 
-    return { ...p, mau, paid, buzzSec: Math.max(0, p.buzzSec - seconds) };
+    return { ...p, mau, paid, buzzSec: Math.max(0, p.buzzSec - seconds), ageSec: (p.ageSec ?? 0) + seconds };
   });
 
   return { products: { ...ps, active, frontier }, moneyDelta, heatDelta };
@@ -377,7 +383,7 @@ export function maybeChurnFlavor(
 export function canReleaseProduct(state: GameState, type: ProductTypeId): boolean {
   if (!productsUnlocked(state)) return false;
   if (!typeUnlocked(state, type)) return false;
-  if (state.products.active.length >= B.maxActive) return false;
+  if (state.products.active.length >= maxActiveProducts(state)) return false;
   return (
     state.resources.compute.gte(B.releaseCost.compute) &&
     state.resources.data.gte(B.releaseCost.data)
@@ -403,6 +409,7 @@ export function releaseProduct(
     mau: 0,
     paid: 0,
     buzzSec: B.buzzDurationSec,
+    ageSec: 0,
     upgrade: null,
     features: [],
   };
@@ -449,7 +456,7 @@ export function pushVersion(state: GameState, id: string): GameState {
 export function canLaunchDraft(state: GameState, draftId: string, type: ProductTypeId): boolean {
   if (!productsUnlocked(state)) return false;
   if (!typeUnlocked(state, type)) return false;
-  if (state.products.active.length >= B.maxActive) return false;
+  if (state.products.active.length >= maxActiveProducts(state)) return false;
   if (!state.products.drafts.some((d) => d.id === draftId)) return false;
   // Commercialising a SHIPPED model is free — it's the reward for shipping. (A
   // ship resets the lab to zero, so charging the heavy release cost here left the
@@ -481,6 +488,7 @@ export function launchDraft(
     mau: 0,
     paid: 0,
     buzzSec: B.buzzDurationSec,
+    ageSec: 0,
     upgrade: null,
     features: [],
   };
@@ -704,10 +712,16 @@ export function renameProduct(state: GameState, id: string, name: string): GameS
 
 /** Sell/sunset a product. Pays out a one-time Money buyout (≈ retireValuationSec
  *  of its current MRR) — a real "cash out now vs keep earning" decision. */
+/** Linear maturity factor (0..1): a product is worth its full valuation only
+ *  after `retireMaturitySec` live; a fresh launch is worth almost nothing. */
+function retireMaturity(p: ProductState): number {
+  return B.retireMaturitySec > 0 ? Math.min(1, (p.ageSec ?? 0) / B.retireMaturitySec) : 1;
+}
+
 export function retireProduct(state: GameState, id: string): GameState {
   const p = state.products.active.find((x) => x.id === id);
   if (!p) return state;
-  const payout = productMetrics(p, state.products.frontier).mrr * B.retireValuationSec;
+  const payout = productMetrics(p, state.products.frontier).mrr * B.retireValuationSec * retireMaturity(p);
   // Releasing the product frees any employees assigned to it back to the bench.
   const employees = state.employees.some((e) => e.assignedProductId === id)
     ? state.employees.map((e) => (e.assignedProductId === id ? { ...e, assignedProductId: null } : e))
@@ -729,5 +743,5 @@ export function retireProduct(state: GameState, id: string): GameState {
 export function retirePayout(state: GameState, id: string): number {
   const p = state.products.active.find((x) => x.id === id);
   if (!p) return 0;
-  return Math.max(0, productMetrics(p, state.products.frontier).mrr * B.retireValuationSec);
+  return Math.max(0, productMetrics(p, state.products.frontier).mrr * B.retireValuationSec * retireMaturity(p));
 }

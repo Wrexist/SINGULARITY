@@ -181,6 +181,9 @@ interface SavedShape {
   stats: Record<string, string | number>;
   achievements: string[];
   reputation: { spent: number; perks: string[] };
+  contracts: { completed: string[] };
+  charter: string | null;
+  legacyInvestments: string[];
 }
 
 export function serialize(state: GameState): string {
@@ -221,6 +224,9 @@ export function serialize(state: GameState): string {
     },
     achievements: state.achievements,
     reputation: state.reputation,
+    contracts: state.contracts,
+    charter: state.charter,
+    legacyInvestments: state.legacyInvestments,
   };
   return JSON.stringify(shape);
 }
@@ -261,6 +267,10 @@ export function deserialize(json: string): GameState {
         enterprise: o.enterprise === true,
         enterprisePrice: typeof o.enterprisePrice === "number" && Number.isFinite(o.enterprisePrice) && o.enterprisePrice > 0 ? o.enterprisePrice : 1,
         channelMix: sanitizeChannelMix(o.channelMix),
+        // ageSec gates the retire valuation. A save that predates the field has
+        // products that were already established, so treat them as fully mature
+        // (a large value) rather than penalising a returning player's cash cows.
+        ageSec: typeof o.ageSec === "number" && Number.isFinite(o.ageSec) && o.ageSec >= 0 ? o.ageSec : 1e9,
       };
     }),
     drafts: sanitizeDrafts((loadedProducts as ProductsState).drafts),
@@ -295,6 +305,19 @@ export function deserialize(json: string): GameState {
       ? raw.achievements.filter((a): a is string => typeof a === "string")
       : [],
     reputation: sanitizeReputation(raw.reputation),
+    contracts: sanitizeContracts(raw.contracts),
+    charter: typeof raw.charter === "string" ? raw.charter : null,
+    legacyInvestments: Array.isArray(raw.legacyInvestments)
+      ? raw.legacyInvestments.filter((x): x is string => typeof x === "string")
+      : [],
+  };
+}
+
+/** Contracts are untrusted: keep a clean array of completed string ids. */
+function sanitizeContracts(c: unknown): { completed: string[] } {
+  const o = (c ?? {}) as { completed?: unknown };
+  return {
+    completed: Array.isArray(o.completed) ? o.completed.filter((x): x is string => typeof x === "string") : [],
   };
 }
 
@@ -375,6 +398,19 @@ export function migrate(raw: any): SavedShape {
     // v10 → v11: Lab Reputation (meta-currency). Nothing spent yet; perks evaluate
     // from the carried achievement/ship/ascension totals on load.
     s = { ...s, version: 11, reputation: s.reputation ?? { spent: 0, perks: [] } };
+  }
+  if (s.version === 11) {
+    // v11 → v12: Contracts board (Phase 4). Nothing completed yet; the board
+    // derives from the empty completed list on load.
+    s = { ...s, version: 12, contracts: s.contracts ?? { completed: [] } };
+  }
+  if (s.version === 12) {
+    // v12 → v13: Lab Charter (Phase 4). No charter on existing runs.
+    s = { ...s, version: 13, charter: s.charter ?? null };
+  }
+  if (s.version === 13) {
+    // v13 → v14: Legacy Investments tree (Phase 4). Nothing invested yet.
+    s = { ...s, version: 14, legacyInvestments: s.legacyInvestments ?? [] };
   }
   return s as SavedShape;
 }
