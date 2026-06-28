@@ -1163,7 +1163,7 @@ export const balance = {
     productChurnAtMax: 0.35,
     /** Lobbying: spend Money to cool Heat (buy goodwill). Cost rises with current
      *  Heat (a hotter lab is harder to clean up); one lobby cuts Heat by a fraction. */
-    lobby: { baseCost: 500, costPerHeat: 80, reductionFraction: 0.4 },
+    lobby: { baseCost: 500, costPerHeat: 80, reductionFraction: 0.4, minHeat: 1 },
     /** UI meter tiers: label + color, picked by the lowest `upTo` heat value the meter is under. */
     tiers: [
       { upTo: 25, label: "Cold", color: "#22c55e" },

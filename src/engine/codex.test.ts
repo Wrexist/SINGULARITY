@@ -34,6 +34,16 @@ describe("codex (Field Notes)", () => {
     expect(codexUnlocked(s, tree)).toBe(true);
   });
 
+  it("market entries unlock from the BEST-so-far rivals stat (one-way, can't re-lock)", () => {
+    const s = createInitialState();
+    const board = codexBalance.entries.find((e) => e.id === "the_board")!; // rivalsBeaten ≥ 1
+    expect(codexUnlocked(s, board)).toBe(false);
+    // Live products are empty (live rivalsBeaten would be 0), but the best-so-far
+    // stat is what gates the codex — so a past peak keeps the entry unlocked.
+    s.stats.bestRivalsBeaten = 1;
+    expect(codexUnlocked(s, board)).toBe(true);
+  });
+
   it("orders unlocked entries before locked ones, and counts correctly", () => {
     const s = createInitialState();
     s.stats.totalShips = 5; // unlocks several

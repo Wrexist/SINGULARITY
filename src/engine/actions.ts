@@ -385,14 +385,15 @@ export function buyDataOffer(
 // ---------- Lobbying (Money → cool Heat) ----------
 
 /** Money cost to lobby right now — rises with current Heat (a hotter lab costs
- *  more to clean up). Pure; the UI shows it live. */
-export function lobbyCost(state: GameState): number {
-  return Math.round(balance.heat.lobby.baseCost + state.heat * balance.heat.lobby.costPerHeat);
+ *  more to clean up). Big-valued (economy contract); the UI shows it live. */
+export function lobbyCost(state: GameState): Big {
+  return Big.of(Math.round(balance.heat.lobby.baseCost + state.heat * balance.heat.lobby.costPerHeat));
 }
 
-/** Lobbying only makes sense when you're actually warm and can afford it. */
+/** Lobbying only makes sense when you're actually warm and can afford it. The heat
+ *  gate is a tunable, so it lives in balance (shared with the UI), not in logic. */
 export function canLobby(state: GameState): boolean {
-  return state.heat > 1 && state.resources.money.gte(lobbyCost(state));
+  return state.heat > balance.heat.lobby.minHeat && state.resources.money.gte(lobbyCost(state));
 }
 
 /** Spend Money to buy regulatory goodwill: cut Heat by a fraction. No-op-safe. */

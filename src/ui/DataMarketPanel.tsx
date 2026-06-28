@@ -79,10 +79,10 @@ export function DataMarketPanel({ game, onBuyData, onBuyTool, onLobby }: Props) 
         </h3>
         <p className="market-warn">Cheaper data. Caveat emptor — batches can be poisoned, or raided.</p>
         <HeatMeter heat={game.heat} />
-        {game.heat > 1 && (
+        {game.heat > balance.heat.lobby.minHeat && (
           <button className="lobby-btn" disabled={!canLobby(game)} onClick={onLobby}>
             <span className="lobby-text">🤝 Lobby regulators — cool Heat by {Math.round(balance.heat.lobby.reductionFraction * 100)}%</span>
-            <span className="lobby-cost">{fmtMoney(Big.of(lobbyCost(game)))}</span>
+            <span className="lobby-cost">{fmtMoney(lobbyCost(game))}</span>
           </button>
         )}
         {shady.map((o) => {

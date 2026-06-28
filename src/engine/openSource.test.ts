@@ -10,7 +10,7 @@ const OS = balance.prestige.shipModes.open_source;
 
 function shippable() {
   const s = createInitialState();
-  s.research = ["inference_api"]; // meets the prestige gate
+  s.research = [balance.prestige.capabilityResearch]; // meets the prestige gate (single source)
   s.lifetimeMoney = Big.of(1e6);
   s.resources.money = Big.of(1e6);
   return s;

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { researchAvailable, researchLockedOut, buyResearch, canBuyResearch } from "./actions";
+import { prestige } from "./prestige";
 import { balance } from "./balance/config";
 import { createInitialState } from "./state";
 import { Big } from "./math/Big";
@@ -41,7 +42,14 @@ describe("mutually-exclusive research branches", () => {
   });
 
   it("a fresh run (post-prestige) re-opens every choice (research resets)", () => {
-    const fresh = createInitialState();
+    // Drive this through the REAL prestige reset, not createInitialState(), so it
+    // would catch a regression where the ship path forgot to clear prior choices.
+    let s = atChoices(); // atChoices already owns the capability gate (a non-exclusive node)
+    s.lifetimeMoney = Big.of(1e9);
+    s = buyResearch(s, "sparse_arch"); // commit to choices this run…
+    s = buyResearch(s, "aligned_path");
+    const fresh = prestige(s, "deploy"); // …then ship
+    expect(fresh.research).toHaveLength(0); // research really did reset
     for (const id of ["sparse_arch", "dense_scaling", "aligned_path", "accelerationist_path"]) {
       expect(researchLockedOut(fresh, id)).toBe(false);
     }

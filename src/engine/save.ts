@@ -137,6 +137,7 @@ function sanitizeStats(s: unknown): LifetimeStats {
     playtimeSec: numf(o.playtimeSec),
     ascensions: numf(o.ascensions),
     openSourceShips: numf(o.openSourceShips),
+    bestRivalsBeaten: numf(o.bestRivalsBeaten), // old saves → 0 (best-so-far starts low and only climbs)
   };
 }
 
@@ -223,6 +224,7 @@ export function serialize(state: GameState): string {
       playtimeSec: state.stats.playtimeSec,
       ascensions: state.stats.ascensions,
       openSourceShips: state.stats.openSourceShips,
+      bestRivalsBeaten: state.stats.bestRivalsBeaten,
     },
     achievements: state.achievements,
     reputation: state.reputation,

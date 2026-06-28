@@ -6,6 +6,7 @@ import { advanceTraining } from "./employees";
 import { accrueStats } from "./stats";
 import { applyAchievements } from "./achievements";
 import { applyAutoResearch } from "./actions";
+import { rivalsBeaten } from "./market";
 import type { Derived, GameState } from "./types";
 
 /**
@@ -138,9 +139,12 @@ export function tick(state: GameState, elapsedMs: number): GameState {
 
   // Accrue lifetime stats (peaks/totals/playtime) from this tick's finished numbers.
   // earnedThisTick = the run-money added to lifetimeMoney this tick (already ≥ 0).
+  // rivalsBeaten reads only .products, so evaluate it against THIS tick's updated
+  // products (best-so-far is tracked monotonically inside accrueStats).
+  const rivalsNow = rivalsBeaten({ ...state, products });
   const stats = accrueStats(
     state.stats, products, state.research.length, d.computePerSec,
-    lifetimeMoney.sub(state.lifetimeMoney), seconds,
+    lifetimeMoney.sub(state.lifetimeMoney), seconds, rivalsNow,
   );
 
   // Award any newly-reached product milestones (one-time Money rewards). Folded in

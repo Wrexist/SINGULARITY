@@ -8,6 +8,12 @@
  * Humour lives here (writing), never in the math — per the design spine.
  */
 import { balance } from "./config";
+import { market } from "./market";
+
+/** Number of named rivals on the AI market — the "outrank everyone" badge derives
+ *  its threshold from this so it can't drift when the roster changes (same pattern
+ *  as RESEARCH_TREE_SIZE below). */
+const NAMED_RIVALS = market.rivals.length;
 
 /** Max research nodes OWNABLE in one run — the "own everything" capstone tracks
  *  this so it can't drift when nodes are added/removed. Mutually-exclusive groups
@@ -118,7 +124,7 @@ export const achievements: AchievementDef[] = [
   { id: "os_1", label: "People's Champion", desc: "Open-source a model — give it to the world", cat: "business", metric: "openSourceShips", threshold: 1 },
   { id: "os_5", label: "For the Culture", desc: "Open-source 5 models", cat: "business", metric: "openSourceShips", threshold: 5 },
   { id: "market_3", label: "Podium Finish", desc: "Outrank 3 named rivals on the AI market", cat: "business", metric: "rivalsBeaten", threshold: 3 },
-  { id: "market_1", label: "Market Leader", desc: "Outrank every named rival — top the AI market", cat: "business", metric: "rivalsBeaten", threshold: 5 },
+  { id: "market_1", label: "Market Leader", desc: "Outrank every named rival — top the AI market", cat: "business", metric: "rivalsBeaten", threshold: NAMED_RIVALS },
   { id: "contracts_5", label: "Deal Maker", desc: "Complete 5 contracts", cat: "meta", metric: "contractsDone", threshold: 5 },
   { id: "contracts_10", label: "Always Be Closing", desc: "Complete 10 contracts", cat: "meta", metric: "contractsDone", threshold: 10 },
   { id: "legacy_1", label: "Specialist", desc: "Invest in the Legacy tree", cat: "legacy", metric: "legacyInvested", threshold: 1 },

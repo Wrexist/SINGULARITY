@@ -43,7 +43,9 @@ export function Celebration({ weightsGained, totalWeights, report, onDone }: Pro
     return () => window.clearTimeout(t);
   }, [onDone]);
 
-  const headline = report ? HEADLINES[report.gen % HEADLINES.length]! : "Model Shipped";
+  // gen is 1-based (first ship = gen 1), so offset to zero-based before the modulo
+  // or generation 1 would skip the first headline.
+  const headline = report ? HEADLINES[(report.gen - 1) % HEADLINES.length]! : "Model Shipped";
 
   return (
     <div className="celebrate" onClick={onDone}>

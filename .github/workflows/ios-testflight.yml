@@ -88,25 +88,37 @@ jobs:
       # Auto-pass export compliance (no custom crypto) + a unique, rising build number
       # + a marketing version Apple will accept.
       - name: Configure Info.plist
+        # The marketing version is passed via env (NOT inlined into the script) so a
+        # workflow input can't be expanded as shell — e.g. a `$(...)` value — before
+        # bash runs. This job later holds the App Store Connect key, so the input is
+        # also format-validated before it ever reaches PlistBuddy.
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
+          MKT_INPUT: ${{ github.event.inputs.marketing_version }}
         run: |
           PLIST=ios/App/App/Info.plist
           /usr/libexec/PlistBuddy -c "Set :ITSAppUsesNonExemptEncryption false" "$PLIST" \
             || /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PLIST"
           # Build number (CFBundleVersion): the run number — always unique + rising.
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ github.run_number }}" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${RUN_NUMBER}" "$PLIST"
           # Marketing version (CFBundleShortVersionString): MUST exceed the last
           # App Store version or the upload is rejected ("train '1.0' is closed").
           # Source: the workflow_dispatch input → an ios-v<ver> tag → a safe default.
-          MKT="${{ github.event.inputs.marketing_version }}"
+          MKT="$MKT_INPUT"
           if [ -z "$MKT" ]; then
             case "$GITHUB_REF" in
               refs/tags/ios-v*) MKT="${GITHUB_REF_NAME#ios-v}" ;;
               *) MKT="1.0" ;;
             esac
           fi
+          # Only accept a dotted numeric version (e.g. 1, 1.0, 1.2.3) — reject anything else.
+          if ! printf '%s' "$MKT" | grep -Eq '^[0-9]+(\.[0-9]+){0,2}$'; then
+            echo "::error::Invalid marketing_version '$MKT' — expected a dotted numeric version like 1.0 or 1.2.3."
+            exit 1
+          fi
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $MKT" "$PLIST" \
             || /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string $MKT" "$PLIST"
-          echo "Marketing version $MKT · build ${{ github.run_number }}"
+          echo "Marketing version $MKT · build ${RUN_NUMBER}"
 
       - name: Archive (automatic signing via ASC API key)
         run: |

@@ -117,6 +117,9 @@ export interface LifetimeStats {
   ascensions: number;
   /** Models open-sourced (ships in the open-source mode). Feeds Lab Reputation. */
   openSourceShips: number;
+  /** Best number of named rivals ever outranked (monotonic). Drives Codex unlocks so
+   *  a collected entry can't re-lock when live rank slips (live rivalsBeaten can fall). */
+  bestRivalsBeaten: number;
 }
 
 /** An individual employee. roleId names a job (balance.staff.roles); the person's

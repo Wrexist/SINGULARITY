@@ -131,7 +131,9 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
       totalLegacy: newTotalLegacy,
       ascensions: state.stats.ascensions + (isAscension ? 1 : 0),
       // Open-sourcing earns community goodwill → Lab Reputation (via earnedReputation).
-      openSourceShips: state.stats.openSourceShips + (modeDef.reputationBonus > 0 ? 1 : 0),
+      // Keyed off the mode id (not `reputationBonus > 0`) so adding a future bonus-bearing
+      // mode can't silently miscount this stat or the reputation it feeds.
+      openSourceShips: state.stats.openSourceShips + (mode === "open_source" ? 1 : 0),
     },
     // Achievements are a permanent collection — they survive the reset.
     achievements: state.achievements,

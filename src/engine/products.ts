@@ -92,6 +92,9 @@ export function versionCost(version: number): { compute: number; data: number } 
 export function versionCostFor(state: GameState, version: number): { compute: number; data: number } {
   const base = versionCost(version);
   const dataPerSec = derive(state).dataPerSec.toNumber();
+  // Fall back to the flat base when Data output is so large the term overflows JS
+  // number (>~1e308): at that scale the player's Data is effectively unbounded, so a
+  // cheaper push is the gameplay-safe choice (an Infinity cost would just block pushes).
   const economyData = Number.isFinite(dataPerSec) ? Math.max(0, dataPerSec) * B.versionDataSecondsOfOutput : 0;
   return { compute: base.compute, data: base.data + economyData };
 }
@@ -320,12 +323,14 @@ export function maybeProductEvent(
   const ev = B.events.list[Math.min(B.events.list.length - 1, Math.floor(rollEvent * B.events.list.length))]!;
   const t = typeDef(p.type);
 
+  // Cap at the EFFECTIVE TAM (incl. feature boosts), matching the growth cap in
+  // simulateProducts so MAU can never exceed the addressable market.
+  const mau = clamp(p.mau * (ev.mauMult ?? 1), 0, t.tam * featureMods(p).tam);
   const np: ProductState = {
     ...p,
-    // Cap at the EFFECTIVE TAM (incl. feature boosts), matching the growth cap in
-    // simulateProducts so MAU can never exceed the addressable market.
-    mau: clamp(p.mau * (ev.mauMult ?? 1), 0, t.tam * featureMods(p).tam),
-    paid: Math.max(0, Math.min(p.paid * (ev.paidMult ?? 1), p.mau * (ev.mauMult ?? 1))),
+    mau,
+    // Bound paid by the CAPPED mau (not the uncapped growth) so paid ≤ mau always holds.
+    paid: Math.max(0, Math.min(p.paid * (ev.paidMult ?? 1), mau)),
     buzzSec: ev.buzz ? B.buzzDurationSec : p.buzzSec,
   };
   const heat = ev.heat ? state.heat + ev.heat : state.heat;

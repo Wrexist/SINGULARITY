@@ -58,10 +58,18 @@ describe("Research Fellowship reputation perk (R5.6 cross-system discount)", () 
   });
 
   it("the discount is floored — research never becomes free", () => {
-    // Even if the value were extreme, the multiplier can't go below the floor.
-    const s = createInitialState();
-    s.reputation.perks = ["rep_research1"];
-    expect(researchCostMult(s)).toBeGreaterThanOrEqual(R.researchDiscountFloor);
+    // Raise the floor ABOVE the perk's natural 0.8 so the clamp is actually exercised
+    // (with the default floor the multiplier never reaches it, and deleting the clamp
+    // would still pass). Restore the floor afterward so other tests are unaffected.
+    const prevFloor = R.researchDiscountFloor;
+    R.researchDiscountFloor = 0.9;
+    try {
+      const s = createInitialState();
+      s.reputation.perks = ["rep_research1"]; // natural mult 0.8, below the 0.9 floor
+      expect(researchCostMult(s)).toBe(0.9);
+    } finally {
+      R.researchDiscountFloor = prevFloor;
+    }
   });
 });
 

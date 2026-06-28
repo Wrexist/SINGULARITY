@@ -241,7 +241,11 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
         </span>
       </div>
       {selected && selected.owned > 0 && (
-        <div className="rack-card" role="dialog" aria-label={`${selected.name} info`} onClick={() => setSelectedTier(null)}>
+        // A lightweight popover, not a dialog: the hall is a pointer/touch canvas
+        // (aria-hidden), so claiming dialog semantics would promise keyboard/AT
+        // access this canvas-only affordance doesn't provide. aria-hidden keeps it
+        // out of the AT tree to match — the rack data is also in the Hardware panel.
+        <div className="rack-card" aria-hidden="true" onClick={() => setSelectedTier(null)}>
           <div className="rack-card-head">
             <span className={`rack-swatch tier-${selected.tier}`} aria-hidden="true" />
             <span className="rack-card-name">{selected.name}</span>

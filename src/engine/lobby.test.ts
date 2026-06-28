@@ -13,7 +13,7 @@ function hot(heat: number, money: number) {
 
 describe("lobbying (Money → cool Heat)", () => {
   it("cost rises with current Heat", () => {
-    expect(lobbyCost(hot(50, 0))).toBeGreaterThan(lobbyCost(hot(10, 0)));
+    expect(lobbyCost(hot(50, 0)).gt(lobbyCost(hot(10, 0)))).toBe(true);
   });
 
   it("cuts Heat by the configured fraction and charges Money", () => {
@@ -21,7 +21,7 @@ describe("lobbying (Money → cool Heat)", () => {
     const cost = lobbyCost(s);
     const after = lobby(s);
     expect(after.heat).toBeCloseTo(60 * (1 - balance.heat.lobby.reductionFraction), 5);
-    expect(s.resources.money.sub(after.resources.money).toNumber()).toBe(cost);
+    expect(s.resources.money.sub(after.resources.money).toNumber()).toBe(cost.toNumber());
   });
 
   it("is a no-op when cold or broke", () => {

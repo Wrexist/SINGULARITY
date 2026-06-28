@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { evaluateAchievements, achievementDefs, metricValue } from "./achievements";
 import { releaseProduct } from "./products";
 import { createInitialState } from "./state";
+import { balance } from "./balance/config";
 import { Big } from "./math/Big";
 
 describe("achievements for the new systems", () => {
@@ -31,10 +32,19 @@ describe("achievements for the new systems", () => {
     expect(new Set(evaluateAchievements(s)).has("market_1")).toBe(true);
   });
 
-  it("the Completionist target is reachable (accounts for exclusive groups)", () => {
+  it("the Completionist target equals the OWNABLE node count (accounts for exclusive groups)", () => {
     const completionist = achievementDefs.find((a) => a.id === "research_30")!;
-    // It must be < the raw node count (exclusive siblings can't all be owned).
-    expect(completionist.threshold).toBeLessThan(achievementDefs.length); // sanity
-    expect(completionist.threshold).toBeGreaterThan(0);
+    // Derive the max-ownable node count the same way the badge does: total nodes
+    // minus (groupSize − 1) for each mutually-exclusive group. This pins the
+    // threshold to the real cap, so a regression in either side fails the test.
+    const groupSizes = balance.research.reduce<Record<string, number>>((acc, r) => {
+      if (r.exclusiveGroup) acc[r.exclusiveGroup] = (acc[r.exclusiveGroup] ?? 0) + 1;
+      return acc;
+    }, {});
+    const ownableResearchCount =
+      balance.research.length - Object.values(groupSizes).reduce((sum, size) => sum + (size - 1), 0);
+    expect(completionist.threshold).toBe(ownableResearchCount);
+    // And it must be strictly below the raw node count when any exclusive group exists.
+    expect(completionist.threshold).toBeLessThanOrEqual(balance.research.length);
   });
 });

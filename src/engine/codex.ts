@@ -1,5 +1,4 @@
 import { codex as C, type CodexEntry } from "./balance/codex";
-import { rivalsBeaten } from "./market";
 import type { GameState } from "./types";
 
 /**
@@ -23,8 +22,11 @@ export function codexMetricValue(state: GameState, metric: CodexEntry["metric"])
     case "peakMrr": return s.peakMrr;
     case "worldEventsResolved": return s.worldEventsResolved;
     case "peakResearchCount": return s.peakResearchCount;
+    // contractsCompleted persists across prestige and only ever grows, and the legacy
+    // tree is permanent — both are already monotonic. rivalsBeaten can FALL (rank slips),
+    // so the codex reads the best-so-far stat instead, keeping unlocks one-way.
     case "contractsCompleted": return state.contracts.completed.length;
-    case "rivalsBeaten": return rivalsBeaten(state);
+    case "rivalsBeaten": return state.stats.bestRivalsBeaten;
     case "legacyInvested": return state.legacyInvestments.length;
   }
 }
