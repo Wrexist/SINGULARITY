@@ -831,21 +831,28 @@ export const balance = {
      * other two are opt-in trade-offs, never the balanced baseline. First-pass
      * numbers; tune against the sim if they prove too strong/weak.
      */
+    // `reputationBonus` = Lab Reputation earned per ship in this mode (community
+    // goodwill). `momentum` = a temporary all-lane buff applied at the START of the
+    // next run (the community iterating on your release), or null. Both are 0/null
+    // for every mode the sim uses, so the tuned curve is untouched.
     shipModes: {
       deploy: {
         id: "deploy", label: "Deploy commercially",
         blurb: "Balanced. Bank full Legacy Weights and keep the model as a product draft to commercialise.",
         legacyMult: 1, keepsDraft: true, moneyKickstartPerShip: 0, frontierPenalty: 0, unlockShips: 0,
+        reputationBonus: 0, momentum: null as null | { factor: number; durationSec: number },
       },
       open_source: {
         id: "open_source", label: "Open-source it",
-        blurb: "The community spreads your weights further — more Legacy — but you give the model away (no product draft).",
+        blurb: "Give the model to the world: no product draft, but the community rewards you — bonus Legacy, Lab Reputation, and a wave of contributions that supercharges your next run.",
         legacyMult: 1.3, keepsDraft: false, moneyKickstartPerShip: 0, frontierPenalty: 0, unlockShips: 0,
+        reputationBonus: 5, momentum: { factor: 1.4, durationSec: 120 } as null | { factor: number; durationSec: number },
       },
       sell: {
         id: "sell", label: "Sell to a hyperscaler",
         blurb: "Cash up front to bootstrap the next run, but fewer Legacy Weights and no product draft.",
         legacyMult: 0.5, keepsDraft: false, moneyKickstartPerShip: 200, frontierPenalty: 0, unlockShips: 0,
+        reputationBonus: 0, momentum: null as null | { factor: number; durationSec: number },
       },
       // B5 challenge: an OPTIONAL risk/reward ship, unlocked once you know the loop.
       // Rivals start further ahead (your carried products begin behind), but you
@@ -854,6 +861,7 @@ export const balance = {
         id: "hard", label: "Hard ship (challenge)",
         blurb: "Rivals leap ahead — your products start behind — but bank +50% Legacy. For when the easy money bores you.",
         legacyMult: 1.5, keepsDraft: true, moneyKickstartPerShip: 0, frontierPenalty: 6, unlockShips: 3,
+        reputationBonus: 0, momentum: null as null | { factor: number; durationSec: number },
       },
     },
   },

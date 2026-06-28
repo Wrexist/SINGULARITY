@@ -2,7 +2,10 @@ import { Big } from "./math/Big";
 import { achievements as ACH_DEFS, achievementRep } from "./balance/achievements";
 import { reputation as R } from "./balance/reputation";
 import { contractsReputation } from "./contracts";
+import { balance } from "./balance/config";
 import type { GameState } from "./types";
+
+const shipModes = balance.prestige.shipModes;
 
 /**
  * Lab Reputation (Phase 3) — pure meta-currency logic. Points are derivable
@@ -21,6 +24,7 @@ export function earnedReputation(state: GameState): number {
   pts += state.stats.totalShips * R.perShip;
   pts += state.stats.ascensions * R.perAscension;
   pts += contractsReputation(state); // completed contracts grant Reputation
+  pts += state.stats.openSourceShips * shipModes.open_source.reputationBonus; // open-source goodwill
   return pts;
 }
 

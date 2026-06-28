@@ -136,6 +136,7 @@ function sanitizeStats(s: unknown): LifetimeStats {
     worldEventsResolved: numf(o.worldEventsResolved),
     playtimeSec: numf(o.playtimeSec),
     ascensions: numf(o.ascensions),
+    openSourceShips: numf(o.openSourceShips),
   };
 }
 
@@ -221,6 +222,7 @@ export function serialize(state: GameState): string {
       worldEventsResolved: state.stats.worldEventsResolved,
       playtimeSec: state.stats.playtimeSec,
       ascensions: state.stats.ascensions,
+      openSourceShips: state.stats.openSourceShips,
     },
     achievements: state.achievements,
     reputation: state.reputation,

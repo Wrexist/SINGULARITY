@@ -142,6 +142,8 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyLega
                       ? <span className="ship-tag good">✓ Product to sell in Products</span>
                       : <span className="ship-tag warn">✗ No product — you gave the model away</span>}
                     {kickstart > 0 && <span className="ship-tag good">+ ${kickstart} cash</span>}
+                    {m.reputationBonus > 0 && <span className="ship-tag good">+ {m.reputationBonus} Reputation</span>}
+                    {m.momentum && <span className="ship-tag good">+ momentum boost next run</span>}
                   </div>
                 </div>
               </button>

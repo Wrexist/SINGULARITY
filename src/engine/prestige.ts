@@ -83,8 +83,24 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
   // by ship count so it can't snowball). Other modes start from the clean slate.
   const kickstart = modeDef.moneyKickstartPerShip * ships;
 
+  // Open-source "community momentum": some ship modes leave the next run with a
+  // short, temporary all-lane buff (the community iterating on your release).
+  // Temporary modifiers can't inflate the permanent curve; only open-source sets one.
+  const momentum = modeDef.momentum;
+  const momentumMods: GameState["modifiers"] = momentum
+    ? (["computeMult", "dataMult", "moneyMult"] as const).map((target) => ({
+        id: `momentum_${target}`,
+        target,
+        factor: momentum.factor,
+        remainingSec: momentum.durationSec,
+        label: `Community momentum ×${momentum.factor}`,
+        tone: "good" as const,
+      }))
+    : fresh.modifiers;
+
   return {
     ...fresh,
+    modifiers: momentumMods,
     resources: kickstart > 0
       ? { ...fresh.resources, money: fresh.resources.money.add(kickstart) }
       : fresh.resources,
@@ -105,6 +121,8 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
       totalShips: state.stats.totalShips + 1,
       totalLegacy: newTotalLegacy,
       ascensions: state.stats.ascensions + (isAscension ? 1 : 0),
+      // Open-sourcing earns community goodwill → Lab Reputation (via earnedReputation).
+      openSourceShips: state.stats.openSourceShips + (modeDef.reputationBonus > 0 ? 1 : 0),
     },
     // Achievements are a permanent collection — they survive the reset.
     achievements: state.achievements,

@@ -23,6 +23,7 @@ export function initialStats(): LifetimeStats {
     worldEventsResolved: 0,
     playtimeSec: 0,
     ascensions: 0,
+    openSourceShips: 0,
   };
 }
 

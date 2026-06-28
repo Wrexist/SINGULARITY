@@ -82,6 +82,7 @@ export function StatsPanel({ game, derived }: Props) {
     { label: "Models shipped", value: String(s.totalShips) },
     { label: "Legacy Weights", value: fmt(game.prestige.legacyWeights) },
     ...(s.ascensions > 0 ? [{ label: "AGI ascensions", value: `${s.ascensions} (×${ascensionMultiplier(game).toFixed(2)})` }] : []),
+    ...(s.openSourceShips > 0 ? [{ label: "Models open-sourced", value: String(s.openSourceShips) }] : []),
     { label: "Products launched", value: String(s.productsLaunched) },
     { label: "Employees hired", value: String(s.employeesHired) },
     { label: "World events", value: String(s.worldEventsResolved) },

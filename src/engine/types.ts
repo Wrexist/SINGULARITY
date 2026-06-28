@@ -115,6 +115,8 @@ export interface LifetimeStats {
   /** AGI ascensions — ships taken in the Post-Singularity era past the Legacy floor.
    *  Each grants a permanent compounding boost (derive's ascensionMult). */
   ascensions: number;
+  /** Models open-sourced (ships in the open-source mode). Feeds Lab Reputation. */
+  openSourceShips: number;
 }
 
 /** An individual employee. roleId names a job (balance.staff.roles); the person's
