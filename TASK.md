@@ -13,6 +13,30 @@ Phase 0–3 history retained below for context.
 3 in-run resources, pure/deterministic engine, data-in-`balance/`, hard-gated compounding,
 no dark patterns. Re-run `npm run sim` after any economy change.*
 
+### ⭐ ACTIVE WAVE — R8 Platform & LiveOps (owner-picked 2026-06-28) · plan: `R8_PLATFORM_LIVEOPS_PLAN.md`
+*The R0–R5 critical path is essentially shipped (350 tests, sim 12m15s). R8 turns balance tuning
+into data, makes the save durable, and widens the platform. R8 touches NO balance → sim stays 12m15s
+at every step (a regression check of the wave). Engine stays pure: telemetry/sync/platform glue live
+in the store/UI layer, never `src/engine/`.*
+- [~] **R8.1 · Local telemetry instrument** (P2) — IN PROGRESS. Pure `summarize()` fold in
+      `src/engine/telemetry.ts` (data→data, testable) + impure recorder `src/state/telemetry.ts`
+      (own `localStorage` key, never touches `SAVE_KEY`) + store hooks on the existing prev→next diff
+      (prestige/era/wall/session/tab) + a "Diagnostics (on-device)" Settings panel with summary +
+      Clear + opt-out. **100% on-device, no transmission → App Store "Data Not Collected" label
+      preserved.** The instrument for the next evidence-driven balance pass (humans ≠ the greedy sim).
+- [ ] **R8.2 · Durable save** (P3) — Stage A: harden the existing `exportSave`/`importSave` into a
+      real backup UX (Share sheet, import preview+confirm, gentle backup nudge) — no backend, no
+      privacy change. Stage B (OWNER DECISION): optional cloud sync behind a `SaveSync` interface
+      (recommend Apple iCloud/CloudKit — data in the user's own iCloud, likely still "Data Not
+      Collected"; Supabase only if cross-platform forces a shared account). Conflict = highest-progress
+      wins, not last-writer.
+- [ ] **R8.3 · Android build** (P3) — self-contained `.github/workflows/android.yml` mirroring
+      `ios-testflight.yml` (`cap add android` on CI, `android/` gitignored); verify the parametric
+      renderer on Android WebView (backdrop-filter/color-mix/DPR); decide premium on Android (Play
+      Billing vs hide v1). Owner action: Play Console record + upload keystore + service account.
+- [ ] **R8.4 · Steam/desktop port eval** (P3) — write `STEAM_EVAL.md` (Tauri vs Electron, save paths,
+      premium model, effort, go/no-go tied to observed retention). Memo, not code; do last.
+
 ### Step 1 — Foundation (R0)
 - [~] **R0.1 · Kill the 10Hz whole-app re-render** (P1) — INVESTIGATED + partially done. Finding
       overturns the original premise: (a) derive's expensive O(employees×products) staff fold is

@@ -17,11 +17,13 @@ An AI compute tycoon (idle/incremental + management) with a 2.5D data-center hal
 > **PHASE 4 — Post-launch growth (in progress).** The game is LIVE on TestFlight and stable.
 > Phases 0–3 complete (MVP + 2.5D hall, power/heat, staff, events/factions, eras 0–6 + AGI ascension,
 > Products business, achievements, Lab Reputation). The audit-driven growth plan lives in
-> `POST_LAUNCH_ROADMAP.md` (R0–R8: balance · friendliness · interactivity · fun). Active "five things"
-> path: **R0** foundation (kill the 10Hz re-render, extend the sim to the long game), **R1** friendliness
-> (✅ R1.1 advisor banner wired; R1.2 buy ×10/Max), **R2** the hall (tappable racks, manifestation fixes),
-> **R4** endgame balance (tame the Legacy snowball, close the retire windfall, re-couple the triangle),
-> **R5** depth (activate the dead `alignment` dial, contracts board). See `TASK.md` for live status.
+> `POST_LAUNCH_ROADMAP.md` (R0–R8: balance · friendliness · interactivity · fun). The approved
+> "five things" critical path (R0–R5) is essentially shipped (350 tests, sim 12m15s). **Active wave:
+> R8 — Platform & LiveOps** (owner-picked 2026-06-28, plan in `R8_PLATFORM_LIVEOPS_PLAN.md`): on-device
+> **telemetry** (build first — instrument the real curve, zero privacy change), **durable save**
+> (harden export/import → optional cloud behind an interface, backend = owner call), **Android** (CI
+> workflow mirroring iOS), and a **Steam** feasibility memo. R8 touches NO balance → sim stays 12m15s.
+> See `TASK.md` for live status.
 > Rendering: **Canvas 2D isometric** (parametric, no image assets). Hard rules still hold: 3 in-run
 > resources only (Legacy/Reputation are meta-currencies, not a 4th resource); engine pure/deterministic;
 > humor in writing not math; all new systems are data-in-`balance/` + pure folds + tests. The tuned
