@@ -1402,6 +1402,11 @@ svg { vertical-align: middle; }
   -webkit-text-fill-color: var(--ink-3);
 }
 .celebrate-total { font-size: 12.5px; color: var(--ink-2); margin: 0 0 20px; }
+.celebrate-gen { font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ship); margin-bottom: 2px; }
+.celebrate-report { display: flex; gap: 8px; width: 100%; margin: 4px 0 14px; }
+.cr-stat { flex: 1; display: flex; flex-direction: column; gap: 2px; align-items: center; padding: 9px 4px; border-radius: 12px; background: rgba(17, 24, 39, 0.04); }
+.cr-stat b { font-size: 15px; font-weight: 850; color: var(--ink); }
+.cr-stat span { font-size: 10px; font-weight: 700; letter-spacing: 0.02em; color: var(--ink-3); text-align: center; }
 
 /* ---------- Toasts ---------- */
 .toast-stack {

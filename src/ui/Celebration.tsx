@@ -1,27 +1,49 @@
 import { useEffect } from "react";
 import type { Big } from "../engine/math/Big";
-import { fmt } from "./format";
+import { fmt, m$ } from "./format";
 import { RocketIcon } from "./Icons";
+
+export interface ShipReport {
+  /** The generation number just completed (ships). */
+  gen: number;
+  /** Player's market rank this run, or null (no live product). */
+  rank: number | null;
+  peakCompute: Big;
+  peakMrr: number;
+}
 
 interface Props {
   weightsGained: Big;
   totalWeights: Big;
+  report?: ShipReport;
   onDone: () => void;
 }
 
 const CONFETTI = Array.from({ length: 26 });
 const COLORS = ["#ff385c", "#2f7bf6", "#9b51e0", "#16b364", "#ff9f0a"];
 
+// Rotating satirical headlines so the tentpole moment doesn't read the same every
+// ship (picked deterministically by generation, so no render churn).
+const HEADLINES = [
+  "Model Shipped",
+  "Another One Ships",
+  "The Press Release Writes Itself",
+  "Shipped It (Again)",
+  "A New Generation Begins",
+];
+
 /**
- * The "Ship the Model" milestone moment (GDD §6 / GAMEPLAN §7.3) — the tentpole
- * reward beat. Full-screen glass takeover, confetti burst, the satirical
- * headline, and the Legacy Weights banked. Auto-dismisses; tap to skip.
+ * The "Ship the Model" milestone moment (GDD §6) — now a Generation Report: the
+ * tentpole reward beat with the Legacy banked AND a snapshot of how far the run
+ * got (peak compute, peak revenue, market rank). Auto-dismisses; tap to skip.
  */
-export function Celebration({ weightsGained, totalWeights, onDone }: Props) {
+export function Celebration({ weightsGained, totalWeights, report, onDone }: Props) {
   useEffect(() => {
-    const t = window.setTimeout(onDone, 3600);
+    const t = window.setTimeout(onDone, 4200);
     return () => window.clearTimeout(t);
   }, [onDone]);
+
+  const headline = report ? HEADLINES[report.gen % HEADLINES.length]! : "Model Shipped";
 
   return (
     <div className="celebrate" onClick={onDone}>
@@ -42,14 +64,20 @@ export function Celebration({ weightsGained, totalWeights, onDone }: Props) {
 
       <div className="celebrate-card">
         <div className="celebrate-rocket"><RocketIcon size={40} /></div>
-        <h2>Model Shipped</h2>
-        <p className="celebrate-sub">
-          Investors are “thrilled.” The press release writes itself. You banked:
-        </p>
+        {report && <div className="celebrate-gen">Generation {report.gen}</div>}
+        <h2>{headline}</h2>
+        <p className="celebrate-sub">Investors are “thrilled.” You banked:</p>
         <div className="celebrate-weights">
           +{fmt(weightsGained)}
           <span>Legacy Weights</span>
         </div>
+        {report && (
+          <div className="celebrate-report">
+            <div className="cr-stat"><b>{fmt(report.peakCompute)}</b><span>peak compute/s</span></div>
+            <div className="cr-stat"><b>{report.peakMrr > 0 ? `${m$(report.peakMrr)}/s` : "—"}</b><span>peak revenue</span></div>
+            <div className="cr-stat"><b>{report.rank != null ? `#${report.rank}` : "—"}</b><span>market rank</span></div>
+          </div>
+        )}
         <p className="celebrate-total">New total: {fmt(totalWeights)} · a faster lab awaits</p>
         <button className="btn btn-ship" onClick={onDone}>
           Begin next generation

@@ -13,7 +13,7 @@ import { UpgradePanel } from "./UpgradePanel";
 import { ResearchPanel } from "./ResearchPanel";
 import { PrestigePanel } from "./PrestigePanel";
 import { OfflineModal } from "./OfflineModal";
-import { Celebration } from "./Celebration";
+import { Celebration, type ShipReport } from "./Celebration";
 import { SettingsSheet } from "./SettingsSheet";
 import { ToastStack, type ToastData } from "./Toast";
 import { StatsPanel } from "./StatsPanel";
@@ -70,7 +70,7 @@ export function App() {
   const prevShips = useRef(game.prestige.ships);
   const prevWeights = useRef<Big>(game.prestige.legacyWeights);
   const prevAscensions = useRef(game.stats.ascensions);
-  const [celebration, setCelebration] = useState<{ gained: Big; total: Big } | null>(null);
+  const [celebration, setCelebration] = useState<{ gained: Big; total: Big; report: ShipReport } | null>(null);
   const [eraMoment, setEraMoment] = useState<number | null>(null);
   const [launch, setLaunch] = useState<{ type: ProductTypeId; name: string } | null>(null);
   const [pendingExpansion, setPendingExpansion] = useState<string | null>(null);
@@ -286,7 +286,13 @@ export function App() {
     }
     if (game.prestige.ships > prevShips.current) {
       const gained = game.prestige.legacyWeights.sub(prevWeights.current);
-      setCelebration({ gained, total: game.prestige.legacyWeights });
+      const report = {
+        gen: game.prestige.ships,
+        rank: playerMarketRank(game),
+        peakCompute: game.stats.peakComputePerSec,
+        peakMrr: game.stats.peakMrr,
+      };
+      setCelebration({ gained, total: game.prestige.legacyWeights, report });
       haptics.celebrate();
       // The flagship you just shipped is waiting as a free-to-launch product —
       // make sure the player knows (a ship that "gave nothing" was the #1 confusion).
@@ -487,6 +493,7 @@ export function App() {
         <Celebration
           weightsGained={celebration.gained}
           totalWeights={celebration.total}
+          report={celebration.report}
           onDone={() => {
             setCelebration(null);
             // Land the player on their reward: a freshly-shipped model waiting to
