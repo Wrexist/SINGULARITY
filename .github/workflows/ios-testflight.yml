@@ -9,6 +9,11 @@ name: iOS TestFlight
 #   APPLE_TEAM_ID, ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 (raw .p8 contents)
 on:
   workflow_dispatch:
+    inputs:
+      marketing_version:
+        description: "Marketing version (CFBundleShortVersionString). Bump it (e.g. 1.0.1) once a version is approved/released, or Apple rejects the upload ('train closed')."
+        required: false
+        default: "1.0"
   push:
     tags: ["ios-v*"]
 
@@ -80,13 +85,28 @@ jobs:
           node scripts/stamp-icons.mjs
           npx cap sync ios
 
-      # Auto-pass export compliance (no custom crypto) + a unique, rising build number.
+      # Auto-pass export compliance (no custom crypto) + a unique, rising build number
+      # + a marketing version Apple will accept.
       - name: Configure Info.plist
         run: |
           PLIST=ios/App/App/Info.plist
           /usr/libexec/PlistBuddy -c "Set :ITSAppUsesNonExemptEncryption false" "$PLIST" \
             || /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PLIST"
+          # Build number (CFBundleVersion): the run number — always unique + rising.
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ github.run_number }}" "$PLIST"
+          # Marketing version (CFBundleShortVersionString): MUST exceed the last
+          # App Store version or the upload is rejected ("train '1.0' is closed").
+          # Source: the workflow_dispatch input → an ios-v<ver> tag → a safe default.
+          MKT="${{ github.event.inputs.marketing_version }}"
+          if [ -z "$MKT" ]; then
+            case "$GITHUB_REF" in
+              refs/tags/ios-v*) MKT="${GITHUB_REF_NAME#ios-v}" ;;
+              *) MKT="1.0" ;;
+            esac
+          fi
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $MKT" "$PLIST" \
+            || /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string $MKT" "$PLIST"
+          echo "Marketing version $MKT · build ${{ github.run_number }}"
 
       - name: Archive (automatic signing via ASC API key)
         run: |

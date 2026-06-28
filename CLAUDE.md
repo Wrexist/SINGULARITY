@@ -82,7 +82,14 @@ onboarding run that writes certs into it), which is out of scope for this app.
 - **Bundle ID:** `com.wrexist.singularityinc`
 - **Trigger:** Actions tab → **iOS TestFlight** → Run workflow (also runs on
   pushing an `ios-v*` tag).
-- **Build number** = the GitHub Actions run number (always rising).
+- **Build number** (`CFBundleVersion`) = the GitHub Actions run number (always rising).
+- **Marketing version** (`CFBundleShortVersionString`) = the **`marketing_version`** workflow
+  input (default `1.0`, i.e. unchanged behaviour), or an `ios-v<ver>` tag. Apple **rejects** an
+  upload whose marketing version isn't higher than the last *approved/released* App Store version
+  ("train 'X' is closed for new build submissions", error 90062/90186). While a train is open you
+  can keep uploading builds to it (only the build number must rise); once a version is
+  approved/released, bump this for the next batch (Actions → Run workflow → set `marketing_version`
+  e.g. `1.0.1`, or push tag `ios-v1.0.1`).
 - **Secrets (4, all on THIS repo only):** `APPLE_TEAM_ID`, `ASC_KEY_ID`,
   `ASC_ISSUER_ID`, `ASC_KEY_P8`.
 - **`ios/` is gitignored** and regenerated on the runner (`cap add ios`); the
