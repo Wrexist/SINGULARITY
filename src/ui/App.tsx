@@ -31,6 +31,7 @@ import { burst as fxBurst } from "./fx";
 import { ProductLaunch } from "./ProductLaunch";
 import { productsUnlocked, productMetrics, typeDef, retirePayout } from "../engine/products";
 import { attentionCounts } from "../engine/advisor";
+import { marketLeaderboard, playerMarketRank } from "../engine/market";
 import { FlaskIcon, BoxIcon, TeamIcon, TrophyIcon, GearIcon, GiftIcon } from "./Icons";
 import { fmtMoney } from "./format";
 import type { ProductTypeId } from "../engine/balance/products";
@@ -159,6 +160,23 @@ export function App() {
     if (era > seenEra.current) { setEraMoment(era); haptics.celebrate(); sound.ship(); sound.era(); }
     seenEra.current = era;
   }, [initialized, era]);
+
+  // Market climbing: a celebratory beat each time you reach a NEW best rank on the
+  // AI leaderboard (overtaking a named rival). Best-rank-only so it never spams on
+  // rank wobble; hydration-synced so it never fires on a returning load.
+  const myRank = useMemo(() => playerMarketRank(game), [game]);
+  const bestRank = useRef<number | null>(null);
+  const syncedRank = useRef(false);
+  useEffect(() => {
+    if (!initialized || myRank == null) return;
+    if (!syncedRank.current) { bestRank.current = myRank; syncedRank.current = true; return; }
+    if (bestRank.current != null && myRank < bestRank.current) {
+      bestRank.current = myRank;
+      const passed = marketLeaderboard(game).slice(myRank).find((e) => !e.isYou);
+      pushToast(myRank === 1 ? "🏆 You're #1 on the AI market!" : `📈 You overtook ${passed?.name ?? "a rival"} — now #${myRank} on the market!`, "good");
+      haptics.celebrate(); sound.success();
+    }
+  }, [initialized, myRank]);
 
   // Ambient world events: feedback when a new card appears.
   useEffect(() => {

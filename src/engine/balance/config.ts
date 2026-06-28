@@ -364,6 +364,32 @@ const WORLD_EVENTS: WorldEvent[] = [
     body: "Every outlet runs the same breathless segment. Signups pour into anything with 'AI' on the box. Your products get a buzz wave.",
     effect: { kind: "productBuzz", durationSec: 60 },
   },
+  // Named-rival ships — the leaderboard competitors do things, so the frontier
+  // drift feels like a market, not a faceless number.
+  {
+    id: "rival_closedai",
+    weight: 2,
+    tone: "bad",
+    headline: "ClosedAI Ships Cortex-5",
+    body: "ClosedAI's keynote runs three hours and announces one feature. It still moves the frontier — your models suddenly look dated.",
+    effect: { kind: "frontierJump", amount: 2 },
+  },
+  {
+    id: "rival_goggle",
+    weight: 2,
+    tone: "bad",
+    headline: "Goggle Unveils Gemiknight",
+    body: "Goggle bolts an AI onto seven products nobody uses. Analysts swoon anyway and the bar creeps up.",
+    effect: { kind: "frontierJump", amount: 2 },
+  },
+  {
+    id: "rival_anthropos",
+    weight: 2,
+    tone: "bad",
+    headline: "Anthropos Releases Claudius",
+    body: "Anthropos publishes a 90-page safety card and a model that's annoyingly good. The frontier nudges higher.",
+    effect: { kind: "frontierJump", amount: 2 },
+  },
 
   // --- Faction events (Phase 2): two choices, diverging effects + alignment. ---
   {
