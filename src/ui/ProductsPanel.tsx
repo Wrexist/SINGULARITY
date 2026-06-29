@@ -220,6 +220,7 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
                   </div>
                   <div className="market-bar"><div className="market-bar-fill" style={{ width: `${Math.min(100, e.share * 100)}%` }} /></div>
                   <span className="market-vendor">{e.isYou ? "Your lab" : e.vendor} · {num(e.users)} users</span>
+                  {e.reaction && <span className="market-reaction">{e.reaction}</span>}
                 </div>
               </div>
             ))}

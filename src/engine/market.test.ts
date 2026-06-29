@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { marketLeaderboard, playerMarketRank } from "./market";
+import { marketLeaderboard, playerMarketRank, rivalReaction } from "./market";
 import { market as M } from "./balance/market";
 import { releaseProduct } from "./products";
 import { createInitialState } from "./state";
@@ -40,5 +40,24 @@ describe("market leaderboard (rivals)", () => {
     const big = shippedWithProduct(500_000_000);
     expect(playerMarketRank(big)).toBe(1);
     expect(marketLeaderboard(big)[0]!.isYou).toBe(true);
+  });
+
+  it("rivals carry focus + a reactive status that flips when you overtake them", () => {
+    // No product yet → every rival has a 'sidelines' reaction and a focus tag.
+    const cold = marketLeaderboard(createInitialState());
+    expect(cold.every((e) => e.focus && e.reaction)).toBe(true);
+    expect(cold.some((e) => /sidelines|safety|monetis/i.test(e.reaction!))).toBe(true);
+
+    // A dominant product → rivals you've passed react to being overtaken.
+    const big = marketLeaderboard(shippedWithProduct(500_000_000));
+    const passed = big.filter((e) => !e.isYou && e.users < big.find((x) => x.isYou)!.users);
+    expect(passed.length).toBeGreaterThan(0);
+    expect(passed.every((e) => /passed them/i.test(e.reaction!))).toBe(true);
+  });
+
+  it("rivalReaction is pure and branches on standing", () => {
+    expect(rivalReaction("scaler", false, false)).toMatch(/sidelines/i);
+    expect(rivalReaction("safety", true, true)).toMatch(/ahead of you/i);
+    expect(rivalReaction("money", true, false)).toMatch(/passed them/i);
   });
 });

@@ -398,6 +398,22 @@ const WORLD_EVENTS: WorldEvent[] = [
     body: "Anthropos publishes a 90-page safety card and a model that's annoyingly good. The frontier nudges higher.",
     effect: { kind: "frontierJump", amount: 2 },
   },
+  {
+    id: "rival_meta",
+    weight: 2,
+    tone: "bad",
+    headline: "Meta Open-Sources Llamabot",
+    body: "Meta dumps a frontier model on the internet for free, then looks shocked when everyone uses it. The bar moves for the whole industry — including you.",
+    effect: { kind: "frontierJump", amount: 2 },
+  },
+  {
+    id: "rival_xaeai",
+    weight: 1,
+    tone: "bad",
+    headline: "xAEAI Ships Groketta",
+    body: "Powered by a datacenter the size of a town and a billionaire's grudge, Groketta launches with a personality and a lawsuit. The frontier lurches.",
+    effect: { kind: "frontierJump", amount: 2 },
+  },
   // --- More ambient events (variety pass) ---
   {
     id: "gpu_shortage_global",
