@@ -49,6 +49,11 @@ export interface GameState {
   lifetimeMoney: Big;
   /** Regulatory Heat (0..100). Rises with dark-web use, cools over time. */
   heat: number;
+  /** Depth B3 — the regulator's long memory (0..100). Rises with every shady buy and,
+   *  unlike Heat, does NOT cool on its own — only lobbying appeases it, and it PERSISTS
+   *  across prestige (the regulator remembers you between runs). Drives escalating
+   *  scrutiny + a named-regulator presence. */
+  suspicion: number;
   /** Active time-limited modifiers from world events. */
   modifiers: ActiveModifier[];
   /** Faction stance (Phase 2): −1 doomer … +1 accelerationist. Moved by event choices. */
@@ -78,6 +83,9 @@ export interface GameState {
   /** Phase 4 — Lab Charter: the current run's chosen modifier id (or null). Picked
    *  at the start of a run (post-first-ship); resets to null each prestige. */
   charter: string | null;
+  /** Depth B1 — the charter of the PREVIOUS run (set at prestige), so shipping the
+   *  same charter twice running grants a conviction bonus. Persists across prestige. */
+  lastCharter: string | null;
   /** Phase 4 — Legacy Investments: owned prestige-tree perk ids. Spending weights
    *  here removes them from the global multiplier (a focus-vs-breadth trade-off).
    *  Persists across prestige. */
@@ -126,6 +134,9 @@ export interface LifetimeStats {
   ascensions: number;
   /** Models open-sourced (ships in the open-source mode). Feeds Lab Reputation. */
   openSourceShips: number;
+  /** Depth B1 — ships taken while COMMITTED to safety (doomer alignment past the
+   *  faction threshold). The safety community grants you standing → Lab Reputation. */
+  safetyShips: number;
   /** Best number of named rivals ever outranked (monotonic). Drives Codex unlocks so
    *  a collected entry can't re-lock when live rank slips (live rivalsBeaten can fall). */
   bestRivalsBeaten: number;

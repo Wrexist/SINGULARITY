@@ -16,6 +16,9 @@ export interface DrawOpts {
   spawnT: number; // 0..1
   burst: number; // 1 just after a claim → 0
   dpr: number;
+  /** Cosmetic rack skin id (R6.3) — recolours the rack bodies. Undefined/"classic"
+   *  is identity, so the default render is byte-identical. */
+  rackSkin?: string;
 }
 
 type Pt = { x: number; y: number };
@@ -71,6 +74,55 @@ const rgb = (c: RGB) => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
 const rgba = (c: RGB, a: number) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${clamp(a, 0, 1)})`;
 
 const tierBase = (tier: number): RGB => TIER_BASE[tier] ?? TIER_BASE[0]!;
+
+// --- Rack skins (R6.3): a pure HSL transform on the tier base colour. Applied to the
+// ONE base RGB each rack derives from (faces, LEDs, spill, rim all follow), so a skin
+// recolours the whole rack consistently while preserving per-tier hue contrast. An
+// absent/"classic" id is identity → the default render is byte-identical. ---
+const SKIN_TINTS: Record<string, { h?: number; s?: number; l?: number }> = {
+  mono: { s: 0.1, l: 0.95 },
+  frost: { h: 35, s: 1.0, l: 1.12 },
+  ember: { h: -120, s: 1.25, l: 1.0 },
+  synth: { h: 150, s: 1.3, l: 1.05 },
+  aurora: { h: 80, s: 1.4, l: 1.08 },
+  gold: { h: -105, s: 1.1, l: 1.05 },
+};
+
+function rgbToHsl(c: RGB): [number, number, number] {
+  const r = c[0] / 255, g = c[1] / 255, b = c[2] / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  const d = max - min;
+  if (d === 0) return [0, 0, l];
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h: number;
+  if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+  else if (max === g) h = (b - r) / d + 2;
+  else h = (r - g) / d + 4;
+  return [h * 60, s, l];
+}
+
+function hslToRgb(h: number, s: number, l: number): RGB {
+  h = ((h % 360) + 360) % 360 / 360;
+  if (s === 0) { const v = l * 255; return [v, v, v]; }
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  const hue = (t: number): number => {
+    if (t < 0) t += 1; if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  };
+  return [hue(h + 1 / 3) * 255, hue(h) * 255, hue(h - 1 / 3) * 255];
+}
+
+function skinTint(base: RGB, skinId?: string): RGB {
+  const t = skinId ? SKIN_TINTS[skinId] : undefined;
+  if (!t) return base; // classic / unknown → identity
+  const [h, s, l] = rgbToHsl(base);
+  return hslToRgb(h + (t.h ?? 0), clamp(s * (t.s ?? 1), 0, 1), clamp(l * (t.l ?? 1), 0, 1));
+}
 const eraBg = (era: number): [string, string] => ERA_BG[era] ?? ERA_BG[0]!;
 const eraFloor = (era: number): RGB => ERA_FLOOR[era] ?? ERA_FLOOR[0]!;
 
@@ -259,8 +311,30 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
     // Overclock manifests as a hotter rack: lift the work-pulse (which already
     // drives rim/LED glow) so the upgrade you bought is visible in the room.
     const workPulse = Math.min(1.2, basePulse + model.overclock * 0.45);
-    drawRack(ctx, c.x, c.y, tileW, tileH, rack.tier, rack.density, scale, blink, workPulse, model.active, powerOn);
+    drawRack(ctx, c.x, c.y, tileW, tileH, rack.tier, rack.density, scale, blink, workPulse, model.active, powerOn, o.rackSkin);
   }
+
+  // C2 — thermal stress: as power draw approaches/exceeds capacity the racks run hot.
+  // A red bloom (+ rising heat-haze bands when motion is on) washes the rack band so
+  // the power soft-cap is legible without opening a panel. Identity below the knee.
+  if (model.loadFrac > THERMAL_KNEE) {
+    const intensity = clamp((model.loadFrac - THERMAL_KNEE) / 0.6, 0, 1);
+    drawThermalStress(ctx, W, H, originY, o.timeMs, intensity, o.reducedMotion);
+  }
+
+  // C2 — product "uplink beams": one glowing column per live product, rising from the
+  // back of the floor, height ∝ revenue. Drawn before staff so agents read in front.
+  if (model.beams.length > 0) drawBeams(ctx, L, model.beams, o.timeMs, o.reducedMotion);
+
+  // C2 — staff on the floor: little agents working the room (headcount made visible).
+  if (model.staff > 0) drawStaffAgents(ctx, L, model.staff, o.timeMs, o.reducedMotion);
+
+  // C2 — faction tint: a faint room-wide wash by alignment (doomer cool, accel warm).
+  if (Math.abs(model.alignment) > 0.15) drawAlignmentTint(ctx, W, H, model.alignment);
+
+  // C2e — Post-Singularity transformation: at the AGI era the hall transcends — an
+  // iridescent ceiling bloom + a rising vortex of data funnelling into a singularity.
+  if (model.era >= 5) drawSingularityVortex(ctx, W, H, originY, o.timeMs, o.reducedMotion);
 
   // Auto-train "ops bot": a small glowing dot that patrols the floor, so the
   // automation you bought is something you can see working. Additive, drawn over
@@ -467,8 +541,9 @@ function drawRack(
   sx: number, sy: number, tileW: number, tileH: number,
   tier: number, density: number, scale: number,
   blink: number, workPulse: number, active: boolean, powerOn: number,
+  skin?: string,
 ): void {
-  const base = tierBase(tier);
+  const base = skinTint(tierBase(tier), skin);
   const led = shade(base, 2.0);
   const hw = (tileW / 2) * 0.64 * scale;
   const hh = (tileH / 2) * 0.64 * scale;
@@ -635,6 +710,178 @@ function drawDataFlow(ctx: CanvasRenderingContext2D, L: Layout, t: number, activ
     ctx.moveTo(x, y);
     ctx.lineTo(x - (e1.x - e0.x) * 0.03, y - (e1.y - e0.y) * 0.03);
     ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/** Power load (draw/capacity) at which the thermal-stress overlay begins. */
+const THERMAL_KNEE = 0.85;
+
+/** C2 — a red thermal wash over the rack band, with rising heat-haze bands when
+ *  motion is on. `intensity` 0..1 scales opacity. Reduced-motion → a static tint. */
+function drawThermalStress(
+  ctx: CanvasRenderingContext2D, W: number, H: number, originY: number,
+  t: number, intensity: number, reducedMotion: boolean,
+): void {
+  const hot: RGB = [255, 92, 56];
+  const bandTop = originY - H * 0.18;
+  const bandH = H * 0.5;
+  ctx.save();
+  // Base red bloom over the rack band.
+  const g = ctx.createLinearGradient(0, bandTop, 0, bandTop + bandH);
+  g.addColorStop(0, rgba(hot, 0));
+  g.addColorStop(0.6, rgba(hot, 0.06 + 0.16 * intensity));
+  g.addColorStop(1, rgba(hot, 0));
+  ctx.fillStyle = g;
+  ctx.fillRect(0, bandTop, W, bandH);
+  // Rising heat-haze bands (skipped under reduced motion).
+  if (!reducedMotion) {
+    ctx.globalCompositeOperation = "lighter";
+    const bands = 5;
+    for (let i = 0; i < bands; i++) {
+      const seed = ((i * 40503) % 97) / 97;
+      const prog = ((t / (1400 + seed * 900)) + seed) % 1;
+      const y = bandTop + bandH - prog * bandH;
+      const wob = Math.sin(t / 220 + i) * 6;
+      const a = Math.sin(prog * Math.PI) * 0.10 * intensity;
+      if (a <= 0.005) continue;
+      ctx.fillStyle = rgba(hot, a);
+      ctx.fillRect(W * (0.2 + seed * 0.1) + wob, y, W * 0.5, 2.5);
+    }
+  }
+  ctx.restore();
+}
+
+/** C2 — product uplink beams. One translucent gradient column per live product,
+ *  rising from a back-floor anchor; height/alpha scale with the product's revenue
+ *  share. Tier-cycled colours; a soft top bloom. Reduced-motion → no flicker. */
+function drawBeams(ctx: CanvasRenderingContext2D, L: Layout, beams: number[], t: number, reducedMotion: boolean): void {
+  const cols: RGB[] = [[63, 134, 240], [155, 81, 224], [52, 210, 126], [245, 180, 10], [255, 99, 132]];
+  const n = beams.length;
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (let i = 0; i < n; i++) {
+    const intensity = beams[i]!;
+    // Anchor along the OPEN front edge (high gy) so beams rise over the room and read
+    // clearly instead of hiding among the back racks. Spread left→right.
+    const gx = L.gxMin + ((i + 0.5) / n) * (L.gxMax - L.gxMin);
+    const base = L.iso(gx, L.gyMax - 0.35);
+    const col = cols[i % cols.length]!;
+    const h = (L.tileH * 9 + L.tileH * 26 * intensity);
+    const flick = reducedMotion ? 1 : 0.85 + 0.15 * Math.sin(t / 260 + i * 1.3);
+    const w = Math.max(4, L.tileW * 0.2);
+    const g = ctx.createLinearGradient(base.x, base.y, base.x, base.y - h);
+    g.addColorStop(0, rgba(col, 0.55 * flick));
+    g.addColorStop(0.45, rgba(col, 0.28 * flick));
+    g.addColorStop(1, rgba(col, 0));
+    ctx.fillStyle = g;
+    ctx.fillRect(base.x - w / 2, base.y - h, w, h);
+    // Base node + top bloom.
+    ctx.fillStyle = rgba(col, 0.95 * flick);
+    ctx.beginPath();
+    ctx.ellipse(base.x, base.y, w * 0.8, w * 0.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(base.x, base.y - h, w * 0.6 * flick, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** C2 — staff agents: small parametric figures working the floor. Count is capped
+ *  for a clean read; they bob + drift gently (still under reduced motion). */
+function drawStaffAgents(ctx: CanvasRenderingContext2D, L: Layout, staff: number, t: number, reducedMotion: boolean): void {
+  const n = Math.min(staff, 14);
+  ctx.save();
+  for (let i = 0; i < n; i++) {
+    const seed = ((i * 2654435761) % 1000) / 1000;
+    const seed2 = ((i * 40503) % 997) / 997;
+    // Bias agents to the OPEN front strip (high gy) so they read in the clear
+    // foreground rather than vanishing between the back racks.
+    const gx = L.gxMin + 0.4 + seed * (L.gxMax - L.gxMin - 0.8);
+    const gy = L.gyMax - 0.4 - seed2 * 1.3;
+    const drift = reducedMotion ? 0 : Math.sin(t / 1500 + i * 2.1) * 0.18;
+    const p = L.iso(gx + drift, gy);
+    const bob = reducedMotion ? 0 : Math.sin(t / 380 + i) * 1.2;
+    const s = Math.max(3.2, L.tileW * 0.1); // body half-width
+    const cx = p.x;
+    const cy = p.y - bob;
+    // Soft shadow.
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y + s * 0.5, s * 1.1, s * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Body (rounded) + head.
+    const body: RGB = i % 3 === 0 ? [120, 180, 255] : i % 3 === 1 ? [180, 150, 255] : [150, 220, 180];
+    ctx.fillStyle = rgb(body);
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - s, s, s * 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = rgb(shade(body, 1.25));
+    ctx.beginPath();
+    ctx.arc(cx, cy - s * 2.6, s * 0.78, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** C2 — faction tint: a faint full-room wash. Doomer (−) cools toward blue; accel (+)
+ *  warms toward amber. Alpha scales with |alignment|, capped low so it never fights
+ *  the racks. Static (no motion) so reduced-motion needs no special case. */
+function drawAlignmentTint(ctx: CanvasRenderingContext2D, W: number, H: number, alignment: number): void {
+  const col: RGB = alignment < 0 ? [60, 120, 240] : [255, 150, 60];
+  const a = Math.min(0.12, Math.abs(alignment) * 0.12);
+  ctx.save();
+  ctx.globalCompositeOperation = "soft-light";
+  ctx.fillStyle = rgba(col, a);
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+}
+
+/** C2e — the Post-Singularity transformation (era 5). An iridescent ceiling bloom +
+ *  a vortex of data spiralling up into a bright singularity point near the ceiling.
+ *  Reduced-motion → the bloom + a static halo, no spinning particles. */
+function drawSingularityVortex(
+  ctx: CanvasRenderingContext2D, W: number, H: number, originY: number,
+  t: number, reducedMotion: boolean,
+): void {
+  const cx = W / 2;
+  const cy = originY - H * 0.08; // the singularity, high in the room
+  const iris: RGB = [180, 140, 255];
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  // Ceiling bloom.
+  const bloom = ctx.createRadialGradient(cx, cy, 0, cx, cy, H * 0.4);
+  bloom.addColorStop(0, rgba([220, 200, 255], 0.5));
+  bloom.addColorStop(0.4, rgba(iris, 0.16));
+  bloom.addColorStop(1, rgba(iris, 0));
+  ctx.fillStyle = bloom;
+  ctx.fillRect(0, 0, W, originY + H * 0.4);
+  // Bright core.
+  const corePulse = reducedMotion ? 0.8 : 0.7 + 0.3 * Math.sin(t / 320);
+  ctx.fillStyle = rgba([255, 250, 255], 0.85 * corePulse);
+  ctx.beginPath();
+  ctx.arc(cx, cy, Math.max(3, W * 0.012), 0, Math.PI * 2);
+  ctx.fill();
+  // Rising vortex particles spiralling toward the core (motion only).
+  if (!reducedMotion) {
+    const n = 40;
+    for (let i = 0; i < n; i++) {
+      const seed = ((i * 2654435761) % 1000) / 1000;
+      const prog = ((t / (2600 + seed * 1800)) + seed) % 1; // 0 (bottom) → 1 (core)
+      const ease = prog * prog;
+      const radius = (W * 0.34) * (1 - ease);
+      const ang = seed * Math.PI * 2 + prog * 7.5; // spiral inward as it rises
+      const x = cx + Math.cos(ang) * radius;
+      const y = (originY + H * 0.22) - ease * (H * 0.3) + Math.sin(ang) * radius * 0.32;
+      const a = Math.sin(prog * Math.PI) * 0.6;
+      if (a <= 0.02) continue;
+      const col: RGB = i % 2 === 0 ? [200, 170, 255] : [150, 210, 255];
+      ctx.fillStyle = rgba(col, a);
+      ctx.beginPath();
+      ctx.arc(x, y, 1 + seed * 1.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
   ctx.restore();
 }

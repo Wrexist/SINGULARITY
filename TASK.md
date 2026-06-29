@@ -13,6 +13,139 @@ Phase 0–3 history retained below for context.
 3 in-run resources, pure/deterministic engine, data-in-`balance/`, hard-gated compounding,
 no dark patterns. Re-run `npm run sim` after any economy change.*
 
+### ⭐ ACTIVE WAVE — R8 Platform & LiveOps (owner-picked 2026-06-28) · plan: `R8_PLATFORM_LIVEOPS_PLAN.md`
+*The R0–R5 critical path is essentially shipped (350 tests, sim 12m15s). R8 turns balance tuning
+into data, makes the save durable, and widens the platform. R8 touches NO balance → sim stays 12m15s
+at every step (a regression check of the wave). Engine stays pure: telemetry/sync/platform glue live
+in the store/UI layer, never `src/engine/`.*
+- [x] **R8.1 · Local telemetry instrument** (P2) — SHIPPED. Pure `summarize()` + `purchaseSignature()`
+      in `src/engine/telemetry.ts` (data→data, no clock/storage/RNG — engine-pure) + impure recorder
+      `src/state/telemetry.ts` (own `localStorage` keys, never touches `SAVE_KEY`, opt-out clears data).
+      Store hooks ride the EXISTING prev→next diff: `init` (session + baselines), `advance` (purchase
+      via signature-diff + era-arrival via `currentEra` diff — fires only on the rare transition, not
+      the 10Hz trickle), `doPrestige` (gen run-time from cumulative `playtimeSec`), and a `goTab` wrap
+      in App for tab usage. "Diagnostics (on-device)" Settings panel shows the summary (time-to-first-
+      ship, run times, era reached, longest idle stretch, most-used tab) + Clear + opt-out toggle.
+      **100% on-device, no transmission → App Store "Data Not Collected" label preserved** (verified:
+      zero network code in the telemetry path). Run timing uses engine `playtimeSec`, not wall-clock,
+      so offline/backgrounding can't distort it and it lines up with the sim. +12 tests (359 total);
+      typecheck + build clean; **sim 12m15s (byte-identical — no balance touched).**
+- [ ] **R8.2 · Durable save** (P3) — Stage A: harden the existing `exportSave`/`importSave` into a
+      real backup UX (Share sheet, import preview+confirm, gentle backup nudge) — no backend, no
+      privacy change. Stage B (OWNER DECISION): optional cloud sync behind a `SaveSync` interface
+      (recommend Apple iCloud/CloudKit — data in the user's own iCloud, likely still "Data Not
+      Collected"; Supabase only if cross-platform forces a shared account). Conflict = highest-progress
+      wins, not last-writer.
+- [ ] **R8.3 · Android build** (P3) — self-contained `.github/workflows/android.yml` mirroring
+      `ios-testflight.yml` (`cap add android` on CI, `android/` gitignored); verify the parametric
+      renderer on Android WebView (backdrop-filter/color-mix/DPR); decide premium on Android (Play
+      Billing vs hide v1). Owner action: Play Console record + upload keystore + service account.
+- [ ] **R8.4 · Steam/desktop port eval** (P3) — write `STEAM_EVAL.md` (Tauri vs Electron, save paths,
+      premium model, effort, go/no-go tied to observed retention). Memo, not code; do last.
+
+### Content & customization wave (owner-directed 2026-06-28 — "more options & customizability")
+*Player-facing content on the R6 replayability track. All cosmetic-only or post-first-ship → the
+tuned curve is byte-identical (sim 12m15s).*
+- [x] **R6.3 · Earnable hall-theme collection** — the cosmetic layer is now a cross-reset chase:
+      8 new themes earned by play (ships, 1M Compute/s, 5 products, $1B all-time, 15 events, 5h,
+      AGI ascension) on top of 4 free + 1 premium. Data in `balance/cosmetics.ts`; pure
+      `src/engine/cosmetics.ts` (`themeUnlocked`/`collectionProgress`/`unlockHint`) reads ONLY
+      monotonic lifetime stats → unlocks never re-lock after prestige (no unlocked-set to persist);
+      cosmetic-only → not in derive. `hallThemes.ts` is now pure presentation. Settings theme picker →
+      a collection grid (locked chips show their unlock hint + a lock glyph, plus an owned/total count).
+      +6 tests; sim 12m15s.
+- [x] **R6.1+ · Expanded Lab Charters** — the per-run build-choice pool grows 3 → 7: **Data Monopoly**
+      (+data −compute), **Cash Machine** (+money −data), **Mad Science** (+compute −money), **Frugal
+      Genius** (+compute +money −data). Data-only addition to `balance/charters.ts`; `charterMods`
+      folds them via the existing path; identity at none/first-run → sim byte-identical (12m15s).
+      +2 tests (unique ids, advertised tilts).
+      ↳ Follow-up (done): **rack skins** — a 2nd cosmetic axis (recolours the racks, independent of the
+        hall theme). 7 earn-by-play skins (`balance/cosmetics.rackSkins` + `skinUnlocked`/`skinProgress`).
+        Renderer applies a pure HSL tint to the ONE tier-base RGB each rack derives from, so faces/LEDs/
+        rim/spill all follow and per-tier contrast is preserved; "classic"/undefined is an early-return
+        identity → default render byte-identical (no static-cache key change). `settings.rackSkin` +
+        a second Settings collection grid. ⚠️ wants an on-device look before the next TestFlight push.
+        +1 test; sim 12m15s.
+- [x] **R6.2 · Faction-branched event pools** — committing to a side (|alignment| past
+      `worldEvents.factionThreshold` = 0.4) opens a themed event pool, so a safety run and a send-it run
+      diverge. Doomer pool (safety grant / 'the safe one' premium / interpretability) vs accel pool
+      (the 10× run / momentum raise / ship-first viral). `WorldEvent.faction` tag; `pickWorldEvent(roll,
+      alignment)` filters the eligible pool; neutral (incl. the sim) sees no tagged event → curve-safe.
+      +5 tests; sim 12m15s.
+- [x] **R6.3 follow-up · Collection achievements + codex** — `themesUnlocked` metric (themes earned by
+      play, premium excluded) feeds both achievements (Wardrobe 6 / Haute Couture 10) and the codex
+      (Interior Decorating + Picking Sides field notes). Monotonic; no new persisted state. +1 test.
+
+### ⭐ Depth & context-richness — plan: `DEPTH_ROADMAP.md` (synthesized from 4 system audits)
+*Diagnosis: the game is strong on the moment, weak on memory, siloed across systems. Wave A "Living
+Market" (pure engine, curve-safe, zero render risk) is the connective tissue every audit ranked #1.*
+- [x] **A1 · Reactive rival identities** — each named rival has a FOCUS (scaler/safety/money, mirrors
+      alignment) + personality blurb; the leaderboard generates a deterministic reaction line from the
+      player's standing ("You've passed them — expect a we're-focusing-on-AGI blog post"). +2 rival
+      ship-events so all 5 ship with voice. Leaderboard is a sidecar (no resources/derive) → curve-safe.
+      +3 tests.
+- [x] **A2 · "Hot topics" event chaining** — a recent fired event biases the next roll toward same-topic
+      events (×3 for a 3-event window) so crises cluster. Central id→topic map; `pickWorldEvent(roll,
+      alignment, recentIds)`; transient ring in the store. Identity with no history → curve-safe. +3 tests.
+- [x] **A3 · History-aware ship headlines** — the "Model Shipped" tentpole reflects what the run achieved
+      (#1 market / scaling triumph / cash-flow / top-three / generation milestones) instead of a fixed
+      rotation. Pure `shipHeadline()`. +5 tests.
+- [x] **A5 · "This run's story" recap** — the Generation Report auto-generates a 2–3 line satirical
+      summary (era + gen, alignment stance, product business). Pure `runStory()`. +4 tests.
+- [x] **A4 · Living codex** — Field Notes re-read by tenure + stance: doomer vs accel see different
+      faction lore; a veteran (5+ ships) sees a matured "Closet Years". Data-driven `variants` + pure
+      `codexBody()` (veteran > faction > default). +3 tests.
+- [x] **B1 · Charter conviction prestige bonus** — shipping the SAME charter as the previous run
+      banks +15% Legacy (charter↔prestige resonance). New persisted `lastCharter` (save v14→v15);
+      pure `charterConvictionMult` folded into `legacyWeightsForMode`; CharterPanel shows the bonus.
+      Curve-safe (no charter at first ship; sim never sets one). +5 tests.
+- [x] **B1b · Doomer conviction → Lab Reputation** — shipping while committed to safety (alignment ≤
+      −factionThreshold) earns bonus Reputation (alignment↔meta), like open-source goodwill. New
+      monotonic `safetyShips` stat (sanitizer-defaulted, no version bump); `perSafetyShip = 3`.
+      Curve-safe (first ship neutral; Reputation is meta). +2 tests.
+- [x] **C1 · Alignment spectrum bar** — Lab Stats shows a visual Doomer↔Accel bar (gradient + marker)
+      once a faction choice is made, surfacing the now-strategic alignment axis. UI-only.
+- [x] **B3 · The Regulator (escalating scrutiny + long memory)** — a named regulator (Supervisor Chen)
+      whose persisted `suspicion` rises with every shady buy, never cools on its own (only lobbying
+      appeases), and survives prestige. Escalates the regulatory-event rate (up to ×2.5) and, once
+      escalated, signs the events (a recurring antagonist). Pure `regulator.ts` (4 tiers); save
+      v15→v16; StatsPanel surfaces it. Curve-safe (clean lab/sim never goes shady → suspicion 0 →
+      identity). +8 tests.
+- [x] **B2 · Surface true team morale** — the Morale KPI showed only officeMorale, hiding the Mentor
+      contribution that `derive()` actually applies (hiring a Mentor did nothing *visible*). New pure
+      `totalMorale()` (office + mentors, single source of truth); EmployeesPanel KPI + tooltip breakdown
+      + a Lab Stats row. Display-only fix, no balance/curve change. +1 test.
+      ↳ Remaining **Wave B**: morale *consequences* (decay/turnover/burnout) — a LIVE-PLAYER BALANCE
+        change, deferred for owner sign-off (don't silently nerf existing saves); **B4** staff↔product
+        synergy + anti-degenerate floors (churn floor / cannibalization) — also balance-affecting.
+- [x] **C1 legibility sweep** — all the cheap, no-render-risk surfacing wins:
+      • alignment **spectrum bar** in Lab Stats · • **prestige-ready** pulse + gold "Ship" badge on the
+      Lab nav · • **portfolio health** (bleeders float to the top, "⚠ N need attention" header) ·
+      • **status ticker** (persistent regulator chip in the ModifierBar via a generic StatusChip API).
+- [x] **C2 · Hall manifestation** (renderer; verified via the `npm run shot -- --manifest` harness, but
+      still wants a real-device glance before the next TestFlight push):
+      • **C2a** thermal-stress shimmer (red wash + heat-haze bands when power draw nears/exceeds
+        capacity) + cooling-fan cap raised 3→6 so cooling visibly scales.
+      • **C2b** staff as little **floor agents** working the open front of the hall (capped 14, bob/drift,
+        reduced-motion safe).
+      • **C2c** product **uplink beams** rising from the front edge, height/alpha ∝ revenue share.
+      • **C2d** **alignment tint** — faint room wash (doomer→blue, accel→amber), capped low.
+      All parametric (no assets), all gated so early game (no staff/products, neutral, not throttled) is
+      byte-identical. +2 model tests; sim 12m15s.
+      • **C2e** era-5 **Post-Singularity transformation** — an iridescent ceiling bloom + a vortex of
+        data spiralling up into a singularity core. Gated era≥5 (earlier eras byte-identical);
+        reduced-motion keeps the bloom, drops the swirl. Verified via `--ascend` seed.
+      ✅ **Wave C2 complete.** (Per-era room splits already existed via `hallRoomSplit`.)
+      ↳ Owner-decision (live-player BALANCE changes, not done unilaterally): morale decay/turnover/
+        burnout; product churn floor / lifecycle decay; cross-segment cannibalization vs TAM expansion.
+- [x] **R3.4 · More world-event dilemmas + dead-content fix** — 4 new two-choice dilemmas (Mine the
+      Chat Logs / Automate Your Researchers / Power the Datacenter / Emergency-Brake Eval), each
+      feeding the now-active alignment fork (doomer − / accelerationist +) → more player agency, not
+      dismiss-only. **Bug fix:** found two duplicate event ids (`gpu_shortage`, `benchmark_win`) — since
+      `applyWorldEvent` resolves by `find` (first match), the later entries' unique headlines were dead
+      content; renamed to `gpu_shortage_global`/`benchmark_vibes` so they're reachable. +2 guard tests
+      (id-uniqueness; every dilemma has 2 oppositely-signed branches). Data-only; sim 12m15s.
+
 ### Step 1 — Foundation (R0)
 - [~] **R0.1 · Kill the 10Hz whole-app re-render** (P1) — INVESTIGATED + partially done. Finding
       overturns the original premise: (a) derive's expensive O(employees×products) staff fold is

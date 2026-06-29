@@ -24,6 +24,7 @@ export function initialStats(): LifetimeStats {
     playtimeSec: 0,
     ascensions: 0,
     openSourceShips: 0,
+    safetyShips: 0,
     bestRivalsBeaten: 0,
   };
 }

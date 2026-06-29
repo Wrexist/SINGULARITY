@@ -3,7 +3,7 @@ import { products as PRODUCTS } from "./balance/products";
 import { initialStats } from "./stats";
 import type { GameState } from "./types";
 
-export const SAVE_VERSION = 14;
+export const SAVE_VERSION = 16;
 
 /** A fresh lab: empty closet, a trickle of free Compute, nothing owned. */
 export function createInitialState(): GameState {
@@ -20,6 +20,7 @@ export function createInitialState(): GameState {
     prestige: { legacyWeights: Big.ZERO, ships: 0 },
     lifetimeMoney: Big.ZERO,
     heat: 0,
+    suspicion: 0,
     modifiers: [],
     // Faction stance (Phase 2): −1 doomer … +1 accelerationist. Set by event choices.
     alignment: 0,
@@ -33,6 +34,7 @@ export function createInitialState(): GameState {
     reputation: { spent: 0, perks: [] },
     contracts: { completed: [] },
     charter: null,
+    lastCharter: null,
     legacyInvestments: [],
     runPeakCompute: Big.ZERO,
     runPeakMrr: 0,

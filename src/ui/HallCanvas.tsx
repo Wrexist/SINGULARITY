@@ -153,6 +153,7 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
         width: cssW, height: cssH, timeMs,
         reducedMotion: useSettings.getState().reducedMotion,
         spawnFrom, spawnT, burst, dpr,
+        rackSkin: useSettings.getState().rackSkin,
       });
       // Debug/test aid (screenshot harness reads marker centroids); harmless.
       markers = expansionMarkers(model, cssW, cssH);

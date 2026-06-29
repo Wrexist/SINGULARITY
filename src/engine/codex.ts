@@ -1,4 +1,6 @@
 import { codex as C, type CodexEntry } from "./balance/codex";
+import { collectionProgress } from "./cosmetics";
+import { balance } from "./balance/config";
 import type { GameState } from "./types";
 
 /**
@@ -28,11 +30,26 @@ export function codexMetricValue(state: GameState, metric: CodexEntry["metric"])
     case "contractsCompleted": return state.contracts.completed.length;
     case "rivalsBeaten": return state.stats.bestRivalsBeaten;
     case "legacyInvested": return state.legacyInvestments.length;
+    // Hall themes earned by play (R6.3) — monotonic (reads lifetime stats), premium excluded.
+    case "themesUnlocked": return collectionProgress(state, false).owned;
   }
 }
 
 export function codexUnlocked(state: GameState, entry: CodexEntry): boolean {
   return codexMetricValue(state, entry.metric) >= entry.threshold;
+}
+
+/** A4 — the entry's body, re-read for the player's tenure + stance. Veteran (deep
+ *  ship count) takes precedence, then a committed faction lean, else the default.
+ *  Pure; falls back to `entry.body` when no variant applies. */
+export function codexBody(state: GameState, entry: CodexEntry): string {
+  const v = entry.variants;
+  if (!v) return entry.body;
+  if (v.veteran && state.stats.totalShips >= v.veteran.atShips) return v.veteran.body;
+  const t = balance.worldEvents.factionThreshold;
+  if (v.doomer && state.alignment <= -t) return v.doomer;
+  if (v.accel && state.alignment >= t) return v.accel;
+  return entry.body;
 }
 
 export interface CodexView {

@@ -2,6 +2,8 @@ import { balance } from "../engine/balance/config";
 import { canBuyUpgrade, upgradeCost } from "../engine/actions";
 import type { GameState } from "../engine/types";
 import { currentEra } from "../engine/eras";
+import { powerStats } from "../engine/power";
+import { productMetrics } from "../engine/products";
 import { RACK_IDS, hallDims, hallCapacity, hallRoomSplit, type Dir } from "../engine/hall";
 
 export { hallDims, hallExpansion, type Dir } from "../engine/hall";
@@ -58,6 +60,16 @@ export interface HallModel {
   /** Auto-train owned → a little "ops bot" roams the floor (the automation, made
    *  visible). */
   autoBot: boolean;
+  /** C2 — power draw ÷ capacity (>1 = throttled). Drives a thermal "heat shimmer"
+   *  + red rim over the racks so the power soft-cap is legible in the room. */
+  loadFrac: number;
+  /** C2 — headcount → little agents working on the floor (staff made visible). */
+  staff: number;
+  /** C2 — one entry per live product: 0..1 beam intensity (revenue, normalised to the
+   *  portfolio's top earner) → glowing "uplink beams" rising from the floor. */
+  beams: number[];
+  /** C2 — faction alignment (−1 doomer … +1 accel) → a subtle room colour tint. */
+  alignment: number;
 }
 
 /** Power/cooling infrastructure ids (drive the visible wall units). Exported so
@@ -93,10 +105,22 @@ export function buildHallModel(game: GameState): HallModel {
   const capacity = hallCapacity(game);
   const era = currentEra(game);
 
-  // Cooling/power gear manifests as wall units (per wall), capped so a huge
-  // facility still reads cleanly (parametric: many → one upgraded visual).
+  // Cooling/power gear manifests as wall units (per wall). The cap is raised (C2) so
+  // a serious facility's cooling visibly SCALES with investment instead of plateauing
+  // at 3 — the wall layout spaces them evenly, so up to 6 still reads cleanly.
   const powerLevels = POWER_IDS.reduce((s, id) => s + (game.upgrades[id] ?? 0), 0);
-  const coolingUnits = Math.min(3, (era >= 2 ? 1 : 0) + powerLevels);
+  const coolingUnits = Math.min(6, (era >= 2 ? 1 : 0) + powerLevels);
+
+  // Thermal load: rack power draw vs. capacity. >1 = throttled (the racks run hot).
+  const power = powerStats(game);
+  const loadFrac = power.capacityKw > 0 ? power.drawKw / power.capacityKw : 0;
+
+  // Staff on the floor + product "uplink beams" sized by revenue (normalised to the
+  // top earner so the biggest product is the tallest beam). Pure reads of state.
+  const staff = game.employees.length;
+  const mrrs = game.products.active.map((p) => Math.max(0, productMetrics(p, game.products.frontier).mrr));
+  const maxMrr = mrrs.reduce((m, v) => Math.max(m, v), 0) || 1;
+  const beams = mrrs.map((m) => Math.max(0.18, Math.min(1, m / maxMrr)));
 
   // Manifest software upgrades that used to change only a number: overclock makes
   // racks visibly run hotter; auto-train puts a little ops bot on the floor.
@@ -151,6 +175,10 @@ export function buildHallModel(game: GameState): HallModel {
     coolingUnits,
     overclock,
     autoBot,
+    loadFrac,
+    staff,
+    beams,
+    alignment: game.alignment,
     ...hallRoomSplit(game),
   };
 }

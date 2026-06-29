@@ -21,11 +21,28 @@ export function canPrestige(state: GameState): boolean {
   return state.research.includes(balance.prestige.capabilityResearch);
 }
 
-/** Legacy Weights a given ship mode would actually bank (base × the mode's mult). */
+/** Charter-conviction multiplier (B1): shipping with the SAME charter as the previous
+ *  run rewards commitment. 1 when no charter / different / first runs. Pure. */
+export function charterConvictionMult(state: GameState): number {
+  return state.charter != null && state.charter === state.lastCharter
+    ? balance.prestige.charterConvictionBonus
+    : 1;
+}
+
+/** Is the conviction bonus live this ship? (For the UI to surface it.) */
+export function charterConvictionActive(state: GameState): boolean {
+  return canPrestige(state) && charterConvictionMult(state) > 1;
+}
+
+/** Legacy Weights a given ship mode would actually bank (base × mode mult × conviction). */
 export function legacyWeightsForMode(state: GameState, mode: ShipMode): Big {
   const base = legacyWeightsGain(state);
   if (!canPrestige(state)) return base;
-  return base.mul(balance.prestige.shipModes[mode].legacyMult).floor().max(1);
+  return base
+    .mul(balance.prestige.shipModes[mode].legacyMult)
+    .mul(charterConvictionMult(state))
+    .floor()
+    .max(1);
 }
 
 /** The permanent AGI-ascension output multiplier (1 = none). Single source of truth
@@ -134,6 +151,10 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
       // Keyed off the mode id (not `reputationBonus > 0`) so adding a future bonus-bearing
       // mode can't silently miscount this stat or the reputation it feeds.
       openSourceShips: state.stats.openSourceShips + (mode === "open_source" ? 1 : 0),
+      // Shipping while committed to safety (doomer past the faction threshold) earns
+      // community standing → Lab Reputation (B1). Neutral/accel ships don't count, and
+      // the first ship is always neutral, so this is 0 through the tuned curve.
+      safetyShips: state.stats.safetyShips + (state.alignment <= -balance.worldEvents.factionThreshold ? 1 : 0),
     },
     // Achievements are a permanent collection — they survive the reset.
     achievements: state.achievements,
@@ -143,6 +164,12 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     contracts: state.contracts,
     // Legacy Investments are permanent prestige-tree progress — they persist.
     legacyInvestments: state.legacyInvestments,
+    // Remember the charter just shipped so picking it again next run earns the
+    // conviction bonus (B1). The fresh run's own charter resets to null (...fresh).
+    lastCharter: state.charter,
+    // The regulator's suspicion is a LONG memory — it persists across the ship (B3).
+    // A clean lab carries 0, so the tuned curve is untouched.
+    suspicion: state.suspicion,
     // Snapshot the just-finished run's peaks for the Generation Report (the fresh
     // run's own peaks reset to 0 via ...fresh). This is what makes the report show
     // THIS generation's high-water marks instead of all-time career peaks.

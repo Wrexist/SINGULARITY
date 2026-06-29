@@ -46,7 +46,8 @@ export type AchMetric =
   | "contractsDone"
   | "legacyInvested"
   | "rivalsBeaten"
-  | "ascensions";
+  | "ascensions"
+  | "themesUnlocked";
 
 export type AchCategory = "scale" | "business" | "team" | "legacy" | "meta";
 
@@ -131,6 +132,10 @@ export const achievements: AchievementDef[] = [
   { id: "legacy_3", label: "Min-Maxer", desc: "Own 3 Legacy investments at once", cat: "legacy", metric: "legacyInvested", threshold: 3 },
   { id: "ascend_1", label: "Transcendence", desc: "Ascend once in the Post-Singularity era", cat: "legacy", metric: "ascensions", threshold: 1 },
   { id: "ascend_5", label: "Beyond", desc: "Ascend 5 times", cat: "legacy", metric: "ascensions", threshold: 5 },
+
+  // ---- Cosmetic collection (R6.3) — earn hall themes by playing ----
+  { id: "wardrobe", label: "Wardrobe", desc: "Unlock 6 hall themes", cat: "meta", metric: "themesUnlocked", threshold: 6 },
+  { id: "haute_couture", label: "Haute Couture", desc: "Unlock 10 hall themes", cat: "meta", metric: "themesUnlocked", threshold: 10 },
 
   // ---- Secret / satirical ----
   { id: "secret_idle", label: "Touch Grass", desc: "Play for 24 hours total. We're not judging.", cat: "meta", metric: "playtimeSec", threshold: 86_400, secret: true },

@@ -32,7 +32,7 @@ import { burst as fxBurst } from "./fx";
 import { ProductLaunch } from "./ProductLaunch";
 import { productsUnlocked, productMetrics, typeDef, retirePayout } from "../engine/products";
 import { attentionCounts } from "../engine/advisor";
-import { marketLeaderboard, playerMarketRank } from "../engine/market";
+import { marketLeaderboard, playerMarketRank, rivalsBeaten } from "../engine/market";
 import { FlaskIcon, BoxIcon, TeamIcon, TrophyIcon, GearIcon, GiftIcon } from "./Icons";
 import { fmtMoney } from "./format";
 import type { ProductTypeId } from "../engine/balance/products";
@@ -43,8 +43,10 @@ import { ExpandConfirm } from "./ExpandConfirm";
 import { EraTransition } from "./EraTransition";
 import { WorldEventCard } from "./WorldEventCard";
 import { ModifierBar } from "./ModifierBar";
+import { regulatorIsNamed, regulatorState } from "../engine/regulator";
 import { canPrestige } from "../engine/prestige";
 import { currentEra } from "../engine/eras";
+import { recordTelemetry } from "../state/telemetry";
 
 export function App() {
   useGameLoop();
@@ -104,6 +106,14 @@ export function App() {
   const showStaff = balance.staff.enabled && game.research.length >= balance.staff.revealAtResearch;
   const showProducts = productsUnlocked(game);
   const [tab, setTab] = useState<"lab" | "products" | "employees">("lab");
+  // Telemetry (R8.1): count a tab switch when the player navigates to a *different*
+  // tab. On-device only; no-op when opted out (see src/state/telemetry.ts).
+  const goTab = useCallback((next: "lab" | "products" | "employees") => {
+    setTab((cur) => {
+      if (cur !== next) recordTelemetry({ kind: "tab", t: Date.now(), tab: next });
+      return next;
+    });
+  }, []);
   const shipReady = canPrestige(game);
   const era = currentEra(game);
 
@@ -295,6 +305,10 @@ export function App() {
         rank: playerMarketRank(game),
         peakCompute: ship?.peakCompute ?? game.stats.peakComputePerSec,
         peakMrr: ship?.peakMrr ?? game.stats.peakMrr,
+        era: currentEra(game),
+        alignment: game.alignment,
+        productsLive: game.products.active.length,
+        rivalsBeaten: rivalsBeaten(game),
       };
       setCelebration({ gained, total: game.prestige.legacyWeights, report });
       haptics.celebrate();
@@ -401,7 +415,10 @@ export function App() {
         dataRate={d.dataPerSec}
         moneyRate={d.passiveMoneyPerSec}
       />
-      <ModifierBar modifiers={game.modifiers} />
+      <ModifierBar
+        modifiers={game.modifiers}
+        status={regulatorIsNamed(game) ? [{ key: "regulator", label: `⚖ ${regulatorState(game).name}: ${regulatorState(game).label}`, tone: "bad" as const }] : []}
+      />
 
       <main className="stage">
         {dailyOn && (
@@ -467,18 +484,20 @@ export function App() {
       <nav className="botnav" aria-label="Primary">
         {/* Destinations use aria-current; Awards/More are actions (open modals),
             so this is a nav bar, not a tablist (the panes aren't tab panels). */}
-        <button className={`botnav-item ${tab === "lab" ? "on" : ""}`} aria-current={tab === "lab" ? "page" : undefined} onClick={() => { haptics.tap(); setTab("lab"); }}>
+        <button className={`botnav-item ${tab === "lab" ? "on" : ""} ${shipReady && tab !== "lab" ? "ship-ready" : ""}`} aria-current={tab === "lab" ? "page" : undefined} onClick={() => { haptics.tap(); goTab("lab"); }}>
           <span className="botnav-ic"><FlaskIcon size={23} /></span><span className="botnav-lbl">Lab</span>
-          {attention.lab > 0 && <span className="botnav-badge">{attention.lab}</span>}
+          {shipReady && tab !== "lab"
+            ? <span className="botnav-badge ship" aria-label="Ready to ship">Ship</span>
+            : attention.lab > 0 && <span className="botnav-badge">{attention.lab}</span>}
         </button>
         {showProducts && (
-          <button className={`botnav-item ${tab === "products" ? "on" : ""}`} aria-current={tab === "products" ? "page" : undefined} onClick={() => { haptics.tap(); setTab("products"); }}>
+          <button className={`botnav-item ${tab === "products" ? "on" : ""}`} aria-current={tab === "products" ? "page" : undefined} onClick={() => { haptics.tap(); goTab("products"); }}>
             <span className="botnav-ic"><BoxIcon size={23} /></span><span className="botnav-lbl">Products</span>
             {attention.products > 0 && <span className="botnav-badge">{attention.products}</span>}
           </button>
         )}
         {showStaff && (
-          <button className={`botnav-item ${tab === "employees" ? "on" : ""}`} aria-current={tab === "employees" ? "page" : undefined} onClick={() => { haptics.tap(); setTab("employees"); }}>
+          <button className={`botnav-item ${tab === "employees" ? "on" : ""}`} aria-current={tab === "employees" ? "page" : undefined} onClick={() => { haptics.tap(); goTab("employees"); }}>
             <span className="botnav-ic"><TeamIcon size={23} /></span><span className="botnav-lbl">Team</span>
             {attention.employees > 0 && <span className="botnav-badge">{attention.employees}</span>}
           </button>

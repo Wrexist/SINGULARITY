@@ -137,6 +137,7 @@ function sanitizeStats(s: unknown): LifetimeStats {
     playtimeSec: numf(o.playtimeSec),
     ascensions: numf(o.ascensions),
     openSourceShips: numf(o.openSourceShips),
+    safetyShips: numf(o.safetyShips), // old saves → 0 (sanitizer-defaulted; no version bump needed)
     bestRivalsBeaten: numf(o.bestRivalsBeaten), // old saves → 0 (best-so-far starts low and only climbs)
   };
 }
@@ -174,6 +175,7 @@ interface SavedShape {
   prestige: { legacyWeights: string; ships: number };
   lifetimeMoney: string;
   heat: number;
+  suspicion: number;
   modifiers: ActiveModifier[];
   alignment: number;
   computeFocus: number;
@@ -185,6 +187,7 @@ interface SavedShape {
   reputation: { spent: number; perks: string[] };
   contracts: { completed: string[] };
   charter: string | null;
+  lastCharter: string | null;
   legacyInvestments: string[];
 }
 
@@ -205,6 +208,7 @@ export function serialize(state: GameState): string {
     },
     lifetimeMoney: state.lifetimeMoney.toJSON(),
     heat: state.heat,
+    suspicion: state.suspicion,
     modifiers: state.modifiers,
     alignment: state.alignment,
     computeFocus: state.computeFocus,
@@ -224,12 +228,14 @@ export function serialize(state: GameState): string {
       playtimeSec: state.stats.playtimeSec,
       ascensions: state.stats.ascensions,
       openSourceShips: state.stats.openSourceShips,
+      safetyShips: state.stats.safetyShips,
       bestRivalsBeaten: state.stats.bestRivalsBeaten,
     },
     achievements: state.achievements,
     reputation: state.reputation,
     contracts: state.contracts,
     charter: state.charter,
+    lastCharter: state.lastCharter,
     legacyInvestments: state.legacyInvestments,
   };
   return JSON.stringify(shape);
@@ -246,6 +252,10 @@ export function deserialize(json: string): GameState {
     typeof raw.heat === "number" && Number.isFinite(raw.heat)
       ? Math.max(0, Math.min(100, raw.heat))
       : fresh.heat;
+  const suspicion =
+    typeof raw.suspicion === "number" && Number.isFinite(raw.suspicion)
+      ? Math.max(0, Math.min(100, raw.suspicion))
+      : fresh.suspicion;
   const modifiers = Array.isArray(raw.modifiers)
     ? raw.modifiers.filter(isWellFormedModifier)
     : fresh.modifiers;
@@ -299,6 +309,7 @@ export function deserialize(json: string): GameState {
     },
     lifetimeMoney: Big.of(raw.lifetimeMoney ?? res.money ?? "0"),
     heat,
+    suspicion,
     modifiers,
     alignment,
     computeFocus,
@@ -311,6 +322,7 @@ export function deserialize(json: string): GameState {
     reputation: sanitizeReputation(raw.reputation),
     contracts: sanitizeContracts(raw.contracts),
     charter: typeof raw.charter === "string" ? raw.charter : null,
+    lastCharter: typeof raw.lastCharter === "string" ? raw.lastCharter : null,
     legacyInvestments: Array.isArray(raw.legacyInvestments)
       ? raw.legacyInvestments.filter((x): x is string => typeof x === "string")
       : [],
@@ -420,6 +432,14 @@ export function migrate(raw: any): SavedShape {
   if (s.version === 13) {
     // v13 → v14: Legacy Investments tree (Phase 4). Nothing invested yet.
     s = { ...s, version: 14, legacyInvestments: s.legacyInvestments ?? [] };
+  }
+  if (s.version === 14) {
+    // v14 → v15: charter-conviction memory (Depth B1). No prior charter on old runs.
+    s = { ...s, version: 15, lastCharter: s.lastCharter ?? null };
+  }
+  if (s.version === 15) {
+    // v15 → v16: regulator suspicion (Depth B3). A clean slate on existing runs.
+    s = { ...s, version: 16, suspicion: s.suspicion ?? 0 };
   }
   return s as SavedShape;
 }

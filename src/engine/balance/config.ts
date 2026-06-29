@@ -178,6 +178,11 @@ export interface WorldEvent {
   body: string;
   effect?: WorldEventEffect;
   choices?: WorldEventChoice[];
+  /** R6.2 — faction-branched pool. Untagged events can always fire; a tagged event
+   *  only enters the pool once the player has committed to that side (alignment past
+   *  `worldEvents.factionThreshold`). At neutral, no tagged event is eligible, so the
+   *  base pool — and the tuned curve — is unchanged. */
+  faction?: "doomer" | "accel";
 }
 
 const WORLD_EVENTS: WorldEvent[] = [
@@ -393,9 +398,25 @@ const WORLD_EVENTS: WorldEvent[] = [
     body: "Anthropos publishes a 90-page safety card and a model that's annoyingly good. The frontier nudges higher.",
     effect: { kind: "frontierJump", amount: 2 },
   },
+  {
+    id: "rival_meta",
+    weight: 2,
+    tone: "bad",
+    headline: "Meta Open-Sources Llamabot",
+    body: "Meta dumps a frontier model on the internet for free, then looks shocked when everyone uses it. The bar moves for the whole industry — including you.",
+    effect: { kind: "frontierJump", amount: 2 },
+  },
+  {
+    id: "rival_xaeai",
+    weight: 1,
+    tone: "bad",
+    headline: "xAEAI Ships Groketta",
+    body: "Powered by a datacenter the size of a town and a billionaire's grudge, Groketta launches with a personality and a lawsuit. The frontier lurches.",
+    effect: { kind: "frontierJump", amount: 2 },
+  },
   // --- More ambient events (variety pass) ---
   {
-    id: "gpu_shortage",
+    id: "gpu_shortage_global",
     weight: 3,
     tone: "bad",
     headline: "Global GPU Shortage",
@@ -411,7 +432,7 @@ const WORLD_EVENTS: WorldEvent[] = [
     effect: { kind: "grantPct", resource: "money", pct: -0.15 },
   },
   {
-    id: "benchmark_win",
+    id: "benchmark_vibes",
     weight: 2,
     tone: "good",
     headline: "You Top a Benchmark Nobody Asked For",
@@ -636,6 +657,113 @@ const WORLD_EVENTS: WorldEvent[] = [
       { label: "Publish it (+30% data, transparency)", effect: { kind: "grantPct", resource: "data", pct: 0.3 }, alignment: -0.3 },
       { label: "Bury it (Revenue ×1.8)", effect: { kind: "buff", target: "moneyMult", factor: 1.8, durationSec: 45 }, alignment: 0.3 },
     ],
+  },
+
+  // --- Content wave (2026-06-28): more 2-choice dilemmas → more player agency, each
+  //     feeding the now-active alignment fork (doomer − / accelerationist +). ---
+  {
+    id: "choice_chat_logs",
+    weight: 2,
+    tone: "good",
+    headline: "Mine the Chat Logs?",
+    body: "Every conversation users had with your model is sitting in a bucket, unlabeled and legally grey. The data team is salivating; Legal has gone pale.",
+    choices: [
+      { label: "Delete them (privacy-first, +20% data the honest way)", effect: { kind: "grantPct", resource: "data", pct: 0.2 }, alignment: -0.3 },
+      { label: "Train on everything (Data yield ×1.9)", effect: { kind: "buff", target: "dataMult", factor: 1.9, durationSec: 45 }, alignment: 0.32 },
+    ],
+  },
+  {
+    id: "choice_automate_staff",
+    weight: 2,
+    tone: "good",
+    headline: "Automate Your Own Researchers?",
+    body: "The model is now good enough to write most of the code. Finance has drawn up a very tidy org chart with a lot of empty boxes.",
+    choices: [
+      { label: "Keep the humans (morale, +25% data)", effect: { kind: "grantPct", resource: "data", pct: 0.25 }, alignment: -0.28 },
+      { label: "Replace them (slash costs, +35% cash)", effect: { kind: "grantPct", resource: "money", pct: 0.35 }, alignment: 0.32 },
+    ],
+  },
+  {
+    id: "choice_power_source",
+    weight: 2,
+    tone: "good",
+    headline: "Power the New Datacenter",
+    body: "The grid can't feed your next training run. You can fast-track a gas turbine, or wait on solar-plus-storage and a stack of permits.",
+    choices: [
+      { label: "Solar + storage (clean, +25% data)", effect: { kind: "grantPct", resource: "data", pct: 0.25 }, alignment: -0.3 },
+      { label: "Fire up the gas turbine (Compute ×2)", effect: { kind: "buff", target: "computeMult", factor: 2, durationSec: 40 }, alignment: 0.33 },
+    ],
+  },
+  {
+    id: "choice_emergency_brake",
+    weight: 2,
+    tone: "bad",
+    headline: "The Eval Trips the Emergency Brake",
+    body: "An automated safety eval just flagged the new checkpoint and halted the run on its own. You can honor the halt, or override it and keep training.",
+    choices: [
+      { label: "Honor the halt (careful, Revenue ×1.6)", effect: { kind: "buff", target: "moneyMult", factor: 1.6, durationSec: 50 }, alignment: -0.34 },
+      { label: "Override it (Compute ×2 briefly)", effect: { kind: "buff", target: "computeMult", factor: 2, durationSec: 45 }, alignment: 0.34 },
+    ],
+  },
+
+  // --- R6.2: faction-branched pools. These only enter the table once you've COMMITTED
+  //     to a side (alignment past worldEvents.factionThreshold), so a "safety run" and a
+  //     "send-it run" see genuinely different events. Untagged events above always fire. ---
+  // Doomer pool — caution compounds: clean data, grants, goodwill.
+  {
+    id: "doomer_safety_grant",
+    weight: 3,
+    tone: "good",
+    faction: "doomer",
+    headline: "Safety Institute Funds You",
+    body: "Your published evals and refusal to set the world on fire earn a no-strings research grant. Turns out caution has a budget line now. +30% data.",
+    effect: { kind: "grantPct", resource: "data", pct: 0.3 },
+  },
+  {
+    id: "doomer_trust_premium",
+    weight: 3,
+    tone: "good",
+    faction: "doomer",
+    headline: "Enterprises Pay for 'The Safe One'",
+    body: "Risk-averse Fortune 500s route their contracts to the lab that won't end up in a hearing. Boring is, briefly, very profitable. Revenue ×1.7.",
+    effect: { kind: "buff", target: "moneyMult", factor: 1.7, durationSec: 50 },
+  },
+  {
+    id: "doomer_interpretability",
+    weight: 2,
+    tone: "good",
+    faction: "doomer",
+    headline: "Interpretability Breakthrough",
+    body: "You actually understand a layer now. The findings make the model both safer AND faster — a rare day where the cautious path also wins the race. Compute ×1.6.",
+    effect: { kind: "buff", target: "computeMult", factor: 1.6, durationSec: 50 },
+  },
+  // Accelerationist pool — speed compounds: raw compute, hype, raises.
+  {
+    id: "accel_scaling_run",
+    weight: 3,
+    tone: "good",
+    faction: "accel",
+    headline: "The 10× Run Pays Off",
+    body: "You sent it. No eval freeze, no committee, just a glorious wall of GPUs and a prayer. It worked. (This time.) Compute ×2 while it's hot.",
+    effect: { kind: "buff", target: "computeMult", factor: 2, durationSec: 45 },
+  },
+  {
+    id: "accel_hype_raise",
+    weight: 3,
+    tone: "good",
+    faction: "accel",
+    headline: "Momentum Round at a Silly Valuation",
+    body: "Going fast is its own pitch deck. Investors throw money at the lab that ships weekly and apologizes never. +40% cash.",
+    effect: { kind: "grantPct", resource: "money", pct: 0.4 },
+  },
+  {
+    id: "accel_viral_launch",
+    weight: 2,
+    tone: "good",
+    faction: "accel",
+    headline: "Ship-First Goes Viral",
+    body: "You launched the half-baked feature on a Friday and the internet did your QA for free. The buzz is enormous; the bug reports are tomorrow's problem.",
+    effect: { kind: "productBuzz", durationSec: 60 },
   },
 ];
 
@@ -921,6 +1049,10 @@ export const balance = {
     /** legacyWeightsGained = max(1, floor((lifetimeMoney / scale) ^ exponent)). */
     scale: 1e4,
     exponent: 0.5,
+    /** Depth B1 — shipping with the SAME charter as the previous run multiplies the
+     *  Legacy banked by this (conviction / double-down). 1 = off. Charters don't exist
+     *  at the first ship and the sim never sets one, so this is curve-safe. */
+    charterConvictionBonus: 1.15,
     /** Each Legacy Weight grants this much permanent global production. */
     multiplierPerPoint: 0.05,
     /**
@@ -1174,6 +1306,35 @@ export const balance = {
   },
 
   /**
+   * Depth B3 — the Regulator: a named bureaucrat with a LONG memory. `suspicion`
+   * (0..100) rises with every shady buy, doesn't cool on its own (only lobbying
+   * appeases it), and PERSISTS across prestige — so the regulator remembers you
+   * between runs and the pressure escalates the more corners you cut. Curve-safe:
+   * a clean lab (and the sim) never buys shady, so suspicion stays 0 → identity.
+   */
+  regulator: {
+    name: "Supervisor Chen",
+    max: 100,
+    /** Suspicion added per shady action (a dark-web tool buy or a Bazaar risk buy). */
+    perShadyBuy: 4,
+    /** Regulatory-event chance is multiplied by up to (1 + this) at MAX suspicion —
+     *  a watched lab gets audited far more often at the same Heat. */
+    eventChanceBoostAtMax: 1.5,
+    /** Lobbying also appeases the regulator: cut suspicion by this fraction per lobby. */
+    lobbyReduction: 0.25,
+    /** At this tier index and above, regulatory events are signed by the regulator
+     *  (the bureaucrat becomes a recurring character). */
+    nameFromTier: 2,
+    /** Suspicion tiers (highest `at` ≤ suspicion wins). */
+    tiers: [
+      { at: 0, label: "Unwatched", blurb: "Nobody's looking. Enjoy it while it lasts." },
+      { at: 25, label: "On the radar", blurb: "A junior analyst has a folder with your name on it." },
+      { at: 55, label: "Under investigation", blurb: "Chen has opened a formal case. Lawyer up." },
+      { at: 80, label: "Personal vendetta", blurb: "This is no longer about the law. It's personal now." },
+    ],
+  },
+
+  /**
    * Faction alignment (−1 doomer … 0 neutral … +1 accelerationist), shifted by
    * faction-event choices. It used to be a dead dial (set, never read). Now it's
    * a real strategic lane-tilt, folded into derive() + the Heat sites. Every value
@@ -1249,6 +1410,36 @@ export const balance = {
     meanIntervalSec: 150,
     /** Don't begin firing until the player has done some research. */
     minResearch: 1,
+    /** R6.2 — |alignment| past this commits you to a faction's event pool. Neutral
+     *  players (incl. the balance sim) never see tagged events → base pool unchanged. */
+    factionThreshold: 0.4,
+    /** "Hot topics" chaining: after an event fires, related events (same topic) are
+     *  this much likelier on the next roll for a short window, so crises cluster and
+     *  feel causal instead of random. Identity when nothing recent → curve-safe. */
+    chainBoost: 3,
+    /** How many recent fired-event ids the store keeps to drive chaining. */
+    chainWindow: 3,
+    /** Event id → topic. Only tagged events chain; untagged events never bias the
+     *  pool. Topics group thematically-adjacent events (a GPU shortage makes a price
+     *  war / compute donation likelier next). Central map = no per-event edits. */
+    topics: {
+      gpu_shortage: "compute", gpu_shortage_global: "compute", heatwave: "compute",
+      compute_donation: "compute", hardware_recall: "compute", rolling_blackouts: "compute",
+      datacenter_cooling: "compute", quantum_unrelated: "compute", tax_break: "compute",
+      power_bill: "compute", smuggling_busted: "compute",
+      market_crash: "money", gov_grant: "money", series_c: "money", acquihire: "money",
+      enterprise_pilot: "money", token_price_war: "money", founder_tweets: "money",
+      lawsuit: "money", regulatory_sandbox: "money",
+      data_breach: "data", opensource_dump: "data", benchmark_win: "data",
+      synthetic_breakthrough: "data", synthetic_flywheel: "data", data_poisoned: "data",
+      intern_refactor: "data", benchmark_vibes: "data",
+      competitor_launch: "rival", rival_closedai: "rival", rival_goggle: "rival",
+      rival_anthropos: "rival", rival_meta: "rival", rival_xaeai: "rival",
+      hallucination_scandal: "rival",
+      viral_demo: "hype", influencer: "hype", industry_hype: "hype",
+      viral_jailbreak: "hype", agi_internally: "hype",
+      pause_letter: "safety", hallucination_demo: "safety", talent_war: "safety",
+    } as Record<string, string>,
     list: WORLD_EVENTS,
   },
 

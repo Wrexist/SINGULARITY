@@ -1,5 +1,8 @@
 import { chartersBalance, charterDef, canSetCharter, chartersUnlocked } from "../engine/charter";
+import { balance } from "../engine/balance/config";
 import type { GameState } from "../engine/types";
+
+const CONVICTION_PCT = Math.round((balance.prestige.charterConvictionBonus - 1) * 100);
 
 interface Props {
   game: GameState;
@@ -45,14 +48,15 @@ export function CharterPanel({ game, onSet }: Props) {
   return (
     <section className="panel">
       <h2 className="panel-title">Lab Charter</h2>
-      <p className="charter-intro">Pick this run's focus — it tilts your economy. Locks once you research.</p>
+      <p className="charter-intro">Pick this run's focus — it tilts your economy. Locks once you research.{game.lastCharter && <> Re-pick last run's charter for a <b>+{CONVICTION_PCT}% Legacy</b> conviction bonus.</>}</p>
       <div className="list">
         {chartersBalance.list.map((c) => {
           const on = game.charter === c.id;
+          const conviction = game.lastCharter === c.id;
           return (
             <button key={c.id} className={`charter-card ${on ? "on" : ""}`} onClick={() => onSet(on ? null : c.id)}>
               <div className="charter-main">
-                <span className="charter-name">{c.name}{on && <span className="charter-pick"> ✓</span>}</span>
+                <span className="charter-name">{c.name}{on && <span className="charter-pick"> ✓</span>}{conviction && <span className="charter-conviction"> ↻ +{CONVICTION_PCT}%</span>}</span>
                 <span className="charter-blurb">{c.blurb}</span>
                 <span className="charter-effects">{effectChips(c.id)}</span>
               </div>

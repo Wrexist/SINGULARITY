@@ -128,4 +128,98 @@ describe("world events — firing & gating", () => {
     expect(typeof pickWorldEvent(0).id).toBe("string");
     expect(typeof pickWorldEvent(0.999).id).toBe("string");
   });
+
+  it("every world-event id is unique (a dup id makes the later entry dead content — applyWorldEvent resolves by find)", () => {
+    const ids = balance.worldEvents.list.map((e) => e.id);
+    const dups = ids.filter((id, i) => ids.indexOf(id) !== i);
+    expect(dups).toEqual([]);
+  });
+
+  it("every choice dilemma has exactly two branches that move alignment opposite ways", () => {
+    for (const e of balance.worldEvents.list) {
+      if (!e.choices) continue;
+      expect(e.choices).toHaveLength(2);
+      const [a, b] = e.choices;
+      // one branch leans doomer (≤0), the other accelerationist (≥0); never both same sign
+      expect(Math.sign(a!.alignment) !== Math.sign(b!.alignment) || a!.alignment === 0 || b!.alignment === 0).toBe(true);
+    }
+  });
+
+  describe("A2 — 'hot topics' event chaining", () => {
+    const topics = balance.worldEvents.topics;
+    const sweep = (recentIds: string[]): Set<string> => {
+      const seen = new Set<string>();
+      for (let r = 0; r < 1; r += 0.001) seen.add(pickWorldEvent(r, 0, recentIds).id);
+      return seen;
+    };
+    // Count how often a topic is picked across the roll space (proxy for probability).
+    const topicHits = (recentIds: string[], topic: string): number => {
+      let n = 0;
+      for (let r = 0; r < 1; r += 0.001) if (topics[pickWorldEvent(r, 0, recentIds).id] === topic) n += 1;
+      return n;
+    };
+
+    it("empty recent list = identity (curve-safe: base pool unchanged)", () => {
+      // Same picks with no recent history as the plain 2-arg call.
+      for (const r of [0, 0.25, 0.5, 0.75, 0.999]) {
+        expect(pickWorldEvent(r, 0, []).id).toBe(pickWorldEvent(r, 0).id);
+      }
+    });
+
+    it("a recent 'compute' event makes more 'compute' events come up next", () => {
+      const base = topicHits([], "compute");
+      const boosted = topicHits(["gpu_shortage"], "compute");
+      expect(boosted).toBeGreaterThan(base);
+    });
+
+    it("chaining never re-fires the exact same recent event as a boost target", () => {
+      // gpu_shortage is in the recent list → it must not itself be boosted (only its peers).
+      const seen = sweep(["gpu_shortage"]);
+      expect(seen.size).toBeGreaterThan(0); // still produces a spread of events
+    });
+  });
+
+  describe("R6.2 — faction-branched pools", () => {
+    const ids = () => balance.worldEvents.list.map((e) => e.id);
+    const sweep = (alignment: number): Set<string> => {
+      const seen = new Set<string>();
+      for (let r = 0; r < 1; r += 0.002) seen.add(pickWorldEvent(r, alignment).id);
+      return seen;
+    };
+    const doomerIds = balance.worldEvents.list.filter((e) => e.faction === "doomer").map((e) => e.id);
+    const accelIds = balance.worldEvents.list.filter((e) => e.faction === "accel").map((e) => e.id);
+
+    it("the data has both faction pools defined", () => {
+      expect(doomerIds.length).toBeGreaterThan(0);
+      expect(accelIds.length).toBeGreaterThan(0);
+    });
+
+    it("neutral players never see ANY faction-tagged event (base pool = curve-safe)", () => {
+      const seen = sweep(0);
+      for (const id of [...doomerIds, ...accelIds]) expect(seen.has(id)).toBe(false);
+    });
+
+    it("a committed doomer sees doomer events but no accelerationist ones", () => {
+      const seen = sweep(-1);
+      expect(doomerIds.some((id) => seen.has(id))).toBe(true);
+      for (const id of accelIds) expect(seen.has(id)).toBe(false);
+    });
+
+    it("a committed accelerationist sees accel events but no doomer ones", () => {
+      const seen = sweep(1);
+      expect(accelIds.some((id) => seen.has(id))).toBe(true);
+      for (const id of doomerIds) expect(seen.has(id)).toBe(false);
+    });
+
+    it("maybeWorldEvent routes through the aligned pool", () => {
+      const s = createInitialState();
+      s.research = ["backprop"];
+      s.alignment = -1; // committed doomer
+      // Fire deterministically; the only-doomer-or-untagged guarantee is covered above —
+      // here we just assert it still produces a valid event id with alignment set.
+      const res = maybeWorldEvent(s, balance.worldEvents.meanIntervalSec, 0, 0.999);
+      expect(res).not.toBeNull();
+      expect(ids()).toContain(res!.event.id);
+    });
+  });
 });

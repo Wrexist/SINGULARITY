@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { codexEntries, codexUnlockedCount, codexBalance } from "../engine/codex";
+import { codexEntries, codexUnlockedCount, codexBalance, codexBody } from "../engine/codex";
 import { BookIcon, LockIcon } from "./Icons";
 import type { GameState } from "../engine/types";
 
@@ -33,7 +33,7 @@ export function CodexPanel({ game }: Props) {
                 {unlocked ? entry.title : <><LockIcon size={12} /> Locked</>}
               </div>
               <div className="codex-entry-body">
-                {unlocked ? entry.body : `Unlocks as your lab grows.`}
+                {unlocked ? codexBody(game, entry) : `Unlocks as your lab grows.`}
               </div>
             </div>
           ))}

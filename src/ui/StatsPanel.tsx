@@ -4,9 +4,11 @@ import { fmt, fmtMoney, m$, numOf, fmtDur } from "./format";
 import { achievementDefs } from "../engine/achievements";
 import { reputationAvailable } from "../engine/reputation";
 import { alignmentProductionMods, alignmentHeatMult, alignmentProductMods } from "../engine/alignment";
+import { regulatorState } from "../engine/regulator";
 import { charterDef, charterMods } from "../engine/charter";
 import { balance } from "../engine/balance/config";
 import { ascensionMultiplier } from "../engine/prestige";
+import { totalMorale } from "../engine/derive";
 
 interface Props {
   game: GameState;
@@ -87,6 +89,8 @@ export function StatsPanel({ game, derived }: Props) {
     { label: "Passive income", value: `${fmtMoney(derived.passiveMoneyPerSec)}/s` },
     { label: "Faction stance", value: alignmentLabel(game.alignment) },
     ...(stance ? [{ label: "Stance effects", value: stance }] : []),
+    ...(game.suspicion > 0 ? [{ label: "Regulator", value: `${regulatorState(game).name} · ${regulatorState(game).label}` }] : []),
+    ...(game.employees.length > 0 ? [{ label: "Team morale", value: `×${totalMorale(game).toFixed(2)}` }] : []),
     ...(charter ? [charter] : []),
     ...crossSystemRows(game),
   ];
@@ -116,6 +120,19 @@ export function StatsPanel({ game, derived }: Props) {
       </button>
       {open && (
         <>
+          {game.alignment !== 0 && (
+            <div className="align-bar" title={`Alignment ${game.alignment.toFixed(2)}`}>
+              <div className="align-track">
+                <div className="align-center" />
+                <div className="align-marker" style={{ left: `${((game.alignment + 1) / 2) * 100}%` }} />
+              </div>
+              <div className="align-ends">
+                <span>Doomer</span>
+                <span className="align-now">{alignmentLabel(game.alignment)}</span>
+                <span>Accel</span>
+              </div>
+            </div>
+          )}
           <div className="stats-subhead">Now</div>
           <div className="stats-grid">
             {now.map((r) => (

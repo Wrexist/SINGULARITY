@@ -35,6 +35,13 @@ export function officeMorale(state: GameState): number {
   return m;
 }
 
+/** Total staff-output morale multiplier = office perks + Mentor traits. This is the
+ *  value derive() actually applies to every employee, so the UI must show THIS (not
+ *  just officeMorale) or the Mentor contribution stays invisible (B2). Pure. */
+export function totalMorale(state: GameState): number {
+  return officeMorale(state) + teamMorale(state.employees);
+}
+
 /** Payroll multiplier from owned office perks (≤ 1 trims the wage bill). */
 export function officePayrollMult(state: GameState): number {
   if (!balance.office.enabled) return 1;
@@ -126,7 +133,7 @@ export function derive(state: GameState): Derived {
   // every person's output; office perks also trim payroll. computeStaffEffects folds
   // the whole roster into lane multipliers, payroll, and per-product buffs (benched
   // people buff all products at base rate; assigned ones focus on theirs at 2×).
-  const morale = officeMorale(state) + teamMorale(state.employees);
+  const morale = totalMorale(state);
   // Cross-tick memo: the staff aggregation is O(employees × products) but its inputs
   // (the employees array reference, morale, the product-id set) only change on
   // hire/fire/train/assign/perk — not every 10Hz tick. derive() runs every render, so

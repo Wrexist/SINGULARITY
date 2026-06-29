@@ -2,7 +2,7 @@ import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "reac
 import { Portal } from "./Portal";
 import { balance } from "../engine/balance/config";
 import { canBuyOfficePerk } from "../engine/actions";
-import { officeMorale } from "../engine/derive";
+import { officeMorale, totalMorale } from "../engine/derive";
 import {
   roleDef, traitDef, employeePayroll, canTrain, trainCost, hireCost,
 } from "../engine/employees";
@@ -77,7 +77,13 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
   const [perksOpen, setPerksOpen] = useState(false);
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const team = game.employees;
-  const morale = officeMorale(game);
+  // The morale derive() actually applies = office perks + Mentor traits. Showing only
+  // officeMorale hid the Mentor contribution entirely (B2 fix).
+  const morale = totalMorale(game);
+  const mentorBoost = morale - officeMorale(game); // Mentor-trait share, for the breakdown
+  const moraleHint = mentorBoost > 0.0001
+    ? `Office perks ×${officeMorale(game).toFixed(2)} + mentors +${Math.round(mentorBoost * 100)}%`
+    : "From office perks (hire a Mentor to lift it further)";
 
   // Drag-to-assign (from a grip handle so list scrolling isn't hijacked). Hit-tests
   // pointer position against the project-card rects on drop.
@@ -164,7 +170,7 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
         <span className="emp-kpi-ic pay"><BanknoteIcon size={19} /></span>
         <div><div className="emp-kpi-v">{fmtMoney(derived.payrollPerSec)}</div><div className="emp-kpi-l">Payroll /s</div></div>
       </div>
-      <div className="emp-kpi">
+      <div className="emp-kpi" title={moraleHint}>
         <span className="emp-kpi-ic mood"><SmileIcon size={19} /></span>
         <div><div className="emp-kpi-v">×{morale.toFixed(2)}</div><div className="emp-kpi-l">Morale</div></div>
       </div>
