@@ -769,12 +769,14 @@ const WORLD_EVENTS: WorldEvent[] = [
 
 export const balance = {
   /**
-   * DIFFICULTY (owner-directed retune 2026-06-29). A single global multiplier on
-   * EVERY Compute/Data/Money cost — upgrades AND research. The economy is a
-   * spend-to-grow feedback loop, so scaling all costs by K stretches the whole
-   * curve ~K× longer (first prestige and every generation) without distorting the
-   * internal balance of *which* upgrade to buy when. Dial this one number to make
-   * the game faster/slower; re-run `npm run sim` to read the new pacing.
+   * DIFFICULTY (owner-directed retune 2026-06-29). A single multiplier applied in
+   * `upgradeCost()` and `researchCost()` — i.e. the upgrade- and research-buy paths,
+   * which are the dominant Compute/Data/Money sinks (other spend paths like data
+   * offers still use their raw `def.cost`). The economy is a spend-to-grow feedback
+   * loop, so scaling these costs by K stretches the whole curve ~K× longer (first
+   * prestige and every generation) without distorting the internal balance of *which*
+   * upgrade to buy when. Dial this one number to make the game faster/slower; re-run
+   * `npm run sim` to read the new pacing.
    */
   difficulty: { costMult: 2.0 },
 

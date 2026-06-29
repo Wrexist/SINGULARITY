@@ -22,7 +22,8 @@ An AI compute tycoon (idle/incremental + management) with a 2.5D data-center hal
 > R8 — Platform & LiveOps** (owner-picked 2026-06-28, plan in `R8_PLATFORM_LIVEOPS_PLAN.md`): on-device
 > **telemetry** (build first — instrument the real curve, zero privacy change), **durable save**
 > (harden export/import → optional cloud behind an interface, backend = owner call), **Android** (CI
-> workflow mirroring iOS), and a **Steam** feasibility memo. R8 touches NO balance → sim stays 12m15s.
+> workflow mirroring iOS), and a **Steam** feasibility memo. R8 platform work touches NO balance on its
+> own; the current tuned curve is the retune below (NOT the old 12m15s — see CURVE).
 > See `TASK.md` for live status.
 > Rendering: **Canvas 2D isometric** (parametric, no image assets). Hard rules still hold: 3 in-run
 > resources only (Legacy/Reputation are meta-currencies, not a 4th resource); engine pure/deterministic;

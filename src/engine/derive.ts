@@ -65,6 +65,10 @@ export function derive(state: GameState): Derived {
   let runDurationSec = balance.run.durationSec;
   let passiveMoneyPerSec = Big.ZERO;
   let dataPerSecFlat = Big.ZERO;
+  // World-event data buffs/debuffs that should also lift the passive scraper lane
+  // (the scraper deliberately skips the research/upgrade/staff `dataMult`, but a
+  // global time-limited data event is the same category as legacy/ascension/rep).
+  let scraperDataMult = Big.ONE;
   let autoClaim = false;
   let autoTrain = false;
 
@@ -167,7 +171,10 @@ export function derive(state: GameState): Derived {
   for (const m of state.modifiers) {
     if (m.remainingSec <= 0) continue;
     if (m.target === "computeMult") computeMult = computeMult.mul(m.factor);
-    else if (m.target === "dataMult") dataMult = dataMult.mul(m.factor);
+    else if (m.target === "dataMult") {
+      dataMult = dataMult.mul(m.factor);
+      scraperDataMult = scraperDataMult.mul(m.factor);
+    }
     else if (m.target === "moneyMult") moneyMult = moneyMult.mul(m.factor);
   }
 
@@ -227,11 +234,13 @@ export function derive(state: GameState): Derived {
   moneyMult = moneyMult.mul(lt.moneyMult);
 
   // Scraper output is its own lane (does NOT ride compute), so the GLOBAL data boosts
-  // must be applied to it directly: Legacy, ascension, reputation-data, AND the
-  // charter / legacy-tree data perks (those last two were previously missed, so a
-  // data-tilted charter/investment lifted run-data but not the passive lane). Computed
-  // here, after every data multiplier is known. Identity (1.0) on a fresh run.
+  // must be applied to it directly: Legacy, ascension, reputation-data, the charter /
+  // legacy-tree data perks, AND any active world-event data buff (`scraperDataMult`)
+  // — that last one was previously missed, so a data-event lifted run-data but not the
+  // passive lane. Computed here, after every data multiplier is known. Identity (1.0)
+  // on a fresh run with no active events.
   const dataPerSec = dataPerSecFlat
+    .mul(scraperDataMult)
     .mul(legacyMult).mul(ascensionMult).mul(rep.dataMult).mul(ch.dataMult).mul(lt.dataMult);
 
   let computePerSec = computeFlat.mul(computeMult);

@@ -6,6 +6,7 @@ import { contracts as CONTRACTS } from "./balance/contracts";
 import { legacyTree as LEGACY } from "./balance/legacyTree";
 import { reputation as REPUTATION } from "./balance/reputation";
 import { charters as CHARTERS } from "./balance/charters";
+import { balance } from "./balance/config";
 import type { ActiveModifier, DraftModel, Employee, GameState, LifetimeStats, ModifierTarget, ProductsState, ProductState, UpgradeState } from "./types";
 
 const MODIFIER_TARGETS: ModifierTarget[] = ["computeMult", "dataMult", "moneyMult"];
@@ -18,6 +19,7 @@ const CONTRACT_IDS = new Set(CONTRACTS.pool.map((c) => c.id));
 const LEGACY_IDS = new Set(LEGACY.perks.map((p) => p.id));
 const REP_PERK_COST = new Map(REPUTATION.perks.map((p) => [p.id, p.cost]));
 const CHARTER_IDS = new Set(CHARTERS.list.map((c) => c.id));
+const RESEARCH_IDS = new Set(balance.research.map((r) => r.id));
 
 /** Keep only known ids, each at most once (order preserved). Closes the duplicate /
  *  unknown-id save-edit class for contracts / legacy investments / reputation perks. */
@@ -387,8 +389,10 @@ export function deserialize(json: string): GameState {
       money: safeBig(res.money),
     },
     upgrades: sanitizeUpgrades(raw.upgrades),
-    // research must be an array of strings (a string/number/garbage would break length/includes).
-    research: Array.isArray(raw.research) ? raw.research.filter((r): r is string => typeof r === "string") : fresh.research,
+    // research: known node ids, each at most once. A dup (e.g. ["backprop","backprop"])
+    // would inflate state.research.length, which tick() accrues into peakResearchCount
+    // and any reward derived from it — so dedupe + known-id filter like contracts/perks.
+    research: dedupeKnownIds(raw.research, RESEARCH_IDS),
     run: {
       active: (raw.run as GameState["run"] | undefined)?.active === true,
       progress: clampNum((raw.run as GameState["run"] | undefined)?.progress, 0, 1, 0),

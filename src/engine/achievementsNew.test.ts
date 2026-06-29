@@ -32,6 +32,10 @@ describe("achievements for the new systems", () => {
     // The metric reads the MONOTONIC best-so-far (accrued each tick), not the live
     // value — so tick once to record the dominant rank into bestRivalsBeaten.
     s = tick(s, 1000); // accrues bestRivalsBeaten AND applies the achievement
+    // Now CRASH the live rank: drop MAU so the live rivalsBeaten(state) would be 0.
+    // The metric must stay at the monotonic best (5) — this is what pins the fix; a
+    // regression back to the live value would now fail instead of silently passing.
+    s.products.active[0]!.mau = 1;
     expect(metricValue(s, "rivalsBeaten").toNumber()).toBe(5);
     expect(s.achievements).toContain("market_1"); // tick already awarded it
   });
