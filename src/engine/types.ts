@@ -129,6 +129,9 @@ export interface LifetimeStats {
   ascensions: number;
   /** Models open-sourced (ships in the open-source mode). Feeds Lab Reputation. */
   openSourceShips: number;
+  /** Depth B1 — ships taken while COMMITTED to safety (doomer alignment past the
+   *  faction threshold). The safety community grants you standing → Lab Reputation. */
+  safetyShips: number;
   /** Best number of named rivals ever outranked (monotonic). Drives Codex unlocks so
    *  a collected entry can't re-lock when live rank slips (live rivalsBeaten can fall). */
   bestRivalsBeaten: number;

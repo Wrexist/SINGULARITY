@@ -25,6 +25,7 @@ export function earnedReputation(state: GameState): number {
   pts += state.stats.ascensions * R.perAscension;
   pts += contractsReputation(state); // completed contracts grant Reputation
   pts += state.stats.openSourceShips * shipModes.open_source.reputationBonus; // open-source goodwill
+  pts += state.stats.safetyShips * R.perSafetyShip; // safety-committed ships earn standing (B1)
   return pts;
 }
 

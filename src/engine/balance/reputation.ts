@@ -35,6 +35,9 @@ export const reputation = {
   /** Points per ship (steady trickle) and per AGI ascension (a windfall). */
   perShip: 1,
   perAscension: 8,
+  /** Bonus points per ship taken while committed to safety (doomer). Rewards a
+   *  principled meta-strategy; 0 through the tuned curve (first ship is neutral). */
+  perSafetyShip: 3,
 
   /** Floor for stacked research-cost discounts (research can get cheap, never free). */
   researchDiscountFloor: 0.25,

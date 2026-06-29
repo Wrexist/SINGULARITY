@@ -19,6 +19,26 @@ describe("lab reputation", () => {
     expect([m.computeMult, m.dataMult, m.moneyMult, m.payrollMult]).toEqual([1, 1, 1, 1]);
   });
 
+  it("safety-committed ships earn bonus Reputation (B1); identity at zero", () => {
+    const s = createInitialState();
+    expect(s.stats.safetyShips).toBe(0); // neutral by default → no bonus
+    const base = earnedReputation(s);
+    s.stats.safetyShips = 4;
+    expect(earnedReputation(s)).toBe(base + 4 * reputationBalance.perSafetyShip);
+  });
+
+  it("prestige counts a ship as a safety ship only when committed doomer", () => {
+    const ready = () => {
+      const s = createInitialState();
+      s.research = [balance.prestige.capabilityResearch];
+      s.lifetimeMoney = Big.of("1e8");
+      return s;
+    };
+    expect(prestige({ ...ready(), alignment: 0 }).stats.safetyShips).toBe(0);
+    expect(prestige({ ...ready(), alignment: -0.9 }).stats.safetyShips).toBe(1);
+    expect(prestige({ ...ready(), alignment: 0.9 }).stats.safetyShips).toBe(0); // accel doesn't count
+  });
+
   it("earns from achievements, ships, and ascensions", () => {
     const s = createInitialState();
     s.achievements = ["hire_1", "ship_1"]; // 2 + 2 = 4 (default rep)

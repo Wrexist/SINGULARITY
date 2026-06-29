@@ -151,6 +151,10 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
       // Keyed off the mode id (not `reputationBonus > 0`) so adding a future bonus-bearing
       // mode can't silently miscount this stat or the reputation it feeds.
       openSourceShips: state.stats.openSourceShips + (mode === "open_source" ? 1 : 0),
+      // Shipping while committed to safety (doomer past the faction threshold) earns
+      // community standing → Lab Reputation (B1). Neutral/accel ships don't count, and
+      // the first ship is always neutral, so this is 0 through the tuned curve.
+      safetyShips: state.stats.safetyShips + (state.alignment <= -balance.worldEvents.factionThreshold ? 1 : 0),
     },
     // Achievements are a permanent collection — they survive the reset.
     achievements: state.achievements,
