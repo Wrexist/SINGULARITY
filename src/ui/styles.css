@@ -1845,6 +1845,7 @@ svg { vertical-align: middle; }
   padding: 2px 7px; margin: -3px 0; max-width: 200px; outline: none;
 }
 .prod-sold-badge { font-weight: 700; color: #6d28d9; white-space: nowrap; }
+.prod-attention-badge { font-weight: 800; color: var(--coral); white-space: nowrap; }
 .prod-mrr { font-size: 15px; font-weight: 800; color: var(--money); font-variant-numeric: tabular-nums; }
 .prod-sub { display: flex; gap: 8px; align-items: center; }
 .prod-badge {

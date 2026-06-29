@@ -50,6 +50,21 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
   );
   const totalMrr = ps.active.reduce((s, p) => s + (metrics.get(p.id)?.mrr ?? 0), 0);
   const totalMargin = ps.active.reduce((s, p) => s + (metrics.get(p.id)?.margin ?? 0), 0);
+  // Portfolio health (C1): a product needs attention if it's losing money or falling
+  // behind the frontier. Float the bleeders to the top so problems are seen first —
+  // sorted by margin-sign only (a stable signal), so the list doesn't jitter at 10Hz.
+  const needsAttention = (p: typeof ps.active[number]) => {
+    const m = metrics.get(p.id);
+    return !!m && (m.margin < 0 || m.qf < 0.5);
+  };
+  const attentionCount = ps.active.filter(needsAttention).length;
+  const sortedActive = useMemo(() => {
+    return [...ps.active].sort((a, b) => {
+      const ma = (metrics.get(a.id)?.margin ?? 0) < 0 ? 0 : 1;
+      const mb = (metrics.get(b.id)?.margin ?? 0) < 0 ? 0 : 1;
+      return ma - mb; // bleeders (0) first; stable within each group preserves order
+    });
+  }, [ps.active, metrics]);
 
   return (
     <section className="panel">
@@ -57,6 +72,7 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
       <p className="floor-meter">
         Portfolio: <b>{m$(totalMrr)}/s</b> revenue · {totalMargin >= 0 ? "+" : ""}{m$(totalMargin)}/s profit · {ps.active.length}/{maxSlots} slots
         {ps.sold > 0 && <> · <span className="prod-sold-badge"><TagIcon size={12} /> {ps.sold} sold</span></>}
+        {attentionCount > 0 && <> · <span className="prod-attention-badge">⚠ {attentionCount} need{attentionCount === 1 ? "s" : ""} attention</span></>}
       </p>
 
       {/* Raw models from Ship the Model — commercialise them into products. */}
@@ -111,7 +127,7 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
       )}
 
       <div className="list">
-        {ps.active.map((p) => {
+        {sortedActive.map((p) => {
           const t = typeDef(p.type);
           const me = metrics.get(p.id)!;
           const up = p.upgrade;
