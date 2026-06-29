@@ -1,7 +1,6 @@
 import { Big } from "./math/Big";
 import { achievements as DEFS, type AchievementDef, type AchMetric } from "./balance/achievements";
 import { currentEra } from "./eras";
-import { rivalsBeaten } from "./market";
 import { collectionProgress } from "./cosmetics";
 import type { GameState } from "./types";
 
@@ -37,7 +36,9 @@ export function metricValue(state: GameState, metric: AchMetric): Big {
     case "openSourceShips": return Big.of(s.openSourceShips);
     case "contractsDone": return Big.of(state.contracts.completed.length);
     case "legacyInvested": return Big.of(state.legacyInvestments.length);
-    case "rivalsBeaten": return Big.of(rivalsBeaten(state));
+    // Use the monotonic best-so-far (not the live value, which falls when rank slips)
+    // so the badge PROGRESS bar can't visibly wobble downward — matching the codex.
+    case "rivalsBeaten": return Big.of(state.stats.bestRivalsBeaten);
     case "ascensions": return Big.of(s.ascensions);
     // Cosmetic collection (R6.3): count themes earned by PLAY (premium excluded, so it's
     // a genuine play achievement, not a purchase). Derived from monotonic lifetime stats.

@@ -1,6 +1,21 @@
 import { describe, it, expect } from "vitest";
-import { etaSecs, fmtEta } from "./format";
+import { etaSecs, fmtEta, m$, numOf, fmtDur, fmtTime } from "./format";
 import { Big } from "../engine/math/Big";
+
+describe("formatters degrade gracefully on non-finite input (security round 2)", () => {
+  it("m$ / numOf coerce NaN/Infinity to the zero value (no garbage currency)", () => {
+    expect(m$(NaN)).toBe(m$(0));
+    expect(m$(Infinity)).toBe(m$(0));
+    expect(numOf(NaN)).toBe("0");
+    expect(numOf(Infinity)).toBe("0");
+  });
+  it("fmtDur / fmtTime clamp non-finite + negative to '0s'", () => {
+    expect(fmtDur(NaN)).toBe("0s");
+    expect(fmtDur(Infinity)).toBe("0s");
+    expect(fmtTime(NaN)).toBe("0s");
+    expect(fmtTime(-5)).toBe("0s");
+  });
+});
 
 describe("time-to-afford helpers", () => {
   it("returns null when already affordable", () => {

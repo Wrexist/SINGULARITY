@@ -2,10 +2,34 @@ import { Big } from "./math/Big";
 import { SAVE_VERSION, createInitialState } from "./state";
 import { initialStats } from "./stats";
 import { products as PRODUCTS } from "./balance/products";
+import { contracts as CONTRACTS } from "./balance/contracts";
+import { legacyTree as LEGACY } from "./balance/legacyTree";
+import { reputation as REPUTATION } from "./balance/reputation";
+import { charters as CHARTERS } from "./balance/charters";
 import type { ActiveModifier, DraftModel, Employee, GameState, LifetimeStats, ModifierTarget, ProductsState, ProductState, UpgradeState } from "./types";
 
 const MODIFIER_TARGETS: ModifierTarget[] = ["computeMult", "dataMult", "moneyMult"];
 const PRODUCT_TYPE_IDS = PRODUCTS.types.map((t) => t.id);
+
+// Known-id sets for the meta-progression collections (round-2 hardening). A save is
+// editable text, so these arrays must hold KNOWN ids, EXACTLY ONCE — otherwise a
+// hand-edited dupe (e.g. contracts.completed) inflates a permanent meta-currency.
+const CONTRACT_IDS = new Set(CONTRACTS.pool.map((c) => c.id));
+const LEGACY_IDS = new Set(LEGACY.perks.map((p) => p.id));
+const REP_PERK_COST = new Map(REPUTATION.perks.map((p) => [p.id, p.cost]));
+const CHARTER_IDS = new Set(CHARTERS.list.map((c) => c.id));
+
+/** Keep only known ids, each at most once (order preserved). Closes the duplicate /
+ *  unknown-id save-edit class for contracts / legacy investments / reputation perks. */
+function dedupeKnownIds(arr: unknown, known: Set<string>): string[] {
+  if (!Array.isArray(arr)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const x of arr) {
+    if (typeof x === "string" && known.has(x) && !seen.has(x)) { seen.add(x); out.push(x); }
+  }
+  return out;
+}
 
 // ---- Untrusted-input hardening (a save is editable text the player can paste back
 //      via the backup feature). Every numeric field below is clamped to a FINITE,
@@ -163,27 +187,28 @@ function sanitizeStats(s: unknown): LifetimeStats {
   const d = initialStats();
   if (!s || typeof s !== "object") return d;
   const o = s as Record<string, unknown>;
-  const big = (v: unknown, fb: Big): Big => {
-    if (typeof v !== "string" && typeof v !== "number") return fb;
-    try { return Big.of(v); } catch { return fb; }
-  };
+  // Use safeBig so a save-edited "NaN"/"Infinity"/negative stat can't sneak a NaN Big
+  // through (try/catch missed it — Big.of("NaN") doesn't throw, it returns a NaN Big).
   const numf = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : 0);
+  // Discrete progression COUNTS (some feed the permanent Reputation currency) get a
+  // generous finite ceiling so a save-edited 1e9 can't mint unbounded Reputation/badges.
+  const countf = (v: unknown): number => Math.floor(Math.min(numf(v), 1e9));
   return {
-    totalMoney: big(o.totalMoney, d.totalMoney),
-    peakComputePerSec: big(o.peakComputePerSec, d.peakComputePerSec),
-    totalLegacy: big(o.totalLegacy, d.totalLegacy),
+    totalMoney: safeBig(o.totalMoney, d.totalMoney),
+    peakComputePerSec: safeBig(o.peakComputePerSec, d.peakComputePerSec),
+    totalLegacy: safeBig(o.totalLegacy, d.totalLegacy),
     peakMrr: numf(o.peakMrr),
     peakMau: numf(o.peakMau),
-    peakResearchCount: numf(o.peakResearchCount),
-    totalShips: numf(o.totalShips),
-    productsLaunched: numf(o.productsLaunched),
-    employeesHired: numf(o.employeesHired),
-    worldEventsResolved: numf(o.worldEventsResolved),
+    peakResearchCount: countf(o.peakResearchCount),
+    totalShips: countf(o.totalShips),
+    productsLaunched: countf(o.productsLaunched),
+    employeesHired: countf(o.employeesHired),
+    worldEventsResolved: countf(o.worldEventsResolved),
     playtimeSec: numf(o.playtimeSec),
-    ascensions: numf(o.ascensions),
-    openSourceShips: numf(o.openSourceShips),
-    safetyShips: numf(o.safetyShips), // old saves → 0 (sanitizer-defaulted; no version bump needed)
-    bestRivalsBeaten: numf(o.bestRivalsBeaten), // old saves → 0 (best-so-far starts low and only climbs)
+    ascensions: countf(o.ascensions),
+    openSourceShips: countf(o.openSourceShips),
+    safetyShips: countf(o.safetyShips), // old saves → 0 (sanitizer-defaulted; no version bump needed)
+    bestRivalsBeaten: countf(o.bestRivalsBeaten), // old saves → 0 (best-so-far starts low and only climbs)
   };
 }
 
@@ -387,11 +412,13 @@ export function deserialize(json: string): GameState {
       : [],
     reputation: sanitizeReputation(raw.reputation),
     contracts: sanitizeContracts(raw.contracts),
-    charter: typeof raw.charter === "string" ? raw.charter : null,
-    lastCharter: typeof raw.lastCharter === "string" ? raw.lastCharter : null,
-    legacyInvestments: Array.isArray(raw.legacyInvestments)
-      ? raw.legacyInvestments.filter((x): x is string => typeof x === "string")
-      : [],
+    // Validate against KNOWN charter ids: an unknown/crafted id would still grant the
+    // +15% conviction bonus (charter === lastCharter) without a real two-run commitment.
+    charter: typeof raw.charter === "string" && CHARTER_IDS.has(raw.charter) ? raw.charter : null,
+    lastCharter: typeof raw.lastCharter === "string" && CHARTER_IDS.has(raw.lastCharter) ? raw.lastCharter : null,
+    // KNOWN legacy-perk ids, deduped — a dupe would apply the lane bias twice for free
+    // (legacyTreeMods sums per entry and never checks prereqs on load).
+    legacyInvestments: dedupeKnownIds(raw.legacyInvestments, LEGACY_IDS),
     // Generation-scoped (not persisted): a mid-run reload simply re-accrues the run
     // peaks, and the ship report is transient — both start fresh on load.
     runPeakCompute: fresh.runPeakCompute,
@@ -400,21 +427,23 @@ export function deserialize(json: string): GameState {
   };
 }
 
-/** Contracts are untrusted: keep a clean array of completed string ids. */
+/** Contracts are untrusted: KNOWN completed-contract ids, each at most once — a
+ *  duplicate id would re-count its Reputation reward without bound (the load path
+ *  bypasses claimContract's includes-check). */
 function sanitizeContracts(c: unknown): { completed: string[] } {
   const o = (c ?? {}) as { completed?: unknown };
-  return {
-    completed: Array.isArray(o.completed) ? o.completed.filter((x): x is string => typeof x === "string") : [],
-  };
+  return { completed: dedupeKnownIds(o.completed, CONTRACT_IDS) };
 }
 
-/** Reputation is untrusted: keep a non-negative spent + string perk ids. */
+/** Reputation is untrusted: KNOWN perk ids (deduped), and `spent` reconciled so it's
+ *  at least the cost of the perks you own — a save can't grant owned perks for free
+ *  (under-reported spent) the way `legacySpent` (derived) already can't. */
 function sanitizeReputation(r: unknown): { spent: number; perks: string[] } {
   const o = (r ?? {}) as { spent?: unknown; perks?: unknown };
-  return {
-    spent: typeof o.spent === "number" && Number.isFinite(o.spent) && o.spent >= 0 ? o.spent : 0,
-    perks: Array.isArray(o.perks) ? o.perks.filter((p): p is string => typeof p === "string") : [],
-  };
+  const perks = dedupeKnownIds(o.perks, new Set(REP_PERK_COST.keys()));
+  const owedForOwned = perks.reduce((sum, id) => sum + (REP_PERK_COST.get(id) ?? 0), 0);
+  const loadedSpent = typeof o.spent === "number" && Number.isFinite(o.spent) && o.spent >= 0 ? o.spent : 0;
+  return { spent: Math.max(loadedSpent, owedForOwned), perks };
 }
 
 /**

@@ -204,9 +204,6 @@ export function derive(state: GameState): Derived {
   dataMult = dataMult.mul(rep.dataMult);
   moneyMult = moneyMult.mul(rep.moneyMult);
   if (rep.payrollMult !== 1) payrollPerSec = payrollPerSec.mul(rep.payrollMult);
-  // Scraper output is its own lane (does NOT ride compute), so global boosts —
-  // Legacy, ascension, AND reputation data perks — must be applied to it directly.
-  const dataPerSec = dataPerSecFlat.mul(legacyMult).mul(ascensionMult).mul(rep.dataMult);
 
   // Faction alignment: a strategic lane-tilt (accelerationist trades money for
   // compute, doomer the reverse). Identity at neutral, so the curve/sim are
@@ -228,6 +225,14 @@ export function derive(state: GameState): Derived {
   computeMult = computeMult.mul(lt.computeMult);
   dataMult = dataMult.mul(lt.dataMult);
   moneyMult = moneyMult.mul(lt.moneyMult);
+
+  // Scraper output is its own lane (does NOT ride compute), so the GLOBAL data boosts
+  // must be applied to it directly: Legacy, ascension, reputation-data, AND the
+  // charter / legacy-tree data perks (those last two were previously missed, so a
+  // data-tilted charter/investment lifted run-data but not the passive lane). Computed
+  // here, after every data multiplier is known. Identity (1.0) on a fresh run.
+  const dataPerSec = dataPerSecFlat
+    .mul(legacyMult).mul(ascensionMult).mul(rep.dataMult).mul(ch.dataMult).mul(lt.dataMult);
 
   let computePerSec = computeFlat.mul(computeMult);
   // PHASE 2 (flagged off): power/heat soft-cap throttles Compute when the racks

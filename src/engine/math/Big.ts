@@ -104,6 +104,12 @@ export class Big {
 const SUFFIXES = ["", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No", "Dc"];
 
 function formatBig(d: Decimal): string {
+  // Never render a non-finite value as the nonsense string formatBig would otherwise
+  // compute ("1e9000000000000000"). break_infinity stores NaN as mantissa=NaN and ±∞
+  // as a sentinel exponent (~9e15), so detect both explicitly. Defensive: every entry
+  // path is now sanitized, but a display helper must degrade gracefully regardless.
+  if (Number.isNaN(d.mantissa)) return "0";
+  if (d.exponent >= 1e15) return d.mantissa < 0 ? "-∞" : "∞";
   if (d.lt(1000)) {
     // Sub-thousand: show integers cleanly, small decimals with one place.
     const n = d.toNumber();

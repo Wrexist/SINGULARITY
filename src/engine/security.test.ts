@@ -4,6 +4,9 @@ import { createInitialState } from "./state";
 import { tick } from "./tick";
 import { buyDataOffer, applyHeatEvent } from "./actions";
 import { releaseProduct } from "./products";
+import { earnedReputation } from "./reputation";
+import { legacyTreeMods } from "./legacyTree";
+import { charterConvictionMult } from "./prestige";
 import { balance } from "./balance/config";
 import { products as PRODUCTS } from "./balance/products";
 import { Big } from "./math/Big";
@@ -123,5 +126,63 @@ describe("security — runtime event hardening", () => {
     // Spending-down didn't get off free: the dodged fine became Heat + suspicion.
     expect(state.heat).toBeGreaterThan(0);
     expect(state.suspicion).toBeGreaterThan(balance.regulator.perShadyBuy);
+  });
+});
+
+describe("security round 2 — meta-progression collections (known ids, exactly once)", () => {
+  const load = (mutate: (raw: any) => void) => {
+    const base = JSON.parse(serialize(createInitialState()));
+    mutate(base);
+    return deserialize(JSON.stringify(base));
+  };
+
+  it("duplicate contracts.completed can't inflate Reputation (deduped + known-id only)", () => {
+    const s = load((r) => { r.contracts = { completed: ["ascended", "ascended", "ascended", "not_a_contract"] }; });
+    expect(s.contracts.completed).toEqual(["ascended"]); // deduped, unknown dropped
+    // earned reputation is bounded — not 3× the 'ascended' reward.
+    const single = load((r) => { r.contracts = { completed: ["ascended"] }; });
+    expect(earnedReputation(s)).toBe(earnedReputation(single));
+  });
+
+  it("stats counters that feed Reputation are capped (no 1e9-ascensions mint)", () => {
+    const s = load((r) => { r.stats = { ...r.stats, ascensions: 1e18, safetyShips: 1e18, totalShips: 1e18 }; });
+    expect(s.stats.ascensions).toBeLessThanOrEqual(1e9);
+    expect(Number.isFinite(earnedReputation(s))).toBe(true);
+    expect(earnedReputation(s)).toBeLessThanOrEqual(1e11);
+  });
+
+  it("legacyInvestments deduped + known-id only (no double lane-bias / prereq bypass at extreme)", () => {
+    const s = load((r) => { r.legacyInvestments = ["leg_compute2", "leg_compute2", "ghost"]; });
+    expect(s.legacyInvestments).toEqual(["leg_compute2"]); // one copy, unknown dropped
+    const single = load((r) => { r.legacyInvestments = ["leg_compute2"]; });
+    expect(legacyTreeMods(s).computeMult).toBeCloseTo(legacyTreeMods(single).computeMult, 9);
+  });
+
+  it("reputation.perks: unknown dropped, deduped, and spent reconciled to cover owned", () => {
+    const s = load((r) => { r.reputation = { spent: 0, perks: ["rep_legend", "rep_legend", "ghost"] }; });
+    expect(s.reputation.perks).toEqual(["rep_legend"]);
+    expect(s.reputation.spent).toBeGreaterThanOrEqual(200); // can't own the capstone for free
+  });
+
+  it("an unknown charter id can't grant the +15% conviction bonus", () => {
+    const s = load((r) => { r.charter = "totally_fake"; r.lastCharter = "totally_fake"; });
+    expect(s.charter).toBeNull();
+    expect(s.lastCharter).toBeNull();
+    expect(charterConvictionMult({ ...s, research: [balance.prestige.capabilityResearch], lifetimeMoney: Big.of("1e8") })).toBe(1);
+  });
+});
+
+describe("security round 2 — display + tick degrade gracefully on non-finite", () => {
+  it("Big.format renders ∞ / NaN as symbols, not a garbage exponent string", () => {
+    expect(Big.of(Infinity).format()).toBe("∞");
+    expect(Big.of(-Infinity).format()).toBe("-∞");
+    expect(Big.of(NaN).format()).toBe("0");
+    expect(Big.of("1e616").format()).toMatch(/e616$/); // a huge-but-finite value still formats
+  });
+
+  it("tick rejects a NaN elapsed (no resource corruption)", () => {
+    const s = { ...createInitialState(), resources: { ...createInitialState().resources, compute: Big.of(100) } };
+    expect(tick(s, NaN)).toBe(s); // unchanged
+    expect(tick(s, -5)).toBe(s);
   });
 });

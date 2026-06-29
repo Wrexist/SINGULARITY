@@ -17,7 +17,10 @@ import type { Derived, GameState } from "./types";
  * Returns a new object; never mutates the input (keeps it pure and testable).
  */
 export function tick(state: GameState, elapsedMs: number): GameState {
-  if (elapsedMs <= 0) return state;
+  // `!(x > 0)` rejects NaN as well as ≤0 (NaN ≤ 0 is false, so the old guard let a NaN
+  // elapsed through → every resource would go NaN). The engine owns this invariant now,
+  // so no caller can corrupt state with a bad dt.
+  if (!(elapsedMs > 0)) return state;
   const seconds = elapsedMs / 1000;
 
   // Segment the window at the next modifier expiry. Otherwise a large frame
