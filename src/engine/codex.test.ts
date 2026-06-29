@@ -1,9 +1,34 @@
 import { describe, it, expect } from "vitest";
-import { codexUnlocked, codexUnlockedCount, codexEntries, codexBalance } from "./codex";
+import { codexUnlocked, codexUnlockedCount, codexEntries, codexBalance, codexBody } from "./codex";
 import { createInitialState } from "./state";
 import { Big } from "./math/Big";
 
 describe("codex (Field Notes)", () => {
+  describe("A4 — entries re-read by tenure + stance", () => {
+    const factions = codexBalance.entries.find((e) => e.id === "factions")!;
+    const closet = codexBalance.entries.find((e) => e.id === "closet")!;
+
+    it("returns the default body when no variant applies", () => {
+      expect(codexBody(createInitialState(), factions)).toBe(factions.body);
+    });
+
+    it("a committed doomer vs accel read different faction lore", () => {
+      const doomer = codexBody({ ...createInitialState(), alignment: -0.8 }, factions);
+      const accel = codexBody({ ...createInitialState(), alignment: 0.8 }, factions);
+      expect(doomer).toBe(factions.variants!.doomer);
+      expect(accel).toBe(factions.variants!.accel);
+      expect(doomer).not.toBe(accel);
+    });
+
+    it("a veteran (deep ship count) sees the matured 'closet' entry", () => {
+      const fresh = createInitialState();
+      expect(codexBody(fresh, closet)).toBe(closet.body);
+      const vet = createInitialState();
+      vet.stats.totalShips = 5;
+      expect(codexBody(vet, closet)).toBe(closet.variants!.veteran!.body);
+    });
+  });
+
   it("unlocks the always-on intro and nothing gated above the start", () => {
     const s = createInitialState();
     const intro = codexBalance.entries.find((e) => e.threshold === 0)!;

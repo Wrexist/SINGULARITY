@@ -28,11 +28,21 @@ export interface CodexEntry {
   body: string;
   metric: CodexMetric;
   threshold: number;
+  /** A4 — the entry RE-READS with the player's stance/tenure: a doomer and an accel
+   *  see different text, and a veteran sees a matured version. Picked by `codexBody`;
+   *  falls back to `body`. Pure flavor, no new mechanics. */
+  variants?: {
+    doomer?: string;
+    accel?: string;
+    veteran?: { atShips: number; body: string };
+  };
 }
 
 export const codex = {
   entries: [
-    { id: "closet", title: "The Closet Years", body: "Every lab starts in a rented box that smells of warm plastic and ambition. The compute hums; the landlord does not know what a GPU is. This is the golden age, and you will spend the rest of the game trying to get back to how simple it felt.", metric: "totalShips", threshold: 0 },
+    { id: "closet", title: "The Closet Years", body: "Every lab starts in a rented box that smells of warm plastic and ambition. The compute hums; the landlord does not know what a GPU is. This is the golden age, and you will spend the rest of the game trying to get back to how simple it felt.", metric: "totalShips", threshold: 0, variants: {
+      veteran: { atShips: 5, body: "You remember the closet. The warm plastic, the one rack, the landlord who thought a GPU was a kind of fish. Five ships later you'd give a data centre to feel that uncomplicated again — but you won't, and you know it." },
+    } },
     { id: "first_run", title: "On the Training Run", body: "You feed the machine compute; it returns data and money and a faint sense that it understood the assignment. Nobody is entirely sure what it learned. This is considered normal.", metric: "peakComputePerSec", threshold: 100 },
     { id: "the_ship", title: "Shipping the Model", body: "To 'ship' is to declare a model finished, which it never is. You bank the lessons (Legacy Weights), wipe the lab, and start again — wiser, faster, and somehow with the same problems.", metric: "totalShips", threshold: 1 },
     { id: "data_wars", title: "The Data Wars", body: "Everyone insists their data is clean. Everyone's data is a landfill with a nice UI. The Bazaar exists because someone, somewhere, will sell you a terabyte of raccoon photos labelled 'reasoning'.", metric: "productsLaunched", threshold: 1 },
@@ -41,7 +51,10 @@ export const codex = {
     { id: "scaling", title: "Scaling Laws", body: "It turns out the trick was 'more'. More compute, more data, more electricity than a mid-sized country. The bitter lesson is bitter mostly to the people paying the power bill.", metric: "peakComputePerSec", threshold: 1_000_000 },
     { id: "open_weights", title: "Open Weights", body: "You gave the model away and the internet improved it overnight, then used it for things you will not describe to investors. The community loves you. You are broke but beloved.", metric: "openSourceShips", threshold: 1 },
     { id: "pmf", title: "Product-Market Fit (Allegedly)", body: "A million people use your model daily. Thirty-five of them pay. This is described in the deck as 'enormous monetisation upside'.", metric: "peakMau", threshold: 1_000_000 },
-    { id: "factions", title: "The Doomers and the Boomers", body: "One camp wants to slow down before it ends the world; the other wants to speed up before someone else ends the world first. They are, unsettlingly, both at the same party.", metric: "worldEventsResolved", threshold: 15 },
+    { id: "factions", title: "The Doomers and the Boomers", body: "One camp wants to slow down before it ends the world; the other wants to speed up before someone else ends the world first. They are, unsettlingly, both at the same party.", metric: "worldEventsResolved", threshold: 15, variants: {
+      doomer: "You've taken a side, and it's the cautious one. They call you a fearmonger at the parties you're no longer invited to. You sleep fine. Mostly.",
+      accel: "You've taken a side, and it's the fast one. The safety crowd writes concerned threads about you; you screenshot them for the pitch deck. Onward.",
+    } },
     { id: "hyperscale", title: "The Hyperscalers", body: "At some point the company stops buying racks and starts buying substations. The data centre has its own weather. Somewhere, a spreadsheet quietly becomes a power utility.", metric: "totalShips", threshold: 5 },
     { id: "unicorn", title: "Unicorn Status", body: "Revenue per second now exceeds what most startups raise in a seed round. The press calls it 'inevitable'. They called it 'a toy' eighteen months ago. Nobody remembers.", metric: "peakMrr", threshold: 10_000 },
     { id: "rsi", title: "Recursive Self-Improvement", body: "The model starts suggesting improvements to itself, and they're good. The team debates whether to be excited or to back away slowly. They choose 'ship it'.", metric: "peakResearchCount", threshold: 15 },
