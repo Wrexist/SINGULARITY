@@ -20,6 +20,31 @@ describe("hall view-model", () => {
     expect(hot.loadFrac).toBeGreaterThan(1);
   });
 
+  it("C2 — surfaces staff count, product beams, and alignment for manifestation", () => {
+    const bare = buildHallModel(createInitialState());
+    expect(bare.staff).toBe(0);
+    expect(bare.beams).toEqual([]);
+    expect(bare.alignment).toBe(0);
+
+    const s = createInitialState();
+    s.alignment = -0.6;
+    s.employees = [
+      { id: "a", name: "Ada", roleId: "staff_engineer", level: 1, trait: null, assignedProductId: null, training: null },
+      { id: "b", name: "Bo", roleId: "staff_ops", level: 1, trait: null, assignedProductId: null, training: null },
+    ];
+    s.products = { ...s.products, active: [
+      { id: "p1", type: "general", name: "X", quality: 10, version: 2, mau: 5_000_000, paid: 200_000, priceMult: 1, marketingPerSec: 1000, buzzSec: 0, features: [], enterprise: false, enterprisePrice: 1, channelMix: {}, ageSec: 1e6, upgrade: null },
+      { id: "p2", type: "code", name: "Y", quality: 8, version: 1, mau: 200_000, paid: 4_000, priceMult: 1, marketingPerSec: 200, buzzSec: 0, features: [], enterprise: false, enterprisePrice: 1, channelMix: {}, ageSec: 1e6, upgrade: null },
+    ] };
+    const m = buildHallModel(s);
+    expect(m.staff).toBe(2);
+    expect(m.alignment).toBe(-0.6);
+    expect(m.beams).toHaveLength(2);
+    // The bigger earner normalises to a full-intensity beam; all beams are in (0,1].
+    expect(Math.max(...m.beams)).toBeCloseTo(1, 6);
+    expect(m.beams.every((b) => b > 0 && b <= 1)).toBe(true);
+  });
+
   it("maps owned hardware to racks of the right tier (manifestation rule)", () => {
     const s = createInitialState();
     s.upgrades = { rack_basic: 3, rack_server: 2, rack_tpu: 1 };

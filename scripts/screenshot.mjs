@@ -135,6 +135,39 @@ try {
           lifetimeMoney: "1500",
           heat: 0,
         }
+      : has("manifest")
+      ? {
+          // C2 manifestation showcase: staff on the floor, live products (uplink
+          // beams), a committed alignment (room tint), and an over-subscribed power
+          // budget (thermal shimmer). Migrates forward from this shape.
+          version: 16,
+          resources: { compute: "180000", data: "26000", money: "9200000" },
+          upgrades: { rack_basic: 40, rack_server: 26, rack_tpu: 14, overclock: 5, data_pipeline: 6, monetize: 6, auto_claim: 1, auto_train: 1, expand_e: 3, expand_s: 3 },
+          research: ["backprop", "curated_data", "distributed", "distillation", "inference_api"],
+          run: { active: true, progress: 0.55, readyToClaim: false },
+          prestige: { legacyWeights: "120", ships: 4 },
+          lifetimeMoney: "900000000",
+          heat: 40,
+          suspicion: 62,
+          alignment: 0.7,
+          products: {
+            frontier: 30,
+            active: [
+              { id: "p1", type: "general", name: "Mirage", quality: 28, version: 6, mau: 9_000_000, paid: 320_000, priceMult: 1, marketingPerSec: 4000, buzzSec: 0, features: [], enterprise: true, enterprisePrice: 1.4, channelMix: {}, ageSec: 1e6 },
+              { id: "p2", type: "code", name: "Cogito", quality: 22, version: 4, mau: 2_400_000, paid: 110_000, priceMult: 1.1, marketingPerSec: 2000, buzzSec: 0, features: [], enterprise: false, enterprisePrice: 1, channelMix: {}, ageSec: 1e6 },
+              { id: "p3", type: "companion", name: "Pocket Pal", quality: 14, version: 2, mau: 600_000, paid: 12_000, priceMult: 0.9, marketingPerSec: 800, buzzSec: 0, features: [], enterprise: false, enterprisePrice: 1, channelMix: {}, ageSec: 1e6 },
+            ],
+            drafts: [], sold: 0, milestones: [],
+          },
+          employees: [
+            { id: "e1", name: "Ada", roleId: "staff_researcher", level: 3, trait: "mentor" },
+            { id: "e2", name: "Grace", roleId: "staff_engineer", level: 2, trait: null },
+            { id: "e3", name: "Linus", roleId: "staff_ops", level: 2, trait: "workaholic" },
+            { id: "e4", name: "Mide", roleId: "staff_sales", level: 2, trait: null },
+            { id: "e5", name: "Sol", roleId: "staff_growth", level: 1, trait: null },
+            { id: "e6", name: "Ife", roleId: "staff_pr", level: 1, trait: null },
+          ],
+        }
       : {
           version: 2,
           resources: { compute: "850", data: "140", money: "2600" },

@@ -322,6 +322,16 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
     drawThermalStress(ctx, W, H, originY, o.timeMs, intensity, o.reducedMotion);
   }
 
+  // C2 — product "uplink beams": one glowing column per live product, rising from the
+  // back of the floor, height ∝ revenue. Drawn before staff so agents read in front.
+  if (model.beams.length > 0) drawBeams(ctx, L, model.beams, o.timeMs, o.reducedMotion);
+
+  // C2 — staff on the floor: little agents working the room (headcount made visible).
+  if (model.staff > 0) drawStaffAgents(ctx, L, model.staff, o.timeMs, o.reducedMotion);
+
+  // C2 — faction tint: a faint room-wide wash by alignment (doomer cool, accel warm).
+  if (Math.abs(model.alignment) > 0.15) drawAlignmentTint(ctx, W, H, model.alignment);
+
   // Auto-train "ops bot": a small glowing dot that patrols the floor, so the
   // automation you bought is something you can see working. Additive, drawn over
   // the racks; reduced-motion hides it (it's pure motion juice).
@@ -735,6 +745,92 @@ function drawThermalStress(
       ctx.fillRect(W * (0.2 + seed * 0.1) + wob, y, W * 0.5, 2.5);
     }
   }
+  ctx.restore();
+}
+
+/** C2 — product uplink beams. One translucent gradient column per live product,
+ *  rising from a back-floor anchor; height/alpha scale with the product's revenue
+ *  share. Tier-cycled colours; a soft top bloom. Reduced-motion → no flicker. */
+function drawBeams(ctx: CanvasRenderingContext2D, L: Layout, beams: number[], t: number, reducedMotion: boolean): void {
+  const cols: RGB[] = [[63, 134, 240], [155, 81, 224], [52, 210, 126], [245, 180, 10], [255, 99, 132]];
+  const n = beams.length;
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (let i = 0; i < n; i++) {
+    const intensity = beams[i]!;
+    // Anchor along the OPEN front edge (high gy) so beams rise over the room and read
+    // clearly instead of hiding among the back racks. Spread left→right.
+    const gx = L.gxMin + ((i + 0.5) / n) * (L.gxMax - L.gxMin);
+    const base = L.iso(gx, L.gyMax - 0.35);
+    const col = cols[i % cols.length]!;
+    const h = (L.tileH * 9 + L.tileH * 26 * intensity);
+    const flick = reducedMotion ? 1 : 0.85 + 0.15 * Math.sin(t / 260 + i * 1.3);
+    const w = Math.max(4, L.tileW * 0.2);
+    const g = ctx.createLinearGradient(base.x, base.y, base.x, base.y - h);
+    g.addColorStop(0, rgba(col, 0.55 * flick));
+    g.addColorStop(0.45, rgba(col, 0.28 * flick));
+    g.addColorStop(1, rgba(col, 0));
+    ctx.fillStyle = g;
+    ctx.fillRect(base.x - w / 2, base.y - h, w, h);
+    // Base node + top bloom.
+    ctx.fillStyle = rgba(col, 0.95 * flick);
+    ctx.beginPath();
+    ctx.ellipse(base.x, base.y, w * 0.8, w * 0.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(base.x, base.y - h, w * 0.6 * flick, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** C2 — staff agents: small parametric figures working the floor. Count is capped
+ *  for a clean read; they bob + drift gently (still under reduced motion). */
+function drawStaffAgents(ctx: CanvasRenderingContext2D, L: Layout, staff: number, t: number, reducedMotion: boolean): void {
+  const n = Math.min(staff, 14);
+  ctx.save();
+  for (let i = 0; i < n; i++) {
+    const seed = ((i * 2654435761) % 1000) / 1000;
+    const seed2 = ((i * 40503) % 997) / 997;
+    // Bias agents to the OPEN front strip (high gy) so they read in the clear
+    // foreground rather than vanishing between the back racks.
+    const gx = L.gxMin + 0.4 + seed * (L.gxMax - L.gxMin - 0.8);
+    const gy = L.gyMax - 0.4 - seed2 * 1.3;
+    const drift = reducedMotion ? 0 : Math.sin(t / 1500 + i * 2.1) * 0.18;
+    const p = L.iso(gx + drift, gy);
+    const bob = reducedMotion ? 0 : Math.sin(t / 380 + i) * 1.2;
+    const s = Math.max(3.2, L.tileW * 0.1); // body half-width
+    const cx = p.x;
+    const cy = p.y - bob;
+    // Soft shadow.
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y + s * 0.5, s * 1.1, s * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Body (rounded) + head.
+    const body: RGB = i % 3 === 0 ? [120, 180, 255] : i % 3 === 1 ? [180, 150, 255] : [150, 220, 180];
+    ctx.fillStyle = rgb(body);
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - s, s, s * 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = rgb(shade(body, 1.25));
+    ctx.beginPath();
+    ctx.arc(cx, cy - s * 2.6, s * 0.78, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** C2 — faction tint: a faint full-room wash. Doomer (−) cools toward blue; accel (+)
+ *  warms toward amber. Alpha scales with |alignment|, capped low so it never fights
+ *  the racks. Static (no motion) so reduced-motion needs no special case. */
+function drawAlignmentTint(ctx: CanvasRenderingContext2D, W: number, H: number, alignment: number): void {
+  const col: RGB = alignment < 0 ? [60, 120, 240] : [255, 150, 60];
+  const a = Math.min(0.12, Math.abs(alignment) * 0.12);
+  ctx.save();
+  ctx.globalCompositeOperation = "soft-light";
+  ctx.fillStyle = rgba(col, a);
+  ctx.fillRect(0, 0, W, H);
   ctx.restore();
 }
 
