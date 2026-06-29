@@ -92,7 +92,9 @@ Market" (pure engine, curve-safe, zero render risk) is the connective tissue eve
       rotation. Pure `shipHeadline()`. +5 tests.
 - [x] **A5 · "This run's story" recap** — the Generation Report auto-generates a 2–3 line satirical
       summary (era + gen, alignment stance, product business). Pure `runStory()`. +4 tests.
-      ↳ Remaining Wave A (optional): **A4** codex entries that re-read by tenure/alignment.
+- [x] **A4 · Living codex** — Field Notes re-read by tenure + stance: doomer vs accel see different
+      faction lore; a veteran (5+ ships) sees a matured "Closet Years". Data-driven `variants` + pure
+      `codexBody()` (veteran > faction > default). +3 tests.
 - [x] **B1 · Charter conviction prestige bonus** — shipping the SAME charter as the previous run
       banks +15% Legacy (charter↔prestige resonance). New persisted `lastCharter` (save v14→v15);
       pure `charterConvictionMult` folded into `legacyWeightsForMode`; CharterPanel shows the bonus.
@@ -130,9 +132,10 @@ Market" (pure engine, curve-safe, zero render risk) is the connective tissue eve
       • **C2d** **alignment tint** — faint room wash (doomer→blue, accel→amber), capped low.
       All parametric (no assets), all gated so early game (no staff/products, neutral, not throttled) is
       byte-identical. +2 model tests; sim 12m15s.
-      ↳ Remaining C2 polish (optional): a dedicated era-5 **Post-Singularity transformation** (glowing
-        ceiling / translucent walls / ascension vortex). Per-era room SPLITS already exist (multi-room →
-        4-room campus) via `hallRoomSplit`.
+      • **C2e** era-5 **Post-Singularity transformation** — an iridescent ceiling bloom + a vortex of
+        data spiralling up into a singularity core. Gated era≥5 (earlier eras byte-identical);
+        reduced-motion keeps the bloom, drops the swirl. Verified via `--ascend` seed.
+      ✅ **Wave C2 complete.** (Per-era room splits already existed via `hallRoomSplit`.)
       ↳ Owner-decision (live-player BALANCE changes, not done unilaterally): morale decay/turnover/
         burnout; product churn floor / lifecycle decay; cross-segment cannibalization vs TAM expansion.
 - [x] **R3.4 · More world-event dilemmas + dead-content fix** — 4 new two-choice dilemmas (Mine the
