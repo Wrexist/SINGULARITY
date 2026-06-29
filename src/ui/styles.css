@@ -1049,6 +1049,14 @@ svg { vertical-align: middle; }
 }
 .stats-subhead:first-of-type { margin-top: 4px; }
 
+/* Alignment spectrum bar (Doomer ◀─○─▶ Accel) — surfaces the stance visually. */
+.align-bar { margin: 6px 2px 2px; }
+.align-track { position: relative; height: 8px; border-radius: 999px; background: linear-gradient(90deg, #2f7bf6, rgba(17,24,39,0.08), #ff385c); }
+.align-center { position: absolute; left: 50%; top: -2px; width: 2px; height: 12px; background: rgba(17,24,39,0.25); transform: translateX(-50%); }
+.align-marker { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 2px solid var(--ink); transform: translate(-50%, -50%); box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+.align-ends { display: flex; justify-content: space-between; margin-top: 5px; font-size: 10px; font-weight: 700; color: var(--ink-3); }
+.align-now { color: var(--ink); font-weight: 800; }
+
 /* ---------- Recent activity log ---------- */
 .log-count {
   margin-left: auto; margin-right: 8px; font-size: 11px; font-weight: 800;

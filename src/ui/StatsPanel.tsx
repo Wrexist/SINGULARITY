@@ -116,6 +116,19 @@ export function StatsPanel({ game, derived }: Props) {
       </button>
       {open && (
         <>
+          {game.alignment !== 0 && (
+            <div className="align-bar" title={`Alignment ${game.alignment.toFixed(2)}`}>
+              <div className="align-track">
+                <div className="align-center" />
+                <div className="align-marker" style={{ left: `${((game.alignment + 1) / 2) * 100}%` }} />
+              </div>
+              <div className="align-ends">
+                <span>Doomer</span>
+                <span className="align-now">{alignmentLabel(game.alignment)}</span>
+                <span>Accel</span>
+              </div>
+            </div>
+          )}
           <div className="stats-subhead">Now</div>
           <div className="stats-grid">
             {now.map((r) => (
