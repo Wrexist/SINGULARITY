@@ -75,6 +75,27 @@ tuned curve is byte-identical (sim 12m15s).*
 - [x] **R6.3 follow-up · Collection achievements + codex** — `themesUnlocked` metric (themes earned by
       play, premium excluded) feeds both achievements (Wardrobe 6 / Haute Couture 10) and the codex
       (Interior Decorating + Picking Sides field notes). Monotonic; no new persisted state. +1 test.
+
+### ⭐ Depth & context-richness — plan: `DEPTH_ROADMAP.md` (synthesized from 4 system audits)
+*Diagnosis: the game is strong on the moment, weak on memory, siloed across systems. Wave A "Living
+Market" (pure engine, curve-safe, zero render risk) is the connective tissue every audit ranked #1.*
+- [x] **A1 · Reactive rival identities** — each named rival has a FOCUS (scaler/safety/money, mirrors
+      alignment) + personality blurb; the leaderboard generates a deterministic reaction line from the
+      player's standing ("You've passed them — expect a we're-focusing-on-AGI blog post"). +2 rival
+      ship-events so all 5 ship with voice. Leaderboard is a sidecar (no resources/derive) → curve-safe.
+      +3 tests.
+- [x] **A2 · "Hot topics" event chaining** — a recent fired event biases the next roll toward same-topic
+      events (×3 for a 3-event window) so crises cluster. Central id→topic map; `pickWorldEvent(roll,
+      alignment, recentIds)`; transient ring in the store. Identity with no history → curve-safe. +3 tests.
+- [x] **A3 · History-aware ship headlines** — the "Model Shipped" tentpole reflects what the run achieved
+      (#1 market / scaling triumph / cash-flow / top-three / generation milestones) instead of a fixed
+      rotation. Pure `shipHeadline()`. +5 tests.
+- [x] **A5 · "This run's story" recap** — the Generation Report auto-generates a 2–3 line satirical
+      summary (era + gen, alignment stance, product business). Pure `runStory()`. +4 tests.
+      ↳ Remaining Wave A (optional): **A4** codex entries that re-read by tenure/alignment.
+      ↳ Next waves (see DEPTH_ROADMAP.md): **B** resonance (alignment/charter as strategy, staff morale,
+        Heat escalation); **C** manifestation & legibility (alignment bar, prestige badge, status ticker,
+        hall manifestation — renderer work needs on-device verification).
 - [x] **R3.4 · More world-event dilemmas + dead-content fix** — 4 new two-choice dilemmas (Mine the
       Chat Logs / Automate Your Researchers / Power the Datacenter / Emergency-Brake Eval), each
       feeding the now-active alignment fork (doomer − / accelerationist +) → more player agency, not
