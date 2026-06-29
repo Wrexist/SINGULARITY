@@ -103,9 +103,14 @@ Market" (pure engine, curve-safe, zero render risk) is the connective tissue eve
       Curve-safe (first ship neutral; Reputation is meta). +2 tests.
 - [x] **C1 · Alignment spectrum bar** — Lab Stats shows a visual Doomer↔Accel bar (gradient + marker)
       once a faction choice is made, surfacing the now-strategic alignment axis. UI-only.
-      ↳ Remaining **Wave B** (bigger behavioral systems): **B2** staff morale/burnout meter +
-        role-gated unlocks; **B3** Heat escalation + a regulator who remembers (persisted suspicion);
-        **B4** staff↔product synergy + anti-degenerate floors (churn floor / cannibalization).
+- [x] **B3 · The Regulator (escalating scrutiny + long memory)** — a named regulator (Supervisor Chen)
+      whose persisted `suspicion` rises with every shady buy, never cools on its own (only lobbying
+      appeases), and survives prestige. Escalates the regulatory-event rate (up to ×2.5) and, once
+      escalated, signs the events (a recurring antagonist). Pure `regulator.ts` (4 tiers); save
+      v15→v16; StatsPanel surfaces it. Curve-safe (clean lab/sim never goes shady → suspicion 0 →
+      identity). +8 tests.
+      ↳ Remaining **Wave B**: **B2** staff morale/burnout meter + role-gated unlocks; **B4**
+        staff↔product synergy + anti-degenerate floors (churn floor / cannibalization).
       ↳ Remaining **Wave C**: more C1 legibility (prestige-ready badge, status ticker, portfolio
         health) + **C2** hall manifestation (staff agents, product beams, heat shimmer, per-era
         structural growth) — renderer work, needs on-device verification before a TestFlight push.
