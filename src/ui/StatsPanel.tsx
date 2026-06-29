@@ -8,6 +8,7 @@ import { regulatorState } from "../engine/regulator";
 import { charterDef, charterMods } from "../engine/charter";
 import { balance } from "../engine/balance/config";
 import { ascensionMultiplier } from "../engine/prestige";
+import { totalMorale } from "../engine/derive";
 
 interface Props {
   game: GameState;
@@ -89,6 +90,7 @@ export function StatsPanel({ game, derived }: Props) {
     { label: "Faction stance", value: alignmentLabel(game.alignment) },
     ...(stance ? [{ label: "Stance effects", value: stance }] : []),
     ...(game.suspicion > 0 ? [{ label: "Regulator", value: `${regulatorState(game).name} · ${regulatorState(game).label}` }] : []),
+    ...(game.employees.length > 0 ? [{ label: "Team morale", value: `×${totalMorale(game).toFixed(2)}` }] : []),
     ...(charter ? [charter] : []),
     ...crossSystemRows(game),
   ];

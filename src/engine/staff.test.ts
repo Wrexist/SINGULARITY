@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { derive } from "./derive";
+import { derive, totalMorale, officeMorale } from "./derive";
 import { tick } from "./tick";
 import { computeStaffEffects } from "./employees";
 import { createInitialState } from "./state";
@@ -18,6 +18,16 @@ describe("staff (individual employees) — derive + payroll", () => {
     expect(derive(withEng).computePerSec.gt(derive(base).computePerSec)).toBe(true);
     expect(derive(withEng).payrollPerSec.gt(0)).toBe(true);
     expect(derive(base).payrollPerSec.eq(0)).toBe(true);
+  });
+
+  it("totalMorale includes the Mentor contribution that derive applies (B2 fix)", () => {
+    const base = createInitialState();
+    expect(totalMorale(base)).toBe(officeMorale(base)); // no staff → office only
+    const withMentor = { ...base, employees: [person("staff_engineer", { id: "1", trait: "mentor" })] };
+    // The Mentor lifts team morale above office-only — the value the panel must show.
+    expect(totalMorale(withMentor)).toBeGreaterThan(officeMorale(withMentor));
+    // And derive actually applies that fuller morale (engineer output reflects it).
+    expect(derive(withMentor).computePerSec.gt(derive(base).computePerSec)).toBe(true);
   });
 
   it("product employees fold into productMods (Sales → ARPU↑, PR → Heat↓)", () => {
