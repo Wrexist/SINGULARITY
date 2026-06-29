@@ -109,8 +109,13 @@ Market" (pure engine, curve-safe, zero render risk) is the connective tissue eve
       escalated, signs the events (a recurring antagonist). Pure `regulator.ts` (4 tiers); save
       v15→v16; StatsPanel surfaces it. Curve-safe (clean lab/sim never goes shady → suspicion 0 →
       identity). +8 tests.
-      ↳ Remaining **Wave B**: **B2** staff morale/burnout meter + role-gated unlocks; **B4**
-        staff↔product synergy + anti-degenerate floors (churn floor / cannibalization).
+- [x] **B2 · Surface true team morale** — the Morale KPI showed only officeMorale, hiding the Mentor
+      contribution that `derive()` actually applies (hiring a Mentor did nothing *visible*). New pure
+      `totalMorale()` (office + mentors, single source of truth); EmployeesPanel KPI + tooltip breakdown
+      + a Lab Stats row. Display-only fix, no balance/curve change. +1 test.
+      ↳ Remaining **Wave B**: morale *consequences* (decay/turnover/burnout) — a LIVE-PLAYER BALANCE
+        change, deferred for owner sign-off (don't silently nerf existing saves); **B4** staff↔product
+        synergy + anti-degenerate floors (churn floor / cannibalization) — also balance-affecting.
       ↳ Remaining **Wave C**: more C1 legibility (prestige-ready badge, status ticker, portfolio
         health) + **C2** hall manifestation (staff agents, product beams, heat shimmer, per-era
         structural growth) — renderer work, needs on-device verification before a TestFlight push.
