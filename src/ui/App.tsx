@@ -43,6 +43,7 @@ import { ExpandConfirm } from "./ExpandConfirm";
 import { EraTransition } from "./EraTransition";
 import { WorldEventCard } from "./WorldEventCard";
 import { ModifierBar } from "./ModifierBar";
+import { regulatorIsNamed, regulatorState } from "../engine/regulator";
 import { canPrestige } from "../engine/prestige";
 import { currentEra } from "../engine/eras";
 import { recordTelemetry } from "../state/telemetry";
@@ -414,7 +415,10 @@ export function App() {
         dataRate={d.dataPerSec}
         moneyRate={d.passiveMoneyPerSec}
       />
-      <ModifierBar modifiers={game.modifiers} />
+      <ModifierBar
+        modifiers={game.modifiers}
+        status={regulatorIsNamed(game) ? [{ key: "regulator", label: `⚖ ${regulatorState(game).name}: ${regulatorState(game).label}`, tone: "bad" as const }] : []}
+      />
 
       <main className="stage">
         {dailyOn && (
