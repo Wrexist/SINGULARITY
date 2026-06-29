@@ -48,6 +48,7 @@ export function fmtPerHour(v: Big, prefix = ""): string {
 }
 
 export function fmtTime(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) return "0s";
   const s = Math.floor(ms / 1000);
   if (s < 60) return `${s}s`;
   const m = Math.floor(s / 60);
@@ -61,16 +62,18 @@ export function fmtTime(ms: number): string {
 /** Sign-aware money from a plain number: the sign sits OUTSIDE the $ (−$5K, not
  *  the ungrouped "$-5000" that overflowed cards). */
 export function m$(n: number): string {
-  return n < 0 ? `-${fmtMoney(Big.of(Math.round(-n)))}` : fmtMoney(Big.of(Math.round(n)));
+  const x = Number.isFinite(n) ? n : 0; // a non-finite product value can't print garbage
+  return x < 0 ? `-${fmtMoney(Big.of(Math.round(-x)))}` : fmtMoney(Big.of(Math.round(x)));
 }
 
 /** Rounded count via the K/M/B formatter. */
 export function numOf(n: number): string {
-  return fmt(Big.of(Math.round(n)));
+  return fmt(Big.of(Number.isFinite(n) ? Math.round(n) : 0));
 }
 
 /** Short, human duration ("90s", "3m 20s", "1h 5m") for research timers. */
 export function fmtDur(sec: number): string {
+  if (!Number.isFinite(sec)) return "0s";
   const s = Math.max(0, Math.ceil(sec));
   if (s < 60) return `${s}s`;
   const m = Math.floor(s / 60);

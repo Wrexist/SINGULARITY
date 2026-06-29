@@ -768,6 +768,33 @@ const WORLD_EVENTS: WorldEvent[] = [
 ];
 
 export const balance = {
+  /**
+   * DIFFICULTY. Three pacing knobs, deliberately separated because they act on
+   * different parts of the curve (learned the hard way 2026-06-29 — see LEARNINGS):
+   *
+   * - `costMult`  — scales RESEARCH cost (compute+data) in `researchCost()`. Research
+   *   is gated by accumulating a fixed COMPUTE stock (the prestige gate `inference_api`
+   *   is ~130k×costMult compute). The income ceiling (hall full of racks) is fixed, so
+   *   pushing this raises the gate's stock target beyond reachable income → a hard wall
+   *   (~2.5 already makes first prestige unreachable in 240m). Leave it modest.
+   * - `upgradeCostMult` — scales UPGRADE cost (`upgradeCost()`) ON TOP of costMult. This
+   *   is the SAFE length knob: it stretches the build-out journey (you buy racks/power/
+   *   expansions slower, so the satisfying part — watching the hall grow — lasts longer
+   *   and stays full of purchases) WITHOUT touching the research-stock gate, so it
+   *   lengthens the game without walling it. This is the primary "make it longer" dial.
+   * - `productionMult` — global income-RATE dilation (compute/sec + scraper data, which
+   *   cascade to run yields + passive money). Also lengthens, but it lowers the income
+   *   ceiling too, so like costMult it can wall the gate if pushed hard. Kept at 1.0
+   *   (identity = historical curve byte-for-byte); a documented fine-tuning lever.
+   *
+   * Tune to length with `npm run sim` (watch "First prestige" AND "Longest wall").
+   */
+  difficulty: {
+    costMult: 2.0,
+    upgradeCostMult: 1.6,
+    productionMult: 1.0,
+  },
+
   /** The rented server closet generates a trickle of Compute for free. */
   baseComputePerSec: 1,
 
@@ -1046,15 +1073,19 @@ export const balance = {
      * player climbs the research tree to its payoff before learning the reset.
      */
     capabilityResearch: "inference_api",
-    /** legacyWeightsGained = max(1, floor((lifetimeMoney / scale) ^ exponent)). */
-    scale: 1e4,
+    /** legacyWeightsGained = max(1, floor((lifetimeMoney / scale) ^ exponent)).
+     *  scale raised 1e4→1e5 (2026-06-29 retune) so a much longer run banks fewer
+     *  weights → a gentler per-ship boost → the meta-loop stays a real journey. */
+    scale: 1e5,
     exponent: 0.5,
     /** Depth B1 — shipping with the SAME charter as the previous run multiplies the
      *  Legacy banked by this (conviction / double-down). 1 = off. Charters don't exist
      *  at the first ship and the sim never sets one, so this is curve-safe. */
     charterConvictionBonus: 1.15,
-    /** Each Legacy Weight grants this much permanent global production. */
-    multiplierPerPoint: 0.05,
+    /** Each Legacy Weight grants this much permanent global production. Halved in the
+     *  2026-06-29 difficulty retune so the post-first-ship META-loop doesn't snowball
+     *  into sub-minute generations — re-beating the game in minutes was the complaint. */
+    multiplierPerPoint: 0.018,
     /**
      * Diminishing exponent on the Legacy multiplier: legacyMult = 1 + perPoint ×
      * weights^multiplierExponent. <1 means each extra weight is worth a little
@@ -1322,6 +1353,11 @@ export const balance = {
     eventChanceBoostAtMax: 1.5,
     /** Lobbying also appeases the regulator: cut suspicion by this fraction per lobby. */
     lobbyReduction: 0.25,
+    /** Anti-exploit: a raid fine you can't pay (spent down to be "judgment-proof")
+     *  doesn't vanish — the unpaid $ converts to Heat at this $/point, plus a flat
+     *  suspicion bump, so dodging fines by holding no cash isn't free. */
+    fineDodgeToHeat: 600,
+    fineDodgeSuspicion: 6,
     /** At this tier index and above, regulatory events are signed by the regulator
      *  (the bureaucrat becomes a recurring character). */
     nameFromTier: 2,

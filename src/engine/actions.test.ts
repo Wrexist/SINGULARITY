@@ -61,10 +61,14 @@ describe("training run actions", () => {
 });
 
 describe("upgrade actions", () => {
-  it("cost scales by growth^owned", () => {
+  it("cost scales by growth^owned (× the global difficulty multiplier)", () => {
     const def = balance.upgrades[0]!;
-    expect(upgradeCost(def, 0).eq(def.cost.base)).toBe(true);
-    expect(upgradeCost(def, 1).toNumber()).toBeCloseTo(def.cost.base * def.cost.growth, 6);
+    // Upgrades are scaled by BOTH the global cost knob and the upgrade-only length knob.
+    const k = balance.difficulty.costMult * balance.difficulty.upgradeCostMult;
+    expect(upgradeCost(def, 0).toNumber()).toBeCloseTo(def.cost.base * k, 6);
+    expect(upgradeCost(def, 1).toNumber()).toBeCloseTo(def.cost.base * def.cost.growth * k, 6);
+    // The growth ratio between tiers is unaffected by the difficulty knob.
+    expect(upgradeCost(def, 1).div(upgradeCost(def, 0)).toNumber()).toBeCloseTo(def.cost.growth, 6);
   });
 
   it("buys when affordable, deducts cost, raises owned and next cost", () => {

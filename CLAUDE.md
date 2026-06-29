@@ -22,14 +22,25 @@ An AI compute tycoon (idle/incremental + management) with a 2.5D data-center hal
 > R8 — Platform & LiveOps** (owner-picked 2026-06-28, plan in `R8_PLATFORM_LIVEOPS_PLAN.md`): on-device
 > **telemetry** (build first — instrument the real curve, zero privacy change), **durable save**
 > (harden export/import → optional cloud behind an interface, backend = owner call), **Android** (CI
-> workflow mirroring iOS), and a **Steam** feasibility memo. R8 touches NO balance → sim stays 12m15s.
+> workflow mirroring iOS), and a **Steam** feasibility memo. R8 platform work touches NO balance on its
+> own; the current tuned curve is the retune below (NOT the old 12m15s — see CURVE).
 > See `TASK.md` for live status.
 > Rendering: **Canvas 2D isometric** (parametric, no image assets). Hard rules still hold: 3 in-run
 > resources only (Legacy/Reputation are meta-currencies, not a 4th resource); engine pure/deterministic;
-> humor in writing not math; all new systems are data-in-`balance/` + pure folds + tests. The tuned
-> EARLY/MID curve invariant is **first prestige ≈ 12m15s** (every compounding term is 1.0 at run
-> start, so it's untouched); R4.1 deliberately retuned the post-first-ship META-loop (Gen2 ~2m11s)
-> to bound the Legacy snowball. Verify with `npm run sim` (baseline + the new `runLongHaul`).
+> humor in writing not math; all new systems are data-in-`balance/` + pure folds + tests.
+> **CURVE (retuned 2026-06-29 in two owner steps — "a lot harder/slower", then "much longer"):**
+> first prestige **≈ 59–72m** (one good session / a multi-check climb), meta-loop **Gen2 ≈ 13–15m,
+> Gen3 ≈ 10m**, longest dead-air gap **~3m** (purchases keep flowing). Pace is set by THREE separated
+> knobs in **`balance.difficulty`** (each acts on a different part of the curve — see LEARNINGS):
+> **`costMult` (2.0)** scales RESEARCH cost — but research is gated by a fixed COMPUTE stock against a
+> fixed income ceiling, so pushing this WALLS the game (~2.5 = unreachable in 240m); leave it modest.
+> **`upgradeCostMult` (1.6)** is the SAFE length dial — scales upgrade cost only, stretching the
+> hall-build-out journey (the fun, purchase-dense part) WITHOUT touching the research gate, so it
+> lengthens without walling. **`productionMult` (1.0 = identity)** is a global income-rate dilation
+> (documented spare lever; also walls if pushed). The Legacy snowball is bounded by `prestige.scale`
+> (1e5) + `multiplierPerPoint` (0.018). To re-pace: move `upgradeCostMult`, re-run `npm run sim`,
+> watch BOTH "First prestige" and "Longest wall". NOTE: `TASK.md` entries citing "sim 12m15s" or
+> "≈38m" are historical records from before these retunes, not the current target.
 
 If a request would pull work forward from a later phase, STOP and flag it. Scope drift is this project's #1 documented risk. Protecting the phase boundary is part of your job.
 

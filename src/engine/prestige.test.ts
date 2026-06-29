@@ -35,8 +35,10 @@ describe("prestige", () => {
   it("matches the formula exactly (Big-native, no float round-trip)", () => {
     const s = createInitialState();
     s.research = [balance.prestige.capabilityResearch];
-    s.lifetimeMoney = Big.of(1e8); // (1e8/1e4)^0.5 = sqrt(1e4) = 100
-    expect(legacyWeightsGain(s).eq(Big.of(100))).toBe(true);
+    // Derive from balance so it survives difficulty/scale dials.
+    s.lifetimeMoney = Big.of(1e10);
+    const expected = Math.floor(Math.pow(1e10 / balance.prestige.scale, balance.prestige.exponent));
+    expect(legacyWeightsGain(s).eq(Big.of(expected))).toBe(true);
   });
 
   it("does NOT overflow to Infinity past 1e308 (the whole point of Big)", () => {

@@ -65,6 +65,10 @@ export function derive(state: GameState): Derived {
   let runDurationSec = balance.run.durationSec;
   let passiveMoneyPerSec = Big.ZERO;
   let dataPerSecFlat = Big.ZERO;
+  // World-event data buffs/debuffs that should also lift the passive scraper lane
+  // (the scraper deliberately skips the research/upgrade/staff `dataMult`, but a
+  // global time-limited data event is the same category as legacy/ascension/rep).
+  let scraperDataMult = Big.ONE;
   let autoClaim = false;
   let autoTrain = false;
 
@@ -167,7 +171,10 @@ export function derive(state: GameState): Derived {
   for (const m of state.modifiers) {
     if (m.remainingSec <= 0) continue;
     if (m.target === "computeMult") computeMult = computeMult.mul(m.factor);
-    else if (m.target === "dataMult") dataMult = dataMult.mul(m.factor);
+    else if (m.target === "dataMult") {
+      dataMult = dataMult.mul(m.factor);
+      scraperDataMult = scraperDataMult.mul(m.factor);
+    }
     else if (m.target === "moneyMult") moneyMult = moneyMult.mul(m.factor);
   }
 
@@ -204,9 +211,6 @@ export function derive(state: GameState): Derived {
   dataMult = dataMult.mul(rep.dataMult);
   moneyMult = moneyMult.mul(rep.moneyMult);
   if (rep.payrollMult !== 1) payrollPerSec = payrollPerSec.mul(rep.payrollMult);
-  // Scraper output is its own lane (does NOT ride compute), so global boosts —
-  // Legacy, ascension, AND reputation data perks — must be applied to it directly.
-  const dataPerSec = dataPerSecFlat.mul(legacyMult).mul(ascensionMult).mul(rep.dataMult);
 
   // Faction alignment: a strategic lane-tilt (accelerationist trades money for
   // compute, doomer the reverse). Identity at neutral, so the curve/sim are
@@ -229,12 +233,28 @@ export function derive(state: GameState): Derived {
   dataMult = dataMult.mul(lt.dataMult);
   moneyMult = moneyMult.mul(lt.moneyMult);
 
+  // Scraper output is its own lane (does NOT ride compute), so the GLOBAL data boosts
+  // must be applied to it directly: Legacy, ascension, reputation-data, the charter /
+  // legacy-tree data perks, AND any active world-event data buff (`scraperDataMult`)
+  // — that last one was previously missed, so a data-event lifted run-data but not the
+  // passive lane. Computed here, after every data multiplier is known. Identity (1.0)
+  // on a fresh run with no active events.
+  const dataPerSec = dataPerSecFlat
+    .mul(scraperDataMult)
+    .mul(legacyMult).mul(ascensionMult).mul(rep.dataMult).mul(ch.dataMult).mul(lt.dataMult)
+    .mul(balance.difficulty.productionMult); // global production dilation (see computePerSec)
+
   let computePerSec = computeFlat.mul(computeMult);
   // PHASE 2 (flagged off): power/heat soft-cap throttles Compute when the racks
   // draw more than your capacity. Dormant until balance.power.enabled is true.
   if (balance.power.enabled) {
     computePerSec = computePerSec.mul(powerStats(state).thermalFactor);
   }
+  // Global production dilation (difficulty knob): slows every income RATE uniformly to
+  // lengthen the game without moving cost targets. Applied to compute here so it cascades
+  // to runComputeCost (→ run cadence preserved), run yields, and passive money below; the
+  // scraper data lane gets it directly. 1.0 = identity, so the historical curve is unchanged.
+  computePerSec = computePerSec.mul(balance.difficulty.productionMult);
   // Run cost scales with compute production (floored early game) so payouts
   // scale with the operation. Yields are proportional to compute invested.
   const runComputeCost = computePerSec

@@ -2,10 +2,81 @@ import { Big } from "./math/Big";
 import { SAVE_VERSION, createInitialState } from "./state";
 import { initialStats } from "./stats";
 import { products as PRODUCTS } from "./balance/products";
+import { contracts as CONTRACTS } from "./balance/contracts";
+import { legacyTree as LEGACY } from "./balance/legacyTree";
+import { reputation as REPUTATION } from "./balance/reputation";
+import { charters as CHARTERS } from "./balance/charters";
+import { balance } from "./balance/config";
 import type { ActiveModifier, DraftModel, Employee, GameState, LifetimeStats, ModifierTarget, ProductsState, ProductState, UpgradeState } from "./types";
 
 const MODIFIER_TARGETS: ModifierTarget[] = ["computeMult", "dataMult", "moneyMult"];
 const PRODUCT_TYPE_IDS = PRODUCTS.types.map((t) => t.id);
+
+// Known-id sets for the meta-progression collections (round-2 hardening). A save is
+// editable text, so these arrays must hold KNOWN ids, EXACTLY ONCE — otherwise a
+// hand-edited dupe (e.g. contracts.completed) inflates a permanent meta-currency.
+const CONTRACT_IDS = new Set(CONTRACTS.pool.map((c) => c.id));
+const LEGACY_IDS = new Set(LEGACY.perks.map((p) => p.id));
+const REP_PERK_COST = new Map(REPUTATION.perks.map((p) => [p.id, p.cost]));
+const CHARTER_IDS = new Set(CHARTERS.list.map((c) => c.id));
+const RESEARCH_IDS = new Set(balance.research.map((r) => r.id));
+
+/** Keep only known ids, each at most once (order preserved). Closes the duplicate /
+ *  unknown-id save-edit class for contracts / legacy investments / reputation perks. */
+function dedupeKnownIds(arr: unknown, known: Set<string>): string[] {
+  if (!Array.isArray(arr)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const x of arr) {
+    if (typeof x === "string" && known.has(x) && !seen.has(x)) { seen.add(x); out.push(x); }
+  }
+  return out;
+}
+
+// ---- Untrusted-input hardening (a save is editable text the player can paste back
+//      via the backup feature). Every numeric field below is clamped to a FINITE,
+//      in-range value so a hand-edited / corrupt / migrated save can never produce
+//      NaN/Infinity/negative that propagates into the economy or bricks the run. ----
+
+/** Matches a plain non-negative decimal/scientific number string (no NaN/Infinity/sign). */
+const NUM_RE = /^\d+(\.\d+)?(e\+?\d+)?$/i;
+
+/** Build a Big from untrusted input, rejecting NaN/Infinity/negative/garbage. A
+ *  legitimately huge late-game value (e.g. "1e400") is preserved; anything that
+ *  would poison the BigNumber (a NaN/Infinity Decimal) falls back. */
+function safeBig(v: unknown, fallback: Big = Big.ZERO): Big {
+  if (v instanceof Big) return v;
+  if (typeof v === "number") return Number.isFinite(v) && v >= 0 ? Big.of(v) : fallback;
+  if (typeof v === "string" && NUM_RE.test(v.trim())) return Big.of(v.trim());
+  return fallback;
+}
+
+/** Clamp an untrusted number into [min,max], falling back when non-finite. */
+function clampNum(v: unknown, min: number, max: number, fallback: number): number {
+  return typeof v === "number" && Number.isFinite(v) ? Math.max(min, Math.min(max, v)) : fallback;
+}
+
+/** A non-negative finite integer (rack counts, ships, …); else the fallback. */
+function safeCount(v: unknown, fallback = 0): number {
+  return typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.floor(v) : fallback;
+}
+
+/** The upgrades map is fully untrusted (it drives derive directly). Keep only
+ *  string keys → finite non-negative integer counts; drop `__proto__` & garbage. */
+function sanitizeUpgrades(u: unknown): Record<string, number> {
+  if (!u || typeof u !== "object") return {};
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(u as Record<string, unknown>)) {
+    if (k === "__proto__" || k === "constructor" || k === "prototype") continue;
+    if (typeof v === "number" && Number.isFinite(v) && v > 0) out[k] = Math.floor(v);
+  }
+  return out;
+}
+
+/** Generous finite ceilings — high enough never to bind on a legit save, low enough
+ *  that the economy math (arpu = baseArpu·price·quality, mrr = paid·arpu, …) can't
+ *  overflow to Infinity (which then underflows to NaN via Infinity−Infinity). */
+const PROD_CAPS = { quality: 1e12, mau: 1e15, buzzSec: 86_400, ageSec: 1e9, version: 1000, frontier: 1e12 };
 
 /** Validate a single product entry. A corrupt/old entry with a missing or
  *  non-finite numeric (or a zero priceMult → div-by-zero in convRate) would feed
@@ -118,27 +189,28 @@ function sanitizeStats(s: unknown): LifetimeStats {
   const d = initialStats();
   if (!s || typeof s !== "object") return d;
   const o = s as Record<string, unknown>;
-  const big = (v: unknown, fb: Big): Big => {
-    if (typeof v !== "string" && typeof v !== "number") return fb;
-    try { return Big.of(v); } catch { return fb; }
-  };
+  // Use safeBig so a save-edited "NaN"/"Infinity"/negative stat can't sneak a NaN Big
+  // through (try/catch missed it — Big.of("NaN") doesn't throw, it returns a NaN Big).
   const numf = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : 0);
+  // Discrete progression COUNTS (some feed the permanent Reputation currency) get a
+  // generous finite ceiling so a save-edited 1e9 can't mint unbounded Reputation/badges.
+  const countf = (v: unknown): number => Math.floor(Math.min(numf(v), 1e9));
   return {
-    totalMoney: big(o.totalMoney, d.totalMoney),
-    peakComputePerSec: big(o.peakComputePerSec, d.peakComputePerSec),
-    totalLegacy: big(o.totalLegacy, d.totalLegacy),
+    totalMoney: safeBig(o.totalMoney, d.totalMoney),
+    peakComputePerSec: safeBig(o.peakComputePerSec, d.peakComputePerSec),
+    totalLegacy: safeBig(o.totalLegacy, d.totalLegacy),
     peakMrr: numf(o.peakMrr),
     peakMau: numf(o.peakMau),
-    peakResearchCount: numf(o.peakResearchCount),
-    totalShips: numf(o.totalShips),
-    productsLaunched: numf(o.productsLaunched),
-    employeesHired: numf(o.employeesHired),
-    worldEventsResolved: numf(o.worldEventsResolved),
+    peakResearchCount: countf(o.peakResearchCount),
+    totalShips: countf(o.totalShips),
+    productsLaunched: countf(o.productsLaunched),
+    employeesHired: countf(o.employeesHired),
+    worldEventsResolved: countf(o.worldEventsResolved),
     playtimeSec: numf(o.playtimeSec),
-    ascensions: numf(o.ascensions),
-    openSourceShips: numf(o.openSourceShips),
-    safetyShips: numf(o.safetyShips), // old saves → 0 (sanitizer-defaulted; no version bump needed)
-    bestRivalsBeaten: numf(o.bestRivalsBeaten), // old saves → 0 (best-so-far starts low and only climbs)
+    ascensions: countf(o.ascensions),
+    openSourceShips: countf(o.openSourceShips),
+    safetyShips: countf(o.safetyShips), // old saves → 0 (sanitizer-defaulted; no version bump needed)
+    bestRivalsBeaten: countf(o.bestRivalsBeaten), // old saves → 0 (best-so-far starts low and only climbs)
   };
 }
 
@@ -274,21 +346,37 @@ export function deserialize(json: string): GameState {
     ...loadedProducts,
     active: loadedProducts.active.map((p) => {
       const o = p as ProductState;
+      // Clamp every numeric to the SAME range the runtime setters enforce, so a
+      // save-edited value can't bypass the in-game clamps (out-of-range price /
+      // marketing / quality were the path to overflow → NaN money).
+      const quality = clampNum(o.quality, 0, PROD_CAPS.quality, 1);
+      const mau = clampNum(o.mau, 0, PROD_CAPS.mau, 0);
       return {
         ...p,
+        quality,
+        mau,
+        paid: clampNum(o.paid, 0, mau, 0), // paid can never exceed MAU (sim invariant)
+        version: Math.floor(clampNum(o.version, 1, PROD_CAPS.version, 1)),
+        priceMult: clampNum(o.priceMult, PRODUCTS.priceMin, PRODUCTS.priceMax, 1),
+        marketingPerSec: clampNum(o.marketingPerSec, 0, quality * PRODUCTS.marketingCapPerQuality, 0),
+        buzzSec: clampNum(o.buzzSec, 0, PROD_CAPS.buzzSec, 0),
         upgrade: sanitizeUpgrade(o.upgrade),
-        features: Array.isArray(o.features) ? o.features.filter((s): s is string => typeof s === "string") : [],
+        // Dedupe features — a hand-edited save could repeat an id to stack its multiplier.
+        features: Array.isArray(o.features) ? [...new Set(o.features.filter((s): s is string => typeof s === "string"))] : [],
         enterprise: o.enterprise === true,
-        enterprisePrice: typeof o.enterprisePrice === "number" && Number.isFinite(o.enterprisePrice) && o.enterprisePrice > 0 ? o.enterprisePrice : 1,
+        enterprisePrice: clampNum(o.enterprisePrice, PRODUCTS.enterprise.priceMin, PRODUCTS.enterprise.priceMax, 1),
         channelMix: sanitizeChannelMix(o.channelMix),
         // ageSec gates the retire valuation. A save that predates the field has
         // products that were already established, so treat them as fully mature
         // (a large value) rather than penalising a returning player's cash cows.
-        ageSec: typeof o.ageSec === "number" && Number.isFinite(o.ageSec) && o.ageSec >= 0 ? o.ageSec : 1e9,
+        ageSec: clampNum(o.ageSec, 0, PROD_CAPS.ageSec, 1e9),
       };
     }),
+    // Frontier must stay ≥ its start: a negative frontier pins every product's
+    // competitiveness at 1 and zeroes staleness churn (a permanent buff exploit).
+    frontier: clampNum(loadedProducts.frontier, PRODUCTS.frontierStart, PROD_CAPS.frontier, PRODUCTS.frontierStart),
     drafts: sanitizeDrafts((loadedProducts as ProductsState).drafts),
-    sold: typeof loadedProducts.sold === "number" && Number.isFinite(loadedProducts.sold) ? loadedProducts.sold : 0,
+    sold: typeof loadedProducts.sold === "number" && Number.isFinite(loadedProducts.sold) && loadedProducts.sold >= 0 ? Math.floor(loadedProducts.sold) : 0,
     milestones: Array.isArray((loadedProducts as ProductsState).milestones)
       ? (loadedProducts as ProductsState).milestones.filter((m): m is string => typeof m === "string")
       : [],
@@ -296,18 +384,25 @@ export function deserialize(json: string): GameState {
   return {
     version: SAVE_VERSION,
     resources: {
-      compute: Big.of(res.compute ?? "0"),
-      data: Big.of(res.data ?? "0"),
-      money: Big.of(res.money ?? "0"),
+      compute: safeBig(res.compute),
+      data: safeBig(res.data),
+      money: safeBig(res.money),
     },
-    upgrades: raw.upgrades ?? fresh.upgrades,
-    research: raw.research ?? fresh.research,
-    run: raw.run ?? fresh.run,
+    upgrades: sanitizeUpgrades(raw.upgrades),
+    // research: known node ids, each at most once. A dup (e.g. ["backprop","backprop"])
+    // would inflate state.research.length, which tick() accrues into peakResearchCount
+    // and any reward derived from it — so dedupe + known-id filter like contracts/perks.
+    research: dedupeKnownIds(raw.research, RESEARCH_IDS),
+    run: {
+      active: (raw.run as GameState["run"] | undefined)?.active === true,
+      progress: clampNum((raw.run as GameState["run"] | undefined)?.progress, 0, 1, 0),
+      readyToClaim: (raw.run as GameState["run"] | undefined)?.readyToClaim === true,
+    },
     prestige: {
-      legacyWeights: Big.of(pres.legacyWeights ?? "0"),
-      ships: pres.ships ?? 0,
+      legacyWeights: safeBig(pres.legacyWeights),
+      ships: safeCount(pres.ships),
     },
-    lifetimeMoney: Big.of(raw.lifetimeMoney ?? res.money ?? "0"),
+    lifetimeMoney: safeBig(raw.lifetimeMoney ?? res.money),
     heat,
     suspicion,
     modifiers,
@@ -321,11 +416,13 @@ export function deserialize(json: string): GameState {
       : [],
     reputation: sanitizeReputation(raw.reputation),
     contracts: sanitizeContracts(raw.contracts),
-    charter: typeof raw.charter === "string" ? raw.charter : null,
-    lastCharter: typeof raw.lastCharter === "string" ? raw.lastCharter : null,
-    legacyInvestments: Array.isArray(raw.legacyInvestments)
-      ? raw.legacyInvestments.filter((x): x is string => typeof x === "string")
-      : [],
+    // Validate against KNOWN charter ids: an unknown/crafted id would still grant the
+    // +15% conviction bonus (charter === lastCharter) without a real two-run commitment.
+    charter: typeof raw.charter === "string" && CHARTER_IDS.has(raw.charter) ? raw.charter : null,
+    lastCharter: typeof raw.lastCharter === "string" && CHARTER_IDS.has(raw.lastCharter) ? raw.lastCharter : null,
+    // KNOWN legacy-perk ids, deduped — a dupe would apply the lane bias twice for free
+    // (legacyTreeMods sums per entry and never checks prereqs on load).
+    legacyInvestments: dedupeKnownIds(raw.legacyInvestments, LEGACY_IDS),
     // Generation-scoped (not persisted): a mid-run reload simply re-accrues the run
     // peaks, and the ship report is transient — both start fresh on load.
     runPeakCompute: fresh.runPeakCompute,
@@ -334,21 +431,23 @@ export function deserialize(json: string): GameState {
   };
 }
 
-/** Contracts are untrusted: keep a clean array of completed string ids. */
+/** Contracts are untrusted: KNOWN completed-contract ids, each at most once — a
+ *  duplicate id would re-count its Reputation reward without bound (the load path
+ *  bypasses claimContract's includes-check). */
 function sanitizeContracts(c: unknown): { completed: string[] } {
   const o = (c ?? {}) as { completed?: unknown };
-  return {
-    completed: Array.isArray(o.completed) ? o.completed.filter((x): x is string => typeof x === "string") : [],
-  };
+  return { completed: dedupeKnownIds(o.completed, CONTRACT_IDS) };
 }
 
-/** Reputation is untrusted: keep a non-negative spent + string perk ids. */
+/** Reputation is untrusted: KNOWN perk ids (deduped), and `spent` reconciled so it's
+ *  at least the cost of the perks you own — a save can't grant owned perks for free
+ *  (under-reported spent) the way `legacySpent` (derived) already can't. */
 function sanitizeReputation(r: unknown): { spent: number; perks: string[] } {
   const o = (r ?? {}) as { spent?: unknown; perks?: unknown };
-  return {
-    spent: typeof o.spent === "number" && Number.isFinite(o.spent) && o.spent >= 0 ? o.spent : 0,
-    perks: Array.isArray(o.perks) ? o.perks.filter((p): p is string => typeof p === "string") : [],
-  };
+  const perks = dedupeKnownIds(o.perks, new Set(REP_PERK_COST.keys()));
+  const owedForOwned = perks.reduce((sum, id) => sum + (REP_PERK_COST.get(id) ?? 0), 0);
+  const loadedSpent = typeof o.spent === "number" && Number.isFinite(o.spent) && o.spent >= 0 ? o.spent : 0;
+  return { spent: Math.max(loadedSpent, owedForOwned), perks };
 }
 
 /**

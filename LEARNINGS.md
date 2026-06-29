@@ -349,6 +349,27 @@ Data, so it binds more often. Lesson: re-coupling works on the resource the core
 does NOT instantly re-spend; tie the cost to that resource's OUTPUT, and find the peak
 before the affordability cliff with the sink metric.
 
+### Difficulty retune — one global `costMult`, and it's SUPER-LINEAR (2026-06-29)
+Owner asked to make the game "a lot harder/slower" (first prestige was ~12m and the meta-loop
+re-beat the game in minutes). Cleanest lever: a single `balance.difficulty.costMult` multiplying EVERY
+Compute/Data/Money cost in `upgradeCost()` + `researchCost()` — preserves the internal "which upgrade
+when" balance, dials the whole curve, and the UI cost displays update for free (they call the same fns).
+- **It is NOT linear in time.** The economy is a spend-to-grow feedback loop, so scaling costs slows
+  income too → the slowdown compounds. **costMult 3.5 WALLED the curve** (first prestige unreachable in
+  240m, a 10m purchase wall). **2.0 → first prestige 38m43s (~3.2×)**, wall-free (longest gap ~2m).
+  So pick costMult conservatively and ALWAYS confirm `npm run sim` still reaches prestige + reports a
+  small "longest wall".
+- **The snowball is separate from first-prestige.** First prestige time is gated by reaching
+  `inference_api` (research climb) → only `costMult` moves it. The META-loop (Gen2+) is gated by the
+  Legacy multiplier; a longer run banks far MORE weights (sqrt of a bigger lifetimeMoney), so Gen2 was
+  *still* ~3m even after costMult. Tamed it with `prestige.scale` 1e4→1e5 (fewer weights per run) +
+  `multiplierPerPoint` 0.05→0.018 (gentler boost): **Gen2 13m, Gen3 9m**. A production multiplier
+  compounds HARD through a run (a 3× boost turned a 38m run into 3m), so the snowball knobs are
+  sensitive — tune by sim, not by intuition.
+- Tests that hard-coded magic cost/weight numbers broke; rewrote them to derive from the balance
+  constants (`* balance.difficulty.costMult`, `Math.pow(money/scale, exponent)`) so future dials don't
+  re-break them. Lesson: balance tests should assert RELATIONSHIPS off the constants, not literals.
+
 ### Cosmetics as a 2nd customization axis without renderer risk (R6.3 rack skins)
 - **Tint the ONE base colour, not every face.** Each rack derives every colour (faces, LEDs,
   light-spill, rim) from a single `tierBase(tier)` RGB via `shade()`. So a "skin" is just a pure
@@ -399,3 +420,28 @@ before the affordability cliff with the sink metric.
   future *transmission* is a separate owner-greenlit decision + a privacy-label change; don't sneak a
   send into the recorder. Stored in its own `localStorage` keys (never `SAVE_KEY`), so it can't
   corrupt a save — same isolation `daily.ts`/`settings.ts` use.
+
+### Difficulty pacing — the THREE-knob model, and why one knob can't do it (2026-06-29)
+- **The prestige gate is a fixed COMPUTE STOCK, not a rate.** Shipping requires researching
+  `inference_api` (~130k×costMult compute). The income CEILING (hall full of best racks) is fixed.
+  So the binding constraint at end-of-run-1 is "accumulate a big fixed compute lump against a capped
+  income". Any knob that makes that lump bigger relative to income — `costMult` UP **or** a global
+  income dilation DOWN — eventually pushes the lump past what's reachable in the 240m sim horizon and
+  **walls the game** (`costMult` 2.5 and `productionMult` 0.7 both → "NOT REACHED"). These cliffs are
+  super-linear because the economy is a feedback loop (less income → fewer racks → less income).
+- **Therefore: separate "length" from "the gate".** Lengthen the part that's FUN (buying racks/power/
+  expansions — watching the hall grow, design pillar #1) WITHOUT inflating the research-stock gate.
+  The lever is **`difficulty.upgradeCostMult`** (scales `upgradeCost()` only, on top of `costMult`):
+  it stretches the build-out journey and stays purchase-dense, but leaves the gate reachable. 1.0→38m,
+  1.6→~59–72m, 2.0→~82–97m, with the longest no-purchase wall only creeping 2m05s→~3–4m. This is the
+  primary "make it longer" dial; `costMult` is for "harder gate" (use sparingly), `productionMult`
+  (income-rate dilation, default 1.0) is a documented spare that also walls if pushed.
+- **Read the sim's "Longest wall", not just the milestone timeline.** The timeline only prints
+  FIRST-time unlocks; repeated rack/power/expansion buys during the grind don't show, so a 18m→38m
+  gap in the printed list looked like a 20-min void but the actual max dead-air was 2m05s. Always
+  tune against BOTH "First prestige" AND "Longest wall (no purchase)".
+- **`productionMult` cascades correctly through one application point.** Scaling `computePerSec` in
+  `derive` flows to `runComputeCost` (so run CADENCE is preserved — time-to-afford-a-run = costSeconds
+  regardless), run yields, and passive money; the scraper `dataPerSec` needs it applied directly. All
+  three difficulty knobs default to identity (costMult is the pre-existing 2.0), so any one set to its
+  identity value keeps the curve byte-for-byte.

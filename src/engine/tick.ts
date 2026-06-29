@@ -17,7 +17,11 @@ import type { Derived, GameState } from "./types";
  * Returns a new object; never mutates the input (keeps it pure and testable).
  */
 export function tick(state: GameState, elapsedMs: number): GameState {
-  if (elapsedMs <= 0) return state;
+  // Reject any non-positive OR non-finite dt: ≤0 is a no-op, NaN would turn every
+  // resource into NaN, and Infinity would make `seconds` infinite and push the whole
+  // simulation non-finite before the later delta guards run. The engine owns this
+  // invariant now, so no caller can corrupt state with a bad dt.
+  if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) return state;
   const seconds = elapsedMs / 1000;
 
   // Segment the window at the next modifier expiry. Otherwise a large frame
@@ -111,9 +115,14 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   const sim = simulateProducts(state.products, seconds, d.productModsById);
   let products = sim.products;
   if (state.products.active.length > 0) {
-    money = money.add(sim.moneyDelta).max(Big.ZERO);
-    if (sim.moneyDelta > 0) lifetimeMoney = lifetimeMoney.add(sim.moneyDelta);
-    heat = Math.max(0, Math.min(balance.heat.max, heat + sim.heatDelta));
+    // Defense-in-depth: a pathological product (e.g. a quality/price combo that
+    // overflows arpu → Infinity, then Infinity−Infinity = NaN) must NEVER reach the
+    // Money Big, where .max(ZERO) does not sanitize NaN and would brick the save.
+    const moneyDelta = Number.isFinite(sim.moneyDelta) ? sim.moneyDelta : 0;
+    const heatDelta = Number.isFinite(sim.heatDelta) ? sim.heatDelta : 0;
+    money = money.add(moneyDelta).max(Big.ZERO);
+    if (moneyDelta > 0) lifetimeMoney = lifetimeMoney.add(moneyDelta);
+    heat = Math.max(0, Math.min(balance.heat.max, heat + heatDelta));
   }
 
   // Timed version upgrades drain Compute+Data over their research window. Run after

@@ -36,7 +36,10 @@ export function applyOffline(
   summary: OfflineSummary;
 } {
   const capMs = capHours * 3600 * 1000;
-  const appliedMs = Math.max(0, Math.min(elapsedMs, capMs));
+  // Coerce a non-finite elapsed (corrupt TIME_KEY / clock weirdness) to 0 so the
+  // summary never reports NaN and the catch-up tick is simply skipped.
+  const elapsed = Number.isFinite(elapsedMs) ? elapsedMs : 0;
+  const appliedMs = Math.max(0, Math.min(elapsed, capMs));
   const before = state.resources;
   const hadAchievements = new Set(state.achievements);
   const repBefore = earnedReputation(state);
