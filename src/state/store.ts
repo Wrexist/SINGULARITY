@@ -177,6 +177,9 @@ function now(): number {
 let eventKey = 0;
 let noticeKey = 0;
 let worldKey = 0;
+/** Recent fired world-event ids (transient; drives A2 "hot topics" chaining). Not
+ *  persisted — ambient flavor only, so a reload simply starts a fresh streak. */
+let recentEventIds: string[] = [];
 let claimKey = 0;
 let productKey = 0;
 
@@ -365,12 +368,14 @@ export const useGame = create<GameStore>((set, get) => ({
 
       // Ambient satirical world event — at most one pending card at a time.
       if (!s.worldEvent) {
-        const wr = maybeWorldEvent(game, secs, Math.random(), Math.random());
+        const wr = maybeWorldEvent(game, secs, Math.random(), Math.random(), recentEventIds);
         if (wr) {
           game = wr.state;
           worldKey += 1;
           patch.game = game;
           patch.worldEvent = { key: worldKey, ...wr.event };
+          // Remember the last few fired ids so related events cluster (A2).
+          recentEventIds = [wr.event.id, ...recentEventIds].slice(0, balance.worldEvents.chainWindow);
         }
       }
 

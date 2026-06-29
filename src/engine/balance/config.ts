@@ -1380,6 +1380,33 @@ export const balance = {
     /** R6.2 — |alignment| past this commits you to a faction's event pool. Neutral
      *  players (incl. the balance sim) never see tagged events → base pool unchanged. */
     factionThreshold: 0.4,
+    /** "Hot topics" chaining: after an event fires, related events (same topic) are
+     *  this much likelier on the next roll for a short window, so crises cluster and
+     *  feel causal instead of random. Identity when nothing recent → curve-safe. */
+    chainBoost: 3,
+    /** How many recent fired-event ids the store keeps to drive chaining. */
+    chainWindow: 3,
+    /** Event id → topic. Only tagged events chain; untagged events never bias the
+     *  pool. Topics group thematically-adjacent events (a GPU shortage makes a price
+     *  war / compute donation likelier next). Central map = no per-event edits. */
+    topics: {
+      gpu_shortage: "compute", gpu_shortage_global: "compute", heatwave: "compute",
+      compute_donation: "compute", hardware_recall: "compute", rolling_blackouts: "compute",
+      datacenter_cooling: "compute", quantum_unrelated: "compute", tax_break: "compute",
+      power_bill: "compute", smuggling_busted: "compute",
+      market_crash: "money", gov_grant: "money", series_c: "money", acquihire: "money",
+      enterprise_pilot: "money", token_price_war: "money", founder_tweets: "money",
+      lawsuit: "money", regulatory_sandbox: "money",
+      data_breach: "data", opensource_dump: "data", benchmark_win: "data",
+      synthetic_breakthrough: "data", synthetic_flywheel: "data", data_poisoned: "data",
+      intern_refactor: "data", benchmark_vibes: "data",
+      competitor_launch: "rival", rival_closedai: "rival", rival_goggle: "rival",
+      rival_anthropos: "rival", rival_meta: "rival", rival_xaeai: "rival",
+      hallucination_scandal: "rival",
+      viral_demo: "hype", influencer: "hype", industry_hype: "hype",
+      viral_jailbreak: "hype", agi_internally: "hype",
+      pause_letter: "safety", hallucination_demo: "safety", talent_war: "safety",
+    } as Record<string, string>,
     list: WORLD_EVENTS,
   },
 

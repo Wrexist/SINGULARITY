@@ -492,13 +492,27 @@ function eligibleWorldEvents(alignment: number): WorldEvent[] {
   });
 }
 
-export function pickWorldEvent(roll: number, alignment = 0): WorldEvent {
+/** Effective weight of an event given recent activity — "hot topics" chaining (A2).
+ *  An event whose topic matches a recently-fired event (but isn't that same event)
+ *  gets a boost, so related crises cluster. Identity when nothing recent matches. */
+function chainedWeight(e: WorldEvent, recentTopics: Set<string>, recentIds: Set<string>): number {
+  const topic = balance.worldEvents.topics[e.id];
+  if (topic && recentTopics.has(topic) && !recentIds.has(e.id)) return e.weight * balance.worldEvents.chainBoost;
+  return e.weight;
+}
+
+export function pickWorldEvent(roll: number, alignment = 0, recentIds: string[] = []): WorldEvent {
   const pool = eligibleWorldEvents(alignment);
-  const total = pool.reduce((sum, e) => sum + e.weight, 0);
+  const ids = new Set(recentIds);
+  const recentTopics = new Set(
+    recentIds.map((id) => balance.worldEvents.topics[id]).filter((t): t is string => !!t),
+  );
+  const weights = pool.map((e) => chainedWeight(e, recentTopics, ids));
+  const total = weights.reduce((sum, w) => sum + w, 0);
   let target = roll * total;
-  for (const e of pool) {
-    if (target < e.weight) return e;
-    target -= e.weight;
+  for (let i = 0; i < pool.length; i++) {
+    if (target < weights[i]!) return pool[i]!;
+    target -= weights[i]!;
   }
   return pool[pool.length - 1]!;
 }
@@ -625,10 +639,11 @@ export function maybeWorldEvent(
   seconds: number,
   fireRoll: number,
   pickRoll: number,
+  recentIds: string[] = [],
 ): { state: GameState; event: WorldEventResult } | null {
   if (state.research.length < balance.worldEvents.minResearch) return null;
   const chance = Math.min(seconds / balance.worldEvents.meanIntervalSec, 0.4);
   if (fireRoll >= chance) return null;
-  // R6.2 — the eligible pool branches on the player's committed alignment.
-  return applyWorldEvent(state, pickWorldEvent(pickRoll, state.alignment).id);
+  // R6.2 — pool branches on alignment; A2 — recent events bias toward related topics.
+  return applyWorldEvent(state, pickWorldEvent(pickRoll, state.alignment, recentIds).id);
 }

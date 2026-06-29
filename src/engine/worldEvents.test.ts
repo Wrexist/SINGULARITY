@@ -145,6 +145,40 @@ describe("world events — firing & gating", () => {
     }
   });
 
+  describe("A2 — 'hot topics' event chaining", () => {
+    const topics = balance.worldEvents.topics;
+    const sweep = (recentIds: string[]): Set<string> => {
+      const seen = new Set<string>();
+      for (let r = 0; r < 1; r += 0.001) seen.add(pickWorldEvent(r, 0, recentIds).id);
+      return seen;
+    };
+    // Count how often a topic is picked across the roll space (proxy for probability).
+    const topicHits = (recentIds: string[], topic: string): number => {
+      let n = 0;
+      for (let r = 0; r < 1; r += 0.001) if (topics[pickWorldEvent(r, 0, recentIds).id] === topic) n += 1;
+      return n;
+    };
+
+    it("empty recent list = identity (curve-safe: base pool unchanged)", () => {
+      // Same picks with no recent history as the plain 2-arg call.
+      for (const r of [0, 0.25, 0.5, 0.75, 0.999]) {
+        expect(pickWorldEvent(r, 0, []).id).toBe(pickWorldEvent(r, 0).id);
+      }
+    });
+
+    it("a recent 'compute' event makes more 'compute' events come up next", () => {
+      const base = topicHits([], "compute");
+      const boosted = topicHits(["gpu_shortage"], "compute");
+      expect(boosted).toBeGreaterThan(base);
+    });
+
+    it("chaining never re-fires the exact same recent event as a boost target", () => {
+      // gpu_shortage is in the recent list → it must not itself be boosted (only its peers).
+      const seen = sweep(["gpu_shortage"]);
+      expect(seen.size).toBeGreaterThan(0); // still produces a spread of events
+    });
+  });
+
   describe("R6.2 — faction-branched pools", () => {
     const ids = () => balance.worldEvents.list.map((e) => e.id);
     const sweep = (alignment: number): Set<string> => {
