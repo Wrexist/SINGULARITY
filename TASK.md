@@ -120,9 +120,19 @@ Market" (pure engine, curve-safe, zero render risk) is the connective tissue eve
       • alignment **spectrum bar** in Lab Stats · • **prestige-ready** pulse + gold "Ship" badge on the
       Lab nav · • **portfolio health** (bleeders float to the top, "⚠ N need attention" header) ·
       • **status ticker** (persistent regulator chip in the ModifierBar via a generic StatusChip API).
-      ↳ Remaining **Wave C2** (hall manifestation — renderer work, needs ON-DEVICE verification before a
-        TestFlight push): staff as floor agents, product uplink beams, power/heat shimmer + uncapped
-        cooling, alignment tint, per-era STRUCTURAL growth (multi-room → campus → Post-Singularity).
+- [x] **C2 · Hall manifestation** (renderer; verified via the `npm run shot -- --manifest` harness, but
+      still wants a real-device glance before the next TestFlight push):
+      • **C2a** thermal-stress shimmer (red wash + heat-haze bands when power draw nears/exceeds
+        capacity) + cooling-fan cap raised 3→6 so cooling visibly scales.
+      • **C2b** staff as little **floor agents** working the open front of the hall (capped 14, bob/drift,
+        reduced-motion safe).
+      • **C2c** product **uplink beams** rising from the front edge, height/alpha ∝ revenue share.
+      • **C2d** **alignment tint** — faint room wash (doomer→blue, accel→amber), capped low.
+      All parametric (no assets), all gated so early game (no staff/products, neutral, not throttled) is
+      byte-identical. +2 model tests; sim 12m15s.
+      ↳ Remaining C2 polish (optional): a dedicated era-5 **Post-Singularity transformation** (glowing
+        ceiling / translucent walls / ascension vortex). Per-era room SPLITS already exist (multi-room →
+        4-room campus) via `hallRoomSplit`.
       ↳ Owner-decision (live-player BALANCE changes, not done unilaterally): morale decay/turnover/
         burnout; product churn floor / lifecycle decay; cross-segment cannibalization vs TAM expansion.
 - [x] **R3.4 · More world-event dilemmas + dead-content fix** — 4 new two-choice dilemmas (Mine the
