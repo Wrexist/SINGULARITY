@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import type { Big } from "../engine/math/Big";
 import { fmt, m$ } from "./format";
-import { shipHeadline } from "./headlines";
+import { shipHeadline, runStory } from "./headlines";
 import { RocketIcon } from "./Icons";
 
 export interface ShipReport {
@@ -11,6 +11,11 @@ export interface ShipReport {
   rank: number | null;
   peakCompute: Big;
   peakMrr: number;
+  /** Run context for the "this run's story" recap (A5). */
+  era: number;
+  alignment: number;
+  productsLive: number;
+  rivalsBeaten: number;
 }
 
 interface Props {
@@ -36,6 +41,7 @@ export function Celebration({ weightsGained, totalWeights, report, onDone }: Pro
 
   // History-aware: the headline reflects what THIS run achieved (A3).
   const headline = report ? shipHeadline(report) : "Model Shipped";
+  const story = report ? runStory(report) : [];
 
   return (
     <div className="celebrate" onClick={onDone}>
@@ -68,6 +74,11 @@ export function Celebration({ weightsGained, totalWeights, report, onDone }: Pro
             <div className="cr-stat"><b>{fmt(report.peakCompute)}</b><span>peak compute/s</span></div>
             <div className="cr-stat"><b>{report.peakMrr > 0 ? `${m$(report.peakMrr)}/s` : "—"}</b><span>peak revenue</span></div>
             <div className="cr-stat"><b>{report.rank != null ? `#${report.rank}` : "—"}</b><span>market rank</span></div>
+          </div>
+        )}
+        {story.length > 0 && (
+          <div className="celebrate-story">
+            {story.map((line, i) => <p key={i}>{line}</p>)}
           </div>
         )}
         <p className="celebrate-total">New total: {fmt(totalWeights)} · a faster lab awaits</p>

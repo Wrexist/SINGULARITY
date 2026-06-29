@@ -1,4 +1,5 @@
 import { Big } from "../engine/math/Big";
+import { eraName } from "../engine/eras";
 
 /**
  * History-aware Ship-celebration headlines (A3). The tentpole "Model Shipped" beat
@@ -11,6 +12,12 @@ export interface HeadlineInput {
   rank: number | null;
   peakCompute: Big;
   peakMrr: number;
+  /** Run context for the "this run's story" recap (A5). Optional so older callers
+   *  still type-check; the recap is skipped when absent. */
+  era?: number;
+  alignment?: number;
+  productsLive?: number;
+  rivalsBeaten?: number;
 }
 
 // Fallback rotation when no standout achievement applies (keyed by generation so
@@ -35,4 +42,30 @@ export function shipHeadline(r: HeadlineInput): string {
   if (r.gen >= 10) return "Double Digits";
   if (r.gen === 5) return "Five and Counting";
   return ROTATION[(r.gen - 1) % ROTATION.length]!;
+}
+
+const plural = (n: number) => (n === 1 ? "" : "s");
+
+/** A 2–3 line satirical recap of the run just shipped (A5). Auto-generated from run
+ *  stats so the Generation Report reads like a story, not just a stat block. Pure. */
+export function runStory(r: HeadlineInput): string[] {
+  const lines: string[] = [];
+  if (r.era != null) lines.push(`Reached ${eraName(r.era)} in Generation ${r.gen}.`);
+
+  if (r.alignment != null) {
+    if (r.alignment <= -0.4) lines.push("Held the line on safety — the cautious path, taken on purpose.");
+    else if (r.alignment >= 0.4) lines.push("Went all gas, no brakes — acceleration above all.");
+    else lines.push("Played it down the middle, ideologically uncommitted.");
+  }
+
+  if (r.productsLive != null) {
+    if (r.productsLive > 0) {
+      const beaten = r.rivalsBeaten ?? 0;
+      const tail = r.rank === 1 ? " — #1 on the market." : beaten > 0 ? `, outranking ${beaten} rival${plural(beaten)}.` : ".";
+      lines.push(`Ran ${r.productsLive} product${plural(r.productsLive)}${tail}`);
+    } else {
+      lines.push("Shipped the model before commercialising a single product. Bold.");
+    }
+  }
+  return lines.slice(0, 3);
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { shipHeadline } from "./headlines";
+import { shipHeadline, runStory } from "./headlines";
 import { Big } from "../engine/math/Big";
 
 const base = { gen: 2, rank: null as number | null, peakCompute: Big.of(0), peakMrr: 0 };
@@ -30,5 +30,29 @@ describe("A3 — history-aware ship headlines", () => {
     const b = shipHeadline({ ...base, gen: 3 });
     expect(a).toBe(b);
     expect(typeof a).toBe("string");
+  });
+});
+
+describe("A5 — 'this run's story' recap", () => {
+  it("summarizes era, alignment stance, and the product business", () => {
+    const story = runStory({ ...base, gen: 3, era: 3, alignment: -0.6, productsLive: 2, rivalsBeaten: 3, rank: 4 });
+    expect(story).toHaveLength(3);
+    expect(story[0]).toMatch(/Generation 3/);
+    expect(story[1]).toMatch(/safety/i);
+    expect(story[2]).toMatch(/2 products.*3 rivals/i);
+  });
+
+  it("flips the alignment line for accelerationist and neutral runs", () => {
+    expect(runStory({ ...base, era: 1, alignment: 0.7, productsLive: 0 })[1]).toMatch(/acceleration/i);
+    expect(runStory({ ...base, era: 1, alignment: 0, productsLive: 0 })[1]).toMatch(/middle/i);
+  });
+
+  it("calls out a #1 finish and a no-product ship", () => {
+    expect(runStory({ ...base, era: 4, alignment: 0, productsLive: 1, rank: 1 }).join(" ")).toMatch(/#1 on the market/);
+    expect(runStory({ ...base, era: 2, alignment: 0, productsLive: 0 }).join(" ")).toMatch(/before commercialising/i);
+  });
+
+  it("omits lines when run context is absent (older callers)", () => {
+    expect(runStory(base)).toEqual([]);
   });
 });

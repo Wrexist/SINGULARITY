@@ -32,7 +32,7 @@ import { burst as fxBurst } from "./fx";
 import { ProductLaunch } from "./ProductLaunch";
 import { productsUnlocked, productMetrics, typeDef, retirePayout } from "../engine/products";
 import { attentionCounts } from "../engine/advisor";
-import { marketLeaderboard, playerMarketRank } from "../engine/market";
+import { marketLeaderboard, playerMarketRank, rivalsBeaten } from "../engine/market";
 import { FlaskIcon, BoxIcon, TeamIcon, TrophyIcon, GearIcon, GiftIcon } from "./Icons";
 import { fmtMoney } from "./format";
 import type { ProductTypeId } from "../engine/balance/products";
@@ -304,6 +304,10 @@ export function App() {
         rank: playerMarketRank(game),
         peakCompute: ship?.peakCompute ?? game.stats.peakComputePerSec,
         peakMrr: ship?.peakMrr ?? game.stats.peakMrr,
+        era: currentEra(game),
+        alignment: game.alignment,
+        productsLive: game.products.active.length,
+        rivalsBeaten: rivalsBeaten(game),
       };
       setCelebration({ gained, total: game.prestige.legacyWeights, report });
       haptics.celebrate();
