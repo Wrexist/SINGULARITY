@@ -135,6 +135,20 @@ try {
           lifetimeMoney: "1500",
           heat: 0,
         }
+      : has("ascend")
+      ? {
+          // Era-5 Post-Singularity: ships ≥ 9 → the hall transcends (vortex + bloom).
+          version: 16,
+          resources: { compute: "5000000", data: "900000", money: "8000000000" },
+          upgrades: { rack_basic: 40, rack_server: 30, rack_tpu: 20, overclock: 8, data_pipeline: 8, monetize: 8, auto_claim: 1, auto_train: 1, expand_e: 3, expand_s: 3, psu_bay: 4, cooling_loop: 4, substation: 3 },
+          research: ["backprop", "curated_data", "distributed", "distillation", "inference_api", "moe"],
+          run: { active: true, progress: 0.7, readyToClaim: false },
+          prestige: { legacyWeights: "5000", ships: 12 },
+          lifetimeMoney: "8e11",
+          heat: 10,
+          alignment: 0.3,
+          stats: { ascensions: 3 },
+        }
       : has("manifest")
       ? {
           // C2 manifestation showcase: staff on the floor, live products (uplink

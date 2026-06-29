@@ -332,6 +332,10 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
   // C2 — faction tint: a faint room-wide wash by alignment (doomer cool, accel warm).
   if (Math.abs(model.alignment) > 0.15) drawAlignmentTint(ctx, W, H, model.alignment);
 
+  // C2e — Post-Singularity transformation: at the AGI era the hall transcends — an
+  // iridescent ceiling bloom + a rising vortex of data funnelling into a singularity.
+  if (model.era >= 5) drawSingularityVortex(ctx, W, H, originY, o.timeMs, o.reducedMotion);
+
   // Auto-train "ops bot": a small glowing dot that patrols the floor, so the
   // automation you bought is something you can see working. Additive, drawn over
   // the racks; reduced-motion hides it (it's pure motion juice).
@@ -831,6 +835,54 @@ function drawAlignmentTint(ctx: CanvasRenderingContext2D, W: number, H: number, 
   ctx.globalCompositeOperation = "soft-light";
   ctx.fillStyle = rgba(col, a);
   ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+}
+
+/** C2e — the Post-Singularity transformation (era 5). An iridescent ceiling bloom +
+ *  a vortex of data spiralling up into a bright singularity point near the ceiling.
+ *  Reduced-motion → the bloom + a static halo, no spinning particles. */
+function drawSingularityVortex(
+  ctx: CanvasRenderingContext2D, W: number, H: number, originY: number,
+  t: number, reducedMotion: boolean,
+): void {
+  const cx = W / 2;
+  const cy = originY - H * 0.08; // the singularity, high in the room
+  const iris: RGB = [180, 140, 255];
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  // Ceiling bloom.
+  const bloom = ctx.createRadialGradient(cx, cy, 0, cx, cy, H * 0.4);
+  bloom.addColorStop(0, rgba([220, 200, 255], 0.5));
+  bloom.addColorStop(0.4, rgba(iris, 0.16));
+  bloom.addColorStop(1, rgba(iris, 0));
+  ctx.fillStyle = bloom;
+  ctx.fillRect(0, 0, W, originY + H * 0.4);
+  // Bright core.
+  const corePulse = reducedMotion ? 0.8 : 0.7 + 0.3 * Math.sin(t / 320);
+  ctx.fillStyle = rgba([255, 250, 255], 0.85 * corePulse);
+  ctx.beginPath();
+  ctx.arc(cx, cy, Math.max(3, W * 0.012), 0, Math.PI * 2);
+  ctx.fill();
+  // Rising vortex particles spiralling toward the core (motion only).
+  if (!reducedMotion) {
+    const n = 40;
+    for (let i = 0; i < n; i++) {
+      const seed = ((i * 2654435761) % 1000) / 1000;
+      const prog = ((t / (2600 + seed * 1800)) + seed) % 1; // 0 (bottom) → 1 (core)
+      const ease = prog * prog;
+      const radius = (W * 0.34) * (1 - ease);
+      const ang = seed * Math.PI * 2 + prog * 7.5; // spiral inward as it rises
+      const x = cx + Math.cos(ang) * radius;
+      const y = (originY + H * 0.22) - ease * (H * 0.3) + Math.sin(ang) * radius * 0.32;
+      const a = Math.sin(prog * Math.PI) * 0.6;
+      if (a <= 0.02) continue;
+      const col: RGB = i % 2 === 0 ? [200, 170, 255] : [150, 210, 255];
+      ctx.fillStyle = rgba(col, a);
+      ctx.beginPath();
+      ctx.arc(x, y, 1 + seed * 1.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
   ctx.restore();
 }
 
