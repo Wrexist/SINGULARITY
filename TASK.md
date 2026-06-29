@@ -93,9 +93,22 @@ Market" (pure engine, curve-safe, zero render risk) is the connective tissue eve
 - [x] **A5 · "This run's story" recap** — the Generation Report auto-generates a 2–3 line satirical
       summary (era + gen, alignment stance, product business). Pure `runStory()`. +4 tests.
       ↳ Remaining Wave A (optional): **A4** codex entries that re-read by tenure/alignment.
-      ↳ Next waves (see DEPTH_ROADMAP.md): **B** resonance (alignment/charter as strategy, staff morale,
-        Heat escalation); **C** manifestation & legibility (alignment bar, prestige badge, status ticker,
-        hall manifestation — renderer work needs on-device verification).
+- [x] **B1 · Charter conviction prestige bonus** — shipping the SAME charter as the previous run
+      banks +15% Legacy (charter↔prestige resonance). New persisted `lastCharter` (save v14→v15);
+      pure `charterConvictionMult` folded into `legacyWeightsForMode`; CharterPanel shows the bonus.
+      Curve-safe (no charter at first ship; sim never sets one). +5 tests.
+- [x] **B1b · Doomer conviction → Lab Reputation** — shipping while committed to safety (alignment ≤
+      −factionThreshold) earns bonus Reputation (alignment↔meta), like open-source goodwill. New
+      monotonic `safetyShips` stat (sanitizer-defaulted, no version bump); `perSafetyShip = 3`.
+      Curve-safe (first ship neutral; Reputation is meta). +2 tests.
+- [x] **C1 · Alignment spectrum bar** — Lab Stats shows a visual Doomer↔Accel bar (gradient + marker)
+      once a faction choice is made, surfacing the now-strategic alignment axis. UI-only.
+      ↳ Remaining **Wave B** (bigger behavioral systems): **B2** staff morale/burnout meter +
+        role-gated unlocks; **B3** Heat escalation + a regulator who remembers (persisted suspicion);
+        **B4** staff↔product synergy + anti-degenerate floors (churn floor / cannibalization).
+      ↳ Remaining **Wave C**: more C1 legibility (prestige-ready badge, status ticker, portfolio
+        health) + **C2** hall manifestation (staff agents, product beams, heat shimmer, per-era
+        structural growth) — renderer work, needs on-device verification before a TestFlight push.
 - [x] **R3.4 · More world-event dilemmas + dead-content fix** — 4 new two-choice dilemmas (Mine the
       Chat Logs / Automate Your Researchers / Power the Datacenter / Emergency-Brake Eval), each
       feeding the now-active alignment fork (doomer − / accelerationist +) → more player agency, not
