@@ -7,6 +7,51 @@ import type { ActiveModifier, DraftModel, Employee, GameState, LifetimeStats, Mo
 const MODIFIER_TARGETS: ModifierTarget[] = ["computeMult", "dataMult", "moneyMult"];
 const PRODUCT_TYPE_IDS = PRODUCTS.types.map((t) => t.id);
 
+// ---- Untrusted-input hardening (a save is editable text the player can paste back
+//      via the backup feature). Every numeric field below is clamped to a FINITE,
+//      in-range value so a hand-edited / corrupt / migrated save can never produce
+//      NaN/Infinity/negative that propagates into the economy or bricks the run. ----
+
+/** Matches a plain non-negative decimal/scientific number string (no NaN/Infinity/sign). */
+const NUM_RE = /^\d+(\.\d+)?(e\+?\d+)?$/i;
+
+/** Build a Big from untrusted input, rejecting NaN/Infinity/negative/garbage. A
+ *  legitimately huge late-game value (e.g. "1e400") is preserved; anything that
+ *  would poison the BigNumber (a NaN/Infinity Decimal) falls back. */
+function safeBig(v: unknown, fallback: Big = Big.ZERO): Big {
+  if (v instanceof Big) return v;
+  if (typeof v === "number") return Number.isFinite(v) && v >= 0 ? Big.of(v) : fallback;
+  if (typeof v === "string" && NUM_RE.test(v.trim())) return Big.of(v.trim());
+  return fallback;
+}
+
+/** Clamp an untrusted number into [min,max], falling back when non-finite. */
+function clampNum(v: unknown, min: number, max: number, fallback: number): number {
+  return typeof v === "number" && Number.isFinite(v) ? Math.max(min, Math.min(max, v)) : fallback;
+}
+
+/** A non-negative finite integer (rack counts, ships, …); else the fallback. */
+function safeCount(v: unknown, fallback = 0): number {
+  return typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.floor(v) : fallback;
+}
+
+/** The upgrades map is fully untrusted (it drives derive directly). Keep only
+ *  string keys → finite non-negative integer counts; drop `__proto__` & garbage. */
+function sanitizeUpgrades(u: unknown): Record<string, number> {
+  if (!u || typeof u !== "object") return {};
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(u as Record<string, unknown>)) {
+    if (k === "__proto__" || k === "constructor" || k === "prototype") continue;
+    if (typeof v === "number" && Number.isFinite(v) && v > 0) out[k] = Math.floor(v);
+  }
+  return out;
+}
+
+/** Generous finite ceilings — high enough never to bind on a legit save, low enough
+ *  that the economy math (arpu = baseArpu·price·quality, mrr = paid·arpu, …) can't
+ *  overflow to Infinity (which then underflows to NaN via Infinity−Infinity). */
+const PROD_CAPS = { quality: 1e12, mau: 1e15, buzzSec: 86_400, ageSec: 1e9, version: 1000, frontier: 1e12 };
+
 /** Validate a single product entry. A corrupt/old entry with a missing or
  *  non-finite numeric (or a zero priceMult → div-by-zero in convRate) would feed
  *  NaN straight into simulateProducts → money, so drop it on load. */
@@ -274,21 +319,37 @@ export function deserialize(json: string): GameState {
     ...loadedProducts,
     active: loadedProducts.active.map((p) => {
       const o = p as ProductState;
+      // Clamp every numeric to the SAME range the runtime setters enforce, so a
+      // save-edited value can't bypass the in-game clamps (out-of-range price /
+      // marketing / quality were the path to overflow → NaN money).
+      const quality = clampNum(o.quality, 0, PROD_CAPS.quality, 1);
+      const mau = clampNum(o.mau, 0, PROD_CAPS.mau, 0);
       return {
         ...p,
+        quality,
+        mau,
+        paid: clampNum(o.paid, 0, mau, 0), // paid can never exceed MAU (sim invariant)
+        version: Math.floor(clampNum(o.version, 1, PROD_CAPS.version, 1)),
+        priceMult: clampNum(o.priceMult, PRODUCTS.priceMin, PRODUCTS.priceMax, 1),
+        marketingPerSec: clampNum(o.marketingPerSec, 0, quality * PRODUCTS.marketingCapPerQuality, 0),
+        buzzSec: clampNum(o.buzzSec, 0, PROD_CAPS.buzzSec, 0),
         upgrade: sanitizeUpgrade(o.upgrade),
-        features: Array.isArray(o.features) ? o.features.filter((s): s is string => typeof s === "string") : [],
+        // Dedupe features — a hand-edited save could repeat an id to stack its multiplier.
+        features: Array.isArray(o.features) ? [...new Set(o.features.filter((s): s is string => typeof s === "string"))] : [],
         enterprise: o.enterprise === true,
-        enterprisePrice: typeof o.enterprisePrice === "number" && Number.isFinite(o.enterprisePrice) && o.enterprisePrice > 0 ? o.enterprisePrice : 1,
+        enterprisePrice: clampNum(o.enterprisePrice, PRODUCTS.enterprise.priceMin, PRODUCTS.enterprise.priceMax, 1),
         channelMix: sanitizeChannelMix(o.channelMix),
         // ageSec gates the retire valuation. A save that predates the field has
         // products that were already established, so treat them as fully mature
         // (a large value) rather than penalising a returning player's cash cows.
-        ageSec: typeof o.ageSec === "number" && Number.isFinite(o.ageSec) && o.ageSec >= 0 ? o.ageSec : 1e9,
+        ageSec: clampNum(o.ageSec, 0, PROD_CAPS.ageSec, 1e9),
       };
     }),
+    // Frontier must stay ≥ its start: a negative frontier pins every product's
+    // competitiveness at 1 and zeroes staleness churn (a permanent buff exploit).
+    frontier: clampNum(loadedProducts.frontier, PRODUCTS.frontierStart, PROD_CAPS.frontier, PRODUCTS.frontierStart),
     drafts: sanitizeDrafts((loadedProducts as ProductsState).drafts),
-    sold: typeof loadedProducts.sold === "number" && Number.isFinite(loadedProducts.sold) ? loadedProducts.sold : 0,
+    sold: typeof loadedProducts.sold === "number" && Number.isFinite(loadedProducts.sold) && loadedProducts.sold >= 0 ? Math.floor(loadedProducts.sold) : 0,
     milestones: Array.isArray((loadedProducts as ProductsState).milestones)
       ? (loadedProducts as ProductsState).milestones.filter((m): m is string => typeof m === "string")
       : [],
@@ -296,18 +357,23 @@ export function deserialize(json: string): GameState {
   return {
     version: SAVE_VERSION,
     resources: {
-      compute: Big.of(res.compute ?? "0"),
-      data: Big.of(res.data ?? "0"),
-      money: Big.of(res.money ?? "0"),
+      compute: safeBig(res.compute),
+      data: safeBig(res.data),
+      money: safeBig(res.money),
     },
-    upgrades: raw.upgrades ?? fresh.upgrades,
-    research: raw.research ?? fresh.research,
-    run: raw.run ?? fresh.run,
+    upgrades: sanitizeUpgrades(raw.upgrades),
+    // research must be an array of strings (a string/number/garbage would break length/includes).
+    research: Array.isArray(raw.research) ? raw.research.filter((r): r is string => typeof r === "string") : fresh.research,
+    run: {
+      active: (raw.run as GameState["run"] | undefined)?.active === true,
+      progress: clampNum((raw.run as GameState["run"] | undefined)?.progress, 0, 1, 0),
+      readyToClaim: (raw.run as GameState["run"] | undefined)?.readyToClaim === true,
+    },
     prestige: {
-      legacyWeights: Big.of(pres.legacyWeights ?? "0"),
-      ships: pres.ships ?? 0,
+      legacyWeights: safeBig(pres.legacyWeights),
+      ships: safeCount(pres.ships),
     },
-    lifetimeMoney: Big.of(raw.lifetimeMoney ?? res.money ?? "0"),
+    lifetimeMoney: safeBig(raw.lifetimeMoney ?? res.money),
     heat,
     suspicion,
     modifiers,

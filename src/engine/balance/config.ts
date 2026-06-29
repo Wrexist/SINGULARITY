@@ -1336,6 +1336,11 @@ export const balance = {
     eventChanceBoostAtMax: 1.5,
     /** Lobbying also appeases the regulator: cut suspicion by this fraction per lobby. */
     lobbyReduction: 0.25,
+    /** Anti-exploit: a raid fine you can't pay (spent down to be "judgment-proof")
+     *  doesn't vanish — the unpaid $ converts to Heat at this $/point, plus a flat
+     *  suspicion bump, so dodging fines by holding no cash isn't free. */
+    fineDodgeToHeat: 600,
+    fineDodgeSuspicion: 6,
     /** At this tier index and above, regulatory events are signed by the regulator
      *  (the bureaucrat becomes a recurring character). */
     nameFromTier: 2,

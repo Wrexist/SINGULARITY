@@ -370,14 +370,22 @@ export function buyDataOffer(
   // A raid fine can exceed your balance — clamp so money never goes negative.
   const available = state.resources.money;
   if (moneyLost.gt(available)) moneyLost = available;
+  let dodgeSuspicion = 0;
   if (raided) {
     // Report the fine ACTUALLY charged (cost is always affordable; the fine is
     // what the clamp may have trimmed) so the toast never overstates the hit.
     const finePaid = moneyLost.sub(def.cost).max(0);
+    // Anti-exploit: a fine you dodged by being broke converts to Heat + suspicion,
+    // so spending down to ~cost before every shady buy isn't a free pass.
+    const dodged = Math.max(0, (def.risk?.fine ?? 0) - finePaid.toNumber());
+    if (dodged > 0) {
+      heat = clampHeat(heat + Math.min(balance.heat.max, dodged / balance.regulator.fineDodgeToHeat));
+      dodgeSuspicion = balance.regulator.fineDodgeSuspicion;
+    }
     message = `Raided! Regulators kicked the door in. Fined $${finePaid.format()}.`;
   }
   // A risky (shady) Bazaar buy is logged by the regulator — suspicion rises (B3).
-  const suspicion = def.risk ? clampSuspicion(state.suspicion + balance.regulator.perShadyBuy) : state.suspicion;
+  const suspicion = def.risk ? clampSuspicion(state.suspicion + balance.regulator.perShadyBuy + dodgeSuspicion) : state.suspicion;
   const next: GameState = {
     ...state,
     resources: {
@@ -440,13 +448,18 @@ export function pickHeatEvent(pickRoll: number): HeatEvent {
 
 /** Apply a heat event's effect to state. Pure given the event id. */
 export function applyHeatEvent(state: GameState, eventId: string): { state: GameState; event: HeatEventResult } {
-  const def = HEAT_EVENTS.find((e) => e.id === eventId) ?? HEAT_EVENTS[0]!;
+  // Unknown id (stale save / typo): no-op rather than applying a DIFFERENT event's
+  // fines — silently charging the wrong penalty would be a real bug.
+  const def = HEAT_EVENTS.find((e) => e.id === eventId);
+  if (!def) return { state, event: { id: eventId, message: "", tone: "good" } };
   const { fineFraction, dataFraction, heatMul, heatAdd, heatSet } = def.effect;
   let money = state.resources.money;
   let data = state.resources.data;
   let heat = state.heat;
-  if (fineFraction) money = money.mul(1 - fineFraction);
-  if (dataFraction) data = data.mul(1 - dataFraction);
+  // Clamp the multiplier ≥ 0 and floor the result so a (future/tampered) fraction > 1
+  // can never drive a resource negative.
+  if (fineFraction) money = money.mul(Math.max(0, 1 - fineFraction)).max(Big.ZERO);
+  if (dataFraction) data = data.mul(Math.max(0, 1 - dataFraction)).max(Big.ZERO);
   if (heatMul !== undefined) heat = heat * heatMul;
   if (heatAdd !== undefined) heat = heat + heatAdd;
   if (heatSet !== undefined) heat = heatSet;
@@ -554,7 +567,10 @@ function effectSummary(effect: WorldEventEffect): string {
 function applyEffect(state: GameState, effect: WorldEventEffect, id: string, tone: "good" | "bad"): GameState {
   if (effect.kind === "grantPct") {
     const { resource, pct } = effect;
-    return { ...state, resources: { ...state.resources, [resource]: state.resources[resource].mul(1 + pct) } };
+    // Clamp the multiplier ≥ 0 and floor at 0 so a pct ≤ −1 (a future/tampered debuff)
+    // can never produce a negative resource that poisons derive / the prestige math.
+    const next = state.resources[resource].mul(Math.max(0, 1 + pct)).max(Big.ZERO);
+    return { ...state, resources: { ...state.resources, [resource]: next } };
   }
   if (effect.kind === "frontierJump") {
     // Competitors advance — your shipped products fall behind (more churn).
