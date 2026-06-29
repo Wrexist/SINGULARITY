@@ -116,9 +116,15 @@ Market" (pure engine, curve-safe, zero render risk) is the connective tissue eve
       ↳ Remaining **Wave B**: morale *consequences* (decay/turnover/burnout) — a LIVE-PLAYER BALANCE
         change, deferred for owner sign-off (don't silently nerf existing saves); **B4** staff↔product
         synergy + anti-degenerate floors (churn floor / cannibalization) — also balance-affecting.
-      ↳ Remaining **Wave C**: more C1 legibility (prestige-ready badge, status ticker, portfolio
-        health) + **C2** hall manifestation (staff agents, product beams, heat shimmer, per-era
-        structural growth) — renderer work, needs on-device verification before a TestFlight push.
+- [x] **C1 legibility sweep** — all the cheap, no-render-risk surfacing wins:
+      • alignment **spectrum bar** in Lab Stats · • **prestige-ready** pulse + gold "Ship" badge on the
+      Lab nav · • **portfolio health** (bleeders float to the top, "⚠ N need attention" header) ·
+      • **status ticker** (persistent regulator chip in the ModifierBar via a generic StatusChip API).
+      ↳ Remaining **Wave C2** (hall manifestation — renderer work, needs ON-DEVICE verification before a
+        TestFlight push): staff as floor agents, product uplink beams, power/heat shimmer + uncapped
+        cooling, alignment tint, per-era STRUCTURAL growth (multi-room → campus → Post-Singularity).
+      ↳ Owner-decision (live-player BALANCE changes, not done unilaterally): morale decay/turnover/
+        burnout; product churn floor / lifecycle decay; cross-segment cannibalization vs TAM expansion.
 - [x] **R3.4 · More world-event dilemmas + dead-content fix** — 4 new two-choice dilemmas (Mine the
       Chat Logs / Automate Your Researchers / Power the Datacenter / Emergency-Brake Eval), each
       feeding the now-active alignment fork (doomer − / accelerationist +) → more player agency, not
