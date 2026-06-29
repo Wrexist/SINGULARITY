@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import type { Big } from "../engine/math/Big";
 import { fmt, m$ } from "./format";
+import { shipHeadline } from "./headlines";
 import { RocketIcon } from "./Icons";
 
 export interface ShipReport {
@@ -22,16 +23,6 @@ interface Props {
 const CONFETTI = Array.from({ length: 26 });
 const COLORS = ["#ff385c", "#2f7bf6", "#9b51e0", "#16b364", "#ff9f0a"];
 
-// Rotating satirical headlines so the tentpole moment doesn't read the same every
-// ship (picked deterministically by generation, so no render churn).
-const HEADLINES = [
-  "Model Shipped",
-  "Another One Ships",
-  "The Press Release Writes Itself",
-  "Shipped It (Again)",
-  "A New Generation Begins",
-];
-
 /**
  * The "Ship the Model" milestone moment (GDD §6) — now a Generation Report: the
  * tentpole reward beat with the Legacy banked AND a snapshot of how far the run
@@ -43,9 +34,8 @@ export function Celebration({ weightsGained, totalWeights, report, onDone }: Pro
     return () => window.clearTimeout(t);
   }, [onDone]);
 
-  // gen is 1-based (first ship = gen 1), so offset to zero-based before the modulo
-  // or generation 1 would skip the first headline.
-  const headline = report ? HEADLINES[(report.gen - 1) % HEADLINES.length]! : "Model Shipped";
+  // History-aware: the headline reflects what THIS run achieved (A3).
+  const headline = report ? shipHeadline(report) : "Model Shipped";
 
   return (
     <div className="celebrate" onClick={onDone}>
