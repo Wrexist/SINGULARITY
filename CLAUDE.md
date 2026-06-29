@@ -28,14 +28,19 @@ An AI compute tycoon (idle/incremental + management) with a 2.5D data-center hal
 > Rendering: **Canvas 2D isometric** (parametric, no image assets). Hard rules still hold: 3 in-run
 > resources only (Legacy/Reputation are meta-currencies, not a 4th resource); engine pure/deterministic;
 > humor in writing not math; all new systems are data-in-`balance/` + pure folds + tests.
-> **CURVE (retuned 2026-06-29, owner-directed "make it a lot harder/slower"):** first prestige
-> **≈ 38–40m**, and the meta-loop is no longer a snowball — **Gen2 ≈ 13m, Gen3 ≈ 9m** (was
-> 12m15s / 2m11s). One global knob drives pace: **`balance.difficulty.costMult`** (currently **2.0**)
-> scales every Compute/Data/Money cost; the Legacy snowball is bounded by `prestige.scale` (1e5) +
-> `multiplierPerPoint` (0.018). To change difficulty, dial `costMult` and re-run `npm run sim`; higher
-> walls the curve (3.5 made first prestige unreachable). Verify with `npm run sim` (baseline +
-> `runLongHaul`). NOTE: many `TASK.md` entries cite the OLD "sim 12m15s" — that's historical record
-> from before this retune, not the current target.
+> **CURVE (retuned 2026-06-29 in two owner steps — "a lot harder/slower", then "much longer"):**
+> first prestige **≈ 59–72m** (one good session / a multi-check climb), meta-loop **Gen2 ≈ 13–15m,
+> Gen3 ≈ 10m**, longest dead-air gap **~3m** (purchases keep flowing). Pace is set by THREE separated
+> knobs in **`balance.difficulty`** (each acts on a different part of the curve — see LEARNINGS):
+> **`costMult` (2.0)** scales RESEARCH cost — but research is gated by a fixed COMPUTE stock against a
+> fixed income ceiling, so pushing this WALLS the game (~2.5 = unreachable in 240m); leave it modest.
+> **`upgradeCostMult` (1.6)** is the SAFE length dial — scales upgrade cost only, stretching the
+> hall-build-out journey (the fun, purchase-dense part) WITHOUT touching the research gate, so it
+> lengthens without walling. **`productionMult` (1.0 = identity)** is a global income-rate dilation
+> (documented spare lever; also walls if pushed). The Legacy snowball is bounded by `prestige.scale`
+> (1e5) + `multiplierPerPoint` (0.018). To re-pace: move `upgradeCostMult`, re-run `npm run sim`,
+> watch BOTH "First prestige" and "Longest wall". NOTE: `TASK.md` entries citing "sim 12m15s" or
+> "≈38m" are historical records from before these retunes, not the current target.
 
 If a request would pull work forward from a later phase, STOP and flag it. Scope drift is this project's #1 documented risk. Protecting the phase boundary is part of your job.
 

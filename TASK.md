@@ -13,13 +13,16 @@ Phase 0–3 history retained below for context.
 3 in-run resources, pure/deterministic engine, data-in-`balance/`, hard-gated compounding,
 no dark patterns. Re-run `npm run sim` after any economy change.*
 
-### ⚠️ DIFFICULTY RETUNE (owner-directed 2026-06-29) — the curve is now MUCH slower
-*Was: first prestige ~12m15s, meta-loop Gen2 ~2m11s (re-beat in minutes). Owner: "make it a lot
-harder & slower." New: **first prestige ≈ 38–40m, Gen2 ≈ 13m, Gen3 ≈ 9m** (wall-free, longest gap
-~2m). One knob: `balance.difficulty.costMult = 2.0` scales every Compute/Data/Money cost (super-linear
-in time — 3.5 walled it). Snowball bounded via `prestige.scale` 1e4→1e5 + `multiplierPerPoint`
-0.05→0.018. 410 tests (4 magic-number balance tests rewritten to derive from constants). **All
-"sim 12m15s" notes below are HISTORICAL** (pre-retune record), not the current target.*
+### ⚠️ DIFFICULTY RETUNE (owner-directed 2026-06-29, TWO steps) — the curve is now MUCH longer
+*Step 1 "a lot harder/slower": 12m15s → ~38–40m via `costMult` 1.0→2.0.
+Step 2 "much longer, keep it feeling like progress" (owner target ~1h–1.25h): now **first prestige
+≈ 59–72m, Gen2 ≈ 13–15m, Gen3 ≈ 10m**, longest dead-air gap **~3m**. Achieved with a NEW upgrade-only
+length knob — `balance.difficulty.upgradeCostMult = 1.6` — NOT by pushing `costMult` (which walls the
+game at ~2.5 because the prestige gate is a fixed compute STOCK against a fixed income ceiling; see
+LEARNINGS "three-knob model"). `difficulty` now has three separated knobs: `costMult` 2.0 (research /
+gate), `upgradeCostMult` 1.6 (length, SAFE), `productionMult` 1.0 (income dilation, spare). Snowball
+still bounded via `prestige.scale` 1e5 + `multiplierPerPoint` 0.018. 432 tests. **All "sim 12m15s"
+or "≈38m" notes below are HISTORICAL** (pre-retune records), not the current target.*
 
 ### ⭐ ACTIVE WAVE — R8 Platform & LiveOps (owner-picked 2026-06-28) · plan: `R8_PLATFORM_LIVEOPS_PLAN.md`
 *The R0–R5 critical path is essentially shipped (350 tests, sim 12m15s). R8 turns balance tuning

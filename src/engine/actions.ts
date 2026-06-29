@@ -66,9 +66,13 @@ export function claimRun(state: GameState): GameState {
 
 // ---------- Upgrades ----------
 
-/** Cost of the next level of an upgrade: base * growth^owned. */
+/** Cost of the next level of an upgrade: base * growth^owned, scaled by the global
+ *  costMult and the upgrade-only length knob (see balance.difficulty). */
 export function upgradeCost(def: UpgradeDef, owned: number): Big {
-  return Big.of(def.cost.base).mul(Big.of(def.cost.growth).pow(owned)).mul(balance.difficulty.costMult);
+  return Big.of(def.cost.base)
+    .mul(Big.of(def.cost.growth).pow(owned))
+    .mul(balance.difficulty.costMult)
+    .mul(balance.difficulty.upgradeCostMult);
 }
 
 export function canBuyUpgrade(state: GameState, id: string): boolean {

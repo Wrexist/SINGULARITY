@@ -769,16 +769,31 @@ const WORLD_EVENTS: WorldEvent[] = [
 
 export const balance = {
   /**
-   * DIFFICULTY (owner-directed retune 2026-06-29). A single multiplier applied in
-   * `upgradeCost()` and `researchCost()` — i.e. the upgrade- and research-buy paths,
-   * which are the dominant Compute/Data/Money sinks (other spend paths like data
-   * offers still use their raw `def.cost`). The economy is a spend-to-grow feedback
-   * loop, so scaling these costs by K stretches the whole curve ~K× longer (first
-   * prestige and every generation) without distorting the internal balance of *which*
-   * upgrade to buy when. Dial this one number to make the game faster/slower; re-run
-   * `npm run sim` to read the new pacing.
+   * DIFFICULTY. Three pacing knobs, deliberately separated because they act on
+   * different parts of the curve (learned the hard way 2026-06-29 — see LEARNINGS):
+   *
+   * - `costMult`  — scales RESEARCH cost (compute+data) in `researchCost()`. Research
+   *   is gated by accumulating a fixed COMPUTE stock (the prestige gate `inference_api`
+   *   is ~130k×costMult compute). The income ceiling (hall full of racks) is fixed, so
+   *   pushing this raises the gate's stock target beyond reachable income → a hard wall
+   *   (~2.5 already makes first prestige unreachable in 240m). Leave it modest.
+   * - `upgradeCostMult` — scales UPGRADE cost (`upgradeCost()`) ON TOP of costMult. This
+   *   is the SAFE length knob: it stretches the build-out journey (you buy racks/power/
+   *   expansions slower, so the satisfying part — watching the hall grow — lasts longer
+   *   and stays full of purchases) WITHOUT touching the research-stock gate, so it
+   *   lengthens the game without walling it. This is the primary "make it longer" dial.
+   * - `productionMult` — global income-RATE dilation (compute/sec + scraper data, which
+   *   cascade to run yields + passive money). Also lengthens, but it lowers the income
+   *   ceiling too, so like costMult it can wall the gate if pushed hard. Kept at 1.0
+   *   (identity = historical curve byte-for-byte); a documented fine-tuning lever.
+   *
+   * Tune to length with `npm run sim` (watch "First prestige" AND "Longest wall").
    */
-  difficulty: { costMult: 2.0 },
+  difficulty: {
+    costMult: 2.0,
+    upgradeCostMult: 1.6,
+    productionMult: 1.0,
+  },
 
   /** The rented server closet generates a trickle of Compute for free. */
   baseComputePerSec: 1,

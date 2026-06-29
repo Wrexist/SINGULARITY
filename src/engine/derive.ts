@@ -241,7 +241,8 @@ export function derive(state: GameState): Derived {
   // on a fresh run with no active events.
   const dataPerSec = dataPerSecFlat
     .mul(scraperDataMult)
-    .mul(legacyMult).mul(ascensionMult).mul(rep.dataMult).mul(ch.dataMult).mul(lt.dataMult);
+    .mul(legacyMult).mul(ascensionMult).mul(rep.dataMult).mul(ch.dataMult).mul(lt.dataMult)
+    .mul(balance.difficulty.productionMult); // global production dilation (see computePerSec)
 
   let computePerSec = computeFlat.mul(computeMult);
   // PHASE 2 (flagged off): power/heat soft-cap throttles Compute when the racks
@@ -249,6 +250,11 @@ export function derive(state: GameState): Derived {
   if (balance.power.enabled) {
     computePerSec = computePerSec.mul(powerStats(state).thermalFactor);
   }
+  // Global production dilation (difficulty knob): slows every income RATE uniformly to
+  // lengthen the game without moving cost targets. Applied to compute here so it cascades
+  // to runComputeCost (→ run cadence preserved), run yields, and passive money below; the
+  // scraper data lane gets it directly. 1.0 = identity, so the historical curve is unchanged.
+  computePerSec = computePerSec.mul(balance.difficulty.productionMult);
   // Run cost scales with compute production (floored early game) so payouts
   // scale with the operation. Yields are proportional to compute invested.
   const runComputeCost = computePerSec
