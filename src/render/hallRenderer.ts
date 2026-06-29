@@ -314,6 +314,14 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
     drawRack(ctx, c.x, c.y, tileW, tileH, rack.tier, rack.density, scale, blink, workPulse, model.active, powerOn, o.rackSkin);
   }
 
+  // C2 — thermal stress: as power draw approaches/exceeds capacity the racks run hot.
+  // A red bloom (+ rising heat-haze bands when motion is on) washes the rack band so
+  // the power soft-cap is legible without opening a panel. Identity below the knee.
+  if (model.loadFrac > THERMAL_KNEE) {
+    const intensity = clamp((model.loadFrac - THERMAL_KNEE) / 0.6, 0, 1);
+    drawThermalStress(ctx, W, H, originY, o.timeMs, intensity, o.reducedMotion);
+  }
+
   // Auto-train "ops bot": a small glowing dot that patrols the floor, so the
   // automation you bought is something you can see working. Additive, drawn over
   // the racks; reduced-motion hides it (it's pure motion juice).
@@ -688,6 +696,44 @@ function drawDataFlow(ctx: CanvasRenderingContext2D, L: Layout, t: number, activ
     ctx.moveTo(x, y);
     ctx.lineTo(x - (e1.x - e0.x) * 0.03, y - (e1.y - e0.y) * 0.03);
     ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/** Power load (draw/capacity) at which the thermal-stress overlay begins. */
+const THERMAL_KNEE = 0.85;
+
+/** C2 — a red thermal wash over the rack band, with rising heat-haze bands when
+ *  motion is on. `intensity` 0..1 scales opacity. Reduced-motion → a static tint. */
+function drawThermalStress(
+  ctx: CanvasRenderingContext2D, W: number, H: number, originY: number,
+  t: number, intensity: number, reducedMotion: boolean,
+): void {
+  const hot: RGB = [255, 92, 56];
+  const bandTop = originY - H * 0.18;
+  const bandH = H * 0.5;
+  ctx.save();
+  // Base red bloom over the rack band.
+  const g = ctx.createLinearGradient(0, bandTop, 0, bandTop + bandH);
+  g.addColorStop(0, rgba(hot, 0));
+  g.addColorStop(0.6, rgba(hot, 0.06 + 0.16 * intensity));
+  g.addColorStop(1, rgba(hot, 0));
+  ctx.fillStyle = g;
+  ctx.fillRect(0, bandTop, W, bandH);
+  // Rising heat-haze bands (skipped under reduced motion).
+  if (!reducedMotion) {
+    ctx.globalCompositeOperation = "lighter";
+    const bands = 5;
+    for (let i = 0; i < bands; i++) {
+      const seed = ((i * 40503) % 97) / 97;
+      const prog = ((t / (1400 + seed * 900)) + seed) % 1;
+      const y = bandTop + bandH - prog * bandH;
+      const wob = Math.sin(t / 220 + i) * 6;
+      const a = Math.sin(prog * Math.PI) * 0.10 * intensity;
+      if (a <= 0.005) continue;
+      ctx.fillStyle = rgba(hot, a);
+      ctx.fillRect(W * (0.2 + seed * 0.1) + wob, y, W * 0.5, 2.5);
+    }
   }
   ctx.restore();
 }

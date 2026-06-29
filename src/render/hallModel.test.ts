@@ -12,6 +12,14 @@ describe("hall view-model", () => {
     expect(m.era).toBe(0);
   });
 
+  it("C2 — loadFrac reflects power draw vs capacity (drives the thermal overlay)", () => {
+    const cold = buildHallModel(createInitialState());
+    expect(cold.loadFrac).toBe(0); // no racks → no draw
+    // Pile on racks with no extra power capacity → over-subscribed → loadFrac > 1.
+    const hot = buildHallModel({ ...createInitialState(), upgrades: { rack_tpu: 40 } });
+    expect(hot.loadFrac).toBeGreaterThan(1);
+  });
+
   it("maps owned hardware to racks of the right tier (manifestation rule)", () => {
     const s = createInitialState();
     s.upgrades = { rack_basic: 3, rack_server: 2, rack_tpu: 1 };
@@ -90,7 +98,7 @@ describe("hall view-model", () => {
     expect(buildHallModel(cooled).coolingUnits).toBe(2); // one unit per purchase
     const overkill = createInitialState();
     overkill.upgrades = { psu_bay: 5, cooling_loop: 5, substation: 5 };
-    expect(buildHallModel(overkill).coolingUnits).toBe(3); // capped for a clean read
+    expect(buildHallModel(overkill).coolingUnits).toBe(6); // C2: cap raised 3→6 so cooling visibly scales
   });
 
   it("passes the run state through for the work pulse", () => {

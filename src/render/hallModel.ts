@@ -2,6 +2,7 @@ import { balance } from "../engine/balance/config";
 import { canBuyUpgrade, upgradeCost } from "../engine/actions";
 import type { GameState } from "../engine/types";
 import { currentEra } from "../engine/eras";
+import { powerStats } from "../engine/power";
 import { RACK_IDS, hallDims, hallCapacity, hallRoomSplit, type Dir } from "../engine/hall";
 
 export { hallDims, hallExpansion, type Dir } from "../engine/hall";
@@ -58,6 +59,9 @@ export interface HallModel {
   /** Auto-train owned → a little "ops bot" roams the floor (the automation, made
    *  visible). */
   autoBot: boolean;
+  /** C2 — power draw ÷ capacity (>1 = throttled). Drives a thermal "heat shimmer"
+   *  + red rim over the racks so the power soft-cap is legible in the room. */
+  loadFrac: number;
 }
 
 /** Power/cooling infrastructure ids (drive the visible wall units). Exported so
@@ -93,10 +97,15 @@ export function buildHallModel(game: GameState): HallModel {
   const capacity = hallCapacity(game);
   const era = currentEra(game);
 
-  // Cooling/power gear manifests as wall units (per wall), capped so a huge
-  // facility still reads cleanly (parametric: many → one upgraded visual).
+  // Cooling/power gear manifests as wall units (per wall). The cap is raised (C2) so
+  // a serious facility's cooling visibly SCALES with investment instead of plateauing
+  // at 3 — the wall layout spaces them evenly, so up to 6 still reads cleanly.
   const powerLevels = POWER_IDS.reduce((s, id) => s + (game.upgrades[id] ?? 0), 0);
-  const coolingUnits = Math.min(3, (era >= 2 ? 1 : 0) + powerLevels);
+  const coolingUnits = Math.min(6, (era >= 2 ? 1 : 0) + powerLevels);
+
+  // Thermal load: rack power draw vs. capacity. >1 = throttled (the racks run hot).
+  const power = powerStats(game);
+  const loadFrac = power.capacityKw > 0 ? power.drawKw / power.capacityKw : 0;
 
   // Manifest software upgrades that used to change only a number: overclock makes
   // racks visibly run hotter; auto-train puts a little ops bot on the floor.
@@ -151,6 +160,7 @@ export function buildHallModel(game: GameState): HallModel {
     coolingUnits,
     overclock,
     autoBot,
+    loadFrac,
     ...hallRoomSplit(game),
   };
 }
