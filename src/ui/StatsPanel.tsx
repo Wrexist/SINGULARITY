@@ -4,6 +4,7 @@ import { fmt, fmtMoney, m$, numOf, fmtDur } from "./format";
 import { achievementDefs } from "../engine/achievements";
 import { reputationAvailable } from "../engine/reputation";
 import { alignmentProductionMods, alignmentHeatMult, alignmentProductMods } from "../engine/alignment";
+import { regulatorState } from "../engine/regulator";
 import { charterDef, charterMods } from "../engine/charter";
 import { balance } from "../engine/balance/config";
 import { ascensionMultiplier } from "../engine/prestige";
@@ -87,6 +88,7 @@ export function StatsPanel({ game, derived }: Props) {
     { label: "Passive income", value: `${fmtMoney(derived.passiveMoneyPerSec)}/s` },
     { label: "Faction stance", value: alignmentLabel(game.alignment) },
     ...(stance ? [{ label: "Stance effects", value: stance }] : []),
+    ...(game.suspicion > 0 ? [{ label: "Regulator", value: `${regulatorState(game).name} · ${regulatorState(game).label}` }] : []),
     ...(charter ? [charter] : []),
     ...crossSystemRows(game),
   ];

@@ -167,6 +167,9 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     // Remember the charter just shipped so picking it again next run earns the
     // conviction bonus (B1). The fresh run's own charter resets to null (...fresh).
     lastCharter: state.charter,
+    // The regulator's suspicion is a LONG memory — it persists across the ship (B3).
+    // A clean lab carries 0, so the tuned curve is untouched.
+    suspicion: state.suspicion,
     // Snapshot the just-finished run's peaks for the Generation Report (the fresh
     // run's own peaks reset to 0 via ...fresh). This is what makes the report show
     // THIS generation's high-water marks instead of all-time career peaks.

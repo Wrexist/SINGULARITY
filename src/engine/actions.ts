@@ -11,6 +11,7 @@ import {
 } from "./balance/config";
 import { derive } from "./derive";
 import { alignmentHeatMult } from "./alignment";
+import { suspicionEventMult, regulatorIsNamed, regulatorState, clampSuspicion } from "./regulator";
 import { autoResearchEnabled, researchCostMult } from "./reputation";
 import { isRackId, floorFull, evictableRackFor } from "./hall";
 import type { ActiveModifier, GameState } from "./types";
@@ -92,6 +93,10 @@ export function buyUpgrade(state: GameState, id: string): GameState {
   const heat = def.market === "darkweb"
     ? clampHeat(state.heat + balance.heat.toolBuyHeat * alignmentHeatMult(state))
     : state.heat;
+  // The regulator notes every shady purchase — suspicion is a long memory (B3).
+  const suspicion = def.market === "darkweb"
+    ? clampSuspicion(state.suspicion + balance.regulator.perShadyBuy)
+    : state.suspicion;
   const upgrades = { ...state.upgrades, [id]: owned + 1 };
   // Full floor + a higher-tier rack → upgrade in place: evict the lowest
   // lower-tier rack to free its slot (canBuyUpgrade guaranteed one exists).
@@ -107,6 +112,7 @@ export function buyUpgrade(state: GameState, id: string): GameState {
     },
     upgrades,
     heat,
+    suspicion,
   };
 }
 
@@ -370,6 +376,8 @@ export function buyDataOffer(
     const finePaid = moneyLost.sub(def.cost).max(0);
     message = `Raided! Regulators kicked the door in. Fined $${finePaid.format()}.`;
   }
+  // A risky (shady) Bazaar buy is logged by the regulator — suspicion rises (B3).
+  const suspicion = def.risk ? clampSuspicion(state.suspicion + balance.regulator.perShadyBuy) : state.suspicion;
   const next: GameState = {
     ...state,
     resources: {
@@ -378,6 +386,7 @@ export function buyDataOffer(
       data: state.resources.data.add(dataGained),
     },
     heat,
+    suspicion,
   };
   return { state: next, outcome: { kind, dataGained, moneyLost, message } };
 }
@@ -403,6 +412,8 @@ export function lobby(state: GameState): GameState {
     ...state,
     resources: { ...state.resources, money: state.resources.money.sub(lobbyCost(state)) },
     heat: clampHeat(state.heat * (1 - balance.heat.lobby.reductionFraction)),
+    // Lobbying also buys down the regulator's suspicion (B3) — appease, don't just cool.
+    suspicion: clampSuspicion(state.suspicion * (1 - balance.regulator.lobbyReduction)),
   };
 }
 
@@ -439,9 +450,12 @@ export function applyHeatEvent(state: GameState, eventId: string): { state: Game
   if (heatMul !== undefined) heat = heat * heatMul;
   if (heatAdd !== undefined) heat = heat + heatAdd;
   if (heatSet !== undefined) heat = heatSet;
+  // Once the regulator escalates to a named, personal presence (B3), regulatory
+  // events are signed by them — the bureaucrat becomes a recurring character.
+  const message = regulatorIsNamed(state) ? `${regulatorState(state).name}: ${def.message}` : def.message;
   return {
     state: { ...state, resources: { ...state.resources, money, data }, heat: clampHeat(heat) },
-    event: { id: def.id, message: def.message, tone: def.tone },
+    event: { id: def.id, message, tone: def.tone },
   };
 }
 
@@ -458,8 +472,10 @@ export function maybeHeatEvent(
 ): { state: GameState; event: HeatEventResult } | null {
   if (state.heat <= 0) return null;
   const heatFrac = state.heat / balance.heat.max;
+  // Regulator scrutiny (B3) multiplies the audit rate — a watched lab gets hit more
+  // often at the same Heat. Identity at suspicion 0, so it's curve-safe.
   const chance = Math.min(
-    heatFrac * balance.heat.eventChancePerSecAtMax * seconds,
+    heatFrac * balance.heat.eventChancePerSecAtMax * seconds * suspicionEventMult(state),
     balance.heat.eventChanceCap,
   );
   if (fireRoll >= chance) return null;

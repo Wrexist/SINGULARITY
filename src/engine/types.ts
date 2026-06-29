@@ -49,6 +49,11 @@ export interface GameState {
   lifetimeMoney: Big;
   /** Regulatory Heat (0..100). Rises with dark-web use, cools over time. */
   heat: number;
+  /** Depth B3 — the regulator's long memory (0..100). Rises with every shady buy and,
+   *  unlike Heat, does NOT cool on its own — only lobbying appeases it, and it PERSISTS
+   *  across prestige (the regulator remembers you between runs). Drives escalating
+   *  scrutiny + a named-regulator presence. */
+  suspicion: number;
   /** Active time-limited modifiers from world events. */
   modifiers: ActiveModifier[];
   /** Faction stance (Phase 2): −1 doomer … +1 accelerationist. Moved by event choices. */

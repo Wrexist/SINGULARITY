@@ -175,6 +175,7 @@ interface SavedShape {
   prestige: { legacyWeights: string; ships: number };
   lifetimeMoney: string;
   heat: number;
+  suspicion: number;
   modifiers: ActiveModifier[];
   alignment: number;
   computeFocus: number;
@@ -207,6 +208,7 @@ export function serialize(state: GameState): string {
     },
     lifetimeMoney: state.lifetimeMoney.toJSON(),
     heat: state.heat,
+    suspicion: state.suspicion,
     modifiers: state.modifiers,
     alignment: state.alignment,
     computeFocus: state.computeFocus,
@@ -250,6 +252,10 @@ export function deserialize(json: string): GameState {
     typeof raw.heat === "number" && Number.isFinite(raw.heat)
       ? Math.max(0, Math.min(100, raw.heat))
       : fresh.heat;
+  const suspicion =
+    typeof raw.suspicion === "number" && Number.isFinite(raw.suspicion)
+      ? Math.max(0, Math.min(100, raw.suspicion))
+      : fresh.suspicion;
   const modifiers = Array.isArray(raw.modifiers)
     ? raw.modifiers.filter(isWellFormedModifier)
     : fresh.modifiers;
@@ -303,6 +309,7 @@ export function deserialize(json: string): GameState {
     },
     lifetimeMoney: Big.of(raw.lifetimeMoney ?? res.money ?? "0"),
     heat,
+    suspicion,
     modifiers,
     alignment,
     computeFocus,
@@ -429,6 +436,10 @@ export function migrate(raw: any): SavedShape {
   if (s.version === 14) {
     // v14 → v15: charter-conviction memory (Depth B1). No prior charter on old runs.
     s = { ...s, version: 15, lastCharter: s.lastCharter ?? null };
+  }
+  if (s.version === 15) {
+    // v15 → v16: regulator suspicion (Depth B3). A clean slate on existing runs.
+    s = { ...s, version: 16, suspicion: s.suspicion ?? 0 };
   }
   return s as SavedShape;
 }

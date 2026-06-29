@@ -1306,6 +1306,35 @@ export const balance = {
   },
 
   /**
+   * Depth B3 — the Regulator: a named bureaucrat with a LONG memory. `suspicion`
+   * (0..100) rises with every shady buy, doesn't cool on its own (only lobbying
+   * appeases it), and PERSISTS across prestige — so the regulator remembers you
+   * between runs and the pressure escalates the more corners you cut. Curve-safe:
+   * a clean lab (and the sim) never buys shady, so suspicion stays 0 → identity.
+   */
+  regulator: {
+    name: "Supervisor Chen",
+    max: 100,
+    /** Suspicion added per shady action (a dark-web tool buy or a Bazaar risk buy). */
+    perShadyBuy: 4,
+    /** Regulatory-event chance is multiplied by up to (1 + this) at MAX suspicion —
+     *  a watched lab gets audited far more often at the same Heat. */
+    eventChanceBoostAtMax: 1.5,
+    /** Lobbying also appeases the regulator: cut suspicion by this fraction per lobby. */
+    lobbyReduction: 0.25,
+    /** At this tier index and above, regulatory events are signed by the regulator
+     *  (the bureaucrat becomes a recurring character). */
+    nameFromTier: 2,
+    /** Suspicion tiers (highest `at` ≤ suspicion wins). */
+    tiers: [
+      { at: 0, label: "Unwatched", blurb: "Nobody's looking. Enjoy it while it lasts." },
+      { at: 25, label: "On the radar", blurb: "A junior analyst has a folder with your name on it." },
+      { at: 55, label: "Under investigation", blurb: "Chen has opened a formal case. Lawyer up." },
+      { at: 80, label: "Personal vendetta", blurb: "This is no longer about the law. It's personal now." },
+    ],
+  },
+
+  /**
    * Faction alignment (−1 doomer … 0 neutral … +1 accelerationist), shifted by
    * faction-event choices. It used to be a dead dial (set, never read). Now it's
    * a real strategic lane-tilt, folded into derive() + the Heat sites. Every value
