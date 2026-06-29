@@ -13,6 +13,14 @@ Phase 0–3 history retained below for context.
 3 in-run resources, pure/deterministic engine, data-in-`balance/`, hard-gated compounding,
 no dark patterns. Re-run `npm run sim` after any economy change.*
 
+### ⚠️ DIFFICULTY RETUNE (owner-directed 2026-06-29) — the curve is now MUCH slower
+*Was: first prestige ~12m15s, meta-loop Gen2 ~2m11s (re-beat in minutes). Owner: "make it a lot
+harder & slower." New: **first prestige ≈ 38–40m, Gen2 ≈ 13m, Gen3 ≈ 9m** (wall-free, longest gap
+~2m). One knob: `balance.difficulty.costMult = 2.0` scales every Compute/Data/Money cost (super-linear
+in time — 3.5 walled it). Snowball bounded via `prestige.scale` 1e4→1e5 + `multiplierPerPoint`
+0.05→0.018. 410 tests (4 magic-number balance tests rewritten to derive from constants). **All
+"sim 12m15s" notes below are HISTORICAL** (pre-retune record), not the current target.*
+
 ### ⭐ ACTIVE WAVE — R8 Platform & LiveOps (owner-picked 2026-06-28) · plan: `R8_PLATFORM_LIVEOPS_PLAN.md`
 *The R0–R5 critical path is essentially shipped (350 tests, sim 12m15s). R8 turns balance tuning
 into data, makes the save durable, and widens the platform. R8 touches NO balance → sim stays 12m15s

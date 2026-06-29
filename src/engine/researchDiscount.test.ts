@@ -17,9 +17,10 @@ describe("Research Fellowship reputation perk (R5.6 cross-system discount)", () 
     const s = createInitialState();
     expect(researchCostMult(s)).toBe(1);
     const node = aResearchNode();
+    const k = balance.difficulty.costMult; // the global difficulty knob still applies
     const c = researchCost(s, node);
-    expect(c.compute.eq(Big.of(node.cost.compute))).toBe(true);
-    expect(c.data.eq(Big.of(node.cost.data))).toBe(true);
+    expect(c.compute.toNumber()).toBeCloseTo(node.cost.compute * k, 3);
+    expect(c.data.toNumber()).toBeCloseTo(node.cost.data * k, 3);
   });
 
   it("owning the perk cuts research cost by its value", () => {
@@ -34,9 +35,10 @@ describe("Research Fellowship reputation perk (R5.6 cross-system discount)", () 
     expect(researchCostMult(s)).toBeCloseTo(expected, 10);
 
     const node = aResearchNode();
+    const k = balance.difficulty.costMult;
     const c = researchCost(s, node);
-    expect(c.compute.toNumber()).toBeCloseTo(node.cost.compute * expected, 3);
-    expect(c.data.toNumber()).toBeCloseTo(node.cost.data * expected, 3);
+    expect(c.compute.toNumber()).toBeCloseTo(node.cost.compute * expected * k, 3);
+    expect(c.data.toNumber()).toBeCloseTo(node.cost.data * expected * k, 3);
   });
 
   it("the discount lets you afford a node you couldn't at full price", () => {

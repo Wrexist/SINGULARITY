@@ -768,6 +768,16 @@ const WORLD_EVENTS: WorldEvent[] = [
 ];
 
 export const balance = {
+  /**
+   * DIFFICULTY (owner-directed retune 2026-06-29). A single global multiplier on
+   * EVERY Compute/Data/Money cost — upgrades AND research. The economy is a
+   * spend-to-grow feedback loop, so scaling all costs by K stretches the whole
+   * curve ~K× longer (first prestige and every generation) without distorting the
+   * internal balance of *which* upgrade to buy when. Dial this one number to make
+   * the game faster/slower; re-run `npm run sim` to read the new pacing.
+   */
+  difficulty: { costMult: 2.0 },
+
   /** The rented server closet generates a trickle of Compute for free. */
   baseComputePerSec: 1,
 
@@ -1046,15 +1056,19 @@ export const balance = {
      * player climbs the research tree to its payoff before learning the reset.
      */
     capabilityResearch: "inference_api",
-    /** legacyWeightsGained = max(1, floor((lifetimeMoney / scale) ^ exponent)). */
-    scale: 1e4,
+    /** legacyWeightsGained = max(1, floor((lifetimeMoney / scale) ^ exponent)).
+     *  scale raised 1e4→1e5 (2026-06-29 retune) so a much longer run banks fewer
+     *  weights → a gentler per-ship boost → the meta-loop stays a real journey. */
+    scale: 1e5,
     exponent: 0.5,
     /** Depth B1 — shipping with the SAME charter as the previous run multiplies the
      *  Legacy banked by this (conviction / double-down). 1 = off. Charters don't exist
      *  at the first ship and the sim never sets one, so this is curve-safe. */
     charterConvictionBonus: 1.15,
-    /** Each Legacy Weight grants this much permanent global production. */
-    multiplierPerPoint: 0.05,
+    /** Each Legacy Weight grants this much permanent global production. Halved in the
+     *  2026-06-29 difficulty retune so the post-first-ship META-loop doesn't snowball
+     *  into sub-minute generations — re-beating the game in minutes was the complaint. */
+    multiplierPerPoint: 0.018,
     /**
      * Diminishing exponent on the Legacy multiplier: legacyMult = 1 + perPoint ×
      * weights^multiplierExponent. <1 means each extra weight is worth a little

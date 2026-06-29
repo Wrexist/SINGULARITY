@@ -68,7 +68,7 @@ export function claimRun(state: GameState): GameState {
 
 /** Cost of the next level of an upgrade: base * growth^owned. */
 export function upgradeCost(def: UpgradeDef, owned: number): Big {
-  return Big.of(def.cost.base).mul(Big.of(def.cost.growth).pow(owned));
+  return Big.of(def.cost.base).mul(Big.of(def.cost.growth).pow(owned)).mul(balance.difficulty.costMult);
 }
 
 export function canBuyUpgrade(state: GameState, id: string): boolean {
@@ -244,7 +244,7 @@ export function researchLockedOut(state: GameState, id: string): boolean {
 /** Effective research cost after the Research Fellowship reputation discount (R5.6).
  *  Mult is 1 with no perk owned, so a fresh run pays the tuned full price. */
 export function researchCost(state: GameState, def: ResearchDef): { compute: Big; data: Big } {
-  const mult = researchCostMult(state);
+  const mult = researchCostMult(state) * balance.difficulty.costMult;
   return {
     compute: Big.of(def.cost.compute).mul(mult),
     data: Big.of(def.cost.data).mul(mult),

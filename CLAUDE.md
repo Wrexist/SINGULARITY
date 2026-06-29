@@ -26,10 +26,15 @@ An AI compute tycoon (idle/incremental + management) with a 2.5D data-center hal
 > See `TASK.md` for live status.
 > Rendering: **Canvas 2D isometric** (parametric, no image assets). Hard rules still hold: 3 in-run
 > resources only (Legacy/Reputation are meta-currencies, not a 4th resource); engine pure/deterministic;
-> humor in writing not math; all new systems are data-in-`balance/` + pure folds + tests. The tuned
-> EARLY/MID curve invariant is **first prestige ≈ 12m15s** (every compounding term is 1.0 at run
-> start, so it's untouched); R4.1 deliberately retuned the post-first-ship META-loop (Gen2 ~2m11s)
-> to bound the Legacy snowball. Verify with `npm run sim` (baseline + the new `runLongHaul`).
+> humor in writing not math; all new systems are data-in-`balance/` + pure folds + tests.
+> **CURVE (retuned 2026-06-29, owner-directed "make it a lot harder/slower"):** first prestige
+> **≈ 38–40m**, and the meta-loop is no longer a snowball — **Gen2 ≈ 13m, Gen3 ≈ 9m** (was
+> 12m15s / 2m11s). One global knob drives pace: **`balance.difficulty.costMult`** (currently **2.0**)
+> scales every Compute/Data/Money cost; the Legacy snowball is bounded by `prestige.scale` (1e5) +
+> `multiplierPerPoint` (0.018). To change difficulty, dial `costMult` and re-run `npm run sim`; higher
+> walls the curve (3.5 made first prestige unreachable). Verify with `npm run sim` (baseline +
+> `runLongHaul`). NOTE: many `TASK.md` entries cite the OLD "sim 12m15s" — that's historical record
+> from before this retune, not the current target.
 
 If a request would pull work forward from a later phase, STOP and flag it. Scope drift is this project's #1 documented risk. Protecting the phase boundary is part of your job.
 

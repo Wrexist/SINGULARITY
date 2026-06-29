@@ -349,6 +349,27 @@ Data, so it binds more often. Lesson: re-coupling works on the resource the core
 does NOT instantly re-spend; tie the cost to that resource's OUTPUT, and find the peak
 before the affordability cliff with the sink metric.
 
+### Difficulty retune — one global `costMult`, and it's SUPER-LINEAR (2026-06-29)
+Owner asked to make the game "a lot harder/slower" (first prestige was ~12m and the meta-loop
+re-beat the game in minutes). Cleanest lever: a single `balance.difficulty.costMult` multiplying EVERY
+Compute/Data/Money cost in `upgradeCost()` + `researchCost()` — preserves the internal "which upgrade
+when" balance, dials the whole curve, and the UI cost displays update for free (they call the same fns).
+- **It is NOT linear in time.** The economy is a spend-to-grow feedback loop, so scaling costs slows
+  income too → the slowdown compounds. **costMult 3.5 WALLED the curve** (first prestige unreachable in
+  240m, a 10m purchase wall). **2.0 → first prestige 38m43s (~3.2×)**, wall-free (longest gap ~2m).
+  So pick costMult conservatively and ALWAYS confirm `npm run sim` still reaches prestige + reports a
+  small "longest wall".
+- **The snowball is separate from first-prestige.** First prestige time is gated by reaching
+  `inference_api` (research climb) → only `costMult` moves it. The META-loop (Gen2+) is gated by the
+  Legacy multiplier; a longer run banks far MORE weights (sqrt of a bigger lifetimeMoney), so Gen2 was
+  *still* ~3m even after costMult. Tamed it with `prestige.scale` 1e4→1e5 (fewer weights per run) +
+  `multiplierPerPoint` 0.05→0.018 (gentler boost): **Gen2 13m, Gen3 9m**. A production multiplier
+  compounds HARD through a run (a 3× boost turned a 38m run into 3m), so the snowball knobs are
+  sensitive — tune by sim, not by intuition.
+- Tests that hard-coded magic cost/weight numbers broke; rewrote them to derive from the balance
+  constants (`* balance.difficulty.costMult`, `Math.pow(money/scale, exponent)`) so future dials don't
+  re-break them. Lesson: balance tests should assert RELATIONSHIPS off the constants, not literals.
+
 ### Cosmetics as a 2nd customization axis without renderer risk (R6.3 rack skins)
 - **Tint the ONE base colour, not every face.** Each rack derives every colour (faces, LEDs,
   light-spill, rim) from a single `tierBase(tier)` RGB via `shade()`. So a "skin" is just a pure
