@@ -1678,6 +1678,10 @@ svg { vertical-align: middle; }
   display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px #fff;
 }
 .botnav-badge.alt { background: #f5b40a; }
+.botnav-badge.ship { background: linear-gradient(135deg, #f5b40a, #ff8c42); color: #1a1205; margin-right: -26px; }
+.botnav-item.ship-ready .botnav-ic { animation: shipPulse 1.6s ease-in-out infinite; color: #f5b40a; }
+@keyframes shipPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.14); } }
+.reduce-motion .botnav-item.ship-ready .botnav-ic { animation: none; }
 
 /* ---------- Tabs (Lab / Products) ---------- */
 .tabs {
