@@ -1,9 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { charterMods, setCharter, canSetCharter, chartersUnlocked, chartersBalance } from "./charter";
 import { derive } from "./derive";
-import { prestige } from "./prestige";
+import { prestige, legacyWeightsForMode, charterConvictionMult } from "./prestige";
 import { serialize, deserialize } from "./save";
 import { createInitialState } from "./state";
+import { balance } from "./balance/config";
+import { Big } from "./math/Big";
 
 function shipped() {
   const s = createInitialState();
@@ -82,5 +84,42 @@ describe("R6.1 — Lab Charters", () => {
     expect(charterMods(setCharter(shipped(), "data_monopoly")).computeMult).toBeLessThan(1);
     expect(charterMods(setCharter(shipped(), "cash_machine")).moneyMult).toBeGreaterThan(1);
     expect(charterMods(setCharter(shipped(), "mad_science")).computeMult).toBeGreaterThan(1);
+  });
+
+  describe("B1 — charter conviction prestige bonus", () => {
+    // A shippable state with a chosen charter and a given previous-run charter.
+    function readyToShip(charter: string | null, lastCharter: string | null) {
+      const s = shipped();
+      s.research = [balance.prestige.capabilityResearch];
+      s.lifetimeMoney = Big.of("1e8");
+      return { ...s, charter, lastCharter };
+    }
+
+    it("is identity unless the charter matches last run's (curve-safe)", () => {
+      expect(charterConvictionMult(readyToShip(null, null))).toBe(1);
+      expect(charterConvictionMult(readyToShip("moonshot", null))).toBe(1);
+      expect(charterConvictionMult(readyToShip("moonshot", "bootstrapped"))).toBe(1);
+      expect(charterConvictionMult(readyToShip("moonshot", "moonshot"))).toBe(balance.prestige.charterConvictionBonus);
+    });
+
+    it("multiplies banked Legacy when you double down on a charter", () => {
+      const base = legacyWeightsForMode(readyToShip("moonshot", "bootstrapped"), "deploy").toNumber();
+      const conv = legacyWeightsForMode(readyToShip("moonshot", "moonshot"), "deploy").toNumber();
+      expect(conv).toBeGreaterThan(base);
+    });
+
+    it("prestige records the shipped charter as lastCharter for next run", () => {
+      const next = prestige(readyToShip("moonshot", null));
+      expect(next.lastCharter).toBe("moonshot");
+      expect(next.charter).toBeNull(); // fresh run picks anew
+    });
+
+    it("survives a save round-trip; old saves migrate with no prior charter", () => {
+      const s = { ...shipped(), lastCharter: "cash_machine" };
+      expect(deserialize(serialize(s)).lastCharter).toBe("cash_machine");
+      const old = JSON.parse(serialize(s));
+      delete old.lastCharter; old.version = 14;
+      expect(deserialize(JSON.stringify(old)).lastCharter).toBeNull();
+    });
   });
 });

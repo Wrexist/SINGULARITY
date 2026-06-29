@@ -3,7 +3,7 @@ import { products as PRODUCTS } from "./balance/products";
 import { initialStats } from "./stats";
 import type { GameState } from "./types";
 
-export const SAVE_VERSION = 14;
+export const SAVE_VERSION = 15;
 
 /** A fresh lab: empty closet, a trickle of free Compute, nothing owned. */
 export function createInitialState(): GameState {
@@ -33,6 +33,7 @@ export function createInitialState(): GameState {
     reputation: { spent: 0, perks: [] },
     contracts: { completed: [] },
     charter: null,
+    lastCharter: null,
     legacyInvestments: [],
     runPeakCompute: Big.ZERO,
     runPeakMrr: 0,

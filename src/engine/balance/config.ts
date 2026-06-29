@@ -1049,6 +1049,10 @@ export const balance = {
     /** legacyWeightsGained = max(1, floor((lifetimeMoney / scale) ^ exponent)). */
     scale: 1e4,
     exponent: 0.5,
+    /** Depth B1 — shipping with the SAME charter as the previous run multiplies the
+     *  Legacy banked by this (conviction / double-down). 1 = off. Charters don't exist
+     *  at the first ship and the sim never sets one, so this is curve-safe. */
+    charterConvictionBonus: 1.15,
     /** Each Legacy Weight grants this much permanent global production. */
     multiplierPerPoint: 0.05,
     /**
