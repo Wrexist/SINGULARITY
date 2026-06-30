@@ -76,39 +76,48 @@ const EXPAND = {
   prestige: { legacyWeights: "0", ships: 0 }, lifetimeMoney: "42000", heat: 0, modifiers: [],
 };
 
-// Per-scene: short headline with one <em> accent word, a thin subhead, a single
-// per-scene glow color, and a gentle device tilt. Dark, minimal, premium —
-// matching the owner's reference deck.
+// Per-scene: short headline (one <em> accent word), a thin subhead, a per-scene
+// glow color, a gentle device tilt — and a depth-of-field FOCUS: the app blurs
+// back while one sharp element (captured via Playwright element.screenshot) pops
+// forward, exactly like the owner's favourite "expand" shot.
+//   nav  — how to bring the focus element into view before capture
+//   focus — CSS selector(s) for the element to capture sharp (first match wins)
 const SCENES = [
   {
     name: "01-hero", seed: RICH,
     head: "Build an AI <em>empire</em>", sub: "Scale one GPU into a planet-sized compute cluster",
     glow: "#5b8cff", accent: "#7aa2ff", tilt: -5,
+    nav: "none", focus: ["canvas.hall-canvas"],
   },
   {
-    name: "02-expand", seed: EXPAND, interact: "expand",
+    name: "02-expand", seed: EXPAND,
     head: "Watch it <em>grow</em>", sub: "Tap the floor to expand — the hall grows with you",
     glow: "#1fd6c2", accent: "#46e6d3", tilt: 5,
+    nav: "expand", focus: [".confirm-modal"],
   },
   {
-    name: "03-research", seed: RICH, interact: "scrollResearch",
+    name: "03-research", seed: RICH,
     head: "Climb the <em>tree</em>", sub: "An absurd AI research tree across every era",
     glow: "#a86bff", accent: "#c79bff", tilt: -5,
+    nav: "scroll:Distributed Training", focus: [".node-hero", ".node.affordable", ".node"],
   },
   {
-    name: "04-ship", seed: CELEBRATE, interact: "ship",
+    name: "04-ship", seed: CELEBRATE,
     head: "Ship the <em>model</em>", sub: "Prestige and reset for permanent Legacy boosts",
     glow: "#ff7a3c", accent: "#ffae5c", tilt: 5,
+    nav: "shipOpen", focus: [".ship-mode"],
   },
   {
-    name: "05-market", seed: RICH, interact: "scrollMarket",
+    name: "05-market", seed: RICH,
     head: "Bend the <em>rules</em>", sub: "Buy data legally… or risk the dark-web Bazaar",
     glow: "#7c5cff", accent: "#a98bff", tilt: -5,
+    nav: "scroll:The Data Bazaar", focus: [".card:has-text('Scraped Data Pack')", ".card"],
   },
   {
-    name: "06-honest", seed: RICH, interact: "settings",
+    name: "06-honest", seed: RICH,
     head: "No <em>pay-to-win</em>", sub: "No ads. Plays offline. One optional unlock.",
     glow: "#19c06b", accent: "#4fe39a", tilt: 5,
+    nav: "settings", focus: [".premium-card"],
   },
 ];
 
@@ -126,9 +135,22 @@ function particles(n, seed) {
   return out;
 }
 
-const frameHtml = (scene, b64, i) => {
+const frameHtml = (scene, b64, i, focus) => {
   const g = scene.glow;
   const tilt = scene.tilt;
+  // depth-of-field: blur+dim the app when a focus card pops forward
+  const screenFx = focus ? "filter:blur(15px) brightness(.5) saturate(.92);transform:scale(1.06)" : "";
+  // focus card sized to the captured element's aspect; width fixed, height derived, capped
+  let focusCard = "";
+  if (focus) {
+    const cardW = 800;
+    let cardH = Math.round(cardW / focus.aspect);
+    const maxH = 1500;
+    const fit = cardH > maxH ? "object-fit:cover;object-position:top" : "";
+    cardH = Math.min(cardH, maxH);
+    focusCard = `<div class="focus" style="width:${cardW}px;height:${cardH}px">
+      <img style="${fit}" src="data:image/png;base64,${focus.b64}"></div>`;
+  }
   return `<!doctype html><html><head><meta charset="utf-8"><style>
 *{margin:0;box-sizing:border-box}
 html,body{width:1284px;height:2778px}
@@ -168,9 +190,17 @@ html,body{width:1284px;height:2778px}
   box-shadow:0 80px 140px -40px rgba(0,0,0,.85),
              0 0 90px -10px ${g}66,
              inset 0 1px 0 rgba(255,255,255,.22)}
-.phone img{width:100%;display:block;border-radius:64px}
+.phone{overflow:hidden}
+.phone .screen{width:100%;display:block;border-radius:64px;${screenFx}}
 .phone::after{content:"";position:absolute;inset:0;border-radius:80px;pointer-events:none;
   background:linear-gradient(125deg,rgba(255,255,255,.16) 0%,transparent 22%,transparent 80%,rgba(255,255,255,.06) 100%)}
+
+/* the sharp element popping forward */
+.focus{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3;
+  border-radius:42px;overflow:hidden;background:#fff;
+  border:1px solid rgba(255,255,255,.55);
+  box-shadow:0 60px 110px -24px rgba(0,0,0,.78),0 0 90px -4px ${g}cc,inset 0 1px 0 rgba(255,255,255,.6)}
+.focus img{width:100%;height:100%;display:block}
 
 /* bottom brand chip */
 .brand{position:absolute;left:0;right:0;bottom:74px;z-index:6;text-align:center}
@@ -184,7 +214,8 @@ ${particles(60, 97 + i * 13)}
 <div class="cap"><h1>${scene.head}</h1><p>${scene.sub}</p></div>
 <div class="scene3d"><div class="dwrap">
   <div class="contact"></div>
-  <div class="phone"><img src="data:image/png;base64,${b64}"></div>
+  <div class="phone"><img class="screen" src="data:image/png;base64,${b64}"></div>
+  ${focusCard}
 </div></div>
 <div class="brand"><span class="b">${ICON_B64 ? `<img src="data:image/png;base64,${ICON_B64}">` : `<span class="dot"></span>`}<span>Singularity Inc.</span></span></div>
 </div></body></html>`;
@@ -218,7 +249,11 @@ async function run() {
       const collect = app.getByRole("button", { name: "Collect" });
       if (await collect.isVisible().catch(() => false)) await collect.click().catch(() => {});
 
-      if (scene.interact === "expand") {
+      // base frame = the clean app screen (blurred behind the focus card)
+      const base = await app.screenshot();
+
+      // navigate so the focus element is on screen / open the relevant overlay
+      if (scene.nav === "expand") {
         await app.waitForFunction(() => Array.isArray(window.__HALL_MARKERS__) && window.__HALL_MARKERS__.length > 0, { timeout: 5000 }).catch(() => {});
         const t = await app.evaluate(() => {
           const c = document.querySelector("canvas.hall-canvas");
@@ -229,27 +264,37 @@ async function run() {
         });
         if (t) await app.mouse.click(t.x, t.y);
         await sleep(400);
-      } else if (scene.interact === "scrollResearch") {
-        await app.getByText("Distributed Training").scrollIntoViewIfNeeded().catch(() => {});
+      } else if (scene.nav?.startsWith("scroll:")) {
+        await app.getByText(scene.nav.slice(7)).first().scrollIntoViewIfNeeded().catch(() => {});
         await sleep(300);
-      } else if (scene.interact === "scrollMarket") {
-        await app.getByText("The Data Bazaar").scrollIntoViewIfNeeded().catch(() => {});
-        await sleep(300);
-      } else if (scene.interact === "ship") {
+      } else if (scene.nav === "shipOpen") {
         await app.getByRole("button", { name: /^Ship —/ }).click().catch(() => {});
-        await app.getByRole("button", { name: /Ship it/ }).click().catch(() => {});
-        await sleep(700);
-      } else if (scene.interact === "settings") {
+        await sleep(500);
+      } else if (scene.nav === "settings") {
         await app.getByRole("button", { name: "Settings" }).click().catch(() => {});
         await sleep(400);
       }
 
-      const raw = await app.screenshot();
+      // capture the sharp focus element (first selector that resolves)
+      let focus = null;
+      for (const sel of scene.focus ?? []) {
+        const loc = app.locator(sel).first();
+        if (!(await loc.count().catch(() => 0))) continue;
+        await loc.scrollIntoViewIfNeeded().catch(() => {});
+        await sleep(150);
+        const box = await loc.boundingBox().catch(() => null);
+        if (!box || box.width < 40 || box.height < 40) continue;
+        const buf = await loc.screenshot().catch(() => null);
+        if (!buf) continue;
+        focus = { b64: buf.toString("base64"), aspect: box.width / box.height };
+        break;
+      }
+      if (!focus) console.warn(`  ⚠ no focus element for ${scene.name} (selectors: ${scene.focus})`);
       await app.close();
 
       // 2) composite into the marketing frame at exact 1284×2778
       const framePage = await browser.newPage({ viewport: { width: 1284, height: 2778 }, deviceScaleFactor: 1 });
-      await framePage.setContent(frameHtml(scene, raw.toString("base64"), i), { waitUntil: "networkidle" });
+      await framePage.setContent(frameHtml(scene, base.toString("base64"), i, focus), { waitUntil: "networkidle" });
       await sleep(250);
       await framePage.screenshot({ path: `${OUT}/${scene.name}.png` });
       await framePage.close();
