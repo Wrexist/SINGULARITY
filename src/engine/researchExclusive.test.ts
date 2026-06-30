@@ -33,12 +33,24 @@ describe("mutually-exclusive research branches", () => {
     expect(buyResearch(s, "dense_scaling")).toBe(s); // pure no-op — locked sibling
   });
 
-  it("the two exclusive groups are independent", () => {
+  it("the exclusive groups are independent", () => {
     let s = atChoices();
     s = buyResearch(s, "sparse_arch"); // architecture group
-    // The doctrine group is untouched.
-    expect(researchAvailable(s, "aligned_path")).toBe(true);
+    // The other groups are untouched.
+    expect(researchAvailable(s, "aligned_path")).toBe(true); // doctrine
     expect(researchAvailable(s, "accelerationist_path")).toBe(true);
+    expect(researchAvailable(s, "closed_api")).toBe(true); // deployment
+    expect(researchAvailable(s, "open_weights")).toBe(true);
+  });
+
+  it("the deployment fork (closed_api vs open_weights) is a real pick-one", () => {
+    let s = atChoices();
+    expect(researchAvailable(s, "closed_api")).toBe(true);
+    expect(researchAvailable(s, "open_weights")).toBe(true);
+    s = buyResearch(s, "open_weights");
+    expect(s.research).toContain("open_weights");
+    expect(researchLockedOut(s, "closed_api")).toBe(true);
+    expect(buyResearch(s, "closed_api")).toBe(s); // locked sibling — pure no-op
   });
 
   it("a fresh run (post-prestige) re-opens every choice (research resets)", () => {

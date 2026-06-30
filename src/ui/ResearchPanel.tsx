@@ -5,6 +5,7 @@ import { fmt, fmtDur, etaSecs, effRate } from "./format";
 import { burst, punch } from "./fx";
 import { CheckIcon, LockIcon } from "./Icons";
 import { ResearchIcon, EffectPill } from "./effectVisual";
+import { groupByCategory } from "../engine/researchCategories";
 
 interface Props {
   game: GameState;
@@ -93,6 +94,9 @@ export function ResearchPanel({ game, derived, onResearch }: Props) {
   };
 
   const rest = visible.filter((d) => d.id !== hero?.id);
+  // Group the remaining nodes under themed category headers so the growing tree
+  // reads as structured waves instead of a flat wall (legibility subsystem).
+  const groups = groupByCategory(rest, (d) => d.id);
 
   return (
     <section className="panel">
@@ -103,9 +107,17 @@ export function ResearchPanel({ game, derived, onResearch }: Props) {
           {renderNode(hero, true)}
         </div>
       )}
-      <div className="research-track">
-        {rest.map((def) => renderNode(def))}
-      </div>
+      {groups.map(({ category, items }) => (
+        <div className="research-cat" key={category.id}>
+          <div className="research-cat-head">
+            <span className="research-cat-name">{category.name}</span>
+            <span className="research-cat-count">{items.filter((d) => isOwned(d.id)).length}/{items.length}</span>
+          </div>
+          <div className="research-track">
+            {items.map((def) => renderNode(def))}
+          </div>
+        </div>
+      ))}
     </section>
   );
 }

@@ -8,6 +8,27 @@ Phase 0–3 history retained below for context.
 
 ---
 
+## UI polish + research depth (owner-directed 2026-06-30) — branch `claude/ui-polish-theme-fixes`
+*Owner screenshots + asks: kill the green accent lines, make themes actually recolour the app
+and lay them out symmetrically, add a second research fork, wire a category subsystem.*
+- [x] **Green-line cleanup** — removed the coloured top rule on world-event ('BREAKING') modals and
+      the green left accent bar on completed research nodes (read as ugly seams/noise). The violet
+      CTA bar stays only on actionable nodes. Swept the app — that left bar lived only on `.node`.
+- [x] **Themeable app accent** — hall themes now drive a doc-root `--accent` (each theme defines one
+      in `hallThemes.ts`); bottom-nav active state + theme selection ring recolour to the choice, on
+      top of the existing hall tint. Cosmetic only; semantic compute/data/money never theme.
+- [x] **Symmetrical theme grid** — theme + rack-skin pickers use a fixed 4-col grid with 2-line
+      clamped labels (was ragged flex-wrap).
+- [x] **Research category subsystem** — pure data (`balance/researchCategories.ts`) + pure accessor
+      (`researchCategories.ts`: `categoryOf`/`groupByCategory`); panel groups nodes under themed
+      headers (Foundations/Efficiency/Scale/Product/Frontier) with an owned/total count. Presentation
+      only → curve byte-identical. +6 tests (full-coverage guard).
+- [x] **Second research fork** — new `deployment` exclusive group off `inference_api`: **Closed API**
+      (×2.2 money) vs **Open Weights** (×2.2 compute), symmetric/equal cost, both leaves. The sim
+      reaches `inference_api` exactly at the Gen-1 prestige boundary, so the fork is just out of reach
+      for the sim → **curve byte-identical (58m52s / Gen2 14m53s / Gen3 10m27s / wall 3m05s)** while
+      real players reach it mid-game as a genuine build pick. +1 test (439 total).
+
 ## PHASE 4 — Post-launch growth (active) · plan: `POST_LAUNCH_ROADMAP.md`
 *The "five things" critical path the owner approved first. Each obeys the design spine:
 3 in-run resources, pure/deterministic engine, data-in-`balance/`, hard-gated compounding,
