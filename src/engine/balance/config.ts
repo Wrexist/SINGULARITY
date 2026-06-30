@@ -1735,6 +1735,27 @@ export const balance = {
       cost: { compute: 500000, data: 10000 },
       effect: { kind: "moneyMult", factor: 2.2 },
     },
+    // --- Deployment fork (off Inference API) — a mid-game go-to-market choice.
+    // Both are leaves; pick how you ship the model. closed_api leads the pair so
+    // it's the deterministic-sim pick (the curve is tuned against it; see CURVE).
+    {
+      id: "closed_api",
+      name: "Closed API",
+      desc: "Rent-seek the model behind a paywall. The margins are beautiful.",
+      requires: ["inference_api"],
+      exclusiveGroup: "deployment",
+      cost: { compute: 200000, data: 9000 },
+      effect: { kind: "moneyMult", factor: 2.2 },
+    },
+    {
+      id: "open_weights",
+      name: "Open Weights",
+      desc: "Give it away; the community optimises your kernels for free.",
+      requires: ["inference_api"],
+      exclusiveGroup: "deployment",
+      cost: { compute: 200000, data: 9000 },
+      effect: { kind: "computeMult", factor: 2.2 },
+    },
     // --- Capstone fork (off RSI) — the thematic alignment choice.
     {
       id: "aligned_path",

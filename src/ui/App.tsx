@@ -6,6 +6,7 @@ import { Big } from "../engine/math/Big";
 import { haptics } from "./haptics";
 import { sound } from "./sound";
 import { useSettings } from "./settings";
+import { themeAccent } from "./hallThemes";
 import { dailyAvailable, markDailyClaimed } from "./daily";
 import { ResourceBar } from "./ResourceBar";
 import { TrainingDock } from "./TrainingDock";
@@ -81,6 +82,7 @@ export function App() {
   const [flash, setFlash] = useState(0); // AGI ascension screen flash (key replays the anim)
   const [dailyOn, setDailyOn] = useState(() => dailyAvailable());
   const reducedMotion = useSettings((s) => s.reducedMotion);
+  const hallTheme = useSettings((s) => s.hallTheme);
   const music = useSettings((s) => s.music);
   const onboarded = useSettings((s) => s.onboarded);
   const completeOnboarding = useSettings((s) => s.completeOnboarding);
@@ -97,6 +99,16 @@ export function App() {
   // Re-validate the premium entitlement against StoreKit at launch (native only;
   // no-op on web). Keeps the localStorage cache from being the source of truth.
   useEffect(() => { void iap.refresh(); }, []);
+
+  // Hall theme drives an app-wide accent (--accent) so picking a theme visibly
+  // recolours the chrome (nav, selection rings, accent surfaces) — not just the
+  // hall tint. Set on the document root so portals (modals/toasts) inherit it too.
+  // Cosmetic only; semantic resource colours (compute/data/money) never change.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty("--accent", themeAccent(hallTheme));
+    return () => { root.style.removeProperty("--accent"); };
+  }, [hallTheme]);
 
   // Progressive disclosure (reveal depth in waves — GDD): Research appears after
   // your first payout (you need Data to research); Prestige once you're on the path.

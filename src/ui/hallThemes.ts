@@ -10,26 +10,35 @@ export interface ThemeStyle {
   filter: string;
   /** Swatch gradient for the picker. */
   swatch: string;
+  /** App-wide accent (drives --accent so picking a theme visibly recolours the UI
+   *  chrome — nav, selection rings, accent surfaces). Kept distinct from the
+   *  semantic resource colours (compute/data/money), which never theme. */
+  accent: string;
 }
 
 const STYLES: Record<string, ThemeStyle> = {
-  classic: { filter: "", swatch: "linear-gradient(135deg,#2f7bf6,#16b364)" },
-  neon: { filter: "hue-rotate(38deg) saturate(1.5) brightness(1.05)", swatch: "linear-gradient(135deg,#22d3ee,#a855f7)" },
-  sunset: { filter: "hue-rotate(-42deg) saturate(1.4) brightness(1.03)", swatch: "linear-gradient(135deg,#ff8c42,#ff385c)" },
-  blueprint: { filter: "saturate(0.22) brightness(1.08) contrast(1.05)", swatch: "linear-gradient(135deg,#9aa4b2,#5b6472)" },
-  vaporwave: { filter: "hue-rotate(255deg) saturate(1.55) brightness(1.05)", swatch: "linear-gradient(135deg,#ff6ad5,#26c6da)" },
-  synthwave: { filter: "hue-rotate(292deg) saturate(1.6) brightness(1.04)", swatch: "linear-gradient(135deg,#e835a0,#4338ca)" },
-  carbon: { filter: "grayscale(0.7) brightness(0.92) contrast(1.12)", swatch: "linear-gradient(135deg,#3a3f47,#15171b)" },
-  matrix: { filter: "hue-rotate(75deg) saturate(1.7) brightness(0.96)", swatch: "linear-gradient(135deg,#22c55e,#064e3b)" },
-  inferno: { filter: "hue-rotate(-24deg) saturate(1.8) brightness(1.02)", swatch: "linear-gradient(135deg,#ff4d2e,#7c1d0c)" },
-  platinum: { filter: "grayscale(0.4) brightness(1.12) contrast(0.98)", swatch: "linear-gradient(135deg,#e8edf3,#aab4c2)" },
-  midnight: { filter: "hue-rotate(200deg) saturate(0.8) brightness(0.85)", swatch: "linear-gradient(135deg,#1e3a8a,#0b1224)" },
-  iridescent: { filter: "hue-rotate(180deg) saturate(1.7) brightness(1.08)", swatch: "linear-gradient(135deg,#a855f7,#22d3ee,#f5b40a)" },
-  gold: { filter: "hue-rotate(14deg) saturate(1.25) sepia(0.2) brightness(1.05)", swatch: "linear-gradient(135deg,#f5b40a,#ff8c42)" },
+  classic: { filter: "", swatch: "linear-gradient(135deg,#2f7bf6,#16b364)", accent: "#7c5cff" },
+  neon: { filter: "hue-rotate(38deg) saturate(1.5) brightness(1.05)", swatch: "linear-gradient(135deg,#22d3ee,#a855f7)", accent: "#a855f7" },
+  sunset: { filter: "hue-rotate(-42deg) saturate(1.4) brightness(1.03)", swatch: "linear-gradient(135deg,#ff8c42,#ff385c)", accent: "#ff6b3d" },
+  blueprint: { filter: "saturate(0.22) brightness(1.08) contrast(1.05)", swatch: "linear-gradient(135deg,#9aa4b2,#5b6472)", accent: "#5b6472" },
+  vaporwave: { filter: "hue-rotate(255deg) saturate(1.55) brightness(1.05)", swatch: "linear-gradient(135deg,#ff6ad5,#26c6da)", accent: "#e857c3" },
+  synthwave: { filter: "hue-rotate(292deg) saturate(1.6) brightness(1.04)", swatch: "linear-gradient(135deg,#e835a0,#4338ca)", accent: "#e835a0" },
+  carbon: { filter: "grayscale(0.7) brightness(0.92) contrast(1.12)", swatch: "linear-gradient(135deg,#3a3f47,#15171b)", accent: "#5b6472" },
+  matrix: { filter: "hue-rotate(75deg) saturate(1.7) brightness(0.96)", swatch: "linear-gradient(135deg,#22c55e,#064e3b)", accent: "#1aa35a" },
+  inferno: { filter: "hue-rotate(-24deg) saturate(1.8) brightness(1.02)", swatch: "linear-gradient(135deg,#ff4d2e,#7c1d0c)", accent: "#ff4d2e" },
+  platinum: { filter: "grayscale(0.4) brightness(1.12) contrast(0.98)", swatch: "linear-gradient(135deg,#e8edf3,#aab4c2)", accent: "#8a93a3" },
+  midnight: { filter: "hue-rotate(200deg) saturate(0.8) brightness(0.85)", swatch: "linear-gradient(135deg,#1e3a8a,#0b1224)", accent: "#3b5bdb" },
+  iridescent: { filter: "hue-rotate(180deg) saturate(1.7) brightness(1.08)", swatch: "linear-gradient(135deg,#a855f7,#22d3ee,#f5b40a)", accent: "#9b6bff" },
+  gold: { filter: "hue-rotate(14deg) saturate(1.25) sepia(0.2) brightness(1.05)", swatch: "linear-gradient(135deg,#f5b40a,#ff8c42)", accent: "#d99a16" },
 };
 
 export function themeStyle(id: string): ThemeStyle {
   return STYLES[id] ?? STYLES.classic!;
+}
+
+/** App-wide accent colour for a hall theme (drives the --accent CSS var). */
+export function themeAccent(id: string): string {
+  return themeStyle(id).accent;
 }
 
 /** Picker swatches for rack skins (R6.3) — approximate the in-hall tint so the chip
