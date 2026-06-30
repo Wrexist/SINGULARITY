@@ -200,9 +200,15 @@ async function run() {
     console.log("Capturing scene assets…");
     const layers = [];
     for (let i = 0; i < SCENES.length; i++) {
-      const { base, focuses } = await captureScene(browser, SCENES[i], PORT);
-      layers.push(sceneLayer(SCENES[i], base.toString("base64"), focuses, i));
-      console.log(`  ✓ ${SCENES[i].name} (${focuses.length} cards)`);
+      // a beat with no/too-few cards reads as an empty device — retry the capture
+      const want = Math.min(2, SCENES[i].focus.length);
+      let cap = await captureScene(browser, SCENES[i], PORT);
+      for (let r = 0; r < 2 && cap.focuses.length < want; r++) {
+        console.log(`  ↻ retrying ${SCENES[i].name} (${cap.focuses.length}/${want} cards)`);
+        cap = await captureScene(browser, SCENES[i], PORT);
+      }
+      layers.push(sceneLayer(SCENES[i], cap.base.toString("base64"), cap.focuses, i));
+      console.log(`  ✓ ${SCENES[i].name} (${cap.focuses.length} cards)`);
     }
 
     const page = await browser.newPage({ viewport: { width: V.w, height: V.h }, deviceScaleFactor: 1 });

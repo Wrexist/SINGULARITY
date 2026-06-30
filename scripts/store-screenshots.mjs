@@ -342,8 +342,17 @@ export async function captureScene(browser, scene, port) {
     await app.getByText(scene.nav.slice(7)).first().scrollIntoViewIfNeeded().catch(() => {});
     await sleep(300);
   } else if (scene.nav === "shipOpen") {
-    await app.getByRole("button", { name: /^Ship —/ }).click().catch(() => {});
-    await sleep(500);
+    // open the prestige choices and WAIT for them — clicking + a fixed sleep is
+    // flaky (the button may not be in view yet), which left the ship beat empty
+    const shipBtn = app.getByRole("button", { name: /^Ship —/ });
+    for (let a = 0; a < 3; a++) {
+      await shipBtn.scrollIntoViewIfNeeded().catch(() => {});
+      await shipBtn.click().catch(() => {});
+      await app.waitForSelector(".ship-mode", { timeout: 3500 }).catch(() => {});
+      if (await app.locator(".ship-mode").count().catch(() => 0)) break;
+      await sleep(300);
+    }
+    await sleep(300);
   } else if (scene.nav === "settings") {
     await app.getByRole("button", { name: "Settings" }).click().catch(() => {});
     await sleep(400);
