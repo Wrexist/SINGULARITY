@@ -1,10 +1,9 @@
-// App Store marketing screenshots — premium, "alive" 3D-framed.
-// Captures the running game at 3x, then composites each scene into a 1284×2778
-// (6.5"/6.7") marketing shot with depth: an isometric data-center floor grid,
-// drifting glow particles, aurora light, a branded kicker chip, gradient-accent
-// headlines, a perspective-tilted device with a contact shadow + floor
-// reflection + colored halo, and floating frosted feature badges.
-// Output → appstore/screenshots/.
+// App Store marketing screenshots — dark, immersive, multi-feature.
+// Captures the running game at 3x, grabs SEVERAL sharp UI elements per scene,
+// then composites them as a layered, rotated "feature collage" floating over a
+// blurred + dimmed device backdrop with per-scene glow. Renders both iPhone
+// (1284×2778, 6.5"/6.7") and iPad (2048×2732, 12.9"/13") sizes.
+// Output → appstore/screenshots/ and appstore/screenshots/ipad/.
 //
 // Run: node scripts/store-screenshots.mjs
 import { spawn, execSync } from "node:child_process";
@@ -30,7 +29,9 @@ function findChrome() {
 
 const PORT = 4318;
 const OUT = "appstore/screenshots";
+const OUT_PAD = "appstore/screenshots/ipad";
 mkdirSync(OUT, { recursive: true });
+mkdirSync(OUT_PAD, { recursive: true });
 
 // Brand chip — embed the real app icon so the kicker reads as the actual product.
 const ICON_B64 = (() => {
@@ -40,15 +41,10 @@ const ICON_B64 = (() => {
   return null;
 })();
 
-// Poll the preview server until it answers, instead of guessing with a fixed
-// sleep (flaky on slow machines: goto() could hit a dead port).
 async function waitForServer(url, timeoutMs = 30000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    try {
-      const r = await fetch(url);
-      if (r.ok) return;
-    } catch { /* not up yet */ }
+    try { const r = await fetch(url); if (r.ok) return; } catch { /* not up yet */ }
     await sleep(200);
   }
   throw new Error(`Preview server never became ready at ${url}`);
@@ -76,150 +72,174 @@ const EXPAND = {
   prestige: { legacyWeights: "0", ships: 0 }, lifetimeMoney: "42000", heat: 0, modifiers: [],
 };
 
-// Per-scene: short headline (one <em> accent word), a thin subhead, a per-scene
-// glow color, a gentle device tilt — and a depth-of-field FOCUS: the app blurs
-// back while one sharp element (captured via Playwright element.screenshot) pops
-// forward, exactly like the owner's favourite "expand" shot.
-//   nav  — how to bring the focus element into view before capture
-//   focus — CSS selector(s) for the element to capture sharp (first match wins)
+// Per-scene: headline (one <em> accent word), thin subhead, glow color, and a
+// list of FOCUS elements to capture sharp. The first focus is the hero (front,
+// largest); the rest fan out behind it as a multi-feature collage.
+//   { sel, nth?, pre? } — CSS selector, optional nth index, pre=capture before nav
 const SCENES = [
   {
-    name: "01-hero", seed: RICH,
-    head: "Build an AI <em>empire</em>", sub: "Scale one GPU into a planet-sized compute cluster",
-    glow: "#5b8cff", accent: "#7aa2ff", tilt: -5,
-    nav: "none", focus: ["canvas.hall-canvas"],
+    name: "01-hero", seed: RICH, nav: "none",
+    head: "Build an AI <em>empire</em>", sub: "A 2.5D data center that grows as you scale",
+    glow: "#5b8cff", accent: "#7aa2ff",
+    focus: [{ sel: "canvas.hall-canvas" }, { sel: ".resource-bar" }, { sel: ".card", nth: 0 }],
   },
   {
-    name: "02-expand", seed: EXPAND,
-    head: "Watch it <em>grow</em>", sub: "Tap the floor to expand — the hall grows with you",
-    glow: "#1fd6c2", accent: "#46e6d3", tilt: 5,
-    nav: "expand", focus: [".confirm-modal"],
+    name: "02-expand", seed: EXPAND, nav: "expand",
+    head: "Watch it <em>grow</em>", sub: "Tap the floor — the hall physically expands",
+    glow: "#1fd6c2", accent: "#46e6d3",
+    focus: [{ sel: ".confirm-modal" }, { sel: "canvas.hall-canvas", pre: true }],
   },
   {
-    name: "03-research", seed: RICH,
+    name: "03-research", seed: RICH, nav: "scroll:Distributed Training",
     head: "Climb the <em>tree</em>", sub: "An absurd AI research tree across every era",
-    glow: "#a86bff", accent: "#c79bff", tilt: -5,
-    nav: "scroll:Distributed Training", focus: [".node-hero", ".node.affordable", ".node"],
+    glow: "#a86bff", accent: "#c79bff",
+    focus: [{ sel: ".node-hero" }, { sel: ".node", nth: 4 }, { sel: ".node", nth: 1 }],
   },
   {
-    name: "04-ship", seed: CELEBRATE,
-    head: "Ship the <em>model</em>", sub: "Prestige and reset for permanent Legacy boosts",
-    glow: "#ff7a3c", accent: "#ffae5c", tilt: 5,
-    nav: "shipOpen", focus: [".ship-mode"],
+    name: "04-ship", seed: CELEBRATE, nav: "shipOpen",
+    head: "Ship the <em>model</em>", sub: "Three ways to prestige — bank permanent boosts",
+    glow: "#ff7a3c", accent: "#ffae5c",
+    focus: [{ sel: ".ship-mode", nth: 0 }, { sel: ".ship-mode", nth: 1 }, { sel: ".ship-mode", nth: 2 }],
   },
   {
-    name: "05-market", seed: RICH,
+    name: "05-market", seed: RICH, nav: "scroll:The Data Bazaar",
     head: "Bend the <em>rules</em>", sub: "Buy data legally… or risk the dark-web Bazaar",
-    glow: "#7c5cff", accent: "#a98bff", tilt: -5,
-    nav: "scroll:The Data Bazaar", focus: [".card:has-text('Scraped Data Pack')", ".card"],
+    glow: "#7c5cff", accent: "#a98bff",
+    focus: [{ sel: ".card:has-text('Scraped Data Pack')" }, { sel: ".card:has-text('Forum Firehose')" }, { sel: ".heat" }],
   },
   {
-    name: "06-honest", seed: RICH,
+    name: "06-honest", seed: RICH, nav: "settings",
     head: "No <em>pay-to-win</em>", sub: "No ads. Plays offline. One optional unlock.",
-    glow: "#19c06b", accent: "#4fe39a", tilt: 5,
-    nav: "settings", focus: [".premium-card"],
+    glow: "#19c06b", accent: "#4fe39a",
+    focus: [{ sel: ".premium-card" }, { sel: ".set-theme", nth: 0 }],
   },
 ];
 
-// Deterministic faint star/particle field (no Math.random at module load — keep
-// the frame reproducible build-to-build).
+// Output sizes. Cards size off deviceW; positions are % of the canvas, so the
+// iPad's extra width naturally spreads the collage wider.
+const SIZES = [
+  { key: "iphone", dir: OUT, w: 1284, h: 2778, deviceW: 980, deviceTop: 470, headSize: 96, subSize: 40, capTop: 150, brandBottom: 74, stars: 60 },
+  { key: "ipad", dir: OUT_PAD, w: 2048, h: 2732, deviceW: 1000, deviceTop: 360, headSize: 128, subSize: 52, capTop: 168, brandBottom: 96, stars: 95 },
+];
+
+// Collage slot presets by card count. x/y = % of canvas, scale = fraction of
+// deviceW for card width, rot = degrees, z = stack order (higher = front).
+const SLOTS = {
+  1: [{ x: 50, y: 60, scale: 0.78, rot: 0, z: 7 }],
+  2: [{ x: 55, y: 63, scale: 0.74, rot: 2, z: 7 }, { x: 39, y: 33, scale: 0.60, rot: -5, z: 6 }],
+  3: [{ x: 53, y: 60, scale: 0.66, rot: 2, z: 8 }, { x: 27, y: 33, scale: 0.50, rot: -6, z: 7 }, { x: 75, y: 84, scale: 0.50, rot: 6, z: 6 }],
+};
+
 function particles(n, seed) {
   let s = seed;
   const rnd = () => ((s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
   let out = "";
   for (let i = 0; i < n; i++) {
-    const x = (rnd() * 100).toFixed(2), y = (rnd() * 70).toFixed(2);
-    const sz = (1 + rnd() * 2.4).toFixed(1), op = (0.06 + rnd() * 0.22).toFixed(2);
+    const x = (rnd() * 100).toFixed(2), y = (rnd() * 80).toFixed(2);
+    const sz = (1 + rnd() * 2.4).toFixed(1), op = (0.05 + rnd() * 0.2).toFixed(2);
     out += `<span class="pt" style="left:${x}%;top:${y}%;width:${sz}px;height:${sz}px;opacity:${op}"></span>`;
   }
   return out;
 }
 
-const frameHtml = (scene, b64, i, focus) => {
+const frameHtml = (scene, baseB64, focuses, size, starSeed) => {
   const g = scene.glow;
-  const tilt = scene.tilt;
-  // depth-of-field: blur+dim the app when a focus card pops forward
-  const screenFx = focus ? "filter:blur(15px) brightness(.5) saturate(.92);transform:scale(1.06)" : "";
-  // focus card sized to the captured element's aspect; width fixed, height derived, capped
-  let focusCard = "";
-  if (focus) {
-    const cardW = 800;
-    let cardH = Math.round(cardW / focus.aspect);
-    const maxH = 1500;
+  const slots = SLOTS[Math.min(focuses.length, 3)] || SLOTS[1];
+  const cards = focuses.slice(0, slots.length).map((f, idx) => {
+    const s = slots[idx];
+    const cardW = Math.round(s.scale * size.deviceW);
+    let cardH = Math.round(cardW / f.aspect);
+    const maxH = Math.round(size.h * 0.46);
     const fit = cardH > maxH ? "object-fit:cover;object-position:top" : "";
     cardH = Math.min(cardH, maxH);
-    focusCard = `<div class="focus" style="width:${cardW}px;height:${cardH}px">
-      <img style="${fit}" src="data:image/png;base64,${focus.b64}"></div>`;
-  }
+    const primary = idx === 0;
+    return `<div class="card ${primary ? "card-hero" : ""}" style="left:${s.x}%;top:${s.y}%;width:${cardW}px;height:${cardH}px;z-index:${s.z};transform:translate(-50%,-50%) rotate(${s.rot}deg)">
+      <img style="${fit}" src="data:image/png;base64,${f.b64}"></div>`;
+  }).join("");
+
   return `<!doctype html><html><head><meta charset="utf-8"><style>
 *{margin:0;box-sizing:border-box}
-html,body{width:1284px;height:2778px}
-.stage{width:1284px;height:2778px;position:relative;overflow:hidden;
+html,body{width:${size.w}px;height:${size.h}px}
+.stage{width:${size.w}px;height:${size.h}px;position:relative;overflow:hidden;
   font-family:-apple-system,"SF Pro Display","Segoe UI",system-ui,sans-serif;
   background:
-    radial-gradient(110% 70% at 50% 96%, ${g}33 0%, transparent 60%),
-    radial-gradient(90% 55% at 50% 4%, ${g}1f 0%, transparent 55%),
-    linear-gradient(180deg,#0a0b12 0%,#070810 55%,#05060c 100%)}
-
-/* big soft per-scene glow centered behind the device */
-.aura{position:absolute;left:50%;top:54%;width:1500px;height:1500px;transform:translate(-50%,-50%);
-  border-radius:50%;background:radial-gradient(closest-side,${g}55,transparent 70%);
-  filter:blur(60px);opacity:.7}
-
-/* faint stars */
+    radial-gradient(120% 70% at 50% 98%, ${g}38 0%, transparent 60%),
+    radial-gradient(90% 50% at 50% 2%, ${g}24 0%, transparent 55%),
+    linear-gradient(180deg,#0a0b12 0%,#06070e 55%,#04050a 100%)}
+.aura{position:absolute;left:50%;top:58%;width:${Math.round(size.w*1.25)}px;height:${Math.round(size.w*1.25)}px;
+  transform:translate(-50%,-50%);border-radius:50%;
+  background:radial-gradient(closest-side,${g}55,transparent 70%);filter:blur(70px);opacity:.7}
+.aura2{position:absolute;left:24%;top:34%;width:${Math.round(size.w*0.7)}px;height:${Math.round(size.w*0.7)}px;
+  transform:translate(-50%,-50%);border-radius:50%;
+  background:radial-gradient(closest-side,${scene.accent}40,transparent 70%);filter:blur(80px);opacity:.6}
 .pt{position:absolute;border-radius:50%;background:#fff}
+.vig{position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(130% 90% at 50% 42%,transparent 45%,rgba(0,0,0,.45) 100%)}
 
-/* caption */
-.cap{position:absolute;top:0;left:0;right:0;z-index:5;text-align:center;padding:150px 90px 0}
-.cap h1{color:#f4f6ff;font-size:96px;line-height:1.0;font-weight:800;letter-spacing:-.035em;
+.cap{position:absolute;top:0;left:0;right:0;z-index:9;text-align:center;padding:${size.capTop}px 90px 0}
+.cap h1{color:#f4f6ff;font-size:${size.headSize}px;line-height:1.0;font-weight:800;letter-spacing:-.035em;
   text-shadow:0 6px 40px rgba(0,0,0,.5)}
-.cap h1 em{font-style:normal;color:${scene.accent};
-  text-shadow:0 0 38px ${g}cc}
-.cap p{color:rgba(232,236,255,.62);font-size:40px;font-weight:500;margin-top:30px;letter-spacing:-.005em}
+.cap h1 em{font-style:normal;color:${scene.accent};text-shadow:0 0 40px ${g}cc}
+.cap p{color:rgba(232,236,255,.64);font-size:${size.subSize}px;font-weight:500;margin-top:28px;letter-spacing:-.005em}
 
-/* device with gentle perspective tilt + rim glow + contact shadow */
-.scene3d{position:absolute;left:0;right:0;top:480px;bottom:150px;z-index:4;
-  display:flex;justify-content:center;align-items:flex-start;perspective:2800px}
-.dwrap{position:relative;width:1000px;transform-style:preserve-3d;
-  transform:rotateX(4deg) rotateY(${tilt}deg) rotateZ(${tilt < 0 ? -0.8 : 0.8}deg)}
-.contact{position:absolute;left:50%;bottom:-40px;width:760px;height:120px;transform:translateX(-50%);
-  background:rgba(0,0,0,.6);border-radius:50%;filter:blur(50px);z-index:-2}
-.phone{position:relative;width:1000px;padding:16px;border-radius:80px;
-  background:linear-gradient(160deg,#23262f,#0d0e14);
-  border:1px solid rgba(255,255,255,.14);
-  box-shadow:0 80px 140px -40px rgba(0,0,0,.85),
-             0 0 90px -10px ${g}66,
-             inset 0 1px 0 rgba(255,255,255,.22)}
-.phone{overflow:hidden}
-.phone .screen{width:100%;display:block;border-radius:64px;${screenFx}}
-.phone::after{content:"";position:absolute;inset:0;border-radius:80px;pointer-events:none;
-  background:linear-gradient(125deg,rgba(255,255,255,.16) 0%,transparent 22%,transparent 80%,rgba(255,255,255,.06) 100%)}
+/* blurred, dimmed device backdrop — anchors "this is an app" behind the collage */
+.device{position:absolute;left:50%;top:${size.deviceTop}px;width:${size.deviceW}px;z-index:2;
+  transform:translateX(-50%);border-radius:${Math.round(size.deviceW*0.08)}px;overflow:hidden;
+  border:1px solid rgba(255,255,255,.10);
+  box-shadow:0 80px 150px -40px rgba(0,0,0,.85),0 0 110px -10px ${g}55}
+.device img{width:100%;display:block;filter:blur(18px) brightness(.42) saturate(.9);transform:scale(1.08)}
 
-/* the sharp element popping forward */
-.focus{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3;
-  border-radius:42px;overflow:hidden;background:#fff;
-  border:1px solid rgba(255,255,255,.55);
-  box-shadow:0 60px 110px -24px rgba(0,0,0,.78),0 0 90px -4px ${g}cc,inset 0 1px 0 rgba(255,255,255,.6)}
-.focus img{width:100%;height:100%;display:block}
+/* glow disc behind the hero card */
+.disc{position:absolute;left:${slots[0].x}%;top:${slots[0].y}%;width:${Math.round(slots[0].scale*size.deviceW*1.35)}px;
+  height:${Math.round(slots[0].scale*size.deviceW*1.35)}px;transform:translate(-50%,-50%);z-index:4;
+  border-radius:50%;background:radial-gradient(closest-side,${g}66,transparent 72%);filter:blur(30px);opacity:.9}
 
-/* bottom brand chip */
-.brand{position:absolute;left:0;right:0;bottom:74px;z-index:6;text-align:center}
+/* floating sharp feature cards */
+.card{position:absolute;border-radius:36px;overflow:hidden;background:#fff;
+  border:1px solid rgba(255,255,255,.5);
+  box-shadow:0 40px 80px -22px rgba(0,0,0,.7),0 0 60px -10px ${g}aa,inset 0 1px 0 rgba(255,255,255,.6)}
+.card-hero{box-shadow:0 60px 110px -22px rgba(0,0,0,.8),0 0 90px -4px ${g},inset 0 1px 0 rgba(255,255,255,.7)}
+.card img{width:100%;height:100%;display:block}
+
+.brand{position:absolute;left:0;right:0;bottom:${size.brandBottom}px;z-index:10;text-align:center}
 .brand .b{display:inline-flex;align-items:center;gap:18px}
-.brand img{width:48px;height:48px;border-radius:12px;display:block;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+.brand img{width:50px;height:50px;border-radius:13px;display:block;box-shadow:0 4px 14px rgba(0,0,0,.5)}
 .brand .dot{width:18px;height:18px;border-radius:50%;background:${scene.accent};box-shadow:0 0 16px ${g}}
-.brand span{color:rgba(236,239,255,.72);font-size:34px;font-weight:700;letter-spacing:.04em}
+.brand span{color:rgba(236,239,255,.74);font-size:${Math.round(size.subSize*0.85)}px;font-weight:700;letter-spacing:.05em}
 </style></head><body><div class="stage">
-<div class="aura"></div>
-${particles(60, 97 + i * 13)}
+<div class="aura"></div><div class="aura2"></div>
+${particles(size.stars, starSeed)}
+<div class="device"><img src="data:image/png;base64,${baseB64}"></div>
+<div class="disc"></div>
+${cards}
+<div class="vig"></div>
 <div class="cap"><h1>${scene.head}</h1><p>${scene.sub}</p></div>
-<div class="scene3d"><div class="dwrap">
-  <div class="contact"></div>
-  <div class="phone"><img class="screen" src="data:image/png;base64,${b64}"></div>
-  ${focusCard}
-</div></div>
 <div class="brand"><span class="b">${ICON_B64 ? `<img src="data:image/png;base64,${ICON_B64}">` : `<span class="dot"></span>`}<span>Singularity Inc.</span></span></div>
 </div></body></html>`;
 };
+
+// Capture one focus element sharp → {b64, aspect} | null.
+// When nth isn't pinned, scan the first few matches so a zero-size/hidden
+// duplicate (e.g. an off-screen .heat) doesn't shadow the real one.
+async function grab(app, item) {
+  const base = app.locator(item.sel);
+  const candidates = item.nth != null
+    ? [base.nth(item.nth)]
+    : Array.from({ length: Math.min(await base.count().catch(() => 0), 6) }, (_, k) => base.nth(k));
+  for (const loc of candidates) {
+    // center the element so the sticky resource bar (top) and bottom nav don't
+    // get baked into the element screenshot when it sits under them
+    await loc.evaluate((el) => el.scrollIntoView({ block: "center", inline: "center" })).catch(() => {});
+    await loc.scrollIntoViewIfNeeded().catch(() => {});
+    await sleep(150);
+    const box = await loc.boundingBox().catch(() => null);
+    if (!box || box.width < 40 || box.height < 40) continue;
+    const buf = await loc.screenshot().catch(() => null);
+    if (!buf) continue;
+    return { b64: buf.toString("base64"), aspect: box.width / box.height };
+  }
+  return null;
+}
 
 async function run() {
   console.log("Building…");
@@ -233,26 +253,29 @@ async function run() {
 
     for (let i = 0; i < SCENES.length; i++) {
       const scene = SCENES[i];
-      // 1) capture the app at 3x for a crisp source frame
       const app = await browser.newPage({ viewport: { width: 402, height: 874 }, deviceScaleFactor: 3 });
-      // reducedMotion calms the floating "+gain" toasts so they don't overlap the
-      // resource numbers in a still capture (the hall still renders a clean frame).
       await app.addInitScript(() => localStorage.setItem("singularity.settings.v1", JSON.stringify({ sound: true, haptics: true, reducedMotion: true, onboarded: true })));
       await app.addInitScript(([save, now]) => {
         localStorage.setItem("singularity.save.v1", save);
         localStorage.setItem("singularity.lastSeen.v1", now);
       }, [JSON.stringify(scene.seed), String(Date.now())]);
       await app.goto(`http://localhost:${PORT}/`, { waitUntil: "networkidle" });
-      // Wait for the hall canvas (and its marker bridge) rather than a blind sleep.
       await app.waitForSelector("canvas.hall-canvas", { timeout: 10000 }).catch(() => {});
       await sleep(300);
       const collect = app.getByRole("button", { name: "Collect" });
       if (await collect.isVisible().catch(() => false)) await collect.click().catch(() => {});
 
-      // base frame = the clean app screen (blurred behind the focus card)
+      // base frame = the clean app screen (blurred device backdrop)
       const base = await app.screenshot();
 
-      // navigate so the focus element is on screen / open the relevant overlay
+      // results keyed by original index so collage order is preserved
+      const results = new Array(scene.focus.length).fill(null);
+      // pass 1: pre-nav captures (e.g. the hall before a modal covers it)
+      for (let k = 0; k < scene.focus.length; k++) {
+        if (scene.focus[k].pre) results[k] = await grab(app, scene.focus[k]);
+      }
+
+      // navigate so the remaining focus elements are on screen / overlays open
       if (scene.nav === "expand") {
         await app.waitForFunction(() => Array.isArray(window.__HALL_MARKERS__) && window.__HALL_MARKERS__.length > 0, { timeout: 5000 }).catch(() => {});
         const t = await app.evaluate(() => {
@@ -275,30 +298,25 @@ async function run() {
         await sleep(400);
       }
 
-      // capture the sharp focus element (first selector that resolves)
-      let focus = null;
-      for (const sel of scene.focus ?? []) {
-        const loc = app.locator(sel).first();
-        if (!(await loc.count().catch(() => 0))) continue;
-        await loc.scrollIntoViewIfNeeded().catch(() => {});
-        await sleep(150);
-        const box = await loc.boundingBox().catch(() => null);
-        if (!box || box.width < 40 || box.height < 40) continue;
-        const buf = await loc.screenshot().catch(() => null);
-        if (!buf) continue;
-        focus = { b64: buf.toString("base64"), aspect: box.width / box.height };
-        break;
+      // pass 2: post-nav captures
+      for (let k = 0; k < scene.focus.length; k++) {
+        if (!scene.focus[k].pre) results[k] = await grab(app, scene.focus[k]);
       }
-      if (!focus) console.warn(`  ⚠ no focus element for ${scene.name} (selectors: ${scene.focus})`);
       await app.close();
 
-      // 2) composite into the marketing frame at exact 1284×2778
-      const framePage = await browser.newPage({ viewport: { width: 1284, height: 2778 }, deviceScaleFactor: 1 });
-      await framePage.setContent(frameHtml(scene, base.toString("base64"), i, focus), { waitUntil: "networkidle" });
-      await sleep(250);
-      await framePage.screenshot({ path: `${OUT}/${scene.name}.png` });
-      await framePage.close();
-      console.log(`✓ ${scene.name}`);
+      const focuses = results.filter(Boolean);
+      if (!focuses.length) console.warn(`  ⚠ no focus elements for ${scene.name}`);
+      else if (focuses.length < scene.focus.length) console.warn(`  • ${scene.name}: ${focuses.length}/${scene.focus.length} cards`);
+
+      // composite each output size
+      for (const size of SIZES) {
+        const framePage = await browser.newPage({ viewport: { width: size.w, height: size.h }, deviceScaleFactor: 1 });
+        await framePage.setContent(frameHtml(scene, base.toString("base64"), focuses, size, 97 + i * 13), { waitUntil: "networkidle" });
+        await sleep(200);
+        await framePage.screenshot({ path: `${size.dir}/${scene.name}.png` });
+        await framePage.close();
+      }
+      console.log(`✓ ${scene.name} (${focuses.length} cards)`);
     }
   } finally {
     if (browser) await browser.close();
