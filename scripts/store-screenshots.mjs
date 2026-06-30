@@ -9,10 +9,11 @@
 import { spawn, execSync } from "node:child_process";
 import { mkdirSync, existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { setTimeout as sleep } from "node:timers/promises";
 import { chromium } from "playwright";
 
-function findChrome() {
+export function findChrome() {
   if (process.env.CHROME_PATH && existsSync(process.env.CHROME_PATH)) return process.env.CHROME_PATH;
   for (const root of ["/opt/pw-browsers", "/root/.cache/ms-playwright"]) {
     if (!existsSync(root)) continue;
@@ -34,14 +35,14 @@ mkdirSync(OUT, { recursive: true });
 mkdirSync(OUT_PAD, { recursive: true });
 
 // Brand chip — embed the real app icon so the kicker reads as the actual product.
-const ICON_B64 = (() => {
+export const ICON_B64 = (() => {
   for (const p of ["appstore/AppIcon-1024.png", "public/icon-512.png", "public/logo-mark.png"]) {
     if (existsSync(p)) return readFileSync(p).toString("base64");
   }
   return null;
 })();
 
-async function waitForServer(url, timeoutMs = 30000) {
+export async function waitForServer(url, timeoutMs = 30000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try { const r = await fetch(url); if (r.ok) return; } catch { /* not up yet */ }
@@ -76,7 +77,7 @@ const EXPAND = {
 // list of FOCUS elements to capture sharp. The first focus is the hero (front,
 // largest); the rest fan out behind it as a multi-feature collage.
 //   { sel, nth?, pre? } — CSS selector, optional nth index, pre=capture before nav
-const SCENES = [
+export const SCENES = [
   {
     name: "01-hero", seed: RICH, nav: "none", tag: "AI COMPUTE TYCOON", pin: "LIVE",
     head: "Build an AI <em>empire</em>", sub: "A 2.5D data center that grows as you scale",
@@ -289,6 +290,77 @@ async function grab(app, item) {
   return null;
 }
 
+// Drive the live app into a scene and capture {base, focuses} — shared by the
+// screenshot compositor and the preview-video builder.
+export async function captureScene(browser, scene, port) {
+  const app = await browser.newPage({ viewport: { width: 402, height: 874 }, deviceScaleFactor: 3 });
+  await app.addInitScript(() => localStorage.setItem("singularity.settings.v1", JSON.stringify({ sound: true, haptics: true, reducedMotion: true, onboarded: true })));
+  await app.addInitScript(([save, now]) => {
+    localStorage.setItem("singularity.save.v1", save);
+    localStorage.setItem("singularity.lastSeen.v1", now);
+  }, [JSON.stringify(scene.seed), String(Date.now())]);
+  await app.goto(`http://localhost:${port}/`, { waitUntil: "networkidle" });
+  await app.waitForSelector("canvas.hall-canvas", { timeout: 10000 }).catch(() => {});
+  await sleep(300);
+  const collect = app.getByRole("button", { name: "Collect" });
+  if (await collect.isVisible().catch(() => false)) await collect.click().catch(() => {});
+
+  // dismiss any stray "BREAKING" world-event modal so it can't bleed into a
+  // captured element (it shares the centered modal box) or block a floor tap
+  for (let d = 0; d < 4; d++) {
+    const wm = app.locator(".world-modal");
+    if (!(await wm.count().catch(() => 0))) break;
+    const choice = app.locator(".world-choice").first();
+    if (await choice.count().catch(() => 0)) await choice.click().catch(() => {});
+    else await app.locator(".world-modal .btn-primary, .world-modal .btn").first().click().catch(() => {});
+    await sleep(250);
+  }
+
+  // base frame = the clean app screen (blurred device backdrop)
+  const base = await app.screenshot();
+
+  // results keyed by original index so collage order is preserved
+  const results = new Array(scene.focus.length).fill(null);
+  // pass 1: pre-nav captures (e.g. the hall before a modal covers it)
+  for (let k = 0; k < scene.focus.length; k++) {
+    if (scene.focus[k].pre) results[k] = await grab(app, scene.focus[k]);
+  }
+
+  // navigate so the remaining focus elements are on screen / overlays open
+  if (scene.nav === "expand") {
+    await app.waitForFunction(() => Array.isArray(window.__HALL_MARKERS__) && window.__HALL_MARKERS__.length > 0, { timeout: 5000 }).catch(() => {});
+    const t = await app.evaluate(() => {
+      const c = document.querySelector("canvas.hall-canvas");
+      if (!c) return null;
+      const r = c.getBoundingClientRect();
+      const m = (window.__HALL_MARKERS__ || []).find((x) => !x.maxed);
+      return m ? { x: r.left + m.centroid.x, y: r.top + m.centroid.y } : null;
+    });
+    if (t) await app.mouse.click(t.x, t.y);
+    await sleep(400);
+  } else if (scene.nav?.startsWith("scroll:")) {
+    await app.getByText(scene.nav.slice(7)).first().scrollIntoViewIfNeeded().catch(() => {});
+    await sleep(300);
+  } else if (scene.nav === "shipOpen") {
+    await app.getByRole("button", { name: /^Ship —/ }).click().catch(() => {});
+    await sleep(500);
+  } else if (scene.nav === "settings") {
+    await app.getByRole("button", { name: "Settings" }).click().catch(() => {});
+    await sleep(400);
+  }
+
+  // pass 2: post-nav captures
+  for (let k = 0; k < scene.focus.length; k++) {
+    if (!scene.focus[k].pre) results[k] = await grab(app, scene.focus[k]);
+  }
+  await app.close();
+
+  const focuses = results.filter(Boolean);
+  if (!focuses.length) console.warn(`  ⚠ no focus elements for ${scene.name}`);
+  else if (focuses.length < scene.focus.length) console.warn(`  • ${scene.name}: ${focuses.length}/${scene.focus.length} cards`);
+  return { base, focuses };
+}
+
 async function run() {
   console.log("Building…");
   execSync("npm run build", { stdio: "inherit" });
@@ -301,71 +373,7 @@ async function run() {
 
     for (let i = 0; i < SCENES.length; i++) {
       const scene = SCENES[i];
-      const app = await browser.newPage({ viewport: { width: 402, height: 874 }, deviceScaleFactor: 3 });
-      await app.addInitScript(() => localStorage.setItem("singularity.settings.v1", JSON.stringify({ sound: true, haptics: true, reducedMotion: true, onboarded: true })));
-      await app.addInitScript(([save, now]) => {
-        localStorage.setItem("singularity.save.v1", save);
-        localStorage.setItem("singularity.lastSeen.v1", now);
-      }, [JSON.stringify(scene.seed), String(Date.now())]);
-      await app.goto(`http://localhost:${PORT}/`, { waitUntil: "networkidle" });
-      await app.waitForSelector("canvas.hall-canvas", { timeout: 10000 }).catch(() => {});
-      await sleep(300);
-      const collect = app.getByRole("button", { name: "Collect" });
-      if (await collect.isVisible().catch(() => false)) await collect.click().catch(() => {});
-
-      // dismiss any stray "BREAKING" world-event modal so it can't bleed into a
-      // captured element (it shares the centered modal box) or block a floor tap
-      for (let d = 0; d < 4; d++) {
-        const wm = app.locator(".world-modal");
-        if (!(await wm.count().catch(() => 0))) break;
-        const choice = app.locator(".world-choice").first();
-        if (await choice.count().catch(() => 0)) await choice.click().catch(() => {});
-        else await app.locator(".world-modal .btn-primary, .world-modal .btn").first().click().catch(() => {});
-        await sleep(250);
-      }
-
-      // base frame = the clean app screen (blurred device backdrop)
-      const base = await app.screenshot();
-
-      // results keyed by original index so collage order is preserved
-      const results = new Array(scene.focus.length).fill(null);
-      // pass 1: pre-nav captures (e.g. the hall before a modal covers it)
-      for (let k = 0; k < scene.focus.length; k++) {
-        if (scene.focus[k].pre) results[k] = await grab(app, scene.focus[k]);
-      }
-
-      // navigate so the remaining focus elements are on screen / overlays open
-      if (scene.nav === "expand") {
-        await app.waitForFunction(() => Array.isArray(window.__HALL_MARKERS__) && window.__HALL_MARKERS__.length > 0, { timeout: 5000 }).catch(() => {});
-        const t = await app.evaluate(() => {
-          const c = document.querySelector("canvas.hall-canvas");
-          if (!c) return null;
-          const r = c.getBoundingClientRect();
-          const m = (window.__HALL_MARKERS__ || []).find((x) => !x.maxed);
-          return m ? { x: r.left + m.centroid.x, y: r.top + m.centroid.y } : null;
-        });
-        if (t) await app.mouse.click(t.x, t.y);
-        await sleep(400);
-      } else if (scene.nav?.startsWith("scroll:")) {
-        await app.getByText(scene.nav.slice(7)).first().scrollIntoViewIfNeeded().catch(() => {});
-        await sleep(300);
-      } else if (scene.nav === "shipOpen") {
-        await app.getByRole("button", { name: /^Ship —/ }).click().catch(() => {});
-        await sleep(500);
-      } else if (scene.nav === "settings") {
-        await app.getByRole("button", { name: "Settings" }).click().catch(() => {});
-        await sleep(400);
-      }
-
-      // pass 2: post-nav captures
-      for (let k = 0; k < scene.focus.length; k++) {
-        if (!scene.focus[k].pre) results[k] = await grab(app, scene.focus[k]);
-      }
-      await app.close();
-
-      const focuses = results.filter(Boolean);
-      if (!focuses.length) console.warn(`  ⚠ no focus elements for ${scene.name}`);
-      else if (focuses.length < scene.focus.length) console.warn(`  • ${scene.name}: ${focuses.length}/${scene.focus.length} cards`);
+      const { base, focuses } = await captureScene(browser, scene, PORT);
 
       // composite each output size
       for (const size of SIZES) {
@@ -383,4 +391,5 @@ async function run() {
   }
 }
 
-run();
+// Only run the screenshot generator when executed directly (not on import).
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) run();
