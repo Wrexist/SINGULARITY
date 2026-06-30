@@ -1,11 +1,14 @@
-// App Store marketing screenshots — premium, Liquid-Glass framed.
+// App Store marketing screenshots — premium, "alive" 3D-framed.
 // Captures the running game at 3x, then composites each scene into a 1284×2778
-// (6.5"/6.7") marketing shot: aurora-gradient background, a bold caption, and the
-// app screen in a frosted-glass device frame. Output → appstore/screenshots/.
+// (6.5"/6.7") marketing shot with depth: an isometric data-center floor grid,
+// drifting glow particles, aurora light, a branded kicker chip, gradient-accent
+// headlines, a perspective-tilted device with a contact shadow + floor
+// reflection + colored halo, and floating frosted feature badges.
+// Output → appstore/screenshots/.
 //
 // Run: node scripts/store-screenshots.mjs
 import { spawn, execSync } from "node:child_process";
-import { mkdirSync, existsSync, readdirSync } from "node:fs";
+import { mkdirSync, existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { chromium } from "playwright";
@@ -28,6 +31,14 @@ function findChrome() {
 const PORT = 4318;
 const OUT = "appstore/screenshots";
 mkdirSync(OUT, { recursive: true });
+
+// Brand chip — embed the real app icon so the kicker reads as the actual product.
+const ICON_B64 = (() => {
+  for (const p of ["appstore/AppIcon-1024.png", "public/icon-512.png", "public/logo-mark.png"]) {
+    if (existsSync(p)) return readFileSync(p).toString("base64");
+  }
+  return null;
+})();
 
 // Poll the preview server until it answers, instead of guessing with a fixed
 // sleep (flaky on slow machines: goto() could hit a dead port).
@@ -64,51 +75,120 @@ const EXPAND = {
   run: { active: true, progress: 0.5, readyToClaim: false },
   prestige: { legacyWeights: "0", ships: 0 }, lifetimeMoney: "42000", heat: 0, modifiers: [],
 };
-const ERA = {
-  version: 3,
-  resources: { compute: "3200", data: "520", money: "2600" },
-  upgrades: { rack_basic: 6, rack_server: 2 },
-  research: ["backprop"],
-  run: { active: false, progress: 0, readyToClaim: false },
-  prestige: { legacyWeights: "0", ships: 0 }, lifetimeMoney: "2600", heat: 0, modifiers: [],
-};
 
+// Per-scene: short headline with one <em> accent word, a thin subhead, a single
+// per-scene glow color, and a gentle device tilt. Dark, minimal, premium —
+// matching the owner's reference deck.
 const SCENES = [
-  { name: "01-hero", seed: RICH, head: "Build an AI<br>compute empire", sub: "A 2.5D data center that grows as you scale",
-    grad: ["#1b2a6b", "#5a2d8f"], blobs: [["#3f86f0", -8, 6], ["#9b51e0", 70, -6]] },
-  { name: "02-expand", seed: EXPAND, interact: "expand", head: "Tap to expand<br>your lab", sub: "Buy floor space — the room grows with you",
-    grad: ["#0b6b73", "#1f3fa0"], blobs: [["#22d3c5", 65, 4], ["#3f86f0", -10, 60]] },
-  { name: "03-research", seed: RICH, interact: "scrollResearch", head: "Climb an absurd<br>AI tech tree", sub: "Branching research across every era",
-    grad: ["#3a2480", "#7a2f9c"], blobs: [["#9b51e0", -6, 8], ["#ff5a8a", 72, 66]] },
-  { name: "04-ship", seed: CELEBRATE, interact: "ship", head: "Ship the Model", sub: "Prestige — reset for permanent boosts",
-    grad: ["#a8331f", "#d98a2b"], blobs: [["#ff5a3c", -8, 4], ["#ffb43c", 70, 60]] },
-  { name: "05-market", seed: RICH, interact: "scrollMarket", head: "Buy data…<br>legally, or not", sub: "Risk the dark-web Bazaar — mind the heat",
-    grad: ["#2a1a5e", "#181f55"], blobs: [["#7c3aed", -6, 8], ["#2f7bf6", 68, 66]] },
-  { name: "06-honest", seed: RICH, interact: "settings", head: "No ads.<br>No pay-to-win.", sub: "One optional unlock. Plays fully offline.",
-    grad: ["#0f7a52", "#1f6fb0"], blobs: [["#16b364", -8, 6], ["#2f7bf6", 70, 64]] },
+  {
+    name: "01-hero", seed: RICH,
+    head: "Build an AI <em>empire</em>", sub: "Scale one GPU into a planet-sized compute cluster",
+    glow: "#5b8cff", accent: "#7aa2ff", tilt: -5,
+  },
+  {
+    name: "02-expand", seed: EXPAND, interact: "expand",
+    head: "Watch it <em>grow</em>", sub: "Tap the floor to expand — the hall grows with you",
+    glow: "#1fd6c2", accent: "#46e6d3", tilt: 5,
+  },
+  {
+    name: "03-research", seed: RICH, interact: "scrollResearch",
+    head: "Climb the <em>tree</em>", sub: "An absurd AI research tree across every era",
+    glow: "#a86bff", accent: "#c79bff", tilt: -5,
+  },
+  {
+    name: "04-ship", seed: CELEBRATE, interact: "ship",
+    head: "Ship the <em>model</em>", sub: "Prestige and reset for permanent Legacy boosts",
+    glow: "#ff7a3c", accent: "#ffae5c", tilt: 5,
+  },
+  {
+    name: "05-market", seed: RICH, interact: "scrollMarket",
+    head: "Bend the <em>rules</em>", sub: "Buy data legally… or risk the dark-web Bazaar",
+    glow: "#7c5cff", accent: "#a98bff", tilt: -5,
+  },
+  {
+    name: "06-honest", seed: RICH, interact: "settings",
+    head: "No <em>pay-to-win</em>", sub: "No ads. Plays offline. One optional unlock.",
+    glow: "#19c06b", accent: "#4fe39a", tilt: 5,
+  },
 ];
 
-const frameHtml = (scene, b64) => `<!doctype html><html><head><meta charset="utf-8"><style>
+// Deterministic faint star/particle field (no Math.random at module load — keep
+// the frame reproducible build-to-build).
+function particles(n, seed) {
+  let s = seed;
+  const rnd = () => ((s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+  let out = "";
+  for (let i = 0; i < n; i++) {
+    const x = (rnd() * 100).toFixed(2), y = (rnd() * 70).toFixed(2);
+    const sz = (1 + rnd() * 2.4).toFixed(1), op = (0.06 + rnd() * 0.22).toFixed(2);
+    out += `<span class="pt" style="left:${x}%;top:${y}%;width:${sz}px;height:${sz}px;opacity:${op}"></span>`;
+  }
+  return out;
+}
+
+const frameHtml = (scene, b64, i) => {
+  const g = scene.glow;
+  const tilt = scene.tilt;
+  return `<!doctype html><html><head><meta charset="utf-8"><style>
 *{margin:0;box-sizing:border-box}
 html,body{width:1284px;height:2778px}
-.stage{width:1284px;height:2778px;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;
+.stage{width:1284px;height:2778px;position:relative;overflow:hidden;
   font-family:-apple-system,"SF Pro Display","Segoe UI",system-ui,sans-serif;
-  background:linear-gradient(165deg,${scene.grad[0]},${scene.grad[1]})}
-.blob{position:absolute;width:760px;height:760px;border-radius:50%;filter:blur(130px);opacity:.5}
-.cap{z-index:2;text-align:center;padding:150px 96px 0}
-.cap h1{color:#fff;font-size:108px;line-height:1.0;font-weight:800;letter-spacing:-.035em;text-shadow:0 8px 50px rgba(0,0,0,.28)}
-.cap p{color:rgba(255,255,255,.85);font-size:44px;font-weight:600;margin-top:34px;letter-spacing:-.01em}
-.wrap{margin-top:80px;z-index:2}
-.phone{width:1016px;padding:16px;border-radius:80px;background:rgba(255,255,255,.16);
-  border:1px solid rgba(255,255,255,.4);
-  box-shadow:0 70px 130px -30px rgba(0,0,0,.6),inset 0 2px 0 rgba(255,255,255,.55);
-  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+  background:
+    radial-gradient(110% 70% at 50% 96%, ${g}33 0%, transparent 60%),
+    radial-gradient(90% 55% at 50% 4%, ${g}1f 0%, transparent 55%),
+    linear-gradient(180deg,#0a0b12 0%,#070810 55%,#05060c 100%)}
+
+/* big soft per-scene glow centered behind the device */
+.aura{position:absolute;left:50%;top:54%;width:1500px;height:1500px;transform:translate(-50%,-50%);
+  border-radius:50%;background:radial-gradient(closest-side,${g}55,transparent 70%);
+  filter:blur(60px);opacity:.7}
+
+/* faint stars */
+.pt{position:absolute;border-radius:50%;background:#fff}
+
+/* caption */
+.cap{position:absolute;top:0;left:0;right:0;z-index:5;text-align:center;padding:150px 90px 0}
+.cap h1{color:#f4f6ff;font-size:96px;line-height:1.0;font-weight:800;letter-spacing:-.035em;
+  text-shadow:0 6px 40px rgba(0,0,0,.5)}
+.cap h1 em{font-style:normal;color:${scene.accent};
+  text-shadow:0 0 38px ${g}cc}
+.cap p{color:rgba(232,236,255,.62);font-size:40px;font-weight:500;margin-top:30px;letter-spacing:-.005em}
+
+/* device with gentle perspective tilt + rim glow + contact shadow */
+.scene3d{position:absolute;left:0;right:0;top:480px;bottom:150px;z-index:4;
+  display:flex;justify-content:center;align-items:flex-start;perspective:2800px}
+.dwrap{position:relative;width:1000px;transform-style:preserve-3d;
+  transform:rotateX(4deg) rotateY(${tilt}deg) rotateZ(${tilt < 0 ? -0.8 : 0.8}deg)}
+.contact{position:absolute;left:50%;bottom:-40px;width:760px;height:120px;transform:translateX(-50%);
+  background:rgba(0,0,0,.6);border-radius:50%;filter:blur(50px);z-index:-2}
+.phone{position:relative;width:1000px;padding:16px;border-radius:80px;
+  background:linear-gradient(160deg,#23262f,#0d0e14);
+  border:1px solid rgba(255,255,255,.14);
+  box-shadow:0 80px 140px -40px rgba(0,0,0,.85),
+             0 0 90px -10px ${g}66,
+             inset 0 1px 0 rgba(255,255,255,.22)}
 .phone img{width:100%;display:block;border-radius:64px}
+.phone::after{content:"";position:absolute;inset:0;border-radius:80px;pointer-events:none;
+  background:linear-gradient(125deg,rgba(255,255,255,.16) 0%,transparent 22%,transparent 80%,rgba(255,255,255,.06) 100%)}
+
+/* bottom brand chip */
+.brand{position:absolute;left:0;right:0;bottom:74px;z-index:6;text-align:center}
+.brand .b{display:inline-flex;align-items:center;gap:18px}
+.brand img{width:48px;height:48px;border-radius:12px;display:block;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+.brand .dot{width:18px;height:18px;border-radius:50%;background:${scene.accent};box-shadow:0 0 16px ${g}}
+.brand span{color:rgba(236,239,255,.72);font-size:34px;font-weight:700;letter-spacing:.04em}
 </style></head><body><div class="stage">
-${scene.blobs.map(([c, l, t]) => `<span class="blob" style="background:${c};left:${l}%;top:${t}%"></span>`).join("")}
+<div class="aura"></div>
+${particles(60, 97 + i * 13)}
 <div class="cap"><h1>${scene.head}</h1><p>${scene.sub}</p></div>
-<div class="wrap"><div class="phone"><img src="data:image/png;base64,${b64}"></div></div>
+<div class="scene3d"><div class="dwrap">
+  <div class="contact"></div>
+  <div class="phone"><img src="data:image/png;base64,${b64}"></div>
+</div></div>
+<div class="brand"><span class="b">${ICON_B64 ? `<img src="data:image/png;base64,${ICON_B64}">` : `<span class="dot"></span>`}<span>Singularity Inc.</span></span></div>
 </div></body></html>`;
+};
 
 async function run() {
   console.log("Building…");
@@ -120,10 +200,13 @@ async function run() {
     const executablePath = findChrome();
     browser = await chromium.launch({ ...(executablePath ? { executablePath } : {}), args: ["--no-sandbox", "--disable-dev-shm-usage"] });
 
-    for (const scene of SCENES) {
+    for (let i = 0; i < SCENES.length; i++) {
+      const scene = SCENES[i];
       // 1) capture the app at 3x for a crisp source frame
       const app = await browser.newPage({ viewport: { width: 402, height: 874 }, deviceScaleFactor: 3 });
-      await app.addInitScript(() => localStorage.setItem("singularity.settings.v1", JSON.stringify({ sound: true, haptics: true, reducedMotion: false, onboarded: true })));
+      // reducedMotion calms the floating "+gain" toasts so they don't overlap the
+      // resource numbers in a still capture (the hall still renders a clean frame).
+      await app.addInitScript(() => localStorage.setItem("singularity.settings.v1", JSON.stringify({ sound: true, haptics: true, reducedMotion: true, onboarded: true })));
       await app.addInitScript(([save, now]) => {
         localStorage.setItem("singularity.save.v1", save);
         localStorage.setItem("singularity.lastSeen.v1", now);
@@ -166,7 +249,7 @@ async function run() {
 
       // 2) composite into the marketing frame at exact 1284×2778
       const framePage = await browser.newPage({ viewport: { width: 1284, height: 2778 }, deviceScaleFactor: 1 });
-      await framePage.setContent(frameHtml(scene, raw.toString("base64")), { waitUntil: "networkidle" });
+      await framePage.setContent(frameHtml(scene, raw.toString("base64"), i), { waitUntil: "networkidle" });
       await sleep(250);
       await framePage.screenshot({ path: `${OUT}/${scene.name}.png` });
       await framePage.close();
