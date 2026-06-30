@@ -81,7 +81,7 @@ const SCENES = [
     name: "01-hero", seed: RICH, nav: "none",
     head: "Build an AI <em>empire</em>", sub: "A 2.5D data center that grows as you scale",
     glow: "#5b8cff", accent: "#7aa2ff",
-    focus: [{ sel: "canvas.hall-canvas" }, { sel: ".resource-bar" }, { sel: ".card", nth: 0 }],
+    focus: [{ sel: "canvas.hall-canvas" }, { sel: ".resource-bar" }],
   },
   {
     name: "02-expand", seed: EXPAND, nav: "expand",
@@ -119,15 +119,15 @@ const SCENES = [
 // iPad's extra width naturally spreads the collage wider.
 const SIZES = [
   { key: "iphone", dir: OUT, w: 1284, h: 2778, deviceW: 980, deviceTop: 470, headSize: 96, subSize: 40, capTop: 150, brandBottom: 74, stars: 60 },
-  { key: "ipad", dir: OUT_PAD, w: 2048, h: 2732, deviceW: 1000, deviceTop: 360, headSize: 128, subSize: 52, capTop: 168, brandBottom: 96, stars: 95 },
+  { key: "ipad", dir: OUT_PAD, w: 2048, h: 2732, deviceW: 1040, deviceTop: 300, headSize: 124, subSize: 50, capTop: 150, brandBottom: 96, stars: 95 },
 ];
 
 // Collage slot presets by card count. x/y = % of canvas, scale = fraction of
 // deviceW for card width, rot = degrees, z = stack order (higher = front).
 const SLOTS = {
-  1: [{ x: 50, y: 60, scale: 0.78, rot: 0, z: 7 }],
-  2: [{ x: 55, y: 63, scale: 0.74, rot: 2, z: 7 }, { x: 39, y: 33, scale: 0.60, rot: -5, z: 6 }],
-  3: [{ x: 53, y: 60, scale: 0.66, rot: 2, z: 8 }, { x: 27, y: 33, scale: 0.50, rot: -6, z: 7 }, { x: 75, y: 84, scale: 0.50, rot: 6, z: 6 }],
+  1: [{ x: 50, y: 56, scale: 1.00, rot: 0, z: 7 }],
+  2: [{ x: 52, y: 64, scale: 0.98, rot: 1.5, z: 7 }, { x: 47, y: 27, scale: 0.86, rot: -3.5, z: 6 }],
+  3: [{ x: 55, y: 73, scale: 0.84, rot: 1.5, z: 8 }, { x: 43, y: 47, scale: 0.80, rot: -3, z: 7 }, { x: 53, y: 22, scale: 0.74, rot: 3, z: 6 }],
 };
 
 function particles(n, seed) {
@@ -264,6 +264,17 @@ async function run() {
       await sleep(300);
       const collect = app.getByRole("button", { name: "Collect" });
       if (await collect.isVisible().catch(() => false)) await collect.click().catch(() => {});
+
+      // dismiss any stray "BREAKING" world-event modal so it can't bleed into a
+      // captured element (it shares the centered modal box) or block a floor tap
+      for (let d = 0; d < 4; d++) {
+        const wm = app.locator(".world-modal");
+        if (!(await wm.count().catch(() => 0))) break;
+        const choice = app.locator(".world-choice").first();
+        if (await choice.count().catch(() => 0)) await choice.click().catch(() => {});
+        else await app.locator(".world-modal .btn-primary, .world-modal .btn").first().click().catch(() => {});
+        await sleep(250);
+      }
 
       // base frame = the clean app screen (blurred device backdrop)
       const base = await app.screenshot();
