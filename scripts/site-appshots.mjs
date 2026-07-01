@@ -2,11 +2,13 @@
 // Drives the live app into each state and captures the clean viewport.
 // Output → docs/assets/app-01..06.png
 import { spawn, execSync } from "node:child_process";
+import { mkdirSync } from "node:fs";
 import { setTimeout as sleep } from "node:timers/promises";
 import { chromium } from "playwright";
 import { SCENES, findChrome, waitForServer } from "./store-screenshots.mjs";
 
 const PORT = 4320;
+mkdirSync("docs/assets", { recursive: true });
 
 async function run() {
   console.log("Building…");
@@ -19,6 +21,7 @@ async function run() {
     for (let i = 0; i < SCENES.length; i++) {
       const s = SCENES[i];
       const app = await browser.newPage({ viewport: { width: 402, height: 874 }, deviceScaleFactor: 3 });
+      try {
       await app.addInitScript(() => localStorage.setItem("singularity.settings.v1", JSON.stringify({ sound: true, haptics: true, reducedMotion: true, onboarded: true })));
       await app.addInitScript(([save, now]) => {
         localStorage.setItem("singularity.save.v1", save);
@@ -60,8 +63,12 @@ async function run() {
       }
       const name = `docs/assets/app-${s.name.slice(0, 2)}.png`;
       await app.screenshot({ path: name });
-      await app.close();
       console.log(`✓ ${name}`);
+      } catch (err) {
+        console.error(`✗ ${s.name} failed:`, err.message);
+      } finally {
+        await app.close().catch(() => {});
+      }
     }
   } finally {
     if (browser) await browser.close();

@@ -68,6 +68,9 @@ nav.scrolled .bar{background:rgba(10,12,22,.72)}
   box-shadow:0 14px 34px -10px var(--glow),inset 0 1px 0 rgba(255,255,255,.5)}
 .btn.cta:hover{box-shadow:0 20px 46px -10px var(--glow),inset 0 1px 0 rgba(255,255,255,.5)}
 .btn.ghost{background:transparent}
+/* visible keyboard focus on the dark glass background */
+.btn:focus-visible,.bar .links-n a:focus-visible,.bar .navtoggle:focus-visible,.foot .links a:focus-visible{
+  outline:2px solid var(--accent);outline-offset:3px;border-radius:100px}
 
 /* ---------- typography ---------- */
 h1,h2,h3{letter-spacing:-.035em;line-height:1.02;font-weight:850}

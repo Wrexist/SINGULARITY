@@ -16,8 +16,9 @@
   // mobile nav toggle
   const tgl = document.getElementById("navtoggle"), links = document.getElementById("navlinks");
   if (tgl && links) {
-    tgl.addEventListener("click", () => links.classList.toggle("open"));
-    links.addEventListener("click", (e) => { if (e.target.tagName === "A") links.classList.remove("open"); });
+    const setOpen = (open) => { links.classList.toggle("open", open); tgl.setAttribute("aria-expanded", String(open)); };
+    tgl.addEventListener("click", () => setOpen(!links.classList.contains("open")));
+    links.addEventListener("click", (e) => { if (e.target.tagName === "A") setOpen(false); });
   }
 
   if (reduce) return;
@@ -41,14 +42,14 @@
       if (Math.abs(tx - cx) < 0.001 && Math.abs(ty - cy) < 0.001) { cancelAnimationFrame(raf); raf = 0; }
     };
     const kick = () => { if (!raf) raf = requestAnimationFrame(loop); };
-    window.addEventListener("mousemove", (e) => {
+    stage.addEventListener("mousemove", (e) => {
       const r = stage.getBoundingClientRect();
       tx = (e.clientX - (r.left + r.width / 2)) / r.width;
       ty = (e.clientY - (r.top + r.height / 2)) / r.height;
       tx = Math.max(-0.6, Math.min(0.6, tx)); ty = Math.max(-0.6, Math.min(0.6, ty));
       kick();
     }, { passive: true });
-    window.addEventListener("mouseleave", () => { tx = 0; ty = 0; kick(); });
+    stage.addEventListener("mouseleave", () => { tx = 0; ty = 0; kick(); });
   }
 
   // gallery: per-tile 3D tilt toward the cursor
