@@ -4,85 +4,157 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Singularity Inc. — Idle AI Compute Tycoon</title>
-  <meta name="description" content="Build an AI lab from a server closet to a planet-scale compute cluster. A satirical idle tycoon with a 2.5D data center that grows as you scale. No ads, no pay-to-win." />
+  <meta name="description" content="Build an AI lab from a server closet to a planet-scale compute cluster. A satirical idle tycoon with a 2.5D data center that grows as you scale. No ads, no pay-to-win, plays offline." />
+  <meta name="theme-color" content="#06070e" />
+  <meta property="og:type" content="website" />
   <meta property="og:title" content="Singularity Inc. — Idle AI Compute Tycoon" />
   <meta property="og:description" content="A satirical idle tycoon where your 2.5D data center physically grows as you scale. No ads, no pay-to-win." />
   <meta property="og:image" content="assets/01-hero.png" />
-  <meta name="theme-color" content="#141a4d" />
+  <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" href="assets/icon.png" />
+  <link rel="apple-touch-icon" href="assets/icon.png" />
   <link rel="stylesheet" href="style.css" />
-  <script>document.documentElement.classList.add("js");</script>
 </head>
 <body>
-  <div class="aurora"><span class="a"></span><span class="b"></span><span class="c"></span><span class="d"></span></div>
+  <div class="bg"><span class="blob a"></span><span class="blob b"></span><span class="blob c"></span></div>
+  <div class="grain"></div>
 
-  <nav><div class="wrap"><div class="bar glass">
-    <img src="assets/icon.png" alt="Singularity Inc. icon" />
-    <span class="name">Singularity Inc.</span>
+  <nav id="nav"><div class="wrap"><div class="bar glass">
+    <a class="logo" href="./"><img class="mark" src="assets/icon.png" alt="Singularity Inc." /><span class="name">Singularity Inc.</span></a>
     <span class="spacer"></span>
-    <a class="btn cta" href="#get">Coming to the App Store</a>
+    <div class="links-n" id="navlinks">
+      <a href="features/">Features</a>
+      <a href="#gallery">Screens</a>
+      <a href="support/">Support</a>
+      <a class="btn cta" href="#get">Get the game</a>
+    </div>
+    <button class="navtoggle btn" id="navtoggle" aria-label="Menu" aria-controls="navlinks" aria-expanded="false">☰</button>
   </div></div></nav>
 
   <header class="hero wrap">
-    <span class="badge glass">Idle · Tycoon · Satire</span>
+    <span class="kick"><i></i> Idle · Tycoon · Satire</span>
     <h1>Build an <span class="grad">AI compute empire</span></h1>
-    <p class="sub">Start with one humming GPU in a rented closet. Scale to a planet-sized cluster, watch your 2.5D data center fill with racks, and climb an absurd AI research tree — then “ship the model” and do it all again, faster.</p>
+    <p class="sub">Start with one humming GPU in a rented closet. Scale to a planet-sized cluster, watch your 2.5D data center physically fill with racks, and climb an absurd AI research tree — then <b>ship the model</b> and do it all again, faster.</p>
     <div class="actions">
-      <a class="btn cta" href="#get">Coming to the App Store</a>
-      <a class="btn" href="#features">See features</a>
+      <a class="btn cta" href="#get">Get the game</a>
+      <a class="btn ghost" href="features/">Explore features</a>
     </div>
-    <p class="note">No ads. No pay-to-win. Plays offline.</p>
-    <div class="hero-shot reveal"><img src="assets/01-hero.png" alt="Singularity Inc. gameplay — the 2.5D data-center hall" /></div>
+    <p class="note">No ads · No pay-to-win · Plays offline</p>
+
+    <div class="stage" id="stage">
+      <div class="floor"></div>
+      <div class="float f1" data-depth="26"><span class="ic">🏭</span><div>96 racks live<small>your hall, right now</small></div></div>
+      <div class="float f2" data-depth="40"><span class="ic">⚡</span><div>Revenue ×2<small>viral demo event</small></div></div>
+      <div class="float f3" data-depth="34"><span class="ic">🧠</span><div>Research tree<small>every era</small></div></div>
+      <div class="float f4" data-depth="20"><span class="ic">🚀</span><div>Ship the model<small>prestige loop</small></div></div>
+      <div class="device3d" id="device" data-depth="12">
+        <div class="frame"><img src="assets/app-01.png" alt="Singularity Inc. — the 2.5D data-center hall" /><span class="sheen"></span></div>
+      </div>
+    </div>
   </header>
 
-  <section id="features" class="wrap">
-    <h2 class="title reveal">A world that earns its screen</h2>
-    <p class="lead reveal">Every upgrade you buy physically appears in the hall. Legibility is the feature.</p>
-    <div class="features">
-      <div class="feature glass reveal"><div class="ic">🏭</div><h3>Manifestation hall</h3><p>A clean 2.5D data center that lights up and sprawls as you scale. Buy a rack — it slides in and powers on.</p></div>
-      <div class="feature glass reveal"><div class="ic">🧠</div><h3>AI research tree</h3><p>Climb a branching tree of increasingly absurd capabilities, from backprop refactors to “mixture of experts.”</p></div>
-      <div class="feature glass reveal"><div class="ic">🚀</div><h3>Ship the Model</h3><p>Prestige to reset for permanent Legacy-Weight multipliers. The mid-game wall becomes the best moment.</p></div>
-      <div class="feature glass reveal"><div class="ic">🕵️</div><h3>Dark-web data market</h3><p>Buy training data from licensed vendors — or risk the Bazaar for cheaper bytes. Mind your Regulatory Heat.</p></div>
-      <div class="feature glass reveal"><div class="ic">📰</div><h3>Satirical events</h3><p>Viral demos, GPU shortages, open letters, talent wars — a dozen+ events skewer the AI industry as you play.</p></div>
-      <div class="feature glass reveal"><div class="ic">🌙</div><h3>Offline &amp; honest</h3><p>Your lab keeps earning while you’re away. No ads, no energy timers, no fake-urgency pop-ups. Ever.</p></div>
+  <section id="features">
+    <div class="wrap">
+      <h2 class="title reveal">A world that earns its screen</h2>
+      <p class="lead reveal">Every upgrade you buy physically appears in the hall. Three resources, one clean loop. Legibility is the feature.</p>
+      <div class="features">
+        <div class="feature glass reveal"><div class="ic">🏭</div><h3>Manifestation hall</h3><p>A clean 2.5D data center that lights up and sprawls as you scale. Buy a rack — it slides in and powers on. No two labs look alike.</p></div>
+        <div class="feature glass reveal d1"><div class="ic">🧠</div><h3>AI research tree</h3><p>Climb a branching tree of increasingly absurd capabilities, from backprop refactors to “mixture of experts” — revealed in waves, never dumped.</p></div>
+        <div class="feature glass reveal d2"><div class="ic">🚀</div><h3>Ship the Model</h3><p>Prestige to reset for permanent Legacy-Weight multipliers, then do it all again — faster. The mid-game wall becomes the best moment.</p></div>
+        <div class="feature glass reveal"><div class="ic">🕵️</div><h3>Dark-web data market</h3><p>Source data from licensed vendors — or risk the Bazaar for cheaper bytes. Mind your Regulatory Heat; a surprise audit might want its cut.</p></div>
+        <div class="feature glass reveal d1"><div class="ic">📰</div><h3>Satirical events</h3><p>Viral demos, GPU shortages, open letters, talent wars — a dozen-plus events skewer the AI gold rush as you play.</p></div>
+        <div class="feature glass reveal d2"><div class="ic">🌙</div><h3>Offline &amp; honest</h3><p>Your lab keeps earning while you’re away. No ads, no energy timers, no fake-urgency pop-ups. One optional, cosmetic unlock. Ever.</p></div>
+      </div>
+      <div style="text-align:center;margin-top:40px" class="reveal"><a class="btn" href="features/">See all features →</a></div>
     </div>
   </section>
 
   <section>
-    <div class="wrap"><h2 class="title reveal">See it in motion</h2></div>
-    <div class="shots">
-      <img class="reveal" src="assets/01-hero.png" alt="The data-center hall" />
-      <img class="reveal" src="assets/02-expand.png" alt="Tap to expand your lab" />
-      <img class="reveal" src="assets/03-research.png" alt="AI research tree" />
-      <img class="reveal" src="assets/04-ship.png" alt="Ship the Model — prestige" />
-      <img class="reveal" src="assets/05-market.png" alt="Dark-web data market" />
-      <img class="reveal" src="assets/06-honest.png" alt="No ads, no pay-to-win" />
-    </div>
-  </section>
-
-  <section class="wrap" id="get">
-    <div class="honest glass reveal">
-      <h2 class="title">Honest by design</h2>
-      <p class="lead">The full game is free and generous. One optional Premium unlock — quality-of-life &amp; cosmetics (a longer offline-earnings cap, Founder status, hall themes). No ads, no pay-to-win.</p>
-      <div class="row">
-        <span class="chip glass">🚫 No ads</span>
-        <span class="chip glass">⚖️ No pay-to-win</span>
-        <span class="chip glass">⏳ No energy gates</span>
-        <span class="chip glass">📴 Plays offline</span>
+    <div class="wrap">
+      <h2 class="title reveal">The loop</h2>
+      <p class="lead reveal">Simple to learn. Deep enough to lose an afternoon to.</p>
+      <div class="loop">
+        <div class="step glass reveal"><div class="n">1</div><h3>Generate</h3><p>Your racks produce Compute around the clock — online and off.</p></div>
+        <div class="step glass reveal d1"><div class="n">2</div><h3>Train</h3><p>Spend Compute on training runs to claim Data and Money.</p></div>
+        <div class="step glass reveal d2"><div class="n">3</div><h3>Reinvest</h3><p>Buy racks, cooling, automation and research — the hall grows with you.</p></div>
+        <div class="step glass reveal d3"><div class="n">4</div><h3>Ship</h3><p>Prestige for permanent boosts, then climb higher, faster.</p></div>
       </div>
-      <div class="actions" style="justify-content:center;margin-top:30px"><a class="btn cta" href="#get">Coming to the App Store</a></div>
     </div>
   </section>
 
-  <footer class="wrap">
-    <div class="links"><a href="privacy/">Privacy</a><a href="support/">Support</a><a href="mailto:isacmolin@gmail.com">Contact</a></div>
-    <div>© Singularity Inc.</div>
-    <div class="tag">Definitely not a bubble.</div>
+  <section>
+    <div class="wrap">
+      <div class="showcase">
+        <div class="copy">
+          <span class="kick reveal"><i></i> See it in motion</span>
+          <h2 class="reveal">Watch the empire grow</h2>
+          <p class="lead reveal">Parametric, hand-tuned rendering — no stock art, no bloat. Just a living data center that reacts as you scale.</p>
+          <ul>
+            <li class="reveal"><span class="dot"></span><span><b>Tap the floor</b> to buy expansions — the room physically grows in that direction.</span></li>
+            <li class="reveal d1"><span class="dot"></span><span><b>Era transitions</b> re-skin the entire hall and pop a satirical press release.</span></li>
+            <li class="reveal d2"><span class="dot"></span><span><b>Three resources</b> — Compute, Data, Money. That’s the whole economy.</span></li>
+          </ul>
+          <div style="margin-top:28px" class="reveal"><a class="btn cta" href="#get">Get the game</a></div>
+        </div>
+        <div class="vidframe reveal">
+          <video src="assets/preview.mp4" autoplay muted loop playsinline poster="assets/01-hero.png"></video>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="gallery">
+    <div class="wrap">
+      <h2 class="title reveal">Straight from the game</h2>
+      <p class="lead reveal">Every screen is real, rendered in-engine.</p>
+      <div class="gallery" id="tiltgallery">
+        <div class="shot reveal"><div class="frame"><img src="assets/app-01.png" alt="The 2.5D data-center hall" loading="lazy" /><span class="sheen"></span></div></div>
+        <div class="shot reveal d1"><div class="frame"><img src="assets/app-02.png" alt="Tap to expand your lab" loading="lazy" /><span class="sheen"></span></div></div>
+        <div class="shot reveal d2"><div class="frame"><img src="assets/app-03.png" alt="AI research tree" loading="lazy" /><span class="sheen"></span></div></div>
+        <div class="shot reveal"><div class="frame"><img src="assets/app-04.png" alt="Ship the Model — prestige" loading="lazy" /><span class="sheen"></span></div></div>
+        <div class="shot reveal d1"><div class="frame"><img src="assets/app-05.png" alt="Dark-web data market" loading="lazy" /><span class="sheen"></span></div></div>
+        <div class="shot reveal d2"><div class="frame"><img src="assets/app-06.png" alt="No ads, no pay-to-win" loading="lazy" /><span class="sheen"></span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="get">
+    <div class="wrap">
+      <div class="band reveal">
+        <span class="kick"><i></i> Honest by design</span>
+        <h2 class="title" style="margin-top:14px">Play the whole game for free</h2>
+        <p class="lead">One optional Premium unlock adds quality-of-life and cosmetics — never power. The full game is free and generous.</p>
+        <div class="pills">
+          <span class="pill g">No ads</span>
+          <span class="pill g">No pay-to-win</span>
+          <span class="pill g">No energy timers</span>
+          <span class="pill g">Plays offline</span>
+          <span class="pill">Your data stays on device</span>
+        </div>
+        <div class="actions" style="justify-content:center;margin-top:32px">
+          <a class="btn cta" href="mailto:isacmolin@gmail.com?subject=Singularity%20Inc.%20TestFlight">Join the TestFlight beta</a>
+          <a class="btn ghost" href="features/">See features</a>
+        </div>
+        <p class="note" style="margin-top:16px">Coming soon to the App Store · iPhone &amp; iPad</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap foot">
+      <a class="logo" href="./"><img src="assets/icon.png" alt="" /><span class="name">Singularity Inc.</span></a>
+      <span class="spacer"></span>
+      <div class="links">
+        <a href="features/">Features</a>
+        <a href="#gallery">Screens</a>
+        <a href="privacy/">Privacy</a>
+        <a href="support/">Support</a>
+        <a href="mailto:isacmolin@gmail.com">Contact</a>
+      </div>
+      <p class="fine">© 2026 Singularity Inc. A satirical idle tycoon about the AI gold rush. Definitely not a bubble.</p>
+    </div>
   </footer>
 
-  <script>
-    const io = new IntersectionObserver((es) => es.forEach((e) => e.isIntersecting && e.target.classList.add("in")), { threshold: 0.12 });
-    document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
-  </script>
+  <script src="app.js"></script>
 </body>
 </html>
