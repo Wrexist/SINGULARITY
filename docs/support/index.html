@@ -5,21 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Support — Singularity Inc.</title>
   <meta name="description" content="Help and support for Singularity Inc. — the idle AI compute tycoon." />
-  <meta name="theme-color" content="#141a4d" />
+  <meta name="theme-color" content="#06070e" />
   <link rel="icon" href="../assets/icon.png" />
+  <link rel="apple-touch-icon" href="../assets/icon.png" />
   <link rel="stylesheet" href="../style.css" />
 </head>
 <body>
-  <div class="aurora"><span class="a"></span><span class="b"></span><span class="c"></span><span class="d"></span></div>
+  <div class="bg"><span class="blob a"></span><span class="blob b"></span><span class="blob c"></span></div>
+  <div class="grain"></div>
 
-  <nav><div class="wrap"><div class="bar glass">
-    <a href="../" style="display:flex;align-items:center;gap:14px"><img src="../assets/icon.png" alt="" /><span class="name">Singularity Inc.</span></a>
+  <nav id="nav"><div class="wrap"><div class="bar glass">
+    <a class="logo" href="../"><img class="mark" src="../assets/icon.png" alt="Singularity Inc." /><span class="name">Singularity Inc.</span></a>
     <span class="spacer"></span>
-    <a class="btn" href="../">Home</a>
+    <div class="links-n" id="navlinks">
+      <a href="../">Home</a>
+      <a href="../features/">Features</a>
+      <a href="../privacy/">Privacy</a>
+      <a class="btn cta" href="../#get">Get the game</a>
+    </div>
+    <button class="navtoggle btn" id="navtoggle" aria-label="Menu">☰</button>
   </div></div></nav>
 
   <main class="page wrap">
-    <article class="doc glass">
+    <article class="doc glass reveal">
       <h1>Support</h1>
       <p class="meta">We read every message.</p>
       <p>Need help, hit a bug, or have an idea? Email <a href="mailto:isacmolin@gmail.com">isacmolin@gmail.com</a> and we’ll get back to you.</p>
@@ -36,9 +44,20 @@
     </article>
   </main>
 
-  <footer class="wrap">
-    <div class="links"><a href="../">Home</a><a href="../privacy/">Privacy</a><a href="mailto:isacmolin@gmail.com">Contact</a></div>
-    <div>© Singularity Inc.</div>
+  <footer>
+    <div class="wrap foot">
+      <a class="logo" href="../"><img src="../assets/icon.png" alt="" /><span class="name">Singularity Inc.</span></a>
+      <span class="spacer"></span>
+      <div class="links">
+        <a href="../">Home</a>
+        <a href="../features/">Features</a>
+        <a href="../privacy/">Privacy</a>
+        <a href="mailto:isacmolin@gmail.com">Contact</a>
+      </div>
+      <p class="fine">© 2026 Singularity Inc. A satirical idle tycoon about the AI gold rush.</p>
+    </div>
   </footer>
+
+  <script src="../app.js"></script>
 </body>
 </html>
