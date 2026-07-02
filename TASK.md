@@ -56,6 +56,26 @@ features. Two audit passes (engine + UI) ran first; every shipped fix was verifi
       **Owner to-dos that remain:** confirm GitHub Pages is enabled (docs/ → wrexist.github.io links
       in Settings + App Store privacy URL), and decide on research-tree deepening (23 nodes is the
       endgame ceiling — real design work + retune, not a copy fix).
+- [x] **Self-review of the whole session diff (owner 2026-07-02, 8-angle review).** No critical bugs;
+      9 real findings fixed: claim-waiting badge regression under Lab sectioning (claim now counts in
+      Build dot + Lab nav badge; verified e2e), dead section deep-links pre-sectioning (gated on
+      `labSectioned`), hardReset not resetting App-local nav (lands on Lab/Build), faction toast now
+      keyed on tilt DIRECTION (a later accel↔doomer flip re-announces), one-time toasts refactored to
+      a data-driven list (one row per toast; check-then-update so shared keys can't mask), nextGoal
+      gated behind notice-slot visibility (no hidden 10Hz achievement scans), onBuy reuses the render
+      derive, fx reduced-motion reads the settings store (no per-emit DOM query), stale ProductDetail
+      cleanup + ExpandConfirm a11y parity + assorted dead-code removal. 446 tests; sim untouched.
+- [ ] **NEXT (prioritized plan, owner-ready):**
+      1. **Moment queue** (small): one `enqueueMoment()` arbiter for the five full-screen overlays —
+         the third pairwise collision guard is the signal it's due. UI-only, curve-safe.
+      2. **R8.2 Stage A — backup UX** (roadmap): Share-sheet export, import preview+confirm (the
+         ConfirmSheet now exists), gentle backup nudge. No backend, no privacy change.
+      3. **Research-tree deepening** (design): 23 nodes is the endgame ceiling; deepen `frontier`
+         with sim-supervised retune. Owner design call first.
+      4. **Charter fold into TrainingDock** (polish): charter is interactive for seconds per run,
+         then inert — fold into a collapsible strip on the dock (UI audit C1 suggestion).
+      5. **Post-TestFlight**: read the on-device telemetry (R8.1) tab-usage + gen-times against the
+         retuned curve before any further balance moves.
 - [ ] **Flagged for owner (not touched):** run yields apply global multipliers twice (derive.ts —
       runComputeCost carries them, then runMoney/DataYield multiply again). The tuned curve is BUILT
       on this behaviour, so changing it = a full retune; decide deliberately. Also noted: the store's
