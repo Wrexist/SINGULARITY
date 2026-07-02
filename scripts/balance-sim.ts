@@ -38,6 +38,10 @@ import {
 } from "../src/engine/products";
 import { currentEra } from "../src/engine/eras";
 import { products as PRODUCTS, type ProductTypeId } from "../src/engine/balance/products";
+import {
+  SLOTS_BY_TIER, componentDef, visibleCatalog, canBuyComponent, buyComponent, equipComponent,
+} from "../src/engine/components";
+import { RACK_IDS } from "../src/engine/hall";
 import { Big } from "../src/engine/math/Big";
 import { balance } from "../src/engine/balance/config";
 import type { GameState } from "../src/engine/types";
@@ -160,6 +164,25 @@ function autoBuy(state: GameState, useMarket: boolean): { state: GameState; boug
     if (canBuyUpgrade(s, id)) {
       s = buyUpgrade(s, id);
       bought.push(id);
+    }
+  }
+
+  // 2b. Rig Bay components: like a player, keep each owned tier's slots filled
+  //     with the best affordable part (buy a copy + equip). Greedy per slot;
+  //     for cooling "better" means a LOWER draw multiplier.
+  for (let tier = 0; tier < SLOTS_BY_TIER.length; tier++) {
+    if ((s.upgrades[RACK_IDS[tier]!] ?? 0) <= 0) continue;
+    for (const slot of SLOTS_BY_TIER[tier]!) {
+      const curDef = componentDef(s.components.loadout[tier]?.[slot] ?? "");
+      const best = visibleCatalog(s)
+        .filter((d) => d.class === slot)
+        .filter((d) => (slot === "cooling" ? d.value < (curDef?.value ?? 1) : d.value > (curDef?.value ?? (slot === "accelerator" ? 1 : 0))))
+        .filter((d) => canBuyComponent(s, d.id))
+        .sort((a, b) => a.cost - b.cost)[0];
+      if (!best) continue;
+      s = buyComponent(s, best.id);
+      s = equipComponent(s, tier, slot, best.id);
+      bought.push(`component:${best.id}`);
     }
   }
 

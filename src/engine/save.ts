@@ -7,7 +7,9 @@ import { legacyTree as LEGACY } from "./balance/legacyTree";
 import { reputation as REPUTATION } from "./balance/reputation";
 import { charters as CHARTERS } from "./balance/charters";
 import { balance } from "./balance/config";
-import type { ActiveModifier, DraftModel, Employee, GameState, LifetimeStats, ModifierTarget, ProductsState, ProductState, UpgradeState } from "./types";
+import { components as COMPONENTS, SLOTS_BY_TIER, type SlotClass } from "./balance/components";
+import { freshComponents } from "./components";
+import type { ActiveModifier, ComponentsState, DraftModel, Employee, GameState, LifetimeStats, ModifierTarget, ProductsState, ProductState, UpgradeState } from "./types";
 
 const MODIFIER_TARGETS: ModifierTarget[] = ["computeMult", "dataMult", "moneyMult"];
 const PRODUCT_TYPE_IDS = PRODUCTS.types.map((t) => t.id);
@@ -263,6 +265,7 @@ interface SavedShape {
   charter: string | null;
   lastCharter: string | null;
   legacyInvestments: string[];
+  components: ComponentsState;
 }
 
 export function serialize(state: GameState): string {
@@ -311,6 +314,7 @@ export function serialize(state: GameState): string {
     charter: state.charter,
     lastCharter: state.lastCharter,
     legacyInvestments: state.legacyInvestments,
+    components: state.components,
   };
   return JSON.stringify(shape);
 }
@@ -425,6 +429,7 @@ export function deserialize(json: string): GameState {
     // KNOWN legacy-perk ids, deduped — a dupe would apply the lane bias twice for free
     // (legacyTreeMods sums per entry and never checks prereqs on load).
     legacyInvestments: dedupeKnownIds(raw.legacyInvestments, LEGACY_IDS),
+    components: sanitizeComponents(raw.components),
     // Generation-scoped (not persisted): a mid-run reload simply re-accrues the run
     // peaks, and the ship report is transient — both start fresh on load.
     runPeakCompute: fresh.runPeakCompute,
@@ -439,6 +444,40 @@ export function deserialize(json: string): GameState {
 function sanitizeContracts(c: unknown): { completed: string[] } {
   const o = (c ?? {}) as { completed?: unknown };
   return { completed: dedupeKnownIds(o.completed, CONTRACT_IDS) };
+}
+
+/** Rig Bay components are untrusted: keep KNOWN ids with sane integer counts, and
+ *  a loadout whose every slot holds a class-matching, actually-owned id — equips
+ *  beyond the owned copy count are dropped (a crafted save can't run one GPU in
+ *  three tiers), per-entry like every other sanitizer here. */
+const COMPONENT_BY_ID = new Map(COMPONENTS.catalog.map((d) => [d.id, d]));
+function sanitizeComponents(c: unknown): ComponentsState {
+  const out = freshComponents();
+  const o = c as Partial<ComponentsState> | null;
+  if (!o || typeof o !== "object") return out;
+  if (o.owned && typeof o.owned === "object") {
+    for (const [id, n] of Object.entries(o.owned)) {
+      if (id === "__proto__" || !COMPONENT_BY_ID.has(id)) continue;
+      if (typeof n !== "number" || !Number.isFinite(n) || n <= 0) continue;
+      out.owned[id] = Math.min(99, Math.floor(n));
+    }
+  }
+  if (Array.isArray(o.loadout)) {
+    const used: Record<string, number> = {};
+    for (let tier = 0; tier < SLOTS_BY_TIER.length; tier++) {
+      const slots = (o.loadout[tier] ?? {}) as Partial<Record<SlotClass, unknown>>;
+      for (const slot of SLOTS_BY_TIER[tier]!) {
+        const id = slots[slot];
+        if (typeof id !== "string") continue;
+        const def = COMPONENT_BY_ID.get(id);
+        if (!def || def.class !== slot) continue;
+        if ((used[id] ?? 0) >= (out.owned[id] ?? 0)) continue; // no free copy
+        used[id] = (used[id] ?? 0) + 1;
+        out.loadout[tier]![slot] = id;
+      }
+    }
+  }
+  return out;
 }
 
 /** Reputation is untrusted: KNOWN perk ids (deduped), and `spent` reconciled so it's
@@ -541,6 +580,10 @@ export function migrate(raw: any): SavedShape {
   if (s.version === 15) {
     // v15 → v16: regulator suspicion (Depth B3). A clean slate on existing runs.
     s = { ...s, version: 16, suspicion: s.suspicion ?? 0 };
+  }
+  if (s.version === 16) {
+    // v16 → v17: Rig Bay components (C1). Empty inventory + loadouts on old saves.
+    s = { ...s, version: 17, components: s.components ?? freshComponents() };
   }
   return s as SavedShape;
 }

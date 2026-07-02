@@ -1,5 +1,6 @@
 import { balance } from "./balance/config";
 import { RACK_IDS } from "./hall";
+import { tierPowerMult } from "./components";
 import type { GameState } from "./types";
 
 /**
@@ -28,7 +29,8 @@ export function powerStats(game: GameState): PowerStats {
   const p = balance.power;
   let drawKw = 0;
   for (let tier = 0; tier < RACK_IDS.length; tier++) {
-    drawKw += (game.upgrades[RACK_IDS[tier]!] ?? 0) * (p.drawPerRackKw[tier] ?? 0);
+    // Rig Bay: a cooling part slotted in this tier reduces the whole tier's draw.
+    drawKw += (game.upgrades[RACK_IDS[tier]!] ?? 0) * (p.drawPerRackKw[tier] ?? 0) * tierPowerMult(game, tier);
   }
   let capacityKw = p.baseCapacityKw;
   for (const u of balance.upgrades) {

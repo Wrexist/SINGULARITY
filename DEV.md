@@ -28,22 +28,25 @@ An AI compute tycoon (idle/incremental + management) with a 2.5D data-center hal
 > Rendering: **Canvas 2D isometric** (parametric, no image assets). Hard rules still hold: 3 in-run
 > resources only (Legacy/Reputation are meta-currencies, not a 4th resource); engine pure/deterministic;
 > humor in writing not math; all new systems are data-in-`balance/` + pure folds + tests.
-> **CURVE (retuned 2026-07-02 — "fun opening, progressively harder"):** first prestige
-> **≈ 59–65m** (owner band held), meta-loop **Gen2 ≈ 12m, Gen3 ≈ 8m**, longest dead-air gap
-> **~1m15s** (down from ~3m — the opening is purchase-dense: first rack ≈ $15 within the first
-> minute, auto-claim ≈ 3m40s, auto-train ≈ 7m15s). Pace is set by FOUR knobs in
-> **`balance.difficulty`** (see LEARNINGS): **`costMult` (2.0)** scales RESEARCH cost — research is
-> gated by a fixed COMPUTE stock against a fixed income ceiling, so pushing this WALLS the game
-> (~2.5 = unreachable in 240m); leave it modest. **`upgradeCostMult` (2.0)** is the SAFE length
-> dial — scales upgrade cost only. **`upgradeCostRampLevels` (12)** ramps the COMBINED
-> costMult×upgradeCostMult from ×1 at level 0 to full strength by this many owned, so the first
-> levels of every upgrade are cheap (the opening hook) while the late curve keeps full difficulty —
-> raising `upgradeCostMult` no longer slows the opening, only the grind. **`productionMult`
-> (1.0 = identity)** is a global income-rate dilation (spare lever; walls if pushed). The Legacy
-> snowball is bounded by `prestige.scale` (1e5) + `multiplierPerPoint` (0.018). To re-pace: move
-> `upgradeCostMult` (length) or `upgradeCostRampLevels` (opening), re-run `npm run sim`, watch
-> "First prestige" AND "Longest wall". NOTE: TASK.md entries citing "sim 12m15s", "≈38m" or
-> "58m52s/71m47s" are historical records from before these retunes, not the current target.
+> **CURVE (retuned 2026-07-02 — "fun opening, progressively harder", now WITH Rig Bay):** first
+> prestige **≈ 61m24s / 62m47s** (owner band held), meta-loop **Gen2 ≈ 13–14m, Gen3 ≈ 10m**,
+> longest dead-air gap **~1m08s** (the opening is purchase-dense: first rack ≈ $15 inside the first
+> minute, auto-claim ≈ 3m40s, first Rig Bay part ≈ 4m40s, auto-train ≈ 8m20s). Pace is set by FOUR
+> knobs in **`balance.difficulty`** (see LEARNINGS): **`costMult` (2.0)** scales RESEARCH cost —
+> research is gated by a fixed COMPUTE stock against a fixed income ceiling, so pushing this WALLS
+> the game; leave it modest. **`upgradeCostMult` (4.0)** is the SAFE length dial — scales upgrade
+> cost only (raised 2.0→4.0 to absorb the income the Rig Bay components add; the sim BUYS
+> components, so this number already prices them in). **`upgradeCostRampLevels` (12)** ramps the
+> COMBINED costMult×upgradeCostMult from ×1 at level 0 to full strength by this many owned — the
+> opening hook; raising `upgradeCostMult` never slows the opening, only the grind.
+> **`productionMult` (1.0 = identity)** is a spare income-dilation lever (walls if pushed). The
+> Rig Bay catalog (`balance/components.ts`) is ALSO a curve surface: accelerator values multiply
+> tier output and interconnect data feeds the research gate — any catalog change needs a sim run.
+> The Legacy snowball stays bounded by `prestige.scale` (1e5) + `multiplierPerPoint` (0.018).
+> To re-pace: `upgradeCostMult` (length) / `upgradeCostRampLevels` (opening) / component values
+> (mid-game slope), re-run `npm run sim`, watch "First prestige" AND "Longest wall". NOTE: TASK.md
+> entries citing "sim 12m15s", "≈38m", "58m52s/71m47s" or "59m31s/64m43s" are historical records
+> from before these retunes, not the current target.
 
 If a request would pull work forward from a later phase, STOP and flag it. Scope drift is this project's #1 documented risk. Protecting the phase boundary is part of your job.
 

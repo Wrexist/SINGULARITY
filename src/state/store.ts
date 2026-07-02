@@ -23,6 +23,8 @@ import {
   type MarketOutcome,
   type WorldEventResult,
 } from "../engine/actions";
+import { buyComponent, equipComponent } from "../engine/components";
+import type { SlotClass } from "../engine/balance/components";
 import {
   canReleaseProduct,
   releaseProduct,
@@ -121,6 +123,10 @@ interface GameStore {
   doClaim: () => void;
   doBuyUpgrade: (id: string) => void;
   doBuyUpgradeBulk: (id: string, count: number) => void;
+  /** Rig Bay: buy one component copy into the inventory. */
+  doBuyComponent: (id: string) => void;
+  /** Rig Bay: equip an owned copy into a rack tier's slot (null clears). */
+  doEquipComponent: (tier: number, slot: SlotClass, id: string | null) => void;
   doClaimContract: (id: string) => void;
   doSetCharter: (id: string | null) => void;
   doBuyLegacyPerk: (id: string) => void;
@@ -442,6 +448,8 @@ export const useGame = create<GameStore>((set, get) => ({
     }),
   doBuyUpgrade: (id) => set((s) => ({ game: buyUpgrade(s.game, id) })),
   doBuyUpgradeBulk: (id, count) => set((s) => ({ game: buyUpgradeBulk(s.game, id, count) })),
+  doBuyComponent: (id) => set((s) => ({ game: buyComponent(s.game, id) })),
+  doEquipComponent: (tier, slot, id) => set((s) => ({ game: equipComponent(s.game, tier, slot, id) })),
   doClaimContract: (id) => set((s) => ({ game: claimContract(s.game, id) })),
   doSetCharter: (id) => set((s) => ({ game: setCharter(s.game, id) })),
   doBuyLegacyPerk: (id) => set((s) => ({ game: buyLegacyPerk(s.game, id) })),

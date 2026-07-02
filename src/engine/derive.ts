@@ -7,6 +7,8 @@ import { charterMods } from "./charter";
 import { legacyAvailable, legacyTreeMods } from "./legacyTree";
 import { ascensionMultiplier } from "./prestige";
 import { powerStats } from "./power";
+import { rackTier } from "./hall";
+import { tierComputeMult, loadoutDataPerSec } from "./components";
 import type { Derived, Employee, GameState } from "./types";
 
 // Single-slot memo for the staff aggregation (see derive()). Keyed on the employees
@@ -77,9 +79,14 @@ export function derive(state: GameState): Derived {
     const level = state.upgrades[def.id] ?? 0;
     if (level <= 0) continue;
     switch (def.effect.kind) {
-      case "computeFlat":
-        computeFlat = computeFlat.add(def.effect.perLevel * level);
+      case "computeFlat": {
+        // Rig Bay: an accelerator slotted in this rack TIER multiplies the whole
+        // tier's output (loadout templates — see engine/components.ts).
+        const tier = rackTier(def.id);
+        const mult = tier >= 0 ? tierComputeMult(state, tier) : 1;
+        computeFlat = computeFlat.add(def.effect.perLevel * level * mult);
         break;
+      }
       case "computeMult":
         computeMult = computeMult.mul(Math.pow(1 + def.effect.perLevel, level));
         break;
@@ -110,6 +117,11 @@ export function derive(state: GameState): Derived {
         break;
     }
   }
+
+  // Rig Bay interconnects: flat Data/sec per rack of each slotted tier. Joins the
+  // scraper lane (dataPerSecFlat), which deliberately skips the run dataMult.
+  const interconnectData = loadoutDataPerSec(state);
+  if (interconnectData > 0) dataPerSecFlat = dataPerSecFlat.add(interconnectData);
 
   // Research (one-time nodes)
   for (const def of balance.research) {

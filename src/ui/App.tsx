@@ -43,6 +43,8 @@ import { balance } from "../engine/balance/config";
 import { HallCanvas } from "./HallCanvas";
 import { ExpandConfirm } from "./ExpandConfirm";
 import { ConfirmSheet } from "./ConfirmSheet";
+import { RigBayPanel } from "./RigBayPanel";
+import { componentsUnlocked } from "../engine/components";
 import { EraTransition } from "./EraTransition";
 import { WorldEventCard } from "./WorldEventCard";
 import { ModifierBar } from "./ModifierBar";
@@ -63,7 +65,8 @@ export function App() {
   const { doStartRun, doClaim, doBuyUpgrade, doBuyUpgradeBulk, doBuyOfficePerk, doBuyReputationPerk, doBuyLegacyPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
-    doClaimContract, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset } =
+    doClaimContract, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
+    doBuyComponent, doEquipComponent } =
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
@@ -626,6 +629,13 @@ export function App() {
                 <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} onSetFocus={setComputeFocus} />
                 <CharterPanel game={game} onSet={(id) => { haptics.tap(); sound.tap(); doSetCharter(id); }} />
                 <UpgradePanel game={game} derived={d} onBuy={onBuy} />
+                {componentsUnlocked(game) && (
+                  <RigBayPanel
+                    game={game}
+                    onBuy={(id) => { haptics.tap(); sound.purchase(); doBuyComponent(id); }}
+                    onEquip={(tier, slot, id) => { haptics.success(); sound.tap(); doEquipComponent(tier, slot, id); }}
+                  />
+                )}
               </>
             )}
             {section === "research" && (

@@ -528,3 +528,34 @@ export function CodeIcon({ size = 18 }: IconProps) {
     </Icon>
   );
 }
+
+/** GPU / accelerator chip (Rig Bay). */
+export function ChipIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <rect x="5" y="5" width="14" height="14" rx="2" />
+      <rect x="9.5" y="9.5" width="5" height="5" rx="1" />
+      <path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3" />
+    </Icon>
+  );
+}
+
+/** Cooling / snowflake (Rig Bay). */
+export function SnowIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="M12 2.5v19M4 7.5l16 9M20 7.5l-16 9" />
+      <path d="M12 2.5 9.8 4.7M12 2.5l2.2 2.2M12 21.5l-2.2-2.2M12 21.5l2.2-2.2" />
+    </Icon>
+  );
+}
+
+/** Interconnect / link (Rig Bay). */
+export function LinkIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="M9.5 14.5 14.5 9.5" />
+      <path d="M10 6.5 12.5 4a3.5 3.5 0 0 1 5 5L15 11.5M14 17.5 11.5 20a3.5 3.5 0 0 1-5-5L9 12.5" />
+    </Icon>
+  );
+}

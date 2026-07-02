@@ -77,6 +77,18 @@ features. Two audit passes (engine + UI) ran first; every shipped fix was verifi
       strips can't bleed through its card gaps (screenshot 1).
       (3) **"Can't close settings"** (screenshot 3): sticky sheet header with an always-reachable ✕.
       All three verified in a scripted browser drive.
+- [x] **Rig Bay C1 — rack components, store & inventory (owner 2026-07-02).** Research-backed
+      (genre brief + integration recon in RIG_BAY_PLAN.md): per-rack-TIER loadout templates (never
+      per-rack — the genre's documented micromanagement failure), class-typed slots with ONE stat
+      each (accelerator +% compute · cooling −% draw · interconnect +data/s per rack), fixed
+      fully-visible catalog (11 parts, 3 grades, money only, reveal by fleet size), physical copies
+      (one copy = one slot), buy-and-fit in one tap from the slot's chooser. Engine: pure
+      `components.ts` (+14 tests, 460 total), save v17 + per-entry sanitizer, derive/power wiring,
+      prestige-reset via fresh-spread. Hall: fitted tiers pulse brighter. Sim buys components
+      (step 2b); catalog + `upgradeCostMult` 2.0→4.0 retuned the curve back into band:
+      **first prestige 61m24s/62m47s · wall 1m08s · Gen2 ~13-14m · Gen3 ~10m** — with the first
+      part landing ~4m40s (the new early-game decision layer). Verified end-to-end in a browser
+      drive. Phases C2 (earned trophy parts), C3 (fusion), C4 (set bonuses) in RIG_BAY_PLAN.md.
 - [ ] **NEXT (prioritized plan, owner-ready):**
       1. **Moment queue** (small): one `enqueueMoment()` arbiter for the five full-screen overlays —
          the third pairwise collision guard is the signal it's due. UI-only, curve-safe.

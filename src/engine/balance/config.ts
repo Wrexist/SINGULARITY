@@ -791,7 +791,7 @@ export const balance = {
    */
   difficulty: {
     costMult: 2.0,
-    upgradeCostMult: 2.0,
+    upgradeCostMult: 4.0,
     productionMult: 1.0,
     /** The opening hook (owner 2026-07-02: "too boring in the beginning").
      *  An upgrade's first levels pay a REDUCED difficulty multiplier, ramping

@@ -7,6 +7,7 @@ import { buildHallModel, POWER_IDS } from "../render/hallModel";
 import { drawHallStatic, drawHallDynamic, expansionMarkers, rackHitAreas, pointInPoly, type RackHit } from "../render/hallRenderer";
 import { currentEra, eraName } from "../engine/eras";
 import { hallRooms } from "../engine/hall";
+import { tierLoadoutFill } from "../engine/components";
 import { rackInfo } from "../engine/rackInfo";
 import { themeFilter } from "./hallThemes";
 
@@ -154,6 +155,8 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
         reducedMotion: useSettings.getState().reducedMotion,
         spawnFrom, spawnT, burst, dpr,
         rackSkin: useSettings.getState().rackSkin,
+        // Rig Bay: fitted tiers pulse brighter (read per frame like the skin).
+        componentFill: [0, 1, 2].map((t) => tierLoadoutFill(useGame.getState().game, t)),
       });
       // Debug/test aid (screenshot harness reads marker centroids); harmless.
       markers = expansionMarkers(model, cssW, cssH);

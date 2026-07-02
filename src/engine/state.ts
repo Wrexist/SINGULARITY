@@ -1,9 +1,10 @@
 import { Big } from "./math/Big";
 import { products as PRODUCTS } from "./balance/products";
 import { initialStats } from "./stats";
+import { freshComponents } from "./components";
 import type { GameState } from "./types";
 
-export const SAVE_VERSION = 16;
+export const SAVE_VERSION = 17;
 
 /** A fresh lab: empty closet, a trickle of free Compute, nothing owned. */
 export function createInitialState(): GameState {
@@ -36,6 +37,8 @@ export function createInitialState(): GameState {
     charter: null,
     lastCharter: null,
     legacyInvestments: [],
+    // Rig Bay (C1): empty inventory, empty loadouts. Resets on prestige.
+    components: freshComponents(),
     runPeakCompute: Big.ZERO,
     runPeakMrr: 0,
     lastShipReport: null,

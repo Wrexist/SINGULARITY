@@ -491,3 +491,23 @@ when" balance, dials the whole curve, and the UI cost displays update for free (
   bar bled through the GAPS between its three cards. Rules: one sticky element per edge; a pinned
   bar over scrolling content needs an opaque full-bleed slab (::before to the viewport top with a
   fade), because the bar's own children don't cover the gutter gaps.
+
+### Rig Bay (C1) — component systems without the genre's failure mode (2026-07-02)
+- **Per-TYPE loadouts, never per-rack.** Research across NGU/Melvor/Egg Inc/PCBS: per-unit gear ×
+  exponential unit counts = "multiplicative micromanagement", the documented death of component
+  systems in idle games. One template per rack tier (≤6 slots total) keeps the fantasy ("I choose
+  the GPUs") while every choice multiplies across the fleet. Full brief in RIG_BAY_PLAN.md.
+- **A new income lane re-prices the whole curve — budget for a big knob move.** Modest-looking
+  component multipliers (≤×1.35/tier) + a data trickle collapsed first prestige 59m→26m on the
+  first sim. Two compounding surprises: interconnect data feeds the RESEARCH gate (data income is
+  progression fuel, not just yield), and tier multipliers stack with every other compute mult.
+  Landed back at 61–63m by nerfing values AND raising `upgradeCostMult` 2.0→4.0 — the sim buys
+  components itself (scripts/balance-sim.ts step 2b), so the tuned number prices them in. Any
+  catalog change is a balance change: sim it.
+- **Class-typed slots beat generic slots.** Each slot accepts one component class with ONE stat
+  (accelerator = +% compute, cooling = −% draw, interconnect = +data/rack), so a slot is a single
+  legible choice, not an optimization puzzle. Buy-and-fit in one tap from the slot's own chooser —
+  the store lives where the decision is, no separate shop screen to correlate.
+- **Playwright `addInitScript` re-seeds localStorage on EVERY navigation** — a reload-persistence
+  check inside such a test always "fails" because the reload rewrites the seed. Round-trip
+  assertions belong in engine tests (serialize→deserialize), not browser reload tests.

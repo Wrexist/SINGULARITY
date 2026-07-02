@@ -2577,3 +2577,54 @@ svg { vertical-align: middle; }
 /* The animated sheen overlay would freeze as a static white streak — hide it. */
 .reduce-motion .card.affordable::after,
 .reduce-motion .node.affordable::after { display: none; }
+
+/* ---------- Rig Bay (C1) — per-tier component loadouts ---------- */
+.rig-blurb { margin: -6px 0 12px; font-size: 12.5px; color: var(--ink-2); line-height: 1.45; }
+.rig-tier { margin-bottom: 14px; }
+.rig-tier:last-child { margin-bottom: 0; }
+.rig-tier-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.rig-tier-name { font-size: 13.5px; font-weight: 750; color: var(--ink); }
+.rig-tier-count { font-size: 11.5px; font-weight: 800; color: var(--ink-3); }
+.rig-slots { display: flex; flex-direction: column; gap: 8px; }
+.rig-slot {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  padding: 10px 12px; border-radius: 12px; cursor: pointer;
+  background: #fff; border: 1.5px dashed rgba(17, 24, 39, 0.18);
+}
+.rig-slot.filled { border-style: solid; border-color: rgba(17, 24, 39, 0.1); box-shadow: var(--shadow-sm); }
+.rig-slot.filled.grade-enterprise { border-color: rgba(47, 123, 246, 0.45); }
+.rig-slot.filled.grade-prototype { border-color: rgba(155, 81, 224, 0.5); background: linear-gradient(100deg, rgba(155, 81, 224, 0.06), #fff 45%); }
+.rig-slot-ic { display: inline-flex; color: var(--ink-3); flex: none; }
+.rig-slot.filled .rig-slot-ic { color: var(--accent, #7c5cff); }
+.rig-slot-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.rig-slot-label { font-size: 13px; font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rig-slot .rig-slot-sub { font-size: 11.5px; color: var(--ink-3); }
+.rig-slot.filled .rig-slot-sub { color: #0b7a43; font-weight: 650; }
+
+/* Chooser sheet */
+.rig-chooser { display: flex; flex-direction: column; gap: 8px; max-height: 78vh; overflow-y: auto; }
+.rig-chooser-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.rig-chooser-title { display: inline-flex; align-items: center; gap: 7px; font-size: 14.5px; font-weight: 800; color: var(--ink); }
+.rig-option {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  padding: 11px 12px; border-radius: 12px; cursor: pointer;
+  background: #fff; border: 1px solid rgba(17, 24, 39, 0.09);
+}
+.rig-option:disabled { opacity: 0.55; cursor: default; }
+.rig-option.current { border-color: rgba(22, 179, 100, 0.5); background: rgba(22, 179, 100, 0.05); }
+.rig-option-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.rig-option-name { font-size: 13.5px; font-weight: 750; color: var(--ink); }
+.rig-grade {
+  font-style: normal; font-size: 9px; font-weight: 800; letter-spacing: 0.08em;
+  padding: 1.5px 6px; border-radius: 999px; vertical-align: 2px; margin-left: 4px;
+  background: rgba(17, 24, 39, 0.07); color: var(--ink-2);
+}
+.rig-grade.grade-enterprise { background: rgba(47, 123, 246, 0.12); color: #1d5fd0; }
+.rig-grade.grade-prototype { background: rgba(155, 81, 224, 0.13); color: #7a2fc4; }
+.rig-option-stat { font-size: 12px; font-weight: 750; color: #0b7a43; }
+.rig-option-desc { font-size: 11.5px; color: var(--ink-3); }
+.rig-option-owned { font-size: 10.5px; font-weight: 700; color: var(--ink-3); }
+.rig-option-go { flex: none; font-size: 12.5px; font-weight: 800; color: var(--money); }
+.rig-option.current .rig-option-go { color: #0b7a43; }
+.rig-clear { border-style: dashed; color: var(--ink-2); font-size: 12.5px; font-weight: 650; }
+.rig-chooser-tip { margin: 2px 0 0; font-size: 11px; color: var(--ink-3); text-align: center; }

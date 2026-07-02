@@ -19,6 +19,9 @@ export interface DrawOpts {
   /** Cosmetic rack skin id (R6.3) — recolours the rack bodies. Undefined/"classic"
    *  is identity, so the default render is byte-identical. */
   rackSkin?: string;
+  /** Rig Bay (C1): loadout fill 0..1 per rack tier — fitted tiers render subtly
+   *  brighter (upgrades physically manifest). Undefined/0 is identity. */
+  componentFill?: number[];
 }
 
 type Pt = { x: number; y: number };
@@ -310,7 +313,10 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
           : 0;
     // Overclock manifests as a hotter rack: lift the work-pulse (which already
     // drives rim/LED glow) so the upgrade you bought is visible in the room.
-    const workPulse = Math.min(1.2, basePulse + model.overclock * 0.45);
+    // Rig Bay components manifest the same way: a fitted tier's racks pulse a
+    // touch brighter — the parts you slotted are visible in the room.
+    const fill = o.componentFill?.[rack.tier] ?? 0;
+    const workPulse = Math.min(1.2, basePulse + model.overclock * 0.45 + fill * 0.3);
     drawRack(ctx, c.x, c.y, tileW, tileH, rack.tier, rack.density, scale, blink, workPulse, model.active, powerOn, o.rackSkin);
   }
 
