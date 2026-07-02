@@ -127,41 +127,37 @@ export function StatsPanel({ game, derived }: Props) {
   return (
     <section className="panel stats open">
       {toggle}
-      {open && (
-        <>
-          {game.alignment !== 0 && (
-            <div className="align-bar" title={`Alignment ${game.alignment.toFixed(2)}`}>
-              <div className="align-track">
-                <div className="align-center" />
-                <div className="align-marker" style={{ left: `${((game.alignment + 1) / 2) * 100}%` }} />
-              </div>
-              <div className="align-ends">
-                <span>Doomer</span>
-                <span className="align-now">{alignmentLabel(game.alignment)}</span>
-                <span>Accel</span>
-              </div>
-            </div>
-          )}
-          <div className="stats-subhead">Now</div>
-          <div className="stats-grid">
-            {now.map((r) => (
-              <div key={r.label} className="stat-row">
-                <span className="stat-label">{r.label}</span>
-                <span className="stat-value">{r.value}</span>
-              </div>
-            ))}
+      {game.alignment !== 0 && (
+        <div className="align-bar" title={`Alignment ${game.alignment.toFixed(2)}`}>
+          <div className="align-track">
+            <div className="align-center" />
+            <div className="align-marker" style={{ left: `${((game.alignment + 1) / 2) * 100}%` }} />
           </div>
-          <div className="stats-subhead">All-time career</div>
-          <div className="stats-grid">
-            {allTime.map((r) => (
-              <div key={r.label} className="stat-row">
-                <span className="stat-label">{r.label}</span>
-                <span className="stat-value">{r.value}</span>
-              </div>
-            ))}
+          <div className="align-ends">
+            <span>Doomer</span>
+            <span className="align-now">{alignmentLabel(game.alignment)}</span>
+            <span>Accel</span>
           </div>
-        </>
+        </div>
       )}
+      <div className="stats-subhead">Now</div>
+      <div className="stats-grid">
+        {now.map((r) => (
+          <div key={r.label} className="stat-row">
+            <span className="stat-label">{r.label}</span>
+            <span className="stat-value">{r.value}</span>
+          </div>
+        ))}
+      </div>
+      <div className="stats-subhead">All-time career</div>
+      <div className="stats-grid">
+        {allTime.map((r) => (
+          <div key={r.label} className="stat-row">
+            <span className="stat-label">{r.label}</span>
+            <span className="stat-value">{r.value}</span>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }

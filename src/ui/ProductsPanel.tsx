@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { GameState } from "../engine/types";
 import { products as B, type ProductTypeId } from "../engine/balance/products";
 import { productMilestones } from "../engine/balance/products";
@@ -33,8 +33,15 @@ interface Props {
 export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onSetChannelMix, onBuyFeature, onRename, onRetire }: Props) {
   // Which draft (by id) is currently showing the type-picker, if any.
   const [picking, setPicking] = useState<string | null>(null);
-  // Which product's deep-management screen is open, if any.
+  // Which product's deep-management screen is open, if any. If that product
+  // disappears (sold via the confirm flow, which no longer closes the sheet
+  // itself), drop the id so the sheet unmounts cleanly — otherwise a stale
+  // ProductDetail lingers with its Escape listener still registered.
   const [detailId, setDetailId] = useState<string | null>(null);
+  const detailGone = detailId != null && !game.products.active.some((p) => p.id === detailId);
+  useEffect(() => {
+    if (detailGone) setDetailId(null);
+  }, [detailGone]);
   const [msOpen, setMsOpen] = useState(false);
   // Collapsed by default (like Milestones) — the leaderboard is reference, not a
   // control, and open-by-default it pushed a tall block under every product card.

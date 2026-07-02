@@ -6,6 +6,7 @@
  *
  * Parametric (dots + text), no image assets, one canvas, rAF sleeps when idle.
  */
+import { useSettings } from "./settings";
 
 export interface Particle {
   x: number; y: number; vx: number; vy: number;
@@ -22,9 +23,10 @@ let wakers: Array<() => void> = [];
 const PALETTE = ["#ff385c", "#2f7bf6", "#9b51e0", "#16b364", "#ff9f0a"];
 
 /** With reduced motion the FxCanvas never mounts, so nothing drains these arrays —
- *  pushing would leak a particle per tap for the whole session. */
+ *  pushing would leak a particle per tap for the whole session. Read the setting
+ *  store directly (no per-emit DOM query; bursts fire at tap frequency). */
 function fxDisabled(): boolean {
-  return !!document.querySelector(".app.reduce-motion");
+  return useSettings.getState().reducedMotion;
 }
 
 /** Radial spray of particles at a screen point. */
@@ -65,8 +67,8 @@ export function floatText(x: number, y: number, text: string, color = "#16b364",
  */
 export function punch(el: Element | null) {
   if (!el || typeof (el as HTMLElement).animate !== "function") return;
-  // Respect reduced-motion (the app sets this class on the root).
-  if (document.querySelector(".app.reduce-motion")) return;
+  // Respect reduced-motion (same store read as burst/floatText).
+  if (fxDisabled()) return;
   (el as HTMLElement).animate(
     [
       { transform: "scale(1)" },

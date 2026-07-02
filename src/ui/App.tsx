@@ -70,21 +70,24 @@ export function App() {
   // The advisor list feeds three things from one scan (memoized per tick, same
   // cadence as derive — a handful of product checks, no clock): the per-tab nav
   // badges, the per-Lab-section badges, and the single "next action" nudge chip.
+  // A waiting run-claim is counted in the BADGES only (not the chip — the big
+  // bobbing Claim button is its own nudge): with the Lab sectioned, the button
+  // can be off-screen on Research/HQ, and a claim must never be signal-less.
   const advisor = useMemo(() => advisorItems(game), [game]);
+  const claimWaiting = game.run.readyToClaim;
   const attention = useMemo(() => {
     const counts: Record<AdvisorTab, number> = { lab: 0, products: 0, employees: 0 };
     for (const it of advisor) counts[it.tab] += 1;
+    if (claimWaiting) counts.lab += 1;
     return counts;
-  }, [advisor]);
+  }, [advisor, claimWaiting]);
   const labAttention = useMemo(() => {
     const counts: Record<LabSection, number> = { build: 0, research: 0, hq: 0 };
     for (const it of advisor) if (it.tab === "lab" && it.section) counts[it.section] += 1;
+    if (claimWaiting) counts.build += 1;
     return counts;
-  }, [advisor]);
+  }, [advisor, claimWaiting]);
   const nudge = advisor[0] ?? null;
-  // The "next goal" carrot: the era/contract/achievement closest to popping,
-  // shown as a quiet always-ticking progress strip (see engine/goals.ts).
-  const goal = useMemo(() => nextGoal(game), [game]);
 
   // Detect a ship (prestige) and fire the celebration moment + haptics.
   const prevShips = useRef(game.prestige.ships);
@@ -100,6 +103,11 @@ export function App() {
   const [showAchievements, setShowAchievements] = useState(false);
   const [flash, setFlash] = useState(0); // AGI ascension screen flash (key replays the anim)
   const [dailyOn, setDailyOn] = useState(() => dailyAvailable());
+  // The "next goal" carrot: the era/contract/achievement closest to popping
+  // (see engine/goals.ts). Only computed when the notice slot would actually
+  // show it (slot priority is daily > nudge > goal) — no point scanning 50+
+  // achievement metrics at 10Hz to produce a hidden result.
+  const goal = useMemo(() => (dailyOn || nudge ? null : nextGoal(game)), [game, dailyOn, nudge]);
   const reducedMotion = useSettings((s) => s.reducedMotion);
   const hallTheme = useSettings((s) => s.hallTheme);
   const music = useSettings((s) => s.music);
@@ -189,61 +197,44 @@ export function App() {
     setLog((l) => [{ id, text, tone }, ...l].slice(0, MAX_LOG));
   }, []);
   const dropToast = useCallback((id: number) => setToasts((ts) => ts.filter((t) => t.id !== id)), []);
-  const seenResearch = useRef(showResearch);
-  const seenPrestige = useRef(showPrestige);
-  const seenMarket = useRef(showMarket);
-  const seenShipReady = useRef(shipReady);
-  // Three quiet-but-important transitions that previously happened with ZERO
-  // feedback (pre-launch audit): the first faction tilt (an invisible scalar
-  // moving), auto-train coming online (the core loop changes), and the first-ever
-  // hire. All hydration-synced like the unlock toasts, and all one-way facts of
-  // the save (alignment ≠ 0, the auto_train upgrade, employeesHired > 0), so a
-  // returning player is never re-toasted.
-  const aligned = game.alignment !== 0;
-  const alignAccel = game.alignment > 0;
-  const autoTrainOn = d.autoTrain;
-  const everHired = game.stats.employeesHired > 0;
-  const seenAligned = useRef(aligned);
-  const seenAutoTrain = useRef(autoTrainOn);
-  const seenHired = useRef(everHired);
+
+  // Transition toasts, data-driven: each row is a keyed fact of the state; when a
+  // fact CHANGES after hydration, its message fires once. One list to add the next
+  // toast to (a single row), one seen-map, one sync — no per-toast ref plumbing,
+  // and no way to add a toast but forget its hydration baseline (which would
+  // re-toast returning players). The faction row keys on the tilt DIRECTION
+  // (doomer/accel), so a lab that later flips sides is told about the flip too.
+  const alignDir = game.alignment === 0 ? "" : game.alignment > 0 ? "accel" : "doomer";
+  const transitionToasts: { key: string; fact: string | boolean; when: string | boolean; text: string; tone: ToastData["tone"] }[] = [
+    { key: "research", fact: showResearch, when: true, text: "Research unlocked", tone: "good" },
+    { key: "market", fact: showMarket, when: true, text: "Data Market unlocked", tone: "good" },
+    { key: "prestige", fact: showPrestige, when: true, text: "The path to shipping is open", tone: "good" },
+    { key: "shipReady", fact: shipReady, when: true, text: "You can Ship the Model!", tone: "good" },
+    { key: "align", fact: alignDir, when: "accel", text: "Your choices tilt the lab accelerationist — faster, hotter. See Lab Stats.", tone: "neutral" },
+    { key: "align", fact: alignDir, when: "doomer", text: "Your choices tilt the lab doomer — safer, steadier. See Lab Stats.", tone: "neutral" },
+    { key: "autoTrain", fact: d.autoTrain, when: true, text: "Auto-train online — runs restart themselves. Set your Compute focus.", tone: "good" },
+    { key: "hired", fact: game.stats.employeesHired > 0, when: true, text: "First hire aboard — specialists level up as they work", tone: "good" },
+  ];
+  const seenFacts = useRef<Record<string, string | boolean>>({});
   const syncedToSave = useRef(false);
+  // Effect dep: a compact signature of all facts, so the effect runs exactly when
+  // one of them changes (not on every 10Hz render).
+  const factSignature = transitionToasts.map((t) => `${t.key}=${t.fact}`).join("|");
   useEffect(() => {
     // Wait for the save to hydrate, then sync the "seen" baseline once so we
-    // don't toast unlocks the player already had on a returning load.
+    // don't toast facts the player already had on a returning load.
     if (!initialized) return;
-    if (!syncedToSave.current) {
-      seenResearch.current = showResearch;
-      seenPrestige.current = showPrestige;
-      seenMarket.current = showMarket;
-      seenShipReady.current = shipReady;
-      seenAligned.current = aligned;
-      seenAutoTrain.current = autoTrainOn;
-      seenHired.current = everHired;
-      syncedToSave.current = true;
-      return;
+    // Check ALL rows before updating the seen-map — rows can share a key (the
+    // two faction directions), and an interleaved write would mask the second.
+    if (syncedToSave.current) {
+      for (const t of transitionToasts) {
+        if (seenFacts.current[t.key] !== t.fact && t.fact === t.when) pushToast(t.text, t.tone);
+      }
     }
-    if (showResearch && !seenResearch.current) pushToast("Research unlocked", "good");
-    if (showMarket && !seenMarket.current) pushToast("Data Market unlocked", "good");
-    if (showPrestige && !seenPrestige.current) pushToast("The path to shipping is open", "good");
-    if (shipReady && !seenShipReady.current) pushToast("You can Ship the Model!", "good");
-    if (aligned && !seenAligned.current) {
-      pushToast(
-        alignAccel
-          ? "Your choices tilt the lab accelerationist — faster, hotter. See Lab Stats."
-          : "Your choices tilt the lab doomer — safer, steadier. See Lab Stats.",
-        "neutral",
-      );
-    }
-    if (autoTrainOn && !seenAutoTrain.current) pushToast("Auto-train online — runs restart themselves. Set your Compute focus.", "good");
-    if (everHired && !seenHired.current) pushToast("First hire aboard — specialists level up as they work", "good");
-    seenResearch.current = showResearch;
-    seenPrestige.current = showPrestige;
-    seenMarket.current = showMarket;
-    seenShipReady.current = shipReady;
-    seenAligned.current = aligned;
-    seenAutoTrain.current = autoTrainOn;
-    seenHired.current = everHired;
-  }, [initialized, showResearch, showPrestige, showMarket, shipReady, aligned, alignAccel, autoTrainOn, everHired]);
+    for (const t of transitionToasts) seenFacts.current[t.key] = t.fact;
+    syncedToSave.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialized, factSignature]);
 
   // Era transitions: a full-screen tentpole moment when the lab crosses an era.
   // Guarded by the same hydration sync so it never fires on a returning load.
@@ -426,7 +417,9 @@ export function App() {
   // action; only rate-moving buys float (power/floor purchases stay quiet).
   const onBuy = (id: string, count = 1, at?: { x: number; y: number }) => {
     haptics.tap(); sound.purchase();
-    const before = at ? derive(useGame.getState().game) : null;
+    // `d` (this render's derive) is the pre-buy baseline — rates only move on
+    // purchases/modifier changes, so re-deriving "before" would duplicate it.
+    const before = at ? d : null;
     if (count > 1) doBuyUpgradeBulk(id, count); else doBuyUpgrade(id);
     if (at && before) {
       const after = derive(useGame.getState().game);
@@ -462,6 +455,7 @@ export function App() {
   // — native panel, and it froze the game loop while open). Cancelling leaves the
   // product-management sheet exactly as it was.
   const onRetireProductFx = (id: string) => setPendingRetire(id);
+  const retireTarget = pendingRetire ? game.products.active.find((x) => x.id === pendingRetire) ?? null : null;
   const confirmRetire = () => {
     const id = pendingRetire;
     setPendingRetire(null);
@@ -548,7 +542,10 @@ export function App() {
               onClick={() => {
                 haptics.tap(); sound.tap();
                 goTab(nudge.tab);
-                if (nudge.tab === "lab" && nudge.section) goSection(nudge.section);
+                // Only deep-link into a Lab section while the section switcher
+                // exists — before that the Lab renders Build alone, and setting a
+                // hidden section would both dead-tap now and mis-land later.
+                if (nudge.tab === "lab" && nudge.section && labSectioned) goSection(nudge.section);
               }}
             >
               <span className="advisor-mark" aria-hidden="true">➤</span>
@@ -564,7 +561,10 @@ export function App() {
               onClick={() => {
                 haptics.tap();
                 if (goal.kind === "achievement") setShowAchievements(true);
-                else { goTab("lab"); goSection(goal.kind === "era" && era === 0 ? "research" : "hq"); }
+                else {
+                  goTab("lab");
+                  if (labSectioned) goSection(goal.kind === "era" && era === 0 ? "research" : "hq");
+                }
               }}
             >
               <span className="goal-fill" style={{ width: `${Math.round(goal.progress * 100)}%` }} aria-hidden="true" />
@@ -717,21 +717,17 @@ export function App() {
           onDecline={() => setPendingExpansion(null)}
         />
       )}
-      {pendingRetire && (() => {
-        const p = game.products.active.find((x) => x.id === pendingRetire);
-        if (!p) return null;
-        return (
-          <ConfirmSheet
-            kicker="SELL PRODUCT"
-            title={`Sell ${p.name}?`}
-            body={`Take the ${fmtMoney(Big.of(Math.round(retirePayout(game, pendingRetire))))} buyout. This is permanent — the product and its users are gone.`}
-            confirmLabel="Sell it"
-            danger
-            onConfirm={confirmRetire}
-            onCancel={() => setPendingRetire(null)}
-          />
-        );
-      })()}
+      {retireTarget && (
+        <ConfirmSheet
+          kicker="SELL PRODUCT"
+          title={`Sell ${retireTarget.name}?`}
+          body={`Take the ${fmtMoney(Big.of(Math.round(retirePayout(game, retireTarget.id))))} buyout. This is permanent — the product and its users are gone.`}
+          confirmLabel="Sell it"
+          danger
+          onConfirm={confirmRetire}
+          onCancel={() => setPendingRetire(null)}
+        />
+      )}
       {confirmReset && (
         <ConfirmSheet
           kicker="HARD RESET"
@@ -739,7 +735,14 @@ export function App() {
           body="Everything goes — Legacy, Reputation, products, the lot. The investors will understand."
           confirmLabel="Wipe it"
           danger
-          onConfirm={() => { setConfirmReset(false); hardReset(); }}
+          onConfirm={() => {
+            setConfirmReset(false);
+            // hardReset clears the store, not App-local nav — land the fresh
+            // save on the Lab's Build pane, not wherever the old one was parked.
+            setTab("lab");
+            setLabSection("build");
+            hardReset();
+          }}
           onCancel={() => setConfirmReset(false)}
         />
       )}

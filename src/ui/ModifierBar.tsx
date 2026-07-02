@@ -16,12 +16,12 @@ export function ModifierBar({ modifiers, status = [] }: { modifiers: ActiveModif
   // Display-dedupe by label+tone: a boost applied per-resource (e.g. the daily's
   // three ×1.5 mults) is ONE chip to the player, not three identical ones.
   const chips: ActiveModifier[] = [];
-  const seen = new Map<string, ActiveModifier>();
+  const seen = new Map<string, number>(); // dedupe key → index into chips
   for (const m of modifiers) {
     const key = `${m.label}|${m.tone}`;
-    const prior = seen.get(key);
-    if (!prior) { seen.set(key, m); chips.push(m); }
-    else if (m.remainingSec > prior.remainingSec) { chips[chips.indexOf(prior)] = m; seen.set(key, m); }
+    const at = seen.get(key);
+    if (at === undefined) { seen.set(key, chips.length); chips.push(m); }
+    else if (m.remainingSec > chips[at]!.remainingSec) chips[at] = m;
   }
   return (
     <div className="modbar" aria-label="Active effects">
