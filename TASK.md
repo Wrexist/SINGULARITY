@@ -8,6 +8,38 @@ Phase 0–3 history retained below for context.
 
 ---
 
+## App review: debug + de-noise + wayfinding (owner-directed 2026-07-02) — branch `claude/app-review-improvements-jad29r`
+*Owner ask: review the app, find critical issues/bugs, restructure noisy tab pages, add experience
+features. Two audit passes (engine + UI) ran first; every shipped fix was verified end-to-end
+(Playwright drive: sell-cancel keeps sheet, sections navigate, reset confirm works).*
+- [x] **Lab tab restructure** — the Lab stacked 11 panels in one scroll (the noisiest page; Ship the
+      Model stranded mid-scroll). Now three sub-sections behind a sticky segmented switcher:
+      **Build** (hall/dock/charter/hardware) · **Research** (tree + data market) · **HQ** (prestige,
+      contracts, stats, codex, activity log). Switcher appears when Research unlocks (reveal in waves);
+      only one section renders at a time (≈3× less 10Hz render work on the tab). HQ shows the golden
+      Ship pill when a prestige is ready; the ship-badged Lab nav lands on HQ; post-ship the Lab
+      resets to Build. Products: market leaderboard now defaults collapsed (reference, not control).
+- [x] **Advisor nudge chip** — the engine's `nextAction()` existed, was tested, and was never wired
+      into the UI. It's now a one-line tappable chip under the daily bar that navigates to the exact
+      tab AND Lab section that resolves it (AdvisorItem grew an optional `section`).
+- [x] **Engine bug fixes (audit-driven)** — Big.format tier-boundary bug ('1000K' → '1M', +1 test);
+      one malformed product on load wiped the whole portfolio → per-entry filtering (test re-pinned);
+      offline summary could report capped:true with 0ms applied on non-finite elapsed; milestone
+      rewards + retire payouts never reached `stats.totalMoney` (all-time earnings under-reported →
+      totalMoney-gated unlocks harder than tuned). **Sim re-run: byte-identical curve (58m52s /
+      Gen2 14m53s / Gen3 10m27s / wall 3m05s).** 440 tests.
+- [x] **UI bug fixes (audit-driven)** — new in-app `ConfirmSheet` replaces all 3 `window.confirm`
+      sites (native panel froze the 10Hz loop while open → post-dismiss mega-tick); cancelling a
+      product sale no longer closes the management sheet; ship Celebration and EraTransition no
+      longer stack when a ship crosses an era (era waits); daily-boost bar re-checks on rollover/
+      foreground; collapsed Stats/Codex panels no longer build their content at 10Hz.
+- [ ] **Flagged for owner (not touched):** run yields apply global multipliers twice (derive.ts —
+      runComputeCost carries them, then runMoney/DataYield multiply again). The tuned curve is BUILT
+      on this behaviour, so changing it = a full retune; decide deliberately. Also noted: the store's
+      single `notice` slot can drop one of two same-tick events (needs a small queue if it ever
+      matters), and App's effects rely on 10Hz re-render freshness (fine today; revisit if the
+      tick→render path is ever throttled).
+
 ## UI polish + research depth (owner-directed 2026-06-30) — branch `claude/ui-polish-theme-fixes`
 *Owner screenshots + asks: kill the green accent lines, make themes actually recolour the app
 and lay them out symmetrically, add a second research fork, wire a category subsystem.*

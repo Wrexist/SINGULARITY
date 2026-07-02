@@ -445,3 +445,29 @@ when" balance, dials the whole curve, and the UI cost displays update for free (
   regardless), run yields, and passive money; the scraper `dataPerSec` needs it applied directly. All
   three difficulty knobs default to identity (costMult is the pre-existing 2.0), so any one set to its
   identity value keeps the curve byte-for-byte.
+
+### App-review session — audit gotchas worth keeping (2026-07-02)
+- **`window.confirm` freezes the game loop.** It's synchronous, so while the native panel is open the
+  10Hz `setInterval` stops and `last.current` in `useGameLoop` goes stale — the first tick after
+  dismissal advances by the entire dialog-open duration in one step. Any blocking native dialog has
+  this property. Use the in-app `ConfirmSheet` (same shell as `ExpandConfirm`) for destructive asks.
+- **Sanitizers must be per-entry, not all-or-nothing.** `isWellFormedProducts` used
+  `active.every(...)`, so ONE corrupt product on load silently reset the whole portfolio (drafts,
+  sold, milestones, frontier) to fresh. `sanitizeEmployees`/`sanitizeDrafts` already filtered
+  per-entry — keep new load-validators on that policy, and pin it with a test that corrupts one of
+  TWO entries (a single-entry test can't tell the two behaviours apart).
+- **`stats.totalMoney` only sees what accrueStats' delta sees.** The accrual is
+  `lifetimeMoney(after core tick) − lifetimeMoney(before)`; anything added to `lifetimeMoney`
+  AFTER that subtraction (milestone rewards inside the same tick) or BETWEEN ticks (retire payouts
+  in an action) is invisible forever, because next tick's baseline already contains it. Any new
+  money source outside the core tick flow must bump `stats.totalMoney` itself.
+- **`Big.format` boundary class: rounding can overflow the chosen tier.** Pick tier → scale → round
+  means 999.99K rounds to "1000K". After scaling, if the value would round to ≥1000 (or a scientific
+  mantissa to ≥10), carry into the next tier before formatting.
+- **Tentpole overlays need an ordering rule, not just own-state gates.** A ship that crosses an era
+  sets BOTH `celebration` and `eraMoment` in the same commit → two full-screen overlays stacked.
+  Gate the lesser moment on the greater one being closed (`eraMoment !== null && !celebration`).
+- **The advisor is the wayfinding layer — wire new nav into it.** Tab badges, the Lab section dots
+  and the nudge chip all derive from ONE `advisorItems(game)` scan (memoized per tick in App). If a
+  panel moves to a new tab/section, update the item's `tab`/`section` there; don't invent a parallel
+  attention system.
