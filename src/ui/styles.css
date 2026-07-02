@@ -1716,15 +1716,19 @@ svg { vertical-align: middle; }
 @keyframes shipPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.14); } }
 .reduce-motion .botnav-item.ship-ready .botnav-ic { animation: none; }
 
-/* ---------- Tabs (Lab / Products) ---------- */
-.tabs {
+/* ---------- Lab section switcher (Build / Research / HQ) ---------- */
+/* Sticky so a deep scroll in one section never strands the player — the
+   switcher (and the way back) is always one tap away. */
+.labnav {
+  position: sticky; top: 8px; z-index: 30;
   display: flex;
   gap: 6px;
-  background: var(--glass);
-  border: 1px solid var(--glass-edge);
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(16px) saturate(170%); -webkit-backdrop-filter: blur(16px) saturate(170%);
+  border: 1px solid rgba(17, 24, 39, 0.07);
+  box-shadow: 0 6px 18px -12px rgba(16, 24, 40, 0.35);
   border-radius: 14px;
   padding: 4px;
-  margin-bottom: 16px;
 }
 .tab {
   flex: 1;
@@ -1745,6 +1749,21 @@ svg { vertical-align: middle; }
   border-radius: 9px; background: var(--coral); color: #fff;
   font-size: 11px; font-weight: 800; vertical-align: middle;
 }
+/* The golden "a ship is waiting" pill on the HQ segment (mirrors the nav badge). */
+.tab-dot.ship { background: linear-gradient(135deg, #f5b40a, #ff8c42); color: #1a1205; }
+
+/* Advisor nudge — the engine's single "next action", as a slim wayfinder chip. */
+.advisor-chip {
+  display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
+  padding: 10px 13px; border-radius: 12px; cursor: pointer;
+  background: #fff;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  border-left: 3px solid var(--accent, #7c5cff);
+  box-shadow: var(--shadow-sm);
+}
+.advisor-mark { color: var(--accent, #7c5cff); font-size: 11px; line-height: 1; }
+.advisor-text { flex: 1; min-width: 0; font-size: clamp(12px, 3.2vw, 13px); font-weight: 650; color: var(--ink); overflow-wrap: anywhere; }
+.advisor-go { color: var(--ink-3); font-size: 16px; font-weight: 800; line-height: 1; }
 
 /* Daily Boost banner — celebratory, never a countdown (honest re-engagement) */
 .daily-bar {

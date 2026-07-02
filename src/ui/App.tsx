@@ -32,7 +32,7 @@ import { FxCanvas } from "./FxCanvas";
 import { burst as fxBurst } from "./fx";
 import { ProductLaunch } from "./ProductLaunch";
 import { productsUnlocked, productMetrics, typeDef, retirePayout } from "../engine/products";
-import { attentionCounts } from "../engine/advisor";
+import { advisorItems, type AdvisorTab, type LabSection } from "../engine/advisor";
 import { marketLeaderboard, playerMarketRank, rivalsBeaten } from "../engine/market";
 import { FlaskIcon, BoxIcon, TeamIcon, TrophyIcon, GearIcon, GiftIcon } from "./Icons";
 import { fmtMoney } from "./format";
@@ -65,9 +65,21 @@ export function App() {
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
-  // Per-tab attention counts (the small badges on the bottom nav). Memoized per
-  // tick (same cadence as derive) — a handful of product checks, no clock.
-  const attention = useMemo(() => attentionCounts(game), [game]);
+  // The advisor list feeds three things from one scan (memoized per tick, same
+  // cadence as derive — a handful of product checks, no clock): the per-tab nav
+  // badges, the per-Lab-section badges, and the single "next action" nudge chip.
+  const advisor = useMemo(() => advisorItems(game), [game]);
+  const attention = useMemo(() => {
+    const counts: Record<AdvisorTab, number> = { lab: 0, products: 0, employees: 0 };
+    for (const it of advisor) counts[it.tab] += 1;
+    return counts;
+  }, [advisor]);
+  const labAttention = useMemo(() => {
+    const counts: Record<LabSection, number> = { build: 0, research: 0, hq: 0 };
+    for (const it of advisor) if (it.tab === "lab" && it.section) counts[it.section] += 1;
+    return counts;
+  }, [advisor]);
+  const nudge = advisor[0] ?? null;
 
   // Detect a ship (prestige) and fire the celebration moment + haptics.
   const prevShips = useRef(game.prestige.ships);
@@ -118,6 +130,20 @@ export function App() {
   const showStaff = balance.staff.enabled && game.research.length >= balance.staff.revealAtResearch;
   const showProducts = productsUnlocked(game);
   const [tab, setTab] = useState<"lab" | "products" | "employees">("lab");
+  // The Lab's sub-sections (Build / Research / HQ) — the anti-noise structure.
+  // Before Research unlocks there's nothing to section, so the switcher stays
+  // hidden and the Lab renders the Build core alone (reveal depth in waves, GDD).
+  const [labSection, setLabSection] = useState<LabSection>("build");
+  const labSectioned = showResearch;
+  const section: LabSection = labSectioned ? labSection : "build";
+  const goSection = useCallback((next: LabSection) => {
+    setLabSection((cur) => {
+      // Land at the top of the new section — mid-scroll positions from the old
+      // section are meaningless in the new one.
+      if (cur !== next) window.scrollTo(0, 0);
+      return next;
+    });
+  }, []);
   // Telemetry (R8.1): count a tab switch when the player navigates to a *different*
   // tab. On-device only; no-op when opted out (see src/state/telemetry.ts).
   const goTab = useCallback((next: "lab" | "products" | "employees") => {
@@ -440,6 +466,24 @@ export function App() {
             <span className="daily-go">Claim</span>
           </button>
         )}
+        {/* The advisor's single next action, as a tappable wayfinder. It only
+            exists when the engine sees a waiting decision or a real problem
+            (advisor.ts is deliberately conservative), and tapping it lands the
+            player exactly where the action lives — tab AND Lab section. */}
+        {nudge && (
+          <button
+            className="advisor-chip"
+            onClick={() => {
+              haptics.tap(); sound.tap();
+              goTab(nudge.tab);
+              if (nudge.tab === "lab" && nudge.section) goSection(nudge.section);
+            }}
+          >
+            <span className="advisor-mark" aria-hidden="true">➤</span>
+            <span className="advisor-text">{nudge.text}</span>
+            <span className="advisor-go" aria-hidden="true">›</span>
+          </button>
+        )}
         {tab === "products" && showProducts ? (
           <ProductsPanel
             game={game}
@@ -468,17 +512,55 @@ export function App() {
           />
         ) : (
           <>
-            <HallCanvas onExpand={setPendingExpansion} />
-            <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} onSetFocus={setComputeFocus} />
-            <CharterPanel game={game} onSet={(id) => { haptics.tap(); sound.tap(); doSetCharter(id); }} />
-            <UpgradePanel game={game} derived={d} onBuy={onBuy} />
-            {showResearch && <ResearchPanel game={game} derived={d} onResearch={onResearch} />}
-            {showMarket && <DataMarketPanel game={game} onBuyData={onBuyData} onBuyTool={onBuy} onLobby={() => { haptics.tap(); sound.purchase(); doLobby(); }} />}
-            {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} onBuyLegacyPerk={(id) => { haptics.success(); sound.purchase(); doBuyLegacyPerk(id); }} />}
-            {showResearch && <ContractsPanel game={game} onClaim={onClaimContract} />}
-            <StatsPanel game={game} derived={d} />
-            {game.prestige.ships > 0 && <CodexPanel game={game} />}
-            <EventLog log={log} />
+            {/* Lab sub-sections keep the tab legible: Build (the hall + core loop),
+                Research (tree + data market), HQ (ship/prestige, contracts, records).
+                Only ONE section renders at a time — also a 10Hz render-cost win. */}
+            {labSectioned && (
+              <nav className="labnav" aria-label="Lab sections">
+                <button className={`tab ${section === "build" ? "on" : ""}`} aria-current={section === "build" ? "true" : undefined} onClick={() => { haptics.tap(); goSection("build"); }}>
+                  Build{labAttention.build > 0 && <span className="tab-dot">{labAttention.build}</span>}
+                </button>
+                <button className={`tab ${section === "research" ? "on" : ""}`} aria-current={section === "research" ? "true" : undefined} onClick={() => { haptics.tap(); goSection("research"); }}>
+                  Research{labAttention.research > 0 && <span className="tab-dot">{labAttention.research}</span>}
+                </button>
+                <button className={`tab ${section === "hq" ? "on" : ""}`} aria-current={section === "hq" ? "true" : undefined} onClick={() => { haptics.tap(); goSection("hq"); }}>
+                  HQ{shipReady && section !== "hq"
+                    ? <span className="tab-dot ship">Ship</span>
+                    : labAttention.hq > 0 && <span className="tab-dot">{labAttention.hq}</span>}
+                </button>
+              </nav>
+            )}
+            {section === "build" && (
+              <>
+                <HallCanvas onExpand={setPendingExpansion} />
+                <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} onSetFocus={setComputeFocus} />
+                <CharterPanel game={game} onSet={(id) => { haptics.tap(); sound.tap(); doSetCharter(id); }} />
+                <UpgradePanel game={game} derived={d} onBuy={onBuy} />
+              </>
+            )}
+            {section === "research" && (
+              <>
+                {showResearch && <ResearchPanel game={game} derived={d} onResearch={onResearch} />}
+                {showMarket && <DataMarketPanel game={game} onBuyData={onBuyData} onBuyTool={onBuy} onLobby={() => { haptics.tap(); sound.purchase(); doLobby(); }} />}
+              </>
+            )}
+            {section === "hq" && (
+              <>
+                {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} onBuyLegacyPerk={(id) => { haptics.success(); sound.purchase(); doBuyLegacyPerk(id); }} />}
+                {showResearch && <ContractsPanel game={game} onClaim={onClaimContract} />}
+                <StatsPanel game={game} derived={d} />
+                {game.prestige.ships > 0 && <CodexPanel game={game} />}
+                <EventLog log={log} />
+              </>
+            )}
+            {/* Pre-sectioning (very early game): the reference tails stay inline so
+                the session log and stats are never unreachable. */}
+            {!labSectioned && (
+              <>
+                <StatsPanel game={game} derived={d} />
+                <EventLog log={log} />
+              </>
+            )}
           </>
         )}
 
@@ -496,7 +578,7 @@ export function App() {
       <nav className="botnav" aria-label="Primary">
         {/* Destinations use aria-current; Awards/More are actions (open modals),
             so this is a nav bar, not a tablist (the panes aren't tab panels). */}
-        <button className={`botnav-item ${tab === "lab" ? "on" : ""} ${shipReady && tab !== "lab" ? "ship-ready" : ""}`} aria-current={tab === "lab" ? "page" : undefined} onClick={() => { haptics.tap(); goTab("lab"); }}>
+        <button className={`botnav-item ${tab === "lab" ? "on" : ""} ${shipReady && tab !== "lab" ? "ship-ready" : ""}`} aria-current={tab === "lab" ? "page" : undefined} onClick={() => { haptics.tap(); if (shipReady && tab !== "lab") goSection("hq"); goTab("lab"); }}>
           <span className="botnav-ic"><FlaskIcon size={23} /></span><span className="botnav-lbl">Lab</span>
           {shipReady && tab !== "lab"
             ? <span className="botnav-badge ship" aria-label="Ready to ship">Ship</span>
@@ -531,6 +613,8 @@ export function App() {
           report={celebration.report}
           onDone={() => {
             setCelebration(null);
+            // A fresh run starts at the hall — don't leave the Lab parked on HQ.
+            setLabSection("build");
             // Land the player on their reward: a freshly-shipped model waiting to
             // be commercialised. Removes the "I shipped and got nothing" dead-end.
             if (productsUnlocked(game) && game.products.drafts.length > 0) setTab("products");
