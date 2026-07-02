@@ -1762,7 +1762,6 @@ svg { vertical-align: middle; }
   padding: 10px 13px; border-radius: 12px; cursor: pointer;
   background: #fff;
   border: 1px solid rgba(17, 24, 39, 0.08);
-  border-left: 3px solid var(--accent, #7c5cff);
   box-shadow: var(--shadow-sm);
 }
 .advisor-mark { color: var(--accent, #7c5cff); font-size: 11px; line-height: 1; }

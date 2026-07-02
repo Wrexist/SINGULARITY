@@ -54,9 +54,8 @@ export function advisorItems(state: GameState): AdvisorItem[] {
   // brand-new player always has one obvious next move (claim → start → research
   // → ship). Gated on ships === 0 so it never nags a returning player. ----
   if (state.prestige.ships === 0) {
-    if (state.run.readyToClaim) {
-      items.push({ tab: "lab", section: "build", text: "Claim your finished run — bank the Data & $", priority: 95 });
-    }
+    // NOTE: no "claim your finished run" item — the big bobbing Claim button IS
+    // that nudge, and a chip duplicating an on-screen CTA read as noise (owner).
     if (canPrestige(state)) {
       items.push({ tab: "lab", section: "hq", text: "Ship the Model — reset for a permanent boost", priority: 92 });
     }

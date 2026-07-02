@@ -21,11 +21,12 @@ describe("advisor", () => {
     expect(top?.text.toLowerCase()).toContain("training run");
   });
 
-  it("nudges to claim a finished run during the first session", () => {
+  it("stays quiet about a finished run (the Claim button is its own CTA)", () => {
     const s = createInitialState();
     s.run = { active: false, progress: 1, readyToClaim: true };
-    const top = nextAction(s);
-    expect(top?.text.toLowerCase()).toContain("claim");
+    expect(advisorItems(s).some((i) => i.text.toLowerCase().includes("claim your"))).toBe(false);
+    // …and the idle "start a run" nudge must not fire while a claim is waiting.
+    expect(advisorItems(s).some((i) => i.text.toLowerCase().includes("start a training run"))).toBe(false);
   });
 
   it("drops the first-session hand-holding once you've shipped", () => {
