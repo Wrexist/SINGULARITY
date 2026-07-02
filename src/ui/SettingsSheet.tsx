@@ -9,6 +9,7 @@ import { themeStyle, skinSwatch } from "./hallThemes";
 import { themes, rackSkins, themeUnlocked, skinUnlocked, collectionProgress, skinProgress, unlockHint } from "../engine/cosmetics";
 import { PaletteIcon, DownloadIcon, LockIcon, CheckIcon } from "./Icons";
 import { ConfirmSheet } from "./ConfirmSheet";
+import { version as APP_VERSION } from "../../package.json";
 import { telemetryEnabled, setTelemetryEnabled, getTelemetryEvents, clearTelemetry } from "../state/telemetry";
 import { summarize } from "../engine/telemetry";
 import { eraName } from "../engine/eras";
@@ -273,6 +274,16 @@ export function SettingsSheet({ onClose }: Props) {
         <button className="btn btn-ghost" onClick={onClose}>
           Done
         </button>
+
+        {/* Version + legal/support — standard store-launch footer. */}
+        <div className="set-about">
+          <span>Singularity Inc. v{APP_VERSION}</span>
+          <span className="set-about-links">
+            <a href="https://wrexist.github.io/SINGULARITY/privacy/" target="_blank" rel="noreferrer">Privacy</a>
+            {" · "}
+            <a href="https://wrexist.github.io/SINGULARITY/support/" target="_blank" rel="noreferrer">Support</a>
+          </span>
+        </div>
       </div>
       {confirmImport && (
         <ConfirmSheet
