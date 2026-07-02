@@ -74,6 +74,18 @@ function crossSystemRows(game: GameState): Row[] {
 
 export function StatsPanel({ game, derived }: Props) {
   const [open, setOpen] = useState(false);
+
+  const toggle = (
+    <button className="stats-toggle" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+      <span className="panel-title" style={{ margin: 0 }}>Lab Stats</span>
+      <span className="chevron">{open ? "▲" : "▼"}</span>
+    </button>
+  );
+  // Collapsed = a header only. Bail before building the row tables — this panel
+  // re-renders on every 10Hz tick, and the ~30 formatted rows are pure waste
+  // while nothing is shown.
+  if (!open) return <section className="panel stats">{toggle}</section>;
+
   const s = game.stats;
   const stance = stanceEffects(game);
   const charter = charterRow(game);
@@ -113,11 +125,8 @@ export function StatsPanel({ game, derived }: Props) {
   ];
 
   return (
-    <section className={`panel stats ${open ? "open" : ""}`}>
-      <button className="stats-toggle" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-        <span className="panel-title" style={{ margin: 0 }}>Lab Stats</span>
-        <span className="chevron">{open ? "▲" : "▼"}</span>
-      </button>
+    <section className="panel stats open">
+      {toggle}
       {open && (
         <>
           {game.alignment !== 0 && (

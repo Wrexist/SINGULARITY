@@ -41,6 +41,7 @@ import { iap } from "./iap";
 import { balance } from "../engine/balance/config";
 import { HallCanvas } from "./HallCanvas";
 import { ExpandConfirm } from "./ExpandConfirm";
+import { ConfirmSheet } from "./ConfirmSheet";
 import { EraTransition } from "./EraTransition";
 import { WorldEventCard } from "./WorldEventCard";
 import { ModifierBar } from "./ModifierBar";
@@ -89,6 +90,8 @@ export function App() {
   const [eraMoment, setEraMoment] = useState<number | null>(null);
   const [launch, setLaunch] = useState<{ type: ProductTypeId; name: string } | null>(null);
   const [pendingExpansion, setPendingExpansion] = useState<string | null>(null);
+  const [pendingRetire, setPendingRetire] = useState<string | null>(null);
+  const [confirmReset, setConfirmReset] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
   const [flash, setFlash] = useState(0); // AGI ascension screen flash (key replays the anim)
@@ -111,6 +114,16 @@ export function App() {
   // Re-validate the premium entitlement against StoreKit at launch (native only;
   // no-op on web). Keeps the localStorage cache from being the source of truth.
   useEffect(() => { void iap.refresh(); }, []);
+
+  // The daily boost was only checked at mount, so a session left open across the
+  // day rollover never saw the bar reappear. Re-check on a slow tick and whenever
+  // the app returns to the foreground (the common idle-game resume path).
+  useEffect(() => {
+    const check = () => setDailyOn((on) => on || dailyAvailable());
+    const t = setInterval(check, 60_000);
+    document.addEventListener("visibilitychange", check);
+    return () => { clearInterval(t); document.removeEventListener("visibilitychange", check); };
+  }, []);
 
   // Hall theme drives an app-wide accent (--accent) so picking a theme visibly
   // recolours the chrome (nav, selection rings, accent surfaces) — not just the
@@ -396,11 +409,17 @@ export function App() {
     haptics.tap(); sound.tap();
     if (p && !p.upgrade) pushToast(`${p.name} — researching v${p.version + 1}…`, "neutral");
   };
-  const onRetireProductFx = (id: string) => {
+  // Selling a product asks first via the in-app ConfirmSheet (never window.confirm
+  // — native panel, and it froze the game loop while open). Cancelling leaves the
+  // product-management sheet exactly as it was.
+  const onRetireProductFx = (id: string) => setPendingRetire(id);
+  const confirmRetire = () => {
+    const id = pendingRetire;
+    setPendingRetire(null);
+    if (!id) return;
     const p = game.products.active.find((x) => x.id === id);
     if (!p) return;
     const payout = retirePayout(game, id);
-    if (!window.confirm(`Sell ${p.name} for ${fmtMoney(Big.of(Math.round(payout)))}? This is permanent.`)) return;
     doRetireProduct(id);
     haptics.success(); sound.purchase();
     pushToast(`Sold ${p.name} for ${fmtMoney(Big.of(Math.round(payout)))}`, "neutral");
@@ -565,10 +584,7 @@ export function App() {
         )}
 
         <footer className="footer">
-          <button
-            className="link-btn"
-            onClick={() => { if (confirm("Wipe the save and start over? The investors will understand.")) hardReset(); }}
-          >
+          <button className="link-btn" onClick={() => setConfirmReset(true)}>
             reset save
           </button>
           <span className="footer-flavor">Singularity Inc. — disrupting disruption since today.</span>
@@ -630,7 +646,35 @@ export function App() {
           onDecline={() => setPendingExpansion(null)}
         />
       )}
-      {eraMoment !== null && <EraTransition era={eraMoment} onDone={() => setEraMoment(null)} />}
+      {pendingRetire && (() => {
+        const p = game.products.active.find((x) => x.id === pendingRetire);
+        if (!p) return null;
+        return (
+          <ConfirmSheet
+            kicker="SELL PRODUCT"
+            title={`Sell ${p.name}?`}
+            body={`Take the ${fmtMoney(Big.of(Math.round(retirePayout(game, pendingRetire))))} buyout. This is permanent — the product and its users are gone.`}
+            confirmLabel="Sell it"
+            danger
+            onConfirm={confirmRetire}
+            onCancel={() => setPendingRetire(null)}
+          />
+        );
+      })()}
+      {confirmReset && (
+        <ConfirmSheet
+          kicker="HARD RESET"
+          title="Wipe the save and start over?"
+          body="Everything goes — Legacy, Reputation, products, the lot. The investors will understand."
+          confirmLabel="Wipe it"
+          danger
+          onConfirm={() => { setConfirmReset(false); hardReset(); }}
+          onCancel={() => setConfirmReset(false)}
+        />
+      )}
+      {/* A ship that crosses an era fires BOTH tentpoles in one commit — hold the
+          era moment until the ship celebration is dismissed so they never stack. */}
+      {eraMoment !== null && !celebration && <EraTransition era={eraMoment} onDone={() => setEraMoment(null)} />}
       {launch && (
         <ProductLaunch
           name={launch.name}

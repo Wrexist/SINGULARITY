@@ -36,7 +36,9 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
   // Which product's deep-management screen is open, if any.
   const [detailId, setDetailId] = useState<string | null>(null);
   const [msOpen, setMsOpen] = useState(false);
-  const [mktOpen, setMktOpen] = useState(true);
+  // Collapsed by default (like Milestones) — the leaderboard is reference, not a
+  // control, and open-by-default it pushed a tall block under every product card.
+  const [mktOpen, setMktOpen] = useState(false);
   const ps = game.products;
   const board = useMemo(() => marketLeaderboard(game).slice(0, 8), [game.products.active, game.products.frontier]);
   const myRank = playerMarketRank(game);

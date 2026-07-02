@@ -649,6 +649,10 @@ svg { vertical-align: middle; }
   border: 1px solid var(--glass-hairline);
   box-shadow: none;
 }
+.btn-danger {
+  background: linear-gradient(135deg, #e5484d, #c62f3d);
+  box-shadow: 0 10px 24px -10px rgba(229, 72, 77, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
 
 /* ---------- Cards (upgrades) ---------- */
 .list { display: flex; flex-direction: column; gap: 10px; }
