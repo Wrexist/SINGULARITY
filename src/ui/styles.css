@@ -1320,7 +1320,15 @@ svg { vertical-align: middle; }
 .world-choice-effect { font-size: 12px; font-weight: 650; color: var(--ink-2); }
 
 /* Active-modifier chips under the resource bar */
-.modbar { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 18px; margin-top: -4px; margin-bottom: 4px; }
+/* Always-rendered, FIXED height: chips appearing/expiring must not shift the
+   layout below. One row only — overflow scrolls sideways instead of wrapping. */
+.modbar {
+  display: flex; flex-wrap: nowrap; align-items: center; gap: 6px;
+  height: 24px; padding: 0 18px; margin-top: -4px; margin-bottom: 4px;
+  overflow-x: auto; scrollbar-width: none;
+}
+.modbar::-webkit-scrollbar { display: none; }
+.modchip { white-space: nowrap; flex: 0 0 auto; }
 .modchip {
   font-size: 11px;
   font-weight: 700;
@@ -1759,13 +1767,13 @@ svg { vertical-align: middle; }
 /* Advisor nudge — the engine's single "next action", as a slim wayfinder chip. */
 .advisor-chip {
   display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
-  padding: 10px 13px; border-radius: 12px; cursor: pointer;
+  padding: 0 13px; border-radius: 12px; cursor: pointer;
   background: #fff;
   border: 1px solid rgba(17, 24, 39, 0.08);
   box-shadow: var(--shadow-sm);
 }
 .advisor-mark { color: var(--accent, #7c5cff); font-size: 11px; line-height: 1; }
-.advisor-text { flex: 1; min-width: 0; font-size: clamp(12px, 3.2vw, 13px); font-weight: 650; color: var(--ink); overflow-wrap: anywhere; }
+.advisor-text { flex: 1; min-width: 0; font-size: clamp(12px, 3.2vw, 13px); font-weight: 650; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .advisor-go { color: var(--ink-3); font-size: 16px; font-weight: 800; line-height: 1; }
 
 /* Next-goal carrot — a quiet, always-ticking progress strip. The fill IS the
@@ -1773,7 +1781,7 @@ svg { vertical-align: middle; }
 .goal-strip {
   position: relative; overflow: hidden;
   display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
-  padding: 8px 13px; border-radius: 12px; cursor: pointer;
+  padding: 0 13px; border-radius: 12px; cursor: pointer;
   background: #fff;
   border: 1px solid rgba(17, 24, 39, 0.08);
   box-shadow: var(--shadow-sm);
@@ -1792,10 +1800,16 @@ svg { vertical-align: middle; }
 .goal-text b { font-weight: 800; color: var(--ink); }
 .goal-pct { position: relative; font-size: 12px; font-weight: 800; color: var(--accent, #7c5cff); font-variant-numeric: tabular-nums; }
 
+/* The notice slot — ONE fixed-height row that always exists, so the strips
+   inside (daily boost / advisor nudge / goal carrot) swapping in and out can
+   never shift the section tabs, the hall, or any button below. */
+.notice-slot { height: 44px; }
+.notice-slot > * { height: 100%; }
+
 /* Daily Boost banner — celebratory, never a countdown (honest re-engagement) */
 .daily-bar {
   display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
-  padding: 11px 13px; border-radius: 12px; cursor: pointer;
+  padding: 0 13px; border-radius: 12px; cursor: pointer;
   background: linear-gradient(100deg, rgba(124, 92, 255, 0.16), rgba(22, 179, 100, 0.12));
   border: 1px solid rgba(124, 92, 255, 0.35);
   box-shadow: var(--shadow-sm);
@@ -1806,7 +1820,7 @@ svg { vertical-align: middle; }
   50% { box-shadow: 0 0 0 4px rgba(124, 92, 255, 0.14); }
 }
 .daily-ic { display: inline-flex; align-items: center; color: #7c5cff; }
-.daily-text { flex: 1; min-width: 0; font-size: clamp(12px, 3.2vw, 13px); font-weight: 650; color: var(--ink); overflow-wrap: anywhere; }
+.daily-text { flex: 1; min-width: 0; font-size: clamp(12px, 3.2vw, 13px); font-weight: 650; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .daily-text b { font-weight: 800; }
 .daily-go { font-size: 12.5px; font-weight: 800; color: #fff; background: #7c5cff; border-radius: 999px; padding: 4px 12px; white-space: nowrap; }
 

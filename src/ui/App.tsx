@@ -498,49 +498,53 @@ export function App() {
       />
 
       <main className="stage">
-        {dailyOn && (
-          <button className="daily-bar" onClick={onClaimDaily} aria-label="Claim your daily boost">
-            <span className="daily-ic"><GiftIcon size={18} /></span>
-            <span className="daily-text"><b>Daily boost ready</b> — +{Math.round((balance.daily.factor - 1) * 100)}% output for {Math.round(balance.daily.durationSec / 60)} min</span>
-            <span className="daily-go">Claim</span>
-          </button>
-        )}
-        {/* The advisor's single next action, as a tappable wayfinder. It only
-            exists when the engine sees a waiting decision or a real problem
-            (advisor.ts is deliberately conservative), and tapping it lands the
-            player exactly where the action lives — tab AND Lab section. */}
-        {nudge && (
-          <button
-            className="advisor-chip"
-            onClick={() => {
-              haptics.tap(); sound.tap();
-              goTab(nudge.tab);
-              if (nudge.tab === "lab" && nudge.section) goSection(nudge.section);
-            }}
-          >
-            <span className="advisor-mark" aria-hidden="true">➤</span>
-            <span className="advisor-text">{nudge.text}</span>
-            <span className="advisor-go" aria-hidden="true">›</span>
-          </button>
-        )}
-        {/* The next-goal carrot: whatever chase (era / contract / achievement) is
-            closest to popping, ticking up live. Tapping lands where it resolves. */}
-        {goal && (
-          <button
-            className="goal-strip"
-            title={goal.desc}
-            onClick={() => {
-              haptics.tap();
-              if (goal.kind === "achievement") setShowAchievements(true);
-              else { goTab("lab"); goSection(goal.kind === "era" && era === 0 ? "research" : "hq"); }
-            }}
-          >
-            <span className="goal-fill" style={{ width: `${Math.round(goal.progress * 100)}%` }} aria-hidden="true" />
-            <span className="goal-ic"><TargetIcon size={14} /></span>
-            <span className="goal-text"><b>Next goal:</b> {goal.label}</span>
-            <span className="goal-pct">{Math.floor(goal.progress * 100)}%</span>
-          </button>
-        )}
+        {/* One fixed-height notice slot, ALWAYS rendered, showing exactly one
+            strip (daily > advisor nudge > goal carrot). Strips appearing and
+            vanishing must never shove the section tabs / hall / buttons below —
+            the slot reserves the space, only its content swaps. */}
+        <div className="notice-slot">
+          {dailyOn ? (
+            <button className="daily-bar" onClick={onClaimDaily} aria-label="Claim your daily boost">
+              <span className="daily-ic"><GiftIcon size={18} /></span>
+              <span className="daily-text"><b>Daily boost</b> — +{Math.round((balance.daily.factor - 1) * 100)}% for {Math.round(balance.daily.durationSec / 60)} min</span>
+              <span className="daily-go">Claim</span>
+            </button>
+          ) : nudge ? (
+            /* The advisor's single next action, as a tappable wayfinder. It only
+               exists when the engine sees a waiting decision or a real problem
+               (advisor.ts is deliberately conservative), and tapping it lands the
+               player exactly where the action lives — tab AND Lab section. */
+            <button
+              className="advisor-chip"
+              onClick={() => {
+                haptics.tap(); sound.tap();
+                goTab(nudge.tab);
+                if (nudge.tab === "lab" && nudge.section) goSection(nudge.section);
+              }}
+            >
+              <span className="advisor-mark" aria-hidden="true">➤</span>
+              <span className="advisor-text">{nudge.text}</span>
+              <span className="advisor-go" aria-hidden="true">›</span>
+            </button>
+          ) : goal ? (
+            /* The next-goal carrot: whatever chase (era / contract / achievement)
+               is closest to popping, ticking up live. Tap lands where it resolves. */
+            <button
+              className="goal-strip"
+              title={goal.desc}
+              onClick={() => {
+                haptics.tap();
+                if (goal.kind === "achievement") setShowAchievements(true);
+                else { goTab("lab"); goSection(goal.kind === "era" && era === 0 ? "research" : "hq"); }
+              }}
+            >
+              <span className="goal-fill" style={{ width: `${Math.round(goal.progress * 100)}%` }} aria-hidden="true" />
+              <span className="goal-ic"><TargetIcon size={14} /></span>
+              <span className="goal-text"><b>Next goal:</b> {goal.label}</span>
+              <span className="goal-pct">{Math.floor(goal.progress * 100)}%</span>
+            </button>
+          ) : null}
+        </div>
         {tab === "products" && showProducts ? (
           <ProductsPanel
             game={game}
