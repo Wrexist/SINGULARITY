@@ -29,13 +29,14 @@ import { CharterPanel } from "./CharterPanel";
 import { CodexPanel } from "./CodexPanel";
 import { EventLog } from "./EventLog";
 import { FxCanvas } from "./FxCanvas";
-import { burst as fxBurst } from "./fx";
+import { burst as fxBurst, floatText as fxFloat } from "./fx";
 import { ProductLaunch } from "./ProductLaunch";
 import { productsUnlocked, productMetrics, typeDef, retirePayout } from "../engine/products";
 import { advisorItems, type AdvisorTab, type LabSection } from "../engine/advisor";
+import { nextGoal } from "../engine/goals";
 import { marketLeaderboard, playerMarketRank, rivalsBeaten } from "../engine/market";
-import { FlaskIcon, BoxIcon, TeamIcon, TrophyIcon, GearIcon, GiftIcon } from "./Icons";
-import { fmtMoney } from "./format";
+import { FlaskIcon, BoxIcon, TeamIcon, TrophyIcon, GearIcon, GiftIcon, TargetIcon } from "./Icons";
+import { fmt, fmtMoney } from "./format";
 import type { ProductTypeId } from "../engine/balance/products";
 import { iap } from "./iap";
 import { balance } from "../engine/balance/config";
@@ -81,6 +82,9 @@ export function App() {
     return counts;
   }, [advisor]);
   const nudge = advisor[0] ?? null;
+  // The "next goal" carrot: the era/contract/achievement closest to popping,
+  // shown as a quiet always-ticking progress strip (see engine/goals.ts).
+  const goal = useMemo(() => nextGoal(game), [game]);
 
   // Detect a ship (prestige) and fire the celebration moment + haptics.
   const prevShips = useRef(game.prestige.ships);
@@ -388,7 +392,23 @@ export function App() {
     haptics.celebrate(); sound.success(); doClaimDaily(); markDailyClaimed(); setDailyOn(false);
     if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.32, { count: 30, power: 1.5, colors: ["#7c5cff", "#ffd60a", "#16b364", "#2f7bf6"] });
   };
-  const onBuy = (id: string, count = 1) => { haptics.tap(); sound.purchase(); if (count > 1) doBuyUpgradeBulk(id, count); else doBuyUpgrade(id); };
+  // Hardware buys float the rate you actually gained ("+120/s") at the tap point —
+  // seeing the number go up IS the reward. Derived before/after the synchronous
+  // action; only rate-moving buys float (power/floor purchases stay quiet).
+  const onBuy = (id: string, count = 1, at?: { x: number; y: number }) => {
+    haptics.tap(); sound.purchase();
+    const before = at ? derive(useGame.getState().game) : null;
+    if (count > 1) doBuyUpgradeBulk(id, count); else doBuyUpgrade(id);
+    if (at && before) {
+      const after = derive(useGame.getState().game);
+      const dc = after.computePerSec.sub(before.computePerSec);
+      const dd = after.dataPerSec.sub(before.dataPerSec);
+      const dm = after.passiveMoneyPerSec.sub(before.passiveMoneyPerSec);
+      if (dc.gt(0)) fxFloat(at.x, at.y - 6, `+${fmt(dc)}/s`, "#2f7bf6", 15);
+      else if (dd.gt(0)) fxFloat(at.x, at.y - 6, `+${fmt(dd)}/s`, "#9b51e0", 15);
+      else if (dm.gt(0)) fxFloat(at.x, at.y - 6, `+$${fmt(dm)}/s`, "#16b364", 15);
+    }
+  };
   const onHireCandidate = (i: number) => { haptics.celebrate(); sound.purchase(); doHireCandidate(i); };
   const onTrain = (id: string) => { haptics.tap(); sound.tap(); doTrainEmployee(id); };
   const onAssignEmp = (id: string, productId: string | null) => { haptics.tap(); doAssignEmployeeToProduct(id, productId); };
@@ -501,6 +521,24 @@ export function App() {
             <span className="advisor-mark" aria-hidden="true">➤</span>
             <span className="advisor-text">{nudge.text}</span>
             <span className="advisor-go" aria-hidden="true">›</span>
+          </button>
+        )}
+        {/* The next-goal carrot: whatever chase (era / contract / achievement) is
+            closest to popping, ticking up live. Tapping lands where it resolves. */}
+        {goal && (
+          <button
+            className="goal-strip"
+            title={goal.desc}
+            onClick={() => {
+              haptics.tap();
+              if (goal.kind === "achievement") setShowAchievements(true);
+              else { goTab("lab"); goSection(goal.kind === "era" && era === 0 ? "research" : "hq"); }
+            }}
+          >
+            <span className="goal-fill" style={{ width: `${Math.round(goal.progress * 100)}%` }} aria-hidden="true" />
+            <span className="goal-ic"><TargetIcon size={14} /></span>
+            <span className="goal-text"><b>Next goal:</b> {goal.label}</span>
+            <span className="goal-pct">{Math.floor(goal.progress * 100)}%</span>
           </button>
         )}
         {tab === "products" && showProducts ? (

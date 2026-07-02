@@ -1768,6 +1768,30 @@ svg { vertical-align: middle; }
 .advisor-text { flex: 1; min-width: 0; font-size: clamp(12px, 3.2vw, 13px); font-weight: 650; color: var(--ink); overflow-wrap: anywhere; }
 .advisor-go { color: var(--ink-3); font-size: 16px; font-weight: 800; line-height: 1; }
 
+/* Next-goal carrot — a quiet, always-ticking progress strip. The fill IS the
+   background, so progress reads at a glance without adding a second bar row. */
+.goal-strip {
+  position: relative; overflow: hidden;
+  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  padding: 8px 13px; border-radius: 12px; cursor: pointer;
+  background: #fff;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  box-shadow: var(--shadow-sm);
+}
+.goal-fill {
+  position: absolute; inset: 0 auto 0 0; pointer-events: none;
+  background: color-mix(in srgb, var(--accent, #7c5cff) 13%, transparent);
+  transition: width 0.5s var(--ease-out);
+}
+.goal-ic { position: relative; display: inline-flex; color: var(--accent, #7c5cff); opacity: 0.85; }
+.goal-text {
+  position: relative; flex: 1; min-width: 0;
+  font-size: clamp(11.5px, 3vw, 12.5px); font-weight: 600; color: var(--ink-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.goal-text b { font-weight: 800; color: var(--ink); }
+.goal-pct { position: relative; font-size: 12px; font-weight: 800; color: var(--accent, #7c5cff); font-variant-numeric: tabular-nums; }
+
 /* Daily Boost banner — celebratory, never a countdown (honest re-engagement) */
 .daily-bar {
   display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
