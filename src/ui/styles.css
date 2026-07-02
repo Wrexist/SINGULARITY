@@ -333,6 +333,17 @@ svg { vertical-align: middle; }
   gap: 10px;
   margin-bottom: 16px;
 }
+/* Opaque slab behind the pinned bar: content scrolling underneath used to bleed
+   through the gaps between the three cards (and the strip above them). Extends
+   to the very top of the viewport and fades out just below the cards. */
+.resource-bar::before {
+  content: "";
+  position: absolute;
+  inset: calc(-10px - env(safe-area-inset-top)) -16px -12px;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(180deg, var(--bg) 0%, var(--bg) 78%, rgba(238, 241, 248, 0) 100%);
+}
 .resource {
   /* Stacked + centered so all three cards are visually identical and balanced
      (symmetry pass) — icon on top, value and rate centered beneath it. */
@@ -1601,7 +1612,23 @@ svg { vertical-align: middle; }
   background: rgba(17, 24, 39, 0.18);
   margin: 2px auto 12px;
 }
-.sheet-title { margin: 0 0 14px; font-size: 20px; font-weight: 750; letter-spacing: -0.02em; }
+.sheet-title { margin: 0; font-size: 20px; font-weight: 750; letter-spacing: -0.02em; }
+/* Sticky sheet header: title + an always-reachable close button. Full-bleed
+   background so content scrolling under it is masked. */
+.sheet-head {
+  position: sticky; top: -12px; z-index: 6;
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 0 -18px 14px; padding: 10px 18px 8px;
+  background: rgba(244, 245, 250, 0.94);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
+.sheet-close {
+  width: 30px; height: 30px; border-radius: 999px; border: none; cursor: pointer;
+  display: grid; place-items: center;
+  font-size: 14px; font-weight: 800; color: var(--ink-2);
+  background: rgba(17, 24, 39, 0.07);
+}
+.sheet-close:active { transform: scale(0.92); }
 .set-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
 
 /* Hall theme picker (cosmetic) */
@@ -1737,14 +1764,14 @@ svg { vertical-align: middle; }
 .reduce-motion .botnav-item.ship-ready .botnav-ic { animation: none; }
 
 /* ---------- Lab section switcher (Build / Research / HQ) ---------- */
-/* Sticky so a deep scroll in one section never strands the player — the
-   switcher (and the way back) is always one tap away. */
+/* In normal flow, NOT sticky: the resource bar is already sticky at the same
+   offset, and two sticky bars pinned together overlapped into a z-fighting mess
+   on device. Section switches scroll to top anyway (goSection), so the switcher
+   is always where you land. */
 .labnav {
-  position: sticky; top: 8px; z-index: 30;
   display: flex;
   gap: 6px;
   background: rgba(255, 255, 255, 0.86);
-  backdrop-filter: blur(16px) saturate(170%); -webkit-backdrop-filter: blur(16px) saturate(170%);
   border: 1px solid rgba(17, 24, 39, 0.07);
   box-shadow: 0 6px 18px -12px rgba(16, 24, 40, 0.35);
   border-radius: 14px;

@@ -65,6 +65,18 @@ features. Two audit passes (engine + UI) ran first; every shipped fix was verifi
       gated behind notice-slot visibility (no hidden 10Hz achievement scans), onBuy reuses the render
       derive, fx reduced-motion reads the settings store (no per-emit DOM query), stale ProductDetail
       cleanup + ExpandConfirm a11y parity + assorted dead-code removal. 446 tests; sim untouched.
+- [x] **Opening retune + on-device fixes (owner 2026-07-02, from TestFlight screenshots).**
+      (1) **"Too boring in the beginning"** → new `difficulty.upgradeCostRampLevels` (12): the
+      combined costMult×upgradeCostMult ramps from ×1 at level 0 to full by 12 owned — first rack
+      = $15 base (buyable in <1m), automation pulled forward (auto_claim 90 / auto_train 320 data
+      flat → online ~3m40s / ~7m15s). `upgradeCostMult` 1.6→2.0 claws total length back:
+      **first prestige 59m31s/64m43s (owner band held), longest wall 3m05s → 1m16s**, Gen2 ~12m,
+      Gen3 ~8m. +ramp test.
+      (2) **Sticky-header overlap** (screenshot 2): the sticky labnav z-fought the sticky resource
+      bar → labnav is normal-flow again, and the resource bar got an opaque full-bleed slab so
+      strips can't bleed through its card gaps (screenshot 1).
+      (3) **"Can't close settings"** (screenshot 3): sticky sheet header with an always-reachable ✕.
+      All three verified in a scripted browser drive.
 - [ ] **NEXT (prioritized plan, owner-ready):**
       1. **Moment queue** (small): one `enqueueMoment()` arbiter for the five full-screen overlays —
          the third pairwise collision guard is the signal it's due. UI-only, curve-safe.

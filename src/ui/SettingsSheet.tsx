@@ -115,7 +115,13 @@ export function SettingsSheet({ onClose }: Props) {
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-grip" />
-        <h2 className="sheet-title">Settings</h2>
+        {/* Sticky header: the ✕ stays reachable however deep the sheet is
+            scrolled (the Done button lives at the very bottom — "can't close
+            the settings easily" was an on-device owner report). */}
+        <div className="sheet-head">
+          <h2 className="sheet-title">Settings</h2>
+          <button className="sheet-close" onClick={onClose} aria-label="Close settings">✕</button>
+        </div>
 
         {/* Premium: one generous, cosmetic/QoL unlock (GDD §9 — never power). */}
         <div className={`premium-card ${premium ? "owned" : ""}`}>

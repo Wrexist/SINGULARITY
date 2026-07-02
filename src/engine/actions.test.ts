@@ -61,14 +61,21 @@ describe("training run actions", () => {
 });
 
 describe("upgrade actions", () => {
-  it("cost scales by growth^owned (× the global difficulty multiplier)", () => {
+  it("cost scales by growth^owned with the difficulty multiplier ramping in", () => {
     const def = balance.upgrades[0]!;
-    // Upgrades are scaled by BOTH the global cost knob and the upgrade-only length knob.
-    const k = balance.difficulty.costMult * balance.difficulty.upgradeCostMult;
-    expect(upgradeCost(def, 0).toNumber()).toBeCloseTo(def.cost.base * k, 6);
-    expect(upgradeCost(def, 1).toNumber()).toBeCloseTo(def.cost.base * def.cost.growth * k, 6);
-    // The growth ratio between tiers is unaffected by the difficulty knob.
-    expect(upgradeCost(def, 1).div(upgradeCost(def, 0)).toNumber()).toBeCloseTo(def.cost.growth, 6);
+    const full = balance.difficulty.costMult * balance.difficulty.upgradeCostMult;
+    const ramp = balance.difficulty.upgradeCostRampLevels;
+    // Level 0 pays NO difficulty markup — the opening's first buy is ≈ base cost.
+    expect(upgradeCost(def, 0).toNumber()).toBeCloseTo(def.cost.base, 6);
+    // Past the ramp, the FULL tuned multiplier applies ("progressively harder").
+    expect(upgradeCost(def, ramp).toNumber()).toBeCloseTo(def.cost.base * Math.pow(def.cost.growth, ramp) * full, 6);
+    // Mid-ramp sits linearly between the two.
+    const midMult = 1 + (full - 1) * (ramp / 2 / ramp);
+    expect(upgradeCost(def, ramp / 2).toNumber()).toBeCloseTo(def.cost.base * Math.pow(def.cost.growth, ramp / 2) * midMult, 6);
+    // Cost is strictly increasing level over level (ramp can never invert it).
+    for (let o = 0; o < ramp + 3; o++) {
+      expect(upgradeCost(def, o + 1).gt(upgradeCost(def, o))).toBe(true);
+    }
   });
 
   it("buys when affordable, deducts cost, raises owned and next cost", () => {

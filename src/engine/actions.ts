@@ -66,13 +66,24 @@ export function claimRun(state: GameState): GameState {
 
 // ---------- Upgrades ----------
 
-/** Cost of the next level of an upgrade: base * growth^owned, scaled by the global
- *  costMult and the upgrade-only length knob (see balance.difficulty). */
+/** The difficulty multiplier an upgrade pays at a given owned count. Ramps
+ *  linearly from ×1 (level 0) to the full costMult×upgradeCostMult over the
+ *  first `upgradeCostRampLevels` levels — a purchase-dense opening that
+ *  converges to the tuned late-game curve ("progressively harder"). */
+export function upgradeDifficultyMult(owned: number): number {
+  const { costMult, upgradeCostMult, upgradeCostRampLevels } = balance.difficulty;
+  const full = costMult * upgradeCostMult;
+  if (!upgradeCostRampLevels || upgradeCostRampLevels <= 0) return full;
+  const t = Math.min(1, Math.max(0, owned) / upgradeCostRampLevels);
+  return 1 + (full - 1) * t;
+}
+
+/** Cost of the next level of an upgrade: base * growth^owned, scaled by the
+ *  ramped difficulty multiplier (see balance.difficulty). */
 export function upgradeCost(def: UpgradeDef, owned: number): Big {
   return Big.of(def.cost.base)
     .mul(Big.of(def.cost.growth).pow(owned))
-    .mul(balance.difficulty.costMult)
-    .mul(balance.difficulty.upgradeCostMult);
+    .mul(upgradeDifficultyMult(owned));
 }
 
 export function canBuyUpgrade(state: GameState, id: string): boolean {

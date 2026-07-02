@@ -471,3 +471,23 @@ when" balance, dials the whole curve, and the UI cost displays update for free (
   and the nudge chip all derive from ONE `advisorItems(game)` scan (memoized per tick in App). If a
   panel moves to a new tab/section, update the item's `tab`/`section` there; don't invent a parallel
   attention system.
+
+### The opening-hook ramp — a FOURTH difficulty knob that decouples "fun start" from "long game" (2026-07-02)
+- **Owner report:** the first 10 minutes were "click start training ~50 times and buy one small rack".
+  Root cause: the difficulty multipliers (costMult 2.0 × upgradeCostMult 1.6 = ×3.2) applied at FULL
+  strength from level 0, so the first rack cost $48 against $4.5/run — ~10 manual runs before the
+  first purchase, and automation (auto_claim/auto_train) sat behind ×3.2 data prices too.
+- **Fix: `difficulty.upgradeCostRampLevels`** — the combined multiplier ramps linearly from ×1 at
+  level 0 to full by N owned (12). First rack = base $15 (affordable in under a minute), yet by
+  level 12+ every upgrade pays the full tuned multiplier. This SEPARATES the knobs: `upgradeCostMult`
+  now shapes only the mid/late grind, so it could go 1.6 → 2.0 to claw the total length back into
+  the owner band (59–65m) while the wall dropped 3m05s → 1m16s. Tune the opening with the ramp,
+  the length with the mult.
+- **Cheap automation is pacing, not power.** auto_claim 200→90 data / auto_train 800→320 data (flat,
+  and level-0 = ramp ×1) ends the manual claim-tap phase at ~3m40s / ~7m15s. The sim barely moves
+  (it plays optimally anyway) but the FEEL transforms — automation is the opening's reward arc.
+- **Two sticky bars can't share a viewport edge.** The resource bar and the (then-sticky) labnav both
+  pinned at ~top:8px and z-fought into an on-device mess — and content scrolling under the resource
+  bar bled through the GAPS between its three cards. Rules: one sticky element per edge; a pinned
+  bar over scrolling content needs an opaque full-bleed slab (::before to the viewport top with a
+  fade), because the bar's own children don't cover the gutter gaps.

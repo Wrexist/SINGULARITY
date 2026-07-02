@@ -791,8 +791,15 @@ export const balance = {
    */
   difficulty: {
     costMult: 2.0,
-    upgradeCostMult: 1.6,
+    upgradeCostMult: 2.0,
     productionMult: 1.0,
+    /** The opening hook (owner 2026-07-02: "too boring in the beginning").
+     *  An upgrade's first levels pay a REDUCED difficulty multiplier, ramping
+     *  linearly from ×1 at level 0 up to the full costMult×upgradeCostMult by
+     *  this many owned — the first minutes stay purchase-dense (first rack
+     *  ≈ base cost, affordable almost immediately) while the late curve keeps
+     *  the full tuned difficulty ("progressively harder"). 0 disables the ramp. */
+    upgradeCostRampLevels: 12,
   },
 
   /** The rented server closet generates a trickle of Compute for free. */
@@ -1216,7 +1223,10 @@ export const balance = {
       id: "auto_claim",
       name: "Auto-Claim Daemon",
       desc: "Finished runs claim themselves. Stop tapping.",
-      cost: { resource: "data", base: 200, growth: 1 },
+      // Pulled forward (owner 2026-07-02): the manual tap-claim-tap loop is the
+      // opening's boredom ceiling — automation is the reward for the first
+      // stretch of play, not a mid-game luxury.
+      cost: { resource: "data", base: 90, growth: 1 },
       max: 1,
       effect: { kind: "autoClaim" },
     },
@@ -1224,7 +1234,7 @@ export const balance = {
       id: "auto_train",
       name: "Auto-Train Orchestrator",
       desc: "Runs restart themselves. The lab runs itself.",
-      cost: { resource: "data", base: 800, growth: 1 },
+      cost: { resource: "data", base: 320, growth: 1 },
       max: 1,
       effect: { kind: "autoTrain" },
     },
