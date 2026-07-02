@@ -74,6 +74,18 @@ function crossSystemRows(game: GameState): Row[] {
 
 export function StatsPanel({ game, derived }: Props) {
   const [open, setOpen] = useState(false);
+
+  const toggle = (
+    <button className="stats-toggle" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+      <span className="panel-title" style={{ margin: 0 }}>Lab Stats</span>
+      <span className="chevron">{open ? "▲" : "▼"}</span>
+    </button>
+  );
+  // Collapsed = a header only. Bail before building the row tables — this panel
+  // re-renders on every 10Hz tick, and the ~30 formatted rows are pure waste
+  // while nothing is shown.
+  if (!open) return <section className="panel stats">{toggle}</section>;
+
   const s = game.stats;
   const stance = stanceEffects(game);
   const charter = charterRow(game);
@@ -113,46 +125,39 @@ export function StatsPanel({ game, derived }: Props) {
   ];
 
   return (
-    <section className={`panel stats ${open ? "open" : ""}`}>
-      <button className="stats-toggle" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-        <span className="panel-title" style={{ margin: 0 }}>Lab Stats</span>
-        <span className="chevron">{open ? "▲" : "▼"}</span>
-      </button>
-      {open && (
-        <>
-          {game.alignment !== 0 && (
-            <div className="align-bar" title={`Alignment ${game.alignment.toFixed(2)}`}>
-              <div className="align-track">
-                <div className="align-center" />
-                <div className="align-marker" style={{ left: `${((game.alignment + 1) / 2) * 100}%` }} />
-              </div>
-              <div className="align-ends">
-                <span>Doomer</span>
-                <span className="align-now">{alignmentLabel(game.alignment)}</span>
-                <span>Accel</span>
-              </div>
-            </div>
-          )}
-          <div className="stats-subhead">Now</div>
-          <div className="stats-grid">
-            {now.map((r) => (
-              <div key={r.label} className="stat-row">
-                <span className="stat-label">{r.label}</span>
-                <span className="stat-value">{r.value}</span>
-              </div>
-            ))}
+    <section className="panel stats open">
+      {toggle}
+      {game.alignment !== 0 && (
+        <div className="align-bar" title={`Alignment ${game.alignment.toFixed(2)}`}>
+          <div className="align-track">
+            <div className="align-center" />
+            <div className="align-marker" style={{ left: `${((game.alignment + 1) / 2) * 100}%` }} />
           </div>
-          <div className="stats-subhead">All-time career</div>
-          <div className="stats-grid">
-            {allTime.map((r) => (
-              <div key={r.label} className="stat-row">
-                <span className="stat-label">{r.label}</span>
-                <span className="stat-value">{r.value}</span>
-              </div>
-            ))}
+          <div className="align-ends">
+            <span>Doomer</span>
+            <span className="align-now">{alignmentLabel(game.alignment)}</span>
+            <span>Accel</span>
           </div>
-        </>
+        </div>
       )}
+      <div className="stats-subhead">Now</div>
+      <div className="stats-grid">
+        {now.map((r) => (
+          <div key={r.label} className="stat-row">
+            <span className="stat-label">{r.label}</span>
+            <span className="stat-value">{r.value}</span>
+          </div>
+        ))}
+      </div>
+      <div className="stats-subhead">All-time career</div>
+      <div className="stats-grid">
+        {allTime.map((r) => (
+          <div key={r.label} className="stat-row">
+            <span className="stat-label">{r.label}</span>
+            <span className="stat-value">{r.value}</span>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }

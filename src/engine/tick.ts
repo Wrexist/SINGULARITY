@@ -178,9 +178,18 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     runPeakCompute,
     runPeakMrr,
   });
+  // Milestone rewards land in lifetimeMoney AFTER accrueStats already took its
+  // delta for this tick (and next tick's baseline includes them), so without this
+  // they'd never reach totalMoney — all-time earnings would quietly under-report,
+  // making totalMoney-gated achievements/contracts/cosmetics harder than tuned.
+  let msState = ms.state;
+  const milestoneGain = msState.lifetimeMoney.sub(lifetimeMoney);
+  if (milestoneGain.gt(0)) {
+    msState = { ...msState, stats: { ...msState.stats, totalMoney: msState.stats.totalMoney.add(milestoneGain) } };
+  }
   // Award any newly-unlocked achievements (reads the fresh stats above). Pure +
   // idempotent; the store diffs achievements to surface a toast.
-  const awarded = applyAchievements(ms.state).state;
+  const awarded = applyAchievements(msState).state;
 
   // Research Director (R5.3): if owned, auto-buy affordable research from the
   // freshly-updated pools. No-op (same reference) until the perk is bought, so

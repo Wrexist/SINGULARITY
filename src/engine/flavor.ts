@@ -33,6 +33,44 @@ const UPGRADE_FLAVOR: Record<string, FlavorTier[]> = {
     { at: 4, text: "The fans scream. You call it 'productivity'." },
     { at: 9, text: "One does not simply cool this. One prays." },
   ],
+  data_pipeline: [
+    { at: 5, text: "The data is so clean it squeaks." },
+    { at: 12, text: "Somewhere, a data engineer weeps with pride." },
+    { at: 20, text: "The pipeline has a pipeline. It's pipelines all the way down." },
+  ],
+  monetize: [
+    { at: 5, text: "A second pricing page. For 'enterprise'." },
+    { at: 12, text: "You charge per token now. The tokens are grateful." },
+    { at: 20, text: "Finance found another decimal place to move." },
+  ],
+  batching: [
+    { at: 4, text: "The batches have batches." },
+    { at: 9, text: "Throughput so dense it has its own gravity." },
+  ],
+  psu_bay: [
+    { at: 4, text: "The breaker panel is now a wall." },
+    { at: 10, text: "The utility company sends a fruit basket every quarter." },
+  ],
+  cooling_loop: [
+    { at: 4, text: "The lab is technically a river now." },
+    { at: 10, text: "Penguins have started loitering by the exhaust." },
+  ],
+  substation: [
+    { at: 3, text: "Your own transformer. The neighbors' lights dim on big runs." },
+    { at: 8, text: "The grid operator has you on speed dial. It's not friendly." },
+  ],
+  web_scraper: [
+    { at: 6, text: "The internet is 'publicly available'. All of it. Twice." },
+    { at: 15, text: "Websites now load slower globally. Coincidence." },
+  ],
+  captcha_farm: [
+    { at: 6, text: "So many traffic lights identified. So few questions asked." },
+    { at: 15, text: "The 'real humans' have unionized. Negotiations ongoing." },
+  ],
+  botnet: [
+    { at: 5, text: "The 'crowdsourcing network' grows. Organically. At 3am." },
+    { at: 12, text: "Legal has stopped asking where the data comes from." },
+  ],
 };
 
 /**

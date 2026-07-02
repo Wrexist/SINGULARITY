@@ -174,7 +174,9 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
             {crew.length > 0 && (
               <div className="pd-crew">{crew.map((e) => <span className="pd-crew-chip" key={e.id}>{e.name.split(" ")[0]} · L{e.level}</span>)}</div>
             )}
-            <button className="pd-sell" onClick={() => { onRetire(p.id); onClose(); }}>Sell this product · {m$(retirePayout(game, p.id))}</button>
+            {/* onRetire asks for confirmation upstream; the sheet stays open on
+                cancel, and self-dismisses via the `!p` guard once actually sold. */}
+            <button className="pd-sell" onClick={() => onRetire(p.id)}>Sell this product · {m$(retirePayout(game, p.id))}</button>
           </div>
         )}
 

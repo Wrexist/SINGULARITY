@@ -18,7 +18,7 @@ const RES_HEX: Record<string, string> = { compute: "#2f7bf6", data: "#9b51e0", m
 interface Props {
   game: GameState;
   derived: Derived;
-  onBuy: (id: string, count?: number) => void;
+  onBuy: (id: string, count?: number, at?: { x: number; y: number }) => void;
 }
 
 /** Buy-quantity for the panel: one, ten, or as many as affordable. */
@@ -118,7 +118,8 @@ export function UpgradePanel({ game, derived, onBuy }: Props) {
           const r = e.currentTarget.getBoundingClientRect();
           burst(r.right - 22, r.top + r.height / 2, { count: isHero ? 16 : 12, power: isHero ? 1.1 : 0.9, colors: [RES_HEX[def.cost.resource] ?? "#9b51e0"] });
           punch(e.currentTarget);
-          onBuy(def.id, want);
+          // Pass the tap point so App can float the rate actually gained.
+          onBuy(def.id, want, { x: r.right - 26, y: r.top + 6 });
         }}
       >
         <UpgradeIcon id={def.id} kind={def.effect.kind} />

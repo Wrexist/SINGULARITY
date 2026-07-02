@@ -649,6 +649,10 @@ svg { vertical-align: middle; }
   border: 1px solid var(--glass-hairline);
   box-shadow: none;
 }
+.btn-danger {
+  background: linear-gradient(135deg, #e5484d, #c62f3d);
+  box-shadow: 0 10px 24px -10px rgba(229, 72, 77, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
 
 /* ---------- Cards (upgrades) ---------- */
 .list { display: flex; flex-direction: column; gap: 10px; }
@@ -1316,7 +1320,15 @@ svg { vertical-align: middle; }
 .world-choice-effect { font-size: 12px; font-weight: 650; color: var(--ink-2); }
 
 /* Active-modifier chips under the resource bar */
-.modbar { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 18px; margin-top: -4px; margin-bottom: 4px; }
+/* Always-rendered, FIXED height: chips appearing/expiring must not shift the
+   layout below. One row only — overflow scrolls sideways instead of wrapping. */
+.modbar {
+  display: flex; flex-wrap: nowrap; align-items: center; gap: 6px;
+  height: 24px; padding: 0 18px; margin-top: -4px; margin-bottom: 4px;
+  overflow-x: auto; scrollbar-width: none;
+}
+.modbar::-webkit-scrollbar { display: none; }
+.modchip { white-space: nowrap; flex: 0 0 auto; }
 .modchip {
   font-size: 11px;
   font-weight: 700;
@@ -1631,6 +1643,14 @@ svg { vertical-align: middle; }
 .set-backup-chev { color: var(--ink-3); font-weight: 800; }
 .set-backup-body { display: flex; flex-direction: column; gap: 8px; padding: 12px 4px 2px; }
 .set-backup-tip { font-size: 12px; color: var(--ink-2); line-height: 1.45; margin: 0; }
+
+/* About footer: version + privacy/support links (store-launch standard). */
+.set-about {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  margin-top: 12px; padding: 0 4px;
+  font-size: 11.5px; color: var(--ink-3);
+}
+.set-about a { color: var(--ink-3); text-decoration: underline; text-underline-offset: 2px; }
 .set-backup-actions { display: flex; gap: 8px; }
 .set-backup-label { font-size: 12px; font-weight: 700; color: var(--ink-2); margin-top: 4px; }
 .set-backup-text {
@@ -1716,15 +1736,19 @@ svg { vertical-align: middle; }
 @keyframes shipPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.14); } }
 .reduce-motion .botnav-item.ship-ready .botnav-ic { animation: none; }
 
-/* ---------- Tabs (Lab / Products) ---------- */
-.tabs {
+/* ---------- Lab section switcher (Build / Research / HQ) ---------- */
+/* Sticky so a deep scroll in one section never strands the player — the
+   switcher (and the way back) is always one tap away. */
+.labnav {
+  position: sticky; top: 8px; z-index: 30;
   display: flex;
   gap: 6px;
-  background: var(--glass);
-  border: 1px solid var(--glass-edge);
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(16px) saturate(170%); -webkit-backdrop-filter: blur(16px) saturate(170%);
+  border: 1px solid rgba(17, 24, 39, 0.07);
+  box-shadow: 0 6px 18px -12px rgba(16, 24, 40, 0.35);
   border-radius: 14px;
   padding: 4px;
-  margin-bottom: 16px;
 }
 .tab {
   flex: 1;
@@ -1745,11 +1769,65 @@ svg { vertical-align: middle; }
   border-radius: 9px; background: var(--coral); color: #fff;
   font-size: 11px; font-weight: 800; vertical-align: middle;
 }
+/* The golden "a ship is waiting" pill on the HQ segment (mirrors the nav badge). */
+.tab-dot.ship { background: linear-gradient(135deg, #f5b40a, #ff8c42); color: #1a1205; }
+
+/* Capstone line — a small celebratory note when a whole system is cleared
+   (research tree, achievements, codex). Conquered, not dead. */
+.panel-capstone {
+  margin: 0 0 12px; padding: 9px 12px; border-radius: 10px;
+  font-size: 12.5px; font-weight: 650; color: #6d5a00;
+  background: linear-gradient(100deg, rgba(245, 180, 10, 0.14), rgba(255, 140, 66, 0.1));
+  border: 1px solid rgba(245, 180, 10, 0.35);
+}
+.panel-capstone em { font-style: italic; }
+
+/* Advisor nudge — the engine's single "next action", as a slim wayfinder chip. */
+.advisor-chip {
+  display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
+  padding: 0 13px; border-radius: 12px; cursor: pointer;
+  background: #fff;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  box-shadow: var(--shadow-sm);
+}
+.advisor-mark { color: var(--accent, #7c5cff); font-size: 11px; line-height: 1; }
+.advisor-text { flex: 1; min-width: 0; font-size: clamp(12px, 3.2vw, 13px); font-weight: 650; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.advisor-go { color: var(--ink-3); font-size: 16px; font-weight: 800; line-height: 1; }
+
+/* Next-goal carrot — a quiet, always-ticking progress strip. The fill IS the
+   background, so progress reads at a glance without adding a second bar row. */
+.goal-strip {
+  position: relative; overflow: hidden;
+  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  padding: 0 13px; border-radius: 12px; cursor: pointer;
+  background: #fff;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  box-shadow: var(--shadow-sm);
+}
+.goal-fill {
+  position: absolute; inset: 0 auto 0 0; pointer-events: none;
+  background: color-mix(in srgb, var(--accent, #7c5cff) 13%, transparent);
+  transition: width 0.5s var(--ease-out);
+}
+.goal-ic { position: relative; display: inline-flex; color: var(--accent, #7c5cff); opacity: 0.85; }
+.goal-text {
+  position: relative; flex: 1; min-width: 0;
+  font-size: clamp(11.5px, 3vw, 12.5px); font-weight: 600; color: var(--ink-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.goal-text b { font-weight: 800; color: var(--ink); }
+.goal-pct { position: relative; font-size: 12px; font-weight: 800; color: var(--accent, #7c5cff); font-variant-numeric: tabular-nums; }
+
+/* The notice slot — ONE fixed-height row that always exists, so the strips
+   inside (daily boost / advisor nudge / goal carrot) swapping in and out can
+   never shift the section tabs, the hall, or any button below. */
+.notice-slot { height: 44px; }
+.notice-slot > * { height: 100%; }
 
 /* Daily Boost banner — celebratory, never a countdown (honest re-engagement) */
 .daily-bar {
   display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
-  padding: 11px 13px; border-radius: 12px; cursor: pointer;
+  padding: 0 13px; border-radius: 12px; cursor: pointer;
   background: linear-gradient(100deg, rgba(124, 92, 255, 0.16), rgba(22, 179, 100, 0.12));
   border: 1px solid rgba(124, 92, 255, 0.35);
   box-shadow: var(--shadow-sm);
@@ -1760,7 +1838,7 @@ svg { vertical-align: middle; }
   50% { box-shadow: 0 0 0 4px rgba(124, 92, 255, 0.14); }
 }
 .daily-ic { display: inline-flex; align-items: center; color: #7c5cff; }
-.daily-text { flex: 1; min-width: 0; font-size: clamp(12px, 3.2vw, 13px); font-weight: 650; color: var(--ink); overflow-wrap: anywhere; }
+.daily-text { flex: 1; min-width: 0; font-size: clamp(12px, 3.2vw, 13px); font-weight: 650; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .daily-text b { font-weight: 800; }
 .daily-go { font-size: 12.5px; font-weight: 800; color: #fff; background: #7c5cff; border-radius: 999px; padding: 4px 12px; white-space: nowrap; }
 

@@ -14,7 +14,9 @@ interface Props {
  */
 export function CodexPanel({ game }: Props) {
   const [open, setOpen] = useState(false);
-  const views = codexEntries(game);
+  // The header count is cheap; the full entry list (with per-entry body templating)
+  // is only built while the panel is actually open (this renders at 10Hz).
+  const views = open ? codexEntries(game) : [];
   const got = codexUnlockedCount(game);
   const total = codexBalance.entries.length;
 
@@ -27,6 +29,9 @@ export function CodexPanel({ game }: Props) {
       </button>
       {open && (
         <div className="codex-list">
+          {got === total && (
+            <p className="panel-capstone">Collection complete — the field notes are officially a memoir.</p>
+          )}
           {views.map(({ entry, unlocked }) => (
             <div className={`codex-entry ${unlocked ? "" : "locked"}`} key={entry.id}>
               <div className="codex-entry-title">

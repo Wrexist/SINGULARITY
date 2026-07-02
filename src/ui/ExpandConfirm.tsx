@@ -28,7 +28,9 @@ export function ExpandConfirm({ id, onConfirm, onDecline }: Props) {
 
   return (
     <div className="modal-backdrop" onClick={onDecline}>
-      <div className="modal confirm-modal" onClick={(e) => e.stopPropagation()}>
+      {/* Same a11y contract as ConfirmSheet — the two confirm dialogs must not
+          drift apart for screen readers. */}
+      <div className="modal confirm-modal" role="alertdialog" aria-modal="true" aria-label={def.name} onClick={(e) => e.stopPropagation()}>
         <div className="confirm-kicker">EXPAND THE HALL</div>
         <h2>{def.name}</h2>
         <p className="modal-sub">{def.desc}</p>

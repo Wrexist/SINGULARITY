@@ -29,18 +29,20 @@ import { CharterPanel } from "./CharterPanel";
 import { CodexPanel } from "./CodexPanel";
 import { EventLog } from "./EventLog";
 import { FxCanvas } from "./FxCanvas";
-import { burst as fxBurst } from "./fx";
+import { burst as fxBurst, floatText as fxFloat } from "./fx";
 import { ProductLaunch } from "./ProductLaunch";
 import { productsUnlocked, productMetrics, typeDef, retirePayout } from "../engine/products";
-import { attentionCounts } from "../engine/advisor";
+import { advisorItems, type AdvisorTab, type LabSection } from "../engine/advisor";
+import { nextGoal } from "../engine/goals";
 import { marketLeaderboard, playerMarketRank, rivalsBeaten } from "../engine/market";
-import { FlaskIcon, BoxIcon, TeamIcon, TrophyIcon, GearIcon, GiftIcon } from "./Icons";
-import { fmtMoney } from "./format";
+import { FlaskIcon, BoxIcon, TeamIcon, TrophyIcon, GearIcon, GiftIcon, TargetIcon } from "./Icons";
+import { fmt, fmtMoney } from "./format";
 import type { ProductTypeId } from "../engine/balance/products";
 import { iap } from "./iap";
 import { balance } from "../engine/balance/config";
 import { HallCanvas } from "./HallCanvas";
 import { ExpandConfirm } from "./ExpandConfirm";
+import { ConfirmSheet } from "./ConfirmSheet";
 import { EraTransition } from "./EraTransition";
 import { WorldEventCard } from "./WorldEventCard";
 import { ModifierBar } from "./ModifierBar";
@@ -65,9 +67,27 @@ export function App() {
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
-  // Per-tab attention counts (the small badges on the bottom nav). Memoized per
-  // tick (same cadence as derive) — a handful of product checks, no clock.
-  const attention = useMemo(() => attentionCounts(game), [game]);
+  // The advisor list feeds three things from one scan (memoized per tick, same
+  // cadence as derive — a handful of product checks, no clock): the per-tab nav
+  // badges, the per-Lab-section badges, and the single "next action" nudge chip.
+  // A waiting run-claim is counted in the BADGES only (not the chip — the big
+  // bobbing Claim button is its own nudge): with the Lab sectioned, the button
+  // can be off-screen on Research/HQ, and a claim must never be signal-less.
+  const advisor = useMemo(() => advisorItems(game), [game]);
+  const claimWaiting = game.run.readyToClaim;
+  const attention = useMemo(() => {
+    const counts: Record<AdvisorTab, number> = { lab: 0, products: 0, employees: 0 };
+    for (const it of advisor) counts[it.tab] += 1;
+    if (claimWaiting) counts.lab += 1;
+    return counts;
+  }, [advisor, claimWaiting]);
+  const labAttention = useMemo(() => {
+    const counts: Record<LabSection, number> = { build: 0, research: 0, hq: 0 };
+    for (const it of advisor) if (it.tab === "lab" && it.section) counts[it.section] += 1;
+    if (claimWaiting) counts.build += 1;
+    return counts;
+  }, [advisor, claimWaiting]);
+  const nudge = advisor[0] ?? null;
 
   // Detect a ship (prestige) and fire the celebration moment + haptics.
   const prevShips = useRef(game.prestige.ships);
@@ -77,10 +97,17 @@ export function App() {
   const [eraMoment, setEraMoment] = useState<number | null>(null);
   const [launch, setLaunch] = useState<{ type: ProductTypeId; name: string } | null>(null);
   const [pendingExpansion, setPendingExpansion] = useState<string | null>(null);
+  const [pendingRetire, setPendingRetire] = useState<string | null>(null);
+  const [confirmReset, setConfirmReset] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
   const [flash, setFlash] = useState(0); // AGI ascension screen flash (key replays the anim)
   const [dailyOn, setDailyOn] = useState(() => dailyAvailable());
+  // The "next goal" carrot: the era/contract/achievement closest to popping
+  // (see engine/goals.ts). Only computed when the notice slot would actually
+  // show it (slot priority is daily > nudge > goal) — no point scanning 50+
+  // achievement metrics at 10Hz to produce a hidden result.
+  const goal = useMemo(() => (dailyOn || nudge ? null : nextGoal(game)), [game, dailyOn, nudge]);
   const reducedMotion = useSettings((s) => s.reducedMotion);
   const hallTheme = useSettings((s) => s.hallTheme);
   const music = useSettings((s) => s.music);
@@ -100,6 +127,16 @@ export function App() {
   // no-op on web). Keeps the localStorage cache from being the source of truth.
   useEffect(() => { void iap.refresh(); }, []);
 
+  // The daily boost was only checked at mount, so a session left open across the
+  // day rollover never saw the bar reappear. Re-check on a slow tick and whenever
+  // the app returns to the foreground (the common idle-game resume path).
+  useEffect(() => {
+    const check = () => setDailyOn((on) => on || dailyAvailable());
+    const t = setInterval(check, 60_000);
+    document.addEventListener("visibilitychange", check);
+    return () => { clearInterval(t); document.removeEventListener("visibilitychange", check); };
+  }, []);
+
   // Hall theme drives an app-wide accent (--accent) so picking a theme visibly
   // recolours the chrome (nav, selection rings, accent surfaces) — not just the
   // hall tint. Set on the document root so portals (modals/toasts) inherit it too.
@@ -118,6 +155,20 @@ export function App() {
   const showStaff = balance.staff.enabled && game.research.length >= balance.staff.revealAtResearch;
   const showProducts = productsUnlocked(game);
   const [tab, setTab] = useState<"lab" | "products" | "employees">("lab");
+  // The Lab's sub-sections (Build / Research / HQ) — the anti-noise structure.
+  // Before Research unlocks there's nothing to section, so the switcher stays
+  // hidden and the Lab renders the Build core alone (reveal depth in waves, GDD).
+  const [labSection, setLabSection] = useState<LabSection>("build");
+  const labSectioned = showResearch;
+  const section: LabSection = labSectioned ? labSection : "build";
+  const goSection = useCallback((next: LabSection) => {
+    setLabSection((cur) => {
+      // Land at the top of the new section — mid-scroll positions from the old
+      // section are meaningless in the new one.
+      if (cur !== next) window.scrollTo(0, 0);
+      return next;
+    });
+  }, []);
   // Telemetry (R8.1): count a tab switch when the player navigates to a *different*
   // tab. On-device only; no-op when opted out (see src/state/telemetry.ts).
   const goTab = useCallback((next: "lab" | "products" | "employees") => {
@@ -146,32 +197,44 @@ export function App() {
     setLog((l) => [{ id, text, tone }, ...l].slice(0, MAX_LOG));
   }, []);
   const dropToast = useCallback((id: number) => setToasts((ts) => ts.filter((t) => t.id !== id)), []);
-  const seenResearch = useRef(showResearch);
-  const seenPrestige = useRef(showPrestige);
-  const seenMarket = useRef(showMarket);
-  const seenShipReady = useRef(shipReady);
+
+  // Transition toasts, data-driven: each row is a keyed fact of the state; when a
+  // fact CHANGES after hydration, its message fires once. One list to add the next
+  // toast to (a single row), one seen-map, one sync — no per-toast ref plumbing,
+  // and no way to add a toast but forget its hydration baseline (which would
+  // re-toast returning players). The faction row keys on the tilt DIRECTION
+  // (doomer/accel), so a lab that later flips sides is told about the flip too.
+  const alignDir = game.alignment === 0 ? "" : game.alignment > 0 ? "accel" : "doomer";
+  const transitionToasts: { key: string; fact: string | boolean; when: string | boolean; text: string; tone: ToastData["tone"] }[] = [
+    { key: "research", fact: showResearch, when: true, text: "Research unlocked", tone: "good" },
+    { key: "market", fact: showMarket, when: true, text: "Data Market unlocked", tone: "good" },
+    { key: "prestige", fact: showPrestige, when: true, text: "The path to shipping is open", tone: "good" },
+    { key: "shipReady", fact: shipReady, when: true, text: "You can Ship the Model!", tone: "good" },
+    { key: "align", fact: alignDir, when: "accel", text: "Your choices tilt the lab accelerationist — faster, hotter. See Lab Stats.", tone: "neutral" },
+    { key: "align", fact: alignDir, when: "doomer", text: "Your choices tilt the lab doomer — safer, steadier. See Lab Stats.", tone: "neutral" },
+    { key: "autoTrain", fact: d.autoTrain, when: true, text: "Auto-train online — runs restart themselves. Set your Compute focus.", tone: "good" },
+    { key: "hired", fact: game.stats.employeesHired > 0, when: true, text: "First hire aboard — specialists level up as they work", tone: "good" },
+  ];
+  const seenFacts = useRef<Record<string, string | boolean>>({});
   const syncedToSave = useRef(false);
+  // Effect dep: a compact signature of all facts, so the effect runs exactly when
+  // one of them changes (not on every 10Hz render).
+  const factSignature = transitionToasts.map((t) => `${t.key}=${t.fact}`).join("|");
   useEffect(() => {
     // Wait for the save to hydrate, then sync the "seen" baseline once so we
-    // don't toast unlocks the player already had on a returning load.
+    // don't toast facts the player already had on a returning load.
     if (!initialized) return;
-    if (!syncedToSave.current) {
-      seenResearch.current = showResearch;
-      seenPrestige.current = showPrestige;
-      seenMarket.current = showMarket;
-      seenShipReady.current = shipReady;
-      syncedToSave.current = true;
-      return;
+    // Check ALL rows before updating the seen-map — rows can share a key (the
+    // two faction directions), and an interleaved write would mask the second.
+    if (syncedToSave.current) {
+      for (const t of transitionToasts) {
+        if (seenFacts.current[t.key] !== t.fact && t.fact === t.when) pushToast(t.text, t.tone);
+      }
     }
-    if (showResearch && !seenResearch.current) pushToast("Research unlocked", "good");
-    if (showMarket && !seenMarket.current) pushToast("Data Market unlocked", "good");
-    if (showPrestige && !seenPrestige.current) pushToast("The path to shipping is open", "good");
-    if (shipReady && !seenShipReady.current) pushToast("You can Ship the Model!", "good");
-    seenResearch.current = showResearch;
-    seenPrestige.current = showPrestige;
-    seenMarket.current = showMarket;
-    seenShipReady.current = shipReady;
-  }, [initialized, showResearch, showPrestige, showMarket, shipReady]);
+    for (const t of transitionToasts) seenFacts.current[t.key] = t.fact;
+    syncedToSave.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialized, factSignature]);
 
   // Era transitions: a full-screen tentpole moment when the lab crosses an era.
   // Guarded by the same hydration sync so it never fires on a returning load.
@@ -349,7 +412,25 @@ export function App() {
     haptics.celebrate(); sound.success(); doClaimDaily(); markDailyClaimed(); setDailyOn(false);
     if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.32, { count: 30, power: 1.5, colors: ["#7c5cff", "#ffd60a", "#16b364", "#2f7bf6"] });
   };
-  const onBuy = (id: string, count = 1) => { haptics.tap(); sound.purchase(); if (count > 1) doBuyUpgradeBulk(id, count); else doBuyUpgrade(id); };
+  // Hardware buys float the rate you actually gained ("+120/s") at the tap point —
+  // seeing the number go up IS the reward. Derived before/after the synchronous
+  // action; only rate-moving buys float (power/floor purchases stay quiet).
+  const onBuy = (id: string, count = 1, at?: { x: number; y: number }) => {
+    haptics.tap(); sound.purchase();
+    // `d` (this render's derive) is the pre-buy baseline — rates only move on
+    // purchases/modifier changes, so re-deriving "before" would duplicate it.
+    const before = at ? d : null;
+    if (count > 1) doBuyUpgradeBulk(id, count); else doBuyUpgrade(id);
+    if (at && before) {
+      const after = derive(useGame.getState().game);
+      const dc = after.computePerSec.sub(before.computePerSec);
+      const dd = after.dataPerSec.sub(before.dataPerSec);
+      const dm = after.passiveMoneyPerSec.sub(before.passiveMoneyPerSec);
+      if (dc.gt(0)) fxFloat(at.x, at.y - 6, `+${fmt(dc)}/s`, "#2f7bf6", 15);
+      else if (dd.gt(0)) fxFloat(at.x, at.y - 6, `+${fmt(dd)}/s`, "#9b51e0", 15);
+      else if (dm.gt(0)) fxFloat(at.x, at.y - 6, `+$${fmt(dm)}/s`, "#16b364", 15);
+    }
+  };
   const onHireCandidate = (i: number) => { haptics.celebrate(); sound.purchase(); doHireCandidate(i); };
   const onTrain = (id: string) => { haptics.tap(); sound.tap(); doTrainEmployee(id); };
   const onAssignEmp = (id: string, productId: string | null) => { haptics.tap(); doAssignEmployeeToProduct(id, productId); };
@@ -370,11 +451,18 @@ export function App() {
     haptics.tap(); sound.tap();
     if (p && !p.upgrade) pushToast(`${p.name} — researching v${p.version + 1}…`, "neutral");
   };
-  const onRetireProductFx = (id: string) => {
+  // Selling a product asks first via the in-app ConfirmSheet (never window.confirm
+  // — native panel, and it froze the game loop while open). Cancelling leaves the
+  // product-management sheet exactly as it was.
+  const onRetireProductFx = (id: string) => setPendingRetire(id);
+  const retireTarget = pendingRetire ? game.products.active.find((x) => x.id === pendingRetire) ?? null : null;
+  const confirmRetire = () => {
+    const id = pendingRetire;
+    setPendingRetire(null);
+    if (!id) return;
     const p = game.products.active.find((x) => x.id === id);
     if (!p) return;
     const payout = retirePayout(game, id);
-    if (!window.confirm(`Sell ${p.name} for ${fmtMoney(Big.of(Math.round(payout)))}? This is permanent.`)) return;
     doRetireProduct(id);
     haptics.success(); sound.purchase();
     pushToast(`Sold ${p.name} for ${fmtMoney(Big.of(Math.round(payout)))}`, "neutral");
@@ -433,13 +521,59 @@ export function App() {
       />
 
       <main className="stage">
-        {dailyOn && (
-          <button className="daily-bar" onClick={onClaimDaily} aria-label="Claim your daily boost">
-            <span className="daily-ic"><GiftIcon size={18} /></span>
-            <span className="daily-text"><b>Daily boost ready</b> — +{Math.round((balance.daily.factor - 1) * 100)}% output for {Math.round(balance.daily.durationSec / 60)} min</span>
-            <span className="daily-go">Claim</span>
-          </button>
-        )}
+        {/* One fixed-height notice slot, ALWAYS rendered, showing exactly one
+            strip (daily > advisor nudge > goal carrot). Strips appearing and
+            vanishing must never shove the section tabs / hall / buttons below —
+            the slot reserves the space, only its content swaps. */}
+        <div className="notice-slot">
+          {dailyOn ? (
+            <button className="daily-bar" onClick={onClaimDaily} aria-label="Claim your daily boost">
+              <span className="daily-ic"><GiftIcon size={18} /></span>
+              <span className="daily-text"><b>Daily boost</b> — +{Math.round((balance.daily.factor - 1) * 100)}% for {Math.round(balance.daily.durationSec / 60)} min</span>
+              <span className="daily-go">Claim</span>
+            </button>
+          ) : nudge ? (
+            /* The advisor's single next action, as a tappable wayfinder. It only
+               exists when the engine sees a waiting decision or a real problem
+               (advisor.ts is deliberately conservative), and tapping it lands the
+               player exactly where the action lives — tab AND Lab section. */
+            <button
+              className="advisor-chip"
+              onClick={() => {
+                haptics.tap(); sound.tap();
+                goTab(nudge.tab);
+                // Only deep-link into a Lab section while the section switcher
+                // exists — before that the Lab renders Build alone, and setting a
+                // hidden section would both dead-tap now and mis-land later.
+                if (nudge.tab === "lab" && nudge.section && labSectioned) goSection(nudge.section);
+              }}
+            >
+              <span className="advisor-mark" aria-hidden="true">➤</span>
+              <span className="advisor-text">{nudge.text}</span>
+              <span className="advisor-go" aria-hidden="true">›</span>
+            </button>
+          ) : goal ? (
+            /* The next-goal carrot: whatever chase (era / contract / achievement)
+               is closest to popping, ticking up live. Tap lands where it resolves. */
+            <button
+              className="goal-strip"
+              title={goal.desc}
+              onClick={() => {
+                haptics.tap();
+                if (goal.kind === "achievement") setShowAchievements(true);
+                else {
+                  goTab("lab");
+                  if (labSectioned) goSection(goal.kind === "era" && era === 0 ? "research" : "hq");
+                }
+              }}
+            >
+              <span className="goal-fill" style={{ width: `${Math.round(goal.progress * 100)}%` }} aria-hidden="true" />
+              <span className="goal-ic"><TargetIcon size={14} /></span>
+              <span className="goal-text"><b>Next goal:</b> {goal.label}</span>
+              <span className="goal-pct">{Math.floor(goal.progress * 100)}%</span>
+            </button>
+          ) : null}
+        </div>
         {tab === "products" && showProducts ? (
           <ProductsPanel
             game={game}
@@ -468,25 +602,60 @@ export function App() {
           />
         ) : (
           <>
-            <HallCanvas onExpand={setPendingExpansion} />
-            <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} onSetFocus={setComputeFocus} />
-            <CharterPanel game={game} onSet={(id) => { haptics.tap(); sound.tap(); doSetCharter(id); }} />
-            <UpgradePanel game={game} derived={d} onBuy={onBuy} />
-            {showResearch && <ResearchPanel game={game} derived={d} onResearch={onResearch} />}
-            {showMarket && <DataMarketPanel game={game} onBuyData={onBuyData} onBuyTool={onBuy} onLobby={() => { haptics.tap(); sound.purchase(); doLobby(); }} />}
-            {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} onBuyLegacyPerk={(id) => { haptics.success(); sound.purchase(); doBuyLegacyPerk(id); }} />}
-            {showResearch && <ContractsPanel game={game} onClaim={onClaimContract} />}
-            <StatsPanel game={game} derived={d} />
-            {game.prestige.ships > 0 && <CodexPanel game={game} />}
-            <EventLog log={log} />
+            {/* Lab sub-sections keep the tab legible: Build (the hall + core loop),
+                Research (tree + data market), HQ (ship/prestige, contracts, records).
+                Only ONE section renders at a time — also a 10Hz render-cost win. */}
+            {labSectioned && (
+              <nav className="labnav" aria-label="Lab sections">
+                <button className={`tab ${section === "build" ? "on" : ""}`} aria-current={section === "build" ? "true" : undefined} onClick={() => { haptics.tap(); goSection("build"); }}>
+                  Build{labAttention.build > 0 && <span className="tab-dot">{labAttention.build}</span>}
+                </button>
+                <button className={`tab ${section === "research" ? "on" : ""}`} aria-current={section === "research" ? "true" : undefined} onClick={() => { haptics.tap(); goSection("research"); }}>
+                  Research{labAttention.research > 0 && <span className="tab-dot">{labAttention.research}</span>}
+                </button>
+                <button className={`tab ${section === "hq" ? "on" : ""}`} aria-current={section === "hq" ? "true" : undefined} onClick={() => { haptics.tap(); goSection("hq"); }}>
+                  HQ{shipReady && section !== "hq"
+                    ? <span className="tab-dot ship">Ship</span>
+                    : labAttention.hq > 0 && <span className="tab-dot">{labAttention.hq}</span>}
+                </button>
+              </nav>
+            )}
+            {section === "build" && (
+              <>
+                <HallCanvas onExpand={setPendingExpansion} />
+                <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} onSetFocus={setComputeFocus} />
+                <CharterPanel game={game} onSet={(id) => { haptics.tap(); sound.tap(); doSetCharter(id); }} />
+                <UpgradePanel game={game} derived={d} onBuy={onBuy} />
+              </>
+            )}
+            {section === "research" && (
+              <>
+                {showResearch && <ResearchPanel game={game} derived={d} onResearch={onResearch} />}
+                {showMarket && <DataMarketPanel game={game} onBuyData={onBuyData} onBuyTool={onBuy} onLobby={() => { haptics.tap(); sound.purchase(); doLobby(); }} />}
+              </>
+            )}
+            {section === "hq" && (
+              <>
+                {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} onBuyLegacyPerk={(id) => { haptics.success(); sound.purchase(); doBuyLegacyPerk(id); }} />}
+                {showResearch && <ContractsPanel game={game} onClaim={onClaimContract} />}
+                <StatsPanel game={game} derived={d} />
+                {game.prestige.ships > 0 && <CodexPanel game={game} />}
+                <EventLog log={log} />
+              </>
+            )}
+            {/* Pre-sectioning (very early game): the reference tails stay inline so
+                the session log and stats are never unreachable. */}
+            {!labSectioned && (
+              <>
+                <StatsPanel game={game} derived={d} />
+                <EventLog log={log} />
+              </>
+            )}
           </>
         )}
 
         <footer className="footer">
-          <button
-            className="link-btn"
-            onClick={() => { if (confirm("Wipe the save and start over? The investors will understand.")) hardReset(); }}
-          >
+          <button className="link-btn" onClick={() => setConfirmReset(true)}>
             reset save
           </button>
           <span className="footer-flavor">Singularity Inc. — disrupting disruption since today.</span>
@@ -496,7 +665,7 @@ export function App() {
       <nav className="botnav" aria-label="Primary">
         {/* Destinations use aria-current; Awards/More are actions (open modals),
             so this is a nav bar, not a tablist (the panes aren't tab panels). */}
-        <button className={`botnav-item ${tab === "lab" ? "on" : ""} ${shipReady && tab !== "lab" ? "ship-ready" : ""}`} aria-current={tab === "lab" ? "page" : undefined} onClick={() => { haptics.tap(); goTab("lab"); }}>
+        <button className={`botnav-item ${tab === "lab" ? "on" : ""} ${shipReady && tab !== "lab" ? "ship-ready" : ""}`} aria-current={tab === "lab" ? "page" : undefined} onClick={() => { haptics.tap(); if (shipReady && tab !== "lab") goSection("hq"); goTab("lab"); }}>
           <span className="botnav-ic"><FlaskIcon size={23} /></span><span className="botnav-lbl">Lab</span>
           {shipReady && tab !== "lab"
             ? <span className="botnav-badge ship" aria-label="Ready to ship">Ship</span>
@@ -531,6 +700,8 @@ export function App() {
           report={celebration.report}
           onDone={() => {
             setCelebration(null);
+            // A fresh run starts at the hall — don't leave the Lab parked on HQ.
+            setLabSection("build");
             // Land the player on their reward: a freshly-shipped model waiting to
             // be commercialised. Removes the "I shipped and got nothing" dead-end.
             if (productsUnlocked(game) && game.products.drafts.length > 0) setTab("products");
@@ -546,7 +717,38 @@ export function App() {
           onDecline={() => setPendingExpansion(null)}
         />
       )}
-      {eraMoment !== null && <EraTransition era={eraMoment} onDone={() => setEraMoment(null)} />}
+      {retireTarget && (
+        <ConfirmSheet
+          kicker="SELL PRODUCT"
+          title={`Sell ${retireTarget.name}?`}
+          body={`Take the ${fmtMoney(Big.of(Math.round(retirePayout(game, retireTarget.id))))} buyout. This is permanent — the product and its users are gone.`}
+          confirmLabel="Sell it"
+          danger
+          onConfirm={confirmRetire}
+          onCancel={() => setPendingRetire(null)}
+        />
+      )}
+      {confirmReset && (
+        <ConfirmSheet
+          kicker="HARD RESET"
+          title="Wipe the save and start over?"
+          body="Everything goes — Legacy, Reputation, products, the lot. The investors will understand."
+          confirmLabel="Wipe it"
+          danger
+          onConfirm={() => {
+            setConfirmReset(false);
+            // hardReset clears the store, not App-local nav — land the fresh
+            // save on the Lab's Build pane, not wherever the old one was parked.
+            setTab("lab");
+            setLabSection("build");
+            hardReset();
+          }}
+          onCancel={() => setConfirmReset(false)}
+        />
+      )}
+      {/* A ship that crosses an era fires BOTH tentpoles in one commit — hold the
+          era moment until the ship celebration is dismissed so they never stack. */}
+      {eraMoment !== null && !celebration && <EraTransition era={eraMoment} onDone={() => setEraMoment(null)} />}
       {launch && (
         <ProductLaunch
           name={launch.name}

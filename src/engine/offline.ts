@@ -47,9 +47,11 @@ export function applyOffline(
   return {
     state: next,
     summary: {
-      elapsedMs,
+      // Report the coerced elapsed, and judge `capped` from it too — a non-finite
+      // raw value applied 0ms, and must not read as "capped at the max, gained ~0".
+      elapsedMs: elapsed,
       appliedMs,
-      capped: elapsedMs > capMs,
+      capped: elapsed > capMs,
       gained: {
         compute: next.resources.compute.sub(before.compute).max(0),
         data: next.resources.data.sub(before.data).max(0),

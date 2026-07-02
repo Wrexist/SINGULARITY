@@ -44,6 +44,9 @@ export function AchievementsModal({ game, onClose }: { game: GameState; onClose:
         </div>
 
         <div className="ach-progress-track"><div className="ach-progress-fill" style={{ width: `${(earned / total) * 100}%` }} /></div>
+        {earned === total && (
+          <p className="panel-capstone">Every badge earned. HR has run out of trophies — take the rest of the singularity off.</p>
+        )}
 
         <div className="pd-tabs ach-cats" role="tablist">
           <button className={`pd-tab ${filter === "all" ? "on" : ""}`} onClick={() => setFilter("all")}>All</button>

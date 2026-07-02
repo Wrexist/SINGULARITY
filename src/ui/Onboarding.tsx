@@ -7,7 +7,7 @@ interface Props {
 const STEPS = [
   { cssVar: "--compute", icon: <ComputeIcon />, name: "Compute", desc: "Your racks make it for free. Spend it to start training runs." },
   { cssVar: "--data", icon: <DataIcon />, name: "Data", desc: "Runs produce it. It fuels the research tree." },
-  { cssVar: "--money", icon: <MoneyIcon />, name: "$", desc: "Runs and products earn it. Buy more racks. Repeat." },
+  { cssVar: "--money", icon: <MoneyIcon />, name: "Money", desc: "Runs and products earn it. Buy more racks. Repeat." },
 ];
 
 /** One-screen first-run welcome. Skippable, shown exactly once (clean-to-play). */

@@ -21,13 +21,21 @@ export interface HeadlineInput {
 }
 
 // Fallback rotation when no standout achievement applies (keyed by generation so
-// it's stable per ship — no render churn).
+// it's stable per ship — no render churn). The biggest dopamine beat in the game;
+// deep enough that mid-game ships don't visibly cycle.
 const ROTATION = [
   "Model Shipped",
   "Another One Ships",
   "The Press Release Writes Itself",
   "Shipped It (Again)",
   "A New Generation Begins",
+  "State of the Art (For a Week)",
+  "The Benchmarks Never Saw It Coming",
+  "Weights Up, Doubts Down",
+  "Investors Notified. Rivals Too.",
+  "Somewhere, a Rival Slack Goes Quiet",
+  "The Launch Tweet Is Live",
+  "Bigger. Hungrier. Shippier.",
 ];
 
 /** Pick the most impressive headline this run earned; fall back to the rotation. */

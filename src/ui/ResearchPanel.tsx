@@ -98,9 +98,16 @@ export function ResearchPanel({ game, derived, onResearch }: Props) {
   // reads as structured waves instead of a flat wall (legibility subsystem).
   const groups = groupByCategory(rest, (d) => d.id);
 
+  // Capstone: every node owned or exclusive-locked-out. Maxing the core
+  // progression system deserves a beat, not a silent wall of "done" tags.
+  const treeComplete = balance.research.every((d) => isOwned(d.id) || researchLockedOut(game, d.id));
+
   return (
     <section className="panel">
       <h2 className="panel-title">Research</h2>
+      {treeComplete && (
+        <p className="panel-capstone">Tree complete — the field is now studying <em>you</em>. Ship the Model to run it back.</p>
+      )}
       {hero && (
         <div className="hero-wrap">
           <div className="hero-kicker">Recommended next</div>

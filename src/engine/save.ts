@@ -149,13 +149,15 @@ function sanitizeDrafts(d: unknown): DraftModel[] {
     .map((x) => ({ id: x.id, quality: x.quality, ships: x.ships }));
 }
 
-/** Loaded products are untrusted; guard the container AND each entry. */
+/** Loaded products are untrusted; guard the container SHAPE here only. Entries
+ *  are filtered per-product at load (isWellFormedProduct), so one corrupt product
+ *  drops alone instead of wiping the whole portfolio (drafts, sold, milestones,
+ *  frontier) back to fresh — same per-entry policy as employees/drafts. */
 function isWellFormedProducts(p: unknown): p is ProductsState {
   const o = p as Partial<ProductsState> | null;
   return (
     !!o &&
     Array.isArray(o.active) &&
-    o.active.every(isWellFormedProduct) &&
     typeof o.frontier === "number" &&
     Number.isFinite(o.frontier)
   );
@@ -344,7 +346,7 @@ export function deserialize(json: string): GameState {
   // saves that predate each, and sanitize the untrusted nested shapes.
   const products: ProductsState = {
     ...loadedProducts,
-    active: loadedProducts.active.map((p) => {
+    active: loadedProducts.active.filter(isWellFormedProduct).map((p) => {
       const o = p as ProductState;
       // Clamp every numeric to the SAME range the runtime setters enforce, so a
       // save-edited value can't bypass the in-game clamps (out-of-range price /
