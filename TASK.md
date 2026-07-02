@@ -43,6 +43,19 @@ features. Two audit passes (engine + UI) ran first; every shipped fix was verifi
       burst/floatText no-op under reduced motion (nothing drains the arrays there). Sim byte-identical.
       Also (owner): removed the claim-run advisor nudge (the Claim button IS the nudge) + the chip's
       purple accent edge.
+- [x] **Pre-launch unfinished-content pass (owner 2026-07-02).** Two audits (code sweep + UX walk)
+      found NO dead code, NO leaked debug strings, NO unwired features — the gaps were thin flavor
+      pools and silent moments. Shipped: taglines 14→40 + shuffled order (was a fixed 2-min loop on
+      permanent display); ship-headline fallback 5→12; escalating upgrade satire 4→14 upgrades (and
+      wired into the Data Market tools panel); +6 post-ascension contracts (rep ladder no longer
+      permanently empties; appended after existing rungs → board order unchanged, sim byte-identical);
+      one-time toasts for first faction tilt / auto-train online / first hire; end-of-content capstone
+      lines (research tree / achievements / codex); Onboarding '\$'→'Money'; Settings about-footer
+      (v1.0.0 + Privacy/Support links to the GitHub Pages site); index.html meta description;
+      manifest colors matched to the light app chrome + in-voice description. package.json 0.0.0→1.0.0.
+      **Owner to-dos that remain:** confirm GitHub Pages is enabled (docs/ → wrexist.github.io links
+      in Settings + App Store privacy URL), and decide on research-tree deepening (23 nodes is the
+      endgame ceiling — real design work + retune, not a copy fix).
 - [ ] **Flagged for owner (not touched):** run yields apply global multipliers twice (derive.ts —
       runComputeCost carries them, then runMoney/DataYield multiply again). The tuned curve is BUILT
       on this behaviour, so changing it = a full retune; decide deliberately. Also noted: the store's
