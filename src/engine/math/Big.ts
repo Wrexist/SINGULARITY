@@ -117,15 +117,19 @@ function formatBig(d: Decimal): string {
     return n.toFixed(n < 10 ? 1 : 0);
   }
   // Determine which 1000-power bucket we land in.
-  const exp = Math.floor(d.e); // base-10 exponent
-  const tier = Math.floor(exp / 3);
+  let exp = Math.floor(d.e); // base-10 exponent
+  let tier = Math.floor(exp / 3);
   if (tier < SUFFIXES.length) {
-    const scaled = d.div(new Decimal(1000).pow(tier)).toNumber();
-    const suffix = SUFFIXES[tier];
-    return `${trim(scaled)}${suffix}`;
+    let scaled = d.div(new Decimal(1000).pow(tier)).toNumber();
+    // trim() rounds to integers at ≥100, so 999.5K-and-up would render "1000K".
+    // Roll such values into the next tier instead ("1M").
+    if (scaled >= 999.5) { tier += 1; scaled /= 1000; }
+    if (tier < SUFFIXES.length) return `${trim(scaled)}${SUFFIXES[tier]}`;
   }
   // Beyond named suffixes: scientific notation, e.g. 1.23e42.
-  const mantissa = d.div(new Decimal(10).pow(exp)).toNumber();
+  let mantissa = d.div(new Decimal(10).pow(exp)).toNumber();
+  // Same boundary in scientific form: 9.995+ would trim to "10e42" — carry it.
+  if (mantissa >= 9.995) { mantissa /= 10; exp += 1; }
   return `${trim(mantissa)}e${exp}`;
 }
 

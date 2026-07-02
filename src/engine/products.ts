@@ -752,6 +752,10 @@ export function retireProduct(state: GameState, id: string): GameState {
     ...state,
     resources: { ...state.resources, money: state.resources.money.add(Math.max(0, payout)) },
     lifetimeMoney: state.lifetimeMoney.add(Math.max(0, payout)),
+    // Bump totalMoney here too: this runs between ticks, so the next tick's
+    // lifetimeMoney-delta baseline already contains the payout and accrueStats
+    // would otherwise never count it toward all-time earnings.
+    stats: { ...state.stats, totalMoney: state.stats.totalMoney.add(Math.max(0, payout)) },
     employees,
     products: {
       ...state.products,

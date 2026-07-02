@@ -47,4 +47,11 @@ describe("Big formatting", () => {
     const s = Big.of("1.23e42").format();
     expect(s).toMatch(/e42$/);
   });
+
+  it("rolls to the next suffix at rounding boundaries (never '1000K')", () => {
+    expect(Big.of(999_990).format()).toBe("1M");
+    expect(Big.of(999_400).format()).toBe("999K");
+    expect(Big.of(999_990_000).format()).toBe("1B");
+    expect(Big.of("9.9999e42").format()).toBe("1e43");
+  });
 });
