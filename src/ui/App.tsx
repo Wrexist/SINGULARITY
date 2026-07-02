@@ -193,6 +193,19 @@ export function App() {
   const seenPrestige = useRef(showPrestige);
   const seenMarket = useRef(showMarket);
   const seenShipReady = useRef(shipReady);
+  // Three quiet-but-important transitions that previously happened with ZERO
+  // feedback (pre-launch audit): the first faction tilt (an invisible scalar
+  // moving), auto-train coming online (the core loop changes), and the first-ever
+  // hire. All hydration-synced like the unlock toasts, and all one-way facts of
+  // the save (alignment ≠ 0, the auto_train upgrade, employeesHired > 0), so a
+  // returning player is never re-toasted.
+  const aligned = game.alignment !== 0;
+  const alignAccel = game.alignment > 0;
+  const autoTrainOn = d.autoTrain;
+  const everHired = game.stats.employeesHired > 0;
+  const seenAligned = useRef(aligned);
+  const seenAutoTrain = useRef(autoTrainOn);
+  const seenHired = useRef(everHired);
   const syncedToSave = useRef(false);
   useEffect(() => {
     // Wait for the save to hydrate, then sync the "seen" baseline once so we
@@ -203,6 +216,9 @@ export function App() {
       seenPrestige.current = showPrestige;
       seenMarket.current = showMarket;
       seenShipReady.current = shipReady;
+      seenAligned.current = aligned;
+      seenAutoTrain.current = autoTrainOn;
+      seenHired.current = everHired;
       syncedToSave.current = true;
       return;
     }
@@ -210,11 +226,24 @@ export function App() {
     if (showMarket && !seenMarket.current) pushToast("Data Market unlocked", "good");
     if (showPrestige && !seenPrestige.current) pushToast("The path to shipping is open", "good");
     if (shipReady && !seenShipReady.current) pushToast("You can Ship the Model!", "good");
+    if (aligned && !seenAligned.current) {
+      pushToast(
+        alignAccel
+          ? "Your choices tilt the lab accelerationist — faster, hotter. See Lab Stats."
+          : "Your choices tilt the lab doomer — safer, steadier. See Lab Stats.",
+        "neutral",
+      );
+    }
+    if (autoTrainOn && !seenAutoTrain.current) pushToast("Auto-train online — runs restart themselves. Set your Compute focus.", "good");
+    if (everHired && !seenHired.current) pushToast("First hire aboard — specialists level up as they work", "good");
     seenResearch.current = showResearch;
     seenPrestige.current = showPrestige;
     seenMarket.current = showMarket;
     seenShipReady.current = shipReady;
-  }, [initialized, showResearch, showPrestige, showMarket, shipReady]);
+    seenAligned.current = aligned;
+    seenAutoTrain.current = autoTrainOn;
+    seenHired.current = everHired;
+  }, [initialized, showResearch, showPrestige, showMarket, shipReady, aligned, alignAccel, autoTrainOn, everHired]);
 
   // Era transitions: a full-screen tentpole moment when the lab crosses an era.
   // Guarded by the same hydration sync so it never fires on a returning load.

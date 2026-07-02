@@ -29,6 +29,9 @@ export function CodexPanel({ game }: Props) {
       </button>
       {open && (
         <div className="codex-list">
+          {got === total && (
+            <p className="panel-capstone">Collection complete — the field notes are officially a memoir.</p>
+          )}
           {views.map(({ entry, unlocked }) => (
             <div className={`codex-entry ${unlocked ? "" : "locked"}`} key={entry.id}>
               <div className="codex-entry-title">
