@@ -2,6 +2,7 @@ import { balance } from "../engine/balance/config";
 import { canBuyDataOffer, canBuyUpgrade, upgradeCost, effectiveRaidChance, canLobby, lobbyCost } from "../engine/actions";
 import { Big } from "../engine/math/Big";
 import type { GameState } from "../engine/types";
+import { upgradeFlavor } from "../engine/flavor";
 import { fmt, fmtMoney } from "./format";
 import { SkullIcon, AlertTriangleIcon } from "./Icons";
 
@@ -131,7 +132,9 @@ export function DataMarketPanel({ game, onBuyData, onBuyTool, onLobby }: Props) 
                   {def.name}
                   {owned > 0 && <span className="card-owned">×{owned}</span>}
                 </span>
-                <span className="card-desc">{def.desc}</span>
+                {/* Same escalating-satire selector the Hardware panel uses, so the
+                    50th scraper reads differently from the 1st here too. */}
+                <span className="card-desc">{upgradeFlavor(def.id, owned, def.desc)}</span>
               </div>
               <div className="card-cost">
                 <span style={{ color: "var(--money)" }}>{fmtMoney(cost)}</span>

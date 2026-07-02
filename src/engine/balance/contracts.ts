@@ -68,5 +68,14 @@ export const contracts = {
     { id: "big_org", title: "Real Company Now", desc: "Employ 25 specialists.", metric: "employees", target: 25, rep: 7 },
     { id: "ten_figures", title: "Ten Figures", desc: "Earn $1,000,000,000 in total.", metric: "totalMoney", target: 1_000_000_000, rep: 8 },
     { id: "ascended", title: "Beyond Human", desc: "Ascend in the Post-Singularity era.", metric: "ascensions", target: 1, rep: 10 },
+
+    // ---- Post-ascension tier: rungs for the player who keeps going, so the
+    // Reputation faucet never permanently dries up on a committed save ----
+    { id: "everywhere", title: "Everywhere at Once", desc: "Reach 100,000,000 total users.", metric: "peakMau", target: 100_000_000, rep: 8 },
+    { id: "money_printer", title: "The Money Printer", desc: "Reach $1,000,000/sec product revenue.", metric: "peakMrr", target: 1_000_000, rep: 8 },
+    { id: "shipping_dynasty", title: "Shipping Dynasty", desc: "Ship 30 models.", metric: "ships", target: 30, rep: 9 },
+    { id: "teracluster", title: "Teracluster", desc: "Reach 1T Compute/sec.", metric: "peakComputePerSec", target: 1_000_000_000_000, rep: 9 },
+    { id: "twelve_figures", title: "Twelve Figures", desc: "Earn $1T in total.", metric: "totalMoney", target: 1_000_000_000_000, rep: 10 },
+    { id: "serial_ascender", title: "Serial Ascender", desc: "Ascend 3 times.", metric: "ascensions", target: 3, rep: 12 },
   ] as ContractDef[],
 };
