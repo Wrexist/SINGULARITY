@@ -33,6 +33,16 @@ features. Two audit passes (engine + UI) ran first; every shipped fix was verifi
       product sale no longer closes the management sheet; ship Celebration and EraTransition no
       longer stack when a ship crosses an era (era waits); daily-boost bar re-checks on rollover/
       foreground; collapsed Stats/Codex panels no longer build their content at 10Hz.
+- [x] **Follow-up (owner 2026-07-02): dopamine & progression pass** — (1) **Next-goal carrot**: pure
+      `engine/goals.ts` (`goalCandidates`/`nextGoal`, +6 tests) scans eras + board contracts + locked
+      non-secret achievements and surfaces the one closest to completion; UI = a quiet one-line strip
+      whose progress fill is the background, % ticking live, tap lands where the goal resolves. Honest
+      by construction (real tracked progress only; no timers, nothing to buy → no dark patterns).
+      (2) **Buy juice**: hardware buys float the actual derived rate gain ("+12/s") at the tap point
+      (derive before/after the synchronous action); rate-neutral buys stay quiet. (3) fx leak guard:
+      burst/floatText no-op under reduced motion (nothing drains the arrays there). Sim byte-identical.
+      Also (owner): removed the claim-run advisor nudge (the Claim button IS the nudge) + the chip's
+      purple accent edge.
 - [ ] **Flagged for owner (not touched):** run yields apply global multipliers twice (derive.ts —
       runComputeCost carries them, then runMoney/DataYield multiply again). The tuned curve is BUILT
       on this behaviour, so changing it = a full retune; decide deliberately. Also noted: the store's
