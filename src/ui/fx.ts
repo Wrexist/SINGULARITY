@@ -21,8 +21,15 @@ let wakers: Array<() => void> = [];
 
 const PALETTE = ["#ff385c", "#2f7bf6", "#9b51e0", "#16b364", "#ff9f0a"];
 
+/** With reduced motion the FxCanvas never mounts, so nothing drains these arrays —
+ *  pushing would leak a particle per tap for the whole session. */
+function fxDisabled(): boolean {
+  return !!document.querySelector(".app.reduce-motion");
+}
+
 /** Radial spray of particles at a screen point. */
 export function burst(x: number, y: number, opts?: { count?: number; colors?: string[]; power?: number }) {
+  if (fxDisabled()) return;
   const n = opts?.count ?? 16;
   const colors = opts?.colors ?? PALETTE;
   const power = opts?.power ?? 1;
@@ -44,6 +51,7 @@ export function burst(x: number, y: number, opts?: { count?: number; colors?: st
 
 /** A rising, fading "+X" text at a screen point. */
 export function floatText(x: number, y: number, text: string, color = "#16b364", size = 16) {
+  if (fxDisabled()) return;
   floaters.push({ x, y, vy: -0.55, life: 0, max: 1100, text, color, size });
   wake();
 }
