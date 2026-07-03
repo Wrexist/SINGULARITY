@@ -11,9 +11,9 @@ existing roadmap. E = effort (S/M/L), curve⚠ = needs `npm run sim` validation.
    peaks, rivals beaten) to a canvas PNG + iOS share sheet. Free word-of-mouth; zero network.
 3. ~~**Era-aware music layers**~~ ✅ SHIPPED (E:M) — sound.ts already has era/ship swells; add one ambient layer per
    era so the hall *sounds* like it grows. Big atmosphere for ~no bundle cost (all synthesized).
-4. **Rack-tap micro-interactions** (E:S) — tapping a rack shows its info card today; add a tiny
+4. ~~**Rack-tap micro-interactions**~~ ✅ SHIPPED (E:S) — tapping a rack shows its info card today; add a tiny
    per-tap LED flicker + haptic so the hall feels physical even when there's nothing to decide.
-5. **Milestone "chase ladder" visibility** (E:S) — ProductsPanel milestones are collapsed; surface
+5. ~~**Milestone "chase ladder" visibility**~~ ✅ SHIPPED earlier (product milestones joined the goal-strip pool) (E:S) — ProductsPanel milestones are collapsed; surface
    the NEXT product milestone in the goal-strip candidate pool so mid-game carrots include products.
 
 ## 2 · Gameplay depth (curve⚠ — each needs a sim pass)
@@ -42,13 +42,13 @@ existing roadmap. E = effort (S/M/L), curve⚠ = needs `npm run sim` validation.
 13. ~~**Heat/suspicion first-cross coach line**~~ ✅ SHIPPED (E:S) — one-time toast at first heat ≥25%: "Heat draws
     fines and raids — lobbying and cooling calm it." (The regulator currently explains itself only
     by punishing you.)
-14. **Number-format setting** (E:S) — scientific vs suffix notation toggle for endgame players.
+14. ~~**Number-format setting**~~ ✅ SHIPPED (E:S) — scientific vs suffix notation toggle for endgame players.
 
 ## 4 · Retention (honest, no dark patterns)
 15. ~~**R8.2 backup UX → iCloud**~~ ✅ Stage A SHIPPED (share-sheet export, import preview, gentle nudge); iCloud Drive auto-backup remains (E:M→L, roadmap) — Share-sheet export, import preview using
     ConfirmSheet, then CloudKit behind a SaveSync interface. The single biggest churn-protector:
     a lost save is a lost player.
-16. **Post-session recap in WIWA** (E:S) — the offline modal shows gains; add "while away: 2
+16. ~~**Post-session recap in WIWA**~~ ✅ SHIPPED (E:S) — the offline modal shows gains; add "while away: 2
     contracts completed, product X overtaken" — the *story* since last open, not just numbers.
 17. **Notification opt-in for run completion** (E:M) — a single LOCAL notification "your training
     run finished" (user-enabled, no scheduling tricks). Honest re-engagement; Capacitor local
@@ -60,13 +60,13 @@ existing roadmap. E = effort (S/M/L), curve⚠ = needs `npm run sim` validation.
 19. **Panel memoization pass** (E:M) — the UI audit's B1: heavy panels re-render at 10Hz; the Lab
     sectioning cut most of it, but Products/Team would benefit from narrower selectors. Do after
     a real-device profile, not before.
-20. **VoiceOver pass** (E:M) — labels exist on nav/modals; sliders, the hall canvas (summary label),
+20. ~~**VoiceOver pass**~~ ✅ SHIPPED (aria-valuetext on all sliders; rest audited-clean) (E:M) — labels exist on nav/modals; sliders, the hall canvas (summary label),
     and chip rows need names. One afternoon, App Store review goodwill.
 21. ~~**Notice queue in the store**~~ ✅ SHIPPED (E:S) — the audit's A5: two same-tick notices drop one. A tiny
     FIFO in the store fixes level-up toasts lost behind version-ship toasts.
 22. **iPad layout** (E:M) — max-width already exists; a two-column stage (hall left, panels right)
     would make the iPad build feel intended rather than stretched.
-23. **Haptic intensity setting** (E:S) — some players find celebrate-tier haptics strong; a
+23. ~~**Haptic intensity setting**~~ ✅ SHIPPED (E:S) — some players find celebrate-tier haptics strong; a
     Light/Full toggle beside the existing switches.
 
 ## 6 · Platform & growth (roadmap, owner-gated)
@@ -86,7 +86,8 @@ existing roadmap. E = effort (S/M/L), curve⚠ = needs `npm run sim` validation.
 ~~Moment queue (1) → Ship explainer (12) → heat coach (13) → notice queue (21) → share card (2) →
 R8.2 backup (15) → rival counterplay (8) → interactive onboarding (11) → music layers (3) →
 Game Center (18)~~ — **all shipped** (Game Center's native half waits on a Capacitor-6 plugin,
-see GAME_CENTER_SETUP.md). Next wave, in order:
-milestone chase ladder (5) → rack-tap micro-interactions (4) → post-session recap (16) →
-panel memoization (19) → number-format setting (14) → haptic intensity (23) — then the
+see GAME_CENTER_SETUP.md). ~~Second wave: chase ladder (5) · rack-tap (4) · recap (16) ·
+number format (14) · haptic intensity (23) · VoiceOver (20)~~ — **all shipped**. Remaining, in order:
+local notification opt-in (17, needs @capacitor/local-notifications — batch with the Game Center
+native work) → iPad layout (22) → panel memoization (19, AFTER a real-device profile) → then the
 curve-touching depth items (6, 7, 9, 10) by telemetry once a TestFlight build has real sessions.

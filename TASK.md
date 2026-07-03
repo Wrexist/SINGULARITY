@@ -150,8 +150,20 @@ features. Two audit passes (engine + UI) ran first; every shipped fix was verifi
          achievement mirror, Settings row) that silently no-ops until a native `GameConnect` plugin
          exists — the only maintained plugin peers on Capacitor 5 vs our 6, so the dependency is
          deliberately deferred. Owner steps in GAME_CENTER_SETUP.md.
-- [ ] **NEXT:** milestone chase ladder (#5) → rack-tap micro-interactions (#4) → post-session recap
-      (#16) → panel memoization (#19); **research-tree deepening** (owner design call) and the
+- [x] **Wave 2 (owner 2026-07-03, "continue") — six more, each verified + committed:**
+      rack-tap LED flicker (#4, reduced-motion-safe, DrawOpts.tapFlash identity-optional);
+      post-session recap (#16: applyOffline now diffs the catch-up tick for EVENTS — era
+      crossings, rank moves, milestones, finished upgrades, training — rendered as story lines
+      in the WIWA modal, +2 tests); scientific-notation setting (#14: Big.formatScientific,
+      engine stays pure — the UI's fmt() picks; one switch re-skins every number, +2 tests);
+      lighter-haptics toggle (#23: half-strength pulses, row shown only while haptics on);
+      VoiceOver pass (#20: aria-valuetext on every slider so VO reads meaning, dock slider
+      renamed to its visible label; dialogs/toasts/canvases/chips audited clean). #5 (milestone
+      chase ladder) was already live via the goal strip — marked shipped. 485 tests · engine
+      untouched except display-only Big method + offline story diffs (sim-irrelevant).
+- [ ] **NEXT:** local notification opt-in (#17 — needs @capacitor/local-notifications, batch with
+      the Game Center native session) → iPad layout (#22) → panel memoization (#19, AFTER a
+      real-device profile); **research-tree deepening** (owner design call) and the
       **post-TestFlight telemetry read** (R8.1) before further balance moves. Owner actions open:
       run the iOS TestFlight workflow (merging ≠ shipping), confirm GitHub Pages links, and the
       Game Center native steps when a Capacitor-6 plugin lands.
