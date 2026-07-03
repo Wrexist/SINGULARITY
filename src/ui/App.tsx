@@ -557,7 +557,7 @@ export function App() {
   };
 
   return (
-    <div className={`app${reducedMotion ? " reduce-motion" : ""}`}>
+    <div className={`app${reducedMotion ? " reduce-motion" : ""}${tab === "lab" && section === "build" ? " app-split" : ""}`}>
       <div className="aurora" aria-hidden="true">
         <span className="blob blob-a" />
         <span className="blob blob-b" />
@@ -695,23 +695,32 @@ export function App() {
             )}
             {section === "build" && (
               <>
-                <HallCanvas onExpand={setPendingExpansion} />
-                {firstStepsVisible(game) && <FirstSteps game={game} />}
-                <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} onSetFocus={setComputeFocus} />
-                <CharterPanel
-                  game={game}
-                  onSet={(id) => { haptics.tap(); sound.tap(); doSetCharter(id); }}
-                  onLock={() => { haptics.success(); sound.purchase(); doLockCharter(); }}
-                />
-                <UpgradePanel game={game} derived={d} onBuy={onBuy} />
-                {componentsUnlocked(game) && (
-                  <RigBayPanel
+                {/* iPad split (IMPROVEMENTS #22): on wide screens these two
+                    wrappers become grid columns — the hall + core loop stays
+                    put on the left while the buy panels scroll on the right.
+                    On phones they're display:contents, so the DOM change is
+                    layout-invisible (same flat stage as before). */}
+                <div className="stage-left">
+                  <HallCanvas onExpand={setPendingExpansion} />
+                  {firstStepsVisible(game) && <FirstSteps game={game} />}
+                  <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} onSetFocus={setComputeFocus} />
+                </div>
+                <div className="stage-right">
+                  <CharterPanel
                     game={game}
-                    onBuy={(id) => { haptics.tap(); sound.purchase(); doBuyComponent(id); }}
-                    onEquip={(tier, slot, id) => { haptics.success(); sound.tap(); doEquipComponent(tier, slot, id); }}
-                    onFuse={(id) => { haptics.celebrate(); sound.purchase(); doFuseComponents(id); }}
+                    onSet={(id) => { haptics.tap(); sound.tap(); doSetCharter(id); }}
+                    onLock={() => { haptics.success(); sound.purchase(); doLockCharter(); }}
                   />
-                )}
+                  <UpgradePanel game={game} derived={d} onBuy={onBuy} />
+                  {componentsUnlocked(game) && (
+                    <RigBayPanel
+                      game={game}
+                      onBuy={(id) => { haptics.tap(); sound.purchase(); doBuyComponent(id); }}
+                      onEquip={(tier, slot, id) => { haptics.success(); sound.tap(); doEquipComponent(tier, slot, id); }}
+                      onFuse={(id) => { haptics.celebrate(); sound.purchase(); doFuseComponents(id); }}
+                    />
+                  )}
+                </div>
               </>
             )}
             {section === "research" && (

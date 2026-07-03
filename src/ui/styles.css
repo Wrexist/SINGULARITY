@@ -444,8 +444,48 @@ svg { vertical-align: middle; }
   flex-direction: column;
   gap: 16px;
 }
-.stage > * {
+/* Build-section column wrappers: invisible on phones (display: contents keeps
+   the stage flat, exactly the pre-split layout)… */
+.stage-left,
+.stage-right {
+  display: contents;
+}
+.stage > *,
+.stage-left > *,
+.stage-right > * {
   animation: rise 0.6s var(--ease-out) both;
+}
+
+/* …and real columns on iPad-class widths (IMPROVEMENTS #22): hall + core loop
+   pinned left, the buy panels scrolling right — intended, not stretched. Only
+   the Lab's Build pane splits (.app-split); every other tab stays a centered
+   phone-width column, which already reads as designed. */
+@media (min-width: 900px) {
+  .app-split {
+    max-width: 1008px;
+  }
+  .app-split .stage {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 20px;
+    align-items: start;
+  }
+  .app-split .stage > .notice-slot,
+  .app-split .stage > .labnav {
+    grid-column: 1 / -1;
+  }
+  .app-split .stage-left,
+  .app-split .stage-right {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+  }
+  /* The hall column holds its ground while the shop side scrolls. */
+  .app-split .stage-left {
+    position: sticky;
+    top: 12px;
+  }
 }
 .stage > *:nth-child(1) { animation-delay: 0.04s; }
 .stage > *:nth-child(2) { animation-delay: 0.1s; }
