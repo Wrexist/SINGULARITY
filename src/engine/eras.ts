@@ -26,6 +26,12 @@ export function eraName(era: number): string {
   return balance.eras.list[era]?.name ?? "";
 }
 
-export function eraBlurb(era: number): string {
-  return balance.eras.list[era]?.blurb ?? "";
+/** The era press release. `seed` (typically the generation/ships count) rotates
+ *  deterministically through the era's pool (R7.4), so re-crossing an era on a
+ *  later run reads a fresh headline. Seed 0 = the original blurb. */
+export function eraBlurb(era: number, seed = 0): string {
+  const def = balance.eras.list[era];
+  if (!def) return "";
+  const pool = [def.blurb, ...(def.blurbAlts ?? [])];
+  return pool[Math.abs(Math.floor(seed)) % pool.length] ?? def.blurb;
 }

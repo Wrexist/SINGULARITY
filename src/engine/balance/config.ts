@@ -183,6 +183,10 @@ export interface WorldEvent {
    *  `worldEvents.factionThreshold`). At neutral, no tagged event is eligible, so the
    *  base pool — and the tuned curve — is unchanged. */
   faction?: "doomer" | "accel";
+  /** R7.2 — callback sequels: this event is eligible ONLY while `after`'s id is in
+   *  the recent-events window, so its body can reference that beat directly ("the
+   *  shortage", "that tweet") and always lands as continuity, never a non sequitur. */
+  after?: string;
 }
 
 const WORLD_EVENTS: WorldEvent[] = [
@@ -765,6 +769,65 @@ const WORLD_EVENTS: WorldEvent[] = [
     body: "You launched the half-baked feature on a Friday and the internet did your QA for free. The buzz is enormous; the bug reports are tomorrow's problem.",
     effect: { kind: "productBuzz", durationSec: 60 },
   },
+
+  // --- R7.2: callback sequels. Each is eligible ONLY while its parent event is in
+  //     the recent window (`after`), so the body can point straight back at the
+  //     earlier beat — continuity the player actually notices. Weights are high
+  //     because eligibility is rare: when a sequel CAN fire, it usually should. ---
+  {
+    id: "gpu_scalper_bust",
+    after: "gpu_shortage",
+    weight: 12,
+    tone: "good",
+    headline: "The Scalper Ring Gets Raided",
+    body: "Remember the shortage? Turns out four guys in a storage unit were sitting on nine pallets of accelerators. The feds seized them; the market exhales. Compute ×1.5 while prices sane.",
+    effect: { kind: "buff", target: "computeMult", factor: 1.5, durationSec: 45 },
+  },
+  {
+    id: "breach_postmortem",
+    after: "data_breach",
+    weight: 12,
+    tone: "good",
+    headline: "Breach Postmortem Finds Buried Treasure",
+    body: "The forensic audit of last week's breach turns up three forgotten S3 buckets of perfectly good training data you'd lost track of. Security: bad. Archaeology: excellent. +15% data.",
+    effect: { kind: "grantPct", resource: "data", pct: 0.15 },
+  },
+  {
+    id: "founder_apology_tour",
+    after: "founder_tweets",
+    weight: 12,
+    tone: "good",
+    headline: "The Apology Tour Lands",
+    body: "Three podcasts, one carefully damp eye, zero specifics. Somehow the tweet from last week is now a 'growth moment' and enterprise deals are BACK. Revenue ×1.4.",
+    effect: { kind: "buff", target: "moneyMult", factor: 1.4, durationSec: 45 },
+  },
+  {
+    id: "jailbreak_patch",
+    after: "viral_jailbreak",
+    weight: 12,
+    tone: "good",
+    headline: "The Jailbreak Becomes a Feature",
+    body: "The patch for last week's jailbreak shipped — and the red-team traffic it attracted turns out to be the best adversarial dataset you've ever collected. +12% data, thanks everyone.",
+    effect: { kind: "grantPct", resource: "data", pct: 0.12 },
+  },
+  {
+    id: "dead_cat_bounce",
+    after: "market_crash",
+    weight: 12,
+    tone: "good",
+    headline: "The Dead-Cat Bounce",
+    body: "After last week's crash, the market decides AI was underpriced actually, and buys everything back at a premium by lunch. Analysts describe this as 'price discovery'. +20% cash.",
+    effect: { kind: "grantPct", resource: "money", pct: 0.2 },
+  },
+  {
+    id: "pause_unsigned",
+    after: "pause_letter",
+    weight: 12,
+    tone: "good",
+    headline: "Everyone Un-Signs the Pause Letter",
+    body: "Six months later — well, six days — half the signatories of that pause letter have quietly announced frontier runs of their own. The moral high ground reopens for training. Compute ×1.4.",
+    effect: { kind: "buff", target: "computeMult", factor: 1.4, durationSec: 40 },
+  },
 ];
 
 export const balance = {
@@ -836,32 +899,54 @@ export const balance = {
    * here; the gating LOGIC lives in engine/eras.ts; palettes live in the renderer.
    */
   eras: {
+    /** R7.4 — each era carries a POOL of press releases; eraBlurb(era, seed)
+     *  rotates deterministically by generation, so re-crossing an era in run 3
+     *  reads a fresh headline instead of last run's. blurb = variant 0. */
     list: [
-      { name: "Garage Closet", blurb: "" },
+      { name: "Garage Closet", blurb: "", blurbAlts: [] },
       {
         name: "Funded Startup",
         blurb:
           "TechCrunch — “Stealth AI lab emerges from a literal server closet, raises a seed round to ‘reinvent compute.’” There is a beanbag now. The intern designed a logo.",
+        blurbAlts: [
+          "The Information — “Same closet, new cap table: Singularity Inc. re-raises at a valuation its own deck calls ‘vibes-forward.’” The beanbag has been reupholstered.",
+          "Hacker News — “Show HN: We are once again a funded startup.” Top comment says it could be done in a weekend with Postgres. It could not.",
+        ],
       },
       {
         name: "Scale-Up Lab",
         blurb:
           "The Verge — “Singularity Inc. ships its first model.” The valuation is, sources confirm, ‘definitely not a bubble.’ The closet is now a floor.",
+        blurbAlts: [
+          "Wired — “Singularity Inc. scales again, insists this time is different.” The GPUs agree. The GPUs always agree.",
+          "Ars Technica — “Benchmarks confirm the new model is bigger.” Whether it is better remains, in the reviewer's words, ‘spiritually ambiguous.’ Number went up though.",
+        ],
       },
       {
         name: "Frontier Lab",
         blurb:
           "Bloomberg — “Singularity Inc. declares itself a ‘frontier lab,’ a term it also coined.” Badge access now has tiers. There is a second beanbag, and a waitlist for it.",
+        blurbAlts: [
+          "FT — “Singularity Inc. returns to the frontier, which it never technically left, per a spokesperson who then left.” The badge tiers now have badge tiers.",
+          "Reuters — “Frontier lab announces frontier model at frontier event.” Attendees describe the demo as ‘pre-recorded but emotionally live.’",
+        ],
       },
       {
         name: "Hyperscaler",
         blurb:
           "WSJ — “Singularity Inc. is now a ‘hyperscaler,’ and has reportedly bought a power plant ‘for latency reasons.’” Analysts remain confused, but bullish.",
+        blurbAlts: [
+          "The Economist — “What is a hyperscaler? Whatever Singularity Inc. is doing, presumably.” The power plant now has a gift shop.",
+          "CNBC — “Singularity Inc. buys a second power plant to cool the first one.” The stock did something analysts describe as ‘vertical.’",
+        ],
       },
       {
         name: "Post-Singularity",
         blurb:
           "The model is writing its own press releases now. This one included. Singularity Inc. has, by its own announcement, achieved AGI; the AGI has politely declined to comment. The hall hums at a frequency employees describe as “optimistic.”",
+        blurbAlts: [
+          "This press release was generated, reviewed, approved and legally notarized by the model in 40 milliseconds. It says everything is fine and that you, personally, have always been its favorite.",
+        ],
       },
     ],
     /** Reach era 1 once this many research nodes are owned. */

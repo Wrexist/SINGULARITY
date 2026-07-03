@@ -525,12 +525,16 @@ export interface WorldEventResult {
 
 const WORLD_EVENTS = balance.worldEvents.list as WorldEvent[];
 
-/** Events eligible at the player's current alignment (R6.2). Untagged events always
- *  qualify; a faction-tagged event only joins the pool once you've committed to that
- *  side. At neutral (incl. the sim) only untagged events are eligible → base pool. */
-function eligibleWorldEvents(alignment: number): WorldEvent[] {
+/** Events eligible at the player's current alignment (R6.2) and recent history
+ *  (R7.2). Untagged events always qualify; a faction-tagged event needs commitment
+ *  to that side; a sequel (`after`) needs its parent in the recent window — so a
+ *  callback can reference "that tweet" and never fire as a non sequitur. At neutral
+ *  with no history (incl. the sim) only base events are eligible → base pool. */
+function eligibleWorldEvents(alignment: number, recentIds: Set<string>): WorldEvent[] {
   const t = balance.worldEvents.factionThreshold;
   return WORLD_EVENTS.filter((e) => {
+    if (e.after && !recentIds.has(e.after)) return false;
+    if (e.after && recentIds.has(e.id)) return false; // a sequel doesn't re-run inside its own window
     if (!e.faction) return true;
     return e.faction === "doomer" ? alignment <= -t : alignment >= t;
   });
@@ -546,8 +550,8 @@ function chainedWeight(e: WorldEvent, recentTopics: Set<string>, recentIds: Set<
 }
 
 export function pickWorldEvent(roll: number, alignment = 0, recentIds: string[] = []): WorldEvent {
-  const pool = eligibleWorldEvents(alignment);
   const ids = new Set(recentIds);
+  const pool = eligibleWorldEvents(alignment, ids);
   const recentTopics = new Set(
     recentIds.map((id) => balance.worldEvents.topics[id]).filter((t): t is string => !!t),
   );

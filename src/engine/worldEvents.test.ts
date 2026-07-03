@@ -223,3 +223,31 @@ describe("world events — firing & gating", () => {
     });
   });
 });
+
+describe("callback sequels (R7.2 — `after` gating)", () => {
+  const sequels = balance.worldEvents.list.filter((e) => e.after);
+
+  it("every sequel points at a real parent event (a typo'd id would orphan it forever)", () => {
+    const ids = new Set(balance.worldEvents.list.map((e) => e.id));
+    expect(sequels.length).toBeGreaterThan(0);
+    for (const s of sequels) expect(ids.has(s.after!)).toBe(true);
+  });
+
+  it("a sequel can never fire without its parent in the recent window", () => {
+    // Sweep the whole roll space with no history: no sequel may ever surface.
+    for (let roll = 0; roll < 1; roll += 0.001) {
+      expect(pickWorldEvent(roll, 0, []).after).toBeUndefined();
+    }
+  });
+
+  it("with the parent recent, the sequel becomes pickable (and doesn't chain itself)", () => {
+    const seq = sequels[0]!;
+    const seen = new Set<string>();
+    for (let roll = 0; roll < 1; roll += 0.001) seen.add(pickWorldEvent(roll, 0, [seq.after!]).id);
+    expect(seen.has(seq.id)).toBe(true);
+    // Its own id in the window suppresses a re-run of the same callback.
+    const again = new Set<string>();
+    for (let roll = 0; roll < 1; roll += 0.001) again.add(pickWorldEvent(roll, 0, [seq.after!, seq.id]).id);
+    expect(again.has(seq.id)).toBe(false);
+  });
+});

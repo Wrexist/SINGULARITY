@@ -846,7 +846,7 @@ export function App() {
           onCancel={() => setConfirmReset(false)}
         />
       )}
-      {moment === "era" && eraMoment !== null && <EraTransition era={eraMoment} onDone={() => setEraMoment(null)} />}
+      {moment === "era" && eraMoment !== null && <EraTransition era={eraMoment} blurbSeed={game.prestige.ships} onDone={() => setEraMoment(null)} />}
       {moment === "launch" && launch && (
         <ProductLaunch
           name={launch.name}

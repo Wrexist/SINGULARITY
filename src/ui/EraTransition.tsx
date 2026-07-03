@@ -2,6 +2,9 @@ import { eraName, eraBlurb } from "../engine/eras";
 
 interface Props {
   era: number;
+  /** Rotation seed for the press-release pool (R7.4) — the generation count,
+   *  so run 3's re-crossing of an era reads a fresh headline. */
+  blurbSeed?: number;
   onDone: () => void;
 }
 
@@ -13,7 +16,7 @@ const COLORS = ["#7c5cff", "#2f7bf6", "#16b364", "#ffd60a", "#ff385c"];
  * hall re-skins, a satirical press release pops"). Fires when the lab crosses
  * into a new era. The room behind has already re-skinned; this announces it.
  */
-export function EraTransition({ era, onDone }: Props) {
+export function EraTransition({ era, blurbSeed = 0, onDone }: Props) {
   const agi = era >= 5; // Post-Singularity — the capstone tentpole.
   return (
     <div className={`modal-backdrop era-backdrop${agi ? " era-agi" : ""}`} onClick={onDone}>
@@ -36,7 +39,7 @@ export function EraTransition({ era, onDone }: Props) {
         <h2 className="era-title">{eraName(era)}</h2>
         <div className="era-press">
           <span className="era-press-tag">{agi ? "AUTO-GENERATED" : "PRESS RELEASE"}</span>
-          <p>{eraBlurb(era)}</p>
+          <p>{eraBlurb(era, blurbSeed)}</p>
         </div>
         <button className="btn btn-primary" onClick={onDone}>
           {agi ? "Ascend" : "Onwards & upwards"}
