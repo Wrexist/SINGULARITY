@@ -53,6 +53,11 @@ export const components = {
   revealAtRacks: 3,
   /** C3 fusion: this many copies of a part combine into one of `fusesInto`. */
   fuseCount: 3,
+  /** C4 matched rig: a tier whose EVERY slot (2+) is filled with parts of the
+   *  SAME grade draws this fraction of its power — "the parts hum in harmony".
+   *  Efficiency, deliberately NOT income: a compute-side set bonus compounded
+   *  through the economy loop and moved first prestige ~10 minutes (sim). */
+  setBonusPowerMult: 0.88,
   catalog: [
     // ---- Accelerators (+% Compute for the slotted tier) ----
     { id: "acc_refurb", name: "Refurb Mining Cards", desc: "Previous owner: a very optimistic man in a garage.", class: "accelerator", grade: "standard", cost: 140, revealAtRacks: 3, value: 1.08, fusesInto: "acc_blower" },

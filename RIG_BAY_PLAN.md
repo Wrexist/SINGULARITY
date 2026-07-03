@@ -69,9 +69,11 @@ one stat**; slots are freely re-fittable; engine stays pure; all effects sim-ver
   Zero-Kelvin-ish Chamber, Orbital Laser Mesh) and a collection counter in the panel head.
   Curve after C2+C3 (sim buys parts AND fits trophies): **first prestige 60m59s / 62m17s ·
   wall 1m06s** (`upgradeCostMult` 4.2).
-- **C4 — set identities** (owner call, NOT started): light set bonuses per manufacturer line
-  (e.g. all-Hopperoo fleet = small run-speed kicker) — only if telemetry shows players engaging
-  with swaps.
+- **C4 — SHIPPED (matched rig)**: a tier whose every slot (2+) holds parts of ONE grade gets
+  **−12% power draw** ("the parts hum in harmony") with a MATCHED pill on the tier head. Design
+  note: the first cut (+6% compute) compounded through the income loop and moved first prestige
+  ~10 MINUTES (sim-caught) — set bonuses in idle games must be efficiency/QoL, never income.
+  Single-slot tiers can't match (one part isn't a set). Curve after C4: 57m59s/62m17s, wall 1m05s.
 
 ## Explicitly rejected
 - Per-rack slots (micromanagement failure mode), rotating/limited store stock (time dark pattern),

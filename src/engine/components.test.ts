@@ -3,7 +3,7 @@ import {
   componentsBalance, SLOTS_BY_TIER, componentDef, freshComponents, componentsUnlocked,
   visibleCatalog, canBuyComponent, buyComponent, equipComponent, equippedCount,
   tierComputeMult, tierPowerMult, loadoutDataPerSec, tierLoadoutFill,
-  grantEarnedComponents, carryEarnedComponents, earnedDefs, canFuse, fuseComponents, freeCopies,
+  grantEarnedComponents, carryEarnedComponents, earnedDefs, canFuse, fuseComponents, freeCopies, tierSetMatched,
 } from "./components";
 import { createInitialState } from "./state";
 import { derive } from "./derive";
@@ -203,6 +203,40 @@ describe("Rig Bay — trophy hardware (C2)", () => {
     expect(shipped.components.owned.trophy_founders).toBe(1);
     expect(shipped.components.owned.acc_refurb).toBeUndefined();
     expect(carryEarnedComponents(s).owned).toEqual({ trophy_founders: 1 });
+  });
+});
+
+describe("Rig Bay — matched rig (C4)", () => {
+  it("a full same-grade loadout earns the set bonus; a mixed one does not", () => {
+    let s = richLab();
+    // TPU pod (tier 2): all three slots, all standard grade → matched.
+    s = buyComponent(s, "acc_refurb");
+    s = buyComponent(s, "cool_boxfans");
+    s = buyComponent(s, "net_cat5");
+    s = equipComponent(s, 2, "accelerator", "acc_refurb");
+    s = equipComponent(s, 2, "cooling", "cool_boxfans");
+    expect(tierSetMatched(s, 2)).toBe(false); // one slot still empty
+    s = equipComponent(s, 2, "interconnect", "net_cat5");
+    expect(tierSetMatched(s, 2)).toBe(true);
+    // The bonus is EFFICIENCY, not income: the matched tier draws less power,
+    // compute is untouched (a compute-side bonus compounded ~10min off the curve).
+    const cool = componentDef("cool_boxfans")!.value;
+    expect(tierPowerMult(s, 2)).toBeCloseTo(cool * componentsBalance.setBonusPowerMult);
+    expect(tierComputeMult(s, 2)).toBeCloseTo(componentDef("acc_refurb")!.value);
+    // Swap one part to a higher grade → set breaks, bonus drops.
+    s = buyComponent(s, "cool_immersion");
+    s = equipComponent(s, 2, "cooling", "cool_immersion");
+    expect(tierSetMatched(s, 2)).toBe(false);
+    expect(tierPowerMult(s, 2)).toBeCloseTo(componentDef("cool_immersion")!.value);
+  });
+
+  it("a single-slot tier never matches — one part isn't a set", () => {
+    // A trivial match on the basic fleet acted as a hidden global buff
+    // (sim-caught: ~10 minutes off the curve). Sets need ≥2 slots.
+    let s = buyComponent(richLab(), "acc_refurb");
+    s = equipComponent(s, 0, "accelerator", "acc_refurb");
+    expect(tierSetMatched(s, 0)).toBe(false);
+    expect(tierComputeMult(s, 0)).toBeCloseTo(componentDef("acc_refurb")!.value);
   });
 });
 

@@ -164,6 +164,26 @@ export function equipComponent(state: GameState, tier: number, slot: SlotClass, 
 
 // ---------- Derived effects (read by derive/power) ----------
 
+/** C4 matched rig: true when every slot of the tier is filled AND all parts
+ *  share one grade — an all-standard budget rig counts just like an
+ *  all-prototype one (rarity never gates function, it only scales it).
+ *  Single-slot tiers can't match: one part isn't a "set", and a trivial match
+ *  on the basic fleet turned the bonus into a hidden global buff (sim-caught:
+ *  it moved first prestige by ~10 minutes). */
+export function tierSetMatched(state: GameState, tier: number): boolean {
+  const slots = SLOTS_BY_TIER[tier];
+  if (!slots || slots.length < 2) return false;
+  let grade: string | null = null;
+  for (const s of slots) {
+    const id = state.components.loadout[tier]?.[s];
+    const def = id ? BY_ID.get(id) : undefined;
+    if (!def) return false; // an empty slot breaks the set
+    if (grade === null) grade = def.grade;
+    else if (def.grade !== grade) return false;
+  }
+  return true;
+}
+
 /** Multiplier on Compute output for racks of this tier (slotted accelerator). */
 export function tierComputeMult(state: GameState, tier: number): number {
   const id = state.components.loadout[tier]?.accelerator;
@@ -171,11 +191,13 @@ export function tierComputeMult(state: GameState, tier: number): number {
   return def?.class === "accelerator" ? def.value : 1;
 }
 
-/** Multiplier on this tier's power draw (slotted cooling; < 1 = less draw). */
+/** Multiplier on this tier's power draw: slotted cooling × the matched-rig set
+ *  bonus (C4) — a matched loadout hums along on less power. */
 export function tierPowerMult(state: GameState, tier: number): number {
   const id = state.components.loadout[tier]?.cooling;
   const def = id ? BY_ID.get(id) : undefined;
-  return def?.class === "cooling" ? def.value : 1;
+  const cool = def?.class === "cooling" ? def.value : 1;
+  return tierSetMatched(state, tier) ? cool * C.setBonusPowerMult : cool;
 }
 
 /** Total flat Data/sec from interconnects (per rack of each slotted tier). */

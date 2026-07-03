@@ -3,7 +3,7 @@ import { Portal } from "./Portal";
 import { Big } from "../engine/math/Big";
 import {
   componentsBalance, SLOTS_BY_TIER, componentDef, visibleCatalog, canBuyComponent, equippedCount,
-  earnedDefs, earnedSourceComplete, canFuse,
+  earnedDefs, earnedSourceComplete, canFuse, tierSetMatched,
 } from "../engine/components";
 import type { SlotClass, ComponentDef, ComponentGrade } from "../engine/balance/components";
 import { RACK_IDS } from "../engine/hall";
@@ -146,6 +146,11 @@ export function RigBayPanel({ game, onBuy, onEquip, onFuse }: Props) {
           <div className="rig-tier-head">
             <span className="rig-tier-name">{tierName(tier)}s</span>
             <span className="rig-tier-count">×{game.upgrades[RACK_IDS[tier]!] ?? 0}</span>
+            {tierSetMatched(game, tier) && (
+              <span className="rig-set" title="Every slot filled with one grade — the parts hum in harmony.">
+                MATCHED −{Math.round((1 - componentsBalance.setBonusPowerMult) * 100)}% power
+              </span>
+            )}
           </div>
           <div className="rig-slots">
             {SLOTS_BY_TIER[tier]!.map((slot) => {

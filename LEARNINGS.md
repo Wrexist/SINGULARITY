@@ -511,3 +511,12 @@ when" balance, dials the whole curve, and the UI cost displays update for free (
 - **Playwright `addInitScript` re-seeds localStorage on EVERY navigation** — a reload-persistence
   check inside such a test always "fails" because the reload rewrites the seed. Round-trip
   assertions belong in engine tests (serialize→deserialize), not browser reload tests.
+
+### C4 set bonus — income bonuses compound, efficiency bonuses don't (2026-07-02)
+- A "+6% compute" matched-rig set bonus looked token-sized and moved first prestige by ~10 MINUTES:
+  early loadouts are all-standard by default, so the bonus was effectively global, and any income
+  mult feeds the racks→money→racks loop (the documented super-linearity). Moving the SAME bonus to
+  power draw (−12% for the matched tier) made the curve move ≈0 while staying genuinely valuable at
+  the throttle. Rule: set/combo bonuses in this economy must pay out in EFFICIENCY or QoL lanes
+  (power, heat, offline), never in compute/data/money lanes — and single-slot tiers must not count
+  as "matched" (a trivial set is a hidden global buff).

@@ -2642,3 +2642,11 @@ svg { vertical-align: middle; }
 .rig-option.rig-locked { opacity: 0.75; cursor: default; background: rgba(17, 24, 39, 0.03); border-style: dashed; }
 .rig-option.rig-locked .rig-option-name { color: var(--ink-2); }
 .rig-earn { color: #b8860b; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; }
+
+/* C4 matched rig — the set-bonus pill on a tier head */
+.rig-set {
+  margin-left: auto; font-size: 9.5px; font-weight: 800; letter-spacing: 0.07em;
+  padding: 2px 8px; border-radius: 999px;
+  color: #6d5a00; background: linear-gradient(100deg, rgba(245, 180, 10, 0.18), rgba(255, 140, 66, 0.14));
+  border: 1px solid rgba(245, 180, 10, 0.4);
+}
