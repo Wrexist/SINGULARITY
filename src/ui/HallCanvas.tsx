@@ -89,6 +89,9 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
     // clear / prestige) — cache by reference instead of 3 tier scans per frame.
     let fillLoadout: unknown = null;
     let componentFill: number[] = [0, 0, 0];
+    // Rack-tap micro-interaction: which rack was touched, and when (rAF clock).
+    let tapFlash: { index: number; start: number } | null = null;
+    const TAP_FLASH_MS = 450;
     let markers = expansionMarkers(model, 1, 1); // current frame's side markers
     // Seed from the hydrated hall so a saved lab doesn't replay the whole
     // spawn animation as if every owned rack were brand-new on first open.
@@ -166,6 +169,9 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
         rackSkin: useSettings.getState().rackSkin,
         // Rig Bay: fitted tiers pulse brighter (cached above by loadout ref).
         componentFill,
+        ...(tapFlash && timeMs - tapFlash.start < TAP_FLASH_MS
+          ? { tapFlash: { index: tapFlash.index, t: 1 - (timeMs - tapFlash.start) / TAP_FLASH_MS } }
+          : {}),
       });
       // Debug/test aid (screenshot harness reads marker centroids); harmless.
       markers = expansionMarkers(model, cssW, cssH);
@@ -223,6 +229,8 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
         ev.preventDefault();
         haptics.tap();
         sound.tap();
+        // The hall answers the touch: that rack's LEDs flicker for a beat.
+        tapFlash = { index: rack.index, start: performance.now() };
         setSelectedTier(rack.tier);
       } else {
         setSelectedTier(null);
