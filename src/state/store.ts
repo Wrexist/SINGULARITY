@@ -192,6 +192,9 @@ let worldKey = 0;
 let recentEventIds: string[] = [];
 let claimKey = 0;
 let productKey = 0;
+/** Same-tick notices beyond the single slot wait here and drain one per tick —
+ *  a level-up landing the same tick as a version-ship is delayed, never lost. */
+let pendingNotices: FiredEvent[] = [];
 
 /** Advance the product-id counter past every persisted `prod-N` id so the next
  *  release can't collide with a saved product (ids are React keys + find() keys). */
@@ -310,59 +313,49 @@ export const useGame = create<GameStore>((set, get) => ({
       const secs = elapsedMs / 1000;
       const patch: Partial<GameStore> = { game };
 
-      // An employee finishing training is a small win — surface it.
-      const trained = game.employees.find((e) => wasTraining.get(e.id) && !e.training);
-      if (trained) {
+      // Collect every notice this tick earned (priority order: milestone >
+      // version-ship > level-up > achievements), emit the first, queue the rest —
+      // one slot per tick, but nothing is silently dropped anymore.
+      const earned: FiredEvent[] = [];
+      const pushNotice = (message: string, kind: NonNullable<FiredEvent["kind"]>) => {
         noticeKey += 1;
-        patch.notice = { key: noticeKey, message: `${trained.name} leveled up to L${trained.level}`, tone: "good", kind: "levelup" };
-      }
+        earned.push({ key: noticeKey, message, tone: "good", kind });
+      };
 
-      const finished = game.products.active.find((p) => wasUpgrading.get(p.id) && !p.upgrade);
-      if (finished) {
-        noticeKey += 1;
-        patch.notice = {
-          key: noticeKey,
-          message: `${finished.name} v${finished.version} shipped — back at the frontier`,
-          tone: "good",
-          kind: "ship",
-        };
-      }
-
-      // A newly-reached product milestone is a headline win — surface it (and its
-      // reward) over an upgrade-ship if both land the same tick.
       const before = new Set(s.game.products.milestones);
       const newMs = game.products.milestones.find((id) => !before.has(id));
       if (newMs) {
         const def = PRODUCT_MILESTONES.find((m) => m.id === newMs);
-        if (def) {
-          noticeKey += 1;
-          patch.notice = { key: noticeKey, message: `${def.label} — ${def.desc} (+$${def.reward.toLocaleString()})`, tone: "good", kind: "milestone" };
-        }
+        if (def) pushNotice(`${def.label} — ${def.desc} (+$${def.reward.toLocaleString()})`, "milestone");
       }
 
-      // Newly-unlocked achievements are a collection win — surface them (unless a
-      // milestone already claimed this tick's notice slot). Several can land in one
-      // tick (e.g. a big offline catch-up); with only one notice slot, show the
-      // first by name and coalesce the rest into the count so none are silently lost.
-      if (!patch.notice) {
+      const finished = game.products.active.find((p) => wasUpgrading.get(p.id) && !p.upgrade);
+      if (finished) pushNotice(`${finished.name} v${finished.version} shipped — back at the frontier`, "ship");
+
+      const trained = game.employees.find((e) => wasTraining.get(e.id) && !e.training);
+      if (trained) pushNotice(`${trained.name} leveled up to L${trained.level}`, "levelup");
+
+      // Achievements: several can land in one tick (offline catch-up) — show the
+      // first by name and coalesce the rest into the count.
+      {
         const had = new Set(s.game.achievements);
         const newAch = game.achievements.filter((id) => !had.has(id));
         if (newAch.length === 1) {
           const def = ACHIEVEMENT_DEFS.find((a) => a.id === newAch[0]);
-          if (def) {
-            noticeKey += 1;
-            patch.notice = { key: noticeKey, message: `Achievement: ${def.label} — ${def.desc}`, tone: "good", kind: "achievement" };
-          }
+          if (def) pushNotice(`Achievement: ${def.label} — ${def.desc}`, "achievement");
         } else if (newAch.length > 1) {
           const first = ACHIEVEMENT_DEFS.find((a) => a.id === newAch[0]);
-          noticeKey += 1;
-          patch.notice = {
-            key: noticeKey,
-            message: `${newAch.length} achievements unlocked${first ? ` — incl. ${first.label}` : ""}`,
-            tone: "good",
-            kind: "achievement",
-          };
+          pushNotice(`${newAch.length} achievements unlocked${first ? ` — incl. ${first.label}` : ""}`, "achievement");
         }
+      }
+
+      if (earned.length > 0) {
+        patch.notice = earned[0]!;
+        // Cap the backlog so an extreme offline catch-up can't toast for minutes.
+        pendingNotices = [...pendingNotices, ...earned.slice(1)].slice(0, 6);
+      } else if (pendingNotices.length > 0) {
+        patch.notice = pendingNotices[0]!;
+        pendingNotices = pendingNotices.slice(1);
       }
 
       // Heat-driven regulatory event (only when there's heat to drive it).
@@ -540,6 +533,7 @@ export const useGame = create<GameStore>((set, get) => ({
   doClaimDaily: () => set((s) => ({ game: grantDailyBoost(s.game) })),
 
   hardReset: () => {
+    pendingNotices = [];
     localStorage.removeItem(SAVE_KEY);
     localStorage.removeItem(TIME_KEY);
     // Clear transient UI state too, or a stale world-event card / claim burst

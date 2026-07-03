@@ -339,10 +339,13 @@ svg { vertical-align: middle; }
 .resource-bar::before {
   content: "";
   position: absolute;
-  inset: calc(-10px - env(safe-area-inset-top)) -16px -12px;
+  /* Generous top overdraw: covers the safe area AND the gap iOS rubber-band
+     overscroll opens above the pinned bar (on-device report: strips bled
+     through during the bounce). Off-viewport when pinned normally. */
+  inset: calc(-120px - env(safe-area-inset-top)) -16px -12px;
   z-index: -1;
   pointer-events: none;
-  background: linear-gradient(180deg, var(--bg) 0%, var(--bg) 78%, rgba(238, 241, 248, 0) 100%);
+  background: linear-gradient(180deg, var(--bg) 0%, var(--bg) 88%, rgba(238, 241, 248, 0) 100%);
 }
 .resource {
   /* Stacked + centered so all three cards are visually identical and balanced

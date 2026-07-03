@@ -12,10 +12,12 @@ export interface Settings {
   rackSkin: string;
   /** First-run onboarding seen? Persisted so it shows exactly once. */
   onboarded: boolean;
+  /** One-time "what does Shipping do" explainer seen? (shows at first ship-ready). */
+  shipExplained: boolean;
 }
 
 const KEY = "singularity.settings.v1";
-const DEFAULTS: Settings = { sound: true, music: true, haptics: true, reducedMotion: false, hallTheme: "classic", rackSkin: "classic", onboarded: false };
+const DEFAULTS: Settings = { sound: true, music: true, haptics: true, reducedMotion: false, hallTheme: "classic", rackSkin: "classic", onboarded: false, shipExplained: false };
 
 function load(): Settings {
   try {
@@ -31,7 +33,7 @@ function persist(s: Settings): void {
   try {
     localStorage.setItem(
       KEY,
-      JSON.stringify({ sound: s.sound, music: s.music, haptics: s.haptics, reducedMotion: s.reducedMotion, hallTheme: s.hallTheme, rackSkin: s.rackSkin, onboarded: s.onboarded }),
+      JSON.stringify({ sound: s.sound, music: s.music, haptics: s.haptics, reducedMotion: s.reducedMotion, hallTheme: s.hallTheme, rackSkin: s.rackSkin, onboarded: s.onboarded, shipExplained: s.shipExplained }),
     );
   } catch {
     /* ignore */
@@ -43,6 +45,7 @@ interface SettingsStore extends Settings {
   setHallTheme: (id: string) => void;
   setRackSkin: (id: string) => void;
   completeOnboarding: () => void;
+  markShipExplained: () => void;
 }
 
 /** Player feel preferences. Persisted locally; read by sound/haptics/motion. */
@@ -62,6 +65,10 @@ export const useSettings = create<SettingsStore>((set, get) => ({
   },
   completeOnboarding: () => {
     set({ onboarded: true });
+    persist(get());
+  },
+  markShipExplained: () => {
+    set({ shipExplained: true });
     persist(get());
   },
 }));

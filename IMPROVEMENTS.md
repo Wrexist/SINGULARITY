@@ -4,7 +4,7 @@ impact-per-effort. Sources: this session's engine/UX audits, the genre research,
 existing roadmap. E = effort (S/M/L), curve⚠ = needs `npm run sim` validation.*
 
 ## 1 · Play-feel & dopamine (biggest experience wins)
-1. **Moment queue** (E:S) — one arbiter for the five full-screen overlays (Celebration, EraTransition,
+1. ~~**Moment queue**~~ ✅ SHIPPED (E:S) — one arbiter for the five full-screen overlays (Celebration, EraTransition,
    ProductLaunch, WorldEventCard, OfflineModal). Today only one collision pair is guarded; a queue
    ends the class. The single most professional-feeling small fix left.
 2. **Generation Report share card** (E:M) — after Ship the Model, render the report (gen, headline,
@@ -36,10 +36,10 @@ existing roadmap. E = effort (S/M/L), curve⚠ = needs `npm run sim` validation.
 11. **Interactive first-run beats** (E:M) — replace the static welcome card with 3 in-place
     spotlights (Start run → Claim → first rack), each one tap. The ramp made the opening fast;
     spotlights would make it teach itself.
-12. **"What's a Ship?" pre-prestige explainer** (E:S) — the first time `shipReady` fires, a one-time
+12. ~~**"What's a Ship?" pre-prestige explainer**~~ ✅ SHIPPED (E:S) — the first time `shipReady` fires, a one-time
     sheet explaining what resets, what persists (team/products/trophies/reputation), and what
     Legacy Weights buy. The scariest button in the game deserves one screen.
-13. **Heat/suspicion first-cross coach line** (E:S) — one-time toast at first heat ≥25%: "Heat draws
+13. ~~**Heat/suspicion first-cross coach line**~~ ✅ SHIPPED (E:S) — one-time toast at first heat ≥25%: "Heat draws
     fines and raids — lobbying and cooling calm it." (The regulator currently explains itself only
     by punishing you.)
 14. **Number-format setting** (E:S) — scientific vs suffix notation toggle for endgame players.
@@ -62,7 +62,7 @@ existing roadmap. E = effort (S/M/L), curve⚠ = needs `npm run sim` validation.
     a real-device profile, not before.
 20. **VoiceOver pass** (E:M) — labels exist on nav/modals; sliders, the hall canvas (summary label),
     and chip rows need names. One afternoon, App Store review goodwill.
-21. **Notice queue in the store** (E:S) — the audit's A5: two same-tick notices drop one. A tiny
+21. ~~**Notice queue in the store**~~ ✅ SHIPPED (E:S) — the audit's A5: two same-tick notices drop one. A tiny
     FIFO in the store fixes level-up toasts lost behind version-ship toasts.
 22. **iPad layout** (E:M) — max-width already exists; a two-column stage (hall left, panels right)
     would make the iPad build feel intended rather than stretched.

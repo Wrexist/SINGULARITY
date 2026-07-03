@@ -116,6 +116,18 @@ export function App() {
   const music = useSettings((s) => s.music);
   const onboarded = useSettings((s) => s.onboarded);
   const completeOnboarding = useSettings((s) => s.completeOnboarding);
+  const shipExplained = useSettings((s) => s.shipExplained);
+  const markShipExplained = useSettings((s) => s.markShipExplained);
+  const [showShipExplainer, setShowShipExplainer] = useState(false);
+
+  // The moment queue's head: exactly ONE full-screen moment renders at a time,
+  // by priority. Dismissing the head lets the next pending one show.
+  const moment = offline ? "offline"
+    : celebration ? "celebration"
+    : eraMoment !== null ? "era"
+    : launch ? "launch"
+    : worldEvent ? "world"
+    : null;
 
   // Ambient music bed — follow the Music setting; pause while the tab is hidden
   // (battery). Starts on the first user gesture if audio isn't unlocked yet.
@@ -215,8 +227,10 @@ export function App() {
     { key: "shipReady", fact: shipReady, when: true, text: "You can Ship the Model!", tone: "good" },
     { key: "align", fact: alignDir, when: "accel", text: "Your choices tilt the lab accelerationist — faster, hotter. See Lab Stats.", tone: "neutral" },
     { key: "align", fact: alignDir, when: "doomer", text: "Your choices tilt the lab doomer — safer, steadier. See Lab Stats.", tone: "neutral" },
-    { key: "autoTrain", fact: d.autoTrain, when: true, text: "Auto-train online — runs restart themselves. Set your Compute focus.", tone: "good" },
+    { key: "autoTrain", fact: d.autoTrain, when: true, text: "Auto-train online — runs restart themselves. Set your training intensity.", tone: "good" },
     { key: "hired", fact: game.stats.employeesHired > 0, when: true, text: "First hire aboard — specialists level up as they work", tone: "good" },
+    // Heat used to explain itself only by punishing you (pre-launch audit).
+    { key: "heat", fact: game.heat >= 25, when: true, text: "Regulatory Heat is rising — fines and raids get likelier. Time and lobbying cool it.", tone: "neutral" },
     // Rig Bay trophies (C2): one row per trophy part. Trophies persist across
     // prestige (carryEarnedComponents), so the fact never flips back — one toast
     // per save, ever.
@@ -248,6 +262,13 @@ export function App() {
     syncedToSave.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialized, factSignature]);
+
+  // First-ever ship-ready: queue the one-time explainer (settings-persisted).
+  // Only for a first-generation lab — veterans already know what shipping does.
+  useEffect(() => {
+    if (!initialized || shipExplained || game.prestige.ships > 0) return;
+    if (shipReady) setShowShipExplainer(true);
+  }, [initialized, shipReady, shipExplained, game.prestige.ships]);
 
   // Era transitions: a full-screen tentpole moment when the lab crosses an era.
   // Guarded by the same hydration sync so it never fires on a returning load.
@@ -717,8 +738,13 @@ export function App() {
         </button>
       </nav>
 
-      {offline && <OfflineModal summary={offline} onClose={dismissOffline} />}
-      {celebration && (
+      {/* MOMENT QUEUE: the five full-screen moments render ONE at a time, by
+          priority (offline recap > ship celebration > era transition > product
+          launch > world event). Each keeps its own state; dismissing one lets
+          the next in line show. Replaces pairwise !x guards — any same-tick
+          combination now sequences instead of stacking. */}
+      {moment === "offline" && offline && <OfflineModal summary={offline} onClose={dismissOffline} />}
+      {moment === "celebration" && celebration && (
         <Celebration
           weightsGained={celebration.gained}
           totalWeights={celebration.total}
@@ -771,21 +797,33 @@ export function App() {
           onCancel={() => setConfirmReset(false)}
         />
       )}
-      {/* A ship that crosses an era fires BOTH tentpoles in one commit — hold the
-          era moment until the ship celebration is dismissed so they never stack. */}
-      {eraMoment !== null && !celebration && <EraTransition era={eraMoment} onDone={() => setEraMoment(null)} />}
-      {launch && (
+      {moment === "era" && eraMoment !== null && <EraTransition era={eraMoment} onDone={() => setEraMoment(null)} />}
+      {moment === "launch" && launch && (
         <ProductLaunch
           name={launch.name}
           typeName={typeDef(launch.type).name}
           onDone={() => setLaunch(null)}
         />
       )}
-      {worldEvent && (
+      {moment === "world" && worldEvent && (
         <WorldEventCard
           event={worldEvent}
           onDismiss={dismissWorldEvent}
           onChoose={(i) => { haptics.tap(); sound.tap(); chooseWorldEvent(i); }}
+        />
+      )}
+      {/* One-time "what does Shipping do" explainer, shown the first time a ship
+          is ready (persisted in settings — the scariest button in the game
+          deserves one screen before it's pressed). */}
+      {moment === null && showShipExplainer && (
+        <ConfirmSheet
+          kicker="SHIP THE MODEL"
+          title="Your first Ship is ready"
+          body="Shipping resets this run — Compute, Data, $, racks, parts and research — and banks Legacy Weights: a permanent boost to every future run. Your team, products, trophies, achievements and Reputation all stay. Shipping is how you grow."
+          confirmLabel="Got it"
+          hideCancel
+          onConfirm={() => { markShipExplained(); setShowShipExplainer(false); }}
+          onCancel={() => { markShipExplained(); setShowShipExplainer(false); }}
         />
       )}
       {!onboarded && !offline && <Onboarding onDone={completeOnboarding} />}
