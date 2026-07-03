@@ -69,7 +69,7 @@ export function App() {
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
     doClaimContract, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
-    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter } =
+    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival } =
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
@@ -636,6 +636,11 @@ export function App() {
             onBuyFeature={doBuyFeature}
             onRename={doRenameProduct}
             onRetire={onRetireProductFx}
+            onCounterRival={(name) => {
+              if (!doCounterRival(name)) return;
+              haptics.success(); sound.alert();
+              pushToast(`Press blitz lands on ${name} — their comms team scrambles.`, "good");
+            }}
           />
         ) : tab === "employees" && showStaff ? (
           <EmployeesPanel

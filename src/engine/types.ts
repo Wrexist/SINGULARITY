@@ -107,6 +107,12 @@ export interface GameState {
    *  a slot class to the equipped id. Bought with in-run Money, so like racks it
    *  RESETS on prestige (the acquirer takes the GPUs). See RIG_BAY_PLAN.md. */
   components: ComponentsState;
+  /** Rival counterplay (IMPROVEMENTS #8): press-blitz strikes landed this run
+   *  (rival name → count; each shrinks that rival's leaderboard user base) plus
+   *  the playtime stamp of the last strike (null = never) for the cooldown.
+   *  Pure sidecar — affects only the market race, never incomes. Resets on
+   *  prestige (the board reshuffles when the lab ships). */
+  rivalOps: { strikes: Record<string, number>; lastStrikeSec: number | null };
   /** Peak Compute/sec achieved since the last ship (generation-scoped; reset by
    *  prestige). Feeds the Generation Report so it shows THIS run's high-water mark,
    *  not the all-time career peak. Not persisted — a mid-run reload simply re-accrues. */

@@ -50,6 +50,7 @@ import { achievements as ACHIEVEMENT_DEFS } from "../engine/balance/achievements
 import { buyReputationPerk } from "../engine/reputation";
 import { claimContract } from "../engine/contracts";
 import { setCharter, lockCharter } from "../engine/charter";
+import { counterRival } from "../engine/market";
 import { buyLegacyPerk } from "../engine/legacyTree";
 import { prestige, type ShipMode } from "../engine/prestige";
 import { applyOffline, type OfflineSummary } from "../engine/offline";
@@ -134,6 +135,7 @@ interface GameStore {
   doSetCharter: (id: string | null) => void;
   /** Lock the current charter pick for this run (owner UX fix). */
   doLockCharter: () => void;
+  doCounterRival: (name: string) => boolean;
   doBuyLegacyPerk: (id: string) => void;
   /** Open recruiting (rolls 3 candidates) / re-roll / close. */
   doRecruit: () => void;
@@ -455,6 +457,15 @@ export const useGame = create<GameStore>((set, get) => ({
   doClaimContract: (id) => set((s) => ({ game: claimContract(s.game, id) })),
   doSetCharter: (id) => set((s) => ({ game: setCharter(s.game, id) })),
   doLockCharter: () => set((s) => ({ game: lockCharter(s.game) })),
+  // Returns whether the blitz actually landed (same-ref no-op when the guard
+  // fails between render and tap), so the UI only celebrates real strikes.
+  doCounterRival: (name: string) => {
+    const before = get().game;
+    const next = counterRival(before, name);
+    if (next === before) return false;
+    set({ game: next });
+    return true;
+  },
   doBuyLegacyPerk: (id) => set((s) => ({ game: buyLegacyPerk(s.game, id) })),
   doRecruit: () => set({ candidates: [rollCandidate(), rollCandidate(), rollCandidate()] }),
   doRefreshCandidates: () => set({ candidates: [rollCandidate(), rollCandidate(), rollCandidate()] }),

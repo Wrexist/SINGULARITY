@@ -8,6 +8,7 @@ import { reputation as REPUTATION } from "./balance/reputation";
 import { charters as CHARTERS } from "./balance/charters";
 import { balance } from "./balance/config";
 import { components as COMPONENTS, SLOTS_BY_TIER, type SlotClass } from "./balance/components";
+import { market as MARKET } from "./balance/market";
 import { freshComponents } from "./components";
 import type { ActiveModifier, ComponentsState, DraftModel, Employee, GameState, LifetimeStats, ModifierTarget, ProductsState, ProductState, UpgradeState } from "./types";
 
@@ -21,6 +22,7 @@ const CONTRACT_IDS = new Set(CONTRACTS.pool.map((c) => c.id));
 const LEGACY_IDS = new Set(LEGACY.perks.map((p) => p.id));
 const REP_PERK_COST = new Map(REPUTATION.perks.map((p) => [p.id, p.cost]));
 const CHARTER_IDS = new Set(CHARTERS.list.map((c) => c.id));
+const RIVAL_NAMES = new Set(MARKET.rivals.map((r) => r.name));
 const RESEARCH_IDS = new Set(balance.research.map((r) => r.id));
 
 /** Keep only known ids, each at most once (order preserved). Closes the duplicate /
@@ -267,6 +269,7 @@ interface SavedShape {
   lastCharter: string | null;
   legacyInvestments: string[];
   components: ComponentsState;
+  rivalOps: GameState["rivalOps"];
 }
 
 export function serialize(state: GameState): string {
@@ -317,6 +320,7 @@ export function serialize(state: GameState): string {
     lastCharter: state.lastCharter,
     legacyInvestments: state.legacyInvestments,
     components: state.components,
+    rivalOps: state.rivalOps,
   };
   return JSON.stringify(shape);
 }
@@ -437,12 +441,31 @@ export function deserialize(json: string): GameState {
     // (legacyTreeMods sums per entry and never checks prereqs on load).
     legacyInvestments: dedupeKnownIds(raw.legacyInvestments, LEGACY_IDS),
     components: sanitizeComponents(raw.components, contracts.completed, achievements),
+    rivalOps: sanitizeRivalOps(raw.rivalOps),
     // Generation-scoped (not persisted): a mid-run reload simply re-accrues the run
     // peaks, and the ship report is transient — both start fresh on load.
     runPeakCompute: fresh.runPeakCompute,
     runPeakMrr: fresh.runPeakMrr,
     lastShipReport: fresh.lastShipReport,
   };
+}
+
+/** Rival counterplay is untrusted: KNOWN rival names only, strike counts clamped
+ *  to the per-run max (a crafted save could otherwise zero every rival), and the
+ *  cooldown stamp bounded so it can't push the next blitz into next century. */
+function sanitizeRivalOps(r: unknown): GameState["rivalOps"] {
+  const o = (r ?? {}) as Partial<GameState["rivalOps"]>;
+  const strikes: Record<string, number> = {};
+  if (o.strikes && typeof o.strikes === "object") {
+    for (const [name, n] of Object.entries(o.strikes)) {
+      if (name === "__proto__" || !RIVAL_NAMES.has(name)) continue;
+      if (typeof n !== "number" || !Number.isFinite(n) || n <= 0) continue;
+      strikes[name] = Math.min(MARKET.counterplay.maxStrikesPerRival, Math.floor(n));
+    }
+  }
+  const last = o.lastStrikeSec;
+  const lastStrikeSec = typeof last === "number" && Number.isFinite(last) && last >= 0 ? last : null;
+  return { strikes, lastStrikeSec };
 }
 
 /** Contracts are untrusted: KNOWN completed-contract ids, each at most once — a
@@ -601,6 +624,10 @@ export function migrate(raw: any): SavedShape {
   if (s.version === 17) {
     // v17 → v18: explicit charter lock (owner UX fix). Old runs are unlocked.
     s = { ...s, version: 18, charterLocked: s.charterLocked ?? false };
+  }
+  if (s.version === 18) {
+    // v18 → v19: rival counterplay. No strikes landed on existing saves.
+    s = { ...s, version: 19, rivalOps: s.rivalOps ?? { strikes: {}, lastStrikeSec: null } };
   }
   return s as SavedShape;
 }

@@ -58,6 +58,12 @@ export function rivalReaction(focus: RivalFocus, hasProduct: boolean, beatingPla
       : "You've passed them. Their CFO is 'exploring strategic options'.";
 }
 
+/** Counterplay: a rival's user multiplier after this run's press-blitz strikes. */
+export function setbackMult(state: GameState, rivalName: string): number {
+  const strikes = state.rivalOps.strikes[rivalName] ?? 0;
+  return Math.pow(M.counterplay.effectPerStrike, strikes);
+}
+
 export function marketLeaderboard(state: GameState): MarketEntry[] {
   const frontier = Math.max(0, state.products.frontier);
   const rivalPool = M.rivalBaseUsers + frontier * M.rivalUsersPerFrontier;
@@ -67,7 +73,15 @@ export function marketLeaderboard(state: GameState): MarketEntry[] {
 
   const entries: Omit<MarketEntry, "share">[] = [
     ...M.rivals.map((r) => {
-      const users = (rivalPool * r.weight) / weightSum;
+      const users = ((rivalPool * r.weight) / weightSum) * setbackMult(state, r.name);
+      const struck = (state.rivalOps.strikes[r.name] ?? 0) > 0;
+      // A blitzed rival reacts to THAT before anything else — the point of
+      // counterplay is seeing the character absorb the hit.
+      const reaction = struck
+        ? users > myBest
+          ? "Shaken by your press blitz — still ahead, but the comms team is sweating."
+          : "Reeling from your press blitz. 'We remain focused on our mission,' etc."
+        : rivalReaction(r.focus, hasProduct, users > myBest);
       return {
         name: r.name,
         vendor: r.vendor,
@@ -75,7 +89,7 @@ export function marketLeaderboard(state: GameState): MarketEntry[] {
         isYou: false,
         focus: r.focus,
         blurb: r.blurb,
-        reaction: rivalReaction(r.focus, hasProduct, users > myBest),
+        reaction,
       };
     }),
     ...state.products.active.map((p) => ({ name: p.name, vendor: "You", users: p.mau, isYou: true })),
@@ -92,6 +106,56 @@ export function playerMarketRank(state: GameState): number | null {
   const board = marketLeaderboard(state);
   const idx = board.findIndex((e) => e.isYou);
   return idx === -1 ? null : idx + 1;
+}
+
+// ---------- Rival counterplay (IMPROVEMENTS #8) ----------
+// A press blitz dents a rival's user base for the rest of the run. The
+// leaderboard is a pure sidecar (nothing feeds incomes from it), so this buys
+// race position — a money sink, deliberately not an economy lever.
+
+/** Money cost to blitz this rival right now (scales with their current size). */
+export function counterCost(state: GameState, rivalName: string): number {
+  const board = marketLeaderboard(state);
+  const rival = board.find((e) => !e.isYou && e.name === rivalName);
+  if (!rival) return Infinity;
+  return Math.max(1, Math.round(rival.users * M.counterplay.costPerUser));
+}
+
+/** Seconds of playtime until the press cycle allows another blitz (0 = ready). */
+export function counterCooldownRemaining(state: GameState): number {
+  const last = state.rivalOps.lastStrikeSec;
+  if (last === null) return 0;
+  return Math.max(0, M.counterplay.cooldownSec - (state.stats.playtimeSec - last));
+}
+
+/** A blitz needs: the feature on, a live product (no one covers a lab with no
+ *  product), a real target that's AHEAD of you with strikes left, a reset press
+ *  cycle, and the cash. */
+export function canCounterRival(state: GameState, rivalName: string): boolean {
+  if (!M.counterplay.enabled) return false;
+  if (state.products.active.length === 0) return false;
+  if (!M.rivals.some((r) => r.name === rivalName)) return false;
+  if ((state.rivalOps.strikes[rivalName] ?? 0) >= M.counterplay.maxStrikesPerRival) return false;
+  if (counterCooldownRemaining(state) > 0) return false;
+  const board = marketLeaderboard(state);
+  const rival = board.find((e) => !e.isYou && e.name === rivalName)!;
+  const myBest = bestPlayerUsers(state);
+  if (rival.users <= myBest) return false; // you don't blitz someone you've beaten
+  return state.resources.money.gte(counterCost(state, rivalName));
+}
+
+/** Land the blitz: pay, bump the strike count, stamp the press cycle. */
+export function counterRival(state: GameState, rivalName: string): GameState {
+  if (!canCounterRival(state, rivalName)) return state;
+  const cost = counterCost(state, rivalName);
+  return {
+    ...state,
+    resources: { ...state.resources, money: state.resources.money.sub(cost) },
+    rivalOps: {
+      strikes: { ...state.rivalOps.strikes, [rivalName]: (state.rivalOps.strikes[rivalName] ?? 0) + 1 },
+      lastStrikeSec: state.stats.playtimeSec,
+    },
+  };
 }
 
 /** How many named rivals the player's strongest product currently outranks (0..N).
