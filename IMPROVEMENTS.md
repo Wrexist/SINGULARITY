@@ -7,9 +7,9 @@ existing roadmap. E = effort (S/M/L), curve⚠ = needs `npm run sim` validation.
 1. ~~**Moment queue**~~ ✅ SHIPPED (E:S) — one arbiter for the five full-screen overlays (Celebration, EraTransition,
    ProductLaunch, WorldEventCard, OfflineModal). Today only one collision pair is guarded; a queue
    ends the class. The single most professional-feeling small fix left.
-2. **Generation Report share card** (E:M) — after Ship the Model, render the report (gen, headline,
+2. ~~**Generation Report share card**~~ ✅ SHIPPED (E:M) — after Ship the Model, render the report (gen, headline,
    peaks, rivals beaten) to a canvas PNG + iOS share sheet. Free word-of-mouth; zero network.
-3. **Era-aware music layers** (E:M) — sound.ts already has era/ship swells; add one ambient layer per
+3. ~~**Era-aware music layers**~~ ✅ SHIPPED (E:M) — sound.ts already has era/ship swells; add one ambient layer per
    era so the hall *sounds* like it grows. Big atmosphere for ~no bundle cost (all synthesized).
 4. **Rack-tap micro-interactions** (E:S) — tapping a rack shows its info card today; add a tiny
    per-tap LED flicker + haptic so the hall feels physical even when there's nothing to decide.
@@ -22,7 +22,7 @@ existing roadmap. E = effort (S/M/L), curve⚠ = needs `npm run sim` validation.
    content ceiling left.
 7. **Charter-conviction arcs** (E:M) — charters already reward repeat picks (+15%); add a 3-run
    "dynasty" tier with a named title per charter. Build identity across prestiges.
-8. **Rival counterplay events** (E:M) — when you overtake a rival on the leaderboard, queue a themed
+8. ~~**Rival counterplay events**~~ ✅ SHIPPED as the press blitz (E:M) — when you overtake a rival on the leaderboard, queue a themed
    world event from THAT rival ("Anthropos ships a safety paper; your accel products take heat").
    Makes the market feel alive; pool-gated so neutral stays baseline.
 9. **Regulator negotiation choice** (E:M) — at high suspicion, a one-time world-event choice:
@@ -33,7 +33,7 @@ existing roadmap. E = effort (S/M/L), curve⚠ = needs `npm run sim` validation.
     care about cooling. Efficiency lane only (see C4 learning).
 
 ## 3 · Onboarding & clarity
-11. **Interactive first-run beats** (E:M) — replace the static welcome card with 3 in-place
+11. ~~**Interactive first-run beats**~~ ✅ SHIPPED as the First Steps checklist (E:M) — replace the static welcome card with 3 in-place
     spotlights (Start run → Claim → first rack), each one tap. The ramp made the opening fast;
     spotlights would make it teach itself.
 12. ~~**"What's a Ship?" pre-prestige explainer**~~ ✅ SHIPPED (E:S) — the first time `shipReady` fires, a one-time
@@ -45,7 +45,7 @@ existing roadmap. E = effort (S/M/L), curve⚠ = needs `npm run sim` validation.
 14. **Number-format setting** (E:S) — scientific vs suffix notation toggle for endgame players.
 
 ## 4 · Retention (honest, no dark patterns)
-15. **R8.2 backup UX → iCloud** (E:M→L, roadmap) — Share-sheet export, import preview using
+15. ~~**R8.2 backup UX → iCloud**~~ ✅ Stage A SHIPPED (share-sheet export, import preview, gentle nudge); iCloud Drive auto-backup remains (E:M→L, roadmap) — Share-sheet export, import preview using
     ConfirmSheet, then CloudKit behind a SaveSync interface. The single biggest churn-protector:
     a lost save is a lost player.
 16. **Post-session recap in WIWA** (E:S) — the offline modal shows gains; add "while away: 2
@@ -53,7 +53,7 @@ existing roadmap. E = effort (S/M/L), curve⚠ = needs `npm run sim` validation.
 17. **Notification opt-in for run completion** (E:M) — a single LOCAL notification "your training
     run finished" (user-enabled, no scheduling tricks). Honest re-engagement; Capacitor local
     notifications, zero server.
-18. **Game Center achievements mirror** (E:M) — the 53 achievements already exist; mirroring to
+18. ~~**Game Center achievements mirror**~~ ✅ APP SIDE SHIPPED (bridge + Settings row + score submits; native plugin blocked on a Capacitor-6 release — see GAME_CENTER_SETUP.md) (E:M) — the 53 achievements already exist; mirroring to
     Game Center gets platform-level visibility for free.
 
 ## 5 · Polish & professionalism
@@ -83,6 +83,10 @@ existing roadmap. E = effort (S/M/L), curve⚠ = needs `npm run sim` validation.
   the current honest-premium stance is a genuine differentiator; I recommend keeping it.
 
 ## Suggested order of attack
-Moment queue (1) → Ship explainer (12) → heat coach (13) → notice queue (21) → share card (2) →
+~~Moment queue (1) → Ship explainer (12) → heat coach (13) → notice queue (21) → share card (2) →
 R8.2 backup (15) → rival counterplay (8) → interactive onboarding (11) → music layers (3) →
-Game Center (18) → the rest by telemetry once a TestFlight build with telemetry has real sessions.
+Game Center (18)~~ — **all shipped** (Game Center's native half waits on a Capacitor-6 plugin,
+see GAME_CENTER_SETUP.md). Next wave, in order:
+milestone chase ladder (5) → rack-tap micro-interactions (4) → post-session recap (16) →
+panel memoization (19) → number-format setting (14) → haptic intensity (23) — then the
+curve-touching depth items (6, 7, 9, 10) by telemetry once a TestFlight build has real sessions.

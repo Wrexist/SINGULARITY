@@ -128,21 +128,33 @@ features. Two audit passes (engine + UI) ran first; every shipped fix was verifi
       ref (was 3 tier scans per 30fps frame); advisor locked-tab sweep de-vacuized (now guarded to
       actually exercise the products/employees branches). 477 tests · sim byte-identical
       (57m59s/62m17s · wall 1m05s) · build clean.
-- [ ] **NEXT (prioritized plan, owner-ready — full ranked list in IMPROVEMENTS.md):**
-      1. **Prestige share card** (IMPROVEMENTS #2): canvas-rendered run-summary image on the ship
-         Celebration → native share sheet. Zero-network virality; no privacy change.
-      2. **R8.2 Stage A — backup UX** (roadmap): Share-sheet export, import preview+confirm (the
-         ConfirmSheet now exists), gentle backup nudge. No backend, no privacy change.
-      3. **Rival counterplay** (IMPROVEMENTS #8): a light response when a rival overtakes you —
-         makes the leaderboard a game, not a graph.
-      4. **Interactive onboarding** (IMPROVEMENTS #11): replace the read-only cards with
-         do-the-thing steps (start a run → claim → buy a rack).
-      5. **Music layers** (IMPROVEMENTS #3): era-keyed ambient layers on the existing WebAudio
-         engine (still no assets — synthesized).
-      6. **Game Center** (IMPROVEMENTS #18): ships/ascensions leaderboards + achievement mirror
-         (Capacitor plugin; the only item needing a native rebuild).
-      Then: **research-tree deepening** (owner design call — 23 nodes is the endgame ceiling) and
-      **post-TestFlight telemetry read** (R8.1 tab-usage + gen-times) before further balance moves.
+- [x] **"Do all" wave (owner 2026-07-03) — the six planned improvements, each verified + committed:**
+      1. **Prestige share card** (#2): runtime-drawn 1080×1350 Generation Report PNG (headline,
+         stat grid, era; zero image assets) → Web Share API with text/download/clipboard fallbacks;
+         Share button on the Celebration pauses its auto-dismiss. Rendered + inspected headless.
+      2. **Backup UX R8.2 Stage A** (#15): "Share backup…" hands the save as a .txt to the OS share
+         sheet; the restore confirm now PREVIEWS the pasted backup (gen/era/money/achievements/
+         playtime — bad pastes fail at preview); one-time backup nudge at 2 ships if never backed
+         up (settings.lastBackupAt). E2E-driven: preview text + invalid-paste rejection.
+      3. **Rival counterplay — the press blitz** (#8): rivals AHEAD of you can be blitzed from the
+         leaderboard (cost scales with their user base; −15% users per strike for the run; max 3
+         per rival; 240s press cycle). Curve-safe by construction — the leaderboard is a pure
+         sidecar, so it's a money sink buying race position + reeling reactions. Save v19
+         (+migration/sanitizer). +4 tests (481). Sim byte-identical (57m59s/62m17s · wall 1m05s).
+      4. **Interactive onboarding — First Steps** (#11): a live 3-step checklist on Build (start a
+         run → claim → buy a rack) that ticks off REAL state facts and retires itself; no new
+         persistence. Welcome modal slimmed to point at it. E2E-driven through all three steps.
+      5. **Music layers** (#3): the ambient pad is now era-keyed data (root walks up, filter opens,
+         later eras add a voice) with a natural crossfade on era change. Still zero audio assets.
+      6. **Game Center** (#18): full app-side bridge (score submits each prestige, hydration-synced
+         achievement mirror, Settings row) that silently no-ops until a native `GameConnect` plugin
+         exists — the only maintained plugin peers on Capacitor 5 vs our 6, so the dependency is
+         deliberately deferred. Owner steps in GAME_CENTER_SETUP.md.
+- [ ] **NEXT:** milestone chase ladder (#5) → rack-tap micro-interactions (#4) → post-session recap
+      (#16) → panel memoization (#19); **research-tree deepening** (owner design call) and the
+      **post-TestFlight telemetry read** (R8.1) before further balance moves. Owner actions open:
+      run the iOS TestFlight workflow (merging ≠ shipping), confirm GitHub Pages links, and the
+      Game Center native steps when a Capacitor-6 plugin lands.
 - [ ] **Flagged for owner (not touched):** run yields apply global multipliers twice (derive.ts —
       runComputeCost carries them, then runMoney/DataYield multiply again). The tuned curve is BUILT
       on this behaviour, so changing it = a full retune; decide deliberately. Also noted: App's
