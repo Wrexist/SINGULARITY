@@ -190,7 +190,8 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
               </div>
               <input className="pd-slider" type="range" min={Math.round(B.priceMin * 10)} max={Math.round(B.priceMax * 10)} step={1}
                 style={fill(((p.priceMult - B.priceMin) / (B.priceMax - B.priceMin)) * 100)}
-                value={Math.round(p.priceMult * 10)} onChange={(e) => onSetPrice(p.id, Number(e.target.value) / 10)} aria-label="Pro pricing" />
+                value={Math.round(p.priceMult * 10)} onChange={(e) => onSetPrice(p.id, Number(e.target.value) / 10)} aria-label="Pro pricing"
+                aria-valuetext={`${p.priceMult.toFixed(1)} times base price`} />
             </div>
             {enterpriseUnlocked(game) ? (
               <div className="pd-card">
@@ -203,7 +204,8 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
                     <div className="pd-card-row pd-sub-row"><span>Enterprise price ×{p.enterprisePrice.toFixed(1)}</span><span>~{B.enterprise.arpuMult}× revenue/user</span></div>
                     <input className="pd-slider" type="range" min={Math.round(B.enterprise.priceMin * 10)} max={Math.round(B.enterprise.priceMax * 10)} step={1}
                       style={fill(((p.enterprisePrice - B.enterprise.priceMin) / (B.enterprise.priceMax - B.enterprise.priceMin)) * 100)}
-                      value={Math.round(p.enterprisePrice * 10)} onChange={(e) => onSetEnterprisePrice(p.id, Number(e.target.value) / 10)} aria-label="Enterprise pricing" />
+                      value={Math.round(p.enterprisePrice * 10)} onChange={(e) => onSetEnterprisePrice(p.id, Number(e.target.value) / 10)} aria-label="Enterprise pricing"
+                      aria-valuetext={`${p.enterprisePrice.toFixed(1)} times base price`} />
                   </>
                 )}
               </div>
@@ -223,7 +225,8 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
               <div className="pd-card">
                 <div className="pd-card-row"><span className="pd-card-label">Total budget</span><span className="pd-card-value">{m$(p.marketingPerSec)} /s</span></div>
                 <input className="pd-slider" type="range" min={0} max={mktCap} step={Math.max(1, Math.round(mktCap / 50))}
-                  style={fill(budgetPct)} value={Math.min(p.marketingPerSec, mktCap)} onChange={(e) => onSetMarketing(p.id, Number(e.target.value))} aria-label="Marketing budget" />
+                  style={fill(budgetPct)} value={Math.min(p.marketingPerSec, mktCap)} onChange={(e) => onSetMarketing(p.id, Number(e.target.value))} aria-label="Marketing budget"
+                  aria-valuetext={`${m$(p.marketingPerSec)} per second`} />
               </div>
               <div className="pd-section-head">
                 <span>Channel split</span>
@@ -244,7 +247,8 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
                       <span className="pd-channel-pct">{pct}%</span>
                     </div>
                     <input className="pd-slider" type="range" min={0} max={100} step={5}
-                      style={fill(Math.round(w * 100))} value={Math.round(w * 100)} onChange={(e) => onSetChannelMix(p.id, c.id, Number(e.target.value) / 100)} aria-label={`${c.name} weight`} />
+                      style={fill(Math.round(w * 100))} value={Math.round(w * 100)} onChange={(e) => onSetChannelMix(p.id, c.id, Number(e.target.value) / 100)} aria-label={`${c.name} weight`}
+                      aria-valuetext={`${pct} percent of the split`} />
                   </label>
                 );
               })}

@@ -90,7 +90,8 @@ export function TrainingDock({ game, derived, onStart, onClaim, onSetFocus }: Pr
             step={5}
             value={Math.round(focus * 100)}
             onChange={(e) => onSetFocus(Number(e.target.value) / 100)}
-            aria-label="Compute focus"
+            aria-label="Training intensity"
+            aria-valuetext={focusLabel}
           />
           <div className="focus-ends">
             <span>Light runs · bank Compute</span>
