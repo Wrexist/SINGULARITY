@@ -29,13 +29,13 @@ An AI compute tycoon (idle/incremental + management) with a 2.5D data-center hal
 > resources only (Legacy/Reputation are meta-currencies, not a 4th resource); engine pure/deterministic;
 > humor in writing not math; all new systems are data-in-`balance/` + pure folds + tests.
 > **CURVE (retuned 2026-07-02 — "fun opening, progressively harder", now WITH Rig Bay):** first
-> prestige **≈ 61m24s / 62m47s** (owner band held), meta-loop **Gen2 ≈ 13–14m, Gen3 ≈ 10m**,
-> longest dead-air gap **~1m08s** (the opening is purchase-dense: first rack ≈ $15 inside the first
+> prestige **≈ 60m59s / 62m17s** (owner band held), meta-loop **Gen2 ≈ 13–14m, Gen3 ≈ 10m**,
+> longest dead-air gap **~1m06s** (the opening is purchase-dense: first rack ≈ $15 inside the first
 > minute, auto-claim ≈ 3m40s, first Rig Bay part ≈ 4m40s, auto-train ≈ 8m20s). Pace is set by FOUR
 > knobs in **`balance.difficulty`** (see LEARNINGS): **`costMult` (2.0)** scales RESEARCH cost —
 > research is gated by a fixed COMPUTE stock against a fixed income ceiling, so pushing this WALLS
-> the game; leave it modest. **`upgradeCostMult` (4.0)** is the SAFE length dial — scales upgrade
-> cost only (raised 2.0→4.0 to absorb the income the Rig Bay components add; the sim BUYS
+> the game; leave it modest. **`upgradeCostMult` (4.2)** is the SAFE length dial — scales upgrade
+> cost only (raised 2.0→4.2 to absorb the income the Rig Bay components add; the sim BUYS
 > components, so this number already prices them in). **`upgradeCostRampLevels` (12)** ramps the
 > COMBINED costMult×upgradeCostMult from ×1 at level 0 to full strength by this many owned — the
 > opening hook; raising `upgradeCostMult` never slows the opening, only the grind.

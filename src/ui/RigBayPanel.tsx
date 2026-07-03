@@ -2,13 +2,14 @@ import { useState } from "react";
 import { Portal } from "./Portal";
 import { Big } from "../engine/math/Big";
 import {
-  SLOTS_BY_TIER, componentDef, visibleCatalog, canBuyComponent, equippedCount,
+  componentsBalance, SLOTS_BY_TIER, componentDef, visibleCatalog, canBuyComponent, equippedCount,
+  earnedDefs, earnedSourceComplete, canFuse,
 } from "../engine/components";
 import type { SlotClass, ComponentDef, ComponentGrade } from "../engine/balance/components";
 import { RACK_IDS } from "../engine/hall";
 import { balance } from "../engine/balance/config";
 import { fmtMoney } from "./format";
-import { ChipIcon, SnowIcon, LinkIcon } from "./Icons";
+import { ChipIcon, SnowIcon, LinkIcon, LockIcon, TrophyIcon } from "./Icons";
 import type { GameState } from "../engine/types";
 import type { ReactNode } from "react";
 
@@ -18,6 +19,8 @@ interface Props {
   onBuy: (id: string) => void;
   /** Equip an owned copy into a tier slot (null clears). */
   onEquip: (tier: number, slot: SlotClass, id: string | null) => void;
+  /** Fuse copies of a part into the next rung up its ladder (C3). */
+  onFuse: (id: string) => void;
 }
 
 const SLOT_META: Record<SlotClass, { label: string; icon: ReactNode }> = {
@@ -47,17 +50,21 @@ function tierName(tier: number): string {
  * tap a slot, pick a part; owned parts equip instantly, unowned buy-and-equip
  * in one tap. Fixed catalog, one stat per part (see RIG_BAY_PLAN.md).
  */
-export function RigBayPanel({ game, onBuy, onEquip }: Props) {
+export function RigBayPanel({ game, onBuy, onEquip, onFuse }: Props) {
   // Which slot's chooser is open, if any.
   const [picking, setPicking] = useState<{ tier: number; slot: SlotClass } | null>(null);
 
   const tiersWithRacks = SLOTS_BY_TIER.map((_, t) => t).filter((t) => (game.upgrades[RACK_IDS[t]!] ?? 0) > 0);
   const catalog = visibleCatalog(game);
+  // Collection chase: distinct parts owned vs the whole catalog (incl. trophies).
+  const ownedDistinct = Object.keys(game.components.owned).filter((id) => (game.components.owned[id] ?? 0) > 0).length;
 
   const chooser = picking && (() => {
     const { tier, slot } = picking;
     const current = game.components.loadout[tier]?.[slot] ?? null;
     const options = catalog.filter((d) => d.class === slot);
+    // Trophy chase targets of this class still locked — visible, deterministic goals.
+    const lockedTrophies = earnedDefs().filter((d) => d.class === slot && !earnedSourceComplete(game, d));
     return (
       <Portal>
         <div className="modal-backdrop" onClick={() => setPicking(null)}>
@@ -78,32 +85,49 @@ export function RigBayPanel({ game, onBuy, onEquip }: Props) {
               const hasFree = owned - inUse + (isCurrent ? 1 : 0) > 0;
               const affordable = canBuyComponent(game, def.id);
               const action = isCurrent ? "equipped" : hasFree ? "equip" : affordable ? "buy" : "poor";
+              const fusable = canFuse(game, def.id);
               return (
-                <button
-                  key={def.id}
-                  className={`rig-option grade-${def.grade} ${isCurrent ? "current" : ""}`}
-                  disabled={action === "equipped" || action === "poor"}
-                  onClick={() => {
-                    if (action === "buy") onBuy(def.id);
-                    onEquip(tier, slot, def.id);
-                    setPicking(null);
-                  }}
-                >
-                  <div className="rig-option-main">
-                    <span className="rig-option-name">
-                      {def.name} <em className={`rig-grade grade-${def.grade}`}>{GRADE_LABEL[def.grade]}</em>
+                <div key={def.id} className="rig-row">
+                  <button
+                    className={`rig-option grade-${def.grade} ${isCurrent ? "current" : ""}`}
+                    disabled={action === "equipped" || action === "poor"}
+                    onClick={() => {
+                      if (action === "buy") onBuy(def.id);
+                      onEquip(tier, slot, def.id);
+                      setPicking(null);
+                    }}
+                  >
+                    <div className="rig-option-main">
+                      <span className="rig-option-name">
+                        {def.earnedBy && <TrophyIcon size={12} />} {def.name} <em className={`rig-grade grade-${def.grade}`}>{GRADE_LABEL[def.grade]}</em>
+                      </span>
+                      <span className="rig-option-stat">{fmtEffect(def)}</span>
+                      <span className="rig-option-desc">{def.desc}</span>
+                      {owned > 0 && <span className="rig-option-owned">{owned} owned · {inUse} slotted</span>}
+                    </div>
+                    <span className="rig-option-go">
+                      {action === "equipped" ? "✓ fitted" : action === "equip" ? "Fit it" : fmtMoney(Big.of(def.cost))}
                     </span>
-                    <span className="rig-option-stat">{fmtEffect(def)}</span>
-                    <span className="rig-option-desc">{def.desc}</span>
-                    {owned > 0 && <span className="rig-option-owned">{owned} owned · {inUse} slotted</span>}
-                  </div>
-                  <span className="rig-option-go">
-                    {action === "equipped" ? "✓ fitted" : action === "equip" ? "Fit it" : fmtMoney(Big.of(def.cost))}
-                  </span>
-                </button>
+                  </button>
+                  {fusable && def.fusesInto && (
+                    <button className="rig-fuse" onClick={() => onFuse(def.id)}>
+                      ⚗ Fuse {componentsBalance.fuseCount} spares → 1× {componentDef(def.fusesInto)?.name}
+                    </button>
+                  )}
+                </div>
               );
             })}
-            <p className="rig-chooser-tip">Parts are yours forever — swap freely. One copy fits one tier.</p>
+            {lockedTrophies.map((def) => (
+              <div key={def.id} className="rig-option rig-locked" aria-disabled="true">
+                <div className="rig-option-main">
+                  <span className="rig-option-name"><LockIcon size={12} /> {def.name} <em className={`rig-grade grade-${def.grade}`}>{GRADE_LABEL[def.grade]}</em></span>
+                  <span className="rig-option-stat">{fmtEffect(def)}</span>
+                  <span className="rig-option-desc">Trophy hardware — {def.earnedBy!.label}.</span>
+                </div>
+                <span className="rig-option-go rig-earn">earn it</span>
+              </div>
+            ))}
+            <p className="rig-chooser-tip">Parts are yours forever — swap freely. One copy fits one tier. Spares fuse upward.</p>
           </div>
         </div>
       </Portal>
@@ -112,7 +136,10 @@ export function RigBayPanel({ game, onBuy, onEquip }: Props) {
 
   return (
     <section className="panel rigbay">
-      <h2 className="panel-title">Rig Bay</h2>
+      <div className="rig-head">
+        <h2 className="panel-title">Rig Bay</h2>
+        <span className="rig-collection">{ownedDistinct}/{componentsBalance.catalog.length} parts</span>
+      </div>
       <p className="rig-blurb">Fit components per rack tier — one part upgrades every rack of that tier.</p>
       {tiersWithRacks.map((tier) => (
         <div className="rig-tier" key={tier}>

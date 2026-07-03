@@ -89,6 +89,17 @@ features. Two audit passes (engine + UI) ran first; every shipped fix was verifi
       **first prestige 61m24s/62m47s · wall 1m08s · Gen2 ~13-14m · Gen3 ~10m** — with the first
       part landing ~4m40s (the new early-game decision layer). Verified end-to-end in a browser
       drive. Phases C2 (earned trophy parts), C3 (fusion), C4 (set bonuses) in RIG_BAY_PLAN.md.
+- [x] **Rig Bay C2+C3 (owner 2026-07-02: "start the plan, add a lot more").** C2 trophy hardware:
+      4 named parts earned from specific milestones (first ship / 1M compute achievement /
+      megacluster contract / first ascension), granted idempotently in tick from persistent
+      sources, SURVIVE prestige (carryEarnedComponents; bought parts still reset), visible in the
+      chooser as locked "earn it" chase targets, one-time toast each. C3 fusion: 3 free copies →
+      next rung up the class ladder (fusesInto; slotted copies never consumed, trophies never
+      fuse). Catalog 11→15 purchasable + 4 trophies; late rungs (Dyson-Adjacent Cluster,
+      Zero-Kelvin-ish Chamber, Orbital Laser Mesh); collection counter. Sim fits trophies too;
+      `upgradeCostMult` 4.0→4.2 recentres: **first prestige 60m59s/62m17s · wall 1m06s**.
+      +7 tests (467). E2E: fuse flow + trophy rows verified in a browser drive. C4 remains
+      owner-call (RIG_BAY_PLAN.md).
 - [ ] **NEXT (prioritized plan, owner-ready):**
       1. **Moment queue** (small): one `enqueueMoment()` arbiter for the five full-screen overlays —
          the third pairwise collision guard is the signal it's due. UI-only, curve-safe.

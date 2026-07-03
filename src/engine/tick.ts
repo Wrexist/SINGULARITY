@@ -5,6 +5,7 @@ import { simulateProducts, advanceUpgrades, applyMilestones, productMetrics } fr
 import { advanceTraining } from "./employees";
 import { accrueStats } from "./stats";
 import { applyAchievements } from "./achievements";
+import { grantEarnedComponents } from "./components";
 import { applyAutoResearch } from "./actions";
 import { rivalsBeaten } from "./market";
 import type { Derived, GameState } from "./types";
@@ -191,10 +192,14 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   // idempotent; the store diffs achievements to surface a toast.
   const awarded = applyAchievements(msState).state;
 
+  // Rig Bay trophies (C2): grant any earned part whose milestone just completed.
+  // Idempotent same-ref no-op almost every tick; sources persist across prestige.
+  const granted = grantEarnedComponents(awarded);
+
   // Research Director (R5.3): if owned, auto-buy affordable research from the
   // freshly-updated pools. No-op (same reference) until the perk is bought, so
   // the tuned curve / sim are untouched. Runs here so it works offline too.
-  return applyAutoResearch(awarded);
+  return applyAutoResearch(granted);
 }
 
 function claimInto(d: Derived, data: Big, money: Big, lifetimeMoney: Big) {

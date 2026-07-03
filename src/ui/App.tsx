@@ -44,7 +44,7 @@ import { HallCanvas } from "./HallCanvas";
 import { ExpandConfirm } from "./ExpandConfirm";
 import { ConfirmSheet } from "./ConfirmSheet";
 import { RigBayPanel } from "./RigBayPanel";
-import { componentsUnlocked } from "../engine/components";
+import { componentsUnlocked, earnedDefs } from "../engine/components";
 import { EraTransition } from "./EraTransition";
 import { WorldEventCard } from "./WorldEventCard";
 import { ModifierBar } from "./ModifierBar";
@@ -66,7 +66,7 @@ export function App() {
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
     doClaimContract, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
-    doBuyComponent, doEquipComponent } =
+    doBuyComponent, doEquipComponent, doFuseComponents } =
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
@@ -217,6 +217,16 @@ export function App() {
     { key: "align", fact: alignDir, when: "doomer", text: "Your choices tilt the lab doomer — safer, steadier. See Lab Stats.", tone: "neutral" },
     { key: "autoTrain", fact: d.autoTrain, when: true, text: "Auto-train online — runs restart themselves. Set your Compute focus.", tone: "good" },
     { key: "hired", fact: game.stats.employeesHired > 0, when: true, text: "First hire aboard — specialists level up as they work", tone: "good" },
+    // Rig Bay trophies (C2): one row per trophy part. Trophies persist across
+    // prestige (carryEarnedComponents), so the fact never flips back — one toast
+    // per save, ever.
+    ...earnedDefs().map((def) => ({
+      key: `trophy_${def.id}`,
+      fact: (game.components.owned[def.id] ?? 0) > 0,
+      when: true as const,
+      text: `Trophy hardware earned: ${def.name} — fit it in the Rig Bay`,
+      tone: "good" as const,
+    })),
   ];
   const seenFacts = useRef<Record<string, string | boolean>>({});
   const syncedToSave = useRef(false);
@@ -634,6 +644,7 @@ export function App() {
                     game={game}
                     onBuy={(id) => { haptics.tap(); sound.purchase(); doBuyComponent(id); }}
                     onEquip={(tier, slot, id) => { haptics.success(); sound.tap(); doEquipComponent(tier, slot, id); }}
+                    onFuse={(id) => { haptics.celebrate(); sound.purchase(); doFuseComponents(id); }}
                   />
                 )}
               </>

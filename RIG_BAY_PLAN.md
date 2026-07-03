@@ -53,16 +53,25 @@ one stat**; slots are freely re-fittable; engine stays pure; all effects sim-ver
   the owner band (first prestige ≈ 59–65m) with the wall staying ≈ 1m.
 
 ## Phases
-- **C1 (this change)**: engine module + balance catalog (11 parts), inventory/loadout state +
-  save v17 migration, Rig Bay panel (slot-first chooser UX), derive/power wiring, hall accent,
-  sim strategy step, tests, curve re-validation.
-- **C2 — earned parts**: specific named components granted by contracts/achievements ("First
-  ascension → Cryo Loop Mk II"), shown as trophies in the Rig Bay; event parts always enter the
-  fixed catalog later (no FOMO).
-- **C3 — fusion**: Egg-Inc-style 2×lower → 1×higher crafting so late-game money and duplicate
-  commons stay useful; a "prototype lab" flavor beat.
-- **C4 — set identities** (owner call): light set bonuses per manufacturer line (e.g. all-Hopperoo
-  fleet = small run-speed kicker) — only if C1–C3 telemetry shows players engaging with swaps.
+- **C1 — SHIPPED**: engine module + balance catalog, inventory/loadout state + save v17 migration,
+  Rig Bay panel (slot-first chooser UX), derive/power wiring, hall accent, sim strategy step,
+  tests, curve re-validation.
+- **C2 — SHIPPED (trophy hardware)**: 4 named parts granted by specific milestones (first ship →
+  Founders' Edition Card · 1M compute/s achievement → Binned Golden Sample · megacluster contract →
+  Conference Swag Switch · first ascension → Cryo Loop Mk III). Locked trophies are VISIBLE in the
+  chooser as deterministic "earn it" chase targets. Granted idempotently in tick from persistent
+  sources; trophies SURVIVE prestige (carryEarnedComponents) — bought parts still reset. One-time
+  toast per trophy via the data-driven transition-toast list.
+- **C3 — SHIPPED (fusion)**: 3 free copies of a part fuse into one of the next rung up its class
+  ladder (`fusesInto`, ladder-guard tested). Slotted copies are never consumed; trophies never
+  fuse away. The fuse affordance lives inline in the chooser under the owned part. Catalog deepened
+  11 → 15 purchasable (+ 4 trophies = 19 total), with late-game rungs (Dyson-Adjacent Cluster,
+  Zero-Kelvin-ish Chamber, Orbital Laser Mesh) and a collection counter in the panel head.
+  Curve after C2+C3 (sim buys parts AND fits trophies): **first prestige 60m59s / 62m17s ·
+  wall 1m06s** (`upgradeCostMult` 4.2).
+- **C4 — set identities** (owner call, NOT started): light set bonuses per manufacturer line
+  (e.g. all-Hopperoo fleet = small run-speed kicker) — only if telemetry shows players engaging
+  with swaps.
 
 ## Explicitly rejected
 - Per-rack slots (micromanagement failure mode), rotating/limited store stock (time dark pattern),

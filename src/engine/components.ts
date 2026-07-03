@@ -27,10 +27,53 @@ export function componentsUnlocked(state: GameState): boolean {
 }
 
 /** Catalog parts visible at the current fleet size (reveal in waves, never dump).
- *  The catalog is FIXED: nothing rotates, nothing is randomized. */
+ *  The catalog is FIXED: nothing rotates, nothing is randomized. Trophy parts
+ *  are included once their milestone is complete (the UI also shows locked ones
+ *  as visible chase targets — deterministic, never a slot pull). */
 export function visibleCatalog(state: GameState): ComponentDef[] {
   const racks = totalRacks(state);
-  return C.catalog.filter((d) => racks >= d.revealAtRacks);
+  return C.catalog.filter((d) => (d.earnedBy ? earnedSourceComplete(state, d) : racks >= d.revealAtRacks));
+}
+
+/** All trophy-part defs (for the UI's chase list and the grant fold). */
+export function earnedDefs(): ComponentDef[] {
+  return C.catalog.filter((d) => d.earnedBy);
+}
+
+/** True when a trophy part's source milestone is complete. */
+export function earnedSourceComplete(state: GameState, def: ComponentDef): boolean {
+  if (!def.earnedBy) return false;
+  return def.earnedBy.kind === "contract"
+    ? state.contracts.completed.includes(def.earnedBy.id)
+    : state.achievements.includes(def.earnedBy.id);
+}
+
+/**
+ * Grant every trophy part whose milestone is complete (one copy each).
+ * Idempotent + same-ref no-op, so it can run every tick: sources (contracts /
+ * achievements) persist across prestige, which also makes trophies effectively
+ * permanent — a wiped loadout re-earns nothing, the part is simply still yours.
+ */
+export function grantEarnedComponents(state: GameState): GameState {
+  let owned: Record<string, number> | null = null;
+  for (const def of C.catalog) {
+    if (!def.earnedBy) continue;
+    if ((state.components.owned[def.id] ?? 0) > 0) continue;
+    if (!earnedSourceComplete(state, def)) continue;
+    owned = owned ?? { ...state.components.owned };
+    owned[def.id] = 1;
+  }
+  if (!owned) return state;
+  return { ...state, components: { ...state.components, owned } };
+}
+
+/** The trophy copies to carry through a prestige reset (loadout still clears). */
+export function carryEarnedComponents(state: GameState): ComponentsState {
+  const fresh = freshComponents();
+  for (const def of C.catalog) {
+    if (def.earnedBy && (state.components.owned[def.id] ?? 0) > 0) fresh.owned[def.id] = 1;
+  }
+  return fresh;
 }
 
 /** Copies of a component currently slotted across all tiers. */
@@ -45,8 +88,36 @@ export function equippedCount(state: GameState, id: string): number {
 export function canBuyComponent(state: GameState, id: string): boolean {
   const def = BY_ID.get(id);
   if (!def || !componentsUnlocked(state)) return false;
+  if (def.earnedBy) return false; // trophies are earned, never sold
   if (totalRacks(state) < def.revealAtRacks) return false;
   return state.resources.money.gte(def.cost);
+}
+
+// ---------- Fusion (C3) ----------
+
+/** Free (un-slotted) copies of a part. */
+export function freeCopies(state: GameState, id: string): number {
+  return (state.components.owned[id] ?? 0) - equippedCount(state, id);
+}
+
+/** Fusion needs `fuseCount` FREE copies (slotted parts are never consumed) and a
+ *  ladder target. Trophy parts have no `fusesInto` — they never fuse away. */
+export function canFuse(state: GameState, id: string): boolean {
+  const def = BY_ID.get(id);
+  if (!def?.fusesInto || !BY_ID.has(def.fusesInto)) return false;
+  return freeCopies(state, id) >= C.fuseCount;
+}
+
+/** Combine fuseCount copies of a part into one of the next rung up its class
+ *  ladder. Dupes always have value (the honest replacement for loot pity). */
+export function fuseComponents(state: GameState, id: string): GameState {
+  if (!canFuse(state, id)) return state;
+  const def = BY_ID.get(id)!;
+  const owned = { ...state.components.owned };
+  owned[id] = (owned[id] ?? 0) - C.fuseCount;
+  if (owned[id]! <= 0) delete owned[id];
+  owned[def.fusesInto!] = (owned[def.fusesInto!] ?? 0) + 1;
+  return { ...state, components: { ...state.components, owned } };
 }
 
 /** Buy one physical copy into the inventory. Same-ref no-op when not allowed. */

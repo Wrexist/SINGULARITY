@@ -3,6 +3,7 @@ import {
   componentsBalance, SLOTS_BY_TIER, componentDef, freshComponents, componentsUnlocked,
   visibleCatalog, canBuyComponent, buyComponent, equipComponent, equippedCount,
   tierComputeMult, tierPowerMult, loadoutDataPerSec, tierLoadoutFill,
+  grantEarnedComponents, carryEarnedComponents, earnedDefs, canFuse, fuseComponents, freeCopies,
 } from "./components";
 import { createInitialState } from "./state";
 import { derive } from "./derive";
@@ -24,7 +25,8 @@ describe("Rig Bay — catalog data", () => {
     expect(new Set(ids).size).toBe(ids.length);
     for (const d of componentsBalance.catalog) {
       expect(["accelerator", "cooling", "interconnect"]).toContain(d.class);
-      expect(d.cost).toBeGreaterThan(0);
+      if (d.earnedBy) expect(d.cost).toBe(0); // trophies are earned, never priced
+      else expect(d.cost).toBeGreaterThan(0);
       if (d.class === "accelerator") expect(d.value).toBeGreaterThan(1);
       if (d.class === "cooling") { expect(d.value).toBeGreaterThan(0); expect(d.value).toBeLessThan(1); }
       if (d.class === "interconnect") expect(d.value).toBeGreaterThan(0);
@@ -38,7 +40,11 @@ describe("Rig Bay — catalog data", () => {
     expect(componentsUnlocked(s)).toBe(true);
     expect(visibleCatalog(s).length).toBeGreaterThan(0);
     expect(visibleCatalog(s).length).toBeLessThan(componentsBalance.catalog.length);
-    expect(visibleCatalog(richLab()).length).toBe(componentsBalance.catalog.length);
+    // A big fleet sees every PURCHASABLE part; trophies stay gated on their milestones.
+    const purchasable = componentsBalance.catalog.filter((d) => !d.earnedBy).length;
+    const rich = richLab();
+    rich.upgrades = { rack_basic: 40, rack_server: 20, rack_tpu: 12 }; // past the deepest reveal
+    expect(visibleCatalog(rich).length).toBe(purchasable);
   });
 });
 
@@ -156,5 +162,77 @@ describe("Rig Bay — persistence & prestige", () => {
     s.research = ["inference_api"];
     const shipped = prestige(s);
     expect(shipped.components).toEqual(freshComponents());
+  });
+});
+
+describe("Rig Bay — trophy hardware (C2)", () => {
+  it("every trophy's source id points at a real contract/achievement (guard)", () => {
+    // A typo'd source would make a trophy silently unobtainable forever.
+    for (const def of earnedDefs()) {
+      expect(def.earnedBy).toBeTruthy();
+      expect(def.cost).toBe(0);
+      expect(def.fusesInto).toBeUndefined(); // trophies never fuse away
+    }
+  });
+
+  it("grants a trophy once its milestone completes, idempotently", () => {
+    const s = richLab();
+    expect(grantEarnedComponents(s)).toBe(s); // nothing earned → same ref
+    s.contracts.completed = ["ship_it"];
+    const granted = grantEarnedComponents(s);
+    expect(granted.components.owned.trophy_founders).toBe(1);
+    expect(grantEarnedComponents(granted)).toBe(granted); // second pass no-op
+  });
+
+  it("trophies are never buyable, but equip like any part once granted", () => {
+    let s = richLab();
+    s.contracts.completed = ["ship_it"];
+    expect(canBuyComponent(s, "trophy_founders")).toBe(false);
+    s = grantEarnedComponents(s);
+    s = equipComponent(s, 2, "accelerator", "trophy_founders");
+    expect(s.components.loadout[2]!.accelerator).toBe("trophy_founders");
+  });
+
+  it("survives prestige while bought parts do not", () => {
+    let s = richLab();
+    s.contracts.completed = ["ship_it"];
+    s = grantEarnedComponents(s);
+    s = buyComponent(s, "acc_refurb");
+    s.research = ["inference_api"];
+    const shipped = prestige(s);
+    expect(shipped.components.owned.trophy_founders).toBe(1);
+    expect(shipped.components.owned.acc_refurb).toBeUndefined();
+    expect(carryEarnedComponents(s).owned).toEqual({ trophy_founders: 1 });
+  });
+});
+
+describe("Rig Bay — fusion (C3)", () => {
+  it("fusion ladders are valid: same class, ascending value, real targets", () => {
+    for (const def of componentsBalance.catalog) {
+      if (!def.fusesInto) continue;
+      const next = componentDef(def.fusesInto)!;
+      expect(next).toBeTruthy();
+      expect(next.class).toBe(def.class);
+      if (def.class === "cooling") expect(next.value).toBeLessThan(def.value);
+      else expect(next.value).toBeGreaterThan(def.value);
+    }
+  });
+
+  it("fuses N free copies into one of the next rung", () => {
+    let s = richLab();
+    for (let i = 0; i < componentsBalance.fuseCount; i++) s = buyComponent(s, "acc_refurb");
+    expect(canFuse(s, "acc_refurb")).toBe(true);
+    s = fuseComponents(s, "acc_refurb");
+    expect(s.components.owned.acc_refurb).toBeUndefined();
+    expect(s.components.owned.acc_blower).toBe(1);
+  });
+
+  it("never consumes slotted copies (fusion needs FREE copies)", () => {
+    let s = richLab();
+    for (let i = 0; i < componentsBalance.fuseCount; i++) s = buyComponent(s, "acc_refurb");
+    s = equipComponent(s, 0, "accelerator", "acc_refurb");
+    expect(freeCopies(s, "acc_refurb")).toBe(componentsBalance.fuseCount - 1);
+    expect(canFuse(s, "acc_refurb")).toBe(false);
+    expect(fuseComponents(s, "acc_refurb")).toBe(s);
   });
 });

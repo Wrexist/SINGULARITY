@@ -39,7 +39,7 @@ import {
 import { currentEra } from "../src/engine/eras";
 import { products as PRODUCTS, type ProductTypeId } from "../src/engine/balance/products";
 import {
-  SLOTS_BY_TIER, componentDef, visibleCatalog, canBuyComponent, buyComponent, equipComponent,
+  SLOTS_BY_TIER, componentDef, visibleCatalog, canBuyComponent, buyComponent, equipComponent, freeCopies,
 } from "../src/engine/components";
 import { RACK_IDS } from "../src/engine/hall";
 import { Big } from "../src/engine/math/Big";
@@ -177,10 +177,11 @@ function autoBuy(state: GameState, useMarket: boolean): { state: GameState; boug
       const best = visibleCatalog(s)
         .filter((d) => d.class === slot)
         .filter((d) => (slot === "cooling" ? d.value < (curDef?.value ?? 1) : d.value > (curDef?.value ?? (slot === "accelerator" ? 1 : 0))))
-        .filter((d) => canBuyComponent(s, d.id))
+        // Buyable — or already owned free (granted trophy hardware fits for free).
+        .filter((d) => canBuyComponent(s, d.id) || freeCopies(s, d.id) > 0)
         .sort((a, b) => a.cost - b.cost)[0];
       if (!best) continue;
-      s = buyComponent(s, best.id);
+      if (freeCopies(s, best.id) <= 0) s = buyComponent(s, best.id);
       s = equipComponent(s, tier, slot, best.id);
       bought.push(`component:${best.id}`);
     }
