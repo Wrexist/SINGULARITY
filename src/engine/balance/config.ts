@@ -1385,6 +1385,25 @@ export const balance = {
       { at: 55, label: "Under investigation", blurb: "Chen has opened a formal case. Lawyer up." },
       { at: 80, label: "Personal vendetta", blurb: "This is no longer about the law. It's personal now." },
     ],
+    /** The negotiation (IMPROVEMENTS #9): when suspicion reaches `at`, Chen
+     *  offers a sit-down — a DETERMINISTIC choice card (no RNG; a clean lab and
+     *  the balance sim never see it). Settling and lobbying buy suspicion back
+     *  below the threshold; defiance keeps it high, so Chen returns once the
+     *  truce marker expires — escalating pressure, honestly surfaced. */
+    negotiation: {
+      at: 55,
+      /** Settle: pay this fraction of cash; this much suspicion evaporates. */
+      settle: { moneyPct: -0.2, suspicion: -30 },
+      /** Lobby: cheaper, shadier — less suspicion relief, some heat relief,
+       *  and a doomer-lane tilt (you played it safe and connected). */
+      lobby: { moneyPct: -0.08, suspicion: -15, heat: -10, alignment: -0.15 },
+      /** Defy: keep the money, rally the lab (short compute surge) — but heat
+       *  and suspicion RISE, and the accelerationists cheer. */
+      defy: { suspicion: 8, heat: 12, alignment: 0.2, buffFactor: 1.3, buffSec: 60 },
+      /** After ANY branch a truce marker (factor-1 identity modifier) sits in
+       *  the bar this long — Chen doesn't come back mid-paperwork. */
+      truceSec: 240,
+    },
   },
 
   /**

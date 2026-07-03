@@ -51,6 +51,7 @@ import { buyReputationPerk } from "../engine/reputation";
 import { claimContract } from "../engine/contracts";
 import { setCharter, lockCharter } from "../engine/charter";
 import { counterRival } from "../engine/market";
+import { negotiationDue, negotiationOffer, applyNegotiationChoice, NEGOTIATION_ID } from "../engine/negotiation";
 import { buyLegacyPerk } from "../engine/legacyTree";
 import { prestige, type ShipMode } from "../engine/prestige";
 import { applyOffline, type OfflineSummary } from "../engine/offline";
@@ -267,6 +268,10 @@ export const useGame = create<GameStore>((set, get) => ({
   chooseWorldEvent: (choiceIndex) =>
     set((s) => {
       if (!s.worldEvent) return {};
+      // The regulator negotiation has its own (multi-lane) effect application.
+      if (s.worldEvent.id === NEGOTIATION_ID) {
+        return { game: applyNegotiationChoice(s.game, choiceIndex), worldEvent: null };
+      }
       const { state } = applyWorldEventChoice(s.game, s.worldEvent.id, choiceIndex);
       return { game: state, worldEvent: null };
     }),
@@ -375,8 +380,16 @@ export const useGame = create<GameStore>((set, get) => ({
         }
       }
 
+      // Regulator negotiation (IMPROVEMENTS #9): deterministic, outranks the
+      // ambient pool. Fires only past the suspicion line with no truce pending —
+      // a clean lab (and the balance sim) never sees it.
+      if (!s.worldEvent && negotiationDue(game)) {
+        worldKey += 1;
+        patch.worldEvent = { key: worldKey, ...negotiationOffer(game) };
+      }
+
       // Ambient satirical world event — at most one pending card at a time.
-      if (!s.worldEvent) {
+      if (!s.worldEvent && !patch.worldEvent) {
         const wr = maybeWorldEvent(game, secs, Math.random(), Math.random(), recentEventIds);
         if (wr) {
           game = wr.state;
