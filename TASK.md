@@ -100,6 +100,16 @@ features. Two audit passes (engine + UI) ran first; every shipped fix was verifi
       `upgradeCostMult` 4.0→4.2 recentres: **first prestige 60m59s/62m17s · wall 1m06s**.
       +7 tests (467). E2E: fuse flow + trophy rows verified in a browser drive. C4 remains
       owner-call (RIG_BAY_PLAN.md).
+- [x] **Owner on-device fixes round 2 + improvements batch 1 (2026-07-02).** Fixes from TestFlight
+      screenshots: (1) hire nudge now requires a LIVE product + affordable signing bonus; (2)
+      training-intensity slider scales RUN SIZE (`run.focusCostFloor` 0.3 — light runs sip Compute,
+      yields proportional, identity at focus 1 → curve byte-identical), dock relabeled; (3) explicit
+      charter "Lock in" button (charterLocked, save v18 + migration). Improvements shipped from
+      IMPROVEMENTS.md: **moment queue** (5 full-screen moments render one-at-a-time by priority),
+      **first-ship explainer** (one-time, settings-persisted, gen-1 only), **heat coach toast**
+      (first cross of 25), **store notice FIFO** (same-tick notices drain instead of dropping),
+      **product milestones in the goal strip** (mid-game carrots → tap lands on Products), resource
+      slab overdraw for iOS rubber-band. +6 tests (475). All e2e-verified in a browser drive.
 - [ ] **NEXT (prioritized plan, owner-ready):**
       1. **Moment queue** (small): one `enqueueMoment()` arbiter for the five full-screen overlays —
          the third pairwise collision guard is the signal it's due. UI-only, curve-safe.

@@ -53,3 +53,19 @@ describe("goals (the next-goal carrot)", () => {
     for (const g of goalCandidates(s)) expect(g.progress).toBeLessThan(1);
   });
 });
+
+describe("product-milestone goals (mid-game carrots)", () => {
+  it("surfaces unreached milestones once products are unlocked, never achieved ones", () => {
+    const s = createInitialState();
+    s.prestige.ships = 1; // products unlocked
+    s.products.milestones = ["first_launch"];
+    const goals = goalCandidates(s).filter((g) => g.kind === "milestone");
+    expect(goals.length).toBeGreaterThan(0);
+    expect(goals.some((g) => g.label === "Hello, World")).toBe(false); // achieved → gone
+    for (const g of goals) expect(g.progress).toBeLessThan(1);
+  });
+
+  it("stays out of the pre-products game entirely", () => {
+    expect(goalCandidates(createInitialState()).some((g) => g.kind === "milestone")).toBe(false);
+  });
+});

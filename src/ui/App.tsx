@@ -595,6 +595,7 @@ export function App() {
               onClick={() => {
                 haptics.tap();
                 if (goal.kind === "achievement") setShowAchievements(true);
+                else if (goal.kind === "milestone") goTab("products");
                 else {
                   goTab("lab");
                   if (labSectioned) goSection(goal.kind === "era" && era === 0 ? "research" : "hq");
