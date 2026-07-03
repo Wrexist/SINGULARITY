@@ -7,9 +7,14 @@ import { useSettings } from "./settings";
 
 function vibrate(pattern: number | number[]): void {
   try {
-    if (!useSettings.getState().haptics) return;
+    const s = useSettings.getState();
+    if (!s.haptics) return;
+    // Light mode (IMPROVEMENTS #23): halve every pulse — same rhythm, softer
+    // touch — for players who find celebrate-tier buzzes strong.
+    const scale = (ms: number) => (s.hapticsLight ? Math.max(4, Math.round(ms * 0.5)) : ms);
+    const scaled = Array.isArray(pattern) ? pattern.map(scale) : scale(pattern);
     if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
-      navigator.vibrate(pattern);
+      navigator.vibrate(scaled);
     }
   } catch {
     /* never let feedback break the game */
