@@ -27,3 +27,25 @@ describe("offline summary — Phase 3 meta progress", () => {
     expect(summary.reputationEarned).toBe(0);
   });
 });
+
+describe("offline story (IMPROVEMENTS #16 — events, not just numbers)", () => {
+  it("reports training completions and stable rank/era baselines", () => {
+    const s = createInitialState();
+    s.employees = [
+      { id: "e1", name: "Kim", roleId: "researcher", level: 1, trait: null, assignedProductId: null, training: { remainingSec: 60, totalSec: 600 } },
+    ];
+    const { summary } = applyOffline(s, 10 * 60 * 1000); // 10m ≫ 60s left
+    expect(summary.story.leveledUp).toEqual([{ name: "Kim", level: 2 }]);
+    expect(summary.story.eraAfter).toBeGreaterThanOrEqual(summary.story.eraBefore);
+    expect(summary.story.rankBefore).toBeNull(); // no live product
+    expect(summary.story.rankAfter).toBeNull();
+  });
+
+  it("is all-empty on a zero-length window", () => {
+    const { summary } = applyOffline(createInitialState(), 0);
+    expect(summary.story.milestones).toEqual([]);
+    expect(summary.story.upgradesFinished).toEqual([]);
+    expect(summary.story.leveledUp).toEqual([]);
+    expect(summary.story.eraAfter).toBe(summary.story.eraBefore);
+  });
+});

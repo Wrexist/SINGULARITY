@@ -1527,6 +1527,9 @@ svg { vertical-align: middle; }
   .firststeps-row.now .firststeps-mark { animation: none; }
 }
 .market-blitz { margin-top: 6px; align-self: flex-start; font-size: 11.5px; }
+.wiwa-story { margin: 10px 0 0; padding: 10px 12px; border-radius: 12px; background: rgba(17, 24, 39, 0.04); text-align: left; }
+.wiwa-story p { font-size: 12px; line-height: 1.5; color: var(--ink-2); margin: 0; }
+.wiwa-story p + p { margin-top: 4px; }
 .celebrate-share-note { font-size: 11.5px; color: var(--ink-3); margin: 6px 0 0; }
 
 /* ---------- Toasts ---------- */

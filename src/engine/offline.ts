@@ -2,6 +2,8 @@ import { Big } from "./math/Big";
 import { balance } from "./balance/config";
 import { tick } from "./tick";
 import { earnedReputation } from "./reputation";
+import { playerMarketRank } from "./market";
+import { currentEra } from "./eras";
 import type { GameState } from "./types";
 
 export interface OfflineSummary {
@@ -20,6 +22,22 @@ export interface OfflineSummary {
   achievementsUnlocked: string[];
   /** Lab Reputation points earned during the offline window. */
   reputationEarned: number;
+  /** The STORY since last open (IMPROVEMENTS #16) — what happened, not just
+   *  what accrued. All pure before/after diffs of the catch-up tick. */
+  story: {
+    /** Product-milestone ids reached while away. */
+    milestones: string[];
+    /** Products whose version upgrade finished while away. */
+    upgradesFinished: { name: string; version: number }[];
+    /** Specialists whose training completed while away. */
+    leveledUp: { name: string; level: number }[];
+    /** Market rank before/after (null = no live product). */
+    rankBefore: number | null;
+    rankAfter: number | null;
+    /** Era index before/after (an era crossing offline is a headline). */
+    eraBefore: number;
+    eraAfter: number;
+  };
 }
 
 /**
@@ -43,6 +61,12 @@ export function applyOffline(
   const before = state.resources;
   const hadAchievements = new Set(state.achievements);
   const repBefore = earnedReputation(state);
+  // Story witnesses (cheap: ids/flags only, snapshotted before the big tick).
+  const hadMilestones = new Set(state.products.milestones);
+  const wasUpgrading = new Map(state.products.active.map((p) => [p.id, !!p.upgrade]));
+  const wasTraining = new Map(state.employees.map((e) => [e.id, !!e.training]));
+  const rankBefore = playerMarketRank(state);
+  const eraBefore = currentEra(state);
   const next = tick(state, appliedMs);
   return {
     state: next,
@@ -59,6 +83,19 @@ export function applyOffline(
       },
       achievementsUnlocked: next.achievements.filter((id) => !hadAchievements.has(id)),
       reputationEarned: Math.max(0, earnedReputation(next) - repBefore),
+      story: {
+        milestones: next.products.milestones.filter((id) => !hadMilestones.has(id)),
+        upgradesFinished: next.products.active
+          .filter((p) => wasUpgrading.get(p.id) && !p.upgrade)
+          .map((p) => ({ name: p.name, version: p.version })),
+        leveledUp: next.employees
+          .filter((e) => wasTraining.get(e.id) && !e.training)
+          .map((e) => ({ name: e.name, level: e.level })),
+        rankBefore,
+        rankAfter: playerMarketRank(next),
+        eraBefore,
+        eraAfter: currentEra(next),
+      },
     },
   };
 }
