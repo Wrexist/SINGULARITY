@@ -21,6 +21,7 @@ import { StatsPanel } from "./StatsPanel";
 import { Tagline } from "./Tagline";
 import { Onboarding } from "./Onboarding";
 import { FirstSteps, firstStepsVisible } from "./FirstSteps";
+import { gameCenterSubmitScores, gameCenterUnlock } from "./gameCenter";
 import { DataMarketPanel } from "./DataMarketPanel";
 import { EmployeesPanel } from "./EmployeesPanel";
 import { ProductsPanel } from "./ProductsPanel";
@@ -299,6 +300,18 @@ export function App() {
     seenEra.current = era;
   }, [initialized, era]);
 
+  // Game Center achievement mirror: unlocks that happen THIS session get pushed
+  // (hydration-synced like the toasts, so a returning save doesn't re-fire 37
+  // calls at launch; GC ignores re-unlocks anyway, this just avoids the spam).
+  const seenAch = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    if (!initialized) return;
+    if (seenAch.current === null) { seenAch.current = new Set(game.achievements); return; }
+    for (const id of game.achievements) {
+      if (!seenAch.current.has(id)) { seenAch.current.add(id); void gameCenterUnlock(id); }
+    }
+  }, [initialized, game.achievements]);
+
   // Market climbing: a celebratory beat each time you reach a NEW best rank on the
   // AI leaderboard (overtaking a named rival). Best-rank-only so it never spams on
   // rank wobble; hydration-synced so it never fires on a returning load.
@@ -439,6 +452,8 @@ export function App() {
       };
       setCelebration({ gained, total: game.prestige.legacyWeights, report });
       haptics.celebrate();
+      // Game Center: push the career totals (silent no-op without the plugin).
+      void gameCenterSubmitScores(game);
       // The flagship you just shipped is waiting as a free-to-launch product —
       // make sure the player knows (a ship that "gave nothing" was the #1 confusion).
       if (game.products.drafts.length > 0) {

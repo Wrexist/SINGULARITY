@@ -12,6 +12,7 @@ import { PaletteIcon, DownloadIcon, LockIcon, CheckIcon } from "./Icons";
 import { ConfirmSheet } from "./ConfirmSheet";
 import { version as APP_VERSION } from "../../package.json";
 import { telemetryEnabled, setTelemetryEnabled, getTelemetryEvents, clearTelemetry } from "../state/telemetry";
+import { gameCenterAvailable, gameCenterShowLeaderboards } from "./gameCenter";
 import { summarize } from "../engine/telemetry";
 import { eraName } from "../engine/eras";
 
@@ -250,6 +251,21 @@ export function SettingsSheet({ onClose }: Props) {
             })}
           </div>
         </div>
+
+        {/* Game Center — only rendered when the native plugin is actually
+            present (see GAME_CENTER_SETUP.md); the web/TestFlight build
+            without it never shows a dead button. */}
+        {gameCenterAvailable() && (
+          <div className="set-list">
+            <button className="set-row" onClick={() => void gameCenterShowLeaderboards()}>
+              <span className="set-text">
+                <span className="set-label">Game Center</span>
+                <span className="set-hint">Ships &amp; ascension leaderboards, achievement mirror</span>
+              </span>
+              <span aria-hidden="true">›</span>
+            </button>
+          </div>
+        )}
 
         {/* Save backup — local-only; protects a long run from a cleared cache. */}
         <div className="set-backup">
