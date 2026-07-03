@@ -49,7 +49,7 @@ import { productMilestones as PRODUCT_MILESTONES, type ProductTypeId } from "../
 import { achievements as ACHIEVEMENT_DEFS } from "../engine/balance/achievements";
 import { buyReputationPerk } from "../engine/reputation";
 import { claimContract } from "../engine/contracts";
-import { setCharter } from "../engine/charter";
+import { setCharter, lockCharter } from "../engine/charter";
 import { buyLegacyPerk } from "../engine/legacyTree";
 import { prestige, type ShipMode } from "../engine/prestige";
 import { applyOffline, type OfflineSummary } from "../engine/offline";
@@ -131,6 +131,8 @@ interface GameStore {
   doFuseComponents: (id: string) => void;
   doClaimContract: (id: string) => void;
   doSetCharter: (id: string | null) => void;
+  /** Lock the current charter pick for this run (owner UX fix). */
+  doLockCharter: () => void;
   doBuyLegacyPerk: (id: string) => void;
   /** Open recruiting (rolls 3 candidates) / re-roll / close. */
   doRecruit: () => void;
@@ -455,6 +457,7 @@ export const useGame = create<GameStore>((set, get) => ({
   doFuseComponents: (id) => set((s) => ({ game: fuseComponents(s.game, id) })),
   doClaimContract: (id) => set((s) => ({ game: claimContract(s.game, id) })),
   doSetCharter: (id) => set((s) => ({ game: setCharter(s.game, id) })),
+  doLockCharter: () => set((s) => ({ game: lockCharter(s.game) })),
   doBuyLegacyPerk: (id) => set((s) => ({ game: buyLegacyPerk(s.game, id) })),
   doRecruit: () => set({ candidates: [rollCandidate(), rollCandidate(), rollCandidate()] }),
   doRefreshCandidates: () => set({ candidates: [rollCandidate(), rollCandidate(), rollCandidate()] }),

@@ -4,7 +4,7 @@ import { initialStats } from "./stats";
 import { freshComponents } from "./components";
 import type { GameState } from "./types";
 
-export const SAVE_VERSION = 17;
+export const SAVE_VERSION = 18;
 
 /** A fresh lab: empty closet, a trickle of free Compute, nothing owned. */
 export function createInitialState(): GameState {
@@ -35,6 +35,7 @@ export function createInitialState(): GameState {
     reputation: { spent: 0, perks: [] },
     contracts: { completed: [] },
     charter: null,
+    charterLocked: false,
     lastCharter: null,
     legacyInvestments: [],
     // Rig Bay (C1): empty inventory, empty loadouts. Resets on prestige.

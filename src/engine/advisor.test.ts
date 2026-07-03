@@ -133,12 +133,20 @@ describe("advisor", () => {
     }
   });
 
-  it("nudges the first hire once staff is unlocked", () => {
-    const s = shipped(); // research length ≥ revealAtResearch (1) from createInitialState? force it
-    s.research = ["seed"]; // meets revealAtResearch = 1
+  it("nudges the first hire only once a product is LIVE and a hire is affordable", () => {
+    let s = shipped();
+    s.research = ["seed"]; // meets revealAtResearch = 1 → staff unlocked
     s.employees = [];
     s.products.drafts = [];
+    // Staff unlocked but no project running yet → no nudge (owner report: it
+    // fired minutes into a fresh run, long before hiring made sense).
+    expect(advisorItems(s).some((i) => i.text.includes("first specialist"))).toBe(false);
+    s = releaseProduct(s, { type: "general", name: "P", id: "p1" });
+    s.products.active[0]!.quality = s.products.frontier; // healthy, no stale item noise
     const items = advisorItems(s);
     expect(items.some((i) => i.tab === "employees" && i.text.includes("first specialist"))).toBe(true);
+    // …and stays quiet when the signing bonus is out of reach.
+    s.resources.money = Big.of(0);
+    expect(advisorItems(s).some((i) => i.text.includes("first specialist"))).toBe(false);
   });
 });

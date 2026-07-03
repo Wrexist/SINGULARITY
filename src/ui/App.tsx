@@ -66,7 +66,7 @@ export function App() {
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
     doClaimContract, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
-    doBuyComponent, doEquipComponent, doFuseComponents } =
+    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter } =
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
@@ -637,7 +637,11 @@ export function App() {
               <>
                 <HallCanvas onExpand={setPendingExpansion} />
                 <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} onSetFocus={setComputeFocus} />
-                <CharterPanel game={game} onSet={(id) => { haptics.tap(); sound.tap(); doSetCharter(id); }} />
+                <CharterPanel
+                  game={game}
+                  onSet={(id) => { haptics.tap(); sound.tap(); doSetCharter(id); }}
+                  onLock={() => { haptics.success(); sound.purchase(); doLockCharter(); }}
+                />
                 <UpgradePanel game={game} derived={d} onBuy={onBuy} />
                 {componentsUnlocked(game) && (
                   <RigBayPanel

@@ -2650,3 +2650,6 @@ svg { vertical-align: middle; }
   color: #6d5a00; background: linear-gradient(100deg, rgba(245, 180, 10, 0.18), rgba(255, 140, 66, 0.14));
   border: 1px solid rgba(245, 180, 10, 0.4);
 }
+
+/* Charter explicit lock-in (owner UX fix) */
+.charter-lock-btn { margin-top: 12px; }

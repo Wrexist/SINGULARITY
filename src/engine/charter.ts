@@ -25,7 +25,14 @@ export function chartersUnlocked(state: GameState): boolean {
  * bought yet) — it's a start-of-run build choice, locked once you commit to a path.
  */
 export function canSetCharter(state: GameState): boolean {
-  return chartersUnlocked(state) && state.research.length === 0;
+  return chartersUnlocked(state) && state.research.length === 0 && !state.charterLocked;
+}
+
+/** Explicitly lock the current pick (owner UX fix: "no way to lock it in").
+ *  Research still locks implicitly; this just lets a decided player commit. */
+export function lockCharter(state: GameState): GameState {
+  if (!canSetCharter(state) || state.charter === null) return state;
+  return { ...state, charterLocked: true };
 }
 
 /** Lane multipliers from the active charter. All 1.0 when none is set. */

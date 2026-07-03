@@ -817,6 +817,13 @@ export const balance = {
     durationSec: 5,
     /** A run can never resolve faster than this, however much run-speed you stack. */
     minDurationSec: 0.5,
+    /** Training intensity (the auto-train slider) also scales the RUN SIZE: at
+     *  focus 0 a run invests this fraction of the full cost (and pays out
+     *  proportionally); at focus 1 it's the full costSeconds investment. Owner
+     *  report: high production made every run swallow the whole Compute stock —
+     *  low intensity must mean "runs sip Compute", not just "runs fire later".
+     *  1.0 would disable the scaling (identity at every focus). */
+    focusCostFloor: 0.3,
     // Difficulty pass: leaner run payouts so scaling the operation (more/better
     // racks + expansions) matters more. Tuned against the sim to stay wall-free.
     dataPerCompute: 0.28,

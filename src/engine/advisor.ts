@@ -4,6 +4,7 @@ import { reputationBalance, canBuyReputationPerk } from "./reputation";
 import { contractBoard } from "./contracts";
 import { canBuyResearch } from "./actions";
 import { canPrestige } from "./prestige";
+import { hireCost } from "./employees";
 import type { GameState } from "./types";
 
 /** The first research node (no prereqs) — the new player's first capability buy. */
@@ -103,9 +104,14 @@ export function advisorItems(state: GameState): AdvisorItem[] {
     }
   }
 
-  // First hire: a strong early nudge once the team is unlocked.
-  if (staffUnlocked(state) && state.employees.length === 0) {
-    items.push({ tab: "employees", text: "Hire your first specialist", priority: 85 });
+  // First hire: nudged only once a product is LIVE (owner: hiring before you
+  // have a project running read as premature — specialists shine as product
+  // crew), and only when the cheapest signing bonus is actually affordable.
+  if (staffUnlocked(state) && state.employees.length === 0 && state.products.active.length > 0) {
+    const cheapestHire = Math.min(...balance.staff.roles.map((r) => hireCost(r.id)));
+    if (state.resources.money.gte(cheapestHire)) {
+      items.push({ tab: "employees", text: "Hire your first specialist", priority: 85 });
+    }
   }
 
   // A contract is met and waiting — a free Reputation reward sitting on the board.

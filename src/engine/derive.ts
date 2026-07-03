@@ -269,8 +269,13 @@ export function derive(state: GameState): Derived {
   computePerSec = computePerSec.mul(balance.difficulty.productionMult);
   // Run cost scales with compute production (floored early game) so payouts
   // scale with the operation. Yields are proportional to compute invested.
+  // Training intensity (computeFocus) scales the INVESTMENT: at low intensity a
+  // run sips Compute (and pays proportionally less), so the bank can actually
+  // climb — identity at focus 1, so the tuned curve and the sim are unchanged.
+  const floor = balance.run.focusCostFloor;
+  const intensity = floor + (1 - floor) * Math.max(0, Math.min(1, state.computeFocus));
   const runComputeCost = computePerSec
-    .mul(balance.run.costSeconds)
+    .mul(balance.run.costSeconds * intensity)
     .max(balance.run.minCompute);
 
   return {

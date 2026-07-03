@@ -95,6 +95,9 @@ export interface GameState {
   /** Depth B1 — the charter of the PREVIOUS run (set at prestige), so shipping the
    *  same charter twice running grants a conviction bonus. Persists across prestige. */
   lastCharter: string | null;
+  /** Explicit charter lock (owner UX fix): true once the player locks their pick
+   *  (or buys research, which locks implicitly). Resets each prestige. */
+  charterLocked: boolean;
   /** Phase 4 — Legacy Investments: owned prestige-tree perk ids. Spending weights
    *  here removes them from the global multiplier (a focus-vs-breadth trade-off).
    *  Persists across prestige. */

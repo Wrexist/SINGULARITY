@@ -263,6 +263,7 @@ interface SavedShape {
   reputation: { spent: number; perks: string[] };
   contracts: { completed: string[] };
   charter: string | null;
+  charterLocked: boolean;
   lastCharter: string | null;
   legacyInvestments: string[];
   components: ComponentsState;
@@ -312,6 +313,7 @@ export function serialize(state: GameState): string {
     reputation: state.reputation,
     contracts: state.contracts,
     charter: state.charter,
+    charterLocked: state.charterLocked,
     lastCharter: state.lastCharter,
     legacyInvestments: state.legacyInvestments,
     components: state.components,
@@ -425,6 +427,7 @@ export function deserialize(json: string): GameState {
     // Validate against KNOWN charter ids: an unknown/crafted id would still grant the
     // +15% conviction bonus (charter === lastCharter) without a real two-run commitment.
     charter: typeof raw.charter === "string" && CHARTER_IDS.has(raw.charter) ? raw.charter : null,
+    charterLocked: raw.charterLocked === true,
     lastCharter: typeof raw.lastCharter === "string" && CHARTER_IDS.has(raw.lastCharter) ? raw.lastCharter : null,
     // KNOWN legacy-perk ids, deduped — a dupe would apply the lane bias twice for free
     // (legacyTreeMods sums per entry and never checks prereqs on load).
@@ -584,6 +587,10 @@ export function migrate(raw: any): SavedShape {
   if (s.version === 16) {
     // v16 → v17: Rig Bay components (C1). Empty inventory + loadouts on old saves.
     s = { ...s, version: 17, components: s.components ?? freshComponents() };
+  }
+  if (s.version === 17) {
+    // v17 → v18: explicit charter lock (owner UX fix). Old runs are unlocked.
+    s = { ...s, version: 18, charterLocked: s.charterLocked ?? false };
   }
   return s as SavedShape;
 }
