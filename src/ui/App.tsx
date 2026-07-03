@@ -20,6 +20,7 @@ import { ToastStack, type ToastData } from "./Toast";
 import { StatsPanel } from "./StatsPanel";
 import { Tagline } from "./Tagline";
 import { Onboarding } from "./Onboarding";
+import { FirstSteps, firstStepsVisible } from "./FirstSteps";
 import { DataMarketPanel } from "./DataMarketPanel";
 import { EmployeesPanel } from "./EmployeesPanel";
 import { ProductsPanel } from "./ProductsPanel";
@@ -677,6 +678,7 @@ export function App() {
             {section === "build" && (
               <>
                 <HallCanvas onExpand={setPendingExpansion} />
+                {firstStepsVisible(game) && <FirstSteps game={game} />}
                 <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} onSetFocus={setComputeFocus} />
                 <CharterPanel
                   game={game}
