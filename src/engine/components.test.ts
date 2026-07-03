@@ -147,6 +147,23 @@ describe("Rig Bay — persistence & prestige", () => {
     expect(equips).toBe(1);
   });
 
+  it("drops crafted trophy copies whose milestone was never completed", () => {
+    const raw = JSON.parse(serialize(richLab()));
+    raw.components.owned.trophy_founders = 1; // ship_it contract NOT completed
+    raw.components.loadout[0] = { accelerator: "trophy_founders" };
+    const back = deserialize(JSON.stringify(raw));
+    expect(back.components.owned.trophy_founders).toBeUndefined();
+    expect(back.components.loadout[0]!.accelerator).toBeUndefined();
+  });
+
+  it("keeps trophy copies whose source milestone IS complete", () => {
+    const raw = JSON.parse(serialize(richLab()));
+    raw.contracts.completed = ["ship_it"];
+    raw.components.owned.trophy_founders = 1;
+    const back = deserialize(JSON.stringify(raw));
+    expect(back.components.owned.trophy_founders).toBe(1);
+  });
+
   it("migrates a v16 save by adding an empty Rig Bay", () => {
     const raw = JSON.parse(serialize(createInitialState()));
     raw.version = 16;

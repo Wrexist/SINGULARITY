@@ -122,15 +122,31 @@ describe("advisor", () => {
       (() => { const s = shipped(); s.research = []; return s; })(), // products unlocked, staff locked
       (() => { const s = shipped(); s.research = ["seed"]; s.employees = []; s.products.drafts = []; return s; })(), // staff open
       (() => { const s = shipped(); s.products.drafts = [{ id: "d1", ships: 1, quality: s.products.frontier }]; return s; })(),
+      // Staff open + a LIVE product + cash on hand: the hire nudge actually
+      // fires here, so the employees-tab assertion below is exercised for real.
+      (() => {
+        let s = shipped();
+        s.research = ["seed"];
+        s.employees = [];
+        s.products.drafts = [];
+        s = releaseProduct(s, { type: "general", name: "P", id: "p1" });
+        s.products.active[0]!.quality = s.products.frontier;
+        return s;
+      })(),
     ];
 
+    const seenTabs = new Set<string>();
     for (const s of states) {
       for (const item of advisorItems(s)) {
+        seenTabs.add(item.tab);
         if (item.tab === "products") expect(productsUnlocked(s)).toBe(true);
         if (item.tab === "employees") expect(staffOpen(s)).toBe(true);
         // "lab" is always renderable — no assertion needed.
       }
     }
+    // Guard against a vacuous sweep: the gated tabs must actually appear.
+    expect(seenTabs.has("products")).toBe(true);
+    expect(seenTabs.has("employees")).toBe(true);
   });
 
   it("nudges the first hire only once a product is LIVE and a hire is affordable", () => {

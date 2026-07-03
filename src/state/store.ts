@@ -329,11 +329,14 @@ export const useGame = create<GameStore>((set, get) => ({
         if (def) pushNotice(`${def.label} — ${def.desc} (+$${def.reward.toLocaleString()})`, "milestone");
       }
 
-      const finished = game.products.active.find((p) => wasUpgrading.get(p.id) && !p.upgrade);
-      if (finished) pushNotice(`${finished.name} v${finished.version} shipped — back at the frontier`, "ship");
+      // Several can finish in one tick (offline catch-up) — name one, count the rest.
+      const finished = game.products.active.filter((p) => wasUpgrading.get(p.id) && !p.upgrade);
+      if (finished.length === 1) pushNotice(`${finished[0]!.name} v${finished[0]!.version} shipped — back at the frontier`, "ship");
+      else if (finished.length > 1) pushNotice(`${finished.length} products shipped new versions — back at the frontier`, "ship");
 
-      const trained = game.employees.find((e) => wasTraining.get(e.id) && !e.training);
-      if (trained) pushNotice(`${trained.name} leveled up to L${trained.level}`, "levelup");
+      const trained = game.employees.filter((e) => wasTraining.get(e.id) && !e.training);
+      if (trained.length === 1) pushNotice(`${trained[0]!.name} leveled up to L${trained[0]!.level}`, "levelup");
+      else if (trained.length > 1) pushNotice(`${trained.length} specialists leveled up`, "levelup");
 
       // Achievements: several can land in one tick (offline catch-up) — show the
       // first by name and coalesce the rest into the count.
@@ -349,11 +352,11 @@ export const useGame = create<GameStore>((set, get) => ({
         }
       }
 
-      if (earned.length > 0) {
-        patch.notice = earned[0]!;
-        // Cap the backlog so an extreme offline catch-up can't toast for minutes.
-        pendingNotices = [...pendingNotices, ...earned.slice(1)].slice(0, 6);
-      } else if (pendingNotices.length > 0) {
+      // One queue, oldest first — a notice earned this tick never jumps ahead of
+      // one still waiting from a previous tick. Cap the backlog so an extreme
+      // offline catch-up can't toast for minutes.
+      if (earned.length > 0) pendingNotices = [...pendingNotices, ...earned].slice(0, 6);
+      if (pendingNotices.length > 0) {
         patch.notice = pendingNotices[0]!;
         pendingNotices = pendingNotices.slice(1);
       }
@@ -515,6 +518,9 @@ export const useGame = create<GameStore>((set, get) => ({
     set((s) => {
       // Capture the run length BEFORE the reset: playtimeSec survives prestige (it's a
       // lifetime stat), so the gen's run time is derived from the cumulative value.
+      // A queued notice about the old run ("X shipped", "Y leveled up") would
+      // read as noise over the fresh lab — drop the backlog with the run.
+      pendingNotices = [];
       const game = prestige(s.game, mode);
       recordTelemetry({
         kind: "prestige",
@@ -547,6 +553,8 @@ export const useGame = create<GameStore>((set, get) => ({
     try { return btoa(unescape(encodeURIComponent(json))); } catch { return json; }
   },
   importSave: (blob: string) => {
+    // Imported game = different world; drop any queued notices about the old one.
+    pendingNotices = [];
     const raw = blob.trim();
     if (!raw) return false;
     // Accept either a base64 backup (preferred) or a raw JSON save.

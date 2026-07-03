@@ -45,6 +45,9 @@ import { ExpandConfirm } from "./ExpandConfirm";
 import { ConfirmSheet } from "./ConfirmSheet";
 import { RigBayPanel } from "./RigBayPanel";
 import { componentsUnlocked, earnedDefs } from "../engine/components";
+
+// Trophy-part defs are static catalog data — resolve once, not per render.
+const TROPHY_DEFS = earnedDefs();
 import { EraTransition } from "./EraTransition";
 import { WorldEventCard } from "./WorldEventCard";
 import { ModifierBar } from "./ModifierBar";
@@ -234,7 +237,7 @@ export function App() {
     // Rig Bay trophies (C2): one row per trophy part. Trophies persist across
     // prestige (carryEarnedComponents), so the fact never flips back — one toast
     // per save, ever.
-    ...earnedDefs().map((def) => ({
+    ...TROPHY_DEFS.map((def) => ({
       key: `trophy_${def.id}`,
       fact: (game.components.owned[def.id] ?? 0) > 0,
       when: true as const,
@@ -266,9 +269,16 @@ export function App() {
   // First-ever ship-ready: queue the one-time explainer (settings-persisted).
   // Only for a first-generation lab — veterans already know what shipping does.
   useEffect(() => {
-    if (!initialized || shipExplained || game.prestige.ships > 0) return;
+    if (!initialized || shipExplained) return;
+    if (game.prestige.ships > 0) {
+      // Shipped before the explainer found a clear stage (or on a veteran save)
+      // — the lesson is learned; retire the sheet so it never shows stale.
+      setShowShipExplainer(false);
+      markShipExplained();
+      return;
+    }
     if (shipReady) setShowShipExplainer(true);
-  }, [initialized, shipReady, shipExplained, game.prestige.ships]);
+  }, [initialized, shipReady, shipExplained, game.prestige.ships, markShipExplained]);
 
   // Era transitions: a full-screen tentpole moment when the lab crosses an era.
   // Guarded by the same hydration sync so it never fires on a returning load.
@@ -816,7 +826,7 @@ export function App() {
       {/* One-time "what does Shipping do" explainer, shown the first time a ship
           is ready (persisted in settings — the scariest button in the game
           deserves one screen before it's pressed). */}
-      {moment === null && showShipExplainer && (
+      {moment === null && showShipExplainer && game.prestige.ships === 0 && (
         <ConfirmSheet
           kicker="SHIP THE MODEL"
           title="Your first Ship is ready"
@@ -827,7 +837,9 @@ export function App() {
           onCancel={() => { markShipExplained(); setShowShipExplainer(false); }}
         />
       )}
-      {!onboarded && !offline && <Onboarding onDone={completeOnboarding} />}
+      {/* Onboarding waits for a clear stage: any full-screen moment (offline,
+          launch, celebration…) plays first — never two overlays stacked. */}
+      {!onboarded && moment === null && <Onboarding onDone={completeOnboarding} />}
       <ToastStack toasts={toasts} onDone={dropToast} />
       <FxCanvas reducedMotion={reducedMotion} />
       {flash > 0 && !reducedMotion && <div key={flash} className="screen-flash" aria-hidden="true" onAnimationEnd={() => setFlash(0)} />}

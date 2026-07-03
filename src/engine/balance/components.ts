@@ -53,6 +53,8 @@ export const components = {
   revealAtRacks: 3,
   /** C3 fusion: this many copies of a part combine into one of `fusesInto`. */
   fuseCount: 3,
+  /** Sanity ceiling on owned copies of one part (save-load clamp). */
+  maxCopies: 99,
   /** C4 matched rig: a tier whose EVERY slot (2+) is filled with parts of the
    *  SAME grade draws this fraction of its power — "the parts hum in harmony".
    *  Efficiency, deliberately NOT income: a compute-side set bonus compounded

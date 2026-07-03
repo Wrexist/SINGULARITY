@@ -148,9 +148,9 @@ export function equipComponent(state: GameState, tier: number, slot: SlotClass, 
   if (id !== null) {
     const def = BY_ID.get(id);
     if (!def || def.class !== slot) return state;
-    // A copy already slotted elsewhere can't be slotted twice.
-    const freeCopies = (state.components.owned[id] ?? 0) - equippedCount(state, id) + (current === id ? 1 : 0);
-    if (freeCopies <= 0) return state;
+    // A copy already slotted elsewhere can't be slotted twice. (Re-slotting the
+    // same id into the same slot is the no-op early return above.)
+    if (freeCopies(state, id) <= 0) return state;
   }
   const loadout = state.components.loadout.map((s, t) => {
     if (t !== tier) return s;

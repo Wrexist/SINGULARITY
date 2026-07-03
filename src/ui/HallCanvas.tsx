@@ -85,6 +85,10 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
     // it so we don't rebuild ~46 objects every animation frame (mobile GC).
     let modelSig = "";
     let model = buildHallModel(useGame.getState().game);
+    // Rig Bay fill only changes when the loadout array is replaced (equip /
+    // clear / prestige) — cache by reference instead of 3 tier scans per frame.
+    let fillLoadout: unknown = null;
+    let componentFill: number[] = [0, 0, 0];
     let markers = expansionMarkers(model, 1, 1); // current frame's side markers
     // Seed from the hydrated hall so a saved lab doesn't replay the whole
     // spawn animation as if every owned rack were brand-new on first open.
@@ -128,6 +132,11 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       const money = game.resources.money;
       for (const s of model.sides) s.affordable = !s.maxed && money.gte(s.cost);
 
+      if (game.components.loadout !== fillLoadout) {
+        fillLoadout = game.components.loadout;
+        componentFill = [0, 1, 2].map((t) => tierLoadoutFill(game, t));
+      }
+
       if (model.total > prevTotal) {
         spawnFrom = prevTotal;
         spawnStart = timeMs;
@@ -155,8 +164,8 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
         reducedMotion: useSettings.getState().reducedMotion,
         spawnFrom, spawnT, burst, dpr,
         rackSkin: useSettings.getState().rackSkin,
-        // Rig Bay: fitted tiers pulse brighter (read per frame like the skin).
-        componentFill: [0, 1, 2].map((t) => tierLoadoutFill(useGame.getState().game, t)),
+        // Rig Bay: fitted tiers pulse brighter (cached above by loadout ref).
+        componentFill,
       });
       // Debug/test aid (screenshot harness reads marker centroids); harmless.
       markers = expansionMarkers(model, cssW, cssH);

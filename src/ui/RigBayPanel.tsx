@@ -3,7 +3,7 @@ import { Portal } from "./Portal";
 import { Big } from "../engine/math/Big";
 import {
   componentsBalance, SLOTS_BY_TIER, componentDef, visibleCatalog, canBuyComponent, equippedCount,
-  earnedDefs, earnedSourceComplete, canFuse, tierSetMatched,
+  earnedDefs, earnedSourceComplete, canFuse, freeCopies, tierSetMatched,
 } from "../engine/components";
 import type { SlotClass, ComponentDef, ComponentGrade } from "../engine/balance/components";
 import { RACK_IDS } from "../engine/hall";
@@ -82,7 +82,7 @@ export function RigBayPanel({ game, onBuy, onEquip, onFuse }: Props) {
               const owned = game.components.owned[def.id] ?? 0;
               const inUse = equippedCount(game, def.id);
               const isCurrent = current === def.id;
-              const hasFree = owned - inUse + (isCurrent ? 1 : 0) > 0;
+              const hasFree = freeCopies(game, def.id) > 0;
               const affordable = canBuyComponent(game, def.id);
               const action = isCurrent ? "equipped" : hasFree ? "equip" : affordable ? "buy" : "poor";
               const fusable = canFuse(game, def.id);

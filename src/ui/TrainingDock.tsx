@@ -1,6 +1,6 @@
 import type { Derived, GameState } from "../engine/types";
 import { fmt, fmtMoney } from "./format";
-import { balance } from "../engine/balance/config";
+import { trainingIntensity } from "../engine/derive";
 import { burst, floatText } from "./fx";
 
 interface Props {
@@ -22,8 +22,7 @@ export function TrainingDock({ game, derived, onStart, onClaim, onSetFocus }: Pr
   // bank) AND how much auto-train reserves before firing. Only shown once
   // auto-train exists (before that the player paces runs by hand).
   const focus = game.computeFocus;
-  const floor = balance.run.focusCostFloor;
-  const runSizePct = Math.round((floor + (1 - floor) * focus) * 100);
+  const runSizePct = Math.round(trainingIntensity(focus) * 100);
   const focusLabel =
     focus === 0
       ? `Holding — light ${runSizePct}% runs, Compute banks freely`

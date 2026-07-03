@@ -347,6 +347,12 @@ export function deserialize(json: string): GameState {
     typeof raw.computeFocus === "number" && Number.isFinite(raw.computeFocus)
       ? Math.max(0, Math.min(1, raw.computeFocus))
       : fresh.computeFocus;
+  // Sanitize the trophy-source witnesses FIRST: components legitimacy (below)
+  // is checked against these, so a crafted dupe can't smuggle a trophy in.
+  const achievements = Array.isArray(raw.achievements)
+    ? raw.achievements.filter((a): a is string => typeof a === "string")
+    : [];
+  const contracts = sanitizeContracts(raw.contracts);
   const loadedProducts = isWellFormedProducts(raw.products) ? raw.products : fresh.products;
   // `sold` was added after v6 shipped, `drafts`/`upgrade` in v7; default them for
   // saves that predate each, and sanitize the untrusted nested shapes.
@@ -419,11 +425,9 @@ export function deserialize(json: string): GameState {
     products,
     employees: sanitizeEmployees(raw.employees),
     stats: sanitizeStats(raw.stats),
-    achievements: Array.isArray(raw.achievements)
-      ? raw.achievements.filter((a): a is string => typeof a === "string")
-      : [],
+    achievements,
     reputation: sanitizeReputation(raw.reputation),
-    contracts: sanitizeContracts(raw.contracts),
+    contracts,
     // Validate against KNOWN charter ids: an unknown/crafted id would still grant the
     // +15% conviction bonus (charter === lastCharter) without a real two-run commitment.
     charter: typeof raw.charter === "string" && CHARTER_IDS.has(raw.charter) ? raw.charter : null,
@@ -432,7 +436,7 @@ export function deserialize(json: string): GameState {
     // KNOWN legacy-perk ids, deduped — a dupe would apply the lane bias twice for free
     // (legacyTreeMods sums per entry and never checks prereqs on load).
     legacyInvestments: dedupeKnownIds(raw.legacyInvestments, LEGACY_IDS),
-    components: sanitizeComponents(raw.components),
+    components: sanitizeComponents(raw.components, contracts.completed, achievements),
     // Generation-scoped (not persisted): a mid-run reload simply re-accrues the run
     // peaks, and the ship report is transient — both start fresh on load.
     runPeakCompute: fresh.runPeakCompute,
@@ -454,7 +458,7 @@ function sanitizeContracts(c: unknown): { completed: string[] } {
  *  beyond the owned copy count are dropped (a crafted save can't run one GPU in
  *  three tiers), per-entry like every other sanitizer here. */
 const COMPONENT_BY_ID = new Map(COMPONENTS.catalog.map((d) => [d.id, d]));
-function sanitizeComponents(c: unknown): ComponentsState {
+function sanitizeComponents(c: unknown, completedContracts: string[], achievements: string[]): ComponentsState {
   const out = freshComponents();
   const o = c as Partial<ComponentsState> | null;
   if (!o || typeof o !== "object") return out;
@@ -462,7 +466,13 @@ function sanitizeComponents(c: unknown): ComponentsState {
     for (const [id, n] of Object.entries(o.owned)) {
       if (id === "__proto__" || !COMPONENT_BY_ID.has(id)) continue;
       if (typeof n !== "number" || !Number.isFinite(n) || n <= 0) continue;
-      out.owned[id] = Math.min(99, Math.floor(n));
+      // Trophy parts are only legitimate when their source milestone is complete
+      // (a crafted save could otherwise own top-shelf hardware forever — the
+      // sibling sanitizers all reconcile against their earning source). Dropping
+      // is safe: a legitimately-earned trophy is re-granted next tick.
+      const earned = COMPONENT_BY_ID.get(id)!.earnedBy;
+      if (earned && !(earned.kind === "contract" ? completedContracts.includes(earned.id) : achievements.includes(earned.id))) continue;
+      out.owned[id] = Math.min(COMPONENTS.maxCopies, Math.floor(n));
     }
   }
   if (Array.isArray(o.loadout)) {

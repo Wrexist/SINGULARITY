@@ -59,6 +59,16 @@ export function officePayrollMult(state: GameState): number {
  * Pure and cheap — safe to call every frame. Keeping this the single source of
  * "current rates" means tick() and the UI never disagree.
  */
+/**
+ * Training intensity from the computeFocus slider: scales the run INVESTMENT
+ * (and therefore payout) between the floor and full size. Identity at focus 1,
+ * so the tuned curve and the sim are unchanged. Single source for engine + UI.
+ */
+export function trainingIntensity(focus: number): number {
+  const floor = balance.run.focusCostFloor;
+  return floor + (1 - floor) * Math.max(0, Math.min(1, focus));
+}
+
 export function derive(state: GameState): Derived {
   let computeFlat = Big.of(balance.baseComputePerSec);
   let computeMult = Big.ONE;
@@ -272,10 +282,8 @@ export function derive(state: GameState): Derived {
   // Training intensity (computeFocus) scales the INVESTMENT: at low intensity a
   // run sips Compute (and pays proportionally less), so the bank can actually
   // climb — identity at focus 1, so the tuned curve and the sim are unchanged.
-  const floor = balance.run.focusCostFloor;
-  const intensity = floor + (1 - floor) * Math.max(0, Math.min(1, state.computeFocus));
   const runComputeCost = computePerSec
-    .mul(balance.run.costSeconds * intensity)
+    .mul(balance.run.costSeconds * trainingIntensity(state.computeFocus))
     .max(balance.run.minCompute);
 
   return {
