@@ -30,7 +30,7 @@ function fmtPlaytime(sec: number): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-type ToggleKey = "sound" | "music" | "haptics" | "reducedMotion";
+type ToggleKey = "sound" | "music" | "haptics" | "reducedMotion" | "scientificNotation";
 
 interface RowProps {
   label: string;
@@ -59,12 +59,13 @@ interface Props {
 
 /** iOS-style bottom sheet for feel preferences (clean-to-play, GAMEPLAN §8). */
 export function SettingsSheet({ onClose }: Props) {
-  const { sound, music, haptics, reducedMotion, hallTheme, rackSkin, toggle, setHallTheme, setRackSkin } = useSettings();
+  const { sound, music, haptics, reducedMotion, scientificNotation, hallTheme, rackSkin, toggle, setHallTheme, setRackSkin } = useSettings();
   const rows: { key: ToggleKey; label: string; hint: string; value: boolean }[] = [
     { key: "sound", label: "Sound effects", hint: "Synthesized taps, claims & ship chimes", value: sound },
     { key: "music", label: "Music", hint: "Ambient bed + era & ship swells", value: music },
     { key: "haptics", label: "Haptics", hint: "Vibration feedback on supported devices", value: haptics },
     { key: "reducedMotion", label: "Reduced motion", hint: "Calm the animations", value: reducedMotion },
+    { key: "scientificNotation", label: "Scientific notation", hint: "1.23e9 instead of 1.23B — for the endgame", value: scientificNotation },
   ];
 
   const [premium, setPremiumState] = useState(iap.isPremium());

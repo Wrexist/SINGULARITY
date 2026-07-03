@@ -55,3 +55,17 @@ describe("Big formatting", () => {
     expect(Big.of("9.9999e42").format()).toBe("1e43");
   });
 });
+
+describe("Big.formatScientific (endgame notation setting)", () => {
+  it("stays plain under a thousand, scientific from 1000 up", () => {
+    expect(Big.of(0).formatScientific()).toBe("0");
+    expect(Big.of(999).formatScientific()).toBe("999");
+    expect(Big.of(1000).formatScientific()).toBe("1.00e3");
+    expect(Big.of(1_230_000).formatScientific()).toBe("1.23e6");
+    expect(Big.of("1.5e42").formatScientific()).toBe("1.50e42");
+  });
+
+  it("degrades gracefully on non-finite values like format()", () => {
+    expect(Big.of(Number.NaN).formatScientific()).toBe("0");
+  });
+});

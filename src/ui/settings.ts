@@ -14,13 +14,15 @@ export interface Settings {
   onboarded: boolean;
   /** One-time "what does Shipping do" explainer seen? (shows at first ship-ready). */
   shipExplained: boolean;
+  /** Endgame number display: scientific (1.23e9) instead of suffixes (1.23B). */
+  scientificNotation: boolean;
   /** Last successful save backup (export/share), ms epoch — null = never.
    *  Drives the one-time gentle backup nudge; no timers, no urgency. */
   lastBackupAt: number | null;
 }
 
 const KEY = "singularity.settings.v1";
-const DEFAULTS: Settings = { sound: true, music: true, haptics: true, reducedMotion: false, hallTheme: "classic", rackSkin: "classic", onboarded: false, shipExplained: false, lastBackupAt: null };
+const DEFAULTS: Settings = { sound: true, music: true, haptics: true, reducedMotion: false, hallTheme: "classic", rackSkin: "classic", onboarded: false, shipExplained: false, scientificNotation: false, lastBackupAt: null };
 
 function load(): Settings {
   try {
@@ -36,7 +38,7 @@ function persist(s: Settings): void {
   try {
     localStorage.setItem(
       KEY,
-      JSON.stringify({ sound: s.sound, music: s.music, haptics: s.haptics, reducedMotion: s.reducedMotion, hallTheme: s.hallTheme, rackSkin: s.rackSkin, onboarded: s.onboarded, shipExplained: s.shipExplained, lastBackupAt: s.lastBackupAt }),
+      JSON.stringify({ sound: s.sound, music: s.music, haptics: s.haptics, reducedMotion: s.reducedMotion, hallTheme: s.hallTheme, rackSkin: s.rackSkin, onboarded: s.onboarded, shipExplained: s.shipExplained, scientificNotation: s.scientificNotation, lastBackupAt: s.lastBackupAt }),
     );
   } catch {
     /* ignore */
@@ -44,7 +46,7 @@ function persist(s: Settings): void {
 }
 
 interface SettingsStore extends Settings {
-  toggle: (key: "sound" | "music" | "haptics" | "reducedMotion") => void;
+  toggle: (key: "sound" | "music" | "haptics" | "reducedMotion" | "scientificNotation") => void;
   setHallTheme: (id: string) => void;
   setRackSkin: (id: string) => void;
   completeOnboarding: () => void;
