@@ -120,6 +120,7 @@ export function App() {
   const onboarded = useSettings((s) => s.onboarded);
   const completeOnboarding = useSettings((s) => s.completeOnboarding);
   const shipExplained = useSettings((s) => s.shipExplained);
+  const lastBackupAt = useSettings((s) => s.lastBackupAt);
   const markShipExplained = useSettings((s) => s.markShipExplained);
   const [showShipExplainer, setShowShipExplainer] = useState(false);
 
@@ -234,6 +235,9 @@ export function App() {
     { key: "hired", fact: game.stats.employeesHired > 0, when: true, text: "First hire aboard — specialists level up as they work", tone: "good" },
     // Heat used to explain itself only by punishing you (pre-launch audit).
     { key: "heat", fact: game.heat >= 25, when: true, text: "Regulatory Heat is rising — fines and raids get likelier. Time and lobbying cool it.", tone: "neutral" },
+    // Gentle backup nudge (R8.2): once real progress exists and no backup ever
+    // has, say it ONCE. No timers, no urgency — a fact-transition like the rest.
+    { key: "backup", fact: game.prestige.ships >= 2 && lastBackupAt === null, when: true, text: "Two generations banked — your save lives only on this device. Back it up in More → Back up.", tone: "neutral" },
     // Rig Bay trophies (C2): one row per trophy part. Trophies persist across
     // prestige (carryEarnedComponents), so the fact never flips back — one toast
     // per save, ever.

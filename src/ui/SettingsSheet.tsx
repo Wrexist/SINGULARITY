@@ -4,7 +4,8 @@ import { iap, PREMIUM_PRICE } from "./iap";
 import { haptics as hpt } from "./haptics";
 import { sound as snd } from "./sound";
 import { balance } from "../engine/balance/config";
-import { useGame } from "../state/store";
+import { useGame, previewBackup, type BackupPreview } from "../state/store";
+import { fmtMoney } from "./format";
 import { themeStyle, skinSwatch } from "./hallThemes";
 import { themes, rackSkins, themeUnlocked, skinUnlocked, collectionProgress, skinProgress, unlockHint } from "../engine/cosmetics";
 import { PaletteIcon, DownloadIcon, LockIcon, CheckIcon } from "./Icons";
@@ -19,6 +20,13 @@ function fmtDur(sec: number): string {
   const s = Math.max(0, Math.round(sec));
   const m = Math.floor(s / 60);
   return `${m}m${String(s % 60).padStart(2, "0")}s`;
+}
+
+/** Hours-scale playtime for the backup preview ("14h 22m", "35m"). */
+function fmtPlaytime(sec: number): string {
+  const h = Math.floor(sec / 3600);
+  const m = Math.round((sec % 3600) / 60);
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
 type ToggleKey = "sound" | "music" | "haptics" | "reducedMotion";
@@ -66,7 +74,7 @@ export function SettingsSheet({ onClose }: Props) {
   const skinProg = skinProgress(game, premium);
   const [busy, setBusy] = useState(false);
   const [backupOpen, setBackupOpen] = useState(false);
-  const [confirmImport, setConfirmImport] = useState(false);
+  const [confirmImport, setConfirmImport] = useState<BackupPreview | null>(null);
   const [exportText, setExportText] = useState("");
   const [importText, setImportText] = useState("");
   const [status, setStatus] = useState<string | null>(null);
@@ -77,18 +85,46 @@ export function SettingsSheet({ onClose }: Props) {
   const diag = summarize(getTelemetryEvents());
   void diagTick; // diag is recomputed each render; diagTick just forces it after a mutation
 
+  const markBackedUp = useSettings.getState().markBackedUp;
   const doExport = async () => {
     const blob = useGame.getState().exportSave();
     setExportText(blob);
-    try { await navigator.clipboard.writeText(blob); setStatus("Backup copied to clipboard — paste it somewhere safe."); }
+    try { await navigator.clipboard.writeText(blob); setStatus("Backup copied to clipboard — paste it somewhere safe."); markBackedUp(); }
     catch { setStatus("Select the text below and copy it."); }
+  };
+  // Share-sheet export (R8.2 Stage A): the backup travels as a .txt file to
+  // Files / iCloud Drive / Notes / Mail — a real off-device copy, still zero
+  // backend. Falls back to text share, then to the clipboard path above.
+  const doShareBackup = async () => {
+    const blob = useGame.getState().exportSave();
+    const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+    try {
+      if (typeof nav.share === "function") {
+        const file = new File([blob], `singularity-backup-${new Date().toISOString().slice(0, 10)}.txt`, { type: "text/plain" });
+        if (typeof nav.canShare === "function" && nav.canShare({ files: [file] })) {
+          await nav.share({ files: [file], title: "Singularity Inc. save backup" });
+        } else {
+          await nav.share({ text: blob, title: "Singularity Inc. save backup" });
+        }
+        setStatus("Backup handed to the share sheet — save it somewhere safe.");
+        markBackedUp();
+        return;
+      }
+    } catch (err) {
+      if ((err as DOMException | null)?.name === "AbortError") return; // sheet closed — no-op
+    }
+    await doExport(); // no share surface here → clipboard path
   };
   const doImport = () => {
     if (!importText.trim()) return;
-    setConfirmImport(true);
+    // Preview BEFORE the confirm: the player should know what they're about to
+    // replace their progress with (and a bad paste fails here, not after).
+    const preview = previewBackup(importText);
+    if (!preview) { setStatus("That backup didn't look valid — check you copied all of it."); return; }
+    setConfirmImport(preview);
   };
   const reallyImport = () => {
-    setConfirmImport(false);
+    setConfirmImport(null);
     if (useGame.getState().importSave(importText)) { location.reload(); }
     else { setStatus("That backup didn't look valid — check you copied all of it."); }
   };
@@ -225,7 +261,8 @@ export function SettingsSheet({ onClose }: Props) {
             <div className="set-backup-body">
               <p className="set-backup-tip">Your progress lives only on this device. Export a backup string and keep it safe; paste it back to restore (or move to a new device).</p>
               <div className="set-backup-actions">
-                <button className="btn btn-ghost btn-sm" onClick={doExport}>Export backup</button>
+                <button className="btn btn-primary btn-sm" onClick={doShareBackup}>Share backup…</button>
+                <button className="btn btn-ghost btn-sm" onClick={doExport}>Copy as text</button>
                 <button className="btn btn-ghost btn-sm" onClick={() => { setImportText(""); setStatus(null); setExportText(""); }}>Clear</button>
               </div>
               {exportText && <textarea className="set-backup-text" readOnly rows={3} value={exportText} onFocus={(e) => e.currentTarget.select()} />}
@@ -295,11 +332,11 @@ export function SettingsSheet({ onClose }: Props) {
         <ConfirmSheet
           kicker="RESTORE BACKUP"
           title="Replace your current progress?"
-          body="Your current save is overwritten with the pasted backup. This can't be undone."
+          body={`The pasted backup holds: Generation ${confirmImport.ships} · ${eraName(confirmImport.era)} era · ${fmtMoney(confirmImport.money)} · ${confirmImport.achievements} achievements · ${fmtPlaytime(confirmImport.playtimeSec)} played. Your current save is overwritten — this can't be undone.`}
           confirmLabel="Restore"
           danger
           onConfirm={reallyImport}
-          onCancel={() => setConfirmImport(false)}
+          onCancel={() => setConfirmImport(null)}
         />
       )}
     </div>

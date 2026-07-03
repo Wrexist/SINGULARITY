@@ -14,10 +14,13 @@ export interface Settings {
   onboarded: boolean;
   /** One-time "what does Shipping do" explainer seen? (shows at first ship-ready). */
   shipExplained: boolean;
+  /** Last successful save backup (export/share), ms epoch — null = never.
+   *  Drives the one-time gentle backup nudge; no timers, no urgency. */
+  lastBackupAt: number | null;
 }
 
 const KEY = "singularity.settings.v1";
-const DEFAULTS: Settings = { sound: true, music: true, haptics: true, reducedMotion: false, hallTheme: "classic", rackSkin: "classic", onboarded: false, shipExplained: false };
+const DEFAULTS: Settings = { sound: true, music: true, haptics: true, reducedMotion: false, hallTheme: "classic", rackSkin: "classic", onboarded: false, shipExplained: false, lastBackupAt: null };
 
 function load(): Settings {
   try {
@@ -33,7 +36,7 @@ function persist(s: Settings): void {
   try {
     localStorage.setItem(
       KEY,
-      JSON.stringify({ sound: s.sound, music: s.music, haptics: s.haptics, reducedMotion: s.reducedMotion, hallTheme: s.hallTheme, rackSkin: s.rackSkin, onboarded: s.onboarded, shipExplained: s.shipExplained }),
+      JSON.stringify({ sound: s.sound, music: s.music, haptics: s.haptics, reducedMotion: s.reducedMotion, hallTheme: s.hallTheme, rackSkin: s.rackSkin, onboarded: s.onboarded, shipExplained: s.shipExplained, lastBackupAt: s.lastBackupAt }),
     );
   } catch {
     /* ignore */
@@ -46,6 +49,7 @@ interface SettingsStore extends Settings {
   setRackSkin: (id: string) => void;
   completeOnboarding: () => void;
   markShipExplained: () => void;
+  markBackedUp: () => void;
 }
 
 /** Player feel preferences. Persisted locally; read by sound/haptics/motion. */
@@ -69,6 +73,10 @@ export const useSettings = create<SettingsStore>((set, get) => ({
   },
   markShipExplained: () => {
     set({ shipExplained: true });
+    persist(get());
+  },
+  markBackedUp: () => {
+    set({ lastBackupAt: Date.now() });
     persist(get());
   },
 }));

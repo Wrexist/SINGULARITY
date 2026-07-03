@@ -59,6 +59,7 @@ import { balance } from "../engine/balance/config";
 import { recordTelemetry } from "./telemetry";
 import { purchaseSignature } from "../engine/telemetry";
 import { currentEra } from "../engine/eras";
+import type { Big } from "../engine/math/Big";
 
 const SAVE_KEY = "singularity.save.v1";
 const TIME_KEY = "singularity.lastSeen.v1";
@@ -579,6 +580,39 @@ export const useGame = create<GameStore>((set, get) => ({
     return false;
   },
 }));
+
+/** What a pasted backup contains — shown in the restore confirm so the player
+ *  knows what they're about to replace their progress WITH (R8.2 Stage A). */
+export interface BackupPreview {
+  ships: number;
+  era: number;
+  money: Big;
+  playtimeSec: number;
+  achievements: number;
+}
+
+/** Decode + sanitize a backup without applying it. Same decode ladder as
+ *  importSave (base64 first, then raw JSON); null = not a valid backup. */
+export function previewBackup(blob: string): BackupPreview | null {
+  const raw = blob.trim();
+  if (!raw) return null;
+  const candidates: string[] = [];
+  try { candidates.push(decodeURIComponent(escape(atob(raw)))); } catch { /* not base64 */ }
+  candidates.push(raw);
+  for (const json of candidates) {
+    try {
+      const g = deserialize(json);
+      return {
+        ships: g.prestige.ships,
+        era: currentEra(g),
+        money: g.resources.money,
+        playtimeSec: g.stats.playtimeSec,
+        achievements: g.achievements.length,
+      };
+    } catch { /* try the next candidate */ }
+  }
+  return null;
+}
 
 // Debug/test handle (used by the screenshot harness; harmless in prod).
 if (typeof window !== "undefined") {
