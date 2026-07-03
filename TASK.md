@@ -161,12 +161,24 @@ features. Two audit passes (engine + UI) ran first; every shipped fix was verifi
       renamed to its visible label; dialogs/toasts/canvases/chips audited clean). #5 (milestone
       chase ladder) was already live via the goal strip — marked shipped. 485 tests · engine
       untouched except display-only Big method + offline story diffs (sim-irrelevant).
+- [x] **Wave 3 (owner 2026-07-03, "do iPad overlay and so on", Steam memo skipped):**
+      **iPad layout** (#22): ≥900px splits the Build pane into a two-column grid — hall/First
+      Steps/dock sticky left, charter/hardware/Rig Bay right, notice+labnav spanning; wrappers are
+      display:contents on phones (screenshot-verified at both viewports, phone byte-identical).
+      **Regulator negotiation** (#9): deterministic sit-down card at suspicion ≥55 — settle (−20%
+      cash, suspicion −30) / lobby (−8%, +heat relief, doomer tilt) / defy (Compute ×1.3·60s,
+      heat+suspicion rise); one-time-ness structural (settle/lobby dip below trigger; factor-1
+      truce marker gates re-fire — defiance means Chen RETURNS). Outranks the ambient pool; +6
+      tests. **Content wave**: R7.2 callback sequels (six \`after\`-gated events referencing their
+      parent beat, guard test cross-checks ids) + R7.4 rotating era press releases
+      (eraBlurb(era, gen) rotates a per-era pool, so run 3's Scale-Up crossing reads fresh). +5
+      tests. 496 tests · sim byte-identical (57m59s/62m17s · wall 1m05s).
 - [ ] **NEXT:** local notification opt-in (#17 — needs @capacitor/local-notifications, batch with
-      the Game Center native session) → iPad layout (#22) → panel memoization (#19, AFTER a
-      real-device profile); **research-tree deepening** (owner design call) and the
-      **post-TestFlight telemetry read** (R8.1) before further balance moves. Owner actions open:
-      run the iOS TestFlight workflow (merging ≠ shipping), confirm GitHub Pages links, and the
-      Game Center native steps when a Capacitor-6 plugin lands.
+      the Game Center native session) → panel memoization (#19, AFTER a real-device profile);
+      **research-tree deepening** (owner design call) and the **post-TestFlight telemetry read**
+      (R8.1) before further balance moves. Owner actions open: run the iOS TestFlight workflow
+      (merging ≠ shipping), confirm GitHub Pages links, and the Game Center native steps when a
+      Capacitor-6 plugin lands.
 - [ ] **Flagged for owner (not touched):** run yields apply global multipliers twice (derive.ts —
       runComputeCost carries them, then runMoney/DataYield multiply again). The tuned curve is BUILT
       on this behaviour, so changing it = a full retune; decide deliberately. Also noted: App's

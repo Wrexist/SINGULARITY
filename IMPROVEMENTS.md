@@ -25,7 +25,7 @@ existing roadmap. E = effort (S/M/L), curve⚠ = needs `npm run sim` validation.
 8. ~~**Rival counterplay events**~~ ✅ SHIPPED as the press blitz (E:M) — when you overtake a rival on the leaderboard, queue a themed
    world event from THAT rival ("Anthropos ships a safety paper; your accel products take heat").
    Makes the market feel alive; pool-gated so neutral stays baseline.
-9. **Regulator negotiation choice** (E:M) — at high suspicion, a one-time world-event choice:
+9. ~~**Regulator negotiation choice**~~ ✅ SHIPPED (deterministic sit-down at suspicion ≥55: settle / lobby / defy + truce marker) (E:M) — at high suspicion, a one-time world-event choice:
    settle (pay, −suspicion), fight (risk fine ×2 / clear), or comply (permanent −heat rate, −money
    mult). Turns the regulator from a meter into a story.
 10. **Power/heat coupling for the Rig Bay** (E:S) — cooling parts could also slightly reduce
@@ -64,7 +64,7 @@ existing roadmap. E = effort (S/M/L), curve⚠ = needs `npm run sim` validation.
     and chip rows need names. One afternoon, App Store review goodwill.
 21. ~~**Notice queue in the store**~~ ✅ SHIPPED (E:S) — the audit's A5: two same-tick notices drop one. A tiny
     FIFO in the store fixes level-up toasts lost behind version-ship toasts.
-22. **iPad layout** (E:M) — max-width already exists; a two-column stage (hall left, panels right)
+22. ~~**iPad layout**~~ ✅ SHIPPED (Build pane splits hall-left/panels-right at ≥900px; phones untouched) (E:M) — max-width already exists; a two-column stage (hall left, panels right)
     would make the iPad build feel intended rather than stretched.
 23. ~~**Haptic intensity setting**~~ ✅ SHIPPED (E:S) — some players find celebrate-tier haptics strong; a
     Light/Full toggle beside the existing switches.
@@ -87,7 +87,11 @@ existing roadmap. E = effort (S/M/L), curve⚠ = needs `npm run sim` validation.
 R8.2 backup (15) → rival counterplay (8) → interactive onboarding (11) → music layers (3) →
 Game Center (18)~~ — **all shipped** (Game Center's native half waits on a Capacitor-6 plugin,
 see GAME_CENTER_SETUP.md). ~~Second wave: chase ladder (5) · rack-tap (4) · recap (16) ·
-number format (14) · haptic intensity (23) · VoiceOver (20)~~ — **all shipped**. Remaining, in order:
+number format (14) · haptic intensity (23) · VoiceOver (20)~~ — **all shipped**.
+~~Third wave: iPad layout (22) · regulator negotiation (9) · R7.2 callback sequels ·
+R7.4 rotating era press releases~~ — **all shipped**. Remaining, in order:
 local notification opt-in (17, needs @capacitor/local-notifications — batch with the Game Center
-native work) → iPad layout (22) → panel memoization (19, AFTER a real-device profile) → then the
-curve-touching depth items (6, 7, 9, 10) by telemetry once a TestFlight build has real sessions.
+native work) → panel memoization (19, AFTER a real-device profile) → the remaining curve-touching
+depth items (6 research deepening — owner design call, 7 charter arcs, 10 Rig Bay heat coupling)
+by telemetry once a TestFlight build has real sessions → Android (24) / localization (25) /
+Steam memo (26, owner-skipped for now) as platform bets mature.
