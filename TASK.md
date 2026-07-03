@@ -98,8 +98,13 @@ features. Two audit passes (engine + UI) ran first; every shipped fix was verifi
       fuse). Catalog 11→15 purchasable + 4 trophies; late rungs (Dyson-Adjacent Cluster,
       Zero-Kelvin-ish Chamber, Orbital Laser Mesh); collection counter. Sim fits trophies too;
       `upgradeCostMult` 4.0→4.2 recentres: **first prestige 60m59s/62m17s · wall 1m06s**.
-      +7 tests (467). E2E: fuse flow + trophy rows verified in a browser drive. C4 remains
-      owner-call (RIG_BAY_PLAN.md).
+      +7 tests (467). E2E: fuse flow + trophy rows verified in a browser drive.
+- [x] **Rig Bay C4 — matched-rig set bonus (owner 2026-07-02: "do C4").** A tier whose EVERY slot
+      (2+ only — single-slot tiers can't "match") is filled with parts of one grade draws
+      `setBonusPowerMult` 0.88 of its power. Deliberately an EFFICIENCY lane: the first cut (+6%
+      compute) compounded through racks→money→racks and moved first prestige ~10 min (sim-caught;
+      rule recorded in LEARNINGS.md). MATCHED pill in the Rig Bay tier card. Also delivered
+      IMPROVEMENTS.md — 26 ranked UX/gameplay items (the owner-requested improvement list).
 - [x] **Owner on-device fixes round 2 + improvements batch 1 (2026-07-02).** Fixes from TestFlight
       screenshots: (1) hire nudge now requires a LIVE product + affordable signing bonus; (2)
       training-intensity slider scales RUN SIZE (`run.focusCostFloor` 0.3 — light runs sip Compute,
@@ -110,23 +115,39 @@ features. Two audit passes (engine + UI) ran first; every shipped fix was verifi
       (first cross of 25), **store notice FIFO** (same-tick notices drain instead of dropping),
       **product milestones in the goal strip** (mid-game carrots → tap lands on Products), resource
       slab overdraw for iOS rubber-band. +6 tests (475). All e2e-verified in a browser drive.
-- [ ] **NEXT (prioritized plan, owner-ready):**
-      1. **Moment queue** (small): one `enqueueMoment()` arbiter for the five full-screen overlays —
-         the third pairwise collision guard is the signal it's due. UI-only, curve-safe.
+- [x] **Self-review round 2 (owner 2026-07-03, 8-angle review of everything since 8ff4bba).**
+      No curve or data-loss bugs. 10 findings fixed: save sanitizer now drops crafted trophy copies
+      whose source milestone isn't complete (trophies reconcile against contracts/achievements like
+      every other earned system) + owned copies clamped to a `maxCopies` knob; notice queue made
+      strictly oldest-first (new notices no longer jump queued ones), multi-ship / multi-level-up
+      ticks coalesce ("N products shipped…"), and the backlog clears on prestige + import (no stale
+      replays); Onboarding waits for `moment === null` (no stacking over full-screen moments); ship
+      explainer retires itself if the first ship lands before it's shown; `trainingIntensity(focus)`
+      single-sourced in derive (UI label now clamps like the engine); equipComponent/RigBayPanel
+      reuse `freeCopies()` (dead re-slot term removed); HallCanvas caches componentFill by loadout
+      ref (was 3 tier scans per 30fps frame); advisor locked-tab sweep de-vacuized (now guarded to
+      actually exercise the products/employees branches). 477 tests · sim byte-identical
+      (57m59s/62m17s · wall 1m05s) · build clean.
+- [ ] **NEXT (prioritized plan, owner-ready — full ranked list in IMPROVEMENTS.md):**
+      1. **Prestige share card** (IMPROVEMENTS #2): canvas-rendered run-summary image on the ship
+         Celebration → native share sheet. Zero-network virality; no privacy change.
       2. **R8.2 Stage A — backup UX** (roadmap): Share-sheet export, import preview+confirm (the
          ConfirmSheet now exists), gentle backup nudge. No backend, no privacy change.
-      3. **Research-tree deepening** (design): 23 nodes is the endgame ceiling; deepen `frontier`
-         with sim-supervised retune. Owner design call first.
-      4. **Charter fold into TrainingDock** (polish): charter is interactive for seconds per run,
-         then inert — fold into a collapsible strip on the dock (UI audit C1 suggestion).
-      5. **Post-TestFlight**: read the on-device telemetry (R8.1) tab-usage + gen-times against the
-         retuned curve before any further balance moves.
+      3. **Rival counterplay** (IMPROVEMENTS #8): a light response when a rival overtakes you —
+         makes the leaderboard a game, not a graph.
+      4. **Interactive onboarding** (IMPROVEMENTS #11): replace the read-only cards with
+         do-the-thing steps (start a run → claim → buy a rack).
+      5. **Music layers** (IMPROVEMENTS #3): era-keyed ambient layers on the existing WebAudio
+         engine (still no assets — synthesized).
+      6. **Game Center** (IMPROVEMENTS #18): ships/ascensions leaderboards + achievement mirror
+         (Capacitor plugin; the only item needing a native rebuild).
+      Then: **research-tree deepening** (owner design call — 23 nodes is the endgame ceiling) and
+      **post-TestFlight telemetry read** (R8.1 tab-usage + gen-times) before further balance moves.
 - [ ] **Flagged for owner (not touched):** run yields apply global multipliers twice (derive.ts —
       runComputeCost carries them, then runMoney/DataYield multiply again). The tuned curve is BUILT
-      on this behaviour, so changing it = a full retune; decide deliberately. Also noted: the store's
-      single `notice` slot can drop one of two same-tick events (needs a small queue if it ever
-      matters), and App's effects rely on 10Hz re-render freshness (fine today; revisit if the
-      tick→render path is ever throttled).
+      on this behaviour, so changing it = a full retune; decide deliberately. Also noted: App's
+      effects rely on 10Hz re-render freshness (fine today; revisit if the tick→render path is ever
+      throttled). (The old single-notice-slot drop is fixed — notices queue FIFO as of round 2.)
 
 ## UI polish + research depth (owner-directed 2026-06-30) — branch `claude/ui-polish-theme-fixes`
 *Owner screenshots + asks: kill the green accent lines, make themes actually recolour the app

@@ -520,3 +520,18 @@ when" balance, dials the whole curve, and the UI cost displays update for free (
   the throttle. Rule: set/combo bonuses in this economy must pay out in EFFICIENCY or QoL lanes
   (power, heat, offline), never in compute/data/money lanes — and single-slot tiers must not count
   as "matched" (a trivial set is a hidden global buff).
+
+### Review round 2 — earned content must be sanitized against its SOURCE (2026-07-03)
+- **Known-id checks aren't legitimacy checks.** The components sanitizer accepted any catalog id,
+  so a crafted save could own trophy hardware without its milestone. Earned entries must reconcile
+  against the earning source on load (contracts/achievements witnesses, sanitized FIRST and passed
+  in) — the same shape reputation already uses (`spent` reconciled against owned perks). Dropping
+  is safe precisely because grants are idempotent in tick: a legitimate trophy re-appears next tick.
+- **A single-slot + queue hybrid re-orders events.** The notice code showed this tick's first event
+  immediately and queued the rest — so a new notice could jump ahead of one still waiting. One
+  strictly-FIFO queue (append all, always drain head, clear on prestige/import) is simpler AND
+  correct; hybrids that special-case "fresh" items are where ordering bugs live.
+- **Coverage sweeps can be vacuous.** The "advisor never targets a locked tab" sweep never included
+  a state where the employees-tab nudge actually fires, so its assertion was dead code. When a test
+  loops over states × conditions, assert the condition set was actually EXERCISED (collect + expect
+  non-empty), or the test proves nothing as the trigger conditions drift.
