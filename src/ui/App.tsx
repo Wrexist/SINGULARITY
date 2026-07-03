@@ -134,14 +134,18 @@ export function App() {
     : worldEvent ? "world"
     : null;
 
+  const era = currentEra(game);
+
   // Ambient music bed — follow the Music setting; pause while the tab is hidden
   // (battery). Starts on the first user gesture if audio isn't unlocked yet.
+  // Era-keyed (IMPROVEMENTS #3): the pad retunes as the lab crosses eras.
   useEffect(() => {
+    sound.setMusicEra(era);
     const apply = () => sound.setMusic(music && !document.hidden);
     apply();
     document.addEventListener("visibilitychange", apply);
     return () => document.removeEventListener("visibilitychange", apply);
-  }, [music]);
+  }, [music, era]);
 
   // Re-validate the premium entitlement against StoreKit at launch (native only;
   // no-op on web). Keeps the localStorage cache from being the source of truth.
@@ -198,7 +202,6 @@ export function App() {
     });
   }, []);
   const shipReady = canPrestige(game);
-  const era = currentEra(game);
 
   // Transient unlock toasts.
   const [toasts, setToasts] = useState<ToastData[]>([]);

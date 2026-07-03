@@ -43,28 +43,44 @@ const on = () => useSettings.getState().sound;
 const musicOn = () => useSettings.getState().music;
 
 /* ---------- Ambient bed (GDD §6: a quiet, evolving pad, not a loop file) ----------
-   A warm drone of open fifths through a slow-breathing low-pass filter. Pure
-   synthesis (no assets), very low gain. Gated on the Music setting + a user
-   gesture (autoplay policy). Stops fully when music is off. */
-interface Ambient { oscs: OscillatorNode[]; master: GainNode; lfo: OscillatorNode; }
+   A warm drone through a slow-breathing low-pass filter. Pure synthesis (no
+   assets), very low gain. Gated on the Music setting + a user gesture
+   (autoplay policy). Stops fully when music is off.
+
+   ERA-KEYED LAYERS (IMPROVEMENTS #3): each era retunes the pad — the root
+   walks upward (A → B → C → D → E → F), the filter opens, and later eras add
+   a voice — so a Garage Closet hums low and dark while a Post-Singularity lab
+   shimmers. Still chord tones only, no melody to grate over hours. */
+interface EraPad { freqs: number[]; cutoff: number; gain: number; }
+const ERA_PADS: EraPad[] = [
+  { freqs: [55, 82.41, 110, 164.81], cutoff: 480, gain: 0.04 },                     // 0 Garage — low A, near-mono hum
+  { freqs: [61.74, 92.5, 123.47, 185], cutoff: 560, gain: 0.042 },                  // 1 Startup — up a step, a shade brighter
+  { freqs: [65.41, 98, 130.81, 196, 246.94], cutoff: 640, gain: 0.044 },            // 2 Scale-Up — +major color tone
+  { freqs: [73.42, 110, 146.83, 220, 293.66], cutoff: 760, gain: 0.046 },           // 3 Frontier — D, wide open fifths
+  { freqs: [82.41, 123.47, 164.81, 246.94, 329.63], cutoff: 900, gain: 0.048 },     // 4 Hyperscaler — E, bright stack
+  { freqs: [87.31, 130.81, 174.61, 261.63, 349.23, 523.25], cutoff: 1100, gain: 0.05 }, // 5 Post-Singularity — F, +shimmer octave
+];
+
+interface Ambient { oscs: OscillatorNode[]; master: GainNode; lfo: OscillatorNode; era: number; }
 let ambient: Ambient | null = null;
 let wantMusic = false;
 let unlockBound = false;
+/** The era the pad should voice (set by the App as the lab crosses eras). */
+let padEra = 0;
 
 function startAmbient(): void {
   const c = getCtx();
   if (!c || ambient || c.state !== "running") return;
+  const pad = ERA_PADS[Math.max(0, Math.min(ERA_PADS.length - 1, padEra))]!;
   const t0 = c.currentTime;
   const master = c.createGain();
   master.gain.setValueAtTime(0, t0);
-  master.gain.linearRampToValueAtTime(0.04, t0 + 3); // gentle fade-in
+  master.gain.linearRampToValueAtTime(pad.gain, t0 + 3); // gentle fade-in
   const filter = c.createBiquadFilter();
   filter.type = "lowpass";
-  filter.frequency.value = 520;
+  filter.frequency.value = pad.cutoff;
   filter.Q.value = 0.6;
-  // A1 · E2 · A2 · E3 — open fifths/octaves, warm and unobtrusive.
-  const freqs = [55, 82.41, 110, 164.81];
-  const oscs = freqs.map((f, i) => {
+  const oscs = pad.freqs.map((f, i) => {
     const o = c.createOscillator();
     o.type = i % 2 ? "sine" : "triangle";
     o.frequency.value = f;
@@ -83,7 +99,7 @@ function startAmbient(): void {
   lfoGain.gain.value = 200;
   lfo.connect(lfoGain).connect(filter.frequency);
   lfo.start(t0);
-  ambient = { oscs, master, lfo };
+  ambient = { oscs, master, lfo, era: padEra };
 }
 
 function stopAmbient(): void {
@@ -175,4 +191,14 @@ export const sound = {
   },
   /** Start/stop the ambient music bed to match the Music setting. */
   setMusic: (want: boolean) => setMusic(want),
+  /** Retune the ambient bed to the lab's era. The old pad fades over ~1.2s
+   *  while the new one fades in over 3 — a natural crossfade, no pop. */
+  setMusicEra: (era: number) => {
+    if (era === padEra) return;
+    padEra = era;
+    if (ambient && ambient.era !== era) {
+      stopAmbient();
+      if (wantMusic) startAmbient();
+    }
+  },
 };
