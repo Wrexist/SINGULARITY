@@ -20,6 +20,7 @@ import {
   maybeWorldEvent,
   applyWorldEventChoice,
   grantDailyBoost,
+  workProblem,
   type MarketOutcome,
   type WorldEventResult,
 } from "../engine/actions";
@@ -133,6 +134,8 @@ interface GameStore {
   /** Rig Bay C3: fuse copies of a part into the next rung up its ladder. */
   doFuseComponents: (id: string) => void;
   doClaimContract: (id: string) => void;
+  /** IDEAS #5 — tap a manifested incident in the hall for its one bounded time-shave. */
+  doWorkProblem: (id: string) => void;
   doSetCharter: (id: string | null) => void;
   /** Lock the current charter pick for this run (owner UX fix). */
   doLockCharter: () => void;
@@ -468,6 +471,7 @@ export const useGame = create<GameStore>((set, get) => ({
   doEquipComponent: (tier, slot, id) => set((s) => ({ game: equipComponent(s.game, tier, slot, id) })),
   doFuseComponents: (id) => set((s) => ({ game: fuseComponents(s.game, id) })),
   doClaimContract: (id) => set((s) => ({ game: claimContract(s.game, id) })),
+  doWorkProblem: (id) => set((s) => ({ game: workProblem(s.game, id) })),
   doSetCharter: (id) => set((s) => ({ game: setCharter(s.game, id) })),
   doLockCharter: () => set((s) => ({ game: lockCharter(s.game) })),
   // Returns whether the blitz actually landed (same-ref no-op when the guard

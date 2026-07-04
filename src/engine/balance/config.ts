@@ -1568,6 +1568,11 @@ export const balance = {
   worldEvents: {
     /** Mean seconds between events during active play (Poisson-ish). */
     meanIntervalSec: 150,
+    /** IDEAS #5 — "work the problem": tapping a manifested incident in the hall
+     *  shaves this many seconds off a BAD timed modifier, ONCE per incident.
+     *  Flat + small + tap-gated → honest juice, not an economy lever (the sim
+     *  never sees modifiers, so the curve is untouched by construction). */
+    workShaveSec: 12,
     /** Don't begin firing until the player has done some research. */
     minResearch: 1,
     /** R6.2 — |alignment| past this commits you to a faction's event pool. Neutral

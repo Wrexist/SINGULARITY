@@ -118,6 +118,26 @@ export interface HallModel {
   skyline: SkylineTower[];
   /** IDEAS #6 — the Legacy Wall: latest shipped generations as trophy plinths. */
   wall: { era: number; asc: boolean }[];
+  /** IDEAS #5 — incident theater: each BAD timed modifier manifests on a
+   *  deterministic rack (smoke + warn blink). Tapping it once "works the
+   *  problem" (bounded time-shave); worked incidents keep smoking, smaller. */
+  incidents: IncidentView[];
+  /** IDEAS #5 — good-tone modifiers draw a small crowd of onlookers at the
+   *  front lip (hype made visible). Count of extra figures, capped. */
+  crowd: number;
+}
+
+export interface IncidentView {
+  id: string;
+  rackIndex: number;
+  worked: boolean;
+}
+
+/** Small deterministic string hash (incident → rack placement). */
+function hashStr(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h;
 }
 
 /** One horizon silhouette: h 0..1 (share of the market leader), dim = press-blitzed. */
@@ -296,6 +316,13 @@ export function buildHallModel(game: GameState): HallModel {
     })(),
     skyline: buildSkyline(game),
     wall: game.shipLog.slice(-8).map((e) => ({ era: e.era, asc: e.asc })),
+    incidents:
+      racks.length > 0
+        ? game.modifiers
+            .filter((m) => m.tone === "bad" && m.remainingSec > 0)
+            .map((m) => ({ id: m.id, rackIndex: hashStr(m.id) % racks.length, worked: m.worked === true }))
+        : [],
+    crowd: Math.min(6, game.modifiers.filter((m) => m.tone === "good" && m.remainingSec > 0).length * 2),
     ...hallRoomSplit(game),
   };
 }

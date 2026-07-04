@@ -484,6 +484,17 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
     drawRack(ctx, c.x, c.y, tileW, tileH, rack.tier, rack.density, scale, blinkNow, workPulse, model.active, powerOn, o.rackSkin, rig, t, o.reducedMotion);
   }
 
+  // IDEAS #5 — incident theater: bad events smoke on a specific rack (tap it to
+  // work the problem); good events draw a small crowd of onlookers out front.
+  for (const inc of model.incidents) {
+    const c = tiles[inc.rackIndex];
+    const rack = model.racks[inc.rackIndex];
+    if (!c || !rack) continue;
+    const ph = tileH * (1.1 + rack.tier * 0.5) * (0.72 + 0.28 * rack.density);
+    drawIncident(ctx, c.x, c.y - ph, tileW, o.timeMs, inc.worked, o.reducedMotion);
+  }
+  if (model.crowd > 0) drawCrowd(ctx, L, model.crowd, o.timeMs, o.reducedMotion);
+
   // C2 — thermal stress: as power draw approaches/exceeds capacity the racks run hot.
   // A red bloom (+ rising heat-haze bands when motion is on) washes the rack band so
   // the power soft-cap is legible without opening a panel. Identity below the knee.
@@ -1042,6 +1053,72 @@ function drawBeams(ctx: CanvasRenderingContext2D, L: Layout, beams: number[], t:
     ctx.fill();
     ctx.beginPath();
     ctx.arc(base.x, base.y - h, w * 0.6 * flick, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** IDEAS #5 — a manifested incident: smoke puffs rising off the afflicted rack
+ *  plus a red warn blink at its base. Worked incidents smoke at half intensity
+ *  (you contained it; it still has to burn out). Reduced motion → static haze. */
+function drawIncident(ctx: CanvasRenderingContext2D, x: number, topY: number, tileW: number, t: number, worked: boolean, reducedMotion: boolean): void {
+  const strength = worked ? 0.4 : 1;
+  ctx.save();
+  if (reducedMotion) {
+    // A static smudge + steady warn dot — state without motion.
+    ctx.fillStyle = `rgba(30,26,34,${0.4 * strength})`;
+    ctx.beginPath();
+    ctx.ellipse(x, topY - tileW * 0.28, tileW * 0.3, tileW * 0.18, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = `rgba(255,90,70,${0.8 * strength})`;
+    ctx.beginPath();
+    ctx.arc(x + tileW * 0.2, topY + 2, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+  // Three rising, growing, fading puffs (pure function of the clock).
+  for (let k = 0; k < 3; k++) {
+    const phase = ((t / 1400 + k / 3) % 1 + 1) % 1;
+    const py = topY - phase * tileW * 0.85;
+    const r = tileW * (0.1 + phase * 0.22);
+    const a = (1 - phase) * 0.4 * strength;
+    ctx.fillStyle = `rgba(34,30,40,${a})`;
+    ctx.beginPath();
+    ctx.ellipse(x + Math.sin((t / 600 + k) * 1.7) * tileW * 0.08, py, r, r * 0.75, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Warn blink at the rack top edge.
+  const blink = 0.4 + 0.6 * (Math.sin(t / 160) > 0 ? 1 : 0.2);
+  ctx.fillStyle = `rgba(255,90,70,${blink * strength})`;
+  ctx.beginPath();
+  ctx.arc(x + tileW * 0.2, topY + 2, 2.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+/** IDEAS #5 — hype made visible: a small crowd of onlookers pressed against the
+ *  open front edge while a good-tone event runs. */
+function drawCrowd(ctx: CanvasRenderingContext2D, L: Layout, n: number, t: number, reducedMotion: boolean): void {
+  ctx.save();
+  for (let i = 0; i < n; i++) {
+    const seed = ((i * 48271) % 997) / 997;
+    const p = L.iso(L.gxMin + 1 + seed * (L.gxMax - L.gxMin - 2), L.gyMax + 0.7 + (i % 2) * 0.3);
+    // Excited bob — faster than staff; still under reduced motion.
+    const bob = reducedMotion ? 0 : Math.abs(Math.sin(t / 210 + i * 1.9)) * 2.2;
+    const s = Math.max(2.6, L.tileW * 0.08);
+    const body: RGB = i % 2 === 0 ? [200, 205, 220] : [170, 180, 205];
+    ctx.fillStyle = "rgba(0,0,0,0.18)";
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y + s * 0.4, s, s * 0.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = rgba(body, 0.9);
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y - s - bob, s * 0.8, s * 1.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = rgba(shade(body, 1.2), 0.9);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y - s * 2.3 - bob, s * 0.6, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.restore();

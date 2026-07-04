@@ -43,6 +43,9 @@ export interface ActiveModifier {
   remainingSec: number;
   label: string;
   tone: "good" | "bad";
+  /** IDEAS #5 — set once the player has "worked the problem" (tapped the
+   *  incident in the hall for its one bounded time-shave). */
+  worked?: boolean;
 }
 
 export interface GameState {

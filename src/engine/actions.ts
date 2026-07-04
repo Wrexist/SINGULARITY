@@ -662,6 +662,25 @@ export function applyWorldEvent(state: GameState, eventId: string): { state: Gam
   };
 }
 
+/**
+ * IDEAS #5 — "work the problem": the player tapped a manifested incident in the
+ * hall. Shaves a flat, bounded slice off a BAD timed modifier, once per incident
+ * (marked `worked`). Same-ref no-op otherwise. Tap-gated + small → juice for the
+ * attentive, never an economy lever (the sim never carries modifiers).
+ */
+export function workProblem(state: GameState, modifierId: string): GameState {
+  const idx = state.modifiers.findIndex(
+    (m) => m.id === modifierId && m.tone === "bad" && m.worked !== true && m.remainingSec > 0,
+  );
+  if (idx === -1) return state;
+  const modifiers = state.modifiers.map((m, i) =>
+    i === idx
+      ? { ...m, worked: true, remainingSec: Math.max(0, m.remainingSec - balance.worldEvents.workShaveSec) }
+      : m,
+  );
+  return { ...state, modifiers };
+}
+
 /** Apply a chosen branch of a faction event: its effect + an alignment shift. */
 export function applyWorldEventChoice(
   state: GameState,

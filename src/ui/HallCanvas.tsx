@@ -3,6 +3,7 @@ import { useGame } from "../state/store";
 import { useSettings } from "./settings";
 import { haptics } from "./haptics";
 import { sound } from "./sound";
+import { floatText } from "./fx";
 import { buildHallModel, buildSkyline, heatCrateCount, POWER_IDS } from "../render/hallModel";
 import { drawHallStatic, drawHallDynamic, expansionMarkers, rackHitAreas, pointInPoly, agentSpots, chenSpot, type RackHit, type AgentSpot } from "../render/hallRenderer";
 import { currentEra, eraName } from "../engine/eras";
@@ -167,7 +168,9 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       // Power ids come from the same source buildHallModel uses, so adding a new
       // powerCapacity upgrade automatically invalidates this cache too.
       const powerSig = POWER_IDS.map((id) => u[id] ?? 0).join(",");
-      const sig = `${u.rack_basic ?? 0}|${u.rack_server ?? 0}|${u.rack_tpu ?? 0}|${u.expand_n ?? 0}|${u.expand_s ?? 0}|${u.expand_e ?? 0}|${u.expand_w ?? 0}|${powerSig}|${game.run.active ? 1 : 0}|${game.products.active.length}|${currentEra(game)}|${regulatorState(game).index}|${game.charter ?? ""}|${game.shipLog.length}`;
+      // Incident set: changes on event fire/expiry/work — not on the per-tick decay.
+      const incSig = game.modifiers.map((m) => `${m.id}${m.tone === "bad" ? (m.worked ? "w" : "b") : "g"}`).join(",");
+      const sig = `${u.rack_basic ?? 0}|${u.rack_server ?? 0}|${u.rack_tpu ?? 0}|${u.expand_n ?? 0}|${u.expand_s ?? 0}|${u.expand_e ?? 0}|${u.expand_w ?? 0}|${powerSig}|${game.run.active ? 1 : 0}|${game.products.active.length}|${currentEra(game)}|${regulatorState(game).index}|${game.charter ?? ""}|${game.shipLog.length}|${incSig}`;
       if (sig !== modelSig || game.components.loadout !== rigLoadout || game.employees !== agentRoster) {
         modelSig = sig;
         rigLoadout = game.components.loadout;
@@ -325,6 +328,17 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       const rack = rackAt(ev);
       if (rack) {
         ev.preventDefault();
+        // IDEAS #5 — a smoking rack is a problem you can WORK: the first tap
+        // shaves a bounded slice off the incident instead of opening the card.
+        const inc = model.incidents.find((x) => x.rackIndex === rack.index && !x.worked);
+        if (inc) {
+          haptics.success();
+          sound.tap();
+          tapFlash = { index: rack.index, start: performance.now() };
+          useGame.getState().doWorkProblem(inc.id);
+          floatText(ev.clientX, ev.clientY - 12, `on it — −${balance.worldEvents.workShaveSec}s`, "#ff9f0a", 13);
+          return;
+        }
         haptics.tap();
         sound.tap();
         // The hall answers the touch: that rack's LEDs flicker for a beat.

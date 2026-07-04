@@ -219,6 +219,27 @@ describe("hall view-model", () => {
     expect(m.wall).toEqual([{ era: 1, asc: false }, { era: 3, asc: true }]);
   });
 
+  it("IDEAS #5 — bad modifiers manifest on a deterministic rack; good ones draw a crowd", () => {
+    const s = createInitialState();
+    s.upgrades = { rack_basic: 5 };
+    s.modifiers = [
+      { id: "gpu_shortage", target: "computeMult", factor: 0.6, remainingSec: 30, label: "x", tone: "bad" },
+      { id: "viral_demo", target: "moneyMult", factor: 2, remainingSec: 30, label: "y", tone: "good" },
+    ];
+    const m = buildHallModel(s);
+    expect(m.incidents).toHaveLength(1);
+    expect(m.incidents[0]!.id).toBe("gpu_shortage");
+    expect(m.incidents[0]!.rackIndex).toBeLessThan(m.racks.length);
+    expect(m.incidents[0]!.worked).toBe(false);
+    expect(m.crowd).toBeGreaterThan(0);
+    // Same id → same rack (deterministic placement, tap targets stay put).
+    expect(buildHallModel(s).incidents[0]!.rackIndex).toBe(m.incidents[0]!.rackIndex);
+    // No racks → nowhere to manifest.
+    const empty = createInitialState();
+    empty.modifiers = s.modifiers;
+    expect(buildHallModel(empty).incidents).toEqual([]);
+  });
+
   it("IDEAS #2 — the inspector appears only once scrutiny is a named presence", () => {
     expect(buildHallModel(createInitialState()).regulator).toBeNull();
     const watched = createInitialState();

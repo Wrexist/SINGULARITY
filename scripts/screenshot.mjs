@@ -72,7 +72,7 @@ try {
     await page.addInitScript(() => {
       localStorage.setItem(
         "singularity.settings.v1",
-        JSON.stringify({ sound: true, haptics: true, reducedMotion: false, onboarded: true }),
+        JSON.stringify({ sound: true, haptics: true, reducedMotion: false, onboarded: true, shipExplained: true }),
       );
     });
   }
