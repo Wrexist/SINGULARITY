@@ -28,6 +28,25 @@ export const market = {
    *  weight. Tuned so a new lab is an underdog and a scaled one dominates. */
   rivalBaseUsers: 14_000_000,
   rivalUsersPerFrontier: 220_000,
+  /** Rival counterplay (IMPROVEMENTS #8) — the "press blitz": spend Money to dent
+   *  a rival that's ahead of you. CURVE-SAFE BY DESIGN: the leaderboard is a pure
+   *  sidecar (no incomes flow from it), so a strike buys race position and
+   *  bragging rights, never production — the cost is a genuine money sink. */
+  counterplay: {
+    enabled: true,
+    /** Money cost per (current) user of the targeted rival. Scales with the
+     *  frontier automatically, so the blitz stays a real decision all game. */
+    costPerUser: 0.005,
+    /** Each strike multiplies the rival's user base by this for the rest of the
+     *  run (they "recover" when the acquirer resets the board at prestige). */
+    effectPerStrike: 0.85,
+    /** A rival can only be blitzed this many times per run (diminishing story
+     *  beats, not a delete button). */
+    maxStrikesPerRival: 3,
+    /** Playtime seconds between strikes (any rival) — a pacing valve, surfaced
+     *  honestly in the UI as "the press cycle needs to reset". */
+    cooldownSec: 240,
+  },
   rivals: [
     { name: "Cortex-5", vendor: "ClosedAI", weight: 30, focus: "scaler", blurb: "Three-hour keynotes, one new feature, infinite confidence." },
     { name: "Claudius", vendor: "Anthropos", weight: 25, focus: "safety", blurb: "Ships a 90-page safety card and a model that's annoyingly good." },

@@ -23,6 +23,8 @@ import {
   type MarketOutcome,
   type WorldEventResult,
 } from "../engine/actions";
+import { buyComponent, equipComponent, fuseComponents } from "../engine/components";
+import type { SlotClass } from "../engine/balance/components";
 import {
   canReleaseProduct,
   releaseProduct,
@@ -47,7 +49,9 @@ import { productMilestones as PRODUCT_MILESTONES, type ProductTypeId } from "../
 import { achievements as ACHIEVEMENT_DEFS } from "../engine/balance/achievements";
 import { buyReputationPerk } from "../engine/reputation";
 import { claimContract } from "../engine/contracts";
-import { setCharter } from "../engine/charter";
+import { setCharter, lockCharter } from "../engine/charter";
+import { counterRival } from "../engine/market";
+import { negotiationDue, negotiationOffer, applyNegotiationChoice, NEGOTIATION_ID } from "../engine/negotiation";
 import { buyLegacyPerk } from "../engine/legacyTree";
 import { prestige, type ShipMode } from "../engine/prestige";
 import { applyOffline, type OfflineSummary } from "../engine/offline";
@@ -57,6 +61,7 @@ import { balance } from "../engine/balance/config";
 import { recordTelemetry } from "./telemetry";
 import { purchaseSignature } from "../engine/telemetry";
 import { currentEra } from "../engine/eras";
+import type { Big } from "../engine/math/Big";
 
 const SAVE_KEY = "singularity.save.v1";
 const TIME_KEY = "singularity.lastSeen.v1";
@@ -121,8 +126,17 @@ interface GameStore {
   doClaim: () => void;
   doBuyUpgrade: (id: string) => void;
   doBuyUpgradeBulk: (id: string, count: number) => void;
+  /** Rig Bay: buy one component copy into the inventory. */
+  doBuyComponent: (id: string) => void;
+  /** Rig Bay: equip an owned copy into a rack tier's slot (null clears). */
+  doEquipComponent: (tier: number, slot: SlotClass, id: string | null) => void;
+  /** Rig Bay C3: fuse copies of a part into the next rung up its ladder. */
+  doFuseComponents: (id: string) => void;
   doClaimContract: (id: string) => void;
   doSetCharter: (id: string | null) => void;
+  /** Lock the current charter pick for this run (owner UX fix). */
+  doLockCharter: () => void;
+  doCounterRival: (name: string) => boolean;
   doBuyLegacyPerk: (id: string) => void;
   /** Open recruiting (rolls 3 candidates) / re-roll / close. */
   doRecruit: () => void;
@@ -182,6 +196,9 @@ let worldKey = 0;
 let recentEventIds: string[] = [];
 let claimKey = 0;
 let productKey = 0;
+/** Same-tick notices beyond the single slot wait here and drain one per tick —
+ *  a level-up landing the same tick as a version-ship is delayed, never lost. */
+let pendingNotices: FiredEvent[] = [];
 
 /** Advance the product-id counter past every persisted `prod-N` id so the next
  *  release can't collide with a saved product (ids are React keys + find() keys). */
@@ -251,6 +268,10 @@ export const useGame = create<GameStore>((set, get) => ({
   chooseWorldEvent: (choiceIndex) =>
     set((s) => {
       if (!s.worldEvent) return {};
+      // The regulator negotiation has its own (multi-lane) effect application.
+      if (s.worldEvent.id === NEGOTIATION_ID) {
+        return { game: applyNegotiationChoice(s.game, choiceIndex), worldEvent: null };
+      }
       const { state } = applyWorldEventChoice(s.game, s.worldEvent.id, choiceIndex);
       return { game: state, worldEvent: null };
     }),
@@ -300,59 +321,52 @@ export const useGame = create<GameStore>((set, get) => ({
       const secs = elapsedMs / 1000;
       const patch: Partial<GameStore> = { game };
 
-      // An employee finishing training is a small win — surface it.
-      const trained = game.employees.find((e) => wasTraining.get(e.id) && !e.training);
-      if (trained) {
+      // Collect every notice this tick earned (priority order: milestone >
+      // version-ship > level-up > achievements), emit the first, queue the rest —
+      // one slot per tick, but nothing is silently dropped anymore.
+      const earned: FiredEvent[] = [];
+      const pushNotice = (message: string, kind: NonNullable<FiredEvent["kind"]>) => {
         noticeKey += 1;
-        patch.notice = { key: noticeKey, message: `${trained.name} leveled up to L${trained.level}`, tone: "good", kind: "levelup" };
-      }
+        earned.push({ key: noticeKey, message, tone: "good", kind });
+      };
 
-      const finished = game.products.active.find((p) => wasUpgrading.get(p.id) && !p.upgrade);
-      if (finished) {
-        noticeKey += 1;
-        patch.notice = {
-          key: noticeKey,
-          message: `${finished.name} v${finished.version} shipped — back at the frontier`,
-          tone: "good",
-          kind: "ship",
-        };
-      }
-
-      // A newly-reached product milestone is a headline win — surface it (and its
-      // reward) over an upgrade-ship if both land the same tick.
       const before = new Set(s.game.products.milestones);
       const newMs = game.products.milestones.find((id) => !before.has(id));
       if (newMs) {
         const def = PRODUCT_MILESTONES.find((m) => m.id === newMs);
-        if (def) {
-          noticeKey += 1;
-          patch.notice = { key: noticeKey, message: `${def.label} — ${def.desc} (+$${def.reward.toLocaleString()})`, tone: "good", kind: "milestone" };
-        }
+        if (def) pushNotice(`${def.label} — ${def.desc} (+$${def.reward.toLocaleString()})`, "milestone");
       }
 
-      // Newly-unlocked achievements are a collection win — surface them (unless a
-      // milestone already claimed this tick's notice slot). Several can land in one
-      // tick (e.g. a big offline catch-up); with only one notice slot, show the
-      // first by name and coalesce the rest into the count so none are silently lost.
-      if (!patch.notice) {
+      // Several can finish in one tick (offline catch-up) — name one, count the rest.
+      const finished = game.products.active.filter((p) => wasUpgrading.get(p.id) && !p.upgrade);
+      if (finished.length === 1) pushNotice(`${finished[0]!.name} v${finished[0]!.version} shipped — back at the frontier`, "ship");
+      else if (finished.length > 1) pushNotice(`${finished.length} products shipped new versions — back at the frontier`, "ship");
+
+      const trained = game.employees.filter((e) => wasTraining.get(e.id) && !e.training);
+      if (trained.length === 1) pushNotice(`${trained[0]!.name} leveled up to L${trained[0]!.level}`, "levelup");
+      else if (trained.length > 1) pushNotice(`${trained.length} specialists leveled up`, "levelup");
+
+      // Achievements: several can land in one tick (offline catch-up) — show the
+      // first by name and coalesce the rest into the count.
+      {
         const had = new Set(s.game.achievements);
         const newAch = game.achievements.filter((id) => !had.has(id));
         if (newAch.length === 1) {
           const def = ACHIEVEMENT_DEFS.find((a) => a.id === newAch[0]);
-          if (def) {
-            noticeKey += 1;
-            patch.notice = { key: noticeKey, message: `Achievement: ${def.label} — ${def.desc}`, tone: "good", kind: "achievement" };
-          }
+          if (def) pushNotice(`Achievement: ${def.label} — ${def.desc}`, "achievement");
         } else if (newAch.length > 1) {
           const first = ACHIEVEMENT_DEFS.find((a) => a.id === newAch[0]);
-          noticeKey += 1;
-          patch.notice = {
-            key: noticeKey,
-            message: `${newAch.length} achievements unlocked${first ? ` — incl. ${first.label}` : ""}`,
-            tone: "good",
-            kind: "achievement",
-          };
+          pushNotice(`${newAch.length} achievements unlocked${first ? ` — incl. ${first.label}` : ""}`, "achievement");
         }
+      }
+
+      // One queue, oldest first — a notice earned this tick never jumps ahead of
+      // one still waiting from a previous tick. Cap the backlog so an extreme
+      // offline catch-up can't toast for minutes.
+      if (earned.length > 0) pendingNotices = [...pendingNotices, ...earned].slice(0, 6);
+      if (pendingNotices.length > 0) {
+        patch.notice = pendingNotices[0]!;
+        pendingNotices = pendingNotices.slice(1);
       }
 
       // Heat-driven regulatory event (only when there's heat to drive it).
@@ -366,8 +380,16 @@ export const useGame = create<GameStore>((set, get) => ({
         }
       }
 
+      // Regulator negotiation (IMPROVEMENTS #9): deterministic, outranks the
+      // ambient pool. Fires only past the suspicion line with no truce pending —
+      // a clean lab (and the balance sim) never sees it.
+      if (!s.worldEvent && negotiationDue(game)) {
+        worldKey += 1;
+        patch.worldEvent = { key: worldKey, ...negotiationOffer(game) };
+      }
+
       // Ambient satirical world event — at most one pending card at a time.
-      if (!s.worldEvent) {
+      if (!s.worldEvent && !patch.worldEvent) {
         const wr = maybeWorldEvent(game, secs, Math.random(), Math.random(), recentEventIds);
         if (wr) {
           game = wr.state;
@@ -442,8 +464,21 @@ export const useGame = create<GameStore>((set, get) => ({
     }),
   doBuyUpgrade: (id) => set((s) => ({ game: buyUpgrade(s.game, id) })),
   doBuyUpgradeBulk: (id, count) => set((s) => ({ game: buyUpgradeBulk(s.game, id, count) })),
+  doBuyComponent: (id) => set((s) => ({ game: buyComponent(s.game, id) })),
+  doEquipComponent: (tier, slot, id) => set((s) => ({ game: equipComponent(s.game, tier, slot, id) })),
+  doFuseComponents: (id) => set((s) => ({ game: fuseComponents(s.game, id) })),
   doClaimContract: (id) => set((s) => ({ game: claimContract(s.game, id) })),
   doSetCharter: (id) => set((s) => ({ game: setCharter(s.game, id) })),
+  doLockCharter: () => set((s) => ({ game: lockCharter(s.game) })),
+  // Returns whether the blitz actually landed (same-ref no-op when the guard
+  // fails between render and tap), so the UI only celebrates real strikes.
+  doCounterRival: (name: string) => {
+    const before = get().game;
+    const next = counterRival(before, name);
+    if (next === before) return false;
+    set({ game: next });
+    return true;
+  },
   doBuyLegacyPerk: (id) => set((s) => ({ game: buyLegacyPerk(s.game, id) })),
   doRecruit: () => set({ candidates: [rollCandidate(), rollCandidate(), rollCandidate()] }),
   doRefreshCandidates: () => set({ candidates: [rollCandidate(), rollCandidate(), rollCandidate()] }),
@@ -508,6 +543,9 @@ export const useGame = create<GameStore>((set, get) => ({
     set((s) => {
       // Capture the run length BEFORE the reset: playtimeSec survives prestige (it's a
       // lifetime stat), so the gen's run time is derived from the cumulative value.
+      // A queued notice about the old run ("X shipped", "Y leveled up") would
+      // read as noise over the fresh lab — drop the backlog with the run.
+      pendingNotices = [];
       const game = prestige(s.game, mode);
       recordTelemetry({
         kind: "prestige",
@@ -526,6 +564,7 @@ export const useGame = create<GameStore>((set, get) => ({
   doClaimDaily: () => set((s) => ({ game: grantDailyBoost(s.game) })),
 
   hardReset: () => {
+    pendingNotices = [];
     localStorage.removeItem(SAVE_KEY);
     localStorage.removeItem(TIME_KEY);
     // Clear transient UI state too, or a stale world-event card / claim burst
@@ -539,6 +578,8 @@ export const useGame = create<GameStore>((set, get) => ({
     try { return btoa(unescape(encodeURIComponent(json))); } catch { return json; }
   },
   importSave: (blob: string) => {
+    // Imported game = different world; drop any queued notices about the old one.
+    pendingNotices = [];
     const raw = blob.trim();
     if (!raw) return false;
     // Accept either a base64 backup (preferred) or a raw JSON save.
@@ -563,6 +604,39 @@ export const useGame = create<GameStore>((set, get) => ({
     return false;
   },
 }));
+
+/** What a pasted backup contains — shown in the restore confirm so the player
+ *  knows what they're about to replace their progress WITH (R8.2 Stage A). */
+export interface BackupPreview {
+  ships: number;
+  era: number;
+  money: Big;
+  playtimeSec: number;
+  achievements: number;
+}
+
+/** Decode + sanitize a backup without applying it. Same decode ladder as
+ *  importSave (base64 first, then raw JSON); null = not a valid backup. */
+export function previewBackup(blob: string): BackupPreview | null {
+  const raw = blob.trim();
+  if (!raw) return null;
+  const candidates: string[] = [];
+  try { candidates.push(decodeURIComponent(escape(atob(raw)))); } catch { /* not base64 */ }
+  candidates.push(raw);
+  for (const json of candidates) {
+    try {
+      const g = deserialize(json);
+      return {
+        ships: g.prestige.ships,
+        era: currentEra(g),
+        money: g.resources.money,
+        playtimeSec: g.stats.playtimeSec,
+        achievements: g.achievements.length,
+      };
+    } catch { /* try the next candidate */ }
+  }
+  return null;
+}
 
 // Debug/test handle (used by the screenshot harness; harmless in prod).
 if (typeof window !== "undefined") {

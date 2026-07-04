@@ -7,6 +7,8 @@ const CONVICTION_PCT = Math.round((balance.prestige.charterConvictionBonus - 1) 
 interface Props {
   game: GameState;
   onSet: (id: string | null) => void;
+  /** Explicitly lock the current pick for this run (owner UX fix). */
+  onLock: () => void;
 }
 
 const pct = (x: number | undefined) => (x ? `${x >= 0 ? "+" : ""}${Math.round(x * 100)}%` : null);
@@ -27,7 +29,7 @@ function effectChips(id: string) {
  * pick a charter that tilts this run's triangle — so generations play differently.
  * Once you commit to a research path it locks in (just shows the active charter).
  */
-export function CharterPanel({ game, onSet }: Props) {
+export function CharterPanel({ game, onSet, onLock }: Props) {
   if (!chartersUnlocked(game)) return null;
   const editable = canSetCharter(game);
   const active = charterDef(game.charter);
@@ -38,7 +40,7 @@ export function CharterPanel({ game, onSet }: Props) {
       <section className="panel">
         <h2 className="panel-title">Lab Charter</h2>
         <p className="charter-locked">
-          {active ? <><b>{active.name}</b> — {effectChips(active.id)}</> : <>No charter this run.</>}
+          {active ? <><b>{active.name}</b> ✓ — {effectChips(active.id)}</> : <>No charter this run.</>}
           <span className="charter-locked-note"> · locked until next ship</span>
         </p>
       </section>
@@ -48,7 +50,7 @@ export function CharterPanel({ game, onSet }: Props) {
   return (
     <section className="panel">
       <h2 className="panel-title">Lab Charter</h2>
-      <p className="charter-intro">Pick this run's focus — it tilts your economy. Locks once you research.{game.lastCharter && <> Re-pick last run's charter for a <b>+{CONVICTION_PCT}% Legacy</b> conviction bonus.</>}</p>
+      <p className="charter-intro">Tap a charter to adopt this run's focus (tap again to drop it). It locks when you buy research — or lock it in below.{game.lastCharter && <> Re-pick last run's charter for a <b>+{CONVICTION_PCT}% Legacy</b> conviction bonus.</>}</p>
       <div className="list">
         {chartersBalance.list.map((c) => {
           const on = game.charter === c.id;
@@ -56,7 +58,7 @@ export function CharterPanel({ game, onSet }: Props) {
           return (
             <button key={c.id} className={`charter-card ${on ? "on" : ""}`} onClick={() => onSet(on ? null : c.id)}>
               <div className="charter-main">
-                <span className="charter-name">{c.name}{on && <span className="charter-pick"> ✓</span>}{conviction && <span className="charter-conviction"> ↻ +{CONVICTION_PCT}%</span>}</span>
+                <span className="charter-name">{c.name}{on && <span className="charter-pick"> ✓ adopted</span>}{conviction && <span className="charter-conviction"> ↻ +{CONVICTION_PCT}%</span>}</span>
                 <span className="charter-blurb">{c.blurb}</span>
                 <span className="charter-effects">{effectChips(c.id)}</span>
               </div>
@@ -64,6 +66,13 @@ export function CharterPanel({ game, onSet }: Props) {
           );
         })}
       </div>
+      {/* The explicit commit (owner: "no way to lock it in?"). Research still
+          locks implicitly; this lets a decided player close the decision. */}
+      {active && (
+        <button className="btn btn-primary charter-lock-btn" onClick={onLock}>
+          Lock in {active.name} for this run
+        </button>
+      )}
     </section>
   );
 }

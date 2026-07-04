@@ -471,3 +471,67 @@ when" balance, dials the whole curve, and the UI cost displays update for free (
   and the nudge chip all derive from ONE `advisorItems(game)` scan (memoized per tick in App). If a
   panel moves to a new tab/section, update the item's `tab`/`section` there; don't invent a parallel
   attention system.
+
+### The opening-hook ramp — a FOURTH difficulty knob that decouples "fun start" from "long game" (2026-07-02)
+- **Owner report:** the first 10 minutes were "click start training ~50 times and buy one small rack".
+  Root cause: the difficulty multipliers (costMult 2.0 × upgradeCostMult 1.6 = ×3.2) applied at FULL
+  strength from level 0, so the first rack cost $48 against $4.5/run — ~10 manual runs before the
+  first purchase, and automation (auto_claim/auto_train) sat behind ×3.2 data prices too.
+- **Fix: `difficulty.upgradeCostRampLevels`** — the combined multiplier ramps linearly from ×1 at
+  level 0 to full by N owned (12). First rack = base $15 (affordable in under a minute), yet by
+  level 12+ every upgrade pays the full tuned multiplier. This SEPARATES the knobs: `upgradeCostMult`
+  now shapes only the mid/late grind, so it could go 1.6 → 2.0 to claw the total length back into
+  the owner band (59–65m) while the wall dropped 3m05s → 1m16s. Tune the opening with the ramp,
+  the length with the mult.
+- **Cheap automation is pacing, not power.** auto_claim 200→90 data / auto_train 800→320 data (flat,
+  and level-0 = ramp ×1) ends the manual claim-tap phase at ~3m40s / ~7m15s. The sim barely moves
+  (it plays optimally anyway) but the FEEL transforms — automation is the opening's reward arc.
+- **Two sticky bars can't share a viewport edge.** The resource bar and the (then-sticky) labnav both
+  pinned at ~top:8px and z-fought into an on-device mess — and content scrolling under the resource
+  bar bled through the GAPS between its three cards. Rules: one sticky element per edge; a pinned
+  bar over scrolling content needs an opaque full-bleed slab (::before to the viewport top with a
+  fade), because the bar's own children don't cover the gutter gaps.
+
+### Rig Bay (C1) — component systems without the genre's failure mode (2026-07-02)
+- **Per-TYPE loadouts, never per-rack.** Research across NGU/Melvor/Egg Inc/PCBS: per-unit gear ×
+  exponential unit counts = "multiplicative micromanagement", the documented death of component
+  systems in idle games. One template per rack tier (≤6 slots total) keeps the fantasy ("I choose
+  the GPUs") while every choice multiplies across the fleet. Full brief in RIG_BAY_PLAN.md.
+- **A new income lane re-prices the whole curve — budget for a big knob move.** Modest-looking
+  component multipliers (≤×1.35/tier) + a data trickle collapsed first prestige 59m→26m on the
+  first sim. Two compounding surprises: interconnect data feeds the RESEARCH gate (data income is
+  progression fuel, not just yield), and tier multipliers stack with every other compute mult.
+  Landed back at 61–63m by nerfing values AND raising `upgradeCostMult` 2.0→4.0 — the sim buys
+  components itself (scripts/balance-sim.ts step 2b), so the tuned number prices them in. Any
+  catalog change is a balance change: sim it.
+- **Class-typed slots beat generic slots.** Each slot accepts one component class with ONE stat
+  (accelerator = +% compute, cooling = −% draw, interconnect = +data/rack), so a slot is a single
+  legible choice, not an optimization puzzle. Buy-and-fit in one tap from the slot's own chooser —
+  the store lives where the decision is, no separate shop screen to correlate.
+- **Playwright `addInitScript` re-seeds localStorage on EVERY navigation** — a reload-persistence
+  check inside such a test always "fails" because the reload rewrites the seed. Round-trip
+  assertions belong in engine tests (serialize→deserialize), not browser reload tests.
+
+### C4 set bonus — income bonuses compound, efficiency bonuses don't (2026-07-02)
+- A "+6% compute" matched-rig set bonus looked token-sized and moved first prestige by ~10 MINUTES:
+  early loadouts are all-standard by default, so the bonus was effectively global, and any income
+  mult feeds the racks→money→racks loop (the documented super-linearity). Moving the SAME bonus to
+  power draw (−12% for the matched tier) made the curve move ≈0 while staying genuinely valuable at
+  the throttle. Rule: set/combo bonuses in this economy must pay out in EFFICIENCY or QoL lanes
+  (power, heat, offline), never in compute/data/money lanes — and single-slot tiers must not count
+  as "matched" (a trivial set is a hidden global buff).
+
+### Review round 2 — earned content must be sanitized against its SOURCE (2026-07-03)
+- **Known-id checks aren't legitimacy checks.** The components sanitizer accepted any catalog id,
+  so a crafted save could own trophy hardware without its milestone. Earned entries must reconcile
+  against the earning source on load (contracts/achievements witnesses, sanitized FIRST and passed
+  in) — the same shape reputation already uses (`spent` reconciled against owned perks). Dropping
+  is safe precisely because grants are idempotent in tick: a legitimate trophy re-appears next tick.
+- **A single-slot + queue hybrid re-orders events.** The notice code showed this tick's first event
+  immediately and queued the rest — so a new notice could jump ahead of one still waiting. One
+  strictly-FIFO queue (append all, always drain head, clear on prestige/import) is simpler AND
+  correct; hybrids that special-case "fresh" items are where ordering bugs live.
+- **Coverage sweeps can be vacuous.** The "advisor never targets a locked tab" sweep never included
+  a state where the employees-tab nudge actually fires, so its assertion was dead code. When a test
+  loops over states × conditions, assert the condition set was actually EXERCISED (collect + expect
+  non-empty), or the test proves nothing as the trigger conditions drift.

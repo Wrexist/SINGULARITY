@@ -7,6 +7,8 @@ import { charterMods } from "./charter";
 import { legacyAvailable, legacyTreeMods } from "./legacyTree";
 import { ascensionMultiplier } from "./prestige";
 import { powerStats } from "./power";
+import { rackTier } from "./hall";
+import { tierComputeMult, loadoutDataPerSec } from "./components";
 import type { Derived, Employee, GameState } from "./types";
 
 // Single-slot memo for the staff aggregation (see derive()). Keyed on the employees
@@ -57,6 +59,16 @@ export function officePayrollMult(state: GameState): number {
  * Pure and cheap — safe to call every frame. Keeping this the single source of
  * "current rates" means tick() and the UI never disagree.
  */
+/**
+ * Training intensity from the computeFocus slider: scales the run INVESTMENT
+ * (and therefore payout) between the floor and full size. Identity at focus 1,
+ * so the tuned curve and the sim are unchanged. Single source for engine + UI.
+ */
+export function trainingIntensity(focus: number): number {
+  const floor = balance.run.focusCostFloor;
+  return floor + (1 - floor) * Math.max(0, Math.min(1, focus));
+}
+
 export function derive(state: GameState): Derived {
   let computeFlat = Big.of(balance.baseComputePerSec);
   let computeMult = Big.ONE;
@@ -77,9 +89,14 @@ export function derive(state: GameState): Derived {
     const level = state.upgrades[def.id] ?? 0;
     if (level <= 0) continue;
     switch (def.effect.kind) {
-      case "computeFlat":
-        computeFlat = computeFlat.add(def.effect.perLevel * level);
+      case "computeFlat": {
+        // Rig Bay: an accelerator slotted in this rack TIER multiplies the whole
+        // tier's output (loadout templates — see engine/components.ts).
+        const tier = rackTier(def.id);
+        const mult = tier >= 0 ? tierComputeMult(state, tier) : 1;
+        computeFlat = computeFlat.add(def.effect.perLevel * level * mult);
         break;
+      }
       case "computeMult":
         computeMult = computeMult.mul(Math.pow(1 + def.effect.perLevel, level));
         break;
@@ -110,6 +127,11 @@ export function derive(state: GameState): Derived {
         break;
     }
   }
+
+  // Rig Bay interconnects: flat Data/sec per rack of each slotted tier. Joins the
+  // scraper lane (dataPerSecFlat), which deliberately skips the run dataMult.
+  const interconnectData = loadoutDataPerSec(state);
+  if (interconnectData > 0) dataPerSecFlat = dataPerSecFlat.add(interconnectData);
 
   // Research (one-time nodes)
   for (const def of balance.research) {
@@ -257,8 +279,11 @@ export function derive(state: GameState): Derived {
   computePerSec = computePerSec.mul(balance.difficulty.productionMult);
   // Run cost scales with compute production (floored early game) so payouts
   // scale with the operation. Yields are proportional to compute invested.
+  // Training intensity (computeFocus) scales the INVESTMENT: at low intensity a
+  // run sips Compute (and pays proportionally less), so the bank can actually
+  // climb — identity at focus 1, so the tuned curve and the sim are unchanged.
   const runComputeCost = computePerSec
-    .mul(balance.run.costSeconds)
+    .mul(balance.run.costSeconds * trainingIntensity(state.computeFocus))
     .max(balance.run.minCompute);
 
   return {

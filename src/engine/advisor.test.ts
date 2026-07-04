@@ -122,23 +122,47 @@ describe("advisor", () => {
       (() => { const s = shipped(); s.research = []; return s; })(), // products unlocked, staff locked
       (() => { const s = shipped(); s.research = ["seed"]; s.employees = []; s.products.drafts = []; return s; })(), // staff open
       (() => { const s = shipped(); s.products.drafts = [{ id: "d1", ships: 1, quality: s.products.frontier }]; return s; })(),
+      // Staff open + a LIVE product + cash on hand: the hire nudge actually
+      // fires here, so the employees-tab assertion below is exercised for real.
+      (() => {
+        let s = shipped();
+        s.research = ["seed"];
+        s.employees = [];
+        s.products.drafts = [];
+        s = releaseProduct(s, { type: "general", name: "P", id: "p1" });
+        s.products.active[0]!.quality = s.products.frontier;
+        return s;
+      })(),
     ];
 
+    const seenTabs = new Set<string>();
     for (const s of states) {
       for (const item of advisorItems(s)) {
+        seenTabs.add(item.tab);
         if (item.tab === "products") expect(productsUnlocked(s)).toBe(true);
         if (item.tab === "employees") expect(staffOpen(s)).toBe(true);
         // "lab" is always renderable — no assertion needed.
       }
     }
+    // Guard against a vacuous sweep: the gated tabs must actually appear.
+    expect(seenTabs.has("products")).toBe(true);
+    expect(seenTabs.has("employees")).toBe(true);
   });
 
-  it("nudges the first hire once staff is unlocked", () => {
-    const s = shipped(); // research length ≥ revealAtResearch (1) from createInitialState? force it
-    s.research = ["seed"]; // meets revealAtResearch = 1
+  it("nudges the first hire only once a product is LIVE and a hire is affordable", () => {
+    let s = shipped();
+    s.research = ["seed"]; // meets revealAtResearch = 1 → staff unlocked
     s.employees = [];
     s.products.drafts = [];
+    // Staff unlocked but no project running yet → no nudge (owner report: it
+    // fired minutes into a fresh run, long before hiring made sense).
+    expect(advisorItems(s).some((i) => i.text.includes("first specialist"))).toBe(false);
+    s = releaseProduct(s, { type: "general", name: "P", id: "p1" });
+    s.products.active[0]!.quality = s.products.frontier; // healthy, no stale item noise
     const items = advisorItems(s);
     expect(items.some((i) => i.tab === "employees" && i.text.includes("first specialist"))).toBe(true);
+    // …and stays quiet when the signing bonus is out of reach.
+    s.resources.money = Big.of(0);
+    expect(advisorItems(s).some((i) => i.text.includes("first specialist"))).toBe(false);
   });
 });

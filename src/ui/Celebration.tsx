@@ -1,7 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Big } from "../engine/math/Big";
 import { fmt, m$ } from "./format";
 import { shipHeadline, runStory } from "./headlines";
+import { shareRunCard } from "./shareCard";
 import { RocketIcon } from "./Icons";
 
 export interface ShipReport {
@@ -34,10 +35,27 @@ const COLORS = ["#ff385c", "#2f7bf6", "#9b51e0", "#16b364", "#ff9f0a"];
  * got (peak compute, peak revenue, market rank). Auto-dismisses; tap to skip.
  */
 export function Celebration({ weightsGained, totalWeights, report, onDone }: Props) {
+  // Sharing pauses the auto-dismiss: the OS share sheet must never race the
+  // card unmounting underneath it. Once held, dismissal is manual only.
+  // The timer is armed exactly ONCE (mount) and calls through a ref: App
+  // re-renders at 10Hz with a fresh onDone identity, so an [onDone] dep would
+  // silently re-arm the timeout every render — and un-pause it after a share.
+  const timer = useRef<number | null>(null);
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
+  const [shareNote, setShareNote] = useState<string | null>(null);
   useEffect(() => {
-    const t = window.setTimeout(onDone, 4200);
-    return () => window.clearTimeout(t);
-  }, [onDone]);
+    timer.current = window.setTimeout(() => onDoneRef.current(), 4200);
+    return () => { if (timer.current !== null) window.clearTimeout(timer.current); };
+  }, []);
+
+  const onShare = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // the backdrop tap dismisses — sharing must not
+    if (timer.current !== null) { window.clearTimeout(timer.current); timer.current = null; }
+    if (!report) return;
+    const note = await shareRunCard(report, weightsGained, totalWeights);
+    if (note) setShareNote(note);
+  };
 
   // History-aware: the headline reflects what THIS run achieved (A3).
   const headline = report ? shipHeadline(report) : "Model Shipped";
@@ -85,6 +103,12 @@ export function Celebration({ weightsGained, totalWeights, report, onDone }: Pro
         <button className="btn btn-ship" onClick={onDone}>
           Begin next generation
         </button>
+        {report && (
+          <button className="link-btn celebrate-share" onClick={onShare}>
+            Share this run ↗
+          </button>
+        )}
+        {shareNote && <p className="celebrate-share-note">{shareNote}</p>}
       </div>
     </div>
   );

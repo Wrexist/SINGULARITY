@@ -4,13 +4,15 @@ import { iap, PREMIUM_PRICE } from "./iap";
 import { haptics as hpt } from "./haptics";
 import { sound as snd } from "./sound";
 import { balance } from "../engine/balance/config";
-import { useGame } from "../state/store";
+import { useGame, previewBackup, type BackupPreview } from "../state/store";
+import { fmtMoney } from "./format";
 import { themeStyle, skinSwatch } from "./hallThemes";
 import { themes, rackSkins, themeUnlocked, skinUnlocked, collectionProgress, skinProgress, unlockHint } from "../engine/cosmetics";
 import { PaletteIcon, DownloadIcon, LockIcon, CheckIcon } from "./Icons";
 import { ConfirmSheet } from "./ConfirmSheet";
 import { version as APP_VERSION } from "../../package.json";
 import { telemetryEnabled, setTelemetryEnabled, getTelemetryEvents, clearTelemetry } from "../state/telemetry";
+import { gameCenterAvailable, gameCenterShowLeaderboards } from "./gameCenter";
 import { summarize } from "../engine/telemetry";
 import { eraName } from "../engine/eras";
 
@@ -21,7 +23,16 @@ function fmtDur(sec: number): string {
   return `${m}m${String(s % 60).padStart(2, "0")}s`;
 }
 
-type ToggleKey = "sound" | "music" | "haptics" | "reducedMotion";
+/** Hours-scale playtime for the backup preview ("14h 22m", "35m"). Rounds to
+ *  whole minutes FIRST so 3599s carries to "1h 0m", never "60m". */
+function fmtPlaytime(sec: number): string {
+  const totalMin = Math.round(sec / 60);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+type ToggleKey = "sound" | "music" | "haptics" | "hapticsLight" | "reducedMotion" | "scientificNotation";
 
 interface RowProps {
   label: string;
@@ -50,12 +61,14 @@ interface Props {
 
 /** iOS-style bottom sheet for feel preferences (clean-to-play, GAMEPLAN §8). */
 export function SettingsSheet({ onClose }: Props) {
-  const { sound, music, haptics, reducedMotion, hallTheme, rackSkin, toggle, setHallTheme, setRackSkin } = useSettings();
-  const rows: { key: ToggleKey; label: string; hint: string; value: boolean }[] = [
+  const { sound, music, haptics, hapticsLight, reducedMotion, scientificNotation, hallTheme, rackSkin, toggle, setHallTheme, setRackSkin } = useSettings();
+  const rows: { key: ToggleKey; label: string; hint: string; value: boolean; hidden?: boolean }[] = [
     { key: "sound", label: "Sound effects", hint: "Synthesized taps, claims & ship chimes", value: sound },
     { key: "music", label: "Music", hint: "Ambient bed + era & ship swells", value: music },
     { key: "haptics", label: "Haptics", hint: "Vibration feedback on supported devices", value: haptics },
+    { key: "hapticsLight", label: "Lighter haptics", hint: "Same rhythm, half the buzz", value: hapticsLight, hidden: !haptics },
     { key: "reducedMotion", label: "Reduced motion", hint: "Calm the animations", value: reducedMotion },
+    { key: "scientificNotation", label: "Scientific notation", hint: "1.23e9 instead of 1.23B — for the endgame", value: scientificNotation },
   ];
 
   const [premium, setPremiumState] = useState(iap.isPremium());
@@ -66,7 +79,7 @@ export function SettingsSheet({ onClose }: Props) {
   const skinProg = skinProgress(game, premium);
   const [busy, setBusy] = useState(false);
   const [backupOpen, setBackupOpen] = useState(false);
-  const [confirmImport, setConfirmImport] = useState(false);
+  const [confirmImport, setConfirmImport] = useState<BackupPreview | null>(null);
   const [exportText, setExportText] = useState("");
   const [importText, setImportText] = useState("");
   const [status, setStatus] = useState<string | null>(null);
@@ -77,18 +90,46 @@ export function SettingsSheet({ onClose }: Props) {
   const diag = summarize(getTelemetryEvents());
   void diagTick; // diag is recomputed each render; diagTick just forces it after a mutation
 
+  const markBackedUp = useSettings.getState().markBackedUp;
   const doExport = async () => {
     const blob = useGame.getState().exportSave();
     setExportText(blob);
-    try { await navigator.clipboard.writeText(blob); setStatus("Backup copied to clipboard — paste it somewhere safe."); }
+    try { await navigator.clipboard.writeText(blob); setStatus("Backup copied to clipboard — paste it somewhere safe."); markBackedUp(); }
     catch { setStatus("Select the text below and copy it."); }
+  };
+  // Share-sheet export (R8.2 Stage A): the backup travels as a .txt file to
+  // Files / iCloud Drive / Notes / Mail — a real off-device copy, still zero
+  // backend. Falls back to text share, then to the clipboard path above.
+  const doShareBackup = async () => {
+    const blob = useGame.getState().exportSave();
+    const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+    try {
+      if (typeof nav.share === "function") {
+        const file = new File([blob], `singularity-backup-${new Date().toISOString().slice(0, 10)}.txt`, { type: "text/plain" });
+        if (typeof nav.canShare === "function" && nav.canShare({ files: [file] })) {
+          await nav.share({ files: [file], title: "Singularity Inc. save backup" });
+        } else {
+          await nav.share({ text: blob, title: "Singularity Inc. save backup" });
+        }
+        setStatus("Backup handed to the share sheet — save it somewhere safe.");
+        markBackedUp();
+        return;
+      }
+    } catch (err) {
+      if ((err as DOMException | null)?.name === "AbortError") return; // sheet closed — no-op
+    }
+    await doExport(); // no share surface here → clipboard path
   };
   const doImport = () => {
     if (!importText.trim()) return;
-    setConfirmImport(true);
+    // Preview BEFORE the confirm: the player should know what they're about to
+    // replace their progress with (and a bad paste fails here, not after).
+    const preview = previewBackup(importText);
+    if (!preview) { setStatus("That backup didn't look valid — check you copied all of it."); return; }
+    setConfirmImport(preview);
   };
   const reallyImport = () => {
-    setConfirmImport(false);
+    setConfirmImport(null);
     if (useGame.getState().importSave(importText)) { location.reload(); }
     else { setStatus("That backup didn't look valid — check you copied all of it."); }
   };
@@ -115,7 +156,13 @@ export function SettingsSheet({ onClose }: Props) {
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-grip" />
-        <h2 className="sheet-title">Settings</h2>
+        {/* Sticky header: the ✕ stays reachable however deep the sheet is
+            scrolled (the Done button lives at the very bottom — "can't close
+            the settings easily" was an on-device owner report). */}
+        <div className="sheet-head">
+          <h2 className="sheet-title">Settings</h2>
+          <button className="sheet-close" onClick={onClose} aria-label="Close settings">✕</button>
+        </div>
 
         {/* Premium: one generous, cosmetic/QoL unlock (GDD §9 — never power). */}
         <div className={`premium-card ${premium ? "owned" : ""}`}>
@@ -143,7 +190,7 @@ export function SettingsSheet({ onClose }: Props) {
         </div>
 
         <div className="set-list">
-          {rows.map((r) => (
+          {rows.filter((r) => !r.hidden).map((r) => (
             <ToggleRow
               key={r.key}
               label={r.label}
@@ -209,6 +256,21 @@ export function SettingsSheet({ onClose }: Props) {
           </div>
         </div>
 
+        {/* Game Center — only rendered when the native plugin is actually
+            present (see GAME_CENTER_SETUP.md); the web/TestFlight build
+            without it never shows a dead button. */}
+        {gameCenterAvailable() && (
+          <div className="set-list">
+            <button className="set-row" onClick={() => void gameCenterShowLeaderboards()}>
+              <span className="set-text">
+                <span className="set-label">Game Center</span>
+                <span className="set-hint">Ships &amp; ascension leaderboards, achievement mirror</span>
+              </span>
+              <span aria-hidden="true">›</span>
+            </button>
+          </div>
+        )}
+
         {/* Save backup — local-only; protects a long run from a cleared cache. */}
         <div className="set-backup">
           <button className="set-backup-head" onClick={() => setBackupOpen((o) => !o)} aria-expanded={backupOpen}>
@@ -219,7 +281,8 @@ export function SettingsSheet({ onClose }: Props) {
             <div className="set-backup-body">
               <p className="set-backup-tip">Your progress lives only on this device. Export a backup string and keep it safe; paste it back to restore (or move to a new device).</p>
               <div className="set-backup-actions">
-                <button className="btn btn-ghost btn-sm" onClick={doExport}>Export backup</button>
+                <button className="btn btn-primary btn-sm" onClick={doShareBackup}>Share backup…</button>
+                <button className="btn btn-ghost btn-sm" onClick={doExport}>Copy as text</button>
                 <button className="btn btn-ghost btn-sm" onClick={() => { setImportText(""); setStatus(null); setExportText(""); }}>Clear</button>
               </div>
               {exportText && <textarea className="set-backup-text" readOnly rows={3} value={exportText} onFocus={(e) => e.currentTarget.select()} />}
@@ -289,11 +352,11 @@ export function SettingsSheet({ onClose }: Props) {
         <ConfirmSheet
           kicker="RESTORE BACKUP"
           title="Replace your current progress?"
-          body="Your current save is overwritten with the pasted backup. This can't be undone."
+          body={`The pasted backup holds: Generation ${confirmImport.ships} · ${eraName(confirmImport.era)} era · ${fmtMoney(confirmImport.money)} · ${confirmImport.achievements} achievements · ${fmtPlaytime(confirmImport.playtimeSec)} played. Your current save is overwritten — this can't be undone.`}
           confirmLabel="Restore"
           danger
           onConfirm={reallyImport}
-          onCancel={() => setConfirmImport(false)}
+          onCancel={() => setConfirmImport(null)}
         />
       )}
     </div>

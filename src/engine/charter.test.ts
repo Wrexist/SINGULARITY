@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { charterMods, setCharter, canSetCharter, chartersUnlocked, chartersBalance } from "./charter";
+import { charterMods, setCharter, canSetCharter, chartersUnlocked, chartersBalance, lockCharter } from "./charter";
 import { derive } from "./derive";
 import { prestige, legacyWeightsForMode, charterConvictionMult } from "./prestige";
 import { serialize, deserialize } from "./save";
@@ -121,5 +121,28 @@ describe("R6.1 — Lab Charters", () => {
       delete old.lastCharter; old.version = 14;
       expect(deserialize(JSON.stringify(old)).lastCharter).toBeNull();
     });
+  });
+});
+
+describe("charter explicit lock (owner UX fix)", () => {
+  it("locks the pick and blocks further changes; research=0 no longer unlocks it", () => {
+    const s = createInitialState();
+    s.prestige.ships = 1;
+    const withPick = setCharter(s, chartersBalance.list[0]!.id);
+    const locked = lockCharter(withPick);
+    expect(locked.charterLocked).toBe(true);
+    expect(canSetCharter(locked)).toBe(false);
+    // Attempts to change after locking are no-ops.
+    expect(setCharter(locked, chartersBalance.list[1]!.id)).toBe(locked);
+  });
+
+  it("cannot lock nothing, and the lock resets on prestige", () => {
+    const s = createInitialState();
+    s.prestige.ships = 1;
+    expect(lockCharter(s)).toBe(s); // no charter picked → no-op
+    let picked = lockCharter(setCharter(s, chartersBalance.list[0]!.id));
+    picked.research = ["inference_api"]; // meet the ship gate
+    const shipped = prestige(picked);
+    expect(shipped.charterLocked).toBe(false);
   });
 });

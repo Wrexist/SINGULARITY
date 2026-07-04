@@ -65,23 +65,125 @@ features. Two audit passes (engine + UI) ran first; every shipped fix was verifi
       gated behind notice-slot visibility (no hidden 10Hz achievement scans), onBuy reuses the render
       derive, fx reduced-motion reads the settings store (no per-emit DOM query), stale ProductDetail
       cleanup + ExpandConfirm a11y parity + assorted dead-code removal. 446 tests; sim untouched.
-- [ ] **NEXT (prioritized plan, owner-ready):**
-      1. **Moment queue** (small): one `enqueueMoment()` arbiter for the five full-screen overlays —
-         the third pairwise collision guard is the signal it's due. UI-only, curve-safe.
-      2. **R8.2 Stage A — backup UX** (roadmap): Share-sheet export, import preview+confirm (the
-         ConfirmSheet now exists), gentle backup nudge. No backend, no privacy change.
-      3. **Research-tree deepening** (design): 23 nodes is the endgame ceiling; deepen `frontier`
-         with sim-supervised retune. Owner design call first.
-      4. **Charter fold into TrainingDock** (polish): charter is interactive for seconds per run,
-         then inert — fold into a collapsible strip on the dock (UI audit C1 suggestion).
-      5. **Post-TestFlight**: read the on-device telemetry (R8.1) tab-usage + gen-times against the
-         retuned curve before any further balance moves.
+- [x] **Opening retune + on-device fixes (owner 2026-07-02, from TestFlight screenshots).**
+      (1) **"Too boring in the beginning"** → new `difficulty.upgradeCostRampLevels` (12): the
+      combined costMult×upgradeCostMult ramps from ×1 at level 0 to full by 12 owned — first rack
+      = $15 base (buyable in <1m), automation pulled forward (auto_claim 90 / auto_train 320 data
+      flat → online ~3m40s / ~7m15s). `upgradeCostMult` 1.6→2.0 claws total length back:
+      **first prestige 59m31s/64m43s (owner band held), longest wall 3m05s → 1m16s**, Gen2 ~12m,
+      Gen3 ~8m. +ramp test.
+      (2) **Sticky-header overlap** (screenshot 2): the sticky labnav z-fought the sticky resource
+      bar → labnav is normal-flow again, and the resource bar got an opaque full-bleed slab so
+      strips can't bleed through its card gaps (screenshot 1).
+      (3) **"Can't close settings"** (screenshot 3): sticky sheet header with an always-reachable ✕.
+      All three verified in a scripted browser drive.
+- [x] **Rig Bay C1 — rack components, store & inventory (owner 2026-07-02).** Research-backed
+      (genre brief + integration recon in RIG_BAY_PLAN.md): per-rack-TIER loadout templates (never
+      per-rack — the genre's documented micromanagement failure), class-typed slots with ONE stat
+      each (accelerator +% compute · cooling −% draw · interconnect +data/s per rack), fixed
+      fully-visible catalog (11 parts, 3 grades, money only, reveal by fleet size), physical copies
+      (one copy = one slot), buy-and-fit in one tap from the slot's chooser. Engine: pure
+      `components.ts` (+14 tests, 460 total), save v17 + per-entry sanitizer, derive/power wiring,
+      prestige-reset via fresh-spread. Hall: fitted tiers pulse brighter. Sim buys components
+      (step 2b); catalog + `upgradeCostMult` 2.0→4.0 retuned the curve back into band:
+      **first prestige 61m24s/62m47s · wall 1m08s · Gen2 ~13-14m · Gen3 ~10m** — with the first
+      part landing ~4m40s (the new early-game decision layer). Verified end-to-end in a browser
+      drive. Phases C2 (earned trophy parts), C3 (fusion), C4 (set bonuses) in RIG_BAY_PLAN.md.
+- [x] **Rig Bay C2+C3 (owner 2026-07-02: "start the plan, add a lot more").** C2 trophy hardware:
+      4 named parts earned from specific milestones (first ship / 1M compute achievement /
+      megacluster contract / first ascension), granted idempotently in tick from persistent
+      sources, SURVIVE prestige (carryEarnedComponents; bought parts still reset), visible in the
+      chooser as locked "earn it" chase targets, one-time toast each. C3 fusion: 3 free copies →
+      next rung up the class ladder (fusesInto; slotted copies never consumed, trophies never
+      fuse). Catalog 11→15 purchasable + 4 trophies; late rungs (Dyson-Adjacent Cluster,
+      Zero-Kelvin-ish Chamber, Orbital Laser Mesh); collection counter. Sim fits trophies too;
+      `upgradeCostMult` 4.0→4.2 recentres: **first prestige 60m59s/62m17s · wall 1m06s**.
+      +7 tests (467). E2E: fuse flow + trophy rows verified in a browser drive.
+- [x] **Rig Bay C4 — matched-rig set bonus (owner 2026-07-02: "do C4").** A tier whose EVERY slot
+      (2+ only — single-slot tiers can't "match") is filled with parts of one grade draws
+      `setBonusPowerMult` 0.88 of its power. Deliberately an EFFICIENCY lane: the first cut (+6%
+      compute) compounded through racks→money→racks and moved first prestige ~10 min (sim-caught;
+      rule recorded in LEARNINGS.md). MATCHED pill in the Rig Bay tier card. Also delivered
+      IMPROVEMENTS.md — 26 ranked UX/gameplay items (the owner-requested improvement list).
+- [x] **Owner on-device fixes round 2 + improvements batch 1 (2026-07-02).** Fixes from TestFlight
+      screenshots: (1) hire nudge now requires a LIVE product + affordable signing bonus; (2)
+      training-intensity slider scales RUN SIZE (`run.focusCostFloor` 0.3 — light runs sip Compute,
+      yields proportional, identity at focus 1 → curve byte-identical), dock relabeled; (3) explicit
+      charter "Lock in" button (charterLocked, save v18 + migration). Improvements shipped from
+      IMPROVEMENTS.md: **moment queue** (5 full-screen moments render one-at-a-time by priority),
+      **first-ship explainer** (one-time, settings-persisted, gen-1 only), **heat coach toast**
+      (first cross of 25), **store notice FIFO** (same-tick notices drain instead of dropping),
+      **product milestones in the goal strip** (mid-game carrots → tap lands on Products), resource
+      slab overdraw for iOS rubber-band. +6 tests (475). All e2e-verified in a browser drive.
+- [x] **Self-review round 2 (owner 2026-07-03, 8-angle review of everything since 8ff4bba).**
+      No curve or data-loss bugs. 10 findings fixed: save sanitizer now drops crafted trophy copies
+      whose source milestone isn't complete (trophies reconcile against contracts/achievements like
+      every other earned system) + owned copies clamped to a `maxCopies` knob; notice queue made
+      strictly oldest-first (new notices no longer jump queued ones), multi-ship / multi-level-up
+      ticks coalesce ("N products shipped…"), and the backlog clears on prestige + import (no stale
+      replays); Onboarding waits for `moment === null` (no stacking over full-screen moments); ship
+      explainer retires itself if the first ship lands before it's shown; `trainingIntensity(focus)`
+      single-sourced in derive (UI label now clamps like the engine); equipComponent/RigBayPanel
+      reuse `freeCopies()` (dead re-slot term removed); HallCanvas caches componentFill by loadout
+      ref (was 3 tier scans per 30fps frame); advisor locked-tab sweep de-vacuized (now guarded to
+      actually exercise the products/employees branches). 477 tests · sim byte-identical
+      (57m59s/62m17s · wall 1m05s) · build clean.
+- [x] **"Do all" wave (owner 2026-07-03) — the six planned improvements, each verified + committed:**
+      1. **Prestige share card** (#2): runtime-drawn 1080×1350 Generation Report PNG (headline,
+         stat grid, era; zero image assets) → Web Share API with text/download/clipboard fallbacks;
+         Share button on the Celebration pauses its auto-dismiss. Rendered + inspected headless.
+      2. **Backup UX R8.2 Stage A** (#15): "Share backup…" hands the save as a .txt to the OS share
+         sheet; the restore confirm now PREVIEWS the pasted backup (gen/era/money/achievements/
+         playtime — bad pastes fail at preview); one-time backup nudge at 2 ships if never backed
+         up (settings.lastBackupAt). E2E-driven: preview text + invalid-paste rejection.
+      3. **Rival counterplay — the press blitz** (#8): rivals AHEAD of you can be blitzed from the
+         leaderboard (cost scales with their user base; −15% users per strike for the run; max 3
+         per rival; 240s press cycle). Curve-safe by construction — the leaderboard is a pure
+         sidecar, so it's a money sink buying race position + reeling reactions. Save v19
+         (+migration/sanitizer). +4 tests (481). Sim byte-identical (57m59s/62m17s · wall 1m05s).
+      4. **Interactive onboarding — First Steps** (#11): a live 3-step checklist on Build (start a
+         run → claim → buy a rack) that ticks off REAL state facts and retires itself; no new
+         persistence. Welcome modal slimmed to point at it. E2E-driven through all three steps.
+      5. **Music layers** (#3): the ambient pad is now era-keyed data (root walks up, filter opens,
+         later eras add a voice) with a natural crossfade on era change. Still zero audio assets.
+      6. **Game Center** (#18): full app-side bridge (score submits each prestige, hydration-synced
+         achievement mirror, Settings row) that silently no-ops until a native `GameConnect` plugin
+         exists — the only maintained plugin peers on Capacitor 5 vs our 6, so the dependency is
+         deliberately deferred. Owner steps in GAME_CENTER_SETUP.md.
+- [x] **Wave 2 (owner 2026-07-03, "continue") — six more, each verified + committed:**
+      rack-tap LED flicker (#4, reduced-motion-safe, DrawOpts.tapFlash identity-optional);
+      post-session recap (#16: applyOffline now diffs the catch-up tick for EVENTS — era
+      crossings, rank moves, milestones, finished upgrades, training — rendered as story lines
+      in the WIWA modal, +2 tests); scientific-notation setting (#14: Big.formatScientific,
+      engine stays pure — the UI's fmt() picks; one switch re-skins every number, +2 tests);
+      lighter-haptics toggle (#23: half-strength pulses, row shown only while haptics on);
+      VoiceOver pass (#20: aria-valuetext on every slider so VO reads meaning, dock slider
+      renamed to its visible label; dialogs/toasts/canvases/chips audited clean). #5 (milestone
+      chase ladder) was already live via the goal strip — marked shipped. 485 tests · engine
+      untouched except display-only Big method + offline story diffs (sim-irrelevant).
+- [x] **Wave 3 (owner 2026-07-03, "do iPad overlay and so on", Steam memo skipped):**
+      **iPad layout** (#22): ≥900px splits the Build pane into a two-column grid — hall/First
+      Steps/dock sticky left, charter/hardware/Rig Bay right, notice+labnav spanning; wrappers are
+      display:contents on phones (screenshot-verified at both viewports, phone byte-identical).
+      **Regulator negotiation** (#9): deterministic sit-down card at suspicion ≥55 — settle (−20%
+      cash, suspicion −30) / lobby (−8%, +heat relief, doomer tilt) / defy (Compute ×1.3·60s,
+      heat+suspicion rise); one-time-ness structural (settle/lobby dip below trigger; factor-1
+      truce marker gates re-fire — defiance means Chen RETURNS). Outranks the ambient pool; +6
+      tests. **Content wave**: R7.2 callback sequels (six \`after\`-gated events referencing their
+      parent beat, guard test cross-checks ids) + R7.4 rotating era press releases
+      (eraBlurb(era, gen) rotates a per-era pool, so run 3's Scale-Up crossing reads fresh). +5
+      tests. 496 tests · sim byte-identical (57m59s/62m17s · wall 1m05s).
+- [ ] **NEXT:** local notification opt-in (#17 — needs @capacitor/local-notifications, batch with
+      the Game Center native session) → panel memoization (#19, AFTER a real-device profile);
+      **research-tree deepening** (owner design call) and the **post-TestFlight telemetry read**
+      (R8.1) before further balance moves. Owner actions open: run the iOS TestFlight workflow
+      (merging ≠ shipping), confirm GitHub Pages links, and the Game Center native steps when a
+      Capacitor-6 plugin lands.
 - [ ] **Flagged for owner (not touched):** run yields apply global multipliers twice (derive.ts —
       runComputeCost carries them, then runMoney/DataYield multiply again). The tuned curve is BUILT
-      on this behaviour, so changing it = a full retune; decide deliberately. Also noted: the store's
-      single `notice` slot can drop one of two same-tick events (needs a small queue if it ever
-      matters), and App's effects rely on 10Hz re-render freshness (fine today; revisit if the
-      tick→render path is ever throttled).
+      on this behaviour, so changing it = a full retune; decide deliberately. Also noted: App's
+      effects rely on 10Hz re-render freshness (fine today; revisit if the tick→render path is ever
+      throttled). (The old single-notice-slot drop is fixed — notices queue FIFO as of round 2.)
 
 ## UI polish + research depth (owner-directed 2026-06-30) — branch `claude/ui-polish-theme-fixes`
 *Owner screenshots + asks: kill the green accent lines, make themes actually recolour the app

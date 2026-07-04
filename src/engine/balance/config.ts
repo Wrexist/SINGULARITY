@@ -183,6 +183,10 @@ export interface WorldEvent {
    *  `worldEvents.factionThreshold`). At neutral, no tagged event is eligible, so the
    *  base pool — and the tuned curve — is unchanged. */
   faction?: "doomer" | "accel";
+  /** R7.2 — callback sequels: this event is eligible ONLY while `after`'s id is in
+   *  the recent-events window, so its body can reference that beat directly ("the
+   *  shortage", "that tweet") and always lands as continuity, never a non sequitur. */
+  after?: string;
 }
 
 const WORLD_EVENTS: WorldEvent[] = [
@@ -765,6 +769,65 @@ const WORLD_EVENTS: WorldEvent[] = [
     body: "You launched the half-baked feature on a Friday and the internet did your QA for free. The buzz is enormous; the bug reports are tomorrow's problem.",
     effect: { kind: "productBuzz", durationSec: 60 },
   },
+
+  // --- R7.2: callback sequels. Each is eligible ONLY while its parent event is in
+  //     the recent window (`after`), so the body can point straight back at the
+  //     earlier beat — continuity the player actually notices. Weights are high
+  //     because eligibility is rare: when a sequel CAN fire, it usually should. ---
+  {
+    id: "gpu_scalper_bust",
+    after: "gpu_shortage",
+    weight: 12,
+    tone: "good",
+    headline: "The Scalper Ring Gets Raided",
+    body: "Remember the shortage? Turns out four guys in a storage unit were sitting on nine pallets of accelerators. The feds seized them; the market exhales. Compute ×1.5 while prices sane.",
+    effect: { kind: "buff", target: "computeMult", factor: 1.5, durationSec: 45 },
+  },
+  {
+    id: "breach_postmortem",
+    after: "data_breach",
+    weight: 12,
+    tone: "good",
+    headline: "Breach Postmortem Finds Buried Treasure",
+    body: "The forensic audit of last week's breach turns up three forgotten S3 buckets of perfectly good training data you'd lost track of. Security: bad. Archaeology: excellent. +15% data.",
+    effect: { kind: "grantPct", resource: "data", pct: 0.15 },
+  },
+  {
+    id: "founder_apology_tour",
+    after: "founder_tweets",
+    weight: 12,
+    tone: "good",
+    headline: "The Apology Tour Lands",
+    body: "Three podcasts, one carefully damp eye, zero specifics. Somehow the tweet from last week is now a 'growth moment' and enterprise deals are BACK. Revenue ×1.4.",
+    effect: { kind: "buff", target: "moneyMult", factor: 1.4, durationSec: 45 },
+  },
+  {
+    id: "jailbreak_patch",
+    after: "viral_jailbreak",
+    weight: 12,
+    tone: "good",
+    headline: "The Jailbreak Becomes a Feature",
+    body: "The patch for last week's jailbreak shipped — and the red-team traffic it attracted turns out to be the best adversarial dataset you've ever collected. +12% data, thanks everyone.",
+    effect: { kind: "grantPct", resource: "data", pct: 0.12 },
+  },
+  {
+    id: "dead_cat_bounce",
+    after: "market_crash",
+    weight: 12,
+    tone: "good",
+    headline: "The Dead-Cat Bounce",
+    body: "After last week's crash, the market decides AI was underpriced actually, and buys everything back at a premium by lunch. Analysts describe this as 'price discovery'. +20% cash.",
+    effect: { kind: "grantPct", resource: "money", pct: 0.2 },
+  },
+  {
+    id: "pause_unsigned",
+    after: "pause_letter",
+    weight: 12,
+    tone: "good",
+    headline: "Everyone Un-Signs the Pause Letter",
+    body: "Six months later — well, six days — half the signatories of that pause letter have quietly announced frontier runs of their own. The moral high ground reopens for training. Compute ×1.4.",
+    effect: { kind: "buff", target: "computeMult", factor: 1.4, durationSec: 40 },
+  },
 ];
 
 export const balance = {
@@ -791,8 +854,15 @@ export const balance = {
    */
   difficulty: {
     costMult: 2.0,
-    upgradeCostMult: 1.6,
+    upgradeCostMult: 4.2,
     productionMult: 1.0,
+    /** The opening hook (owner 2026-07-02: "too boring in the beginning").
+     *  An upgrade's first levels pay a REDUCED difficulty multiplier, ramping
+     *  linearly from ×1 at level 0 up to the full costMult×upgradeCostMult by
+     *  this many owned — the first minutes stay purchase-dense (first rack
+     *  ≈ base cost, affordable almost immediately) while the late curve keeps
+     *  the full tuned difficulty ("progressively harder"). 0 disables the ramp. */
+    upgradeCostRampLevels: 12,
   },
 
   /** The rented server closet generates a trickle of Compute for free. */
@@ -810,6 +880,13 @@ export const balance = {
     durationSec: 5,
     /** A run can never resolve faster than this, however much run-speed you stack. */
     minDurationSec: 0.5,
+    /** Training intensity (the auto-train slider) also scales the RUN SIZE: at
+     *  focus 0 a run invests this fraction of the full cost (and pays out
+     *  proportionally); at focus 1 it's the full costSeconds investment. Owner
+     *  report: high production made every run swallow the whole Compute stock —
+     *  low intensity must mean "runs sip Compute", not just "runs fire later".
+     *  1.0 would disable the scaling (identity at every focus). */
+    focusCostFloor: 0.3,
     // Difficulty pass: leaner run payouts so scaling the operation (more/better
     // racks + expansions) matters more. Tuned against the sim to stay wall-free.
     dataPerCompute: 0.28,
@@ -822,32 +899,54 @@ export const balance = {
    * here; the gating LOGIC lives in engine/eras.ts; palettes live in the renderer.
    */
   eras: {
+    /** R7.4 — each era carries a POOL of press releases; eraBlurb(era, seed)
+     *  rotates deterministically by generation, so re-crossing an era in run 3
+     *  reads a fresh headline instead of last run's. blurb = variant 0. */
     list: [
-      { name: "Garage Closet", blurb: "" },
+      { name: "Garage Closet", blurb: "", blurbAlts: [] },
       {
         name: "Funded Startup",
         blurb:
           "TechCrunch — “Stealth AI lab emerges from a literal server closet, raises a seed round to ‘reinvent compute.’” There is a beanbag now. The intern designed a logo.",
+        blurbAlts: [
+          "The Information — “Same closet, new cap table: Singularity Inc. re-raises at a valuation its own deck calls ‘vibes-forward.’” The beanbag has been reupholstered.",
+          "Hacker News — “Show HN: We are once again a funded startup.” Top comment says it could be done in a weekend with Postgres. It could not.",
+        ],
       },
       {
         name: "Scale-Up Lab",
         blurb:
           "The Verge — “Singularity Inc. ships its first model.” The valuation is, sources confirm, ‘definitely not a bubble.’ The closet is now a floor.",
+        blurbAlts: [
+          "Wired — “Singularity Inc. scales again, insists this time is different.” The GPUs agree. The GPUs always agree.",
+          "Ars Technica — “Benchmarks confirm the new model is bigger.” Whether it is better remains, in the reviewer's words, ‘spiritually ambiguous.’ Number went up though.",
+        ],
       },
       {
         name: "Frontier Lab",
         blurb:
           "Bloomberg — “Singularity Inc. declares itself a ‘frontier lab,’ a term it also coined.” Badge access now has tiers. There is a second beanbag, and a waitlist for it.",
+        blurbAlts: [
+          "FT — “Singularity Inc. returns to the frontier, which it never technically left, per a spokesperson who then left.” The badge tiers now have badge tiers.",
+          "Reuters — “Frontier lab announces frontier model at frontier event.” Attendees describe the demo as ‘pre-recorded but emotionally live.’",
+        ],
       },
       {
         name: "Hyperscaler",
         blurb:
           "WSJ — “Singularity Inc. is now a ‘hyperscaler,’ and has reportedly bought a power plant ‘for latency reasons.’” Analysts remain confused, but bullish.",
+        blurbAlts: [
+          "The Economist — “What is a hyperscaler? Whatever Singularity Inc. is doing, presumably.” The power plant now has a gift shop.",
+          "CNBC — “Singularity Inc. buys a second power plant to cool the first one.” The stock did something analysts describe as ‘vertical.’",
+        ],
       },
       {
         name: "Post-Singularity",
         blurb:
           "The model is writing its own press releases now. This one included. Singularity Inc. has, by its own announcement, achieved AGI; the AGI has politely declined to comment. The hall hums at a frequency employees describe as “optimistic.”",
+        blurbAlts: [
+          "This press release was generated, reviewed, approved and legally notarized by the model in 40 milliseconds. It says everything is fine and that you, personally, have always been its favorite.",
+        ],
       },
     ],
     /** Reach era 1 once this many research nodes are owned. */
@@ -1216,7 +1315,10 @@ export const balance = {
       id: "auto_claim",
       name: "Auto-Claim Daemon",
       desc: "Finished runs claim themselves. Stop tapping.",
-      cost: { resource: "data", base: 200, growth: 1 },
+      // Pulled forward (owner 2026-07-02): the manual tap-claim-tap loop is the
+      // opening's boredom ceiling — automation is the reward for the first
+      // stretch of play, not a mid-game luxury.
+      cost: { resource: "data", base: 90, growth: 1 },
       max: 1,
       effect: { kind: "autoClaim" },
     },
@@ -1224,7 +1326,7 @@ export const balance = {
       id: "auto_train",
       name: "Auto-Train Orchestrator",
       desc: "Runs restart themselves. The lab runs itself.",
-      cost: { resource: "data", base: 800, growth: 1 },
+      cost: { resource: "data", base: 320, growth: 1 },
       max: 1,
       effect: { kind: "autoTrain" },
     },
@@ -1368,6 +1470,25 @@ export const balance = {
       { at: 55, label: "Under investigation", blurb: "Chen has opened a formal case. Lawyer up." },
       { at: 80, label: "Personal vendetta", blurb: "This is no longer about the law. It's personal now." },
     ],
+    /** The negotiation (IMPROVEMENTS #9): when suspicion reaches `at`, Chen
+     *  offers a sit-down — a DETERMINISTIC choice card (no RNG; a clean lab and
+     *  the balance sim never see it). Settling and lobbying buy suspicion back
+     *  below the threshold; defiance keeps it high, so Chen returns once the
+     *  truce marker expires — escalating pressure, honestly surfaced. */
+    negotiation: {
+      at: 55,
+      /** Settle: pay this fraction of cash; this much suspicion evaporates. */
+      settle: { moneyPct: -0.2, suspicion: -30 },
+      /** Lobby: cheaper, shadier — less suspicion relief, some heat relief,
+       *  and a doomer-lane tilt (you played it safe and connected). */
+      lobby: { moneyPct: -0.08, suspicion: -15, heat: -10, alignment: -0.15 },
+      /** Defy: keep the money, rally the lab (short compute surge) — but heat
+       *  and suspicion RISE, and the accelerationists cheer. */
+      defy: { suspicion: 8, heat: 12, alignment: 0.2, buffFactor: 1.3, buffSec: 60 },
+      /** After ANY branch a truce marker (factor-1 identity modifier) sits in
+       *  the bar this long — Chen doesn't come back mid-paperwork. */
+      truceSec: 240,
+    },
   },
 
   /**

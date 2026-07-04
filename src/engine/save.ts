@@ -7,7 +7,10 @@ import { legacyTree as LEGACY } from "./balance/legacyTree";
 import { reputation as REPUTATION } from "./balance/reputation";
 import { charters as CHARTERS } from "./balance/charters";
 import { balance } from "./balance/config";
-import type { ActiveModifier, DraftModel, Employee, GameState, LifetimeStats, ModifierTarget, ProductsState, ProductState, UpgradeState } from "./types";
+import { components as COMPONENTS, SLOTS_BY_TIER, type SlotClass } from "./balance/components";
+import { market as MARKET } from "./balance/market";
+import { freshComponents } from "./components";
+import type { ActiveModifier, ComponentsState, DraftModel, Employee, GameState, LifetimeStats, ModifierTarget, ProductsState, ProductState, UpgradeState } from "./types";
 
 const MODIFIER_TARGETS: ModifierTarget[] = ["computeMult", "dataMult", "moneyMult"];
 const PRODUCT_TYPE_IDS = PRODUCTS.types.map((t) => t.id);
@@ -19,6 +22,7 @@ const CONTRACT_IDS = new Set(CONTRACTS.pool.map((c) => c.id));
 const LEGACY_IDS = new Set(LEGACY.perks.map((p) => p.id));
 const REP_PERK_COST = new Map(REPUTATION.perks.map((p) => [p.id, p.cost]));
 const CHARTER_IDS = new Set(CHARTERS.list.map((c) => c.id));
+const RIVAL_NAMES = new Set(MARKET.rivals.map((r) => r.name));
 const RESEARCH_IDS = new Set(balance.research.map((r) => r.id));
 
 /** Keep only known ids, each at most once (order preserved). Closes the duplicate /
@@ -261,8 +265,11 @@ interface SavedShape {
   reputation: { spent: number; perks: string[] };
   contracts: { completed: string[] };
   charter: string | null;
+  charterLocked: boolean;
   lastCharter: string | null;
   legacyInvestments: string[];
+  components: ComponentsState;
+  rivalOps: GameState["rivalOps"];
 }
 
 export function serialize(state: GameState): string {
@@ -309,8 +316,11 @@ export function serialize(state: GameState): string {
     reputation: state.reputation,
     contracts: state.contracts,
     charter: state.charter,
+    charterLocked: state.charterLocked,
     lastCharter: state.lastCharter,
     legacyInvestments: state.legacyInvestments,
+    components: state.components,
+    rivalOps: state.rivalOps,
   };
   return JSON.stringify(shape);
 }
@@ -341,6 +351,12 @@ export function deserialize(json: string): GameState {
     typeof raw.computeFocus === "number" && Number.isFinite(raw.computeFocus)
       ? Math.max(0, Math.min(1, raw.computeFocus))
       : fresh.computeFocus;
+  // Sanitize the trophy-source witnesses FIRST: components legitimacy (below)
+  // is checked against these, so a crafted dupe can't smuggle a trophy in.
+  const achievements = Array.isArray(raw.achievements)
+    ? raw.achievements.filter((a): a is string => typeof a === "string")
+    : [];
+  const contracts = sanitizeContracts(raw.contracts);
   const loadedProducts = isWellFormedProducts(raw.products) ? raw.products : fresh.products;
   // `sold` was added after v6 shipped, `drafts`/`upgrade` in v7; default them for
   // saves that predate each, and sanitize the untrusted nested shapes.
@@ -413,18 +429,19 @@ export function deserialize(json: string): GameState {
     products,
     employees: sanitizeEmployees(raw.employees),
     stats: sanitizeStats(raw.stats),
-    achievements: Array.isArray(raw.achievements)
-      ? raw.achievements.filter((a): a is string => typeof a === "string")
-      : [],
+    achievements,
     reputation: sanitizeReputation(raw.reputation),
-    contracts: sanitizeContracts(raw.contracts),
+    contracts,
     // Validate against KNOWN charter ids: an unknown/crafted id would still grant the
     // +15% conviction bonus (charter === lastCharter) without a real two-run commitment.
     charter: typeof raw.charter === "string" && CHARTER_IDS.has(raw.charter) ? raw.charter : null,
+    charterLocked: raw.charterLocked === true,
     lastCharter: typeof raw.lastCharter === "string" && CHARTER_IDS.has(raw.lastCharter) ? raw.lastCharter : null,
     // KNOWN legacy-perk ids, deduped — a dupe would apply the lane bias twice for free
     // (legacyTreeMods sums per entry and never checks prereqs on load).
     legacyInvestments: dedupeKnownIds(raw.legacyInvestments, LEGACY_IDS),
+    components: sanitizeComponents(raw.components, contracts.completed, achievements),
+    rivalOps: sanitizeRivalOps(raw.rivalOps),
     // Generation-scoped (not persisted): a mid-run reload simply re-accrues the run
     // peaks, and the ship report is transient — both start fresh on load.
     runPeakCompute: fresh.runPeakCompute,
@@ -433,12 +450,70 @@ export function deserialize(json: string): GameState {
   };
 }
 
+/** Rival counterplay is untrusted: KNOWN rival names only, strike counts clamped
+ *  to the per-run max (a crafted save could otherwise zero every rival), and the
+ *  cooldown stamp bounded so it can't push the next blitz into next century. */
+function sanitizeRivalOps(r: unknown): GameState["rivalOps"] {
+  const o = (r ?? {}) as Partial<GameState["rivalOps"]>;
+  const strikes: Record<string, number> = {};
+  if (o.strikes && typeof o.strikes === "object") {
+    for (const [name, n] of Object.entries(o.strikes)) {
+      if (name === "__proto__" || !RIVAL_NAMES.has(name)) continue;
+      if (typeof n !== "number" || !Number.isFinite(n) || n <= 0) continue;
+      strikes[name] = Math.min(MARKET.counterplay.maxStrikesPerRival, Math.floor(n));
+    }
+  }
+  const last = o.lastStrikeSec;
+  const lastStrikeSec = typeof last === "number" && Number.isFinite(last) && last >= 0 ? last : null;
+  return { strikes, lastStrikeSec };
+}
+
 /** Contracts are untrusted: KNOWN completed-contract ids, each at most once — a
  *  duplicate id would re-count its Reputation reward without bound (the load path
  *  bypasses claimContract's includes-check). */
 function sanitizeContracts(c: unknown): { completed: string[] } {
   const o = (c ?? {}) as { completed?: unknown };
   return { completed: dedupeKnownIds(o.completed, CONTRACT_IDS) };
+}
+
+/** Rig Bay components are untrusted: keep KNOWN ids with sane integer counts, and
+ *  a loadout whose every slot holds a class-matching, actually-owned id — equips
+ *  beyond the owned copy count are dropped (a crafted save can't run one GPU in
+ *  three tiers), per-entry like every other sanitizer here. */
+const COMPONENT_BY_ID = new Map(COMPONENTS.catalog.map((d) => [d.id, d]));
+function sanitizeComponents(c: unknown, completedContracts: string[], achievements: string[]): ComponentsState {
+  const out = freshComponents();
+  const o = c as Partial<ComponentsState> | null;
+  if (!o || typeof o !== "object") return out;
+  if (o.owned && typeof o.owned === "object") {
+    for (const [id, n] of Object.entries(o.owned)) {
+      if (id === "__proto__" || !COMPONENT_BY_ID.has(id)) continue;
+      if (typeof n !== "number" || !Number.isFinite(n) || n <= 0) continue;
+      // Trophy parts are only legitimate when their source milestone is complete
+      // (a crafted save could otherwise own top-shelf hardware forever — the
+      // sibling sanitizers all reconcile against their earning source). Dropping
+      // is safe: a legitimately-earned trophy is re-granted next tick.
+      const earned = COMPONENT_BY_ID.get(id)!.earnedBy;
+      if (earned && !(earned.kind === "contract" ? completedContracts.includes(earned.id) : achievements.includes(earned.id))) continue;
+      out.owned[id] = Math.min(COMPONENTS.maxCopies, Math.floor(n));
+    }
+  }
+  if (Array.isArray(o.loadout)) {
+    const used: Record<string, number> = {};
+    for (let tier = 0; tier < SLOTS_BY_TIER.length; tier++) {
+      const slots = (o.loadout[tier] ?? {}) as Partial<Record<SlotClass, unknown>>;
+      for (const slot of SLOTS_BY_TIER[tier]!) {
+        const id = slots[slot];
+        if (typeof id !== "string") continue;
+        const def = COMPONENT_BY_ID.get(id);
+        if (!def || def.class !== slot) continue;
+        if ((used[id] ?? 0) >= (out.owned[id] ?? 0)) continue; // no free copy
+        used[id] = (used[id] ?? 0) + 1;
+        out.loadout[tier]![slot] = id;
+      }
+    }
+  }
+  return out;
 }
 
 /** Reputation is untrusted: KNOWN perk ids (deduped), and `spent` reconciled so it's
@@ -541,6 +616,18 @@ export function migrate(raw: any): SavedShape {
   if (s.version === 15) {
     // v15 → v16: regulator suspicion (Depth B3). A clean slate on existing runs.
     s = { ...s, version: 16, suspicion: s.suspicion ?? 0 };
+  }
+  if (s.version === 16) {
+    // v16 → v17: Rig Bay components (C1). Empty inventory + loadouts on old saves.
+    s = { ...s, version: 17, components: s.components ?? freshComponents() };
+  }
+  if (s.version === 17) {
+    // v17 → v18: explicit charter lock (owner UX fix). Old runs are unlocked.
+    s = { ...s, version: 18, charterLocked: s.charterLocked ?? false };
+  }
+  if (s.version === 18) {
+    // v18 → v19: rival counterplay. No strikes landed on existing saves.
+    s = { ...s, version: 19, rivalOps: s.rivalOps ?? { strikes: {}, lastStrikeSec: null } };
   }
   return s as SavedShape;
 }

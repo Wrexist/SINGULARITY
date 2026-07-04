@@ -2,7 +2,35 @@ import type { OfflineSummary } from "../engine/offline";
 import type { Big } from "../engine/math/Big";
 import { fmt, fmtPerHour, fmtTime } from "./format";
 import { achievementDefs } from "../engine/achievements";
+import { productMilestones } from "../engine/balance/products";
+import { eraName } from "../engine/eras";
 import { LandmarkIcon, TrophyIcon } from "./Icons";
+
+/** The story since last open, as at most `max` human lines (headlines first). */
+function storyLines(story: OfflineSummary["story"], max = 4): string[] {
+  const lines: string[] = [];
+  if (story.eraAfter > story.eraBefore) {
+    lines.push(`The lab crossed into the ${eraName(story.eraAfter)} era.`);
+  }
+  if (story.rankBefore != null && story.rankAfter != null && story.rankAfter !== story.rankBefore) {
+    lines.push(
+      story.rankAfter < story.rankBefore
+        ? `You climbed the AI market: #${story.rankBefore} → #${story.rankAfter}.`
+        : `Rivals pushed you down the market: #${story.rankBefore} → #${story.rankAfter}.`,
+    );
+  }
+  for (const m of story.milestones) {
+    const def = productMilestones.find((d) => d.id === m);
+    if (def) lines.push(`Milestone reached: ${def.label}.`);
+  }
+  for (const u of story.upgradesFinished) lines.push(`${u.name} shipped v${u.version} — back at the frontier.`);
+  for (const e of story.leveledUp) lines.push(`${e.name} finished training — now L${e.level}.`);
+  if (lines.length > max) {
+    const extra = lines.length - (max - 1);
+    return [...lines.slice(0, max - 1), `…and ${extra} more things happened without you.`];
+  }
+  return lines;
+}
 
 interface Props {
   summary: OfflineSummary;
@@ -28,6 +56,8 @@ export function OfflineModal({ summary, onClose }: Props) {
     .map((id) => achievementDefs.find((d) => d.id === id))
     .filter((d): d is NonNullable<typeof d> => !!d);
   const repEarned = summary.reputationEarned ?? 0;
+  // Compute the story lines once per render (length check + list share them).
+  const story = summary.story ? storyLines(summary.story) : [];
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -51,6 +81,12 @@ export function OfflineModal({ summary, onClose }: Props) {
             );
           })}
         </div>
+        {/* The story since last open (IMPROVEMENTS #16) — events, not numbers. */}
+        {story.length > 0 && (
+          <div className="wiwa-story">
+            {story.map((line, i) => <p key={i}>{line}</p>)}
+          </div>
+        )}
         {(unlocked.length > 0 || repEarned > 0) && (
           <div className="wiwa-meta">
             {repEarned > 0 && (

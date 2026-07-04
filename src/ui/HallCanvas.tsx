@@ -7,6 +7,7 @@ import { buildHallModel, POWER_IDS } from "../render/hallModel";
 import { drawHallStatic, drawHallDynamic, expansionMarkers, rackHitAreas, pointInPoly, type RackHit } from "../render/hallRenderer";
 import { currentEra, eraName } from "../engine/eras";
 import { hallRooms } from "../engine/hall";
+import { tierLoadoutFill } from "../engine/components";
 import { rackInfo } from "../engine/rackInfo";
 import { themeFilter } from "./hallThemes";
 
@@ -84,6 +85,13 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
     // it so we don't rebuild ~46 objects every animation frame (mobile GC).
     let modelSig = "";
     let model = buildHallModel(useGame.getState().game);
+    // Rig Bay fill only changes when the loadout array is replaced (equip /
+    // clear / prestige) — cache by reference instead of 3 tier scans per frame.
+    let fillLoadout: unknown = null;
+    let componentFill: number[] = [0, 0, 0];
+    // Rack-tap micro-interaction: which rack was touched, and when (rAF clock).
+    let tapFlash: { index: number; start: number } | null = null;
+    const TAP_FLASH_MS = 450;
     let markers = expansionMarkers(model, 1, 1); // current frame's side markers
     // Seed from the hydrated hall so a saved lab doesn't replay the whole
     // spawn animation as if every owned rack were brand-new on first open.
@@ -127,6 +135,11 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       const money = game.resources.money;
       for (const s of model.sides) s.affordable = !s.maxed && money.gte(s.cost);
 
+      if (game.components.loadout !== fillLoadout) {
+        fillLoadout = game.components.loadout;
+        componentFill = [0, 1, 2].map((t) => tierLoadoutFill(game, t));
+      }
+
       if (model.total > prevTotal) {
         spawnFrom = prevTotal;
         spawnStart = timeMs;
@@ -154,6 +167,11 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
         reducedMotion: useSettings.getState().reducedMotion,
         spawnFrom, spawnT, burst, dpr,
         rackSkin: useSettings.getState().rackSkin,
+        // Rig Bay: fitted tiers pulse brighter (cached above by loadout ref).
+        componentFill,
+        ...(tapFlash && timeMs - tapFlash.start < TAP_FLASH_MS
+          ? { tapFlash: { index: tapFlash.index, t: 1 - (timeMs - tapFlash.start) / TAP_FLASH_MS } }
+          : {}),
       });
       // Debug/test aid (screenshot harness reads marker centroids); harmless.
       markers = expansionMarkers(model, cssW, cssH);
@@ -211,6 +229,8 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
         ev.preventDefault();
         haptics.tap();
         sound.tap();
+        // The hall answers the touch: that rack's LEDs flicker for a beat.
+        tapFlash = { index: rack.index, start: performance.now() };
         setSelectedTier(rack.tier);
       } else {
         setSelectedTier(null);

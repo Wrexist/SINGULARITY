@@ -7,6 +7,8 @@ interface Props {
   confirmLabel: string;
   /** Tint the confirm action for a destructive choice. */
   danger?: boolean;
+  /** Info-style sheets (single acknowledge button) hide the cancel action. */
+  hideCancel?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -15,7 +17,7 @@ interface Props {
  *  Replaces `window.confirm`, which renders a jarring native panel on iOS and —
  *  being synchronous — freezes the game loop, so the next tick after dismissal
  *  advanced by the whole time the dialog sat open. */
-export function ConfirmSheet({ kicker, title, body, confirmLabel, danger, onConfirm, onCancel }: Props) {
+export function ConfirmSheet({ kicker, title, body, confirmLabel, danger, hideCancel, onConfirm, onCancel }: Props) {
   return (
     <Portal>
       <div className="modal-backdrop" onClick={onCancel}>
@@ -24,7 +26,7 @@ export function ConfirmSheet({ kicker, title, body, confirmLabel, danger, onConf
           <h2>{title}</h2>
           {body && <p className="modal-sub">{body}</p>}
           <div className="confirm-actions">
-            <button className="btn btn-ghost" onClick={onCancel}>Cancel</button>
+            {!hideCancel && <button className="btn btn-ghost" onClick={onCancel}>Cancel</button>}
             <button className={`btn btn-primary${danger ? " btn-danger" : ""}`} onClick={onConfirm}>{confirmLabel}</button>
           </div>
         </div>

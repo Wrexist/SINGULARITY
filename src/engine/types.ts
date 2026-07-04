@@ -1,5 +1,14 @@
 import type { Big } from "./math/Big";
 import type { ProductTypeId } from "./balance/products";
+import type { SlotClass } from "./balance/components";
+
+/** Rig Bay inventory + loadouts (see GameState.components). */
+export interface ComponentsState {
+  /** Physical copies owned, per catalog id. */
+  owned: Record<string, number>;
+  /** Equipped component id per slot class, indexed by rack tier (0/1/2). */
+  loadout: Array<Partial<Record<SlotClass, string>>>;
+}
 
 export type ResourceId = "compute" | "data" | "money";
 
@@ -86,10 +95,24 @@ export interface GameState {
   /** Depth B1 — the charter of the PREVIOUS run (set at prestige), so shipping the
    *  same charter twice running grants a conviction bonus. Persists across prestige. */
   lastCharter: string | null;
+  /** Explicit charter lock (owner UX fix): true once the player locks their pick
+   *  (or buys research, which locks implicitly). Resets each prestige. */
+  charterLocked: boolean;
   /** Phase 4 — Legacy Investments: owned prestige-tree perk ids. Spending weights
    *  here removes them from the global multiplier (a focus-vs-breadth trade-off).
    *  Persists across prestige. */
   legacyInvestments: string[];
+  /** Rig Bay (C1) — owned component copies + per-rack-TIER loadouts. `owned` is a
+   *  count per catalog id (one physical copy fills one slot); `loadout[tier]` maps
+   *  a slot class to the equipped id. Bought with in-run Money, so like racks it
+   *  RESETS on prestige (the acquirer takes the GPUs). See RIG_BAY_PLAN.md. */
+  components: ComponentsState;
+  /** Rival counterplay (IMPROVEMENTS #8): press-blitz strikes landed this run
+   *  (rival name → count; each shrinks that rival's leaderboard user base) plus
+   *  the playtime stamp of the last strike (null = never) for the cooldown.
+   *  Pure sidecar — affects only the market race, never incomes. Resets on
+   *  prestige (the board reshuffles when the lab ships). */
+  rivalOps: { strikes: Record<string, number>; lastStrikeSec: number | null };
   /** Peak Compute/sec achieved since the last ship (generation-scoped; reset by
    *  prestige). Feeds the Generation Report so it shows THIS run's high-water mark,
    *  not the all-time career peak. Not persisted — a mid-run reload simply re-accrues. */

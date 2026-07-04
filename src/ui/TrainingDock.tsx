@@ -1,5 +1,6 @@
 import type { Derived, GameState } from "../engine/types";
 import { fmt, fmtMoney } from "./format";
+import { trainingIntensity } from "../engine/derive";
 import { burst, floatText } from "./fx";
 
 interface Props {
@@ -16,14 +17,16 @@ export function TrainingDock({ game, derived, onStart, onClaim, onSetFocus }: Pr
   const canStart = !run.active && !run.readyToClaim && game.resources.compute.gte(derived.runComputeCost);
   const pct = Math.min(100, run.progress * 100);
 
-  // Compute focus: lets the player reserve Compute (lower focus) so the bank can
-  // climb toward expensive research, instead of auto-train spending it all. Only
-  // relevant once auto-train exists (otherwise the player paces runs by hand).
+  // Training intensity: scales the RUN SIZE (a light run sips Compute and pays
+  // proportionally less — owner fix: at scale, full runs swallowed the whole
+  // bank) AND how much auto-train reserves before firing. Only shown once
+  // auto-train exists (before that the player paces runs by hand).
   const focus = game.computeFocus;
+  const runSizePct = Math.round(trainingIntensity(focus) * 100);
   const focusLabel =
     focus === 0
-      ? "Holding — Compute banks freely"
-      : `${Math.round(focus * 100)}% · banks up to ${fmt(derived.runComputeCost.div(focus))} compute`;
+      ? `Holding — light ${runSizePct}% runs, Compute banks freely`
+      : `${Math.round(focus * 100)}% · ${runSizePct}%-size runs · banks up to ${fmt(derived.runComputeCost.div(focus))}`;
 
   // Coach the very first run, then get out of the way (clean-to-play).
   const firstRun = game.lifetimeMoney.eq(0) && game.prestige.ships === 0;
@@ -76,7 +79,7 @@ export function TrainingDock({ game, derived, onStart, onClaim, onSetFocus }: Pr
       {derived.autoTrain && (
         <div className="focus">
           <div className="focus-head">
-            <span className="focus-title">Compute focus</span>
+            <span className="focus-title">Training intensity</span>
             <span className="focus-val">{focusLabel}</span>
           </div>
           <input
@@ -87,11 +90,12 @@ export function TrainingDock({ game, derived, onStart, onClaim, onSetFocus }: Pr
             step={5}
             value={Math.round(focus * 100)}
             onChange={(e) => onSetFocus(Number(e.target.value) / 100)}
-            aria-label="Compute focus"
+            aria-label="Training intensity"
+            aria-valuetext={focusLabel}
           />
           <div className="focus-ends">
-            <span>Bank for research</span>
-            <span>Max Data &amp; Money</span>
+            <span>Light runs · bank Compute</span>
+            <span>All-in · max Data &amp; $</span>
           </div>
         </div>
       )}

@@ -12,10 +12,19 @@ export interface Settings {
   rackSkin: string;
   /** First-run onboarding seen? Persisted so it shows exactly once. */
   onboarded: boolean;
+  /** One-time "what does Shipping do" explainer seen? (shows at first ship-ready). */
+  shipExplained: boolean;
+  /** Softer haptics: every vibration pulse at half strength (same rhythm). */
+  hapticsLight: boolean;
+  /** Endgame number display: scientific (1.23e9) instead of suffixes (1.23B). */
+  scientificNotation: boolean;
+  /** Last successful save backup (export/share), ms epoch — null = never.
+   *  Drives the one-time gentle backup nudge; no timers, no urgency. */
+  lastBackupAt: number | null;
 }
 
 const KEY = "singularity.settings.v1";
-const DEFAULTS: Settings = { sound: true, music: true, haptics: true, reducedMotion: false, hallTheme: "classic", rackSkin: "classic", onboarded: false };
+const DEFAULTS: Settings = { sound: true, music: true, haptics: true, reducedMotion: false, hallTheme: "classic", rackSkin: "classic", onboarded: false, shipExplained: false, hapticsLight: false, scientificNotation: false, lastBackupAt: null };
 
 function load(): Settings {
   try {
@@ -31,7 +40,7 @@ function persist(s: Settings): void {
   try {
     localStorage.setItem(
       KEY,
-      JSON.stringify({ sound: s.sound, music: s.music, haptics: s.haptics, reducedMotion: s.reducedMotion, hallTheme: s.hallTheme, rackSkin: s.rackSkin, onboarded: s.onboarded }),
+      JSON.stringify({ sound: s.sound, music: s.music, haptics: s.haptics, reducedMotion: s.reducedMotion, hallTheme: s.hallTheme, rackSkin: s.rackSkin, onboarded: s.onboarded, shipExplained: s.shipExplained, hapticsLight: s.hapticsLight, scientificNotation: s.scientificNotation, lastBackupAt: s.lastBackupAt }),
     );
   } catch {
     /* ignore */
@@ -39,10 +48,12 @@ function persist(s: Settings): void {
 }
 
 interface SettingsStore extends Settings {
-  toggle: (key: "sound" | "music" | "haptics" | "reducedMotion") => void;
+  toggle: (key: "sound" | "music" | "haptics" | "hapticsLight" | "reducedMotion" | "scientificNotation") => void;
   setHallTheme: (id: string) => void;
   setRackSkin: (id: string) => void;
   completeOnboarding: () => void;
+  markShipExplained: () => void;
+  markBackedUp: () => void;
 }
 
 /** Player feel preferences. Persisted locally; read by sound/haptics/motion. */
@@ -62,6 +73,14 @@ export const useSettings = create<SettingsStore>((set, get) => ({
   },
   completeOnboarding: () => {
     set({ onboarded: true });
+    persist(get());
+  },
+  markShipExplained: () => {
+    set({ shipExplained: true });
+    persist(get());
+  },
+  markBackedUp: () => {
+    set({ lastBackupAt: Date.now() });
     persist(get());
   },
 }));

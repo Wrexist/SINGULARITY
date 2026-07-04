@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { currentEra, eraName, ERA_COUNT } from "./eras";
+import { currentEra, eraName, eraBlurb, ERA_COUNT } from "./eras";
 import { createInitialState } from "./state";
 import { balance } from "./balance/config";
 
@@ -44,5 +44,20 @@ describe("eras", () => {
 
   it("exposes a name for every era index", () => {
     for (let i = 0; i < ERA_COUNT; i++) expect(eraName(i).length).toBeGreaterThan(0);
+  });
+});
+
+describe("rotating era press releases (R7.4)", () => {
+  it("rotates deterministically by seed and wraps around the pool", () => {
+    const pool = [balance.eras.list[2]!.blurb, ...balance.eras.list[2]!.blurbAlts];
+    expect(pool.length).toBeGreaterThan(1);
+    for (let gen = 0; gen < 7; gen++) {
+      expect(eraBlurb(2, gen)).toBe(pool[gen % pool.length]);
+    }
+  });
+
+  it("seedless calls keep the original blurb (back-compat) and bad eras stay empty", () => {
+    expect(eraBlurb(1)).toBe(balance.eras.list[1]!.blurb);
+    expect(eraBlurb(99, 3)).toBe("");
   });
 });

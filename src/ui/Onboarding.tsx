@@ -32,11 +32,11 @@ export function Onboarding({ onDone }: Props) {
           ))}
         </div>
         <p className="onboard-foot">
-          <b>First up:</b> start a training run in the Lab, then claim it for Data &amp; $.
-          The badges on the tab bar flag anything that needs you — no manual required.
+          <b>No manual required:</b> three glowing FIRST STEPS are waiting in the Lab —
+          do them and you know the whole loop. Badges on the tab bar flag anything that needs you.
         </p>
         <button className="btn btn-primary" onClick={onDone}>
-          Open the Lab →
+          Take the first step →
         </button>
       </div>
     </div>

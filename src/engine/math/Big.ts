@@ -99,6 +99,21 @@ export class Big {
   format(): string {
     return formatBig(this.d);
   }
+
+  /** Scientific notation for endgame players (settings toggle): 1.23e9 from a
+   *  thousand up; sub-thousand stays plain. Display-only, like format(). */
+  formatScientific(): string {
+    const d = this.d;
+    if (Number.isNaN(d.mantissa)) return "0";
+    if (d.exponent >= 1e15) return d.mantissa < 0 ? "-∞" : "∞";
+    if (d.lt(1000)) return this.format();
+    let exp = Math.floor(d.e);
+    let mant = d.div(new Decimal(10).pow(exp)).toNumber();
+    // toFixed(2) rounds 9.995+ up to "10.00" — carry into the next exponent
+    // instead (mirrors formatBig's 999.5 tier roll-up).
+    if (mant >= 9.995) { mant /= 10; exp += 1; }
+    return `${mant.toFixed(2)}e${exp}`;
+  }
 }
 
 const SUFFIXES = ["", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No", "Dc"];

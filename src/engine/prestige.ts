@@ -2,6 +2,7 @@ import { Big } from "./math/Big";
 import { balance } from "./balance/config";
 import { products as P } from "./balance/products";
 import { createInitialState } from "./state";
+import { carryEarnedComponents } from "./components";
 import { startingRacks } from "./reputation";
 import { hallCapacity } from "./hall";
 import type { DraftModel, GameState } from "./types";
@@ -126,6 +127,9 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
   return {
     ...fresh,
     upgrades: freshUpgrades,
+    // Trophy hardware survives the ship (earned by persistent milestones); bought
+    // parts go with the acquirer, and the loadout clears like the racks it fitted.
+    components: carryEarnedComponents(state),
     modifiers: momentumMods,
     resources: kickstart > 0
       ? { ...fresh.resources, money: fresh.resources.money.add(kickstart) }

@@ -1,4 +1,5 @@
 import { Big } from "../engine/math/Big";
+import { useSettings } from "./settings";
 import type { Derived } from "../engine/types";
 
 /** Effective income per second for a resource, amortizing per-run yields over the
@@ -27,24 +28,26 @@ export function fmtEta(cost: Big, have: Big, rate: Big): string | null {
   return secs === null ? null : `~${fmtDur(secs)}`;
 }
 
-/** Format a Big for display (idle-game notation). */
+/** Format a Big for display — suffix notation by default, scientific when the
+ *  player has flipped the endgame setting (IMPROVEMENTS #14). Every display
+ *  path routes through here, so one toggle re-skins every number in the app. */
 export function fmt(v: Big): string {
-  return v.format();
+  return useSettings.getState().scientificNotation ? v.formatScientific() : v.format();
 }
 
 /** Money is shown as currency: $1.2K, $58, etc. */
 export function fmtMoney(v: Big): string {
-  return `$${v.format()}`;
+  return `$${fmt(v)}`;
 }
 
 /** Format a per-second rate, trimming to the Big formatter. */
 export function fmtRate(v: Big): string {
-  return `${v.format()}/s`;
+  return `${fmt(v)}/s`;
 }
 
 /** A per-hour projection (used by the "while you were away" screen). */
 export function fmtPerHour(v: Big, prefix = ""): string {
-  return `${prefix}${v.format()}/hr`;
+  return `${prefix}${fmt(v)}/hr`;
 }
 
 export function fmtTime(ms: number): string {

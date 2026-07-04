@@ -2,6 +2,8 @@ import { balance } from "./balance/config";
 import { contractBoard } from "./contracts";
 import { achievementDefs, achievementProgress } from "./achievements";
 import { currentEra, eraName } from "./eras";
+import { productMilestones } from "./balance/products";
+import { milestoneValue, productsUnlocked } from "./products";
 import type { GameState } from "./types";
 
 /**
@@ -13,7 +15,7 @@ import type { GameState } from "./types";
  * Deterministic; no React, no clock.
  */
 
-export type GoalKind = "era" | "contract" | "achievement";
+export type GoalKind = "era" | "contract" | "achievement" | "milestone";
 
 export interface Goal {
   kind: GoalKind;
@@ -60,6 +62,18 @@ export function goalCandidates(state: GameState): Goal[] {
   for (const c of contractBoard(state)) {
     if (!c.ready && c.progress < 1) {
       goals.push({ kind: "contract", label: c.def.title, desc: c.def.desc, progress: c.progress });
+    }
+  }
+
+  // Product milestones: mid-game carrots once the business exists. The board's
+  // achieved list persists, so only unreached ladder rungs are candidates.
+  if (productsUnlocked(state)) {
+    for (const m of productMilestones) {
+      if (state.products.milestones.includes(m.id)) continue;
+      const v = milestoneValue(state, m.metric);
+      if (m.threshold > 0 && v < m.threshold) {
+        goals.push({ kind: "milestone", label: m.label, desc: m.desc, progress: v / m.threshold });
+      }
     }
   }
 

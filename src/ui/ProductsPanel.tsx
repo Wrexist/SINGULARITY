@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import type { GameState } from "../engine/types";
 import { products as B, type ProductTypeId } from "../engine/balance/products";
 import { productMilestones } from "../engine/balance/products";
-import { marketLeaderboard, playerMarketRank } from "../engine/market";
+import { marketLeaderboard, playerMarketRank, canCounterRival, counterCost, counterCooldownRemaining } from "../engine/market";
+import { market as MKT } from "../engine/balance/market";
 import {
   typeDef, productMetrics, canLaunchDraft, canStartUpgrade,
   upgradeProgress, milestoneValue, maxActiveProducts,
@@ -26,11 +27,12 @@ interface Props {
   onBuyFeature: (id: string, featureId: string) => void;
   onRename: (id: string, name: string) => void;
   onRetire: (id: string) => void;
+  onCounterRival: (name: string) => void;
 }
 
 /** Phase 3 — the Products tab: commercialise the models you ship, market them, set
  *  pricing, research new versions over time, and watch the dashboard. */
-export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onSetChannelMix, onBuyFeature, onRename, onRetire }: Props) {
+export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onSetChannelMix, onBuyFeature, onRename, onRetire, onCounterRival }: Props) {
   // Which draft (by id) is currently showing the type-picker, if any.
   const [picking, setPicking] = useState<string | null>(null);
   // Which product's deep-management screen is open, if any. If that product
@@ -47,7 +49,7 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
   // control, and open-by-default it pushed a tall block under every product card.
   const [mktOpen, setMktOpen] = useState(false);
   const ps = game.products;
-  const board = useMemo(() => marketLeaderboard(game).slice(0, 8), [game.products.active, game.products.frontier]);
+  const board = useMemo(() => marketLeaderboard(game).slice(0, 8), [game.products.active, game.products.frontier, game.rivalOps]);
   const myRank = playerMarketRank(game);
   const frontier = ps.frontier;
   const maxSlots = maxActiveProducts(game);
@@ -235,20 +237,41 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
         </button>
         {mktOpen && (
           <div className="market-list">
-            {board.map((e, i) => (
-              <div className={`market-row ${e.isYou ? "you" : ""}`} key={`${e.name}-${i}`}>
-                <span className="market-rank">{i + 1}</span>
-                <div className="market-main">
-                  <div className="market-top">
-                    <span className="market-name">{e.name}</span>
-                    <span className="market-share">{(e.share * 100).toFixed(e.share < 0.01 ? 2 : 1)}%</span>
+            {board.map((e, i) => {
+              // Counterplay (IMPROVEMENTS #8): rivals AHEAD of you can be hit
+              // with a press blitz — money for race position, nothing else.
+              const myBest = board.find((b) => b.isYou)?.users ?? 0;
+              const strikes = e.isYou ? 0 : (game.rivalOps.strikes[e.name] ?? 0);
+              const targetable = !e.isYou && MKT.counterplay.enabled && game.products.active.length > 0
+                && e.users > myBest && strikes < MKT.counterplay.maxStrikesPerRival;
+              const cooldown = Math.ceil(counterCooldownRemaining(game));
+              const cost = targetable ? counterCost(game, e.name) : 0;
+              const ready = targetable && canCounterRival(game, e.name);
+              return (
+                <div className={`market-row ${e.isYou ? "you" : ""}`} key={`${e.name}-${i}`}>
+                  <span className="market-rank">{i + 1}</span>
+                  <div className="market-main">
+                    <div className="market-top">
+                      <span className="market-name">{e.name}{strikes > 0 && <span className="market-struck" title="Press blitzes landed this run">⚡×{strikes}</span>}</span>
+                      <span className="market-share">{(e.share * 100).toFixed(e.share < 0.01 ? 2 : 1)}%</span>
+                    </div>
+                    <div className="market-bar"><div className="market-bar-fill" style={{ width: `${Math.min(100, e.share * 100)}%` }} /></div>
+                    <span className="market-vendor">{e.isYou ? "Your lab" : e.vendor} · {num(e.users)} users</span>
+                    {e.reaction && <span className="market-reaction">{e.reaction}</span>}
+                    {targetable && (
+                      <button
+                        className="btn btn-ghost btn-sm market-blitz"
+                        disabled={!ready}
+                        title={cooldown > 0 ? `The press cycle resets in ${cooldown}s` : undefined}
+                        onClick={() => onCounterRival(e.name)}
+                      >
+                        {cooldown > 0 ? `⚡ Press blitz — ready in ${cooldown}s` : `⚡ Press blitz — ${m$(cost)}`}
+                      </button>
+                    )}
                   </div>
-                  <div className="market-bar"><div className="market-bar-fill" style={{ width: `${Math.min(100, e.share * 100)}%` }} /></div>
-                  <span className="market-vendor">{e.isYou ? "Your lab" : e.vendor} · {num(e.users)} users</span>
-                  {e.reaction && <span className="market-reaction">{e.reaction}</span>}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

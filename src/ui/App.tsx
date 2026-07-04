@@ -20,6 +20,8 @@ import { ToastStack, type ToastData } from "./Toast";
 import { StatsPanel } from "./StatsPanel";
 import { Tagline } from "./Tagline";
 import { Onboarding } from "./Onboarding";
+import { FirstSteps, firstStepsVisible } from "./FirstSteps";
+import { gameCenterSubmitScores, gameCenterUnlock } from "./gameCenter";
 import { DataMarketPanel } from "./DataMarketPanel";
 import { EmployeesPanel } from "./EmployeesPanel";
 import { ProductsPanel } from "./ProductsPanel";
@@ -43,6 +45,11 @@ import { balance } from "../engine/balance/config";
 import { HallCanvas } from "./HallCanvas";
 import { ExpandConfirm } from "./ExpandConfirm";
 import { ConfirmSheet } from "./ConfirmSheet";
+import { RigBayPanel } from "./RigBayPanel";
+import { componentsUnlocked, earnedDefs } from "../engine/components";
+
+// Trophy-part defs are static catalog data — resolve once, not per render.
+const TROPHY_DEFS = earnedDefs();
 import { EraTransition } from "./EraTransition";
 import { WorldEventCard } from "./WorldEventCard";
 import { ModifierBar } from "./ModifierBar";
@@ -63,7 +70,8 @@ export function App() {
   const { doStartRun, doClaim, doBuyUpgrade, doBuyUpgradeBulk, doBuyOfficePerk, doBuyReputationPerk, doBuyLegacyPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
-    doClaimContract, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset } =
+    doClaimContract, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
+    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival } =
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
@@ -113,15 +121,32 @@ export function App() {
   const music = useSettings((s) => s.music);
   const onboarded = useSettings((s) => s.onboarded);
   const completeOnboarding = useSettings((s) => s.completeOnboarding);
+  const shipExplained = useSettings((s) => s.shipExplained);
+  const lastBackupAt = useSettings((s) => s.lastBackupAt);
+  const markShipExplained = useSettings((s) => s.markShipExplained);
+  const [showShipExplainer, setShowShipExplainer] = useState(false);
+
+  // The moment queue's head: exactly ONE full-screen moment renders at a time,
+  // by priority. Dismissing the head lets the next pending one show.
+  const moment = offline ? "offline"
+    : celebration ? "celebration"
+    : eraMoment !== null ? "era"
+    : launch ? "launch"
+    : worldEvent ? "world"
+    : null;
+
+  const era = currentEra(game);
 
   // Ambient music bed — follow the Music setting; pause while the tab is hidden
   // (battery). Starts on the first user gesture if audio isn't unlocked yet.
+  // Era-keyed (IMPROVEMENTS #3): the pad retunes as the lab crosses eras.
   useEffect(() => {
+    sound.setMusicEra(era);
     const apply = () => sound.setMusic(music && !document.hidden);
     apply();
     document.addEventListener("visibilitychange", apply);
     return () => document.removeEventListener("visibilitychange", apply);
-  }, [music]);
+  }, [music, era]);
 
   // Re-validate the premium entitlement against StoreKit at launch (native only;
   // no-op on web). Keeps the localStorage cache from being the source of truth.
@@ -178,7 +203,6 @@ export function App() {
     });
   }, []);
   const shipReady = canPrestige(game);
-  const era = currentEra(game);
 
   // Transient unlock toasts.
   const [toasts, setToasts] = useState<ToastData[]>([]);
@@ -212,8 +236,23 @@ export function App() {
     { key: "shipReady", fact: shipReady, when: true, text: "You can Ship the Model!", tone: "good" },
     { key: "align", fact: alignDir, when: "accel", text: "Your choices tilt the lab accelerationist — faster, hotter. See Lab Stats.", tone: "neutral" },
     { key: "align", fact: alignDir, when: "doomer", text: "Your choices tilt the lab doomer — safer, steadier. See Lab Stats.", tone: "neutral" },
-    { key: "autoTrain", fact: d.autoTrain, when: true, text: "Auto-train online — runs restart themselves. Set your Compute focus.", tone: "good" },
+    { key: "autoTrain", fact: d.autoTrain, when: true, text: "Auto-train online — runs restart themselves. Set your training intensity.", tone: "good" },
     { key: "hired", fact: game.stats.employeesHired > 0, when: true, text: "First hire aboard — specialists level up as they work", tone: "good" },
+    // Heat used to explain itself only by punishing you (pre-launch audit).
+    { key: "heat", fact: game.heat >= 25, when: true, text: "Regulatory Heat is rising — fines and raids get likelier. Time and lobbying cool it.", tone: "neutral" },
+    // Gentle backup nudge (R8.2): once real progress exists and no backup ever
+    // has, say it ONCE. No timers, no urgency — a fact-transition like the rest.
+    { key: "backup", fact: game.prestige.ships >= 2 && lastBackupAt === null, when: true, text: "Two generations banked — your save lives only on this device. Back it up in More → Back up.", tone: "neutral" },
+    // Rig Bay trophies (C2): one row per trophy part. Trophies persist across
+    // prestige (carryEarnedComponents), so the fact never flips back — one toast
+    // per save, ever.
+    ...TROPHY_DEFS.map((def) => ({
+      key: `trophy_${def.id}`,
+      fact: (game.components.owned[def.id] ?? 0) > 0,
+      when: true as const,
+      text: `Trophy hardware earned: ${def.name} — fit it in the Rig Bay`,
+      tone: "good" as const,
+    })),
   ];
   const seenFacts = useRef<Record<string, string | boolean>>({});
   const syncedToSave = useRef(false);
@@ -236,6 +275,20 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialized, factSignature]);
 
+  // First-ever ship-ready: queue the one-time explainer (settings-persisted).
+  // Only for a first-generation lab — veterans already know what shipping does.
+  useEffect(() => {
+    if (!initialized || shipExplained) return;
+    if (game.prestige.ships > 0) {
+      // Shipped before the explainer found a clear stage (or on a veteran save)
+      // — the lesson is learned; retire the sheet so it never shows stale.
+      setShowShipExplainer(false);
+      markShipExplained();
+      return;
+    }
+    if (shipReady) setShowShipExplainer(true);
+  }, [initialized, shipReady, shipExplained, game.prestige.ships, markShipExplained]);
+
   // Era transitions: a full-screen tentpole moment when the lab crosses an era.
   // Guarded by the same hydration sync so it never fires on a returning load.
   const seenEra = useRef(era);
@@ -246,6 +299,18 @@ export function App() {
     if (era > seenEra.current) { setEraMoment(era); haptics.celebrate(); sound.ship(); sound.era(); }
     seenEra.current = era;
   }, [initialized, era]);
+
+  // Game Center achievement mirror: unlocks that happen THIS session get pushed
+  // (hydration-synced like the toasts, so a returning save doesn't re-fire 37
+  // calls at launch; GC ignores re-unlocks anyway, this just avoids the spam).
+  const seenAch = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    if (!initialized) return;
+    if (seenAch.current === null) { seenAch.current = new Set(game.achievements); return; }
+    for (const id of game.achievements) {
+      if (!seenAch.current.has(id)) { seenAch.current.add(id); void gameCenterUnlock(id); }
+    }
+  }, [initialized, game.achievements]);
 
   // Market climbing: a celebratory beat each time you reach a NEW best rank on the
   // AI leaderboard (overtaking a named rival). Best-rank-only so it never spams on
@@ -387,6 +452,8 @@ export function App() {
       };
       setCelebration({ gained, total: game.prestige.legacyWeights, report });
       haptics.celebrate();
+      // Game Center: push the career totals (silent no-op without the plugin).
+      void gameCenterSubmitScores(game);
       // The flagship you just shipped is waiting as a free-to-launch product —
       // make sure the player knows (a ship that "gave nothing" was the #1 confusion).
       if (game.products.drafts.length > 0) {
@@ -490,7 +557,7 @@ export function App() {
   };
 
   return (
-    <div className={`app${reducedMotion ? " reduce-motion" : ""}`}>
+    <div className={`app${reducedMotion ? " reduce-motion" : ""}${tab === "lab" && section === "build" ? " app-split" : ""}`}>
       <div className="aurora" aria-hidden="true">
         <span className="blob blob-a" />
         <span className="blob blob-b" />
@@ -561,6 +628,7 @@ export function App() {
               onClick={() => {
                 haptics.tap();
                 if (goal.kind === "achievement") setShowAchievements(true);
+                else if (goal.kind === "milestone") goTab("products");
                 else {
                   goTab("lab");
                   if (labSectioned) goSection(goal.kind === "era" && era === 0 ? "research" : "hq");
@@ -587,6 +655,11 @@ export function App() {
             onBuyFeature={doBuyFeature}
             onRename={doRenameProduct}
             onRetire={onRetireProductFx}
+            onCounterRival={(name) => {
+              if (!doCounterRival(name)) return;
+              haptics.success(); sound.alert();
+              pushToast(`Press blitz lands on ${name} — their comms team scrambles.`, "good");
+            }}
           />
         ) : tab === "employees" && showStaff ? (
           <EmployeesPanel
@@ -622,10 +695,32 @@ export function App() {
             )}
             {section === "build" && (
               <>
-                <HallCanvas onExpand={setPendingExpansion} />
-                <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} onSetFocus={setComputeFocus} />
-                <CharterPanel game={game} onSet={(id) => { haptics.tap(); sound.tap(); doSetCharter(id); }} />
-                <UpgradePanel game={game} derived={d} onBuy={onBuy} />
+                {/* iPad split (IMPROVEMENTS #22): on wide screens these two
+                    wrappers become grid columns — the hall + core loop stays
+                    put on the left while the buy panels scroll on the right.
+                    On phones they're display:contents, so the DOM change is
+                    layout-invisible (same flat stage as before). */}
+                <div className="stage-left">
+                  <HallCanvas onExpand={setPendingExpansion} />
+                  {firstStepsVisible(game) && <FirstSteps game={game} />}
+                  <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} onSetFocus={setComputeFocus} />
+                </div>
+                <div className="stage-right">
+                  <CharterPanel
+                    game={game}
+                    onSet={(id) => { haptics.tap(); sound.tap(); doSetCharter(id); }}
+                    onLock={() => { haptics.success(); sound.purchase(); doLockCharter(); }}
+                  />
+                  <UpgradePanel game={game} derived={d} onBuy={onBuy} />
+                  {componentsUnlocked(game) && (
+                    <RigBayPanel
+                      game={game}
+                      onBuy={(id) => { haptics.tap(); sound.purchase(); doBuyComponent(id); }}
+                      onEquip={(tier, slot, id) => { haptics.success(); sound.tap(); doEquipComponent(tier, slot, id); }}
+                      onFuse={(id) => { haptics.celebrate(); sound.purchase(); doFuseComponents(id); }}
+                    />
+                  )}
+                </div>
               </>
             )}
             {section === "research" && (
@@ -692,8 +787,13 @@ export function App() {
         </button>
       </nav>
 
-      {offline && <OfflineModal summary={offline} onClose={dismissOffline} />}
-      {celebration && (
+      {/* MOMENT QUEUE: the five full-screen moments render ONE at a time, by
+          priority (offline recap > ship celebration > era transition > product
+          launch > world event). Each keeps its own state; dismissing one lets
+          the next in line show. Replaces pairwise !x guards — any same-tick
+          combination now sequences instead of stacking. */}
+      {moment === "offline" && offline && <OfflineModal summary={offline} onClose={dismissOffline} />}
+      {moment === "celebration" && celebration && (
         <Celebration
           weightsGained={celebration.gained}
           totalWeights={celebration.total}
@@ -746,24 +846,38 @@ export function App() {
           onCancel={() => setConfirmReset(false)}
         />
       )}
-      {/* A ship that crosses an era fires BOTH tentpoles in one commit — hold the
-          era moment until the ship celebration is dismissed so they never stack. */}
-      {eraMoment !== null && !celebration && <EraTransition era={eraMoment} onDone={() => setEraMoment(null)} />}
-      {launch && (
+      {moment === "era" && eraMoment !== null && <EraTransition era={eraMoment} blurbSeed={game.prestige.ships} onDone={() => setEraMoment(null)} />}
+      {moment === "launch" && launch && (
         <ProductLaunch
           name={launch.name}
           typeName={typeDef(launch.type).name}
           onDone={() => setLaunch(null)}
         />
       )}
-      {worldEvent && (
+      {moment === "world" && worldEvent && (
         <WorldEventCard
           event={worldEvent}
           onDismiss={dismissWorldEvent}
           onChoose={(i) => { haptics.tap(); sound.tap(); chooseWorldEvent(i); }}
         />
       )}
-      {!onboarded && !offline && <Onboarding onDone={completeOnboarding} />}
+      {/* One-time "what does Shipping do" explainer, shown the first time a ship
+          is ready (persisted in settings — the scariest button in the game
+          deserves one screen before it's pressed). */}
+      {moment === null && showShipExplainer && game.prestige.ships === 0 && (
+        <ConfirmSheet
+          kicker="SHIP THE MODEL"
+          title="Your first Ship is ready"
+          body="Shipping resets this run — Compute, Data, $, racks, parts and research — and banks Legacy Weights: a permanent boost to every future run. Your team, products, trophies, achievements and Reputation all stay. Shipping is how you grow."
+          confirmLabel="Got it"
+          hideCancel
+          onConfirm={() => { markShipExplained(); setShowShipExplainer(false); }}
+          onCancel={() => { markShipExplained(); setShowShipExplainer(false); }}
+        />
+      )}
+      {/* Onboarding waits for a clear stage: any full-screen moment (offline,
+          launch, celebration…) plays first — never two overlays stacked. */}
+      {!onboarded && moment === null && <Onboarding onDone={completeOnboarding} />}
       <ToastStack toasts={toasts} onDone={dropToast} />
       <FxCanvas reducedMotion={reducedMotion} />
       {flash > 0 && !reducedMotion && <div key={flash} className="screen-flash" aria-hidden="true" onAnimationEnd={() => setFlash(0)} />}
