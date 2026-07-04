@@ -173,4 +173,32 @@ describe("hall view-model", () => {
     expect(fitted.rigs![1]!.find((x) => x.cls === "cooling")!.grade).toBe(2);
     expect(fitted.rigs![1]!.find((x) => x.cls === "accelerator")!.grade).toBe(0); // still open
   });
+
+  it("IDEAS #7 — agents carry employee identity; assigned people point at their beam", () => {
+    const s = createInitialState();
+    s.employees = [
+      { id: "a", name: "Ada", roleId: "staff_researcher", level: 3, trait: "tenx", assignedProductId: null, training: null },
+      { id: "b", name: "Bo", roleId: "staff_growth", level: 1, trait: null, assignedProductId: "p2", training: null },
+    ];
+    s.products = { ...s.products, active: [
+      { id: "p1", type: "general", name: "X", quality: 10, version: 2, mau: 100, paid: 10, priceMult: 1, marketingPerSec: 0, buzzSec: 0, features: [], enterprise: false, enterprisePrice: 1, channelMix: {}, ageSec: 1e6, upgrade: null },
+      { id: "p2", type: "code", name: "Y", quality: 8, version: 1, mau: 50, paid: 5, priceMult: 1, marketingPerSec: 0, buzzSec: 0, features: [], enterprise: false, enterprisePrice: 1, channelMix: {}, ageSec: 1e6, upgrade: null },
+    ] };
+    const m = buildHallModel(s);
+    expect(m.agents).toHaveLength(2);
+    expect(m.agents[0]).toMatchObject({ name: "Ada", role: "Researcher", team: "infra", tenx: true, beam: null });
+    expect(m.agents[1]).toMatchObject({ name: "Bo", team: "product", beam: 1 }); // second beam = p2
+  });
+
+  it("IDEAS #2 — the inspector appears only once scrutiny is a named presence", () => {
+    expect(buildHallModel(createInitialState()).regulator).toBeNull();
+    const watched = createInitialState();
+    watched.suspicion = 20; // tier 1 — noticed, but not yet personal
+    expect(buildHallModel(watched).regulator).toBeNull();
+    const personal = createInitialState();
+    personal.suspicion = 80;
+    const m = buildHallModel(personal);
+    expect(m.regulator).not.toBeNull();
+    expect(m.regulator!.name.length).toBeGreaterThan(0);
+  });
 });

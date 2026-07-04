@@ -1,4 +1,4 @@
-import type { HallModel, SideMarker, RigSlotView } from "./hallModel";
+import type { HallModel, SideMarker, RigSlotView, AgentView } from "./hallModel";
 
 /**
  * Pure Canvas 2D renderer for the 2.5D hall. No React, no image assets — every
@@ -355,8 +355,12 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
   // back of the floor, height ∝ revenue. Drawn before staff so agents read in front.
   if (model.beams.length > 0) drawBeams(ctx, L, model.beams, o.timeMs, o.reducedMotion);
 
-  // C2 — staff on the floor: little agents working the room (headcount made visible).
-  if (model.staff > 0) drawStaffAgents(ctx, L, model.staff, o.timeMs, o.reducedMotion);
+  // C2/#7 — staff on the floor: real employees working the room (tap for their card).
+  if (model.agents.length > 0) drawStaffAgents(ctx, model.agents, agentSpots(model, W, H, o.timeMs, o.reducedMotion), o.timeMs, o.reducedMotion);
+
+  // IDEAS #2 — the inspector patrols once scrutiny has a name on it.
+  const chen = chenSpot(model, W, H, o.timeMs, o.reducedMotion);
+  if (chen) drawChen(ctx, chen, o.timeMs, o.reducedMotion);
 
   // C2 — faction tint: a faint room-wide wash by alignment (doomer cool, accel warm).
   if (Math.abs(model.alignment) > 0.15) drawAlignmentTint(ctx, W, H, model.alignment);
@@ -902,31 +906,68 @@ function drawBeams(ctx: CanvasRenderingContext2D, L: Layout, beams: number[], t:
   ctx.restore();
 }
 
-/** C2 — staff agents: small parametric figures working the floor. Count is capped
- *  for a clean read; they bob + drift gently (still under reduced motion). */
-function drawStaffAgents(ctx: CanvasRenderingContext2D, L: Layout, staff: number, t: number, reducedMotion: boolean): void {
-  const n = Math.min(staff, 14);
-  ctx.save();
-  for (let i = 0; i < n; i++) {
+/** A staff agent's ground position this frame — shared by the draw pass and the
+ *  tap hit-test so the person you touch is the person whose card opens. */
+export interface AgentSpot {
+  x: number;
+  y: number; // ground (shadow) y
+  bob: number;
+  s: number; // body half-width
+  index: number;
+}
+
+/** IDEAS #7 — deterministic per-frame agent positions. Product-assigned people
+ *  cluster at the base of THEIR product's uplink beam; the rest roam the open
+ *  front strip. Pure function of (model, layout, clock). */
+export function agentSpots(model: HallModel, W: number, H: number, t: number, reducedMotion: boolean): AgentSpot[] {
+  const L = computeLayout(model.cols, model.rows, model.gxMin, model.gyMin, W, H);
+  const beamsN = model.beams.length;
+  const out: AgentSpot[] = [];
+  for (let i = 0; i < model.agents.length; i++) {
+    const a = model.agents[i]!;
     const seed = ((i * 2654435761) % 1000) / 1000;
     const seed2 = ((i * 40503) % 997) / 997;
-    // Bias agents to the OPEN front strip (high gy) so they read in the clear
-    // foreground rather than vanishing between the back racks.
-    const gx = L.gxMin + 0.4 + seed * (L.gxMax - L.gxMin - 0.8);
-    const gy = L.gyMax - 0.4 - seed2 * 1.3;
+    let gx: number, gy: number;
+    if (a.beam !== null && a.beam < beamsN) {
+      // Cluster at the assigned product's beam base (the org chart, spatially).
+      const bgx = L.gxMin + ((a.beam + 0.5) / beamsN) * (L.gxMax - L.gxMin);
+      gx = bgx + (seed - 0.5) * 0.9;
+      gy = L.gyMax - 0.55 - seed2 * 0.5;
+    } else {
+      // Bias roamers to the OPEN front strip (high gy) so they read in the
+      // clear foreground rather than vanishing between the back racks.
+      gx = L.gxMin + 0.4 + seed * (L.gxMax - L.gxMin - 0.8);
+      gy = L.gyMax - 0.4 - seed2 * 1.3;
+    }
     const drift = reducedMotion ? 0 : Math.sin(t / 1500 + i * 2.1) * 0.18;
     const p = L.iso(gx + drift, gy);
     const bob = reducedMotion ? 0 : Math.sin(t / 380 + i) * 1.2;
-    const s = Math.max(3.2, L.tileW * 0.1); // body half-width
-    const cx = p.x;
-    const cy = p.y - bob;
+    out.push({ x: p.x, y: p.y, bob, s: Math.max(3.2, L.tileW * 0.1), index: i });
+  }
+  return out;
+}
+
+/** C2/#7 — staff agents: small parametric figures working the floor, now with
+ *  identity: team-tinted bodies (infra blue / product green), a golden sparkle
+ *  for a 10× hire. Capped upstream (model.agents ≤ 14) for a clean read. */
+function drawStaffAgents(ctx: CanvasRenderingContext2D, agents: AgentView[], spots: AgentSpot[], t: number, reducedMotion: boolean): void {
+  ctx.save();
+  for (const spot of spots) {
+    const a = agents[spot.index];
+    if (!a) continue;
+    const { x: cx, s } = spot;
+    const cy = spot.y - spot.bob;
     // Soft shadow.
     ctx.fillStyle = "rgba(0,0,0,0.22)";
     ctx.beginPath();
-    ctx.ellipse(p.x, p.y + s * 0.5, s * 1.1, s * 0.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(spot.x, spot.y + s * 0.5, s * 1.1, s * 0.5, 0, 0, Math.PI * 2);
     ctx.fill();
-    // Body (rounded) + head.
-    const body: RGB = i % 3 === 0 ? [120, 180, 255] : i % 3 === 1 ? [180, 150, 255] : [150, 220, 180];
+    // Body (rounded) + head. Team colours; the 10× wears gold.
+    const body: RGB = a.tenx
+      ? [255, 208, 110]
+      : a.team === "infra"
+        ? (spot.index % 2 === 0 ? [120, 180, 255] : [150, 190, 250])
+        : (spot.index % 2 === 0 ? [150, 220, 180] : [180, 150, 255]);
     ctx.fillStyle = rgb(body);
     ctx.beginPath();
     ctx.ellipse(cx, cy - s, s, s * 1.5, 0, 0, Math.PI * 2);
@@ -935,7 +976,63 @@ function drawStaffAgents(ctx: CanvasRenderingContext2D, L: Layout, staff: number
     ctx.beginPath();
     ctx.arc(cx, cy - s * 2.6, s * 0.78, 0, Math.PI * 2);
     ctx.fill();
+    if (a.tenx) {
+      // A tiny twinkle over the golden hire — insufferable, as documented.
+      const tw = reducedMotion ? 0.8 : 0.5 + 0.5 * Math.sin(t / 220 + spot.index);
+      ctx.fillStyle = rgba([255, 240, 180], 0.5 + 0.5 * tw);
+      const sy = cy - s * 3.8;
+      ctx.beginPath();
+      ctx.moveTo(cx, sy - s * 0.5);
+      ctx.lineTo(cx + s * 0.18, sy);
+      ctx.lineTo(cx, sy + s * 0.5);
+      ctx.lineTo(cx - s * 0.18, sy);
+      ctx.closePath();
+      ctx.fill();
+    }
   }
+  ctx.restore();
+}
+
+/** IDEAS #2 — Supervisor Chen's position: a slow patrol along the open front
+ *  edge (still, mid-front, under reduced motion). Null when the lab is clean. */
+export function chenSpot(model: HallModel, W: number, H: number, t: number, reducedMotion: boolean): { x: number; y: number; s: number } | null {
+  if (!model.regulator) return null;
+  const L = computeLayout(model.cols, model.rows, model.gxMin, model.gyMin, W, H);
+  const u = reducedMotion ? 0.5 : 0.5 + 0.42 * Math.sin(t / 2600);
+  const p = L.iso(L.gxMin + u * (L.gxMax - L.gxMin), L.gyMax - 0.18);
+  return { x: p.x, y: p.y, s: Math.max(3.8, L.tileW * 0.115) };
+}
+
+/** IDEAS #2 — the inspector herself: dark suit, pale head, a clipboard she is
+ *  definitely writing your name on. Distinct from staff so she reads as an
+ *  outsider in the room. */
+function drawChen(ctx: CanvasRenderingContext2D, spot: { x: number; y: number; s: number }, t: number, reducedMotion: boolean): void {
+  const { x: cx, y, s } = spot;
+  const bob = reducedMotion ? 0 : Math.sin(t / 520) * 0.8;
+  const cy = y - bob;
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.beginPath();
+  ctx.ellipse(cx, y + s * 0.5, s * 1.2, s * 0.55, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Suit (near-black slate — nobody else in the room wears one).
+  const suit: RGB = [58, 64, 82];
+  ctx.fillStyle = rgb(suit);
+  ctx.beginPath();
+  ctx.ellipse(cx, cy - s * 1.1, s * 1.05, s * 1.7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = rgb([224, 200, 180]);
+  ctx.beginPath();
+  ctx.arc(cx, cy - s * 2.9, s * 0.8, 0, Math.PI * 2);
+  ctx.fill();
+  // The clipboard: a small pale slate held at reading angle, with two lines.
+  const bx = cx + s * 1.15, by = cy - s * 1.35;
+  ctx.fillStyle = "rgba(235,238,245,0.92)";
+  ctx.fillRect(bx - s * 0.5, by - s * 0.7, s, s * 1.3);
+  ctx.strokeStyle = "rgba(90,100,120,0.8)";
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(bx - s * 0.3, by - s * 0.3); ctx.lineTo(bx + s * 0.3, by - s * 0.3); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bx - s * 0.3, by + s * 0.05); ctx.lineTo(bx + s * 0.3, by + s * 0.05); ctx.stroke();
   ctx.restore();
 }
 

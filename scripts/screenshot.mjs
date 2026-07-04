@@ -149,7 +149,7 @@ try {
           alignment: 0.3,
           stats: { ascensions: 3 },
         }
-      : has("manifest")
+      : has("manifest") || has("chen")
       ? {
           // C2 manifestation showcase: staff on the floor, live products (uplink
           // beams), a committed alignment (room tint), and an over-subscribed power
@@ -162,9 +162,10 @@ try {
           prestige: { legacyWeights: "120", ships: 4 },
           lifetimeMoney: "900000000",
           // Below the negotiation trigger (55) so Chen's sit-down card doesn't
-          // cover the hall this capture exists to show.
+          // cover the hall this capture exists to show. --chen seeds ABOVE it
+          // (the script defies the sit-down, so the inspector stays on the floor).
           heat: 40,
-          suspicion: 40,
+          suspicion: has("chen") ? 58 : 40,
           alignment: 0.7,
           components: {
             // Bare Metal showcase: tier 0 fitted (standard), tier 1 half-fitted
@@ -224,6 +225,13 @@ try {
     await page.getByRole("button", { name: /^Ship —/ }).click();
     await page.getByRole("button", { name: /Ship it/ }).click();
     await sleep(700); // let confetti + card animate in
+  }
+
+  if (has("chen")) {
+    // Defy the sit-down (keeps suspicion high) → Chen patrols the hall floor.
+    const defy = page.getByRole("button", { name: /Defy/ });
+    if (await defy.isVisible().catch(() => false)) await defy.click().catch(() => {});
+    await sleep(800);
   }
 
   if (has("settings")) {

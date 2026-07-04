@@ -6,6 +6,7 @@ import { powerStats } from "../engine/power";
 import { productMetrics } from "../engine/products";
 import { componentsUnlocked, componentDef, SLOTS_BY_TIER } from "../engine/components";
 import type { SlotClass } from "../engine/balance/components";
+import { regulatorState, regulatorIsNamed } from "../engine/regulator";
 import { RACK_IDS, hallDims, hallCapacity, hallRoomSplit, type Dir } from "../engine/hall";
 
 export { hallDims, hallExpansion, type Dir } from "../engine/hall";
@@ -30,6 +31,20 @@ export interface HallRack {
 export interface RigSlotView {
   cls: SlotClass;
   grade: number;
+}
+
+/** Staff identity (IDEAS #7): each floor agent IS a real employee. index into
+ *  game.employees matches (first 14), so a tap can open that person's card. */
+export interface AgentView {
+  name: string;
+  role: string;
+  team: "infra" | "product";
+  trait: string | null;
+  level: number;
+  /** The 10× hire — gets a golden body + sparkle on the floor. */
+  tenx: boolean;
+  /** Index of the product beam this person is assigned to, or null (roams). */
+  beam: number | null;
 }
 
 /** A buyable expansion affordance shown on one side of the floor. */
@@ -84,6 +99,11 @@ export interface HallModel {
    *  Rig Bay is still locked (pre-unlock racks draw with no bays at all, so the
    *  reveal moment is also a visual change in the room). */
   rigs: RigSlotView[][] | null;
+  /** IDEAS #7 — the floor agents as real people (first 14 employees, in order). */
+  agents: AgentView[];
+  /** IDEAS #2 — Supervisor Chen patrols once scrutiny is a named, personal
+   *  presence (regulator tier ≥ nameFromTier). Null = clean lab, no inspector. */
+  regulator: { name: string; label: string; blurb: string } | null;
 }
 
 /** Power/cooling infrastructure ids (drive the visible wall units). Exported so
@@ -146,6 +166,21 @@ export function buildHallModel(game: GameState): HallModel {
   // Staff on the floor + product "uplink beams" sized by revenue (normalised to the
   // top earner so the biggest product is the tallest beam). Pure reads of state.
   const staff = game.employees.length;
+  const roleById = new Map(balance.staff.roles.map((r) => [r.id, r]));
+  const beamIndexByProduct = new Map(game.products.active.map((p, i) => [p.id, i]));
+  const agents: AgentView[] = game.employees.slice(0, 14).map((e) => {
+    const role = roleById.get(e.roleId);
+    return {
+      name: e.name,
+      role: role?.name ?? e.roleId,
+      team: role?.team ?? "infra",
+      trait: e.trait,
+      level: e.level,
+      tenx: e.trait === "tenx",
+      beam: e.assignedProductId !== null ? (beamIndexByProduct.get(e.assignedProductId) ?? null) : null,
+    };
+  });
+  const reg = regulatorState(game);
   const mrrs = game.products.active.map((p) => Math.max(0, productMetrics(p, game.products.frontier).mrr));
   const maxMrr = mrrs.reduce((m, v) => Math.max(m, v), 0) || 1;
   const beams = mrrs.map((m) => Math.max(0.18, Math.min(1, m / maxMrr)));
@@ -208,6 +243,8 @@ export function buildHallModel(game: GameState): HallModel {
     beams,
     alignment: game.alignment,
     rigs: rigViews(game),
+    agents,
+    regulator: regulatorIsNamed(game) ? { name: reg.name, label: reg.label, blurb: reg.blurb } : null,
     ...hallRoomSplit(game),
   };
 }

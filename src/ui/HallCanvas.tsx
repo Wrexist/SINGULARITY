@@ -4,9 +4,11 @@ import { useSettings } from "./settings";
 import { haptics } from "./haptics";
 import { sound } from "./sound";
 import { buildHallModel, POWER_IDS } from "../render/hallModel";
-import { drawHallStatic, drawHallDynamic, expansionMarkers, rackHitAreas, pointInPoly, type RackHit } from "../render/hallRenderer";
+import { drawHallStatic, drawHallDynamic, expansionMarkers, rackHitAreas, pointInPoly, agentSpots, chenSpot, type RackHit, type AgentSpot } from "../render/hallRenderer";
 import { currentEra, eraName } from "../engine/eras";
 import { hallRooms } from "../engine/hall";
+import { regulatorState } from "../engine/regulator";
+import { balance } from "../engine/balance/config";
 import { rackInfo } from "../engine/rackInfo";
 import { themeFilter } from "./hallThemes";
 
@@ -25,6 +27,12 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
   // Live rack hit-areas (refreshed each frame) + the tapped rack's tier (R2.1).
   const rackHitsRef = useRef<RackHit[]>([]);
   const [selectedTier, setSelectedTier] = useState<number | null>(null);
+  // IDEAS #2/#7 — live agent/inspector positions (refreshed each frame) and the
+  // tapped person. Only one card (rack / agent / Chen) is open at a time.
+  const agentSpotsRef = useRef<AgentSpot[]>([]);
+  const chenSpotRef = useRef<{ x: number; y: number; s: number } | null>(null);
+  const [selectedAgent, setSelectedAgent] = useState<number | null>(null);
+  const [chenOpen, setChenOpen] = useState(false);
 
   // Lightweight label state (re-renders only when these change, not per frame).
   const rackCount = useGame(
@@ -45,6 +53,28 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
   useEffect(() => {
     if (selectedTier !== null && (selected === null || selected.owned === 0)) setSelectedTier(null);
   }, [selectedTier, selected]);
+
+  // The tapped employee's live card data (fired/re-rostered people close it).
+  const agentInfo = useGame((s) => {
+    if (selectedAgent === null) return null;
+    const e = s.game.employees[selectedAgent];
+    if (!e) return null;
+    const role = balance.staff.roles.find((r) => r.id === e.roleId);
+    const trait = e.trait ? balance.staff.traits.find((t) => t.id === e.trait) : null;
+    const product = e.assignedProductId ? s.game.products.active.find((p) => p.id === e.assignedProductId) : null;
+    return {
+      name: e.name,
+      role: role?.name ?? e.roleId,
+      level: e.level,
+      trait: trait ? `${trait.name} — ${trait.desc}` : null,
+      assigned: product?.name ?? null,
+    };
+  });
+  useEffect(() => {
+    if (selectedAgent !== null && agentInfo === null) setSelectedAgent(null);
+  }, [selectedAgent, agentInfo]);
+  // Chen's live standing (for her tap card).
+  const chenInfo = useGame((s) => (chenOpen ? regulatorState(s.game) : null));
 
   // Cosmetic theme = a CSS filter on the canvas (purely visual; no render change).
   useEffect(() => {
@@ -88,6 +118,9 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
     // is replaced (equip / clear / prestige) — track the ref and force a model
     // rebuild instead of scanning the loadout per frame.
     let rigLoadout: unknown = useGame.getState().game.components.loadout;
+    // Staff identity: the agents view changes on any roster mutation (hire /
+    // train / assign) — the employees array ref tracks all of them.
+    let agentRoster: unknown = useGame.getState().game.employees;
     // Rack-tap micro-interaction: which rack was touched, and when (rAF clock).
     let tapFlash: { index: number; start: number } | null = null;
     const TAP_FLASH_MS = 450;
@@ -124,10 +157,11 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       // Power ids come from the same source buildHallModel uses, so adding a new
       // powerCapacity upgrade automatically invalidates this cache too.
       const powerSig = POWER_IDS.map((id) => u[id] ?? 0).join(",");
-      const sig = `${u.rack_basic ?? 0}|${u.rack_server ?? 0}|${u.rack_tpu ?? 0}|${u.expand_n ?? 0}|${u.expand_s ?? 0}|${u.expand_e ?? 0}|${u.expand_w ?? 0}|${powerSig}|${game.run.active ? 1 : 0}|${game.products.active.length > 0 ? 1 : 0}|${currentEra(game)}`;
-      if (sig !== modelSig || game.components.loadout !== rigLoadout) {
+      const sig = `${u.rack_basic ?? 0}|${u.rack_server ?? 0}|${u.rack_tpu ?? 0}|${u.expand_n ?? 0}|${u.expand_s ?? 0}|${u.expand_e ?? 0}|${u.expand_w ?? 0}|${powerSig}|${game.run.active ? 1 : 0}|${game.products.active.length}|${currentEra(game)}|${regulatorState(game).index}`;
+      if (sig !== modelSig || game.components.loadout !== rigLoadout || game.employees !== agentRoster) {
         modelSig = sig;
         rigLoadout = game.components.loadout;
+        agentRoster = game.employees;
         model = buildHallModel(game);
       }
       // Money isn't in the signature (it changes every tick), so refresh the
@@ -171,6 +205,10 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       (window as unknown as { __HALL_MARKERS__?: typeof markers }).__HALL_MARKERS__ = markers;
       // Keep the rack hit-areas current so a tap maps to the rack on screen (R2.1).
       rackHitsRef.current = rackHitAreas(model, cssW, cssH);
+      // ...and the people (they move — the hit-test follows this frame's spots).
+      const rm = useSettings.getState().reducedMotion;
+      agentSpotsRef.current = model.agents.length > 0 ? agentSpots(model, cssW, cssH, timeMs, rm) : [];
+      chenSpotRef.current = chenSpot(model, cssW, cssH, timeMs, rm);
       raf = requestAnimationFrame(frame);
     };
 
@@ -206,6 +244,30 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       }
       return undefined;
     };
+    // People hit-tests (IDEAS #2/#7): a generous box around the little figure.
+    const pointOnFigure = (px: number, py: number, x: number, y: number, s: number): boolean =>
+      Math.abs(px - x) <= s * 2.2 && py >= y - s * 4.6 && py <= y + s * 1.2;
+    const chenAt = (ev: PointerEvent) => {
+      const c = chenSpotRef.current;
+      if (!c) return false;
+      const rect = canvas.getBoundingClientRect();
+      return pointOnFigure(ev.clientX - rect.left, ev.clientY - rect.top, c.x, c.y, c.s);
+    };
+    const agentAt = (ev: PointerEvent): AgentSpot | undefined => {
+      const rect = canvas.getBoundingClientRect();
+      const px = ev.clientX - rect.left, py = ev.clientY - rect.top;
+      const spots = agentSpotsRef.current;
+      for (let i = spots.length - 1; i >= 0; i--) {
+        const a = spots[i]!;
+        if (pointOnFigure(px, py, a.x, a.y - a.bob, a.s)) return a;
+      }
+      return undefined;
+    };
+    const closeCards = () => {
+      setSelectedTier(null);
+      setSelectedAgent(null);
+      setChenOpen(false);
+    };
     const onDown = (ev: PointerEvent) => {
       const hit = markerAt(ev);
       if (hit) {
@@ -216,6 +278,25 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
         onExpandRef.current(hit.id);
         return;
       }
+      // People stand in front of the racks, so they win the tap: the inspector
+      // first (she's drawn frontmost), then staff, then the rack under it all.
+      if (chenAt(ev)) {
+        ev.preventDefault();
+        haptics.tap();
+        sound.tap();
+        closeCards();
+        setChenOpen(true);
+        return;
+      }
+      const agent = agentAt(ev);
+      if (agent) {
+        ev.preventDefault();
+        haptics.tap();
+        sound.tap();
+        closeCards();
+        setSelectedAgent(agent.index);
+        return;
+      }
       // Otherwise: tapping a rack opens its info card; tapping empty floor closes it.
       const rack = rackAt(ev);
       if (rack) {
@@ -224,13 +305,14 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
         sound.tap();
         // The hall answers the touch: that rack's LEDs flicker for a beat.
         tapFlash = { index: rack.index, start: performance.now() };
+        closeCards();
         setSelectedTier(rack.tier);
       } else {
-        setSelectedTier(null);
+        closeCards();
       }
     };
     const onMove = (ev: PointerEvent) => {
-      canvas.style.cursor = markerAt(ev) || rackAt(ev) ? "pointer" : "default";
+      canvas.style.cursor = markerAt(ev) || chenAt(ev) || agentAt(ev) || rackAt(ev) ? "pointer" : "default";
     };
     canvas.addEventListener("pointerdown", onDown);
     canvas.addEventListener("pointermove", onMove);
@@ -254,7 +336,30 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
           {rooms > 1 && ` · ${rooms} rooms`}
         </span>
       </div>
-      {selected && selected.owned > 0 && (
+      {agentInfo && (
+        <div className="rack-card" aria-hidden="true" onClick={() => setSelectedAgent(null)}>
+          <div className="rack-card-head">
+            <span className="rack-card-name">{agentInfo.name}</span>
+            <button className="rack-card-x" aria-label="Close" onClick={(e) => { e.stopPropagation(); setSelectedAgent(null); }}>×</button>
+          </div>
+          <p className="rack-card-desc">
+            {agentInfo.role} · Lv {agentInfo.level}
+            {agentInfo.assigned ? ` · on ${agentInfo.assigned}` : ""}
+          </p>
+          {agentInfo.trait && <div className="rack-card-stats"><span>{agentInfo.trait}</span></div>}
+        </div>
+      )}
+      {chenOpen && chenInfo && (
+        <div className="rack-card" aria-hidden="true" onClick={() => setChenOpen(false)}>
+          <div className="rack-card-head">
+            <span className="rack-card-name">{chenInfo.name}</span>
+            <button className="rack-card-x" aria-label="Close" onClick={(e) => { e.stopPropagation(); setChenOpen(false); }}>×</button>
+          </div>
+          <p className="rack-card-desc">{chenInfo.label} — {chenInfo.blurb}</p>
+          <div className="rack-card-stats"><span>Lobbying (Data Market) cools her interest. Shady buys don't.</span></div>
+        </div>
+      )}
+      {!agentInfo && !chenOpen && selected && selected.owned > 0 && (
         // A lightweight popover, not a dialog: the hall is a pointer/touch canvas
         // (aria-hidden), so claiming dialog semantics would promise keyboard/AT
         // access this canvas-only affordance doesn't provide. aria-hidden keeps it
