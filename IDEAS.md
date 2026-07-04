@@ -1,5 +1,12 @@
 # IDEAS.md — Game-design & UX audit (senior designer pass, 2026-07-04)
 
+> **STATUS 2026-07-04 (same day, owner-directed):** ✅ **everything below is SHIPPED** — all 3
+> quick wins, the runner-up copy sweep, and all 10 feature ideas, implemented on this branch
+> with tests (440→520), typecheck/build clean, and the balance sim byte-identical
+> (57m59s/62m17s · wall 1m05s). See TASK.md's 2026-07-04 entry for the per-feature record.
+> Remaining owner action: a TestFlight build for the on-device pass (haptics feel, hall
+> visuals at device DPI).
+
 *Scope: full codebase walk (engine, UI, renderer, state) + GDD/TASK/LEARNINGS/IMPROVEMENTS.
 Everything below is read from the code as it exists on `main` (post-Rig-Bay-C4, 496 tests),
 not from the docs' intentions. No code was changed; nothing was added to TASK.md.
