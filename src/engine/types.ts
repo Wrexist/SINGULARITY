@@ -131,6 +131,22 @@ export interface GameState {
    *  hundred-generation save stays tiny. The hall renders the latest few as
    *  trophy plinths along the back wall. */
   shipLog: ShipLogEntry[];
+  /** IDEAS #9 — today's rolled sponsor contract (post-ladder daily objective),
+   *  or null. Target is ANCHORED at roll time (a moving current-stat target
+   *  would never be beatable). dayKey = local days-since-epoch; completion is
+   *  recorded in contracts.completed as `sponsor_<dayKey>`. Persists across
+   *  prestige (metrics are lifetime stats). */
+  sponsor: SponsorContract | null;
+}
+
+/** A rolled daily sponsor objective (IDEAS #9). */
+export interface SponsorContract {
+  dayKey: number;
+  metric: string;
+  target: number;
+  rep: number;
+  title: string;
+  desc: string;
 }
 
 /** One shipped generation, remembered for the Legacy Wall. */

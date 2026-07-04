@@ -272,6 +272,8 @@ interface SavedShape {
   rivalOps: GameState["rivalOps"];
   /** IDEAS #6 — Legacy Wall records. Sanitizer-defaulted ([]), so no v-bump. */
   shipLog: GameState["shipLog"];
+  /** IDEAS #9 — today's rolled sponsor objective. Sanitizer-defaulted (null). */
+  sponsor: GameState["sponsor"];
 }
 
 export function serialize(state: GameState): string {
@@ -324,6 +326,7 @@ export function serialize(state: GameState): string {
     components: state.components,
     rivalOps: state.rivalOps,
     shipLog: state.shipLog,
+    sponsor: state.sponsor,
   };
   return JSON.stringify(shape);
 }
@@ -448,6 +451,7 @@ export function deserialize(json: string): GameState {
     // Legacy Wall records are display-only history, but still validated per-entry
     // (sanitizer policy: filter, don't wipe) and capped like prestige() caps them.
     shipLog: sanitizeShipLog(raw.shipLog, sanitizeStats(raw.stats).totalShips),
+    sponsor: sanitizeSponsor(raw.sponsor),
     // Generation-scoped (not persisted): a mid-run reload simply re-accrues the run
     // peaks, and the ship report is transient — both start fresh on load.
     runPeakCompute: fresh.runPeakCompute,
@@ -494,7 +498,42 @@ function sanitizeRivalOps(r: unknown): GameState["rivalOps"] {
  *  bypasses claimContract's includes-check). */
 function sanitizeContracts(c: unknown): { completed: string[] } {
   const o = (c ?? {}) as { completed?: unknown };
-  return { completed: dedupeKnownIds(o.completed, CONTRACT_IDS) };
+  const known = dedupeKnownIds(o.completed, CONTRACT_IDS);
+  // Sponsor completions (IDEAS #9, `sponsor_<dayNumber>`) are legitimately
+  // open-ended ids: keep each VALID one once, bounded so a crafted save can't
+  // mint unbounded Reputation from fabricated dates.
+  const seen = new Set<string>();
+  const sponsors: string[] = [];
+  if (Array.isArray(o.completed)) {
+    for (const x of o.completed) {
+      if (typeof x === "string" && /^sponsor_\d{1,7}$/.test(x) && !seen.has(x)) {
+        seen.add(x);
+        sponsors.push(x);
+      }
+    }
+  }
+  return { completed: [...known, ...sponsors.slice(-CONTRACTS.sponsor.maxCompleted)] };
+}
+
+/** Today's sponsor objective (IDEAS #9): validate every field or drop to null —
+ *  a fresh one re-rolls next check, so dropping is always safe. */
+const SPONSOR_METRICS = new Set(CONTRACTS.sponsor.lanes.map((l) => l.metric as string));
+function sanitizeSponsor(s: unknown): GameState["sponsor"] {
+  const o = s as Partial<NonNullable<GameState["sponsor"]>> | null;
+  if (!o || typeof o !== "object") return null;
+  if (typeof o.dayKey !== "number" || !Number.isFinite(o.dayKey) || o.dayKey < 0) return null;
+  if (typeof o.metric !== "string" || !SPONSOR_METRICS.has(o.metric)) return null;
+  if (typeof o.target !== "number" || !Number.isFinite(o.target) || o.target <= 0) return null;
+  if (typeof o.title !== "string" || typeof o.desc !== "string") return null;
+  return {
+    dayKey: Math.floor(o.dayKey),
+    metric: o.metric,
+    target: o.target,
+    // Rep is NOT trusted from the save — it's the balance constant.
+    rep: CONTRACTS.sponsor.rep,
+    title: o.title,
+    desc: o.desc,
+  };
 }
 
 /** Rig Bay components are untrusted: keep KNOWN ids with sane integer counts, and

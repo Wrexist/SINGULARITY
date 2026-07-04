@@ -78,4 +78,38 @@ export const contracts = {
     { id: "twelve_figures", title: "Twelve Figures", desc: "Earn $1T in total.", metric: "totalMoney", target: 1_000_000_000_000, rep: 10 },
     { id: "serial_ascender", title: "Serial Ascender", desc: "Ascend 3 times.", metric: "ascensions", target: 3, rep: 12 },
   ] as ContractDef[],
+
+  /**
+   * IDEAS #9 — rotating SPONSOR contracts: once the ladder above is fully
+   * cleared, the board offers one deterministic, date-seeded objective per
+   * local day, its target anchored to the player's stats at roll time
+   * ("beat your best by 20–40%"). Honest by design (GDD §6): miss a day and
+   * nothing is lost — a fresh one simply rolls tomorrow. Reputation-only
+   * payout → curve-safe like the rest of the board.
+   */
+  sponsor: {
+    enabled: true,
+    /** Flat Reputation per completed sponsor objective. */
+    rep: 6,
+    /** Kept sponsor completions are bounded (~13 months of daily play). */
+    maxCompleted: 400,
+    /** Target = max(floor, ceil(current × mult)) — mult picked by day hash. */
+    mults: [1.2, 1.3, 1.4],
+    /** Only metrics that keep growing in the deep endgame qualify. */
+    lanes: [
+      { metric: "peakComputePerSec", floor: 1_000, noun: "Compute/sec" },
+      { metric: "totalMoney", floor: 1_000_000, noun: "all-time earnings" },
+      { metric: "peakMau", floor: 100_000, noun: "peak total users" },
+      { metric: "peakMrr", floor: 500, noun: "product revenue/sec" },
+    ] as { metric: ContractMetric; floor: number; noun: string }[],
+    /** Satirical sponsor names, rotated by day hash. */
+    sponsors: [
+      "The Goggle DevRel Grant",
+      "Sequoia-ish Growth Challenge",
+      "ClosedAI Compatibility Bounty",
+      "A DARPA-Adjacent Benchmark",
+      "The Readit Hug of Death",
+      "The Meta-er Scaling Prize",
+    ],
+  },
 };

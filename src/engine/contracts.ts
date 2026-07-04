@@ -56,11 +56,80 @@ export function claimContract(state: GameState, id: string): GameState {
   return { ...state, contracts: { completed: [...state.contracts.completed, id] } };
 }
 
-/** Total Reputation earned from completed contracts (summed into earnedReputation). */
+/** Total Reputation earned from completed contracts (summed into earnedReputation).
+ *  Sponsor completions (`sponsor_<dayKey>`) pay the flat sponsor rate. */
 export function contractsReputation(state: GameState): number {
   let pts = 0;
-  for (const id of state.contracts.completed) pts += DEF_BY_ID.get(id)?.rep ?? 0;
+  for (const id of state.contracts.completed) {
+    if (SPONSOR_ID_RE.test(id)) pts += C.sponsor.rep;
+    else pts += DEF_BY_ID.get(id)?.rep ?? 0;
+  }
   return pts;
+}
+
+// ---------- IDEAS #9 — rotating daily sponsor contracts (post-ladder) ----------
+
+/** Completed-sponsor id format: sponsor_<local days-since-epoch>. */
+export const SPONSOR_ID_RE = /^sponsor_\d{1,7}$/;
+
+export const sponsorIdFor = (dayKey: number): string => `sponsor_${dayKey}`;
+
+/** Small deterministic day hash (Knuth multiplicative). */
+const dayHash = (dayKey: number): number => (dayKey * 2654435761) >>> 0;
+
+/**
+ * Roll (or clear) today's sponsor objective. Deterministic in (state, dayKey);
+ * same-ref no-op when nothing changes. Only offered once the base ladder is
+ * fully cleared; the target is anchored to the CURRENT stat at roll time so
+ * it stays a fixed, beatable goal for the day. The store passes the local
+ * day number in — the engine stays clockless.
+ */
+export function rollSponsor(state: GameState, dayKey: number): GameState {
+  const S = C.sponsor;
+  if (!C.enabled || !S.enabled || activeContracts(state).length > 0) {
+    return state.sponsor === null ? state : { ...state, sponsor: null };
+  }
+  if (state.sponsor?.dayKey === dayKey) return state;
+  const h = dayHash(dayKey);
+  const lane = S.lanes[h % S.lanes.length]!;
+  const current = contractMetric(state, lane.metric);
+  const mult = S.mults[(h >>> 4) % S.mults.length]!;
+  const target = Math.max(lane.floor, Math.ceil(current * mult));
+  const title = S.sponsors[(h >>> 8) % S.sponsors.length]!;
+  return {
+    ...state,
+    sponsor: {
+      dayKey,
+      metric: lane.metric,
+      target,
+      rep: S.rep,
+      title,
+      desc: `Today's objective: push your ${lane.noun} past the sponsor's bar. Expires never — a new sponsor calls tomorrow.`,
+    },
+  };
+}
+
+/** Live view of today's sponsor objective (null when none rolled). */
+export function sponsorView(state: GameState): (ContractView & { claimed: boolean }) | null {
+  const sp = state.sponsor;
+  if (!sp) return null;
+  const metric = sp.metric as ContractDef["metric"];
+  const value = contractMetric(state, metric);
+  const claimed = state.contracts.completed.includes(sponsorIdFor(sp.dayKey));
+  return {
+    def: { id: sponsorIdFor(sp.dayKey), title: sp.title, desc: sp.desc, metric, target: sp.target, rep: sp.rep },
+    value,
+    progress: sp.target > 0 ? Math.min(1, value / sp.target) : 1,
+    ready: !claimed && value >= sp.target,
+    claimed,
+  };
+}
+
+/** Claim today's met sponsor objective (records `sponsor_<dayKey>`). */
+export function claimSponsor(state: GameState): GameState {
+  const v = sponsorView(state);
+  if (!v || !v.ready) return state;
+  return { ...state, contracts: { completed: [...state.contracts.completed, sponsorIdFor(state.sponsor!.dayKey)] } };
 }
 
 export interface ContractView {

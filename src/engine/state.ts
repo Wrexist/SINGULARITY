@@ -47,5 +47,7 @@ export function createInitialState(): GameState {
     lastShipReport: null,
     // IDEAS #6 — the Legacy Wall's memory: one entry per shipped generation.
     shipLog: [],
+    // IDEAS #9 — no sponsor objective until the contract ladder is cleared.
+    sponsor: null,
   };
 }

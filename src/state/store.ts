@@ -49,7 +49,7 @@ import {
 import { productMilestones as PRODUCT_MILESTONES, type ProductTypeId } from "../engine/balance/products";
 import { achievements as ACHIEVEMENT_DEFS } from "../engine/balance/achievements";
 import { buyReputationPerk } from "../engine/reputation";
-import { claimContract } from "../engine/contracts";
+import { claimContract, rollSponsor, claimSponsor } from "../engine/contracts";
 import { setCharter, lockCharter } from "../engine/charter";
 import { counterRival } from "../engine/market";
 import { negotiationDue, negotiationOffer, applyNegotiationChoice, NEGOTIATION_ID } from "../engine/negotiation";
@@ -136,6 +136,9 @@ interface GameStore {
   doClaimContract: (id: string) => void;
   /** IDEAS #5 — tap a manifested incident in the hall for its one bounded time-shave. */
   doWorkProblem: (id: string) => void;
+  /** IDEAS #9 — roll/refresh today's sponsor contract (UI passes the local day number). */
+  doRollSponsor: (dayKey: number) => void;
+  doClaimSponsor: () => void;
   doSetCharter: (id: string | null) => void;
   /** Lock the current charter pick for this run (owner UX fix). */
   doLockCharter: () => void;
@@ -472,6 +475,11 @@ export const useGame = create<GameStore>((set, get) => ({
   doFuseComponents: (id) => set((s) => ({ game: fuseComponents(s.game, id) })),
   doClaimContract: (id) => set((s) => ({ game: claimContract(s.game, id) })),
   doWorkProblem: (id) => set((s) => ({ game: workProblem(s.game, id) })),
+  doRollSponsor: (dayKey) => set((s) => {
+    const next = rollSponsor(s.game, dayKey);
+    return next === s.game ? {} : { game: next };
+  }),
+  doClaimSponsor: () => set((s) => ({ game: claimSponsor(s.game) })),
   doSetCharter: (id) => set((s) => ({ game: setCharter(s.game, id) })),
   doLockCharter: () => set((s) => ({ game: lockCharter(s.game) })),
   // Returns whether the blitz actually landed (same-ref no-op when the guard
