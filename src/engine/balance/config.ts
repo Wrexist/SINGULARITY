@@ -1565,6 +1565,39 @@ export const balance = {
    * fire on a slow ambient timer once the lab is established. Effects are either
    * a timed global multiplier (buff/debuff) or an immediate +/- % of a resource.
    */
+  /**
+   * IDEAS #10 — Frontier preprints: once the research tree is COMPLETE for the
+   * run, the panel offers a repeatable "publish a preprint" node — escalating
+   * Compute+Data cost, a small bounded all-lane boost per paper, HARD-capped
+   * per run and reset by prestige (like all research). Keeps end-of-run
+   * research alive as a real spend-vs-ship decision. Curve-safe by
+   * construction: the sim's greedy player only buys `balance.research` nodes,
+   * and preprintMult is exactly 1 at zero papers.
+   */
+  preprints: {
+    enabled: true,
+    /** Hard per-run cap — the boost ceiling is perLevelMult^maxPerRun (≈×1.22). */
+    maxPerRun: 10,
+    /** Base cost of paper #1; each subsequent paper costs ×growth more. */
+    cost: { compute: 250_000, data: 15_000 },
+    growth: 1.9,
+    /** All-lane multiplier per paper (compounding, but capped by maxPerRun). */
+    perLevelMult: 1.02,
+    /** Rotating satirical paper titles (level → titles[level % length]). */
+    titles: [
+      "Attention Is All You Need (Again)",
+      "Scaling Laws for Everything, Probably",
+      "Chain-of-Thought Considered Harmful (We Do It Anyway)",
+      "Emergent Capabilities of a Very Large Expense Report",
+      "One Weird Trick for AGI (Reviewers Hate It)",
+      "On the Ethics of Citing Yourself",
+      "GPT-∞: A Position Paper",
+      "Benchmarks Saturated; Vibes Remain",
+      "A Survey of Surveys of Surveys",
+      "Do Not Cite: Internal Only (v7_FINAL_final)",
+    ],
+  },
+
   worldEvents: {
     /** Mean seconds between events during active play (Poisson-ish). */
     meanIntervalSec: 150,

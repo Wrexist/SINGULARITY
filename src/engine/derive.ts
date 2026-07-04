@@ -6,6 +6,7 @@ import { alignmentProductionMods, alignmentProductMods } from "./alignment";
 import { charterMods } from "./charter";
 import { legacyAvailable, legacyTreeMods } from "./legacyTree";
 import { ascensionMultiplier } from "./prestige";
+import { preprintMult } from "./preprints";
 import { powerStats } from "./power";
 import { rackTier } from "./hall";
 import { tierComputeMult, loadoutDataPerSec } from "./components";
@@ -226,6 +227,14 @@ export function derive(state: GameState): Derived {
   dataMult = dataMult.mul(ascensionMult);
   moneyMult = moneyMult.mul(ascensionMult);
 
+  // Frontier preprints (IDEAS #10): a small bounded all-lane boost per paper
+  // published this run. Exactly 1 at zero papers (the sim never buys one) and
+  // hard-capped per run, so the tuned curve is untouched by construction.
+  const ppMult = preprintMult(state);
+  computeMult = computeMult.mul(ppMult);
+  dataMult = dataMult.mul(ppMult);
+  moneyMult = moneyMult.mul(ppMult);
+
   // Lab Reputation perks — permanent global multipliers bought with meta-currency.
   // Owned perks are empty on a fresh run, so this is 1.0 until the player spends.
   const rep = reputationMods(state);
@@ -263,7 +272,7 @@ export function derive(state: GameState): Derived {
   // on a fresh run with no active events.
   const dataPerSec = dataPerSecFlat
     .mul(scraperDataMult)
-    .mul(legacyMult).mul(ascensionMult).mul(rep.dataMult).mul(ch.dataMult).mul(lt.dataMult)
+    .mul(legacyMult).mul(ascensionMult).mul(ppMult).mul(rep.dataMult).mul(ch.dataMult).mul(lt.dataMult)
     .mul(balance.difficulty.productionMult); // global production dilation (see computePerSec)
 
   let computePerSec = computeFlat.mul(computeMult);

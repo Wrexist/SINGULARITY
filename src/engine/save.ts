@@ -274,6 +274,8 @@ interface SavedShape {
   shipLog: GameState["shipLog"];
   /** IDEAS #9 — today's rolled sponsor objective. Sanitizer-defaulted (null). */
   sponsor: GameState["sponsor"];
+  /** IDEAS #10 — preprints published this run. Sanitizer-defaulted (0). */
+  preprints: number;
 }
 
 export function serialize(state: GameState): string {
@@ -327,6 +329,7 @@ export function serialize(state: GameState): string {
     rivalOps: state.rivalOps,
     shipLog: state.shipLog,
     sponsor: state.sponsor,
+    preprints: state.preprints,
   };
   return JSON.stringify(shape);
 }
@@ -452,6 +455,8 @@ export function deserialize(json: string): GameState {
     // (sanitizer policy: filter, don't wipe) and capped like prestige() caps them.
     shipLog: sanitizeShipLog(raw.shipLog, sanitizeStats(raw.stats).totalShips),
     sponsor: sanitizeSponsor(raw.sponsor),
+    // Preprints multiply into derive, so the count is clamped to the per-run cap.
+    preprints: Math.min(balance.preprints.maxPerRun, safeCount(raw.preprints)),
     // Generation-scoped (not persisted): a mid-run reload simply re-accrues the run
     // peaks, and the ship report is transient — both start fresh on load.
     runPeakCompute: fresh.runPeakCompute,

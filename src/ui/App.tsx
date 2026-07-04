@@ -70,7 +70,7 @@ export function App() {
   const { doStartRun, doClaim, doBuyUpgrade, doBuyUpgradeBulk, doBuyOfficePerk, doBuyReputationPerk, doBuyLegacyPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
-    doClaimContract, doClaimSponsor, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
+    doClaimContract, doClaimSponsor, doBuyPreprint, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
     doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival } =
     useGame.getState();
 
@@ -733,7 +733,7 @@ export function App() {
             )}
             {section === "research" && (
               <>
-                {showResearch && <ResearchPanel game={game} derived={d} onResearch={onResearch} />}
+                {showResearch && <ResearchPanel game={game} derived={d} onResearch={onResearch} onBuyPreprint={() => { haptics.success(); sound.purchase(); doBuyPreprint(); }} />}
                 {showMarket && <DataMarketPanel game={game} onBuyData={onBuyData} onBuyTool={onBuy} onLobby={() => { haptics.tap(); sound.purchase(); doLobby(); }} />}
               </>
             )}

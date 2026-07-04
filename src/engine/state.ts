@@ -49,5 +49,7 @@ export function createInitialState(): GameState {
     shipLog: [],
     // IDEAS #9 — no sponsor objective until the contract ladder is cleared.
     sponsor: null,
+    // IDEAS #10 — no preprints published; resets each run like research.
+    preprints: 0,
   };
 }

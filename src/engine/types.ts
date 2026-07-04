@@ -137,6 +137,10 @@ export interface GameState {
    *  recorded in contracts.completed as `sponsor_<dayKey>`. Persists across
    *  prestige (metrics are lifetime stats). */
   sponsor: SponsorContract | null;
+  /** IDEAS #10 — frontier preprints published THIS run (post-tree repeatable
+   *  research). Hard-capped (balance.preprints.maxPerRun); resets on prestige
+   *  like the research tree it extends. */
+  preprints: number;
 }
 
 /** A rolled daily sponsor objective (IDEAS #9). */

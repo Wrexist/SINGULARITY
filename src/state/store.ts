@@ -50,6 +50,7 @@ import { productMilestones as PRODUCT_MILESTONES, type ProductTypeId } from "../
 import { achievements as ACHIEVEMENT_DEFS } from "../engine/balance/achievements";
 import { buyReputationPerk } from "../engine/reputation";
 import { claimContract, rollSponsor, claimSponsor } from "../engine/contracts";
+import { buyPreprint } from "../engine/preprints";
 import { setCharter, lockCharter } from "../engine/charter";
 import { counterRival } from "../engine/market";
 import { negotiationDue, negotiationOffer, applyNegotiationChoice, NEGOTIATION_ID } from "../engine/negotiation";
@@ -139,6 +140,8 @@ interface GameStore {
   /** IDEAS #9 — roll/refresh today's sponsor contract (UI passes the local day number). */
   doRollSponsor: (dayKey: number) => void;
   doClaimSponsor: () => void;
+  /** IDEAS #10 — publish a frontier preprint (post-tree repeatable research). */
+  doBuyPreprint: () => void;
   doSetCharter: (id: string | null) => void;
   /** Lock the current charter pick for this run (owner UX fix). */
   doLockCharter: () => void;
@@ -480,6 +483,7 @@ export const useGame = create<GameStore>((set, get) => ({
     return next === s.game ? {} : { game: next };
   }),
   doClaimSponsor: () => set((s) => ({ game: claimSponsor(s.game) })),
+  doBuyPreprint: () => set((s) => ({ game: buyPreprint(s.game) })),
   doSetCharter: (id) => set((s) => ({ game: setCharter(s.game, id) })),
   doLockCharter: () => set((s) => ({ game: lockCharter(s.game) })),
   // Returns whether the blitz actually landed (same-ref no-op when the guard
