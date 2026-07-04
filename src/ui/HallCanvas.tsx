@@ -3,7 +3,7 @@ import { useGame } from "../state/store";
 import { useSettings } from "./settings";
 import { haptics } from "./haptics";
 import { sound } from "./sound";
-import { buildHallModel, POWER_IDS } from "../render/hallModel";
+import { buildHallModel, heatCrateCount, POWER_IDS } from "../render/hallModel";
 import { drawHallStatic, drawHallDynamic, expansionMarkers, rackHitAreas, pointInPoly, agentSpots, chenSpot, type RackHit, type AgentSpot } from "../render/hallRenderer";
 import { currentEra, eraName } from "../engine/eras";
 import { hallRooms } from "../engine/hall";
@@ -109,6 +109,16 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
     let prevClaim = useGame.getState().claimBurst;
     let burstStart = -1e9;
     const BURST_MS = 950;
+    // IDEAS #3 — a component buy dollies a crate in. Owned-copy total only grows
+    // on buy/fuse/trophy-grant (all "hardware arriving"), so a sum-diff is the trigger.
+    const partsOwned = (o: Record<string, number>) => {
+      let n = 0;
+      for (const v of Object.values(o)) n += v;
+      return n;
+    };
+    let prevParts = partsOwned(useGame.getState().game.components.owned);
+    let deliveryStart = -1e9;
+    const DELIVERY_MS = 1100;
 
     // The model only changes when rack counts / run-active / era change — cache
     // it so we don't rebuild ~46 objects every animation frame (mobile GC).
@@ -168,6 +178,13 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       // expansion markers' affordability cheaply here so they light up live.
       const money = game.resources.money;
       for (const s of model.sides) s.affordable = !s.maxed && money.gte(s.cost);
+      // Heat moves every tick too — refresh the entrance crate pile the same way.
+      model.heatCrates = heatCrateCount(game.heat);
+      // A new part in the inventory → the crate dolly rolls in.
+      const parts = partsOwned(game.components.owned);
+      if (parts > prevParts) deliveryStart = timeMs;
+      prevParts = parts;
+      const delivery = timeMs - deliveryStart < DELIVERY_MS ? 1 - (timeMs - deliveryStart) / DELIVERY_MS : 0;
 
       if (model.total > prevTotal) {
         spawnFrom = prevTotal;
@@ -196,6 +213,7 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
         reducedMotion: useSettings.getState().reducedMotion,
         spawnFrom, spawnT, burst, dpr,
         rackSkin: useSettings.getState().rackSkin,
+        delivery,
         ...(tapFlash && timeMs - tapFlash.start < TAP_FLASH_MS
           ? { tapFlash: { index: tapFlash.index, t: 1 - (timeMs - tapFlash.start) / TAP_FLASH_MS } }
           : {}),

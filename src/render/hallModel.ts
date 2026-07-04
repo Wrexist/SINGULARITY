@@ -104,6 +104,16 @@ export interface HallModel {
   /** IDEAS #2 — Supervisor Chen patrols once scrutiny is a named, personal
    *  presence (regulator tier ≥ nameFromTier). Null = clean lab, no inspector. */
   regulator: { name: string; label: string; blurb: string } | null;
+  /** IDEAS #3 — unmarked black crates by the entrance while regulatory Heat is
+   *  up (0..6): the dark-web supply chain, physically lingering until you cool
+   *  off. Refreshed per frame by HallCanvas (heat moves every tick), like
+   *  marker affordability. */
+  heatCrates: number;
+}
+
+/** Heat (0..100) → how many unmarked crates sit by the entrance. */
+export function heatCrateCount(heat: number): number {
+  return Math.max(0, Math.min(6, Math.floor(heat / 16)));
 }
 
 /** Power/cooling infrastructure ids (drive the visible wall units). Exported so
@@ -245,6 +255,7 @@ export function buildHallModel(game: GameState): HallModel {
     rigs: rigViews(game),
     agents,
     regulator: regulatorIsNamed(game) ? { name: reg.name, label: reg.label, blurb: reg.blurb } : null,
+    heatCrates: heatCrateCount(game.heat),
     ...hallRoomSplit(game),
   };
 }

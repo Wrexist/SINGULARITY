@@ -190,6 +190,15 @@ describe("hall view-model", () => {
     expect(m.agents[1]).toMatchObject({ name: "Bo", team: "product", beam: 1 }); // second beam = p2
   });
 
+  it("IDEAS #3 — heat maps to entrance crates (0 cold, capped hot)", () => {
+    const s = createInitialState();
+    expect(buildHallModel(s).heatCrates).toBe(0); // clean lab, clean dock
+    s.heat = 40;
+    expect(buildHallModel(s).heatCrates).toBe(2);
+    s.heat = 100;
+    expect(buildHallModel(s).heatCrates).toBe(6); // capped
+  });
+
   it("IDEAS #2 — the inspector appears only once scrutiny is a named presence", () => {
     expect(buildHallModel(createInitialState()).regulator).toBeNull();
     const watched = createInitialState();

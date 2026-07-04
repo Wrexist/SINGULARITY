@@ -22,6 +22,9 @@ export interface DrawOpts {
   /** Rack-tap micro-interaction: the tapped rack's index + a 1→0 decay, driving
    *  a brief LED flicker so the hall answers the touch. Undefined is identity. */
   tapFlash?: { index: number; t: number };
+  /** IDEAS #3 — a component purchase arriving: 1 just after the buy → 0. A pale
+   *  crate dollies in along the front edge and fades. Undefined/0 is identity. */
+  delivery?: number;
 }
 
 type Pt = { x: number; y: number };
@@ -299,6 +302,12 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
 
   // Fan blades spin over the cached housings (the walls sit behind the racks).
   drawCoolingFans(ctx, L, H, model.coolingUnits, o.timeMs, o.reducedMotion);
+
+  // IDEAS #3 — the loading dock: unmarked crates linger by the entrance while
+  // regulatory Heat is up (the dark-web supply chain, visibly not-cleaned-up),
+  // and a fresh component purchase dollies in as a pale crate.
+  if (model.heatCrates > 0) drawHeatCrates(ctx, L, model.heatCrates, o.timeMs, o.reducedMotion);
+  if (o.delivery && o.delivery > 0 && !o.reducedMotion) drawDelivery(ctx, L, o.delivery);
 
   // Place racks in orderly rows, back-to-front (valid iso paint order). Tile order
   // comes from the shared rackTileOrder helper (also used for hit-testing) so the
@@ -903,6 +912,71 @@ function drawBeams(ctx: CanvasRenderingContext2D, L: Layout, beams: number[], t:
     ctx.arc(base.x, base.y - h, w * 0.6 * flick, 0, Math.PI * 2);
     ctx.fill();
   }
+  ctx.restore();
+}
+
+/** IDEAS #3 — unmarked black crates stacked just outside the front-left floor
+ *  lip. Count ∝ regulatory Heat, so a hot lab has a visibly un-audited pile by
+ *  the door that melts away as it cools ("cold racks, cold trail"). */
+function drawHeatCrates(ctx: CanvasRenderingContext2D, L: Layout, count: number, t: number, reducedMotion: boolean): void {
+  const s = L.tileW * 0.24;
+  ctx.save();
+  for (let i = 0; i < count; i++) {
+    // Two rows of three, hugging the front-left edge outside the grid.
+    const row = i < 3 ? 0 : 1;
+    const p = L.iso(L.gxMin + 0.5 + (i % 3) * 0.55, L.gyMax + 0.45 + row * 0.4);
+    const h = s * (0.8 + ((i * 37) % 5) * 0.06);
+    // Shadow + body + lid seam. Deliberately unbranded and slightly wrong-looking.
+    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y + s * 0.18, s * 0.85, s * 0.35, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgb(44,48,62)";
+    ctx.fillRect(p.x - s * 0.6, p.y - h, s * 1.2, h);
+    ctx.fillStyle = "rgb(64,69,88)";
+    ctx.fillRect(p.x - s * 0.6, p.y - h, s * 1.2, h * 0.22);
+    ctx.strokeStyle = "rgba(255,255,255,0.18)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(p.x - s * 0.6, p.y - h, s * 1.2, h);
+    // A faint hazard blink on the pile's newest crate while it settles.
+    if (i === count - 1) {
+      const blink = reducedMotion ? 0.5 : 0.35 + 0.35 * Math.sin(t / 420);
+      ctx.fillStyle = rgba([255, 120, 90], blink);
+      ctx.fillRect(p.x + s * 0.28, p.y - h * 0.75, Math.max(1.2, s * 0.12), Math.max(1.2, s * 0.12));
+    }
+  }
+  ctx.restore();
+}
+
+/** IDEAS #3 — a component purchase arriving: a pale crate slides in along the
+ *  open front edge and fades as it "reaches the racks". Pure juice; the buy is
+ *  already applied. */
+function drawDelivery(ctx: CanvasRenderingContext2D, L: Layout, remaining: number): void {
+  const done = 1 - remaining; // 0 → 1 across the slide
+  const eased = easeOut(done);
+  const from = L.iso(L.gxMax + 0.8, L.gyMax + 0.5);
+  const to = L.iso(L.gxMin + (L.gxMax - L.gxMin) * 0.55, L.gyMax + 0.3);
+  const p = lerp(from, to, eased);
+  const s = L.tileW * 0.26;
+  const alpha = remaining < 0.25 ? remaining / 0.25 : 1; // fade at arrival
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = "rgba(0,0,0,0.25)";
+  ctx.beginPath();
+  ctx.ellipse(p.x, p.y + s * 0.2, s * 0.9, s * 0.35, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "rgb(214,206,192)"; // pale shipping crate
+  ctx.fillRect(p.x - s * 0.65, p.y - s * 0.95, s * 1.3, s * 0.95);
+  ctx.strokeStyle = "rgba(120,110,95,0.8)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(p.x - s * 0.65, p.y - s * 0.95, s * 1.3, s * 0.95);
+  // Tape stripe + a little motion dust behind the dolly.
+  ctx.fillStyle = "rgba(150,140,120,0.9)";
+  ctx.fillRect(p.x - s * 0.08, p.y - s * 0.95, s * 0.16, s * 0.95);
+  ctx.fillStyle = `rgba(255,255,255,${0.25 * alpha * (1 - eased)})`;
+  ctx.beginPath();
+  ctx.ellipse(p.x + s * 1.1, p.y, s * 0.5, s * 0.2, 0, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 }
 
