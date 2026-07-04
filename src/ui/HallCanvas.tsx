@@ -7,7 +7,6 @@ import { buildHallModel, POWER_IDS } from "../render/hallModel";
 import { drawHallStatic, drawHallDynamic, expansionMarkers, rackHitAreas, pointInPoly, type RackHit } from "../render/hallRenderer";
 import { currentEra, eraName } from "../engine/eras";
 import { hallRooms } from "../engine/hall";
-import { tierLoadoutFill } from "../engine/components";
 import { rackInfo } from "../engine/rackInfo";
 import { themeFilter } from "./hallThemes";
 
@@ -85,10 +84,10 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
     // it so we don't rebuild ~46 objects every animation frame (mobile GC).
     let modelSig = "";
     let model = buildHallModel(useGame.getState().game);
-    // Rig Bay fill only changes when the loadout array is replaced (equip /
-    // clear / prestige) — cache by reference instead of 3 tier scans per frame.
-    let fillLoadout: unknown = null;
-    let componentFill: number[] = [0, 0, 0];
+    // Bare Metal: the model's rig-bay view only changes when the loadout array
+    // is replaced (equip / clear / prestige) — track the ref and force a model
+    // rebuild instead of scanning the loadout per frame.
+    let rigLoadout: unknown = useGame.getState().game.components.loadout;
     // Rack-tap micro-interaction: which rack was touched, and when (rAF clock).
     let tapFlash: { index: number; start: number } | null = null;
     const TAP_FLASH_MS = 450;
@@ -126,19 +125,15 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       // powerCapacity upgrade automatically invalidates this cache too.
       const powerSig = POWER_IDS.map((id) => u[id] ?? 0).join(",");
       const sig = `${u.rack_basic ?? 0}|${u.rack_server ?? 0}|${u.rack_tpu ?? 0}|${u.expand_n ?? 0}|${u.expand_s ?? 0}|${u.expand_e ?? 0}|${u.expand_w ?? 0}|${powerSig}|${game.run.active ? 1 : 0}|${game.products.active.length > 0 ? 1 : 0}|${currentEra(game)}`;
-      if (sig !== modelSig) {
+      if (sig !== modelSig || game.components.loadout !== rigLoadout) {
         modelSig = sig;
+        rigLoadout = game.components.loadout;
         model = buildHallModel(game);
       }
       // Money isn't in the signature (it changes every tick), so refresh the
       // expansion markers' affordability cheaply here so they light up live.
       const money = game.resources.money;
       for (const s of model.sides) s.affordable = !s.maxed && money.gte(s.cost);
-
-      if (game.components.loadout !== fillLoadout) {
-        fillLoadout = game.components.loadout;
-        componentFill = [0, 1, 2].map((t) => tierLoadoutFill(game, t));
-      }
 
       if (model.total > prevTotal) {
         spawnFrom = prevTotal;
@@ -167,8 +162,6 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
         reducedMotion: useSettings.getState().reducedMotion,
         spawnFrom, spawnT, burst, dpr,
         rackSkin: useSettings.getState().rackSkin,
-        // Rig Bay: fitted tiers pulse brighter (cached above by loadout ref).
-        componentFill,
         ...(tapFlash && timeMs - tapFlash.start < TAP_FLASH_MS
           ? { tapFlash: { index: tapFlash.index, t: 1 - (timeMs - tapFlash.start) / TAP_FLASH_MS } }
           : {}),

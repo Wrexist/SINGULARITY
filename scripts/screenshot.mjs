@@ -161,9 +161,18 @@ try {
           run: { active: true, progress: 0.55, readyToClaim: false },
           prestige: { legacyWeights: "120", ships: 4 },
           lifetimeMoney: "900000000",
+          // Below the negotiation trigger (55) so Chen's sit-down card doesn't
+          // cover the hall this capture exists to show.
           heat: 40,
-          suspicion: 62,
+          suspicion: 40,
           alignment: 0.7,
+          components: {
+            // Bare Metal showcase: tier 0 fitted (standard), tier 1 half-fitted
+            // (enterprise acc, open cooling bay), tier 2 interconnect-only —
+            // so fitted geometry AND empty sockets are both visible.
+            owned: { acc_refurb: 1, acc_hopperoo: 1, net_darkfiber: 1 },
+            loadout: [{ accelerator: "acc_refurb" }, { accelerator: "acc_hopperoo" }, { interconnect: "net_darkfiber" }],
+          },
           products: {
             frontier: 30,
             active: [

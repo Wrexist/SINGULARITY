@@ -1,4 +1,4 @@
-import type { HallModel, SideMarker } from "./hallModel";
+import type { HallModel, SideMarker, RigSlotView } from "./hallModel";
 
 /**
  * Pure Canvas 2D renderer for the 2.5D hall. No React, no image assets — every
@@ -19,9 +19,6 @@ export interface DrawOpts {
   /** Cosmetic rack skin id (R6.3) — recolours the rack bodies. Undefined/"classic"
    *  is identity, so the default render is byte-identical. */
   rackSkin?: string;
-  /** Rig Bay (C1): loadout fill 0..1 per rack tier — fitted tiers render subtly
-   *  brighter (upgrades physically manifest). Undefined/0 is identity. */
-  componentFill?: number[];
   /** Rack-tap micro-interaction: the tapped rack's index + a 1→0 decay, driving
    *  a brief LED flicker so the hall answers the touch. Undefined is identity. */
   tapFlash?: { index: number; t: number };
@@ -80,6 +77,16 @@ const rgb = (c: RGB) => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
 const rgba = (c: RGB, a: number) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${clamp(a, 0, 1)})`;
 
 const tierBase = (tier: number): RGB => TIER_BASE[tier] ?? TIER_BASE[0]!;
+
+// Bare Metal grade flair — the fitted part's glow colour by grade
+// (1 standard = warm white · 2 enterprise = cyan · 3 prototype = violet).
+const GRADE_GLOW: RGB[] = [
+  [255, 228, 180],
+  [255, 228, 180],
+  [96, 224, 255],
+  [208, 144, 255],
+];
+const gradeGlow = (grade: number): RGB => GRADE_GLOW[clamp(grade, 1, 3)] ?? GRADE_GLOW[1]!;
 
 // --- Rack skins (R6.3): a pure HSL transform on the tier base colour. Applied to the
 // ONE base RGB each rack derives from (faces, LEDs, spill, rim all follow), so a skin
@@ -320,9 +327,10 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
           : 0;
     // Overclock manifests as a hotter rack: lift the work-pulse (which already
     // drives rim/LED glow) so the upgrade you bought is visible in the room.
-    // Rig Bay components manifest the same way: a fitted tier's racks pulse a
-    // touch brighter — the parts you slotted are visible in the room.
-    const fill = o.componentFill?.[rack.tier] ?? 0;
+    // Rig Bay components manifest as real geometry (Bare Metal, below) plus a
+    // touch of extra pulse for a fully-fitted tier.
+    const rig = model.rigs?.[rack.tier] ?? null;
+    const fill = rig && rig.length > 0 ? rig.filter((s) => s.grade > 0).length / rig.length : 0;
     let workPulse = Math.min(1.2, basePulse + model.overclock * 0.45 + fill * 0.3);
     let blinkNow = blink;
     // Tap answer: the touched rack flickers its LEDs hard for a beat (pure
@@ -332,7 +340,7 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
       blinkNow = Math.max(blinkNow, tf * (0.65 + 0.35 * Math.sin(t / 38)));
       workPulse = Math.min(1.4, workPulse + tf * 0.8);
     }
-    drawRack(ctx, c.x, c.y, tileW, tileH, rack.tier, rack.density, scale, blinkNow, workPulse, model.active, powerOn, o.rackSkin);
+    drawRack(ctx, c.x, c.y, tileW, tileH, rack.tier, rack.density, scale, blinkNow, workPulse, model.active, powerOn, o.rackSkin, rig, t, o.reducedMotion);
   }
 
   // C2 — thermal stress: as power draw approaches/exceeds capacity the racks run hot.
@@ -588,6 +596,9 @@ function drawRack(
   tier: number, density: number, scale: number,
   blink: number, workPulse: number, active: boolean, powerOn: number,
   skin?: string,
+  rig?: RigSlotView[] | null,
+  t = 0,
+  reducedMotion = false,
 ): void {
   const base = skinTint(tierBase(tier), skin);
   const led = shade(base, 2.0);
@@ -653,6 +664,63 @@ function drawRack(
     const colA = rfp(0.82, 0.06), colB = rfp(0.82, 0.94);
     const pcol = (active ? 0.55 : 0.3) + 0.4 * workPulse + 0.4 * powerOn;
     stroke(ctx, colA, colB, rgba(led, clamp(pcol, 0, 1)), Math.max(1, hw * 0.08));
+
+    // ---- Bare Metal: component bays on the left face. Once the Rig Bay is
+    // open every rack shows its sockets — an EMPTY bay is a dark open hole
+    // (the fleet visibly wants parts), a fitted bay grows real geometry per
+    // class: heatsink fins (accelerator), a spinning rack fan (cooling), or a
+    // lit cable trunk dropping to the floor (interconnect). Grade = flair. ----
+    if (rig && rig.length > 0) {
+      const lfp = (u: number, v: number): Pt => ({
+        x: bLeft.x + (bBottom.x - bLeft.x) * u,
+        y: bLeft.y + (bBottom.y - bLeft.y) * u - v * ph,
+      });
+      for (let k = 0; k < rig.length; k++) {
+        const slot = rig[k]!;
+        const vTop = 0.8 - k * 0.27;
+        const vBot = vTop - 0.19;
+        const u0 = 0.14, u1 = 0.86;
+        const quad: Pt[] = [lfp(u0, vBot), lfp(u1, vBot), lfp(u1, vTop), lfp(u0, vTop)];
+        if (slot.grade === 0) {
+          poly(ctx, quad, "rgba(8,10,16,0.55)");
+          stroke(ctx, quad[3]!, quad[2]!, "rgba(255,255,255,0.16)", 1);
+          stroke(ctx, quad[0]!, quad[1]!, "rgba(0,0,0,0.4)", 1);
+          continue;
+        }
+        const glow = gradeGlow(slot.grade);
+        poly(ctx, quad, rgba(shade(base, 0.5), 0.9));
+        if (slot.cls === "accelerator") {
+          for (let f = 0; f < 3; f++) {
+            const v = vBot + ((f + 0.5) / 3) * (vTop - vBot);
+            stroke(ctx, lfp(u0 + 0.07, v), lfp(u1 - 0.07, v), rgba(glow, clamp(0.5 + 0.4 * workPulse, 0, 1)), Math.max(1, hw * 0.06));
+          }
+        } else if (slot.cls === "cooling") {
+          const c = lfp(0.5, (vTop + vBot) / 2);
+          const r = Math.max(1.5, hw * 0.15);
+          ctx.strokeStyle = rgba(glow, 0.75);
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, Math.PI * 2); ctx.stroke();
+          const rot = reducedMotion ? 0.6 : (t / 170) % (Math.PI * 2);
+          for (let f = 0; f < 3; f++) {
+            const ang = rot + (f * Math.PI * 2) / 3;
+            stroke(ctx, c, { x: c.x + Math.cos(ang) * r * 0.8, y: c.y + Math.sin(ang) * r * 0.8 }, rgba(glow, 0.85), 1);
+          }
+        } else {
+          // interconnect — cable trunk from the bay down to the floor.
+          const from = lfp(0.5, vBot);
+          const to: Pt = { x: sx - hw * 0.45, y: sy + hh * 0.8 };
+          stroke(ctx, from, to, rgba(glow, 0.4), Math.max(1, hw * 0.07));
+          if (!reducedMotion) {
+            const tt = ((t / 900) % 1 + k * 0.37) % 1;
+            const p = lerp(from, to, tt);
+            ctx.fillStyle = rgba(glow, 0.9);
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, Math.max(1, hw * 0.07), 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+    }
   } else {
     const p = rfp(0.5, 0.5);
     ctx.fillStyle = rgba(led, active ? Math.max(0.5, workPulse) : 0.6);

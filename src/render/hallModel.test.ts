@@ -149,4 +149,28 @@ describe("hall view-model", () => {
     s.upgrades = { auto_train: 1 };
     expect(buildHallModel(s).autoBot).toBe(true);
   });
+
+  it("Bare Metal — rig bays are hidden pre-unlock, open sockets after, graded when fitted", () => {
+    // Pre-unlock (under revealAtRacks): no bays at all.
+    expect(buildHallModel(createInitialState()).rigs).toBeNull();
+
+    // Unlocked with nothing fitted: every tier shows its sockets, all EMPTY (grade 0).
+    const s = createInitialState();
+    s.upgrades = { rack_basic: 3 };
+    const bare = buildHallModel(s);
+    expect(bare.rigs).not.toBeNull();
+    expect(bare.rigs![0]).toHaveLength(1); // basic tier: accelerator only
+    expect(bare.rigs![2]).toHaveLength(3); // tpu tier: acc + cooling + interconnect
+    expect(bare.rigs!.flat().every((slot) => slot.grade === 0)).toBe(true);
+
+    // Fit a standard part and an enterprise part → grade indices 1 and 2.
+    s.components = {
+      owned: { acc_refurb: 1, cool_immersion: 1 },
+      loadout: [{ accelerator: "acc_refurb" }, { cooling: "cool_immersion" }, {}],
+    };
+    const fitted = buildHallModel(s);
+    expect(fitted.rigs![0]![0]).toEqual({ cls: "accelerator", grade: 1 });
+    expect(fitted.rigs![1]!.find((x) => x.cls === "cooling")!.grade).toBe(2);
+    expect(fitted.rigs![1]!.find((x) => x.cls === "accelerator")!.grade).toBe(0); // still open
+  });
 });

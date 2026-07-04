@@ -4,6 +4,8 @@ import type { GameState } from "../engine/types";
 import { currentEra } from "../engine/eras";
 import { powerStats } from "../engine/power";
 import { productMetrics } from "../engine/products";
+import { componentsUnlocked, componentDef, SLOTS_BY_TIER } from "../engine/components";
+import type { SlotClass } from "../engine/balance/components";
 import { RACK_IDS, hallDims, hallCapacity, hallRoomSplit, type Dir } from "../engine/hall";
 
 export { hallDims, hallExpansion, type Dir } from "../engine/hall";
@@ -20,6 +22,14 @@ export interface HallRack {
   tier: number;
   /** 0..1 — how packed the room reads (height/glow). */
   density: number;
+}
+
+/** Bare Metal (Rig Bay manifestation): one entry per component bay on a tier's
+ *  racks. grade 0 = an EMPTY open socket (the rack reads unfinished); 1..3 =
+ *  standard/enterprise/prototype — the fitted part's visible flair. */
+export interface RigSlotView {
+  cls: SlotClass;
+  grade: number;
 }
 
 /** A buyable expansion affordance shown on one side of the floor. */
@@ -70,6 +80,10 @@ export interface HallModel {
   beams: number[];
   /** C2 — faction alignment (−1 doomer … +1 accel) → a subtle room colour tint. */
   alignment: number;
+  /** Bare Metal — per-tier component bays (index = rack tier), or null while the
+   *  Rig Bay is still locked (pre-unlock racks draw with no bays at all, so the
+   *  reveal moment is also a visual change in the room). */
+  rigs: RigSlotView[][] | null;
 }
 
 /** Power/cooling infrastructure ids (drive the visible wall units). Exported so
@@ -85,6 +99,20 @@ const SIDE_DEFS: { dir: Dir; id: string }[] = [
 ];
 
 const upgById = (id: string) => balance.upgrades.find((u) => u.id === id)!;
+
+const GRADE_IDX: Record<string, number> = { standard: 1, enterprise: 2, prototype: 3 };
+
+/** The per-tier bay view: which slots exist, what grade sits in each (0 = empty). */
+function rigViews(game: GameState): RigSlotView[][] | null {
+  if (!componentsUnlocked(game)) return null;
+  return SLOTS_BY_TIER.map((slots, tier) =>
+    slots.map((cls) => {
+      const id = game.components.loadout[tier]?.[cls];
+      const def = id ? componentDef(id) : undefined;
+      return { cls, grade: def ? (GRADE_IDX[def.grade] ?? 1) : 0 };
+    }),
+  );
+}
 
 function sideMarkers(game: GameState): SideMarker[] {
   return SIDE_DEFS.map(({ dir, id }) => {
@@ -179,6 +207,7 @@ export function buildHallModel(game: GameState): HallModel {
     staff,
     beams,
     alignment: game.alignment,
+    rigs: rigViews(game),
     ...hallRoomSplit(game),
   };
 }
