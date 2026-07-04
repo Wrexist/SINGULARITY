@@ -76,7 +76,12 @@ export function ContractsPanel({ game, onClaim, onClaimSponsor }: Props) {
         </div>
       )}
       <p className="contracts-foot">
-        {game.contracts.completed.length} / {contractsBalance.pool.length} contracts complete · rewards <b>Lab Reputation</b>
+        {/* Ladder progress only — sponsor completions (sponsor_*) are the daily
+            post-ladder track and would overflow the pool denominator. */}
+        {game.contracts.completed.filter((id) => !id.startsWith("sponsor_")).length} / {contractsBalance.pool.length} contracts complete
+        {game.contracts.completed.some((id) => id.startsWith("sponsor_")) &&
+          ` · ${game.contracts.completed.filter((id) => id.startsWith("sponsor_")).length} sponsor deals`}
+        {" "}· rewards <b>Lab Reputation</b>
       </p>
     </section>
   );
