@@ -270,6 +270,8 @@ interface SavedShape {
   legacyInvestments: string[];
   components: ComponentsState;
   rivalOps: GameState["rivalOps"];
+  /** IDEAS #6 — Legacy Wall records. Sanitizer-defaulted ([]), so no v-bump. */
+  shipLog: GameState["shipLog"];
 }
 
 export function serialize(state: GameState): string {
@@ -321,6 +323,7 @@ export function serialize(state: GameState): string {
     legacyInvestments: state.legacyInvestments,
     components: state.components,
     rivalOps: state.rivalOps,
+    shipLog: state.shipLog,
   };
   return JSON.stringify(shape);
 }
@@ -442,12 +445,30 @@ export function deserialize(json: string): GameState {
     legacyInvestments: dedupeKnownIds(raw.legacyInvestments, LEGACY_IDS),
     components: sanitizeComponents(raw.components, contracts.completed, achievements),
     rivalOps: sanitizeRivalOps(raw.rivalOps),
+    // Legacy Wall records are display-only history, but still validated per-entry
+    // (sanitizer policy: filter, don't wipe) and capped like prestige() caps them.
+    shipLog: sanitizeShipLog(raw.shipLog, sanitizeStats(raw.stats).totalShips),
     // Generation-scoped (not persisted): a mid-run reload simply re-accrues the run
     // peaks, and the ship report is transient — both start fresh on load.
     runPeakCompute: fresh.runPeakCompute,
     runPeakMrr: fresh.runPeakMrr,
     lastShipReport: fresh.lastShipReport,
   };
+}
+
+/** Legacy Wall records: per-entry validation (mode must be a known ship mode,
+ *  era a small int), capped at the balance limit AND at the lifetime ship count —
+ *  a crafted save can't display a wall of ascensions it never earned. */
+function sanitizeShipLog(raw: unknown, totalShips: number): GameState["shipLog"] {
+  if (!Array.isArray(raw)) return [];
+  const MODES = new Set(Object.keys(balance.prestige.shipModes));
+  return raw
+    .filter((e): e is { mode: string; era: number; asc: boolean } =>
+      !!e && typeof e === "object" &&
+      typeof (e as { mode?: unknown }).mode === "string" && MODES.has((e as { mode: string }).mode) &&
+      typeof (e as { era?: unknown }).era === "number" && Number.isFinite((e as { era: number }).era))
+    .map((e) => ({ mode: e.mode, era: Math.max(0, Math.min(5, Math.floor(e.era))), asc: e.asc === true }))
+    .slice(-Math.min(balance.prestige.shipLogCap, Math.max(0, totalShips)));
 }
 
 /** Rival counterplay is untrusted: KNOWN rival names only, strike counts clamped

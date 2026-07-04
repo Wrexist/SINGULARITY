@@ -3,7 +3,7 @@ import { useGame } from "../state/store";
 import { useSettings } from "./settings";
 import { haptics } from "./haptics";
 import { sound } from "./sound";
-import { buildHallModel, heatCrateCount, POWER_IDS } from "../render/hallModel";
+import { buildHallModel, buildSkyline, heatCrateCount, POWER_IDS } from "../render/hallModel";
 import { drawHallStatic, drawHallDynamic, expansionMarkers, rackHitAreas, pointInPoly, agentSpots, chenSpot, type RackHit, type AgentSpot } from "../render/hallRenderer";
 import { currentEra, eraName } from "../engine/eras";
 import { hallRooms } from "../engine/hall";
@@ -167,7 +167,7 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       // Power ids come from the same source buildHallModel uses, so adding a new
       // powerCapacity upgrade automatically invalidates this cache too.
       const powerSig = POWER_IDS.map((id) => u[id] ?? 0).join(",");
-      const sig = `${u.rack_basic ?? 0}|${u.rack_server ?? 0}|${u.rack_tpu ?? 0}|${u.expand_n ?? 0}|${u.expand_s ?? 0}|${u.expand_e ?? 0}|${u.expand_w ?? 0}|${powerSig}|${game.run.active ? 1 : 0}|${game.products.active.length}|${currentEra(game)}|${regulatorState(game).index}`;
+      const sig = `${u.rack_basic ?? 0}|${u.rack_server ?? 0}|${u.rack_tpu ?? 0}|${u.expand_n ?? 0}|${u.expand_s ?? 0}|${u.expand_e ?? 0}|${u.expand_w ?? 0}|${powerSig}|${game.run.active ? 1 : 0}|${game.products.active.length}|${currentEra(game)}|${regulatorState(game).index}|${game.charter ?? ""}|${game.shipLog.length}`;
       if (sig !== modelSig || game.components.loadout !== rigLoadout || game.employees !== agentRoster) {
         modelSig = sig;
         rigLoadout = game.components.loadout;
@@ -180,6 +180,10 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       for (const s of model.sides) s.affordable = !s.maxed && money.gte(s.cost);
       // Heat moves every tick too — refresh the entrance crate pile the same way.
       model.heatCrates = heatCrateCount(game.heat);
+      // The horizon race drifts continuously (rival pools scale with the
+      // frontier; your MAU grows). Refresh it cheaply; the static cache below
+      // only repaints when the COARSE signature actually moves.
+      model.skyline = buildSkyline(game);
       // A new part in the inventory → the crate dolly rolls in.
       const parts = partsOwned(game.components.owned);
       if (parts > prevParts) deliveryStart = timeMs;
@@ -193,8 +197,10 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       prevTotal = model.total;
       const spawnT = Math.min(1, (timeMs - spawnStart) / SPAWN_MS);
 
-      // Repaint the cached static room only when its inputs change.
-      const ssig = `${model.cols}|${model.rows}|${model.era}|${model.coolingUnits}|${cssW}|${cssH}|${dpr}`;
+      // Repaint the cached static room only when its inputs change. The skyline
+      // is quantised to 5% steps so its slow drift repaints rarely, not per tick.
+      const skySig = model.skyline.map((t) => `${Math.round(t.h * 20)}${t.dim ? "d" : ""}${t.you ? "y" : ""}`).join(".");
+      const ssig = `${model.cols}|${model.rows}|${model.era}|${model.coolingUnits}|${cssW}|${cssH}|${dpr}|${model.charter?.id ?? ""}|${model.wall.map((w) => `${w.era}${w.asc ? "a" : ""}`).join(".")}|${skySig}`;
       if (ssig !== staticSig) {
         staticSig = ssig;
         off.width = canvas.width;

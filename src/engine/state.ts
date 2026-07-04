@@ -45,5 +45,7 @@ export function createInitialState(): GameState {
     runPeakCompute: Big.ZERO,
     runPeakMrr: 0,
     lastShipReport: null,
+    // IDEAS #6 — the Legacy Wall's memory: one entry per shipped generation.
+    shipLog: [],
   };
 }

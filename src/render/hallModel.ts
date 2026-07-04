@@ -7,6 +7,8 @@ import { productMetrics } from "../engine/products";
 import { componentsUnlocked, componentDef, SLOTS_BY_TIER } from "../engine/components";
 import type { SlotClass } from "../engine/balance/components";
 import { regulatorState, regulatorIsNamed } from "../engine/regulator";
+import { marketLeaderboard } from "../engine/market";
+import { charters } from "../engine/balance/charters";
 import { RACK_IDS, hallDims, hallCapacity, hallRoomSplit, type Dir } from "../engine/hall";
 
 export { hallDims, hallExpansion, type Dir } from "../engine/hall";
@@ -109,6 +111,38 @@ export interface HallModel {
    *  off. Refreshed per frame by HallCanvas (heat moves every tick), like
    *  marker affordability. */
   heatCrates: number;
+  /** IDEAS #8 — the run's chosen charter, hung as a banner on the back wall. */
+  charter: { id: string; name: string } | null;
+  /** IDEAS #4 — rival datacenters on the horizon, tallest = market leader.
+   *  Empty pre-first-ship (the market doesn't know you exist yet). */
+  skyline: SkylineTower[];
+  /** IDEAS #6 — the Legacy Wall: latest shipped generations as trophy plinths. */
+  wall: { era: number; asc: boolean }[];
+}
+
+/** One horizon silhouette: h 0..1 (share of the market leader), dim = press-blitzed. */
+export interface SkylineTower {
+  h: number;
+  dim: boolean;
+  you: boolean;
+}
+
+/** The horizon race (IDEAS #4): rivals as datacenter silhouettes, your own tower
+ *  rising among them. Pure; gated on having shipped (pre-ship the market UI is
+ *  hidden too, so the room stays quiet until the race exists). */
+export function buildSkyline(game: GameState): SkylineTower[] {
+  if (game.prestige.ships === 0) return [];
+  const board = marketLeaderboard(game);
+  const max = board.reduce((m, e) => Math.max(m, e.users), 1);
+  const rivals = board.filter((e) => !e.isYou);
+  const you = board.filter((e) => e.isYou).reduce((m, e) => Math.max(m, e.users), 0);
+  const towers: SkylineTower[] = rivals.map((r) => ({
+    h: Math.max(0.15, r.users / max),
+    dim: (game.rivalOps.strikes[r.name] ?? 0) > 0,
+    you: false,
+  }));
+  if (you > 0) towers.splice(Math.floor(towers.length / 2), 0, { h: Math.max(0.12, you / max), dim: false, you: true });
+  return towers;
 }
 
 /** Heat (0..100) → how many unmarked crates sit by the entrance. */
@@ -256,6 +290,12 @@ export function buildHallModel(game: GameState): HallModel {
     agents,
     regulator: regulatorIsNamed(game) ? { name: reg.name, label: reg.label, blurb: reg.blurb } : null,
     heatCrates: heatCrateCount(game.heat),
+    charter: (() => {
+      const def = game.charter ? charters.list.find((c) => c.id === game.charter) : undefined;
+      return def ? { id: def.id, name: def.name } : null;
+    })(),
+    skyline: buildSkyline(game),
+    wall: game.shipLog.slice(-8).map((e) => ({ era: e.era, asc: e.asc })),
     ...hallRoomSplit(game),
   };
 }

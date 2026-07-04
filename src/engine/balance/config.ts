@@ -1172,6 +1172,9 @@ export const balance = {
      * player climbs the research tree to its payoff before learning the reset.
      */
     capabilityResearch: "inference_api",
+    /** IDEAS #6 — how many shipped-generation records the Legacy Wall keeps
+     *  (a hundred-generation save stays tiny; the hall shows the latest few). */
+    shipLogCap: 24,
     /** legacyWeightsGained = max(1, floor((lifetimeMoney / scale) ^ exponent)).
      *  scale raised 1e4→1e5 (2026-06-29 retune) so a much longer run banks fewer
      *  weights → a gentler per-ship boost → the meta-loop stays a real journey. */

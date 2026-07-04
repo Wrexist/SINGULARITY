@@ -199,6 +199,26 @@ describe("hall view-model", () => {
     expect(buildHallModel(s).heatCrates).toBe(6); // capped
   });
 
+  it("IDEAS #4/#6/#8 — skyline gates on shipping; wall + banner mirror state", () => {
+    const fresh = buildHallModel(createInitialState());
+    expect(fresh.skyline).toEqual([]); // pre-ship: no race on the horizon
+    expect(fresh.wall).toEqual([]);
+    expect(fresh.charter).toBeNull();
+
+    const s = createInitialState();
+    s.prestige.ships = 2;
+    s.charter = "moonshot";
+    s.shipLog = [
+      { mode: "deploy", era: 1, asc: false },
+      { mode: "open_source", era: 3, asc: true },
+    ];
+    const m = buildHallModel(s);
+    expect(m.skyline.length).toBeGreaterThanOrEqual(5); // 5 rivals on the horizon
+    expect(m.skyline.every((t) => t.h > 0 && t.h <= 1)).toBe(true);
+    expect(m.charter).toEqual({ id: "moonshot", name: expect.any(String) });
+    expect(m.wall).toEqual([{ era: 1, asc: false }, { era: 3, asc: true }]);
+  });
+
   it("IDEAS #2 — the inspector appears only once scrutiny is a named presence", () => {
     expect(buildHallModel(createInitialState()).regulator).toBeNull();
     const watched = createInitialState();

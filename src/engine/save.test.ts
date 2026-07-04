@@ -55,6 +55,37 @@ describe("save/load", () => {
     expect(migrated.modifiers).toEqual([]); // v2→v3 backfill
   });
 
+  it("round-trips the Legacy Wall ship log; drops crafted/overlong entries", () => {
+    const s = createInitialState();
+    s.prestige.ships = 2;
+    s.stats.totalShips = 2;
+    s.shipLog = [
+      { mode: "deploy", era: 1, asc: false },
+      { mode: "open_source", era: 2, asc: false },
+    ];
+    const restored = deserialize(serialize(s));
+    expect(restored.shipLog).toEqual(s.shipLog);
+
+    // A crafted save: unknown mode dropped, era clamped, asc coerced, and the
+    // log can never exceed the LIFETIME ship count (no fake wall of trophies).
+    const crafted = JSON.parse(serialize(s));
+    crafted.shipLog = [
+      { mode: "yolo_mode", era: 3, asc: true }, // unknown mode → dropped
+      { mode: "deploy", era: 99, asc: "yes" }, // clamped + coerced
+      { mode: "sell", era: 2, asc: true },
+      { mode: "deploy", era: 0, asc: false },
+    ];
+    crafted.stats.totalShips = 1; // only ever shipped once
+    const loaded = deserialize(JSON.stringify(crafted));
+    expect(loaded.shipLog).toHaveLength(1); // capped at lifetime ships
+    expect(loaded.shipLog[0]).toEqual({ mode: "deploy", era: 0, asc: false });
+
+    // A pre-shipLog save (any older version) loads with an empty wall.
+    const old = JSON.parse(serialize(s));
+    delete old.shipLog;
+    expect(deserialize(JSON.stringify(old)).shipLog).toEqual([]);
+  });
+
   it("preserves Heat through a round-trip", () => {
     const s = createInitialState();
     s.heat = 42;

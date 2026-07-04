@@ -1,4 +1,4 @@
-import type { HallModel, SideMarker, RigSlotView, AgentView } from "./hallModel";
+import type { HallModel, SideMarker, RigSlotView, AgentView, SkylineTower } from "./hallModel";
 
 /**
  * Pure Canvas 2D renderer for the 2.5D hall. No React, no image assets — every
@@ -242,11 +242,143 @@ export function drawHallStatic(ctx: CanvasRenderingContext2D, model: HallModel, 
   ctx.fillRect(0, 0, W, H);
 
   const L = computeLayout(model.cols, model.rows, model.gxMin, model.gyMin, W, H);
+  // IDEAS #4 — the race on the horizon, behind the room shell.
+  if (model.skyline.length > 0) drawSkyline(ctx, model.skyline, W, H, L);
   // Housings only — the spinning blades live in the dynamic layer (QW2) so the
   // fans actually turn while the room shell stays cached.
   drawRoom(ctx, L, model.era, H, model.coolingUnits);
   drawFloor(ctx, L, model.era);
   drawPartitions(ctx, L, model);
+  // IDEAS #8/#6 — the run's charter hangs on the back-right wall; shipped
+  // generations stand as trophy plinths along the back-left one.
+  if (model.charter) drawCharterBanner(ctx, L, H, model.charter);
+  if (model.wall.length > 0) drawLegacyWall(ctx, L, H, model.wall);
+}
+
+/** IDEAS #4 — rival datacenter silhouettes on the horizon, height ∝ market
+ *  share of the leader. Your own tower (violet, beacon-tipped) rises among
+ *  them; a press-blitzed rival's windows go dark for the run. Static — the
+ *  cache key carries a coarse skyline signature. */
+function drawSkyline(ctx: CanvasRenderingContext2D, towers: SkylineTower[], W: number, H: number, L: Layout): void {
+  const n = towers.length;
+  // Rest the towers on the horizon: the top line of the back walls.
+  const baseY = Math.max(H * 0.1, L.iso(L.gxMin, L.gyMin).y - H * 0.22 + 2);
+  const maxH = Math.min(H * 0.17, baseY - 6);
+  ctx.save();
+  for (let i = 0; i < n; i++) {
+    const tw = towers[i]!;
+    const cx = W * (0.14 + (0.72 * (i + 0.5)) / n);
+    const w = W * 0.052;
+    const h = Math.max(6, maxH * tw.h);
+    const body: RGB = tw.you ? [110, 84, 190] : [52, 58, 84];
+    ctx.fillStyle = rgba(body, tw.dim ? 0.55 : 0.9);
+    ctx.fillRect(cx - w / 2, baseY - h, w, h);
+    // Rooftop detail: a beacon for you, an antenna stub for rivals.
+    if (tw.you) {
+      ctx.fillStyle = "rgba(190,150,255,0.95)";
+      ctx.beginPath();
+      ctx.arc(cx, baseY - h - 3, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.strokeStyle = rgba(body, 0.9);
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(cx, baseY - h); ctx.lineTo(cx, baseY - h - 4); ctx.stroke();
+    }
+    // Lit windows — blitzed rivals go dark (the comms team is sweating).
+    if (!tw.dim) {
+      ctx.fillStyle = tw.you ? "rgba(220,190,255,0.8)" : "rgba(150,190,255,0.55)";
+      const rows = Math.max(1, Math.floor(h / 7));
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < 2; c++) {
+          if (((i * 7 + r * 3 + c) % 5) < 2) continue; // deterministic sparse lights
+          ctx.fillRect(cx - w * 0.28 + c * w * 0.4, baseY - h + 3 + r * 7, Math.max(1, w * 0.14), 2);
+        }
+      }
+    }
+  }
+  ctx.restore();
+}
+
+// IDEAS #8 — per-charter banner colours (flair only; unknown ids get slate).
+const CHARTER_COLORS: Record<string, RGB> = {
+  open_source: [90, 200, 140],
+  bootstrapped: [240, 190, 90],
+  moonshot: [140, 150, 255],
+  data_monopoly: [170, 120, 255],
+  cash_machine: [110, 220, 140],
+  mad_science: [255, 120, 160],
+  frugal_genius: [120, 210, 220],
+};
+
+/** IDEAS #8 — the run's charter as a hanging banner on the back-right wall:
+ *  the generation's identity, visible every time you look at the room. */
+function drawCharterBanner(ctx: CanvasRenderingContext2D, L: Layout, H: number, charter: { id: string; name: string }): void {
+  const { iso, gxMin, gyMin, gxMax } = L;
+  const a = iso(gxMin, gyMin), b = iso(gxMax, gyMin);
+  const wallH = H * 0.22;
+  const col = CHARTER_COLORS[charter.id] ?? [150, 160, 180];
+  // Hang on the back-right wall at ~72% along, from just under the ceiling.
+  const u = 0.72, w = 0.09;
+  const p0 = lerp(a, b, u - w), p1 = lerp(a, b, u + w);
+  const top = -0.92 * wallH, bot = -0.45 * wallH;
+  const quad: Pt[] = [
+    { x: p0.x, y: p0.y + top }, { x: p1.x, y: p1.y + top },
+    { x: p1.x, y: p1.y + bot }, { x: p0.x, y: p0.y + bot },
+  ];
+  const g = ctx.createLinearGradient(0, p0.y + top, 0, p0.y + bot);
+  g.addColorStop(0, rgba(col, 0.85));
+  g.addColorStop(1, rgba(shade(col, 0.6), 0.7));
+  poly(ctx, quad, g);
+  // A notched banner tail + hanging rod.
+  const mid = lerp({ x: p0.x, y: p0.y + bot }, { x: p1.x, y: p1.y + bot }, 0.5);
+  poly(ctx, [quad[3]!, quad[2]!, { x: mid.x, y: mid.y + wallH * 0.08 }], rgba(shade(col, 0.55), 0.7));
+  stroke(ctx, { x: p0.x - 2, y: p0.y + top }, { x: p1.x + 2, y: p1.y + top }, "rgba(255,255,255,0.35)", 1.5);
+  // Monogram: the charter's initial.
+  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.font = `700 ${Math.max(8, wallH * 0.16)}px -apple-system, system-ui, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.fillText(charter.name.charAt(0).toUpperCase(), mid.x, mid.y - wallH * 0.16);
+}
+
+/** IDEAS #6 — the Legacy Wall: each shipped generation stands as a small plinth
+ *  with a glowing model-core, era-tinted (ascension gens get a gold ring). The
+ *  reset visibly ADDS to the room — prestige leaves a permanent trace. */
+function drawLegacyWall(ctx: CanvasRenderingContext2D, L: Layout, H: number, wall: { era: number; asc: boolean }[]): void {
+  const { iso, gxMin, gyMin, gyMax } = L;
+  const wallH = H * 0.22;
+  ctx.save();
+  for (let i = 0; i < wall.length; i++) {
+    const e = wall[i]!;
+    // Mounted UP on the back-left wall (a shelf of trophies — racks can't
+    // occlude the upper wall), oldest deepest.
+    const base = iso(gxMin, gyMin + 0.5 + i * ((gyMax - gyMin - 1) / 8));
+    const p: Pt = { x: base.x, y: base.y - wallH * 0.52 };
+    const s = Math.max(2.5, L.tileW * 0.13);
+    const eraCol = eraFloor(e.era);
+    // Shelf bracket + plinth block.
+    stroke(ctx, { x: p.x - s * 0.7, y: p.y + s * 0.55 }, { x: p.x + s * 0.7, y: p.y + s * 0.55 }, "rgba(255,255,255,0.25)", 1);
+    ctx.fillStyle = rgb(shade(eraCol, 1.35));
+    ctx.fillRect(p.x - s * 0.42, p.y - s * 0.55, s * 0.84, s * 1.1);
+    ctx.fillStyle = rgb(shade(eraCol, 1.7));
+    ctx.fillRect(p.x - s * 0.42, p.y - s * 0.55, s * 0.84, s * 0.2);
+    // The model-core hologram above the plinth.
+    const cy = p.y - s * 1.2;
+    const glow = ctx.createRadialGradient(p.x, cy, 0, p.x, cy, s * 0.95);
+    glow.addColorStop(0, rgba(shade(eraCol, 2.6), 0.95));
+    glow.addColorStop(1, rgba(eraCol, 0));
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(p.x, cy, s * 0.95, 0, Math.PI * 2);
+    ctx.fill();
+    if (e.asc) {
+      ctx.strokeStyle = "rgba(255,214,10,0.9)";
+      ctx.lineWidth = Math.max(1, s * 0.14);
+      ctx.beginPath();
+      ctx.arc(p.x, cy, s * 0.55, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
 }
 
 /**

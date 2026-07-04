@@ -160,6 +160,15 @@ try {
           research: ["backprop", "curated_data", "distributed", "distillation", "inference_api"],
           run: { active: true, progress: 0.55, readyToClaim: false },
           prestige: { legacyWeights: "120", ships: 4 },
+          stats: { totalShips: 4 },
+          charter: "moonshot",
+          charterLocked: true,
+          shipLog: [
+            { mode: "deploy", era: 1, asc: false },
+            { mode: "open_source", era: 2, asc: false },
+            { mode: "deploy", era: 2, asc: false },
+            { mode: "sell", era: 3, asc: true },
+          ],
           lifetimeMoney: "900000000",
           // Below the negotiation trigger (55) so Chen's sit-down card doesn't
           // cover the hall this capture exists to show. --chen seeds ABOVE it

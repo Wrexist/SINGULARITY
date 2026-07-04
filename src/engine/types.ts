@@ -122,6 +122,19 @@ export interface GameState {
   /** Snapshot of the just-finished run's peaks, captured by prestige() before the
    *  reset so the post-reset UI can show an accurate Generation Report. Transient. */
   lastShipReport: { peakCompute: Big; peakMrr: number } | null;
+  /** IDEAS #6 — the Legacy Wall: one small record per shipped generation (how it
+   *  shipped, the era it reached, whether it ascended). Persists across prestige —
+   *  it IS the prestige history — capped (balance.prestige.shipLogCap) so a
+   *  hundred-generation save stays tiny. The hall renders the latest few as
+   *  trophy plinths along the back wall. */
+  shipLog: ShipLogEntry[];
+}
+
+/** One shipped generation, remembered for the Legacy Wall. */
+export interface ShipLogEntry {
+  mode: string;
+  era: number;
+  asc: boolean;
 }
 
 /**
