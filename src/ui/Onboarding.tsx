@@ -33,7 +33,8 @@ export function Onboarding({ onDone }: Props) {
         </div>
         <p className="onboard-foot">
           <b>No manual required:</b> three glowing FIRST STEPS are waiting in the Lab —
-          do them and you know the whole loop. Badges on the tab bar flag anything that needs you.
+          do them and you know the whole loop. As the lab grows, new tabs appear and
+          badges flag anything that needs you.
         </p>
         <button className="btn btn-primary" onClick={onDone}>
           Take the first step →

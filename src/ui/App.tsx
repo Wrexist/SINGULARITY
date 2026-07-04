@@ -124,6 +124,8 @@ export function App() {
   const shipExplained = useSettings((s) => s.shipExplained);
   const lastBackupAt = useSettings((s) => s.lastBackupAt);
   const markShipExplained = useSettings((s) => s.markShipExplained);
+  const achievementsSeen = useSettings((s) => s.achievementsSeen);
+  const markAchievementsSeen = useSettings((s) => s.markAchievementsSeen);
   const [showShipExplainer, setShowShipExplainer] = useState(false);
 
   // The moment queue's head: exactly ONE full-screen moment renders at a time,
@@ -778,9 +780,12 @@ export function App() {
             {attention.employees > 0 && <span className="botnav-badge">{attention.employees}</span>}
           </button>
         )}
-        <button className="botnav-item" onClick={() => { haptics.tap(); setShowAchievements(true); }} aria-label="Achievements">
+        <button className="botnav-item" onClick={() => { haptics.tap(); markAchievementsSeen(game.achievements.length); setShowAchievements(true); }} aria-label="Achievements">
           <span className="botnav-ic"><TrophyIcon size={23} /></span><span className="botnav-lbl">Awards</span>
-          {game.achievements.length > 0 && <span className="botnav-badge alt">{game.achievements.length}</span>}
+          {/* Badge = NEW unlocks since the modal was last opened, matching the
+              other badges' "needs you" semantics (a lifetime total here just
+              trained players to ignore badges everywhere). */}
+          {game.achievements.length > achievementsSeen && <span className="botnav-badge alt">{game.achievements.length - achievementsSeen}</span>}
         </button>
         <button className="botnav-item" onClick={() => { haptics.tap(); setShowSettings(true); }} aria-label="Settings">
           <span className="botnav-ic"><GearIcon size={22} /></span><span className="botnav-lbl">More</span>

@@ -21,10 +21,26 @@ export interface Settings {
   /** Last successful save backup (export/share), ms epoch — null = never.
    *  Drives the one-time gentle backup nudge; no timers, no urgency. */
   lastBackupAt: number | null;
+  /** Achievements earned when the Awards modal was last opened — the nav badge
+   *  shows only NEW unlocks since, so it matches the other badges' "needs you"
+   *  semantics instead of being a permanently-large lifetime total. */
+  achievementsSeen: number;
 }
 
 const KEY = "singularity.settings.v1";
-const DEFAULTS: Settings = { sound: true, music: true, haptics: true, reducedMotion: false, hallTheme: "classic", rackSkin: "classic", onboarded: false, shipExplained: false, hapticsLight: false, scientificNotation: false, lastBackupAt: null };
+
+/** Seed the in-app reduced-motion toggle from the OS preference on FIRST run
+ *  (a saved choice always wins). The canvas/FX layers read the setting, not the
+ *  media query, so without this seed an OS-level preference was ignored. */
+function prefersReducedMotion(): boolean {
+  try {
+    return typeof window !== "undefined" && !!window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  } catch {
+    return false;
+  }
+}
+
+const DEFAULTS: Settings = { sound: true, music: true, haptics: true, reducedMotion: prefersReducedMotion(), hallTheme: "classic", rackSkin: "classic", onboarded: false, shipExplained: false, hapticsLight: false, scientificNotation: false, lastBackupAt: null, achievementsSeen: 0 };
 
 function load(): Settings {
   try {
@@ -40,7 +56,7 @@ function persist(s: Settings): void {
   try {
     localStorage.setItem(
       KEY,
-      JSON.stringify({ sound: s.sound, music: s.music, haptics: s.haptics, reducedMotion: s.reducedMotion, hallTheme: s.hallTheme, rackSkin: s.rackSkin, onboarded: s.onboarded, shipExplained: s.shipExplained, hapticsLight: s.hapticsLight, scientificNotation: s.scientificNotation, lastBackupAt: s.lastBackupAt }),
+      JSON.stringify({ sound: s.sound, music: s.music, haptics: s.haptics, reducedMotion: s.reducedMotion, hallTheme: s.hallTheme, rackSkin: s.rackSkin, onboarded: s.onboarded, shipExplained: s.shipExplained, hapticsLight: s.hapticsLight, scientificNotation: s.scientificNotation, lastBackupAt: s.lastBackupAt, achievementsSeen: s.achievementsSeen }),
     );
   } catch {
     /* ignore */
@@ -54,6 +70,7 @@ interface SettingsStore extends Settings {
   completeOnboarding: () => void;
   markShipExplained: () => void;
   markBackedUp: () => void;
+  markAchievementsSeen: (count: number) => void;
 }
 
 /** Player feel preferences. Persisted locally; read by sound/haptics/motion. */
@@ -81,6 +98,12 @@ export const useSettings = create<SettingsStore>((set, get) => ({
   },
   markBackedUp: () => {
     set({ lastBackupAt: Date.now() });
+    persist(get());
+  },
+  markAchievementsSeen: (count) => {
+    // Monotonic — a stale smaller count (e.g. from a second tab) never re-badges.
+    if (count <= get().achievementsSeen) return;
+    set({ achievementsSeen: count });
     persist(get());
   },
 }));

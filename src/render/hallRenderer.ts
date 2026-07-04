@@ -232,8 +232,9 @@ export function drawHallStatic(ctx: CanvasRenderingContext2D, model: HallModel, 
   ctx.fillRect(0, 0, W, H);
 
   const L = computeLayout(model.cols, model.rows, model.gxMin, model.gyMin, W, H);
-  // Fans are frozen in the cached layer (a tiny detail); the room itself is static.
-  drawRoom(ctx, L, model.era, H, 0, true, model.coolingUnits);
+  // Housings only — the spinning blades live in the dynamic layer (QW2) so the
+  // fans actually turn while the room shell stays cached.
+  drawRoom(ctx, L, model.era, H, model.coolingUnits);
   drawFloor(ctx, L, model.era);
   drawPartitions(ctx, L, model);
 }
@@ -288,6 +289,9 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
   // between runs once you've shipped something, instead of going dead.
   const lively = model.active || model.busy;
   drawMotes(ctx, W, H, originY, o.timeMs, lively, model.total, o.reducedMotion, 0.6);
+
+  // Fan blades spin over the cached housings (the walls sit behind the racks).
+  drawCoolingFans(ctx, L, H, model.coolingUnits, o.timeMs, o.reducedMotion);
 
   // Place racks in orderly rows, back-to-front (valid iso paint order). Tile order
   // comes from the shared rackTileOrder helper (also used for hit-testing) so the
@@ -438,7 +442,7 @@ function fmtShort(n: number): string {
   return `$${Math.round(n)}`;
 }
 
-function drawRoom(ctx: CanvasRenderingContext2D, L: Layout, era: number, H: number, t: number, reducedMotion: boolean, units: number): void {
+function drawRoom(ctx: CanvasRenderingContext2D, L: Layout, era: number, H: number, units: number): void {
   const { iso, gxMin, gyMin, gxMax, gyMax } = L;
   const a = iso(gxMin, gyMin), b = iso(gxMax, gyMin), d = iso(gxMin, gyMax);
   const base = eraFloor(era);
@@ -462,21 +466,36 @@ function drawRoom(ctx: CanvasRenderingContext2D, L: Layout, era: number, H: numb
   poly(ctx, [ga, gb, { x: gb.x, y: gb.y + wallH * 0.5 }, { x: ga.x, y: ga.y + wallH * 0.5 }], bloom);
   poly(ctx, [ga, gd, { x: gd.x, y: gd.y + wallH * 0.5 }, { x: ga.x, y: ga.y + wallH * 0.5 }], bloom);
 
+  for (const u of coolingUnitGeometry(L, H, units)) drawCoolingUnit(ctx, u.topL, u.topR, u.h);
+}
+
+/**
+ * Shared cooling-unit placement. The housings are painted into the cached
+ * static layer; the spinning blades redraw every frame in the dynamic layer —
+ * both read THIS geometry so they can never drift apart.
+ */
+function coolingUnitGeometry(L: Layout, H: number, units: number): { topL: Pt; topR: Pt; h: number }[] {
+  const { iso, gxMin, gyMin, gxMax, gyMax } = L;
+  const a = iso(gxMin, gyMin), b = iso(gxMax, gyMin), d = iso(gxMin, gyMax);
+  const wallH = H * 0.22;
   const wallPt = (p0: Pt, p1: Pt, u: number, v: number): Pt => {
     const bp = lerp(p0, p1, u);
     return { x: bp.x, y: bp.y - v * wallH };
   };
+  const out: { topL: Pt; topR: Pt; h: number }[] = [];
   for (const [p0, p1] of [[a, b] as const, [a, d] as const]) {
     for (let k = 0; k < units; k++) {
       // Evenly space within the open (0,1) interval so the last unit never runs
       // off the wall edge (3 units → 0.25 / 0.5 / 0.75).
       const u = (k + 1) / (units + 1);
-      drawCoolingUnit(ctx, wallPt(p0, p1, u - 0.06, 0.66), wallPt(p0, p1, u + 0.06, 0.66), wallH * 0.3, t, reducedMotion);
+      out.push({ topL: wallPt(p0, p1, u - 0.06, 0.66), topR: wallPt(p0, p1, u + 0.06, 0.66), h: wallH * 0.3 });
     }
   }
+  return out;
 }
 
-function drawCoolingUnit(ctx: CanvasRenderingContext2D, topL: Pt, topR: Pt, h: number, t: number, reducedMotion: boolean): void {
+/** Housing + ring + status LED only — blades are dynamic (drawCoolingFans). */
+function drawCoolingUnit(ctx: CanvasRenderingContext2D, topL: Pt, topR: Pt, h: number): void {
   const bl: Pt = { x: topL.x, y: topL.y + h };
   const br: Pt = { x: topR.x, y: topR.y + h };
   const g = ctx.createLinearGradient(0, topL.y, 0, bl.y);
@@ -490,20 +509,30 @@ function drawCoolingUnit(ctx: CanvasRenderingContext2D, topL: Pt, topR: Pt, h: n
   ctx.strokeStyle = "rgba(255,255,255,0.25)";
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
-  const rot = reducedMotion ? 0 : (t / 240) % (Math.PI * 2);
-  ctx.strokeStyle = "rgba(180,210,255,0.55)";
-  ctx.lineWidth = Math.max(1, r * 0.18);
-  for (let i = 0; i < 3; i++) {
-    const ang = rot + (i * Math.PI * 2) / 3;
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.lineTo(cx + Math.cos(ang) * r * 0.82, cy + Math.sin(ang) * r * 0.82);
-    ctx.stroke();
-  }
   ctx.fillStyle = "rgba(120,255,180,0.85)";
   ctx.beginPath();
   ctx.arc(topL.x + (br.x - topL.x) * 0.16, topL.y + h * 0.22, Math.max(0.8, r * 0.12), 0, Math.PI * 2);
   ctx.fill();
+}
+
+/** The spinning fan blades — redrawn per frame over the cached housings (QW2).
+ *  Reduced motion keeps a still blade set so the units still read as fans. */
+function drawCoolingFans(ctx: CanvasRenderingContext2D, L: Layout, H: number, units: number, t: number, reducedMotion: boolean): void {
+  const rot = reducedMotion ? 0 : (t / 240) % (Math.PI * 2);
+  for (const u of coolingUnitGeometry(L, H, units)) {
+    const br: Pt = { x: u.topR.x, y: u.topR.y + u.h };
+    const cx = (u.topL.x + br.x) / 2, cy = (u.topL.y + br.y) / 2;
+    const r = Math.min(Math.abs(u.topR.x - u.topL.x), u.h) * 0.32;
+    ctx.strokeStyle = "rgba(180,210,255,0.55)";
+    ctx.lineWidth = Math.max(1, r * 0.18);
+    for (let i = 0; i < 3; i++) {
+      const ang = rot + (i * Math.PI * 2) / 3;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(ang) * r * 0.82, cy + Math.sin(ang) * r * 0.82);
+      ctx.stroke();
+    }
+  }
 }
 
 function drawFloor(ctx: CanvasRenderingContext2D, L: Layout, era: number): void {
