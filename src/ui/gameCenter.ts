@@ -37,22 +37,29 @@ interface GameConnectPlugin {
 const plugin = registerPlugin<GameConnectPlugin>("GameConnect");
 
 let signedIn = false;
+let declined = false;
+let signInFlight: Promise<boolean> | null = null;
 
 /** True only in a native shell that actually carries the plugin. */
 export function gameCenterAvailable(): boolean {
   return Capacitor.isNativePlatform() && Capacitor.isPluginAvailable("GameConnect");
 }
 
-/** Sign in once per session; safe to call opportunistically. */
-export async function gameCenterSignIn(): Promise<boolean> {
-  if (!gameCenterAvailable() || signedIn) return signedIn;
-  try {
-    await plugin.signIn();
-    signedIn = true;
-  } catch {
-    signedIn = false; // player declined / parental controls — stay silent
+/** Sign in once per session; safe to call opportunistically. Concurrent calls
+ *  share one in-flight attempt (a prestige fires score submits + achievement
+ *  mirrors back-to-back — the player must never see two GC prompts), and a
+ *  decline is remembered for the session so we don't nag. */
+export function gameCenterSignIn(): Promise<boolean> {
+  if (!gameCenterAvailable() || declined) return Promise.resolve(false);
+  if (signedIn) return Promise.resolve(true);
+  if (!signInFlight) {
+    signInFlight = plugin
+      .signIn()
+      .then(() => { signedIn = true; return true; })
+      .catch(() => { declined = true; return false; }) // declined / parental controls — stay silent
+      .finally(() => { signInFlight = null; });
   }
-  return signedIn;
+  return signInFlight;
 }
 
 /** Push the two career scores. Call after a ship/ascension; no-op otherwise. */

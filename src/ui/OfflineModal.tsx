@@ -56,6 +56,8 @@ export function OfflineModal({ summary, onClose }: Props) {
     .map((id) => achievementDefs.find((d) => d.id === id))
     .filter((d): d is NonNullable<typeof d> => !!d);
   const repEarned = summary.reputationEarned ?? 0;
+  // Compute the story lines once per render (length check + list share them).
+  const story = summary.story ? storyLines(summary.story) : [];
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -80,9 +82,9 @@ export function OfflineModal({ summary, onClose }: Props) {
           })}
         </div>
         {/* The story since last open (IMPROVEMENTS #16) — events, not numbers. */}
-        {summary.story && storyLines(summary.story).length > 0 && (
+        {story.length > 0 && (
           <div className="wiwa-story">
-            {storyLines(summary.story).map((line, i) => <p key={i}>{line}</p>)}
+            {story.map((line, i) => <p key={i}>{line}</p>)}
           </div>
         )}
         {(unlocked.length > 0 || repEarned > 0) && (

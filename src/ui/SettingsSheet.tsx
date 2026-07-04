@@ -23,10 +23,12 @@ function fmtDur(sec: number): string {
   return `${m}m${String(s % 60).padStart(2, "0")}s`;
 }
 
-/** Hours-scale playtime for the backup preview ("14h 22m", "35m"). */
+/** Hours-scale playtime for the backup preview ("14h 22m", "35m"). Rounds to
+ *  whole minutes FIRST so 3599s carries to "1h 0m", never "60m". */
 function fmtPlaytime(sec: number): string {
-  const h = Math.floor(sec / 3600);
-  const m = Math.round((sec % 3600) / 60);
+  const totalMin = Math.round(sec / 60);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 

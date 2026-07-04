@@ -37,12 +37,17 @@ const COLORS = ["#ff385c", "#2f7bf6", "#9b51e0", "#16b364", "#ff9f0a"];
 export function Celebration({ weightsGained, totalWeights, report, onDone }: Props) {
   // Sharing pauses the auto-dismiss: the OS share sheet must never race the
   // card unmounting underneath it. Once held, dismissal is manual only.
+  // The timer is armed exactly ONCE (mount) and calls through a ref: App
+  // re-renders at 10Hz with a fresh onDone identity, so an [onDone] dep would
+  // silently re-arm the timeout every render — and un-pause it after a share.
   const timer = useRef<number | null>(null);
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
   const [shareNote, setShareNote] = useState<string | null>(null);
   useEffect(() => {
-    timer.current = window.setTimeout(onDone, 4200);
+    timer.current = window.setTimeout(() => onDoneRef.current(), 4200);
     return () => { if (timer.current !== null) window.clearTimeout(timer.current); };
-  }, [onDone]);
+  }, []);
 
   const onShare = async (e: React.MouseEvent) => {
     e.stopPropagation(); // the backdrop tap dismisses — sharing must not

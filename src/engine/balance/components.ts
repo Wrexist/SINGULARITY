@@ -86,5 +86,5 @@ export const components = {
     { id: "trophy_benchmark", name: "Binned Golden Sample", desc: "One in a thousand. The bin was deep.", class: "accelerator", grade: "prototype", cost: 0, revealAtRacks: 0, value: 1.3, earnedBy: { kind: "achievement", id: "compute_1m", label: "Reach 1M Compute/sec" } },
     { id: "trophy_lansweeper", name: "Conference Swag Switch", desc: "Free with every keynote badge. Somehow excellent.", class: "interconnect", grade: "enterprise", cost: 0, revealAtRacks: 0, value: 0.35, earnedBy: { kind: "contract", id: "megacluster", label: "Reach 1M Compute/sec (contract)" } },
     { id: "trophy_cryo3", name: "Cryo Loop Mk III", desc: "Runs so cold it voids thermodynamics' warranty.", class: "cooling", grade: "prototype", cost: 0, revealAtRacks: 0, value: 0.5, earnedBy: { kind: "contract", id: "ascended", label: "Ascend in the Post-Singularity era" } },
-  ] as ComponentDef[],
+  ] satisfies ComponentDef[],
 };

@@ -69,3 +69,10 @@ describe("Big.formatScientific (endgame notation setting)", () => {
     expect(Big.of(Number.NaN).formatScientific()).toBe("0");
   });
 });
+
+describe("formatScientific rounding boundary", () => {
+  it("carries into the next exponent instead of rendering '10.00eN'", () => {
+    expect(Big.of("9.996e42").formatScientific()).toBe("1.00e43");
+    expect(Big.of(9995).formatScientific()).toBe("1.00e4");
+  });
+});

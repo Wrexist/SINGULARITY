@@ -90,6 +90,9 @@ export function canBuyComponent(state: GameState, id: string): boolean {
   if (!def || !componentsUnlocked(state)) return false;
   if (def.earnedBy) return false; // trophies are earned, never sold
   if (totalRacks(state) < def.revealAtRacks) return false;
+  // The save-load clamp caps owned at maxCopies — enforce the same cap here so
+  // a copy (and its price) bought past the cap can't silently vanish on reload.
+  if ((state.components.owned[id] ?? 0) >= C.maxCopies) return false;
   return state.resources.money.gte(def.cost);
 }
 
@@ -105,6 +108,8 @@ export function freeCopies(state: GameState, id: string): number {
 export function canFuse(state: GameState, id: string): boolean {
   const def = BY_ID.get(id);
   if (!def?.fusesInto || !BY_ID.has(def.fusesInto)) return false;
+  // Same reload-clamp rule as buying: never fuse into a stack already at cap.
+  if ((state.components.owned[def.fusesInto] ?? 0) >= C.maxCopies) return false;
   return freeCopies(state, id) >= C.fuseCount;
 }
 

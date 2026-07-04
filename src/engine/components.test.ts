@@ -287,3 +287,17 @@ describe("Rig Bay — fusion (C3)", () => {
     expect(fuseComponents(s, "acc_refurb")).toBe(s);
   });
 });
+
+describe("Rig Bay — maxCopies cap (reload-clamp parity)", () => {
+  it("blocks buying and fusing past componentsBalance.maxCopies", () => {
+    const s = richLab();
+    s.components.owned.acc_refurb = componentsBalance.maxCopies;
+    expect(canBuyComponent(s, "acc_refurb")).toBe(false); // stack full
+    // Fusion into a full target stack is blocked too.
+    const t = richLab();
+    t.components.owned.acc_refurb = 3;
+    t.components.owned.acc_blower = componentsBalance.maxCopies;
+    expect(canFuse(t, "acc_refurb")).toBe(false);
+    expect(fuseComponents(t, "acc_refurb")).toBe(t); // same-ref no-op
+  });
+});
