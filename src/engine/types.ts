@@ -43,6 +43,9 @@ export interface ActiveModifier {
   remainingSec: number;
   label: string;
   tone: "good" | "bad";
+  /** IDEAS #5 — set once the player has "worked the problem" (tapped the
+   *  incident in the hall for its one bounded time-shave). */
+  worked?: boolean;
 }
 
 export interface GameState {
@@ -122,6 +125,39 @@ export interface GameState {
   /** Snapshot of the just-finished run's peaks, captured by prestige() before the
    *  reset so the post-reset UI can show an accurate Generation Report. Transient. */
   lastShipReport: { peakCompute: Big; peakMrr: number } | null;
+  /** IDEAS #6 — the Legacy Wall: one small record per shipped generation (how it
+   *  shipped, the era it reached, whether it ascended). Persists across prestige —
+   *  it IS the prestige history — capped (balance.prestige.shipLogCap) so a
+   *  hundred-generation save stays tiny. The hall renders the latest few as
+   *  trophy plinths along the back wall. */
+  shipLog: ShipLogEntry[];
+  /** IDEAS #9 — today's rolled sponsor contract (post-ladder daily objective),
+   *  or null. Target is ANCHORED at roll time (a moving current-stat target
+   *  would never be beatable). dayKey = local days-since-epoch; completion is
+   *  recorded in contracts.completed as `sponsor_<dayKey>`. Persists across
+   *  prestige (metrics are lifetime stats). */
+  sponsor: SponsorContract | null;
+  /** IDEAS #10 — frontier preprints published THIS run (post-tree repeatable
+   *  research). Hard-capped (balance.preprints.maxPerRun); resets on prestige
+   *  like the research tree it extends. */
+  preprints: number;
+}
+
+/** A rolled daily sponsor objective (IDEAS #9). */
+export interface SponsorContract {
+  dayKey: number;
+  metric: string;
+  target: number;
+  rep: number;
+  title: string;
+  desc: string;
+}
+
+/** One shipped generation, remembered for the Legacy Wall. */
+export interface ShipLogEntry {
+  mode: string;
+  era: number;
+  asc: boolean;
 }
 
 /**

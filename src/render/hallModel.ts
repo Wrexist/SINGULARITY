@@ -4,6 +4,11 @@ import type { GameState } from "../engine/types";
 import { currentEra } from "../engine/eras";
 import { powerStats } from "../engine/power";
 import { productMetrics } from "../engine/products";
+import { componentsUnlocked, componentDef, SLOTS_BY_TIER } from "../engine/components";
+import type { SlotClass } from "../engine/balance/components";
+import { regulatorState, regulatorIsNamed } from "../engine/regulator";
+import { marketLeaderboard } from "../engine/market";
+import { charters } from "../engine/balance/charters";
 import { RACK_IDS, hallDims, hallCapacity, hallRoomSplit, type Dir } from "../engine/hall";
 
 export { hallDims, hallExpansion, type Dir } from "../engine/hall";
@@ -20,6 +25,28 @@ export interface HallRack {
   tier: number;
   /** 0..1 — how packed the room reads (height/glow). */
   density: number;
+}
+
+/** Bare Metal (Rig Bay manifestation): one entry per component bay on a tier's
+ *  racks. grade 0 = an EMPTY open socket (the rack reads unfinished); 1..3 =
+ *  standard/enterprise/prototype — the fitted part's visible flair. */
+export interface RigSlotView {
+  cls: SlotClass;
+  grade: number;
+}
+
+/** Staff identity (IDEAS #7): each floor agent IS a real employee. index into
+ *  game.employees matches (first 14), so a tap can open that person's card. */
+export interface AgentView {
+  name: string;
+  role: string;
+  team: "infra" | "product";
+  trait: string | null;
+  level: number;
+  /** The 10× hire — gets a golden body + sparkle on the floor. */
+  tenx: boolean;
+  /** Index of the product beam this person is assigned to, or null (roams). */
+  beam: number | null;
 }
 
 /** A buyable expansion affordance shown on one side of the floor. */
@@ -70,6 +97,77 @@ export interface HallModel {
   beams: number[];
   /** C2 — faction alignment (−1 doomer … +1 accel) → a subtle room colour tint. */
   alignment: number;
+  /** Bare Metal — per-tier component bays (index = rack tier), or null while the
+   *  Rig Bay is still locked (pre-unlock racks draw with no bays at all, so the
+   *  reveal moment is also a visual change in the room). */
+  rigs: RigSlotView[][] | null;
+  /** IDEAS #7 — the floor agents as real people (first 14 employees, in order). */
+  agents: AgentView[];
+  /** IDEAS #2 — Supervisor Chen patrols once scrutiny is a named, personal
+   *  presence (regulator tier ≥ nameFromTier). Null = clean lab, no inspector. */
+  regulator: { name: string; label: string; blurb: string } | null;
+  /** IDEAS #3 — unmarked black crates by the entrance while regulatory Heat is
+   *  up (0..6): the dark-web supply chain, physically lingering until you cool
+   *  off. Refreshed per frame by HallCanvas (heat moves every tick), like
+   *  marker affordability. */
+  heatCrates: number;
+  /** IDEAS #8 — the run's chosen charter, hung as a banner on the back wall. */
+  charter: { id: string; name: string } | null;
+  /** IDEAS #4 — rival datacenters on the horizon, tallest = market leader.
+   *  Empty pre-first-ship (the market doesn't know you exist yet). */
+  skyline: SkylineTower[];
+  /** IDEAS #6 — the Legacy Wall: latest shipped generations as trophy plinths. */
+  wall: { era: number; asc: boolean }[];
+  /** IDEAS #5 — incident theater: each BAD timed modifier manifests on a
+   *  deterministic rack (smoke + warn blink). Tapping it once "works the
+   *  problem" (bounded time-shave); worked incidents keep smoking, smaller. */
+  incidents: IncidentView[];
+  /** IDEAS #5 — good-tone modifiers draw a small crowd of onlookers at the
+   *  front lip (hype made visible). Count of extra figures, capped. */
+  crowd: number;
+}
+
+export interface IncidentView {
+  id: string;
+  rackIndex: number;
+  worked: boolean;
+}
+
+/** Small deterministic string hash (incident → rack placement). */
+function hashStr(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+/** One horizon silhouette: h 0..1 (share of the market leader), dim = press-blitzed. */
+export interface SkylineTower {
+  h: number;
+  dim: boolean;
+  you: boolean;
+}
+
+/** The horizon race (IDEAS #4): rivals as datacenter silhouettes, your own tower
+ *  rising among them. Pure; gated on having shipped (pre-ship the market UI is
+ *  hidden too, so the room stays quiet until the race exists). */
+export function buildSkyline(game: GameState): SkylineTower[] {
+  if (game.prestige.ships === 0) return [];
+  const board = marketLeaderboard(game);
+  const max = board.reduce((m, e) => Math.max(m, e.users), 1);
+  const rivals = board.filter((e) => !e.isYou);
+  const you = board.filter((e) => e.isYou).reduce((m, e) => Math.max(m, e.users), 0);
+  const towers: SkylineTower[] = rivals.map((r) => ({
+    h: Math.max(0.15, r.users / max),
+    dim: (game.rivalOps.strikes[r.name] ?? 0) > 0,
+    you: false,
+  }));
+  if (you > 0) towers.splice(Math.floor(towers.length / 2), 0, { h: Math.max(0.12, you / max), dim: false, you: true });
+  return towers;
+}
+
+/** Heat (0..100) → how many unmarked crates sit by the entrance. */
+export function heatCrateCount(heat: number): number {
+  return Math.max(0, Math.min(6, Math.floor(heat / 16)));
 }
 
 /** Power/cooling infrastructure ids (drive the visible wall units). Exported so
@@ -85,6 +183,20 @@ const SIDE_DEFS: { dir: Dir; id: string }[] = [
 ];
 
 const upgById = (id: string) => balance.upgrades.find((u) => u.id === id)!;
+
+const GRADE_IDX: Record<string, number> = { standard: 1, enterprise: 2, prototype: 3 };
+
+/** The per-tier bay view: which slots exist, what grade sits in each (0 = empty). */
+function rigViews(game: GameState): RigSlotView[][] | null {
+  if (!componentsUnlocked(game)) return null;
+  return SLOTS_BY_TIER.map((slots, tier) =>
+    slots.map((cls) => {
+      const id = game.components.loadout[tier]?.[cls];
+      const def = id ? componentDef(id) : undefined;
+      return { cls, grade: def ? (GRADE_IDX[def.grade] ?? 1) : 0 };
+    }),
+  );
+}
 
 function sideMarkers(game: GameState): SideMarker[] {
   return SIDE_DEFS.map(({ dir, id }) => {
@@ -118,6 +230,21 @@ export function buildHallModel(game: GameState): HallModel {
   // Staff on the floor + product "uplink beams" sized by revenue (normalised to the
   // top earner so the biggest product is the tallest beam). Pure reads of state.
   const staff = game.employees.length;
+  const roleById = new Map(balance.staff.roles.map((r) => [r.id, r]));
+  const beamIndexByProduct = new Map(game.products.active.map((p, i) => [p.id, i]));
+  const agents: AgentView[] = game.employees.slice(0, 14).map((e) => {
+    const role = roleById.get(e.roleId);
+    return {
+      name: e.name,
+      role: role?.name ?? e.roleId,
+      team: role?.team ?? "infra",
+      trait: e.trait,
+      level: e.level,
+      tenx: e.trait === "tenx",
+      beam: e.assignedProductId !== null ? (beamIndexByProduct.get(e.assignedProductId) ?? null) : null,
+    };
+  });
+  const reg = regulatorState(game);
   const mrrs = game.products.active.map((p) => Math.max(0, productMetrics(p, game.products.frontier).mrr));
   const maxMrr = mrrs.reduce((m, v) => Math.max(m, v), 0) || 1;
   const beams = mrrs.map((m) => Math.max(0.18, Math.min(1, m / maxMrr)));
@@ -179,6 +306,23 @@ export function buildHallModel(game: GameState): HallModel {
     staff,
     beams,
     alignment: game.alignment,
+    rigs: rigViews(game),
+    agents,
+    regulator: regulatorIsNamed(game) ? { name: reg.name, label: reg.label, blurb: reg.blurb } : null,
+    heatCrates: heatCrateCount(game.heat),
+    charter: (() => {
+      const def = game.charter ? charters.list.find((c) => c.id === game.charter) : undefined;
+      return def ? { id: def.id, name: def.name } : null;
+    })(),
+    skyline: buildSkyline(game),
+    wall: game.shipLog.slice(-8).map((e) => ({ era: e.era, asc: e.asc })),
+    incidents:
+      racks.length > 0
+        ? game.modifiers
+            .filter((m) => m.tone === "bad" && m.remainingSec > 0)
+            .map((m) => ({ id: m.id, rackIndex: hashStr(m.id) % racks.length, worked: m.worked === true }))
+        : [],
+    crowd: Math.min(6, game.modifiers.filter((m) => m.tone === "good" && m.remainingSec > 0).length * 2),
     ...hallRoomSplit(game),
   };
 }

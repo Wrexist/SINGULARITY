@@ -3,6 +3,7 @@ import type { Big } from "../engine/math/Big";
 import { fmt, m$ } from "./format";
 import { shipHeadline, runStory } from "./headlines";
 import { shareRunCard } from "./shareCard";
+import { useSettings } from "./settings";
 import { RocketIcon } from "./Icons";
 
 export interface ShipReport {
@@ -61,9 +62,11 @@ export function Celebration({ weightsGained, totalWeights, report, onDone }: Pro
   const headline = report ? shipHeadline(report) : "Model Shipped";
   const story = report ? runStory(report) : [];
 
+  const reducedMotion = useSettings((s) => s.reducedMotion);
+
   return (
     <div className="celebrate" onClick={onDone}>
-      <div className="confetti" aria-hidden="true">
+      {!reducedMotion && <div className="confetti" aria-hidden="true">
         {CONFETTI.map((_, i) => (
           <span
             key={i}
@@ -76,7 +79,7 @@ export function Celebration({ weightsGained, totalWeights, report, onDone }: Pro
             }}
           />
         ))}
-      </div>
+      </div>}
 
       <div className="celebrate-card">
         <div className="celebrate-rocket"><RocketIcon size={40} /></div>

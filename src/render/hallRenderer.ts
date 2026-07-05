@@ -1,4 +1,4 @@
-import type { HallModel, SideMarker } from "./hallModel";
+import type { HallModel, SideMarker, RigSlotView, AgentView, SkylineTower } from "./hallModel";
 
 /**
  * Pure Canvas 2D renderer for the 2.5D hall. No React, no image assets — every
@@ -19,12 +19,12 @@ export interface DrawOpts {
   /** Cosmetic rack skin id (R6.3) — recolours the rack bodies. Undefined/"classic"
    *  is identity, so the default render is byte-identical. */
   rackSkin?: string;
-  /** Rig Bay (C1): loadout fill 0..1 per rack tier — fitted tiers render subtly
-   *  brighter (upgrades physically manifest). Undefined/0 is identity. */
-  componentFill?: number[];
   /** Rack-tap micro-interaction: the tapped rack's index + a 1→0 decay, driving
    *  a brief LED flicker so the hall answers the touch. Undefined is identity. */
   tapFlash?: { index: number; t: number };
+  /** IDEAS #3 — a component purchase arriving: 1 just after the buy → 0. A pale
+   *  crate dollies in along the front edge and fades. Undefined/0 is identity. */
+  delivery?: number;
 }
 
 type Pt = { x: number; y: number };
@@ -80,6 +80,16 @@ const rgb = (c: RGB) => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
 const rgba = (c: RGB, a: number) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${clamp(a, 0, 1)})`;
 
 const tierBase = (tier: number): RGB => TIER_BASE[tier] ?? TIER_BASE[0]!;
+
+// Bare Metal grade flair — the fitted part's glow colour by grade
+// (1 standard = warm white · 2 enterprise = cyan · 3 prototype = violet).
+const GRADE_GLOW: RGB[] = [
+  [255, 228, 180],
+  [255, 228, 180],
+  [96, 224, 255],
+  [208, 144, 255],
+];
+const gradeGlow = (grade: number): RGB => GRADE_GLOW[clamp(grade, 1, 3)] ?? GRADE_GLOW[1]!;
 
 // --- Rack skins (R6.3): a pure HSL transform on the tier base colour. Applied to the
 // ONE base RGB each rack derives from (faces, LEDs, spill, rim all follow), so a skin
@@ -232,10 +242,145 @@ export function drawHallStatic(ctx: CanvasRenderingContext2D, model: HallModel, 
   ctx.fillRect(0, 0, W, H);
 
   const L = computeLayout(model.cols, model.rows, model.gxMin, model.gyMin, W, H);
-  // Fans are frozen in the cached layer (a tiny detail); the room itself is static.
-  drawRoom(ctx, L, model.era, H, 0, true, model.coolingUnits);
+  // IDEAS #4 — the race on the horizon, behind the room shell.
+  if (model.skyline.length > 0) drawSkyline(ctx, model.skyline, W, H, L);
+  // Housings only — the spinning blades live in the dynamic layer (QW2) so the
+  // fans actually turn while the room shell stays cached.
+  drawRoom(ctx, L, model.era, H, model.coolingUnits);
   drawFloor(ctx, L, model.era);
   drawPartitions(ctx, L, model);
+  // IDEAS #8/#6 — the run's charter hangs on the back-right wall; shipped
+  // generations stand as trophy plinths along the back-left one.
+  if (model.charter) drawCharterBanner(ctx, L, H, model.charter);
+  if (model.wall.length > 0) drawLegacyWall(ctx, L, H, model.wall);
+}
+
+/** IDEAS #4 — rival datacenter silhouettes on the horizon, height ∝ market
+ *  share of the leader. Your own tower (violet, beacon-tipped) rises among
+ *  them; a press-blitzed rival's windows go dark for the run. Static — the
+ *  cache key carries a coarse skyline signature. */
+function drawSkyline(ctx: CanvasRenderingContext2D, towers: SkylineTower[], W: number, H: number, L: Layout): void {
+  const n = towers.length;
+  // Rest the towers on the horizon: the top line of the back walls.
+  const baseY = Math.max(H * 0.1, L.iso(L.gxMin, L.gyMin).y - H * 0.22 + 2);
+  const maxH = Math.min(H * 0.17, baseY - 6);
+  ctx.save();
+  for (let i = 0; i < n; i++) {
+    const tw = towers[i]!;
+    const cx = W * (0.14 + (0.72 * (i + 0.5)) / n);
+    const w = W * 0.052;
+    const h = Math.max(6, maxH * tw.h);
+    const body: RGB = tw.you ? [110, 84, 190] : [52, 58, 84];
+    ctx.fillStyle = rgba(body, tw.dim ? 0.55 : 0.9);
+    ctx.fillRect(cx - w / 2, baseY - h, w, h);
+    // Rooftop detail: a beacon for you, an antenna stub for rivals.
+    if (tw.you) {
+      ctx.fillStyle = "rgba(190,150,255,0.95)";
+      ctx.beginPath();
+      ctx.arc(cx, baseY - h - 3, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.strokeStyle = rgba(body, 0.9);
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(cx, baseY - h); ctx.lineTo(cx, baseY - h - 4); ctx.stroke();
+    }
+    // Lit windows — blitzed rivals go dark (the comms team is sweating).
+    if (!tw.dim) {
+      ctx.fillStyle = tw.you ? "rgba(220,190,255,0.8)" : "rgba(150,190,255,0.55)";
+      const rows = Math.max(1, Math.floor(h / 7));
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < 2; c++) {
+          if (((i * 7 + r * 3 + c) % 5) < 2) continue; // deterministic sparse lights
+          ctx.fillRect(cx - w * 0.28 + c * w * 0.4, baseY - h + 3 + r * 7, Math.max(1, w * 0.14), 2);
+        }
+      }
+    }
+  }
+  ctx.restore();
+}
+
+// IDEAS #8 — per-charter banner colours (flair only; unknown ids get slate).
+const CHARTER_COLORS: Record<string, RGB> = {
+  open_source: [90, 200, 140],
+  bootstrapped: [240, 190, 90],
+  moonshot: [140, 150, 255],
+  data_monopoly: [170, 120, 255],
+  cash_machine: [110, 220, 140],
+  mad_science: [255, 120, 160],
+  frugal_genius: [120, 210, 220],
+};
+
+/** IDEAS #8 — the run's charter as a hanging banner on the back-right wall:
+ *  the generation's identity, visible every time you look at the room. */
+function drawCharterBanner(ctx: CanvasRenderingContext2D, L: Layout, H: number, charter: { id: string; name: string }): void {
+  const { iso, gxMin, gyMin, gxMax } = L;
+  const a = iso(gxMin, gyMin), b = iso(gxMax, gyMin);
+  const wallH = H * 0.22;
+  const col = CHARTER_COLORS[charter.id] ?? [150, 160, 180];
+  // Hang on the back-right wall at ~72% along, from just under the ceiling.
+  const u = 0.72, w = 0.09;
+  const p0 = lerp(a, b, u - w), p1 = lerp(a, b, u + w);
+  const top = -0.92 * wallH, bot = -0.45 * wallH;
+  const quad: Pt[] = [
+    { x: p0.x, y: p0.y + top }, { x: p1.x, y: p1.y + top },
+    { x: p1.x, y: p1.y + bot }, { x: p0.x, y: p0.y + bot },
+  ];
+  const g = ctx.createLinearGradient(0, p0.y + top, 0, p0.y + bot);
+  g.addColorStop(0, rgba(col, 0.85));
+  g.addColorStop(1, rgba(shade(col, 0.6), 0.7));
+  poly(ctx, quad, g);
+  // A notched banner tail + hanging rod.
+  const mid = lerp({ x: p0.x, y: p0.y + bot }, { x: p1.x, y: p1.y + bot }, 0.5);
+  poly(ctx, [quad[3]!, quad[2]!, { x: mid.x, y: mid.y + wallH * 0.08 }], rgba(shade(col, 0.55), 0.7));
+  stroke(ctx, { x: p0.x - 2, y: p0.y + top }, { x: p1.x + 2, y: p1.y + top }, "rgba(255,255,255,0.35)", 1.5);
+  // Monogram: the charter's initial.
+  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.font = `700 ${Math.max(8, wallH * 0.16)}px -apple-system, system-ui, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.fillText(charter.name.charAt(0).toUpperCase(), mid.x, mid.y - wallH * 0.16);
+}
+
+/** IDEAS #6 — the Legacy Wall: each shipped generation stands as a small plinth
+ *  with a glowing model-core, era-tinted (ascension gens get a gold ring). The
+ *  reset visibly ADDS to the room — prestige leaves a permanent trace. */
+function drawLegacyWall(ctx: CanvasRenderingContext2D, L: Layout, H: number, wall: { era: number; asc: boolean }[]): void {
+  const { iso, gxMin, gyMin, gyMax } = L;
+  const wallH = H * 0.22;
+  ctx.save();
+  for (let i = 0; i < wall.length; i++) {
+    const e = wall[i]!;
+    // Mounted UP on the back-left wall, anchored from the FRONT (left-corner)
+    // end so the newest trophies sit in the clear lower-left stretch — the top
+    // corner end is covered by the hall-tag overlay on phones (QA finding).
+    const step = (gyMax - gyMin - 1) / 9;
+    const base = iso(gxMin, gyMax - 0.6 - i * step);
+    const p: Pt = { x: base.x, y: base.y - wallH * 0.52 };
+    const s = Math.max(3.2, L.tileW * 0.16);
+    const eraCol = eraFloor(e.era);
+    // Shelf bracket + plinth block.
+    stroke(ctx, { x: p.x - s * 0.7, y: p.y + s * 0.55 }, { x: p.x + s * 0.7, y: p.y + s * 0.55 }, "rgba(255,255,255,0.25)", 1);
+    ctx.fillStyle = rgb(shade(eraCol, 1.35));
+    ctx.fillRect(p.x - s * 0.42, p.y - s * 0.55, s * 0.84, s * 1.1);
+    ctx.fillStyle = rgb(shade(eraCol, 1.7));
+    ctx.fillRect(p.x - s * 0.42, p.y - s * 0.55, s * 0.84, s * 0.2);
+    // The model-core hologram above the plinth.
+    const cy = p.y - s * 1.2;
+    const glow = ctx.createRadialGradient(p.x, cy, 0, p.x, cy, s * 0.95);
+    glow.addColorStop(0, rgba(shade(eraCol, 2.6), 0.95));
+    glow.addColorStop(1, rgba(eraCol, 0));
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(p.x, cy, s * 0.95, 0, Math.PI * 2);
+    ctx.fill();
+    if (e.asc) {
+      ctx.strokeStyle = "rgba(255,214,10,0.9)";
+      ctx.lineWidth = Math.max(1, s * 0.14);
+      ctx.beginPath();
+      ctx.arc(p.x, cy, s * 0.55, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
 }
 
 /**
@@ -289,6 +434,15 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
   const lively = model.active || model.busy;
   drawMotes(ctx, W, H, originY, o.timeMs, lively, model.total, o.reducedMotion, 0.6);
 
+  // Fan blades spin over the cached housings (the walls sit behind the racks).
+  drawCoolingFans(ctx, L, H, model.coolingUnits, o.timeMs, o.reducedMotion);
+
+  // IDEAS #3 — the loading dock: unmarked crates linger by the entrance while
+  // regulatory Heat is up (the dark-web supply chain, visibly not-cleaned-up),
+  // and a fresh component purchase dollies in as a pale crate.
+  if (model.heatCrates > 0) drawHeatCrates(ctx, L, model.heatCrates, o.timeMs, o.reducedMotion);
+  if (o.delivery && o.delivery > 0 && !o.reducedMotion) drawDelivery(ctx, L, o.delivery);
+
   // Place racks in orderly rows, back-to-front (valid iso paint order). Tile order
   // comes from the shared rackTileOrder helper (also used for hit-testing) so the
   // boxes drawn here and the tap targets can never drift apart.
@@ -316,9 +470,10 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
           : 0;
     // Overclock manifests as a hotter rack: lift the work-pulse (which already
     // drives rim/LED glow) so the upgrade you bought is visible in the room.
-    // Rig Bay components manifest the same way: a fitted tier's racks pulse a
-    // touch brighter — the parts you slotted are visible in the room.
-    const fill = o.componentFill?.[rack.tier] ?? 0;
+    // Rig Bay components manifest as real geometry (Bare Metal, below) plus a
+    // touch of extra pulse for a fully-fitted tier.
+    const rig = model.rigs?.[rack.tier] ?? null;
+    const fill = rig && rig.length > 0 ? rig.filter((s) => s.grade > 0).length / rig.length : 0;
     let workPulse = Math.min(1.2, basePulse + model.overclock * 0.45 + fill * 0.3);
     let blinkNow = blink;
     // Tap answer: the touched rack flickers its LEDs hard for a beat (pure
@@ -328,8 +483,19 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
       blinkNow = Math.max(blinkNow, tf * (0.65 + 0.35 * Math.sin(t / 38)));
       workPulse = Math.min(1.4, workPulse + tf * 0.8);
     }
-    drawRack(ctx, c.x, c.y, tileW, tileH, rack.tier, rack.density, scale, blinkNow, workPulse, model.active, powerOn, o.rackSkin);
+    drawRack(ctx, c.x, c.y, tileW, tileH, rack.tier, rack.density, scale, blinkNow, workPulse, model.active, powerOn, o.rackSkin, rig, t, o.reducedMotion);
   }
+
+  // IDEAS #5 — incident theater: bad events smoke on a specific rack (tap it to
+  // work the problem); good events draw a small crowd of onlookers out front.
+  for (const inc of model.incidents) {
+    const c = tiles[inc.rackIndex];
+    const rack = model.racks[inc.rackIndex];
+    if (!c || !rack) continue;
+    const ph = tileH * (1.1 + rack.tier * 0.5) * (0.72 + 0.28 * rack.density);
+    drawIncident(ctx, c.x, c.y - ph, tileW, o.timeMs, inc.worked, o.reducedMotion);
+  }
+  if (model.crowd > 0) drawCrowd(ctx, L, model.crowd, o.timeMs, o.reducedMotion);
 
   // C2 — thermal stress: as power draw approaches/exceeds capacity the racks run hot.
   // A red bloom (+ rising heat-haze bands when motion is on) washes the rack band so
@@ -343,8 +509,12 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
   // back of the floor, height ∝ revenue. Drawn before staff so agents read in front.
   if (model.beams.length > 0) drawBeams(ctx, L, model.beams, o.timeMs, o.reducedMotion);
 
-  // C2 — staff on the floor: little agents working the room (headcount made visible).
-  if (model.staff > 0) drawStaffAgents(ctx, L, model.staff, o.timeMs, o.reducedMotion);
+  // C2/#7 — staff on the floor: real employees working the room (tap for their card).
+  if (model.agents.length > 0) drawStaffAgents(ctx, model.agents, agentSpots(model, W, H, o.timeMs, o.reducedMotion), o.timeMs, o.reducedMotion);
+
+  // IDEAS #2 — the inspector patrols once scrutiny has a name on it.
+  const chen = chenSpot(model, W, H, o.timeMs, o.reducedMotion);
+  if (chen) drawChen(ctx, chen, o.timeMs, o.reducedMotion);
 
   // C2 — faction tint: a faint room-wide wash by alignment (doomer cool, accel warm).
   if (Math.abs(model.alignment) > 0.15) drawAlignmentTint(ctx, W, H, model.alignment);
@@ -438,7 +608,7 @@ function fmtShort(n: number): string {
   return `$${Math.round(n)}`;
 }
 
-function drawRoom(ctx: CanvasRenderingContext2D, L: Layout, era: number, H: number, t: number, reducedMotion: boolean, units: number): void {
+function drawRoom(ctx: CanvasRenderingContext2D, L: Layout, era: number, H: number, units: number): void {
   const { iso, gxMin, gyMin, gxMax, gyMax } = L;
   const a = iso(gxMin, gyMin), b = iso(gxMax, gyMin), d = iso(gxMin, gyMax);
   const base = eraFloor(era);
@@ -462,21 +632,36 @@ function drawRoom(ctx: CanvasRenderingContext2D, L: Layout, era: number, H: numb
   poly(ctx, [ga, gb, { x: gb.x, y: gb.y + wallH * 0.5 }, { x: ga.x, y: ga.y + wallH * 0.5 }], bloom);
   poly(ctx, [ga, gd, { x: gd.x, y: gd.y + wallH * 0.5 }, { x: ga.x, y: ga.y + wallH * 0.5 }], bloom);
 
+  for (const u of coolingUnitGeometry(L, H, units)) drawCoolingUnit(ctx, u.topL, u.topR, u.h);
+}
+
+/**
+ * Shared cooling-unit placement. The housings are painted into the cached
+ * static layer; the spinning blades redraw every frame in the dynamic layer —
+ * both read THIS geometry so they can never drift apart.
+ */
+function coolingUnitGeometry(L: Layout, H: number, units: number): { topL: Pt; topR: Pt; h: number }[] {
+  const { iso, gxMin, gyMin, gxMax, gyMax } = L;
+  const a = iso(gxMin, gyMin), b = iso(gxMax, gyMin), d = iso(gxMin, gyMax);
+  const wallH = H * 0.22;
   const wallPt = (p0: Pt, p1: Pt, u: number, v: number): Pt => {
     const bp = lerp(p0, p1, u);
     return { x: bp.x, y: bp.y - v * wallH };
   };
+  const out: { topL: Pt; topR: Pt; h: number }[] = [];
   for (const [p0, p1] of [[a, b] as const, [a, d] as const]) {
     for (let k = 0; k < units; k++) {
       // Evenly space within the open (0,1) interval so the last unit never runs
       // off the wall edge (3 units → 0.25 / 0.5 / 0.75).
       const u = (k + 1) / (units + 1);
-      drawCoolingUnit(ctx, wallPt(p0, p1, u - 0.06, 0.66), wallPt(p0, p1, u + 0.06, 0.66), wallH * 0.3, t, reducedMotion);
+      out.push({ topL: wallPt(p0, p1, u - 0.06, 0.66), topR: wallPt(p0, p1, u + 0.06, 0.66), h: wallH * 0.3 });
     }
   }
+  return out;
 }
 
-function drawCoolingUnit(ctx: CanvasRenderingContext2D, topL: Pt, topR: Pt, h: number, t: number, reducedMotion: boolean): void {
+/** Housing + ring + status LED only — blades are dynamic (drawCoolingFans). */
+function drawCoolingUnit(ctx: CanvasRenderingContext2D, topL: Pt, topR: Pt, h: number): void {
   const bl: Pt = { x: topL.x, y: topL.y + h };
   const br: Pt = { x: topR.x, y: topR.y + h };
   const g = ctx.createLinearGradient(0, topL.y, 0, bl.y);
@@ -490,20 +675,30 @@ function drawCoolingUnit(ctx: CanvasRenderingContext2D, topL: Pt, topR: Pt, h: n
   ctx.strokeStyle = "rgba(255,255,255,0.25)";
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
-  const rot = reducedMotion ? 0 : (t / 240) % (Math.PI * 2);
-  ctx.strokeStyle = "rgba(180,210,255,0.55)";
-  ctx.lineWidth = Math.max(1, r * 0.18);
-  for (let i = 0; i < 3; i++) {
-    const ang = rot + (i * Math.PI * 2) / 3;
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.lineTo(cx + Math.cos(ang) * r * 0.82, cy + Math.sin(ang) * r * 0.82);
-    ctx.stroke();
-  }
   ctx.fillStyle = "rgba(120,255,180,0.85)";
   ctx.beginPath();
   ctx.arc(topL.x + (br.x - topL.x) * 0.16, topL.y + h * 0.22, Math.max(0.8, r * 0.12), 0, Math.PI * 2);
   ctx.fill();
+}
+
+/** The spinning fan blades — redrawn per frame over the cached housings (QW2).
+ *  Reduced motion keeps a still blade set so the units still read as fans. */
+function drawCoolingFans(ctx: CanvasRenderingContext2D, L: Layout, H: number, units: number, t: number, reducedMotion: boolean): void {
+  const rot = reducedMotion ? 0 : (t / 240) % (Math.PI * 2);
+  for (const u of coolingUnitGeometry(L, H, units)) {
+    const br: Pt = { x: u.topR.x, y: u.topR.y + u.h };
+    const cx = (u.topL.x + br.x) / 2, cy = (u.topL.y + br.y) / 2;
+    const r = Math.min(Math.abs(u.topR.x - u.topL.x), u.h) * 0.32;
+    ctx.strokeStyle = "rgba(180,210,255,0.55)";
+    ctx.lineWidth = Math.max(1, r * 0.18);
+    for (let i = 0; i < 3; i++) {
+      const ang = rot + (i * Math.PI * 2) / 3;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(ang) * r * 0.82, cy + Math.sin(ang) * r * 0.82);
+      ctx.stroke();
+    }
+  }
 }
 
 function drawFloor(ctx: CanvasRenderingContext2D, L: Layout, era: number): void {
@@ -559,6 +754,9 @@ function drawRack(
   tier: number, density: number, scale: number,
   blink: number, workPulse: number, active: boolean, powerOn: number,
   skin?: string,
+  rig?: RigSlotView[] | null,
+  t = 0,
+  reducedMotion = false,
 ): void {
   const base = skinTint(tierBase(tier), skin);
   const led = shade(base, 2.0);
@@ -624,6 +822,63 @@ function drawRack(
     const colA = rfp(0.82, 0.06), colB = rfp(0.82, 0.94);
     const pcol = (active ? 0.55 : 0.3) + 0.4 * workPulse + 0.4 * powerOn;
     stroke(ctx, colA, colB, rgba(led, clamp(pcol, 0, 1)), Math.max(1, hw * 0.08));
+
+    // ---- Bare Metal: component bays on the left face. Once the Rig Bay is
+    // open every rack shows its sockets — an EMPTY bay is a dark open hole
+    // (the fleet visibly wants parts), a fitted bay grows real geometry per
+    // class: heatsink fins (accelerator), a spinning rack fan (cooling), or a
+    // lit cable trunk dropping to the floor (interconnect). Grade = flair. ----
+    if (rig && rig.length > 0) {
+      const lfp = (u: number, v: number): Pt => ({
+        x: bLeft.x + (bBottom.x - bLeft.x) * u,
+        y: bLeft.y + (bBottom.y - bLeft.y) * u - v * ph,
+      });
+      for (let k = 0; k < rig.length; k++) {
+        const slot = rig[k]!;
+        const vTop = 0.8 - k * 0.27;
+        const vBot = vTop - 0.19;
+        const u0 = 0.14, u1 = 0.86;
+        const quad: Pt[] = [lfp(u0, vBot), lfp(u1, vBot), lfp(u1, vTop), lfp(u0, vTop)];
+        if (slot.grade === 0) {
+          poly(ctx, quad, "rgba(8,10,16,0.55)");
+          stroke(ctx, quad[3]!, quad[2]!, "rgba(255,255,255,0.16)", 1);
+          stroke(ctx, quad[0]!, quad[1]!, "rgba(0,0,0,0.4)", 1);
+          continue;
+        }
+        const glow = gradeGlow(slot.grade);
+        poly(ctx, quad, rgba(shade(base, 0.5), 0.9));
+        if (slot.cls === "accelerator") {
+          for (let f = 0; f < 3; f++) {
+            const v = vBot + ((f + 0.5) / 3) * (vTop - vBot);
+            stroke(ctx, lfp(u0 + 0.07, v), lfp(u1 - 0.07, v), rgba(glow, clamp(0.5 + 0.4 * workPulse, 0, 1)), Math.max(1, hw * 0.06));
+          }
+        } else if (slot.cls === "cooling") {
+          const c = lfp(0.5, (vTop + vBot) / 2);
+          const r = Math.max(1.5, hw * 0.15);
+          ctx.strokeStyle = rgba(glow, 0.75);
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, Math.PI * 2); ctx.stroke();
+          const rot = reducedMotion ? 0.6 : (t / 170) % (Math.PI * 2);
+          for (let f = 0; f < 3; f++) {
+            const ang = rot + (f * Math.PI * 2) / 3;
+            stroke(ctx, c, { x: c.x + Math.cos(ang) * r * 0.8, y: c.y + Math.sin(ang) * r * 0.8 }, rgba(glow, 0.85), 1);
+          }
+        } else {
+          // interconnect — cable trunk from the bay down to the floor.
+          const from = lfp(0.5, vBot);
+          const to: Pt = { x: sx - hw * 0.45, y: sy + hh * 0.8 };
+          stroke(ctx, from, to, rgba(glow, 0.4), Math.max(1, hw * 0.07));
+          if (!reducedMotion) {
+            const tt = ((t / 900) % 1 + k * 0.37) % 1;
+            const p = lerp(from, to, tt);
+            ctx.fillStyle = rgba(glow, 0.9);
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, Math.max(1, hw * 0.07), 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+    }
   } else {
     const p = rfp(0.5, 0.5);
     ctx.fillStyle = rgba(led, active ? Math.max(0.5, workPulse) : 0.6);
@@ -805,31 +1060,203 @@ function drawBeams(ctx: CanvasRenderingContext2D, L: Layout, beams: number[], t:
   ctx.restore();
 }
 
-/** C2 — staff agents: small parametric figures working the floor. Count is capped
- *  for a clean read; they bob + drift gently (still under reduced motion). */
-function drawStaffAgents(ctx: CanvasRenderingContext2D, L: Layout, staff: number, t: number, reducedMotion: boolean): void {
-  const n = Math.min(staff, 14);
+/** IDEAS #5 — a manifested incident: smoke puffs rising off the afflicted rack
+ *  plus a red warn blink at its base. Worked incidents smoke at half intensity
+ *  (you contained it; it still has to burn out). Reduced motion → static haze. */
+function drawIncident(ctx: CanvasRenderingContext2D, x: number, topY: number, tileW: number, t: number, worked: boolean, reducedMotion: boolean): void {
+  const strength = worked ? 0.4 : 1;
+  ctx.save();
+  if (reducedMotion) {
+    // A static smudge + steady warn dot — state without motion.
+    ctx.fillStyle = `rgba(30,26,34,${0.4 * strength})`;
+    ctx.beginPath();
+    ctx.ellipse(x, topY - tileW * 0.28, tileW * 0.3, tileW * 0.18, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = `rgba(255,90,70,${0.8 * strength})`;
+    ctx.beginPath();
+    ctx.arc(x + tileW * 0.2, topY + 2, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+  // Three rising, growing, fading puffs (pure function of the clock).
+  for (let k = 0; k < 3; k++) {
+    const phase = ((t / 1400 + k / 3) % 1 + 1) % 1;
+    const py = topY - phase * tileW * 0.85;
+    const r = tileW * (0.1 + phase * 0.22);
+    const a = (1 - phase) * 0.4 * strength;
+    ctx.fillStyle = `rgba(34,30,40,${a})`;
+    ctx.beginPath();
+    ctx.ellipse(x + Math.sin((t / 600 + k) * 1.7) * tileW * 0.08, py, r, r * 0.75, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Warn blink at the rack top edge.
+  const blink = 0.4 + 0.6 * (Math.sin(t / 160) > 0 ? 1 : 0.2);
+  ctx.fillStyle = `rgba(255,90,70,${blink * strength})`;
+  ctx.beginPath();
+  ctx.arc(x + tileW * 0.2, topY + 2, 2.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+/** IDEAS #5 — hype made visible: a small crowd of onlookers pressed against the
+ *  open front edge while a good-tone event runs. */
+function drawCrowd(ctx: CanvasRenderingContext2D, L: Layout, n: number, t: number, reducedMotion: boolean): void {
   ctx.save();
   for (let i = 0; i < n; i++) {
+    const seed = ((i * 48271) % 997) / 997;
+    const p = L.iso(L.gxMin + 1 + seed * (L.gxMax - L.gxMin - 2), L.gyMax + 0.7 + (i % 2) * 0.3);
+    // Excited bob — faster than staff; still under reduced motion.
+    const bob = reducedMotion ? 0 : Math.abs(Math.sin(t / 210 + i * 1.9)) * 2.2;
+    const s = Math.max(2.6, L.tileW * 0.08);
+    const body: RGB = i % 2 === 0 ? [200, 205, 220] : [170, 180, 205];
+    ctx.fillStyle = "rgba(0,0,0,0.18)";
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y + s * 0.4, s, s * 0.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = rgba(body, 0.9);
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y - s - bob, s * 0.8, s * 1.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = rgba(shade(body, 1.2), 0.9);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y - s * 2.3 - bob, s * 0.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** IDEAS #3 — unmarked black crates stacked just outside the front-left floor
+ *  lip. Count ∝ regulatory Heat, so a hot lab has a visibly un-audited pile by
+ *  the door that melts away as it cools ("cold racks, cold trail"). */
+function drawHeatCrates(ctx: CanvasRenderingContext2D, L: Layout, count: number, t: number, reducedMotion: boolean): void {
+  // Size floor so a big hall's small tiles can't shrink the pile into noise
+  // (QA finding: at 12×11 floors the crates vanished into the marker zone).
+  const s = Math.max(7, L.tileW * 0.26);
+  ctx.save();
+  for (let i = 0; i < count; i++) {
+    // Two columns of three ON the floor's front-left corner — racks fill
+    // back-to-front, so this ground stays open until the room is truly full
+    // (and the pile is drawn before racks, so a full floor occludes naturally).
+    const row = i < 3 ? 0 : 1;
+    const p = L.iso(L.gxMin + 0.35 + row * 0.6, L.gyMax - 0.4 - (i % 3) * 0.75);
+    const h = s * (0.8 + ((i * 37) % 5) * 0.06);
+    // Shadow + body + lid seam. Deliberately unbranded and slightly wrong-looking.
+    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y + s * 0.18, s * 0.85, s * 0.35, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgb(44,48,62)";
+    ctx.fillRect(p.x - s * 0.6, p.y - h, s * 1.2, h);
+    ctx.fillStyle = "rgb(64,69,88)";
+    ctx.fillRect(p.x - s * 0.6, p.y - h, s * 1.2, h * 0.22);
+    ctx.strokeStyle = "rgba(255,255,255,0.18)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(p.x - s * 0.6, p.y - h, s * 1.2, h);
+    // A faint hazard blink on the pile's newest crate while it settles.
+    if (i === count - 1) {
+      const blink = reducedMotion ? 0.5 : 0.35 + 0.35 * Math.sin(t / 420);
+      ctx.fillStyle = rgba([255, 120, 90], blink);
+      ctx.fillRect(p.x + s * 0.28, p.y - h * 0.75, Math.max(1.2, s * 0.12), Math.max(1.2, s * 0.12));
+    }
+  }
+  ctx.restore();
+}
+
+/** IDEAS #3 — a component purchase arriving: a pale crate slides in along the
+ *  open front edge and fades as it "reaches the racks". Pure juice; the buy is
+ *  already applied. */
+function drawDelivery(ctx: CanvasRenderingContext2D, L: Layout, remaining: number): void {
+  const done = 1 - remaining; // 0 → 1 across the slide
+  const eased = easeOut(done);
+  const from = L.iso(L.gxMax + 0.8, L.gyMax + 0.5);
+  const to = L.iso(L.gxMin + (L.gxMax - L.gxMin) * 0.55, L.gyMax + 0.3);
+  const p = lerp(from, to, eased);
+  const s = L.tileW * 0.26;
+  const alpha = remaining < 0.25 ? remaining / 0.25 : 1; // fade at arrival
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = "rgba(0,0,0,0.25)";
+  ctx.beginPath();
+  ctx.ellipse(p.x, p.y + s * 0.2, s * 0.9, s * 0.35, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "rgb(214,206,192)"; // pale shipping crate
+  ctx.fillRect(p.x - s * 0.65, p.y - s * 0.95, s * 1.3, s * 0.95);
+  ctx.strokeStyle = "rgba(120,110,95,0.8)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(p.x - s * 0.65, p.y - s * 0.95, s * 1.3, s * 0.95);
+  // Tape stripe + a little motion dust behind the dolly.
+  ctx.fillStyle = "rgba(150,140,120,0.9)";
+  ctx.fillRect(p.x - s * 0.08, p.y - s * 0.95, s * 0.16, s * 0.95);
+  ctx.fillStyle = `rgba(255,255,255,${0.25 * alpha * (1 - eased)})`;
+  ctx.beginPath();
+  ctx.ellipse(p.x + s * 1.1, p.y, s * 0.5, s * 0.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+/** A staff agent's ground position this frame — shared by the draw pass and the
+ *  tap hit-test so the person you touch is the person whose card opens. */
+export interface AgentSpot {
+  x: number;
+  y: number; // ground (shadow) y
+  bob: number;
+  s: number; // body half-width
+  index: number;
+}
+
+/** IDEAS #7 — deterministic per-frame agent positions. Product-assigned people
+ *  cluster at the base of THEIR product's uplink beam; the rest roam the open
+ *  front strip. Pure function of (model, layout, clock). */
+export function agentSpots(model: HallModel, W: number, H: number, t: number, reducedMotion: boolean): AgentSpot[] {
+  const L = computeLayout(model.cols, model.rows, model.gxMin, model.gyMin, W, H);
+  const beamsN = model.beams.length;
+  const out: AgentSpot[] = [];
+  for (let i = 0; i < model.agents.length; i++) {
+    const a = model.agents[i]!;
     const seed = ((i * 2654435761) % 1000) / 1000;
     const seed2 = ((i * 40503) % 997) / 997;
-    // Bias agents to the OPEN front strip (high gy) so they read in the clear
-    // foreground rather than vanishing between the back racks.
-    const gx = L.gxMin + 0.4 + seed * (L.gxMax - L.gxMin - 0.8);
-    const gy = L.gyMax - 0.4 - seed2 * 1.3;
+    let gx: number, gy: number;
+    if (a.beam !== null && a.beam < beamsN) {
+      // Cluster at the assigned product's beam base (the org chart, spatially).
+      const bgx = L.gxMin + ((a.beam + 0.5) / beamsN) * (L.gxMax - L.gxMin);
+      gx = bgx + (seed - 0.5) * 0.9;
+      gy = L.gyMax - 0.55 - seed2 * 0.5;
+    } else {
+      // Bias roamers to the OPEN front strip (high gy) so they read in the
+      // clear foreground rather than vanishing between the back racks.
+      gx = L.gxMin + 0.4 + seed * (L.gxMax - L.gxMin - 0.8);
+      gy = L.gyMax - 0.4 - seed2 * 1.3;
+    }
     const drift = reducedMotion ? 0 : Math.sin(t / 1500 + i * 2.1) * 0.18;
     const p = L.iso(gx + drift, gy);
     const bob = reducedMotion ? 0 : Math.sin(t / 380 + i) * 1.2;
-    const s = Math.max(3.2, L.tileW * 0.1); // body half-width
-    const cx = p.x;
-    const cy = p.y - bob;
+    out.push({ x: p.x, y: p.y, bob, s: Math.max(3.2, L.tileW * 0.1), index: i });
+  }
+  return out;
+}
+
+/** C2/#7 — staff agents: small parametric figures working the floor, now with
+ *  identity: team-tinted bodies (infra blue / product green), a golden sparkle
+ *  for a 10× hire. Capped upstream (model.agents ≤ 14) for a clean read. */
+function drawStaffAgents(ctx: CanvasRenderingContext2D, agents: AgentView[], spots: AgentSpot[], t: number, reducedMotion: boolean): void {
+  ctx.save();
+  for (const spot of spots) {
+    const a = agents[spot.index];
+    if (!a) continue;
+    const { x: cx, s } = spot;
+    const cy = spot.y - spot.bob;
     // Soft shadow.
     ctx.fillStyle = "rgba(0,0,0,0.22)";
     ctx.beginPath();
-    ctx.ellipse(p.x, p.y + s * 0.5, s * 1.1, s * 0.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(spot.x, spot.y + s * 0.5, s * 1.1, s * 0.5, 0, 0, Math.PI * 2);
     ctx.fill();
-    // Body (rounded) + head.
-    const body: RGB = i % 3 === 0 ? [120, 180, 255] : i % 3 === 1 ? [180, 150, 255] : [150, 220, 180];
+    // Body (rounded) + head. Team colours; the 10× wears gold.
+    const body: RGB = a.tenx
+      ? [255, 208, 110]
+      : a.team === "infra"
+        ? (spot.index % 2 === 0 ? [120, 180, 255] : [150, 190, 250])
+        : (spot.index % 2 === 0 ? [150, 220, 180] : [180, 150, 255]);
     ctx.fillStyle = rgb(body);
     ctx.beginPath();
     ctx.ellipse(cx, cy - s, s, s * 1.5, 0, 0, Math.PI * 2);
@@ -838,7 +1265,63 @@ function drawStaffAgents(ctx: CanvasRenderingContext2D, L: Layout, staff: number
     ctx.beginPath();
     ctx.arc(cx, cy - s * 2.6, s * 0.78, 0, Math.PI * 2);
     ctx.fill();
+    if (a.tenx) {
+      // A tiny twinkle over the golden hire — insufferable, as documented.
+      const tw = reducedMotion ? 0.8 : 0.5 + 0.5 * Math.sin(t / 220 + spot.index);
+      ctx.fillStyle = rgba([255, 240, 180], 0.5 + 0.5 * tw);
+      const sy = cy - s * 3.8;
+      ctx.beginPath();
+      ctx.moveTo(cx, sy - s * 0.5);
+      ctx.lineTo(cx + s * 0.18, sy);
+      ctx.lineTo(cx, sy + s * 0.5);
+      ctx.lineTo(cx - s * 0.18, sy);
+      ctx.closePath();
+      ctx.fill();
+    }
   }
+  ctx.restore();
+}
+
+/** IDEAS #2 — Supervisor Chen's position: a slow patrol along the open front
+ *  edge (still, mid-front, under reduced motion). Null when the lab is clean. */
+export function chenSpot(model: HallModel, W: number, H: number, t: number, reducedMotion: boolean): { x: number; y: number; s: number } | null {
+  if (!model.regulator) return null;
+  const L = computeLayout(model.cols, model.rows, model.gxMin, model.gyMin, W, H);
+  const u = reducedMotion ? 0.5 : 0.5 + 0.42 * Math.sin(t / 2600);
+  const p = L.iso(L.gxMin + u * (L.gxMax - L.gxMin), L.gyMax - 0.18);
+  return { x: p.x, y: p.y, s: Math.max(3.8, L.tileW * 0.115) };
+}
+
+/** IDEAS #2 — the inspector herself: dark suit, pale head, a clipboard she is
+ *  definitely writing your name on. Distinct from staff so she reads as an
+ *  outsider in the room. */
+function drawChen(ctx: CanvasRenderingContext2D, spot: { x: number; y: number; s: number }, t: number, reducedMotion: boolean): void {
+  const { x: cx, y, s } = spot;
+  const bob = reducedMotion ? 0 : Math.sin(t / 520) * 0.8;
+  const cy = y - bob;
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.beginPath();
+  ctx.ellipse(cx, y + s * 0.5, s * 1.2, s * 0.55, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Suit (near-black slate — nobody else in the room wears one).
+  const suit: RGB = [58, 64, 82];
+  ctx.fillStyle = rgb(suit);
+  ctx.beginPath();
+  ctx.ellipse(cx, cy - s * 1.1, s * 1.05, s * 1.7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = rgb([224, 200, 180]);
+  ctx.beginPath();
+  ctx.arc(cx, cy - s * 2.9, s * 0.8, 0, Math.PI * 2);
+  ctx.fill();
+  // The clipboard: a small pale slate held at reading angle, with two lines.
+  const bx = cx + s * 1.15, by = cy - s * 1.35;
+  ctx.fillStyle = "rgba(235,238,245,0.92)";
+  ctx.fillRect(bx - s * 0.5, by - s * 0.7, s, s * 1.3);
+  ctx.strokeStyle = "rgba(90,100,120,0.8)";
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(bx - s * 0.3, by - s * 0.3); ctx.lineTo(bx + s * 0.3, by - s * 0.3); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bx - s * 0.3, by + s * 0.05); ctx.lineTo(bx + s * 0.3, by + s * 0.05); ctx.stroke();
   ctx.restore();
 }
 

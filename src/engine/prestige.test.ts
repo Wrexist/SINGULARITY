@@ -62,6 +62,25 @@ describe("prestige", () => {
     expect(derive(boosted).computePerSec.gt(derive(base).computePerSec)).toBe(true);
   });
 
+  it("records each shipped generation on the Legacy Wall log (capped)", () => {
+    const s = createInitialState();
+    s.research = [balance.prestige.capabilityResearch];
+    s.lifetimeMoney = Big.of(1e6);
+    const next = prestige(s, "open_source");
+    expect(next.shipLog).toHaveLength(1);
+    expect(next.shipLog[0]).toMatchObject({ mode: "open_source", asc: false });
+    expect(next.shipLog[0]!.era).toBeGreaterThanOrEqual(0);
+
+    // The log persists across ships and never exceeds the cap.
+    const long = createInitialState();
+    long.research = [balance.prestige.capabilityResearch];
+    long.lifetimeMoney = Big.of(1e6);
+    long.shipLog = Array.from({ length: balance.prestige.shipLogCap }, () => ({ mode: "deploy", era: 0, asc: false }));
+    const after = prestige(long);
+    expect(after.shipLog).toHaveLength(balance.prestige.shipLogCap);
+    expect(after.shipLog[after.shipLog.length - 1]!.mode).toBe("deploy");
+  });
+
   it("is a no-op when not eligible", () => {
     const s = createInitialState();
     expect(prestige(s)).toBe(s);

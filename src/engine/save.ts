@@ -270,6 +270,12 @@ interface SavedShape {
   legacyInvestments: string[];
   components: ComponentsState;
   rivalOps: GameState["rivalOps"];
+  /** IDEAS #6 — Legacy Wall records. Sanitizer-defaulted ([]), so no v-bump. */
+  shipLog: GameState["shipLog"];
+  /** IDEAS #9 — today's rolled sponsor objective. Sanitizer-defaulted (null). */
+  sponsor: GameState["sponsor"];
+  /** IDEAS #10 — preprints published this run. Sanitizer-defaulted (0). */
+  preprints: number;
 }
 
 export function serialize(state: GameState): string {
@@ -321,6 +327,9 @@ export function serialize(state: GameState): string {
     legacyInvestments: state.legacyInvestments,
     components: state.components,
     rivalOps: state.rivalOps,
+    shipLog: state.shipLog,
+    sponsor: state.sponsor,
+    preprints: state.preprints,
   };
   return JSON.stringify(shape);
 }
@@ -442,12 +451,33 @@ export function deserialize(json: string): GameState {
     legacyInvestments: dedupeKnownIds(raw.legacyInvestments, LEGACY_IDS),
     components: sanitizeComponents(raw.components, contracts.completed, achievements),
     rivalOps: sanitizeRivalOps(raw.rivalOps),
+    // Legacy Wall records are display-only history, but still validated per-entry
+    // (sanitizer policy: filter, don't wipe) and capped like prestige() caps them.
+    shipLog: sanitizeShipLog(raw.shipLog, sanitizeStats(raw.stats).totalShips),
+    sponsor: sanitizeSponsor(raw.sponsor),
+    // Preprints multiply into derive, so the count is clamped to the per-run cap.
+    preprints: Math.min(balance.preprints.maxPerRun, safeCount(raw.preprints)),
     // Generation-scoped (not persisted): a mid-run reload simply re-accrues the run
     // peaks, and the ship report is transient — both start fresh on load.
     runPeakCompute: fresh.runPeakCompute,
     runPeakMrr: fresh.runPeakMrr,
     lastShipReport: fresh.lastShipReport,
   };
+}
+
+/** Legacy Wall records: per-entry validation (mode must be a known ship mode,
+ *  era a small int), capped at the balance limit AND at the lifetime ship count —
+ *  a crafted save can't display a wall of ascensions it never earned. */
+function sanitizeShipLog(raw: unknown, totalShips: number): GameState["shipLog"] {
+  if (!Array.isArray(raw)) return [];
+  const MODES = new Set(Object.keys(balance.prestige.shipModes));
+  return raw
+    .filter((e): e is { mode: string; era: number; asc: boolean } =>
+      !!e && typeof e === "object" &&
+      typeof (e as { mode?: unknown }).mode === "string" && MODES.has((e as { mode: string }).mode) &&
+      typeof (e as { era?: unknown }).era === "number" && Number.isFinite((e as { era: number }).era))
+    .map((e) => ({ mode: e.mode, era: Math.max(0, Math.min(5, Math.floor(e.era))), asc: e.asc === true }))
+    .slice(-Math.min(balance.prestige.shipLogCap, Math.max(0, totalShips)));
 }
 
 /** Rival counterplay is untrusted: KNOWN rival names only, strike counts clamped
@@ -473,7 +503,42 @@ function sanitizeRivalOps(r: unknown): GameState["rivalOps"] {
  *  bypasses claimContract's includes-check). */
 function sanitizeContracts(c: unknown): { completed: string[] } {
   const o = (c ?? {}) as { completed?: unknown };
-  return { completed: dedupeKnownIds(o.completed, CONTRACT_IDS) };
+  const known = dedupeKnownIds(o.completed, CONTRACT_IDS);
+  // Sponsor completions (IDEAS #9, `sponsor_<dayNumber>`) are legitimately
+  // open-ended ids: keep each VALID one once, bounded so a crafted save can't
+  // mint unbounded Reputation from fabricated dates.
+  const seen = new Set<string>();
+  const sponsors: string[] = [];
+  if (Array.isArray(o.completed)) {
+    for (const x of o.completed) {
+      if (typeof x === "string" && /^sponsor_\d{1,7}$/.test(x) && !seen.has(x)) {
+        seen.add(x);
+        sponsors.push(x);
+      }
+    }
+  }
+  return { completed: [...known, ...sponsors.slice(-CONTRACTS.sponsor.maxCompleted)] };
+}
+
+/** Today's sponsor objective (IDEAS #9): validate every field or drop to null —
+ *  a fresh one re-rolls next check, so dropping is always safe. */
+const SPONSOR_METRICS = new Set(CONTRACTS.sponsor.lanes.map((l) => l.metric as string));
+function sanitizeSponsor(s: unknown): GameState["sponsor"] {
+  const o = s as Partial<NonNullable<GameState["sponsor"]>> | null;
+  if (!o || typeof o !== "object") return null;
+  if (typeof o.dayKey !== "number" || !Number.isFinite(o.dayKey) || o.dayKey < 0) return null;
+  if (typeof o.metric !== "string" || !SPONSOR_METRICS.has(o.metric)) return null;
+  if (typeof o.target !== "number" || !Number.isFinite(o.target) || o.target <= 0) return null;
+  if (typeof o.title !== "string" || typeof o.desc !== "string") return null;
+  return {
+    dayKey: Math.floor(o.dayKey),
+    metric: o.metric,
+    target: o.target,
+    // Rep is NOT trusted from the save — it's the balance constant.
+    rep: CONTRACTS.sponsor.rep,
+    title: o.title,
+    desc: o.desc,
+  };
 }
 
 /** Rig Bay components are untrusted: keep KNOWN ids with sane integer counts, and

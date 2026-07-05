@@ -5,6 +5,7 @@ import { createInitialState } from "./state";
 import { carryEarnedComponents } from "./components";
 import { startingRacks } from "./reputation";
 import { hallCapacity } from "./hall";
+import { currentEra } from "./eras";
 import type { DraftModel, GameState } from "./types";
 
 /**
@@ -178,5 +179,11 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     // run's own peaks reset to 0 via ...fresh). This is what makes the report show
     // THIS generation's high-water marks instead of all-time career peaks.
     lastShipReport: { peakCompute: state.runPeakCompute, peakMrr: state.runPeakMrr },
+    // The Legacy Wall (IDEAS #6) remembers how this generation shipped: the hall
+    // renders these as trophy plinths, so the reset visibly ADDS to the room.
+    shipLog: [...state.shipLog, { mode, era: currentEra(state), asc: isAscension }].slice(-balance.prestige.shipLogCap),
+    // Today's sponsor objective (IDEAS #9) tracks lifetime stats, so it survives
+    // the reset like the contracts board it extends.
+    sponsor: state.sponsor,
   };
 }

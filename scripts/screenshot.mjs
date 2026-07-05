@@ -72,7 +72,7 @@ try {
     await page.addInitScript(() => {
       localStorage.setItem(
         "singularity.settings.v1",
-        JSON.stringify({ sound: true, haptics: true, reducedMotion: false, onboarded: true }),
+        JSON.stringify({ sound: true, haptics: true, reducedMotion: false, onboarded: true, shipExplained: true }),
       );
     });
   }
@@ -149,7 +149,36 @@ try {
           alignment: 0.3,
           stats: { ascensions: 3 },
         }
-      : has("manifest")
+      : has("preprints")
+      ? {
+          // IDEAS #10 — tree complete (one side of each exclusive fork), rich
+          // enough to afford a paper: the Research pane shows the preprint card.
+          version: 16,
+          resources: { compute: "5000000", data: "500000", money: "20000000" },
+          upgrades: { rack_basic: 30, rack_server: 20, rack_tpu: 10, auto_claim: 1, auto_train: 1, expand_e: 2, expand_s: 2, psu_bay: 3, cooling_loop: 3 },
+          research: ["backprop", "curated_data", "mixed_precision", "data_aug", "distributed", "rlhf", "caching", "distillation", "moe", "inference_api", "scaling_laws", "synthetic_data", "flash_attention", "quantization", "multi_datacenter", "world_model", "recursive_self_improvement", "sparse_arch", "closed_api", "aligned_path"],
+          run: { active: true, progress: 0.3, readyToClaim: false },
+          prestige: { legacyWeights: "300", ships: 3 },
+          stats: { totalShips: 3 },
+          lifetimeMoney: "2e9",
+          heat: 0,
+        }
+      : has("sponsor")
+      ? {
+          // IDEAS #9 — the whole 31-rung ladder cleared → the daily sponsor
+          // objective rolls on load (HQ → Contracts shows the card).
+          version: 16,
+          resources: { compute: "900000", data: "60000", money: "80000000" },
+          upgrades: { rack_basic: 30, rack_server: 20, rack_tpu: 12, auto_claim: 1, auto_train: 1, expand_e: 2, expand_s: 2 },
+          research: ["backprop", "curated_data", "distributed", "distillation", "inference_api"],
+          run: { active: true, progress: 0.5, readyToClaim: false },
+          prestige: { legacyWeights: "800", ships: 12 },
+          stats: { totalShips: 12, peakMau: 4_000_000, peakMrr: 9_000, totalMoney: "3e9", peakComputePerSec: "800000" },
+          contracts: { completed: ["boot", "seed_round", "hello_science", "headcount", "rack_em_up", "ship_it", "going_commercial", "rnd_dept", "kilocluster", "seven_figures", "densely_packed", "recurring_revenue", "serial_shipper", "org_chart", "megacluster", "household_name", "warehouse", "cash_machine", "five_nines", "research_lab", "veteran_shipper", "gigacluster", "big_org", "ten_figures", "ascended", "everywhere", "money_printer", "shipping_dynasty", "teracluster", "twelve_figures", "serial_ascender"] },
+          lifetimeMoney: "3e9",
+          heat: 0,
+        }
+      : has("manifest") || has("chen") || has("shipconfirm")
       ? {
           // C2 manifestation showcase: staff on the floor, live products (uplink
           // beams), a committed alignment (room tint), and an over-subscribed power
@@ -160,10 +189,29 @@ try {
           research: ["backprop", "curated_data", "distributed", "distillation", "inference_api"],
           run: { active: true, progress: 0.55, readyToClaim: false },
           prestige: { legacyWeights: "120", ships: 4 },
+          stats: { totalShips: 4 },
+          charter: "moonshot",
+          charterLocked: true,
+          shipLog: [
+            { mode: "deploy", era: 1, asc: false },
+            { mode: "open_source", era: 2, asc: false },
+            { mode: "deploy", era: 2, asc: false },
+            { mode: "sell", era: 3, asc: true },
+          ],
           lifetimeMoney: "900000000",
+          // Below the negotiation trigger (55) so Chen's sit-down card doesn't
+          // cover the hall this capture exists to show. --chen seeds ABOVE it
+          // (the script defies the sit-down, so the inspector stays on the floor).
           heat: 40,
-          suspicion: 62,
+          suspicion: has("chen") ? 58 : 40,
           alignment: 0.7,
+          components: {
+            // Bare Metal showcase: tier 0 fitted (standard), tier 1 half-fitted
+            // (enterprise acc, open cooling bay), tier 2 interconnect-only —
+            // so fitted geometry AND empty sockets are both visible.
+            owned: { acc_refurb: 1, acc_hopperoo: 1, net_darkfiber: 1 },
+            loadout: [{ accelerator: "acc_refurb" }, { accelerator: "acc_hopperoo" }, { interconnect: "net_darkfiber" }],
+          },
           products: {
             frontier: 30,
             active: [
@@ -215,6 +263,36 @@ try {
     await page.getByRole("button", { name: /^Ship —/ }).click();
     await page.getByRole("button", { name: /Ship it/ }).click();
     await sleep(700); // let confetti + card animate in
+  }
+
+  if (has("preprints")) {
+    // The preprint card lives in the Research pane.
+    await page.getByRole("button", { name: "Research", exact: true }).click();
+    await sleep(500);
+  }
+
+  if (has("sponsor")) {
+    // The Contracts board lives in HQ; the sponsor rolls on load (60s check runs at mount).
+    await page.getByRole("button", { name: "HQ", exact: false }).click();
+    await sleep(500);
+  }
+
+  if (has("shipconfirm")) {
+    // Open the ship-mode chooser (seed is ship-ready) and pick Open-source →
+    // the QW3 confirm sheet should interpose before the prestige fires.
+    await page.getByRole("button", { name: "HQ", exact: false }).click();
+    await sleep(300);
+    await page.getByRole("button", { name: /Ship — choose how|Ascend — choose/ }).click();
+    await sleep(300);
+    await page.getByRole("button", { name: /Open-source it/ }).first().click();
+    await sleep(500);
+  }
+
+  if (has("chen")) {
+    // Defy the sit-down (keeps suspicion high) → Chen patrols the hall floor.
+    const defy = page.getByRole("button", { name: /Defy/ });
+    if (await defy.isVisible().catch(() => false)) await defy.click().catch(() => {});
+    await sleep(800);
   }
 
   if (has("settings")) {
@@ -279,7 +357,20 @@ try {
   }
 
   const out = `screenshots/${name}.png`;
-  await page.screenshot({ path: out, fullPage: has("full") });
+  if (has("hallonly")) {
+    // QA aid: capture just the 2.5D hall element (crisper for visual review).
+    // A random world event can fire during live play — dismiss any card first
+    // so the capture shows the room, not a modal backdrop.
+    const dismiss = page.locator(".modal-backdrop .btn-primary, .modal-backdrop .world-choice").first();
+    if (await dismiss.isVisible().catch(() => false)) {
+      await dismiss.click().catch(() => {});
+      await sleep(400);
+    }
+    const hall = page.locator(".hall");
+    await hall.screenshot({ path: out });
+  } else {
+    await page.screenshot({ path: out, fullPage: has("full") });
+  }
   console.log(`Saved ${out}`);
 } finally {
   if (browser) await browser.close();

@@ -149,4 +149,106 @@ describe("hall view-model", () => {
     s.upgrades = { auto_train: 1 };
     expect(buildHallModel(s).autoBot).toBe(true);
   });
+
+  it("Bare Metal — rig bays are hidden pre-unlock, open sockets after, graded when fitted", () => {
+    // Pre-unlock (under revealAtRacks): no bays at all.
+    expect(buildHallModel(createInitialState()).rigs).toBeNull();
+
+    // Unlocked with nothing fitted: every tier shows its sockets, all EMPTY (grade 0).
+    const s = createInitialState();
+    s.upgrades = { rack_basic: 3 };
+    const bare = buildHallModel(s);
+    expect(bare.rigs).not.toBeNull();
+    expect(bare.rigs![0]).toHaveLength(1); // basic tier: accelerator only
+    expect(bare.rigs![2]).toHaveLength(3); // tpu tier: acc + cooling + interconnect
+    expect(bare.rigs!.flat().every((slot) => slot.grade === 0)).toBe(true);
+
+    // Fit a standard part and an enterprise part → grade indices 1 and 2.
+    s.components = {
+      owned: { acc_refurb: 1, cool_immersion: 1 },
+      loadout: [{ accelerator: "acc_refurb" }, { cooling: "cool_immersion" }, {}],
+    };
+    const fitted = buildHallModel(s);
+    expect(fitted.rigs![0]![0]).toEqual({ cls: "accelerator", grade: 1 });
+    expect(fitted.rigs![1]!.find((x) => x.cls === "cooling")!.grade).toBe(2);
+    expect(fitted.rigs![1]!.find((x) => x.cls === "accelerator")!.grade).toBe(0); // still open
+  });
+
+  it("IDEAS #7 — agents carry employee identity; assigned people point at their beam", () => {
+    const s = createInitialState();
+    s.employees = [
+      { id: "a", name: "Ada", roleId: "staff_researcher", level: 3, trait: "tenx", assignedProductId: null, training: null },
+      { id: "b", name: "Bo", roleId: "staff_growth", level: 1, trait: null, assignedProductId: "p2", training: null },
+    ];
+    s.products = { ...s.products, active: [
+      { id: "p1", type: "general", name: "X", quality: 10, version: 2, mau: 100, paid: 10, priceMult: 1, marketingPerSec: 0, buzzSec: 0, features: [], enterprise: false, enterprisePrice: 1, channelMix: {}, ageSec: 1e6, upgrade: null },
+      { id: "p2", type: "code", name: "Y", quality: 8, version: 1, mau: 50, paid: 5, priceMult: 1, marketingPerSec: 0, buzzSec: 0, features: [], enterprise: false, enterprisePrice: 1, channelMix: {}, ageSec: 1e6, upgrade: null },
+    ] };
+    const m = buildHallModel(s);
+    expect(m.agents).toHaveLength(2);
+    expect(m.agents[0]).toMatchObject({ name: "Ada", role: "Researcher", team: "infra", tenx: true, beam: null });
+    expect(m.agents[1]).toMatchObject({ name: "Bo", team: "product", beam: 1 }); // second beam = p2
+  });
+
+  it("IDEAS #3 — heat maps to entrance crates (0 cold, capped hot)", () => {
+    const s = createInitialState();
+    expect(buildHallModel(s).heatCrates).toBe(0); // clean lab, clean dock
+    s.heat = 40;
+    expect(buildHallModel(s).heatCrates).toBe(2);
+    s.heat = 100;
+    expect(buildHallModel(s).heatCrates).toBe(6); // capped
+  });
+
+  it("IDEAS #4/#6/#8 — skyline gates on shipping; wall + banner mirror state", () => {
+    const fresh = buildHallModel(createInitialState());
+    expect(fresh.skyline).toEqual([]); // pre-ship: no race on the horizon
+    expect(fresh.wall).toEqual([]);
+    expect(fresh.charter).toBeNull();
+
+    const s = createInitialState();
+    s.prestige.ships = 2;
+    s.charter = "moonshot";
+    s.shipLog = [
+      { mode: "deploy", era: 1, asc: false },
+      { mode: "open_source", era: 3, asc: true },
+    ];
+    const m = buildHallModel(s);
+    expect(m.skyline.length).toBeGreaterThanOrEqual(5); // 5 rivals on the horizon
+    expect(m.skyline.every((t) => t.h > 0 && t.h <= 1)).toBe(true);
+    expect(m.charter).toEqual({ id: "moonshot", name: expect.any(String) });
+    expect(m.wall).toEqual([{ era: 1, asc: false }, { era: 3, asc: true }]);
+  });
+
+  it("IDEAS #5 — bad modifiers manifest on a deterministic rack; good ones draw a crowd", () => {
+    const s = createInitialState();
+    s.upgrades = { rack_basic: 5 };
+    s.modifiers = [
+      { id: "gpu_shortage", target: "computeMult", factor: 0.6, remainingSec: 30, label: "x", tone: "bad" },
+      { id: "viral_demo", target: "moneyMult", factor: 2, remainingSec: 30, label: "y", tone: "good" },
+    ];
+    const m = buildHallModel(s);
+    expect(m.incidents).toHaveLength(1);
+    expect(m.incidents[0]!.id).toBe("gpu_shortage");
+    expect(m.incidents[0]!.rackIndex).toBeLessThan(m.racks.length);
+    expect(m.incidents[0]!.worked).toBe(false);
+    expect(m.crowd).toBeGreaterThan(0);
+    // Same id → same rack (deterministic placement, tap targets stay put).
+    expect(buildHallModel(s).incidents[0]!.rackIndex).toBe(m.incidents[0]!.rackIndex);
+    // No racks → nowhere to manifest.
+    const empty = createInitialState();
+    empty.modifiers = s.modifiers;
+    expect(buildHallModel(empty).incidents).toEqual([]);
+  });
+
+  it("IDEAS #2 — the inspector appears only once scrutiny is a named presence", () => {
+    expect(buildHallModel(createInitialState()).regulator).toBeNull();
+    const watched = createInitialState();
+    watched.suspicion = 20; // tier 1 — noticed, but not yet personal
+    expect(buildHallModel(watched).regulator).toBeNull();
+    const personal = createInitialState();
+    personal.suspicion = 80;
+    const m = buildHallModel(personal);
+    expect(m.regulator).not.toBeNull();
+    expect(m.regulator!.name.length).toBeGreaterThan(0);
+  });
 });

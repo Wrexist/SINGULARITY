@@ -18,6 +18,7 @@
   "dependencies": {
     "@capacitor/cli": "^6.2.1",
     "@capacitor/core": "^6.2.1",
+    "@capacitor/haptics": "^6.0.3",
     "@capacitor/ios": "^6.2.1",
     "break_infinity.js": "^2.0.0",
     "cordova-plugin-purchase": "^13.17.2",

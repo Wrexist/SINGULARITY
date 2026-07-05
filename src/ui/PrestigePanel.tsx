@@ -8,6 +8,7 @@ import type { GameState } from "../engine/types";
 import { fmt } from "./format";
 import { Big } from "../engine/math/Big";
 import { ReputationModal } from "./ReputationModal";
+import { ConfirmSheet } from "./ConfirmSheet";
 import { LandmarkIcon, RocketIcon, GlobeIcon, CoinIcon, SwordsIcon } from "./Icons";
 import type { ReactNode } from "react";
 
@@ -30,6 +31,10 @@ const legacyPerkName = (id?: string) => legacyTreeBalance.perks.find((p) => p.id
 
 export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyLegacyPerk }: Props) {
   const [confirming, setConfirming] = useState(false);
+  // A ship mode that discards the post-ship product draft gets an explicit
+  // confirm (QW3) — the 4-word tag alone let players give the model away
+  // without realising they'd land in the next run with nothing to launch.
+  const [pendingMode, setPendingMode] = useState<ShipMode | null>(null);
   const [repOpen, setRepOpen] = useState(false);
   const repPoints = reputationAvailable(game);
   const repOwned = game.reputation.perks.length;
@@ -129,7 +134,10 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyLega
             const banked = legacyWeightsForMode(game, m.id as ShipMode);
             const kickstart = m.moneyKickstartPerShip * (game.prestige.ships + 1);
             return (
-              <button key={m.id} className="ship-mode" onClick={() => { onPrestige(m.id as ShipMode); setConfirming(false); }}>
+              <button key={m.id} className="ship-mode" onClick={() => {
+                if (m.keepsDraft) { onPrestige(m.id as ShipMode); setConfirming(false); }
+                else setPendingMode(m.id as ShipMode);
+              }}>
                 <span className="ship-mode-ic">{SHIP_MODE_ICON[m.id]}</span>
                 <div className="ship-mode-text">
                   <div className="ship-mode-top">
@@ -152,6 +160,26 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyLega
         </div>
       )}
 
+      {pendingMode && (() => {
+        const m = Object.values(balance.prestige.shipModes).find((x) => x.id === pendingMode);
+        if (!m) return null;
+        const perks = [
+          `+${fmt(legacyWeightsForMode(game, pendingMode))} Legacy weights`,
+          m.reputationBonus > 0 ? `+${m.reputationBonus} Reputation` : "",
+          m.momentum ? "a momentum boost next run" : "",
+        ].filter(Boolean).join(", ");
+        return (
+          <ConfirmSheet
+            kicker="SHIP THE MODEL"
+            title={`${m.label} — give the model away?`}
+            body={`You will start the next generation with NO product draft to launch. In exchange: ${perks}.`}
+            confirmLabel={m.label}
+            danger
+            onConfirm={() => { onPrestige(pendingMode); setPendingMode(null); setConfirming(false); }}
+            onCancel={() => setPendingMode(null)}
+          />
+        );
+      })()}
       {repOpen && <ReputationModal game={game} onBuy={onBuyReputationPerk} onClose={() => setRepOpen(false)} />}
     </section>
   );

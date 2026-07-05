@@ -70,7 +70,7 @@ export function App() {
   const { doStartRun, doClaim, doBuyUpgrade, doBuyUpgradeBulk, doBuyOfficePerk, doBuyReputationPerk, doBuyLegacyPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
-    doClaimContract, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
+    doClaimContract, doClaimSponsor, doBuyPreprint, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
     doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival } =
     useGame.getState();
 
@@ -124,6 +124,8 @@ export function App() {
   const shipExplained = useSettings((s) => s.shipExplained);
   const lastBackupAt = useSettings((s) => s.lastBackupAt);
   const markShipExplained = useSettings((s) => s.markShipExplained);
+  const achievementsSeen = useSettings((s) => s.achievementsSeen);
+  const markAchievementsSeen = useSettings((s) => s.markAchievementsSeen);
   const [showShipExplainer, setShowShipExplainer] = useState(false);
 
   // The moment queue's head: exactly ONE full-screen moment renders at a time,
@@ -155,8 +157,14 @@ export function App() {
   // The daily boost was only checked at mount, so a session left open across the
   // day rollover never saw the bar reappear. Re-check on a slow tick and whenever
   // the app returns to the foreground (the common idle-game resume path).
+  // The sponsor contract (IDEAS #9) rides the same cadence: the store rolls a
+  // fresh objective when the local day changes (no-op until the ladder clears).
   useEffect(() => {
-    const check = () => setDailyOn((on) => on || dailyAvailable());
+    const check = () => {
+      setDailyOn((on) => on || dailyAvailable());
+      useGame.getState().doRollSponsor(Math.floor(Date.now() / 86_400_000));
+    };
+    check();
     const t = setInterval(check, 60_000);
     document.addEventListener("visibilitychange", check);
     return () => { clearInterval(t); document.removeEventListener("visibilitychange", check); };
@@ -725,14 +733,14 @@ export function App() {
             )}
             {section === "research" && (
               <>
-                {showResearch && <ResearchPanel game={game} derived={d} onResearch={onResearch} />}
+                {showResearch && <ResearchPanel game={game} derived={d} onResearch={onResearch} onBuyPreprint={() => { haptics.success(); sound.purchase(); doBuyPreprint(); }} />}
                 {showMarket && <DataMarketPanel game={game} onBuyData={onBuyData} onBuyTool={onBuy} onLobby={() => { haptics.tap(); sound.purchase(); doLobby(); }} />}
               </>
             )}
             {section === "hq" && (
               <>
                 {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} onBuyLegacyPerk={(id) => { haptics.success(); sound.purchase(); doBuyLegacyPerk(id); }} />}
-                {showResearch && <ContractsPanel game={game} onClaim={onClaimContract} />}
+                {showResearch && <ContractsPanel game={game} onClaim={onClaimContract} onClaimSponsor={() => { haptics.success(); sound.success(); doClaimSponsor(); }} />}
                 <StatsPanel game={game} derived={d} />
                 {game.prestige.ships > 0 && <CodexPanel game={game} />}
                 <EventLog log={log} />
@@ -778,9 +786,12 @@ export function App() {
             {attention.employees > 0 && <span className="botnav-badge">{attention.employees}</span>}
           </button>
         )}
-        <button className="botnav-item" onClick={() => { haptics.tap(); setShowAchievements(true); }} aria-label="Achievements">
+        <button className="botnav-item" onClick={() => { haptics.tap(); markAchievementsSeen(game.achievements.length); setShowAchievements(true); }} aria-label="Achievements">
           <span className="botnav-ic"><TrophyIcon size={23} /></span><span className="botnav-lbl">Awards</span>
-          {game.achievements.length > 0 && <span className="botnav-badge alt">{game.achievements.length}</span>}
+          {/* Badge = NEW unlocks since the modal was last opened, matching the
+              other badges' "needs you" semantics (a lifetime total here just
+              trained players to ignore badges everywhere). */}
+          {game.achievements.length > achievementsSeen && <span className="botnav-badge alt">{game.achievements.length - achievementsSeen}</span>}
         </button>
         <button className="botnav-item" onClick={() => { haptics.tap(); setShowSettings(true); }} aria-label="Settings">
           <span className="botnav-ic"><GearIcon size={22} /></span><span className="botnav-lbl">More</span>

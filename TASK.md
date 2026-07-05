@@ -8,6 +8,58 @@ Phase 0–3 history retained below for context.
 
 ---
 
+## IDEAS.md audit → full implementation (owner-directed 2026-07-04, "do everything you recommend") — branch `claude/game-design-audit-incbe8`
+*The design/UX audit (IDEAS.md, same branch) was implemented in full overnight: 3 quick wins +
+copy sweep + all 10 feature ideas. Every step verified (tests / typecheck / build / browser
+captures); every curve-adjacent change sim-checked BYTE-IDENTICAL (57m59s/62m17s · wall 1m05s).
+440→520 tests.*
+- [x] **Quick wins + copy sweep.** (1) `@capacitor/haptics` wired through the designed seam —
+      the whole haptic layer was silent on iOS (web Vibration API no-ops there); Taptic mappings
+      per tier, light-mode steps impacts down, web fallback kept. ⚠️ wants a device check on the
+      next TestFlight build. (2) Cooling-fan BLADES moved to the dynamic layer (shared geometry
+      helper) — fans actually spin now. (3) Open-source ship mode confirms via ConfirmSheet with
+      an explicit "no product draft next run" warning. (4) Awards badge counts NEW unlocks since
+      last open (was a permanent lifetime total). (5) Celebration/EraTransition confetti gated on
+      reduced motion + the setting seeds from OS `prefers-reduced-motion` on first run.
+      (6) Onboarding no longer promises tabs that don't exist at gen 0.
+- [x] **#1 Bare Metal** — Rig Bay components manifest ON the racks: post-unlock every rack shows
+      its component bays on the left face; an EMPTY bay is a dark open socket (the fleet visibly
+      wants parts), fitted bays grow per-class geometry (heatsink fins / spinning rack fan / lit
+      cable trunk with data pulses), glow-tinted by grade. HallModel carries a per-tier rig view
+      (null pre-unlock → the reveal is a visual moment too). Renderer-only, curve-free.
+- [x] **#2+#7 People with identity** — Supervisor Chen patrols the floor once scrutiny is a named
+      tier (tap → status card + how to cool it); floor agents map 1:1 to real employees
+      (team-tinted, golden sparkling 10×, product-assigned staff cluster at their product's beam;
+      tap → name/role/level/trait card). Shared `agentSpots`/`chenSpot` keep draw + hit-test in
+      lockstep. Screenshot harness grew a `--chen` mode.
+- [x] **#3 Loading dock** — unmarked black crates stack by the entrance while regulatory Heat is
+      up (count ∝ heat, melts as it cools — the "cold trail" made visible); component buys dolly
+      a pale crate in along the front edge (transient, reduced-motion-safe).
+- [x] **#8+#4+#6 Static-layer set** — charter hangs as a colored monogram banner on the back
+      wall; the five rivals are horizon datacenter silhouettes (height = market share, windows go
+      dark when press-blitzed, your violet beacon tower joins post-ship); the **Legacy Wall**:
+      every prestige appends `{mode, era, ascended}` to a new `shipLog` (capped 24; sanitizer
+      caps at lifetime ships so crafted saves can't fake trophies) rendered as era-tinted
+      wall-mounted plinths, gold-ringed on ascensions — prestige leaves a permanent trace.
+- [x] **#5 Incident theater** — every BAD timed modifier smokes on a deterministic rack (red warn
+      blink; reduced motion = static haze); good events draw a crowd of onlookers at the front
+      lip. Tapping the smoking rack "works the problem": engine `workProblem()` shaves a flat
+      `worldEvents.workShaveSec` (12s) once per incident — tap-gated + bounded, curve-safe by
+      construction (the sim never carries modifiers).
+- [x] **#9 Sponsor contracts** — the board never dies: post-ladder, one deterministic date-seeded
+      objective per local day (lane/mult/satirical sponsor by day hash; target ANCHORED at roll
+      time = beat-your-best-by-20–40%). Reputation-only (flat 6); completions stored as
+      `sponsor_<dayNumber>` (pattern-validated, deduped, bounded 400; rep re-read from balance,
+      never the save). Rolls on mount/60s/foreground alongside the daily-boost check.
+- [x] **#10 Frontier preprints** — research never goes inert: tree complete → a repeatable
+      "publish a preprint" hero card (rotating satirical titles, cost 250K/15K ×1.9^papers × the
+      difficulty knob, ×1.02 all lanes per paper, HARD cap 10/run ≈ ×1.22 ceiling, reset by
+      prestige). derive folds `preprintMult` (identity at 0) → **sim byte-identical, verified**.
+- [ ] **Owner actions:** run the iOS TestFlight workflow (the haptics + everything above need a
+      real-device pass: fans/bays/Chen/crates on device, Taptic feel, `cap sync` picks up the new
+      plugin automatically on CI); then the standing items (notifications plugin batch, telemetry
+      read) from the list below.
+
 ## App review: debug + de-noise + wayfinding (owner-directed 2026-07-02) — branch `claude/app-review-improvements-jad29r`
 *Owner ask: review the app, find critical issues/bugs, restructure noisy tab pages, add experience
 features. Two audit passes (engine + UI) ran first; every shipped fix was verified end-to-end
