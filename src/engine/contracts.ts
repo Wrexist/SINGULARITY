@@ -104,7 +104,7 @@ export function rollSponsor(state: GameState, dayKey: number): GameState {
       target,
       rep: S.rep,
       title,
-      desc: `Today's objective: push your ${lane.noun} past the sponsor's bar. Expires never — a new sponsor calls tomorrow.`,
+      desc: `Today's objective: push your ${lane.noun} past the sponsor's bar. No deadline pressure — miss it and nothing is lost.`,
     },
   };
 }

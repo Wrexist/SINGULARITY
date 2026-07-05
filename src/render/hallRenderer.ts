@@ -349,11 +349,13 @@ function drawLegacyWall(ctx: CanvasRenderingContext2D, L: Layout, H: number, wal
   ctx.save();
   for (let i = 0; i < wall.length; i++) {
     const e = wall[i]!;
-    // Mounted UP on the back-left wall (a shelf of trophies — racks can't
-    // occlude the upper wall), oldest deepest.
-    const base = iso(gxMin, gyMin + 0.5 + i * ((gyMax - gyMin - 1) / 8));
+    // Mounted UP on the back-left wall, anchored from the FRONT (left-corner)
+    // end so the newest trophies sit in the clear lower-left stretch — the top
+    // corner end is covered by the hall-tag overlay on phones (QA finding).
+    const step = (gyMax - gyMin - 1) / 9;
+    const base = iso(gxMin, gyMax - 0.6 - i * step);
     const p: Pt = { x: base.x, y: base.y - wallH * 0.52 };
-    const s = Math.max(2.5, L.tileW * 0.13);
+    const s = Math.max(3.2, L.tileW * 0.16);
     const eraCol = eraFloor(e.era);
     // Shelf bracket + plinth block.
     stroke(ctx, { x: p.x - s * 0.7, y: p.y + s * 0.55 }, { x: p.x + s * 0.7, y: p.y + s * 0.55 }, "rgba(255,255,255,0.25)", 1);
@@ -1128,12 +1130,16 @@ function drawCrowd(ctx: CanvasRenderingContext2D, L: Layout, n: number, t: numbe
  *  lip. Count ∝ regulatory Heat, so a hot lab has a visibly un-audited pile by
  *  the door that melts away as it cools ("cold racks, cold trail"). */
 function drawHeatCrates(ctx: CanvasRenderingContext2D, L: Layout, count: number, t: number, reducedMotion: boolean): void {
-  const s = L.tileW * 0.24;
+  // Size floor so a big hall's small tiles can't shrink the pile into noise
+  // (QA finding: at 12×11 floors the crates vanished into the marker zone).
+  const s = Math.max(7, L.tileW * 0.26);
   ctx.save();
   for (let i = 0; i < count; i++) {
-    // Two rows of three, hugging the front-left edge outside the grid.
+    // Two columns of three ON the floor's front-left corner — racks fill
+    // back-to-front, so this ground stays open until the room is truly full
+    // (and the pile is drawn before racks, so a full floor occludes naturally).
     const row = i < 3 ? 0 : 1;
-    const p = L.iso(L.gxMin + 0.5 + (i % 3) * 0.55, L.gyMax + 0.45 + row * 0.4);
+    const p = L.iso(L.gxMin + 0.35 + row * 0.6, L.gyMax - 0.4 - (i % 3) * 0.75);
     const h = s * (0.8 + ((i * 37) % 5) * 0.06);
     // Shadow + body + lid seam. Deliberately unbranded and slightly wrong-looking.
     ctx.fillStyle = "rgba(0,0,0,0.25)";
