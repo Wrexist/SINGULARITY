@@ -109,10 +109,15 @@ export const SCENES = [
     focus: [{ sel: ".card:has-text('Scraped Data Pack')" }, { sel: ".card:has-text('Forum Firehose')" }, { sel: ".heat" }],
   },
   {
-    name: "06-honest", seed: RICH, nav: "settings", tag: "HONEST BY DESIGN", pin: "ONE-TIME",
-    head: "No <em>pay-to-win</em>", sub: "No ads. Plays offline. One optional unlock.",
+    // NOTE: keep this beat free of price/monetization references — App Store
+    // Review 2.3.7 treats "free/no-ads/no-pay-to-win/one unlock" as price refs
+    // in store media. That messaging belongs in the description, not a shot. So
+    // this beat sells the idle/offline loop over the live hall (never the paid
+    // Settings/Premium card, which shows a $ price).
+    name: "06-honest", seed: RICH, nav: "none", tag: "IDLE, DONE RIGHT", pin: "OFFLINE",
+    head: "Plays <em>offline</em>", sub: "Your lab keeps earning while you're away",
     glow: "#19c06b", accent: "#5ce6a0",
-    focus: [{ sel: ".premium-card" }],
+    focus: [{ sel: "canvas.hall-canvas" }, { sel: ".resource-bar" }],
   },
 ];
 
@@ -299,6 +304,16 @@ export async function captureScene(browser, scene, port) {
     localStorage.setItem("singularity.save.v1", save);
     localStorage.setItem("singularity.lastSeen.v1", now);
   }, [JSON.stringify(scene.seed), String(Date.now())]);
+  // Random "world event" modals, the daily-boost banner and toasts can fire
+  // mid-capture and get baked into a focus grab (element screenshots clip the
+  // composited page, overlays included) — covering the intended content. Hide
+  // them from page-load. NB: only world-event backdrops, never the confirm /
+  // ship modals a scene deliberately opens.
+  await app.addInitScript(() => {
+    const css = ".modal-backdrop:has(.world-modal){display:none!important}.daily-bar{display:none!important}.toast-stack{display:none!important}";
+    const apply = () => { const s = document.createElement("style"); s.textContent = css; document.head.appendChild(s); };
+    if (document.head) apply(); else document.addEventListener("DOMContentLoaded", apply);
+  });
   await app.goto(`http://localhost:${port}/`, { waitUntil: "networkidle" });
   await app.waitForSelector("canvas.hall-canvas", { timeout: 10000 }).catch(() => {});
   await sleep(300);
@@ -380,8 +395,13 @@ async function run() {
     const executablePath = findChrome();
     browser = await chromium.launch({ ...(executablePath ? { executablePath } : {}), args: ["--no-sandbox", "--disable-dev-shm-usage"] });
 
-    for (let i = 0; i < SCENES.length; i++) {
-      const scene = SCENES[i];
+    // Optional scene filter: `node scripts/store-screenshots.mjs 06` re-shoots
+    // only the matching scene(s), leaving the other accepted shots untouched.
+    const only = process.argv[2];
+    const scenes = only ? SCENES.filter((s) => s.name.includes(only)) : SCENES;
+    if (only && !scenes.length) throw new Error(`No scene matches "${only}"`);
+    for (let i = 0; i < scenes.length; i++) {
+      const scene = scenes[i];
       const { base, focuses } = await captureScene(browser, scene, PORT);
 
       // composite each output size
