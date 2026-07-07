@@ -1,189 +1,224 @@
-// App Store preview video — clean, marketable, ~19s, 886×1920 H.264.
-// Reuses the screenshot capture pipeline (captureScene) so the video matches the
-// store screenshots exactly, then animates an intro → 6 feature beats → CTA outro
-// with entrances, float, device zoom and crossfades. Frames are rendered
-// deterministically and encoded with ffmpeg (libx264 + silent AAC).
+// App Store preview video — App Store Review compliant, ~20s, 886×1920 H.264.
+//
+// Apple App Store Review Guidelines require that an app preview:
+//   • 2.3.4 — shows the app in use via full-screen video SCREEN CAPTURES, with
+//     NO device images / device frames / bezels around the app.
+//   • 2.3.7 — contains NO references to the app's price (including "free" or
+//     "discounted"). Price/monetization messaging belongs in the description.
+//
+// So this builder does NOT composite the app inside a phone mockup or show the
+// paid "Premium" screen. Instead it records the LIVE, running app FULL-SCREEN
+// (the real hall canvas animating, resource meters ticking, modals opening as we
+// drive it), and burns in short text overlays for clarity — which Apple allows
+// ("video screen captures of the app that may include narration and video or
+// textual overlays for added clarity"). Frames are captured deterministically
+// and encoded with ffmpeg (libx264 + silent AAC).
 // Output → appstore/preview.mp4
 //
 // Run: node scripts/store-preview-video.mjs
 import { spawn, execSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, existsSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { chromium } from "playwright";
-import { SCENES, captureScene, findChrome, waitForServer, ICON_B64 } from "./store-screenshots.mjs";
+import { SCENES, findChrome, waitForServer, ICON_B64 } from "./store-screenshots.mjs";
 
 const PORT = 4319;
 const FPS = 30;
 const OUT = "appstore/preview.mp4";
 const FFMPEG = process.env.FFMPEG || "ffmpeg";
 
-// Video canvas + proportional layout (same aspect/feel as the 1284×2778 shots).
-const V = { w: 886, h: 1920, deviceW: 676, deviceTop: 324, headSize: 66, subSize: 28, capTop: 104, brandBottom: 56 };
-
-const SLOTS = {
-  1: [{ x: 50, y: 57, scale: 1.00, rot: 0, z: 7 }],
-  2: [{ x: 52, y: 66, scale: 0.96, rot: 1.5, z: 7 }, { x: 47, y: 31, scale: 0.84, rot: -3.5, z: 6 }],
-  3: [{ x: 55, y: 74, scale: 0.82, rot: 1.5, z: 8 }, { x: 43, y: 49, scale: 0.78, rot: -3, z: 7 }, { x: 54, y: 26, scale: 0.72, rot: 3, z: 6 }],
-};
-const GRAIN = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E";
+// Final canvas. The live app is captured at a phone viewport (443×960) at 2x so
+// each screenshot is exactly 886×1920 — the real app screen, edge to edge, no
+// frame. 886/1920 ≈ 0.4615 matches a modern iPhone portrait aspect.
+const V = { w: 886, h: 1920, vw: 443, vh: 960, dsf: 2 };
 
 // ---- timeline (seconds) ----
-const INTRO_END = 2.4;
-const SCENE_START = 2.1, SCENE_STEP = 2.3, SCENE_DUR = 2.7;
-const windows = SCENES.map((_, i) => ({ s: +(SCENE_START + i * SCENE_STEP).toFixed(3), e: +(SCENE_START + i * SCENE_STEP + SCENE_DUR).toFixed(3), dur: SCENE_DUR }));
-const OUTRO_START = +(windows[windows.length - 1].e - 0.3).toFixed(3);
-const END = +(OUTRO_START + 3.2).toFixed(3);
-const TOTAL_FRAMES = Math.ceil(END * FPS);
+const INTRO = 1.7, BEAT = 2.6, OUTRO = 2.6;
+const DIP = 0.18;      // soft dark dip at each segment edge (masks the cut)
+const CAP_IN = 0.5;    // caption slide/fade-in
+const framesFor = (sec) => Math.round(sec * FPS);
 
-function bg(scene) {
-  const g = scene.glow, ac = scene.accent;
-  return `background:
-    radial-gradient(80% 50% at 50% 0%, ${g}26 0%, transparent 60%),
-    radial-gradient(70% 45% at 84% 30%, ${ac}1c 0%, transparent 60%),
-    radial-gradient(120% 75% at 50% 102%, ${g}40 0%, transparent 62%),
-    linear-gradient(180deg,#0b0c14 0%,#070810 52%,#04040a 100%)`;
+// Beats reuse the real game states/seeds the screenshot pipeline drives into,
+// but with price-free captions and WITHOUT the paid "Premium/Settings" screen
+// (which shows a $ price and would violate 2.3.7). `head` marks its accent word
+// with |bars|.
+const S = SCENES;
+const BEATS = [
+  { seed: S[0].seed, nav: "none",     tag: "AI COMPUTE TYCOON",   head: "Build an AI |empire|",  sub: "A 2.5D data center that grows as you scale", glow: S[0].glow, accent: S[0].accent },
+  { seed: S[1].seed, nav: "expand",   tag: "IT PHYSICALLY GROWS", head: "Watch it |grow|",       sub: "Tap the floor — the hall physically expands", glow: S[1].glow, accent: S[1].accent },
+  { seed: S[2].seed, nav: "research", tag: "PROGRESSION SPINE",   head: "Climb the |tree|",      sub: "An absurd AI research tree across every era", glow: S[2].glow, accent: S[2].accent },
+  { seed: S[0].seed, nav: "ship",     tag: "PRESTIGE LOOP",       head: "Ship the |model|",      sub: "Reset to bank permanent Legacy boosts",       glow: S[3].glow, accent: S[3].accent },
+  { seed: S[4].seed, nav: "market",   tag: "RISK & REWARD",       head: "Bend the |rules|",      sub: "Buy data legally… or risk the dark-web Bazaar", glow: S[4].glow, accent: S[4].accent },
+  { seed: S[0].seed, nav: "none",     tag: "IDLE, DONE RIGHT",    head: "Plays |offline|",       sub: "Your lab keeps earning while you're away",     glow: "#19c06b", accent: "#5ce6a0" },
+];
+
+// Ambient distractions the live app can throw during a 2.6s capture — random
+// "world event" modals, the daily-boost banner, transient toasts. They cover the
+// beat's intended content (and can carry off-message flavor text), so hide them
+// for a clean, on-message capture. Injected at page-load so nothing flashes.
+const SUPPRESS_CSS =
+  ".modal-backdrop:has(.world-modal){display:none!important}" +
+  ".daily-bar{display:none!important}" +
+  ".toast-stack{display:none!important}";
+
+// ---- shared page-side helpers (run inside the browser) ----
+
+// Inject a fixed, full-screen text-overlay layer over the live app. This is a
+// permitted "textual overlay" — the app itself still fills the frame underneath.
+function injectOverlay(beat) {
+  const [pre, accent, post] = beat.head.split("|");
+  const el = document.getElementById("__ov") || (() => {
+    const d = document.createElement("div"); d.id = "__ov"; document.body.appendChild(d);
+    const st = document.createElement("style"); st.id = "__ovcss"; document.head.appendChild(st);
+    st.textContent = `
+      #__ov{position:fixed;inset:0;z-index:2147483000;pointer-events:none;
+        font-family:-apple-system,"SF Pro Display","Segoe UI",system-ui,sans-serif}
+      #__scrim{position:absolute;top:0;left:0;right:0;height:40%;
+        -webkit-mask-image:linear-gradient(180deg,#000 42%,transparent);mask-image:linear-gradient(180deg,#000 42%,transparent)}
+      #__cap{position:absolute;top:5.2%;left:0;right:0;text-align:center;padding:0 34px;will-change:transform,opacity}
+      #__kick{display:inline-flex;align-items:center;gap:9px;margin-bottom:15px;padding:7px 13px;border-radius:999px;
+        background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);
+        box-shadow:0 8px 24px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.2)}
+      #__kick i{width:9px;height:9px;border-radius:50%}
+      #__kick b{color:rgba(240,243,255,.86);font-size:13px;font-weight:700;letter-spacing:.2em}
+      #__head{color:#f6f8ff;font-size:52px;line-height:1;font-weight:800;letter-spacing:-.035em;
+        text-shadow:0 6px 34px rgba(0,0,0,.7),0 2px 6px rgba(0,0,0,.6)}
+      #__head em{font-style:normal}
+      #__sub{color:rgba(232,237,255,.9);font-size:21px;font-weight:500;margin-top:12px;letter-spacing:-.005em;
+        text-shadow:0 2px 12px rgba(0,0,0,.75)}
+      #__dim{position:absolute;inset:0;background:#04040a;opacity:0}`;
+    return d;
+  })();
+  el.innerHTML =
+    `<div id="__scrim" style="background:linear-gradient(180deg,rgba(4,5,10,.9),rgba(4,5,10,.32) 60%,transparent)"></div>` +
+    `<div id="__cap"><div id="__kick"><i style="background:${beat.accent};box-shadow:0 0 14px ${beat.glow}"></i><b>${beat.tag}</b></div>` +
+    `<div id="__head">${pre}<em style="background:linear-gradient(110deg,${beat.accent},#fff 55%,${beat.accent});-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 20px ${beat.glow}aa)">${accent}</em>${post}</div>` +
+    `<div id="__sub">${beat.sub}</div></div>` +
+    `<div id="__dim"></div>`;
+  // per-frame driver: caption reveal + edge dip
+  window.__drive = (cap, dim) => {
+    const c = document.getElementById("__cap");
+    if (c) { c.style.opacity = String(cap); c.style.transform = `translateY(${(1 - cap) * -18}px)`; }
+    const s = document.getElementById("__scrim"); if (s) s.style.opacity = String(cap);
+    const d = document.getElementById("__dim"); if (d) d.style.opacity = String(dim);
+  };
 }
 
-function cardHtml(f, slot, scene, primary) {
-  const cardW = Math.round(slot.scale * V.deviceW);
-  let cardH = Math.round(cardW / f.aspect);
-  const maxH = Math.round(V.h * 0.46);
-  const fit = cardH > maxH ? "object-fit:cover;object-position:top" : "";
-  cardH = Math.min(cardH, maxH);
-  const r = Math.round(V.deviceW * 0.05);
-  const pin = primary && scene.pin
-    ? `<span class="vpin" style="top:-${Math.round(V.subSize*0.5)}px;left:${Math.round(V.deviceW*0.05)}px;padding:${Math.round(V.subSize*0.22)}px ${Math.round(V.subSize*0.46)}px;font-size:${Math.round(V.subSize*0.52)}px;background:linear-gradient(135deg,${scene.accent},${scene.glow});box-shadow:0 8px 20px -6px ${scene.glow}">${scene.pin}</span>` : "";
-  const shadow = primary
-    ? `0 60px 110px -26px rgba(0,0,0,.82),0 0 100px -10px ${scene.glow}cc`
-    : `0 40px 80px -26px rgba(0,0,0,.74),0 0 64px -14px ${scene.glow}99`;
-  return `<div class="vcard" style="left:${slot.x}%;top:${slot.y}%;width:${cardW}px;height:${cardH}px;z-index:${slot.z};transform:translate(-50%,-50%) rotate(${slot.rot}deg)">
-    <div class="vanim" style="border-radius:${r}px;padding:3px;background:linear-gradient(150deg,rgba(255,255,255,.85),${scene.accent}66 38%,rgba(255,255,255,.12) 78%);box-shadow:${shadow}">
-      ${pin}<div class="vinner" style="border-radius:${r-3}px"><img style="${fit}" src="data:image/png;base64,${f.b64}"></div>
-    </div></div>`;
+const ease = (p) => { p = Math.max(0, Math.min(1, p)); return 1 - Math.pow(1 - p, 3); };
+// dark dip at both segment edges → adjacent segments meet mid-dip, hiding the cut
+function edgeDim(i, n) {
+  const inS = ease(1 - (i / FPS) / DIP);
+  const outS = ease(1 - ((n - 1 - i) / FPS) / DIP);
+  return Math.max(0, Math.max(inS, outS)) * 0.6;
 }
 
-function sceneLayer(scene, base, focuses, i) {
-  const g = scene.glow, ac = scene.accent;
-  const slots = SLOTS[Math.min(focuses.length, 3)] || SLOTS[1];
-  const bezel = Math.round(V.deviceW * 0.016), outR = Math.round(V.deviceW * 0.085), inR = outR - bezel;
-  const islW = Math.round(V.deviceW * 0.30), islH = Math.round(V.deviceW * 0.034);
-  const cards = focuses.slice(0, slots.length).map((f, idx) => cardHtml(f, slots[idx], scene, idx === 0)).join("");
-  return `<div class="vscene" id="vscene-${i}" style="${bg(scene)}">
-    <div class="grid" style="background-image:linear-gradient(${ac}26 2px,transparent 2px),linear-gradient(90deg,${ac}26 2px,transparent 2px)"></div>
-    <div class="horizon" style="background:radial-gradient(60% 100% at 50% 0%,${g}55,transparent 72%)"></div>
-    <div class="aura" style="background:radial-gradient(closest-side,${g}4d,transparent 70%)"></div>
-    <div class="aura2" style="background:radial-gradient(closest-side,${ac}3a,transparent 70%)"></div>
-    <div class="device" style="border-radius:${outR}px;padding:${bezel}px"><div class="scr" style="border-radius:${inR}px"><img src="data:image/png;base64,${base}"><div class="island" style="top:${bezel + Math.round(V.deviceW*0.014)}px;width:${islW}px;height:${islH}px;border-radius:${islH}px"></div></div></div>
-    <div class="disc" style="left:${slots[0].x}%;top:${slots[0].y}%;width:${Math.round(slots[0].scale*V.deviceW*1.4)}px;height:${Math.round(slots[0].scale*V.deviceW*1.4)}px;background:radial-gradient(closest-side,${g}5c,transparent 72%)"></div>
-    ${cards}
-    <div class="vcap"><div class="vkick"><i style="background:${ac};box-shadow:0 0 16px ${g}"></i><b>${scene.tag}</b></div><h1 class="vhead">${scene.head.replace(/<em>/g, `<em style="background:linear-gradient(110deg,${ac},#fff 55%,${ac});-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 22px ${g}aa)">`)}</h1><p class="vsub">${scene.sub}</p></div>
-    <div class="vbrand">${ICON_B64 ? `<img src="data:image/png;base64,${ICON_B64}">` : ""}<span>Singularity Inc.</span></div>
-  </div>`;
+// Drive the live app into a beat's state (mirrors the screenshot pipeline's
+// navigation) and hold the page open so we can record it animating.
+async function openBeat(browser, beat) {
+  const app = await browser.newPage({ viewport: { width: V.vw, height: V.vh }, deviceScaleFactor: V.dsf });
+  // reducedMotion:false so the hall actually animates on camera (the screenshot
+  // pipeline uses true; a video wants the motion).
+  await app.addInitScript(() => localStorage.setItem("singularity.settings.v1", JSON.stringify({ sound: true, haptics: true, reducedMotion: false, onboarded: true })));
+  await app.addInitScript(([save, now]) => {
+    localStorage.setItem("singularity.save.v1", save);
+    localStorage.setItem("singularity.lastSeen.v1", now);
+  }, [JSON.stringify(beat.seed), String(Date.now())]);
+  await app.addInitScript((css) => {
+    const apply = () => { const s = document.createElement("style"); s.id = "__suppress"; s.textContent = css; document.head.appendChild(s); };
+    if (document.head) apply(); else document.addEventListener("DOMContentLoaded", apply);
+  }, SUPPRESS_CSS);
+  await app.goto(`http://localhost:${PORT}/`, { waitUntil: "networkidle" });
+  await app.waitForSelector("canvas.hall-canvas", { timeout: 10000 }).catch(() => {});
+  await sleep(350);
+
+  const collect = app.getByRole("button", { name: "Collect" });
+  if (await collect.isVisible().catch(() => false)) await collect.click().catch(() => {});
+
+  // clear any stray world-event modal so the intended state is on screen
+  for (let d = 0; d < 4; d++) {
+    if (!(await app.locator(".world-modal").count().catch(() => 0))) break;
+    const choice = app.locator(".world-choice").first();
+    if (await choice.count().catch(() => 0)) await choice.click().catch(() => {});
+    else await app.locator(".world-modal .btn-primary, .world-modal .btn").first().click().catch(() => {});
+    await sleep(250);
+  }
+
+  // Lab sub-section switch (Build / Research / HQ) — the tree and the Data Bazaar
+  // both live under the "Research" tab; the ship modes live under "HQ".
+  const goSection = async (label) => {
+    const btn = app.locator(".labnav button", { hasText: label }).first();
+    if (await btn.count().catch(() => 0)) { await btn.click().catch(() => {}); await sleep(400); }
+  };
+
+  if (beat.nav === "expand") {
+    await app.waitForFunction(() => Array.isArray(window.__HALL_MARKERS__) && window.__HALL_MARKERS__.length > 0, { timeout: 5000 }).catch(() => {});
+    const t = await app.evaluate(() => {
+      const c = document.querySelector("canvas.hall-canvas");
+      if (!c) return null;
+      const r = c.getBoundingClientRect();
+      const m = (window.__HALL_MARKERS__ || []).find((x) => !x.maxed);
+      return m ? { x: r.left + m.centroid.x, y: r.top + m.centroid.y } : null;
+    });
+    if (t) await app.mouse.click(t.x, t.y);
+    await sleep(450);
+  } else if (beat.nav === "research") {
+    await goSection("Research");
+  } else if (beat.nav === "market") {
+    await goSection("Research");
+    await app.getByText("The Data Bazaar").first().scrollIntoViewIfNeeded().catch(() => {});
+    await sleep(350);
+  } else if (beat.nav === "ship") {
+    await goSection("HQ");
+    const shipBtn = app.getByRole("button", { name: /choose how/i });
+    for (let a = 0; a < 3; a++) {
+      await shipBtn.scrollIntoViewIfNeeded().catch(() => {});
+      await shipBtn.click().catch(() => {});
+      await app.waitForSelector(".ship-mode", { timeout: 3500 }).catch(() => {});
+      if (await app.locator(".ship-mode").count().catch(() => 0)) break;
+      await sleep(300);
+    }
+    await sleep(300);
+  }
+
+  await app.evaluate(injectOverlay, beat);
+  await app.evaluate(() => window.__drive(0, 0.6)).catch(() => {}); // start mid-dip, caption hidden
+  return app;
 }
 
-function pageHtml(layers) {
-  const acc = SCENES[0].accent, gl = SCENES[0].glow;
+// ---- intro / outro (branded, price-free, no device frame) ----
+function cardHtml(kind, title, sub, accent, glow) {
   return `<!doctype html><html><head><meta charset="utf-8"><style>
 *{margin:0;box-sizing:border-box}
 html,body{width:${V.w}px;height:${V.h}px;overflow:hidden;background:#04040a;
   font-family:-apple-system,"SF Pro Display","Segoe UI",system-ui,sans-serif}
-.stage{position:relative;width:${V.w}px;height:${V.h}px;overflow:hidden;background:#04040a}
-.vscene{position:absolute;inset:0;opacity:0;will-change:opacity}
-.grid{position:absolute;left:-45%;right:-45%;bottom:-12%;height:72%;background-size:110px 110px;
-  transform:perspective(1100px) rotateX(75deg);transform-origin:bottom center;
-  -webkit-mask-image:linear-gradient(to top,#000 2%,transparent 64%);mask-image:linear-gradient(to top,#000 2%,transparent 64%);opacity:.5}
-.horizon{position:absolute;left:0;right:0;top:50%;height:300px;filter:blur(24px);opacity:.7}
-.aura{position:absolute;left:50%;top:60%;width:${Math.round(V.w*1.3)}px;height:${Math.round(V.w*1.3)}px;transform:translate(-50%,-50%);border-radius:50%;filter:blur(70px);opacity:.75}
-.aura2{position:absolute;left:22%;top:30%;width:${Math.round(V.w*0.72)}px;height:${Math.round(V.w*0.72)}px;transform:translate(-50%,-50%);border-radius:50%;filter:blur(80px);opacity:.6}
-.device{position:absolute;left:50%;top:${V.deviceTop}px;width:${V.deviceW}px;transform:translateX(-50%);
-  background:linear-gradient(155deg,#2a2c36 0%,#15161d 42%,#0a0b10 100%);
-  box-shadow:0 80px 140px -46px rgba(0,0,0,.9),0 0 120px -14px ${gl}55,inset 0 2px 1px rgba(255,255,255,.22),inset 0 -2px 2px rgba(0,0,0,.6);will-change:transform}
-.scr{position:relative;overflow:hidden;background:#0a0b10}
-.scr img{width:100%;display:block;filter:blur(13px) brightness(.4) saturate(.92);transform:scale(1.1)}
-.scr::after{content:"";position:absolute;inset:0;background:linear-gradient(125deg,rgba(255,255,255,.14) 0%,transparent 24%,transparent 82%,rgba(255,255,255,.05) 100%)}
-.island{position:absolute;left:50%;transform:translateX(-50%);background:#04050a;z-index:3;box-shadow:inset 0 0 4px rgba(255,255,255,.12)}
-.disc{position:absolute;transform:translate(-50%,-50%);border-radius:50%;filter:blur(34px);opacity:.9;z-index:4}
-.vcard{position:absolute}
-.vanim{width:100%;height:100%;opacity:0;will-change:transform,opacity}
-.vinner{width:100%;height:100%;overflow:hidden;background:#fff}
-.vinner img{width:100%;height:100%;display:block}
-.vpin{position:absolute;z-index:2;border-radius:999px;color:#0a0b10;font-weight:800;letter-spacing:.12em}
-.vcap{position:absolute;top:0;left:0;right:0;z-index:9;text-align:center;padding:${V.capTop}px 56px 0;will-change:transform,opacity}
-.vkick{display:inline-flex;align-items:center;gap:10px;margin-bottom:${Math.round(V.headSize*0.34)}px;padding:${Math.round(V.subSize*0.34)}px ${Math.round(V.subSize*0.62)}px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);box-shadow:0 8px 24px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.18)}
-.vkick i{width:${Math.round(V.subSize*0.34)}px;height:${Math.round(V.subSize*0.34)}px;border-radius:50%}
-.vkick b{color:rgba(238,241,255,.82);font-size:${Math.round(V.subSize*0.62)}px;font-weight:700;letter-spacing:.2em}
-.vhead{color:#f6f8ff;font-size:${V.headSize}px;line-height:.98;font-weight:800;letter-spacing:-.04em;text-shadow:0 8px 40px rgba(0,0,0,.55)}
-.vhead em{font-style:normal}
-.vsub{color:rgba(228,233,255,.66);font-size:${V.subSize}px;font-weight:500;margin-top:${Math.round(V.subSize*0.66)}px;letter-spacing:-.005em}
-.vbrand{position:absolute;left:0;right:0;bottom:${V.brandBottom}px;z-index:10;display:flex;align-items:center;justify-content:center;gap:12px}
-.vbrand img{width:${Math.round(V.subSize*1.2)}px;height:${Math.round(V.subSize*1.2)}px;border-radius:${Math.round(V.subSize*0.3)}px;box-shadow:0 6px 18px rgba(0,0,0,.55)}
-.vbrand span{color:rgba(236,239,255,.72);font-size:${Math.round(V.subSize*0.82)}px;font-weight:700;letter-spacing:.06em}
-
-/* intro + outro */
-.full{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;z-index:20;
-  background:radial-gradient(90% 60% at 50% 30%, ${acc}22 0%, transparent 60%),linear-gradient(180deg,#0b0c14,#05060c)}
-.full img{width:${Math.round(V.deviceW*0.34)}px;height:${Math.round(V.deviceW*0.34)}px;border-radius:${Math.round(V.deviceW*0.08)}px;box-shadow:0 30px 70px -16px rgba(0,0,0,.7),0 0 70px -10px ${gl}88;will-change:transform}
-.ititle{margin-top:${Math.round(V.headSize*0.5)}px;color:#f6f8ff;font-size:${Math.round(V.headSize*1.12)}px;font-weight:850;letter-spacing:-.04em}
-.isub{margin-top:${Math.round(V.subSize*0.5)}px;color:rgba(228,233,255,.66);font-size:${V.subSize}px;font-weight:500}
-.octa{margin-top:${Math.round(V.headSize*0.46)}px;display:inline-block;padding:${Math.round(V.subSize*0.6)}px ${Math.round(V.subSize*1.3)}px;border-radius:999px;
-  background:linear-gradient(135deg,${acc},${gl});color:#06070e;font-size:${Math.round(V.subSize*0.92)}px;font-weight:800;letter-spacing:.02em;box-shadow:0 16px 40px -10px ${gl}}
-.ofoot{margin-top:${Math.round(V.subSize*0.9)}px;color:rgba(228,233,255,.5);font-size:${Math.round(V.subSize*0.72)}px;font-weight:600;letter-spacing:.08em}
-
-.grain{position:absolute;inset:0;z-index:30;pointer-events:none;opacity:.11;mix-blend-mode:overlay;background-image:url("${GRAIN}");background-size:300px 300px}
-.vig{position:absolute;inset:0;z-index:30;pointer-events:none;background:radial-gradient(135% 92% at 50% 40%,transparent 46%,rgba(0,0,0,.5) 100%)}
-</style></head><body><div class="stage">
-${layers}
-<div class="full" id="intro">
-  ${ICON_B64 ? `<img class="ilogo" src="data:image/png;base64,${ICON_B64}">` : ""}
-  <div class="ititle">Singularity Inc.</div>
-  <div class="isub">Build an AI compute empire.</div>
-</div>
-<div class="full" id="outro">
-  ${ICON_B64 ? `<img class="ologo" src="data:image/png;base64,${ICON_B64}">` : ""}
-  <div class="ititle">Build the singularity.</div>
-  <div class="octa">Free on the App Store</div>
-  <div class="ofoot">NO ADS · NO PAY-TO-WIN · PLAYS OFFLINE</div>
-</div>
-<div class="grain"></div><div class="vig"></div>
+.wrap{position:relative;width:${V.w}px;height:${V.h}px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+  background:radial-gradient(85% 55% at 50% 32%, ${accent}26 0%, transparent 60%),
+             radial-gradient(120% 75% at 50% 104%, ${glow}3a 0%, transparent 60%),
+             linear-gradient(180deg,#0b0c14 0%,#070810 54%,#04040a 100%)}
+.logo{width:214px;height:214px;border-radius:48px;
+  box-shadow:0 40px 90px -20px rgba(0,0,0,.75),0 0 90px -12px ${glow}aa;will-change:transform,opacity}
+.title{margin-top:40px;color:#f6f8ff;font-size:58px;font-weight:850;letter-spacing:-.04em;will-change:opacity,transform}
+.sub{margin-top:16px;color:rgba(230,235,255,.72);font-size:24px;font-weight:500;will-change:opacity}
+.grain{position:absolute;inset:0;pointer-events:none;opacity:.5;
+  background:radial-gradient(130% 90% at 50% 40%,transparent 48%,rgba(0,0,0,.5) 100%)}
+</style></head><body><div class="wrap">
+  ${ICON_B64 ? `<img id="logo" class="logo" src="data:image/png;base64,${ICON_B64}">` : ""}
+  <div id="title" class="title">${title}</div>
+  <div id="sub" class="sub">${sub}</div>
+  <div class="grain"></div>
 </div>
 <script>
-const WIN = ${JSON.stringify(windows)};
-const INTRO_END = ${INTRO_END}, OUTRO_START = ${OUTRO_START}, END = ${END};
-const clamp = (v)=>Math.max(0,Math.min(1,v));
-const ease = (p)=>{p=clamp(p);return 1-Math.pow(1-p,3)};
-function fade(t,s,e,inDur,outDur){ if(t<s||t>e) return 0; return ease((t-s)/inDur) * (t>e-outDur ? 1-ease((t-(e-outDur))/outDur) : 1); }
-window.__render = function(t){
-  // intro
-  const intro = document.getElementById('intro');
-  const io = fade(t, 0, INTRO_END, 0.45, 0.45);
-  intro.style.display = io>0?'flex':'none'; intro.style.opacity = io;
-  if(io>0){ const p=ease(Math.min(1,t/0.8)); const lg=intro.querySelector('.ilogo'); if(lg) lg.style.transform=\`scale(\${0.86+0.14*p}) translateY(\${(1-p)*16}px)\`; }
-  // scenes
-  WIN.forEach((w,i)=>{
-    const el=document.getElementById('vscene-'+i);
-    const op = fade(t, w.s, w.e, 0.45, 0.4);
-    el.style.display = op>0?'block':'none'; el.style.opacity = op;
-    if(op<=0) return;
-    const lt=t-w.s;
-    el.querySelectorAll('.vanim').forEach((c,idx)=>{
-      const e=ease((lt-idx*0.09)/0.55), x=ease((lt-(w.dur-0.45))/0.45), fl=Math.sin((lt+idx*0.7)*1.7)*4;
-      c.style.opacity=Math.max(0,e*(1-x));
-      c.style.transform=\`translateY(\${(1-e)*70 - fl}px) scale(\${0.9+0.1*e + x*0.04})\`;
-    });
-    const cap=el.querySelector('.vcap'); const ce=ease(lt/0.5);
-    cap.style.opacity=Math.max(0,ce); cap.style.transform=\`translateY(\${(1-ce)*-22}px)\`;
-    const dev=el.querySelector('.device'); dev.style.transform=\`translateX(-50%) scale(\${1+0.05*Math.min(1,lt/w.dur)})\`;
-  });
-  // outro
-  const outro=document.getElementById('outro');
-  const oo = t>=OUTRO_START ? ease(Math.min(1,(t-OUTRO_START)/0.55)) : 0;
-  outro.style.display = oo>0?'flex':'none'; outro.style.opacity = oo;
-  if(oo>0){ const p=ease(Math.min(1,(t-OUTRO_START)/0.8)); const lg=outro.querySelector('.ologo'); if(lg) lg.style.transform=\`scale(\${0.86+0.14*p})\`; }
+const ease=(p)=>{p=Math.max(0,Math.min(1,p));return 1-Math.pow(1-p,3)};
+window.__r=function(t,dur,dim){
+  const p=ease(Math.min(1,t/0.8));
+  const lg=document.getElementById('logo'); if(lg){lg.style.opacity=String(ease(Math.min(1,t/0.5)));lg.style.transform='scale('+(0.9+0.1*p)+')';}
+  const ti=document.getElementById('title'); if(ti){const q=ease(Math.min(1,(t-0.15)/0.6));ti.style.opacity=String(q);ti.style.transform='translateY('+((1-q)*14)+'px)';}
+  const su=document.getElementById('sub'); if(su)su.style.opacity=String(ease(Math.min(1,(t-0.35)/0.6)));
+  let d=document.getElementById('__dim'); if(!d){d=document.createElement('div');d.id='__dim';d.style.cssText='position:absolute;inset:0;background:#04040a';document.querySelector('.wrap').appendChild(d);} d.style.opacity=String(dim);
 };
-</script>
-</body></html>`;
+</script></body></html>`;
 }
 
 async function run() {
@@ -191,49 +226,60 @@ async function run() {
   execSync("npm run build", { stdio: "inherit" });
   const server = spawn("npx", ["vite", "preview", "--port", String(PORT), "--strictPort"], { stdio: "ignore" });
   const framesDir = mkdtempSync(join(tmpdir(), "sing-preview-"));
-  let browser;
+  let browser, frame = 0;
+  const shot = async (page) => { await page.screenshot({ path: join(framesDir, `f_${String(frame++).padStart(4, "0")}.png`) }); };
+
   try {
     await waitForServer(`http://localhost:${PORT}/`);
     const executablePath = findChrome();
     browser = await chromium.launch({ ...(executablePath ? { executablePath } : {}), args: ["--no-sandbox", "--disable-dev-shm-usage"] });
 
-    console.log("Capturing scene assets…");
-    const layers = [];
-    for (let i = 0; i < SCENES.length; i++) {
-      // a beat with no/too-few cards reads as an empty device — retry the capture
-      const want = Math.min(2, SCENES[i].focus.length);
-      let cap = await captureScene(browser, SCENES[i], PORT);
-      for (let r = 0; r < 2 && cap.focuses.length < want; r++) {
-        console.log(`  ↻ retrying ${SCENES[i].name} (${cap.focuses.length}/${want} cards)`);
-        cap = await captureScene(browser, SCENES[i], PORT);
+    // intro
+    console.log("Rendering intro…");
+    const introPage = await browser.newPage({ viewport: { width: V.w, height: V.h }, deviceScaleFactor: 1 });
+    await introPage.setContent(cardHtml("intro", "Singularity Inc.", "Build an AI compute empire.", S[0].accent, S[0].glow), { waitUntil: "networkidle" });
+    const nIntro = framesFor(INTRO);
+    for (let i = 0; i < nIntro; i++) {
+      await introPage.evaluate(([t, d]) => window.__r(t, 0, d), [i / FPS, edgeDim(i, nIntro)]);
+      await shot(introPage);
+    }
+    await introPage.close();
+
+    // beats — live app, full screen
+    for (let b = 0; b < BEATS.length; b++) {
+      console.log(`Recording beat ${b + 1}/${BEATS.length} — ${BEATS[b].head.replace(/\|/g, "")}…`);
+      const app = await openBeat(browser, BEATS[b]);
+      const n = framesFor(BEAT);
+      for (let i = 0; i < n; i++) {
+        const cap = ease(Math.min(1, (i / FPS) / CAP_IN));
+        await app.evaluate(([c, d]) => window.__drive(c, d), [cap, edgeDim(i, n)]);
+        await shot(app);
       }
-      layers.push(sceneLayer(SCENES[i], cap.base.toString("base64"), cap.focuses, i));
-      console.log(`  ✓ ${SCENES[i].name} (${cap.focuses.length} cards)`);
+      await app.close();
     }
 
-    const page = await browser.newPage({ viewport: { width: V.w, height: V.h }, deviceScaleFactor: 1 });
-    await page.setContent(pageHtml(layers.join("\n")), { waitUntil: "networkidle" });
-    await sleep(300);
-
-    console.log(`Rendering ${TOTAL_FRAMES} frames (${(END).toFixed(1)}s @ ${FPS}fps)…`);
-    for (let f = 0; f < TOTAL_FRAMES; f++) {
-      const t = f / FPS;
-      await page.evaluate((tt) => window.__render(tt), t);
-      await page.screenshot({ path: join(framesDir, `f_${String(f).padStart(4, "0")}.png`) });
-      if (f % 60 === 0) console.log(`  frame ${f}/${TOTAL_FRAMES}`);
+    // outro (no price references)
+    console.log("Rendering outro…");
+    const outroPage = await browser.newPage({ viewport: { width: V.w, height: V.h }, deviceScaleFactor: 1 });
+    await outroPage.setContent(cardHtml("outro", "Build the singularity.", "AI Data-Center Empire Builder", "#5b8cff", "#8fb0ff"), { waitUntil: "networkidle" });
+    const nOutro = framesFor(OUTRO);
+    for (let i = 0; i < nOutro; i++) {
+      await outroPage.evaluate(([t, d]) => window.__r(t, 0, d), [i / FPS, edgeDim(i, nOutro)]);
+      await shot(outroPage);
     }
-    await page.close();
+    await outroPage.close();
 
-    console.log("Encoding H.264…");
+    console.log(`Encoding H.264 (${frame} frames, ${(frame / FPS).toFixed(1)}s)…`);
     mkdirSync("appstore", { recursive: true });
+    const dur = frame / FPS;
     const args = [
       "-y", "-framerate", String(FPS), "-i", join(framesDir, "f_%04d.png"),
-      "-f", "lavfi", "-t", String(END), "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
+      "-f", "lavfi", "-t", String(dur), "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
       "-c:v", "libx264", "-profile:v", "high", "-pix_fmt", "yuv420p", "-crf", "18", "-r", String(FPS),
       "-c:a", "aac", "-b:a", "128k", "-shortest", "-movflags", "+faststart", OUT,
     ];
     execSync(`${FFMPEG} ${args.map((a) => `'${a}'`).join(" ")}`, { stdio: "inherit" });
-    console.log(`\n✓ ${OUT}  (${(END).toFixed(1)}s, ${V.w}×${V.h})`);
+    console.log(`\n✓ ${OUT}  (${dur.toFixed(1)}s, ${V.w}×${V.h}, no device frame, no price references)`);
   } finally {
     if (browser) await browser.close();
     server.kill();
