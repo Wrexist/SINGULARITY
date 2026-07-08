@@ -1182,6 +1182,14 @@ svg { vertical-align: middle; }
   border-color: color-mix(in srgb, var(--ship) 28%, var(--glass-edge));
 }
 .prestige-blurb { font-size: 13px; color: var(--ink-2); margin: 0 0 14px; line-height: 1.45; }
+/* Ship-timing guidance: weights-now + progress to the next whole weight. */
+.prestige-timing { margin: 0 0 14px; padding: 12px 14px; border-radius: 14px; background: rgba(124, 92, 255, 0.06); border: 1px solid rgba(124, 92, 255, 0.14); }
+.prestige-timing-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 13px; color: var(--ink); }
+.prestige-timing-row b { color: #5a43c8; }
+.prestige-timing-next { font-size: 11.5px; font-weight: 750; color: var(--ink-3); white-space: nowrap; }
+.prestige-timing-bar { height: 6px; border-radius: 999px; background: rgba(124, 92, 255, 0.14); margin: 8px 0 6px; overflow: hidden; }
+.prestige-timing-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #7c5cff, #9b51e0); transition: width 0.4s var(--ease-out); }
+.prestige-timing-note { margin: 0; font-size: 11.5px; color: var(--ink-3); line-height: 1.4; }
 .prestige-stats {
   display: flex;
   justify-content: space-between;

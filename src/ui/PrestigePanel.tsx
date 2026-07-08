@@ -120,6 +120,33 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
         </div>
       )}
 
+      {/* Timing guidance (the classic idle "ship now or keep going?" decision): the
+          weights you'd bank RIGHT NOW, and how close lifetime earnings are to the next
+          whole weight — so the reset is an informed choice, not a shot in the dark.
+          Pure display over legacyWeightsGain; weights diminish (exponent < 1), which the
+          progress-to-next visibly encodes. */}
+      {ready && !confirming && (() => {
+        const exp = balance.prestige.exponent;
+        const lAt = Big.of(balance.prestige.scale).mul(gain.pow(1 / exp));
+        const lNext = Big.of(balance.prestige.scale).mul(gain.add(1).pow(1 / exp));
+        const span = lNext.sub(lAt);
+        const pct = span.gt(0) ? Math.max(0, Math.min(1, game.lifetimeMoney.sub(lAt).div(span).toNumber())) : 1;
+        return (
+          <div className="prestige-timing">
+            <div className="prestige-timing-row">
+              <span>Ship now → <b>+{fmt(legacyWeightsForMode(game, "deploy"))}</b> weights</span>
+              <span className="prestige-timing-next">next weight {Math.floor(pct * 100)}%</span>
+            </div>
+            <div className="prestige-timing-bar"><div className="prestige-timing-fill" style={{ width: `${pct * 100}%` }} /></div>
+            <p className="prestige-timing-note">
+              {pct >= 0.8
+                ? "You're close to your next weight — a little longer banks more."
+                : "Weights grow with lifetime earnings, but with diminishing returns. Big jump now, or hold for the next one."}
+            </p>
+          </div>
+        );
+      })()}
+
       {!confirming ? (
         <button className={`btn btn-ship${willAscend ? " btn-ascend" : ""}`} disabled={!ready} onClick={() => setConfirming(true)}>
           {!ready ? "Locked — deploy a model first" : willAscend ? `✦ Ascend — choose how to ship` : `Ship — choose how`}

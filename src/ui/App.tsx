@@ -579,7 +579,17 @@ export function App() {
     pushToast(`Contract complete — +${rep} Lab Reputation`, "good");
     if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.4, { count: 24, power: 1.3, colors: ["#ff9f0a", "#ffd60a", "#16b364"] });
   };
-  const onResearch = (id: string) => { haptics.tap(); sound.purchase(); doResearch(id); };
+  const onResearch = (id: string) => {
+    haptics.tap(); sound.purchase();
+    const had = game.research.includes(id);
+    doResearch(id);
+    // Surface the node's satirical flavor as a breakthrough toast — completing research
+    // used to be silent. Only on a REAL new unlock (doResearch no-ops if unaffordable).
+    if (!had && useGame.getState().game.research.includes(id)) {
+      const def = balance.research.find((r) => r.id === id);
+      if (def) pushToast(`Breakthrough: ${def.name} — ${def.desc}`, "good");
+    }
+  };
   const onBuyData = (id: string) => {
     const outcome = doBuyData(id);
     if (!outcome) return;
