@@ -159,6 +159,11 @@ export function ProductDetail({ game, productId, mods, onClose, onStartUpgrade, 
               {statCard("Profit /s", `${me.margin >= 0 ? "+" : ""}${m$(me.margin)}/s`, me.margin >= 0 ? "pos" : "neg")}
               {statCard("Paying users", num(me.paid))}
               {statCard("Total users", num(me.mau))}
+              {/* Churn + per-user revenue were computed but never shown — now mods-aware, so
+                  a Customer Success hire visibly shrinks "leaving/min" and a Sales Exec lifts
+                  "Revenue/user" (the staff you assigned finally read on the sheet). */}
+              {statCard("Users leaving /min", num(Math.round(me.churnPerMin * me.paid)), "neg")}
+              {statCard("Revenue /user", perUserPrice(me.arpu))}
             </div>
             {barCard("Competitiveness vs rivals", me.qf * 100, qfColor, `${Math.round(me.qf * 100)}%`)}
             {barCard(`Market penetration (of ${num(effTam)})`, penetration * 100, "var(--data)", `${(penetration * 100).toFixed(penetration < 0.01 ? 2 : 1)}%`)}
