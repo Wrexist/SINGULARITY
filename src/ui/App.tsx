@@ -57,6 +57,9 @@ import { WorldEventCard } from "./WorldEventCard";
 import { ModifierBar } from "./ModifierBar";
 import { regulatorIsNamed, regulatorState } from "../engine/regulator";
 import { canPrestige } from "../engine/prestige";
+import { chartersUnlocked } from "../engine/charter";
+import { preprintsUnlocked } from "../engine/preprints";
+import { legacyAvailable } from "../engine/legacyTree";
 import { currentEra } from "../engine/eras";
 import { recordTelemetry } from "../state/telemetry";
 
@@ -268,6 +271,12 @@ export function App() {
     { key: "align", fact: alignDir, when: "doomer", text: "Your choices tilt the lab doomer — safer, steadier. See Lab Stats.", tone: "neutral" },
     { key: "autoTrain", fact: d.autoTrain, when: true, text: "Auto-train online — runs restart themselves. Set your training intensity.", tone: "good" },
     { key: "hired", fact: game.stats.employeesHired > 0, when: true, text: "First hire aboard — specialists level up as they work", tone: "good" },
+    // Systems that used to appear as unexplained new panels (onboarding audit): one
+    // line each, the first time they unlock, saying what they are and where to find them.
+    { key: "charter", fact: chartersUnlocked(game), when: true, text: "Lab Charter unlocked — pick a run focus on the Build tab before you lock into research.", tone: "good" },
+    { key: "rigbay", fact: componentsUnlocked(game), when: true, text: "Rig Bay unlocked — slot components into your racks for extra output. It's on the Build tab.", tone: "good" },
+    { key: "preprints", fact: preprintsUnlocked(game), when: true, text: "Research tree complete — publish frontier Preprints in Research for a repeatable, escalating boost.", tone: "good" },
+    { key: "legacytree", fact: legacyAvailable(game).gt(0), when: true, text: "Legacy Investments unlocked — spend Legacy Weights on a permanent lane focus in HQ → Prestige.", tone: "good" },
     // Heat used to explain itself only by punishing you (pre-launch audit).
     { key: "heat", fact: game.heat >= 25, when: true, text: "Regulatory Heat is rising — fines and raids get likelier. Time and lobbying cool it.", tone: "neutral" },
     // Gentle backup nudge (R8.2): once real progress exists and no backup ever
