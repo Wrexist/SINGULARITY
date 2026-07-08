@@ -1952,12 +1952,17 @@ export const balance = {
    */
   preprints: {
     enabled: true,
-    /** Hard per-run cap — the boost ceiling is perLevelMult^maxPerRun (≈×1.22). */
-    maxPerRun: 10,
+    /** Safety bound only — NOT a gameplay ceiling. The escalating Compute+Data cost
+     *  (growth 1.9/paper) is the real gate: it outruns any run's production long
+     *  before this, so the Research panel always has "one more paper" to publish and
+     *  never goes inert (the old cap of 10 hit its ×1.22 ceiling in minutes). Kept
+     *  finite so a crafted save can't drive perLevelMult^n to Infinity → NaN. */
+    maxPerRun: 200,
     /** Base cost of paper #1; each subsequent paper costs ×growth more. */
     cost: { compute: 250_000, data: 15_000 },
     growth: 1.9,
-    /** All-lane multiplier per paper (compounding, but capped by maxPerRun). */
+    /** All-lane multiplier per paper (compounding). Tiny on purpose — the point is a
+     *  perpetual spend-vs-ship decision, not a power spike; it resets every ship. */
     perLevelMult: 1.02,
     /** Rotating satirical paper titles (level → titles[level % length]). */
     titles: [

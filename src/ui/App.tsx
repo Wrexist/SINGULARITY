@@ -67,7 +67,7 @@ export function App() {
   const notice = useGame((s) => s.notice);
   const worldEvent = useGame((s) => s.worldEvent);
   const candidates = useGame((s) => s.candidates);
-  const { doStartRun, doClaim, doBuyUpgrade, doBuyUpgradeBulk, doBuyOfficePerk, doBuyReputationPerk, doBuyLegacyPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
+  const { doStartRun, doClaim, doBuyUpgrade, doBuyUpgradeBulk, doBuyOfficePerk, doBuyReputationPerk, doBuyEndowment, doBuyLegacyPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
     doClaimContract, doClaimSponsor, doBuyPreprint, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
@@ -746,7 +746,7 @@ export function App() {
             )}
             {section === "hq" && (
               <>
-                {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} onBuyLegacyPerk={(id) => { haptics.success(); sound.purchase(); doBuyLegacyPerk(id); }} />}
+                {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} onBuyEndowment={() => { haptics.celebrate(); sound.purchase(); doBuyEndowment(); }} onBuyLegacyPerk={(id) => { haptics.success(); sound.purchase(); doBuyLegacyPerk(id); }} />}
                 {showResearch && <ContractsPanel game={game} onClaim={onClaimContract} onClaimSponsor={() => { haptics.success(); sound.success(); doClaimSponsor(); }} />}
                 <StatsPanel game={game} derived={d} />
                 {game.prestige.ships > 0 && <CodexPanel game={game} />}

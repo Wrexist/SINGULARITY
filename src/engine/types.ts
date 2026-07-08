@@ -87,6 +87,13 @@ export interface GameState {
    *  earned − spent (earned is derived from achievements/ships/ascensions). Survives
    *  prestige AND ascension. */
   reputation: { spent: number; perks: string[] };
+  /** Endgame Reputation Endowment: the number of times the repeatable "Singularity
+   *  Endowment" has been bought. Unlocks only once the entire finite perk tree is
+   *  owned, then absorbs surplus Reputation forever (escalating cost, a small
+   *  permanent all-lane boost per level). Its cost is charged to reputation.spent;
+   *  this is just the level count. Survives prestige AND ascension. Top-level (not
+   *  nested in `reputation`) so no rebuild path can silently drop it. */
+  repEndowment: number;
   /** Phase 4 — Contracts: completed objective ids (the board is derived from this).
    *  Persists across prestige; completed contracts feed earned Reputation. */
   contracts: { completed: string[] };

@@ -42,6 +42,26 @@ export const reputation = {
   /** Floor for stacked research-cost discounts (research can get cheap, never free). */
   researchDiscountFloor: 0.25,
 
+  /** Endgame Reputation Endowment (post-AGI depth). Once the ENTIRE finite perk tree
+   *  is owned, Reputation would otherwise dead-end — the currency keeps accruing (and
+   *  the daily sponsor pays it) with nothing to buy. The Endowment is the infinite home:
+   *  a repeatable buy with escalating cost and a small PERMANENT all-lane boost per
+   *  level, so surplus Reputation always has a sink and the day-7 faucet stays alive.
+   *  Curve-safe: it can't be touched until every perk (516 pts) is owned — a deep-
+   *  endgame state a fresh run / the sim never reaches. */
+  endowment: {
+    enabled: true,
+    /** Reputation cost of level 1; each level costs ×growth more (cheap early, then
+     *  a long grind) — a genuine "where does my surplus go" decision, not a wall. */
+    baseCost: 40,
+    growth: 1.18,
+    /** Permanent all-lane boost per level (additive: mult = 1 + level × perLevel). */
+    perLevel: 0.02,
+    /** Finite safety bound (a crafted save can't drive the cost sum / boost to
+     *  Infinity). Astronomically expensive to reach legitimately, so never a real cap. */
+    maxLevel: 2000,
+  },
+
   perks: [
     // --- Tier 1: single-lane boosts (entry-level) ---
     { id: "rep_compute1", name: "Compute Grant", desc: "+10% Compute, permanently.", cost: 8, effect: { kind: "computeMult", value: 0.1 } },

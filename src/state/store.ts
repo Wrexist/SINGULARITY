@@ -48,7 +48,7 @@ import {
 } from "../engine/products";
 import { productMilestones as PRODUCT_MILESTONES, type ProductTypeId } from "../engine/balance/products";
 import { achievements as ACHIEVEMENT_DEFS } from "../engine/balance/achievements";
-import { buyReputationPerk } from "../engine/reputation";
+import { buyReputationPerk, buyEndowment } from "../engine/reputation";
 import { claimContract, rollSponsor, claimSponsor } from "../engine/contracts";
 import { buyPreprint } from "../engine/preprints";
 import { setCharter, lockCharter } from "../engine/charter";
@@ -162,6 +162,8 @@ interface GameStore {
   /** Buy a one-time office perk (morale / payroll). */
   doBuyOfficePerk: (id: string) => void;
   doBuyReputationPerk: (id: string) => void;
+  /** Buy one endgame Reputation Endowment level (post-tree infinite sink). */
+  doBuyEndowment: () => void;
   setComputeFocus: (v: number) => void;
   /** Returns true if the release succeeded (so the UI only celebrates on a real ship). */
   doReleaseProduct: (type: ProductTypeId, name: string) => boolean;
@@ -518,6 +520,7 @@ export const useGame = create<GameStore>((set, get) => ({
   doFireEmployee: (id) => set((s) => ({ game: fireEmployee(s.game, id) })),
   doBuyOfficePerk: (id) => set((s) => ({ game: buyOfficePerk(s.game, id) })),
   doBuyReputationPerk: (id) => set((s) => ({ game: buyReputationPerk(s.game, id) })),
+  doBuyEndowment: () => set((s) => ({ game: buyEndowment(s.game) })),
   setComputeFocus: (v) =>
     set((s) => ({ game: { ...s.game, computeFocus: Math.max(0, Math.min(1, v)) } })),
   // The store mints the product id (nondeterminism stays out of the engine).

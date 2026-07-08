@@ -263,6 +263,8 @@ interface SavedShape {
   stats: Record<string, string | number>;
   achievements: string[];
   reputation: { spent: number; perks: string[] };
+  /** Endgame Reputation Endowment level. Sanitizer-defaulted (0) + migrated at v20. */
+  repEndowment: number;
   contracts: { completed: string[] };
   charter: string | null;
   charterLocked: boolean;
@@ -320,6 +322,7 @@ export function serialize(state: GameState): string {
     },
     achievements: state.achievements,
     reputation: state.reputation,
+    repEndowment: state.repEndowment,
     contracts: state.contracts,
     charter: state.charter,
     charterLocked: state.charterLocked,
@@ -366,6 +369,10 @@ export function deserialize(json: string): GameState {
     ? raw.achievements.filter((a): a is string => typeof a === "string")
     : [];
   const contracts = sanitizeContracts(raw.contracts);
+  // Endgame Endowment level: a finite non-negative int, clamped to the safety bound so
+  // a crafted value can't drive the cost-sum / boost math to Infinity. Its cost is then
+  // reconciled into reputation.spent below (same anti-cheat policy as the perk tree).
+  const repEndowment = Math.min(REPUTATION.endowment.maxLevel, safeCount(raw.repEndowment));
   const loadedProducts = isWellFormedProducts(raw.products) ? raw.products : fresh.products;
   // `sold` was added after v6 shipped, `drafts`/`upgrade` in v7; default them for
   // saves that predate each, and sanitize the untrusted nested shapes.
@@ -439,7 +446,8 @@ export function deserialize(json: string): GameState {
     employees: sanitizeEmployees(raw.employees),
     stats: sanitizeStats(raw.stats),
     achievements,
-    reputation: sanitizeReputation(raw.reputation),
+    reputation: sanitizeReputation(raw.reputation, repEndowment),
+    repEndowment,
     contracts,
     // Validate against KNOWN charter ids: an unknown/crafted id would still grant the
     // +15% conviction bonus (charter === lastCharter) without a real two-run commitment.
@@ -581,13 +589,25 @@ function sanitizeComponents(c: unknown, completedContracts: string[], achievemen
   return out;
 }
 
+/** Total Reputation owed for a given Endowment level (Σ escalating costs) — computed
+ *  inline from the balance constants (no engine import → no cycle) so a crafted
+ *  repEndowment forces a matching `spent`, the same policy as the perk tree. */
+function endowmentOwed(level: number): number {
+  const E = REPUTATION.endowment;
+  const n = Math.max(0, Math.min(E.maxLevel, Math.floor(level)));
+  let sum = 0;
+  for (let k = 0; k < n; k++) sum += Math.ceil(E.baseCost * Math.pow(E.growth, k));
+  return sum;
+}
+
 /** Reputation is untrusted: KNOWN perk ids (deduped), and `spent` reconciled so it's
- *  at least the cost of the perks you own — a save can't grant owned perks for free
- *  (under-reported spent) the way `legacySpent` (derived) already can't. */
-function sanitizeReputation(r: unknown): { spent: number; perks: string[] } {
+ *  at least the cost of the perks you own PLUS the Endowment levels you claim — a save
+ *  can't grant owned perks or endowment levels for free (under-reported spent). */
+function sanitizeReputation(r: unknown, endowmentLevel = 0): { spent: number; perks: string[] } {
   const o = (r ?? {}) as { spent?: unknown; perks?: unknown };
   const perks = dedupeKnownIds(o.perks, new Set(REP_PERK_COST.keys()));
-  const owedForOwned = perks.reduce((sum, id) => sum + (REP_PERK_COST.get(id) ?? 0), 0);
+  const owedForOwned =
+    perks.reduce((sum, id) => sum + (REP_PERK_COST.get(id) ?? 0), 0) + endowmentOwed(endowmentLevel);
   const loadedSpent = typeof o.spent === "number" && Number.isFinite(o.spent) && o.spent >= 0 ? o.spent : 0;
   return { spent: Math.max(loadedSpent, owedForOwned), perks };
 }
@@ -693,6 +713,11 @@ export function migrate(raw: any): SavedShape {
   if (s.version === 18) {
     // v18 → v19: rival counterplay. No strikes landed on existing saves.
     s = { ...s, version: 19, rivalOps: s.rivalOps ?? { strikes: {}, lastStrikeSec: null } };
+  }
+  if (s.version === 19) {
+    // v19 → v20: endgame Reputation Endowment (a level count). Nothing bought on old
+    // saves — the sanitizer defaults it to 0, so this just stamps the version.
+    s = { ...s, version: 20, repEndowment: s.repEndowment ?? 0 };
   }
   return s as SavedShape;
 }
