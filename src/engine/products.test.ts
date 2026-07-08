@@ -598,6 +598,18 @@ describe("products — market world events", () => {
     const { state } = applyWorldEvent(s, "industry_hype");
     expect(state.products.active[0]!.buzzSec).toBeGreaterThan(0);
   });
+
+  it("industry_hype scales the buzz wave by each type's hype sensitivity (regression: dead hype field)", () => {
+    const base = shipped();
+    base.prestige.ships = 9; // unlock every product type for the comparison
+    const drain = (s: ReturnType<typeof shipped>) =>
+      ({ ...s, products: { ...s.products, active: [{ ...s.products.active[0]!, buzzSec: 0 }] } });
+    const trendy = drain(releaseProduct(base, { type: "multimodal", name: "Trendy", id: "t1" })); // hype 1.5
+    const boring = drain(releaseProduct(base, { type: "small", name: "Boring", id: "b1" }));      // hype 0.3
+    const tBuzz = applyWorldEvent(trendy, "industry_hype").state.products.active[0]!.buzzSec;
+    const bBuzz = applyWorldEvent(boring, "industry_hype").state.products.active[0]!.buzzSec;
+    expect(tBuzz).toBeGreaterThan(bBuzz); // the trendy product rides the wave far longer
+  });
 });
 
 describe("products — retire valuation maturity (anti pump-and-dump)", () => {

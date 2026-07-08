@@ -29,7 +29,9 @@ export interface ProductTypeDef {
   computePerUser: number;
   /** Organic word-of-mouth growth factor per second. */
   virality: number;
-  /** Sensitivity to hype world-events (used later). */
+  /** Sensitivity to hype world-events: scales the buzz-wave duration an industry_hype
+   *  event grants this product (1 = neutral; a trendy Multimodal Studio rides it far
+   *  longer than a boring Fast API). Applied in actions.ts applyEffect. */
   hype: number;
   /** Regulatory Heat added per second while the product has paying users. */
   heatPerSec: number;

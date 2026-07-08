@@ -13,6 +13,7 @@ import { alignmentHeatMult } from "./alignment";
 import { suspicionEventMult, regulatorIsNamed, regulatorState, clampSuspicion } from "./regulator";
 import { autoResearchEnabled, researchCostMult } from "./reputation";
 import { isRackId, floorFull, evictableRackFor } from "./hall";
+import { typeDef } from "./products";
 import type { ActiveModifier, GameState } from "./types";
 
 const clampHeat = (h: number) => Math.max(0, Math.min(balance.heat.max, h));
@@ -555,12 +556,18 @@ function applyEffect(state: GameState, effect: WorldEventEffect, id: string, ton
     return { ...state, products: { ...state.products, frontier: state.products.frontier + effect.amount } };
   }
   if (effect.kind === "productBuzz") {
-    // Industry hype — every live product gets a buzz wave (acquisition + churn cut).
+    // Industry hype — live products get a buzz wave (acquisition + churn cut), scaled by
+    // each type's hype sensitivity: a trendy Multimodal Studio (hype 1.5) rides the wave
+    // far longer than a boring Fast API (hype 0.3). Wires the previously-dead `hype` field.
+    // Only fires from ambient world events, which the balance sim never rolls → curve-safe.
     return {
       ...state,
       products: {
         ...state.products,
-        active: state.products.active.map((p) => ({ ...p, buzzSec: Math.max(p.buzzSec, effect.durationSec) })),
+        active: state.products.active.map((p) => ({
+          ...p,
+          buzzSec: Math.max(p.buzzSec, effect.durationSec * typeDef(p.type).hype),
+        })),
       },
     };
   }
