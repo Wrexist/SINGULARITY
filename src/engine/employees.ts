@@ -25,6 +25,28 @@ export function roleMatchesSegment(id: string, segment: SegmentSkew): boolean {
   return (roleDef(id)?.affinity ?? []).includes(segment);
 }
 
+/** Short, role-flavored tail for a level-up notice (UI copy). Keyed by role so the
+ *  beat reads like a person growing into their job, not a generic "+1". Falls back
+ *  to a neutral line so a future role never breaks the notice. Pure. */
+const LEVEL_QUIPS: Record<string, string> = {
+  staff_researcher: "cites themselves in the related work now",
+  staff_engineer: "the racks have learned to fear them",
+  staff_ops: "found three revenue lines before lunch",
+  staff_ml: "checkpoints converge on command",
+  staff_sre: "the pager has gone quiet",
+  staff_success: "churn wouldn't dare",
+  staff_growth: "the funnel bends to their will",
+  staff_sales: "closed a deal mid-sentence",
+  staff_pr: "makes the subpoenas disappear",
+  staff_data_eng: "the pipelines break less now, allegedly",
+  staff_recruiter: "knows two more guys now",
+};
+
+export function levelUpNote(emp: Employee): string {
+  const quip = LEVEL_QUIPS[emp.roleId] ?? "leveled up and knows it";
+  return `${emp.name} made L${emp.level} — ${quip}`;
+}
+
 /** Output multiplier from a person's seniority level (1 = junior). */
 export function levelEffectMult(level: number): number {
   return 1 + (Math.max(1, level) - 1) * S.levelEffectStep;

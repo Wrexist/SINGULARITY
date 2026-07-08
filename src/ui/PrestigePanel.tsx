@@ -3,6 +3,7 @@ import { canPrestige, legacyWeightsGain, legacyWeightsForMode, ascensionMultipli
 import { currentEra } from "../engine/eras";
 import { reputationAvailable } from "../engine/reputation";
 import { legacyTreeBalance, legacyAvailable, canBuyLegacyPerk } from "../engine/legacyTree";
+import { maxActiveProducts, productsUnlocked } from "../engine/products";
 import { balance } from "../engine/balance/config";
 import type { GameState } from "../engine/types";
 import { fmt } from "./format";
@@ -158,7 +159,14 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
             <button className="link-btn" onClick={() => setConfirming(false)}>cancel</button>
           </div>
           <p className="ship-choose-tip">Resets Compute, Data, $, racks and research. Your team, products, achievements and Reputation stay.</p>
-          {Object.values(balance.prestige.shipModes).filter((m) => game.prestige.ships >= m.unlockShips).map((m) => {
+          {/* When the portfolio is already full, a kept draft can't be launched until a
+              slot frees up — so the "keeps a product" perk is deferred, not immediate.
+              Surfacing this stops the mature-portfolio trap where Deploy looks strictly
+              better but its one edge (the draft) is parked while give-it-away modes bank
+              legacy + Rep + momentum right now. */}
+          {(() => {
+            const slotsFull = productsUnlocked(game) && game.products.active.length >= maxActiveProducts(game);
+            return Object.values(balance.prestige.shipModes).filter((m) => game.prestige.ships >= m.unlockShips).map((m) => {
             const banked = legacyWeightsForMode(game, m.id as ShipMode);
             const kickstart = m.moneyKickstartPerShip * (game.prestige.ships + 1);
             return (
@@ -175,7 +183,9 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
                   <span className="ship-mode-blurb">{m.blurb}</span>
                   <div className="ship-mode-tags">
                     {m.keepsDraft
-                      ? <span className="ship-tag good">✓ Product to sell in Products</span>
+                      ? (slotsFull
+                          ? <span className="ship-tag warn">⧗ Draft parked — portfolio full ({game.products.active.length}/{maxActiveProducts(game)})</span>
+                          : <span className="ship-tag good">✓ Product to sell in Products</span>)
                       : <span className="ship-tag warn">✗ No product — you gave the model away</span>}
                     {kickstart > 0 && <span className="ship-tag good">+ ${kickstart} cash</span>}
                     {m.reputationBonus > 0 && <span className="ship-tag good">+ {m.reputationBonus} Reputation</span>}
@@ -184,7 +194,8 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
                 </div>
               </button>
             );
-          })}
+          });
+          })()}
         </div>
       )}
 

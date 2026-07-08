@@ -5,7 +5,7 @@ import type { GameState } from "../engine/types";
 
 interface Props {
   game: GameState;
-  onClaim: (id: string, rep: number) => void;
+  onClaim: (id: string, rep: number, title: string) => void;
   /** IDEAS #9 — claim today's sponsor objective (post-ladder daily). */
   onClaimSponsor: () => void;
 }
@@ -66,7 +66,7 @@ export function ContractsPanel({ game, onClaim, onClaimSponsor }: Props) {
                 <button
                   className="contract-claim"
                   disabled={!ready}
-                  onClick={() => onClaim(def.id, def.rep)}
+                  onClick={() => onClaim(def.id, def.rep, def.title)}
                 >
                   {ready ? "Claim" : "In progress"}
                 </button>

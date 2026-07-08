@@ -53,6 +53,32 @@ import { componentsUnlocked, earnedDefs } from "../engine/components";
 
 // Trophy-part defs are static catalog data — resolve once, not per render.
 const TROPHY_DEFS = earnedDefs();
+
+// Rotating framings for a claimed contract — picked by hashing the contract id so
+// each deal reads the same way every time but the board as a whole feels varied.
+const CONTRACT_DONE_QUIPS = [
+  "Delivered",
+  "Signed and shipped",
+  "The client is thrilled",
+  "Deliverable accepted",
+  "Another one in the bag",
+  "Milestone booked",
+  "Invoice sent",
+  "Handshake complete",
+];
+
+// A morning-momentum flavor line for the daily boost — varied by day so the once-a-day
+// beat feels like a new day at the lab, not the same confetti every time.
+const DAILY_QUIPS = [
+  "The clusters are warm and the coffee is hot",
+  "A good day to ship",
+  "Morning standup went suspiciously well",
+  "The GPUs are purring",
+  "Overnight training actually converged",
+  "The team came in early — for once",
+  "Investors sent a suspiciously nice email",
+  "Every dashboard is green. Enjoy it.",
+];
 import { EraTransition } from "./EraTransition";
 import { WorldEventCard } from "./WorldEventCard";
 import { ModifierBar } from "./ModifierBar";
@@ -519,6 +545,12 @@ export function App() {
   const onClaim = () => { haptics.success(); sound.success(); doClaim(); };
   const onClaimDaily = () => {
     haptics.celebrate(); sound.success(); doClaimDaily(); markDailyClaimed(); setDailyOn(false);
+    // Confirm the claim in words — the confetti was pretty but wordless. Vary the line
+    // by local day so returning tomorrow reads as a fresh day, not a repeat.
+    const pct = Math.round((balance.daily.factor - 1) * 100);
+    const min = Math.round(balance.daily.durationSec / 60);
+    const quip = DAILY_QUIPS[Math.floor(Date.now() / 86_400_000) % DAILY_QUIPS.length]!;
+    pushToast(`${quip} · +${pct}% output for ${min} min`, "good");
     if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.32, { count: 30, power: 1.5, colors: ["#7c5cff", "#ffd60a", "#16b364", "#2f7bf6"] });
   };
   // Hardware buys float the rate you actually gained ("+120/s") at the tap point —
@@ -576,10 +608,13 @@ export function App() {
     haptics.success(); sound.purchase();
     pushToast(`Sold ${p.name} for ${fmtMoney(Big.of(Math.round(payout)))}`, "neutral");
   };
-  const onClaimContract = (id: string, rep: number) => {
+  const onClaimContract = (id: string, rep: number, title: string) => {
     doClaimContract(id);
     haptics.celebrate(); sound.success();
-    pushToast(`Contract complete — +${rep} Lab Reputation`, "good");
+    // Name the deliverable and vary the framing so a claim reads like closing a
+    // real contract, not a generic "+Rep" ping. Stable per contract (hash the id).
+    const quip = CONTRACT_DONE_QUIPS[[...id].reduce((a, c) => a + c.charCodeAt(0), 0) % CONTRACT_DONE_QUIPS.length]!;
+    pushToast(`${quip}: "${title}" · +${rep} Lab Reputation`, "good");
     if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.4, { count: 24, power: 1.3, colors: ["#ff9f0a", "#ffd60a", "#16b364"] });
   };
   const onResearch = (id: string) => {

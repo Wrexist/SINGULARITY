@@ -36,6 +36,18 @@ const ROTATION = [
   "Somewhere, a Rival Slack Goes Quiet",
   "The Launch Tweet Is Live",
   "Bigger. Hungrier. Shippier.",
+  "Ship Logged, Ego Restored",
+  "The Demo Gods Were Merciful",
+  "One More for the Changelog",
+  "The Frontier Moved. You Moved It.",
+  "Weights Banked, Hubris Deployed",
+  "The Board Will Be Pleased",
+  "A Fresh Coat of State-of-the-Art",
+  "Ship First, Benchmark Later",
+  "The Roadmap Bends Toward Shipping",
+  "Another Notch on the GPU",
+  "The Waitlist Groans With Joy",
+  "Version Whatever, Vibes Immaculate",
 ];
 
 /** Pick the most impressive headline this run earned; fall back to the rotation. */
@@ -44,6 +56,11 @@ export function shipHeadline(r: HeadlineInput): string {
   if (r.peakCompute.gte(Big.of(1e12))) return "The Scaling Triumph";
   if (r.peakMrr >= 100_000) return "Cash-Flow Positive (Briefly)";
   if (r.rank != null && r.rank <= 3) return "Cracking the Top Three";
+  // Second-tier standouts — a run that was strong-but-not-record still earns a
+  // headline about ITS story instead of dropping to the generic rotation.
+  if (r.rank != null && r.rank <= 10) return "Onto the Leaderboard";
+  if (r.peakCompute.gte(Big.of(1e9))) return "Gigascale and Climbing";
+  if (r.peakMrr >= 10_000) return "The Revenue Is Real";
   // Generation milestones (only when no scale/rank standout fired).
   if (r.gen === 1) return "Your First Ship";
   if (r.gen >= 25) return "The Veteran's Run";

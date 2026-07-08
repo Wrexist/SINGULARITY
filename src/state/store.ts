@@ -5,7 +5,7 @@ import { tick } from "../engine/tick";
 import { derive } from "../engine/derive";
 import {
   addEmployee, startTraining, canTrain, fireEmployee, hireCost,
-  assignEmployee as assignEmployeeToProduct,
+  assignEmployee as assignEmployeeToProduct, levelUpNote,
 } from "../engine/employees";
 import {
   startRun,
@@ -355,7 +355,7 @@ export const useGame = create<GameStore>((set, get) => ({
       else if (finished.length > 1) pushNotice(`${finished.length} products shipped new versions — back at the frontier`, "ship");
 
       const trained = game.employees.filter((e) => wasTraining.get(e.id) && !e.training);
-      if (trained.length === 1) pushNotice(`${trained[0]!.name} leveled up to L${trained[0]!.level}`, "levelup");
+      if (trained.length === 1) pushNotice(levelUpNote(trained[0]!), "levelup");
       else if (trained.length > 1) pushNotice(`${trained.length} specialists leveled up`, "levelup");
 
       // Achievements: several can land in one tick (offline catch-up) — show the
