@@ -247,15 +247,25 @@ export interface ProductMetrics {
   margin: number; gap: number; churnPerMin: number; qf: number;
 }
 
-export function productMetrics(p: ProductState, frontier: number): ProductMetrics {
+/**
+ * Live economics for the dashboard. Now folds the same per-product `mods` the
+ * SIM applies (staff assignment buffs + heat/faction cross-system effects), so the
+ * Revenue/s, Profit/s and churn a player sees actually move when they assign a
+ * Sales Exec or an SRE — previously these numbers were computed mods-blind, making
+ * the entire product-staff system invisible on the very surfaces that sell it.
+ * Defaults to NEUTRAL_MODS so mods-agnostic callers (milestones, tests) are
+ * unchanged, and identical to the sim when mods are neutral (curve-safe: the
+ * balance sim never assigns staff, so its numbers don't move).
+ */
+export function productMetrics(p: ProductState, frontier: number, mods: ProductMods = NEUTRAL_MODS): ProductMetrics {
   const t = typeDef(p.type);
   const fm = featureMods(p);
   const qf = clamp(p.quality / Math.max(frontier, 1e-9), 0, 1);
-  const arpu = tierEconomics(p, t, qf, fm).arpu; // blended across Pro + Enterprise
+  const arpu = tierEconomics(p, t, qf, fm).arpu * mods.arpu; // blended across Pro + Enterprise, ×ARPU buffs
   const mrr = p.paid * arpu;
-  const serve = p.paid * t.computePerUser * p.quality * fm.serveCost;
+  const serve = p.paid * t.computePerUser * p.quality * fm.serveCost * mods.serveCost;
   const gap = Math.max(0, frontier - p.quality);
-  const churnPerSec = t.baseChurn * (1 + gap * B.stalenessChurn) * p.priceMult * (p.buzzSec > 0 ? B.buzzChurnMult : 1) * fm.churn;
+  const churnPerSec = t.baseChurn * (1 + gap * B.stalenessChurn) * p.priceMult * (p.buzzSec > 0 ? B.buzzChurnMult : 1) * fm.churn * mods.churn;
   return {
     mau: p.mau, paid: p.paid, arpu, mrr, serve,
     margin: mrr - serve - p.marketingPerSec,

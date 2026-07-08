@@ -143,12 +143,15 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
     return { product: prod, idle: prod.filter((e) => !e.assignedProductId).length };
   }, [team]);
 
-  // One metrics pass per product; crew grouped by assignment.
+  // One metrics pass per product; crew grouped by assignment. Mods-aware so the
+  // revenue shown next to a project reflects the very crew assigned to it — the
+  // whole point of this panel (assigning staff must visibly change the number).
   const frontier = game.products.frontier;
+  const modsById = derived.productModsById;
   const projects = useMemo(() => game.products.active.map((p) => ({
-    p, me: productMetrics(p, frontier),
+    p, me: productMetrics(p, frontier, modsById[p.id]),
     crew: team.filter((e) => e.assignedProductId === p.id),
-  })), [game.products.active, frontier, team]);
+  })), [game.products.active, frontier, team, modsById]);
   const totalMrr = projects.reduce((s, x) => s + x.me.mrr, 0);
 
   const selected = selectedId ? team.find((e) => e.id === selectedId) ?? null : null;

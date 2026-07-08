@@ -163,13 +163,13 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   const rivalsNow = rivalsBeaten({ ...state, products });
   const stats = accrueStats(
     state.stats, products, state.research.length, d.computePerSec,
-    lifetimeMoney.sub(state.lifetimeMoney), seconds, rivalsNow,
+    lifetimeMoney.sub(state.lifetimeMoney), seconds, rivalsNow, d.productModsById,
   );
 
   // Generation-scoped peaks (reset by prestige) for the Generation Report: this run's
   // high-water Compute/sec and total product revenue/sec, NOT the all-time career peaks.
   let curMrr = 0;
-  for (const p of products.active) curMrr += productMetrics(p, products.frontier).mrr;
+  for (const p of products.active) curMrr += productMetrics(p, products.frontier, d.productModsById[p.id]).mrr;
   const runPeakCompute = state.runPeakCompute.max(d.computePerSec);
   const runPeakMrr = Math.max(state.runPeakMrr, curMrr);
 

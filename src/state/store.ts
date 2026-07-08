@@ -7,6 +7,7 @@ import {
   addEmployee, startTraining, canTrain, fireEmployee, hireCost,
   assignEmployee as assignEmployeeToProduct, levelUpNote,
 } from "../engine/employees";
+import { versionShipNote } from "../engine/notices";
 import {
   startRun,
   claimRun,
@@ -351,7 +352,7 @@ export const useGame = create<GameStore>((set, get) => ({
 
       // Several can finish in one tick (offline catch-up) — name one, count the rest.
       const finished = game.products.active.filter((p) => wasUpgrading.get(p.id) && !p.upgrade);
-      if (finished.length === 1) pushNotice(`${finished[0]!.name} v${finished[0]!.version} shipped — back at the frontier`, "ship");
+      if (finished.length === 1) pushNotice(versionShipNote(finished[0]!.name, finished[0]!.version), "ship");
       else if (finished.length > 1) pushNotice(`${finished.length} products shipped new versions — back at the frontier`, "ship");
 
       const trained = game.employees.filter((e) => wasTraining.get(e.id) && !e.training);

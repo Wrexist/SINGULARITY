@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { GameState } from "../engine/types";
+import type { GameState, Derived } from "../engine/types";
 import { products as B, type ProductTypeId } from "../engine/balance/products";
 import { productMilestones } from "../engine/balance/products";
 import { marketLeaderboard, playerMarketRank, canCounterRival, counterCost, counterCooldownRemaining } from "../engine/market";
@@ -17,6 +17,7 @@ const FUN_NAMES = ["Nimbus", "Oracle", "Synthia", "Cortex", "Lumen", "Vertex", "
 
 interface Props {
   game: GameState;
+  derived: Derived;
   onLaunchDraft: (draftId: string, type: ProductTypeId, name: string) => void;
   onStartUpgrade: (id: string) => void;
   onSetPrice: (id: string, v: number) => void;
@@ -32,7 +33,7 @@ interface Props {
 
 /** Phase 3 — the Products tab: commercialise the models you ship, market them, set
  *  pricing, research new versions over time, and watch the dashboard. */
-export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onSetChannelMix, onBuyFeature, onRename, onRetire, onCounterRival }: Props) {
+export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onSetChannelMix, onBuyFeature, onRename, onRetire, onCounterRival }: Props) {
   // Which draft (by id) is currently showing the type-picker, if any.
   const [picking, setPicking] = useState<string | null>(null);
   // Which product's deep-management screen is open, if any. If that product
@@ -55,9 +56,12 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
   const maxSlots = maxActiveProducts(game);
   const slotsFull = ps.active.length >= maxSlots;
   // One metrics pass per product (was computed up to 3× each, every 10Hz tick).
+  // Mods-aware: the cards now reflect staff assignment + heat/faction buffs, so
+  // assigning a Sales Exec or SRE visibly moves Revenue/s and Profit/s.
+  const modsById = derived.productModsById;
   const metrics = useMemo(
-    () => new Map(ps.active.map((p) => [p.id, productMetrics(p, frontier)])),
-    [ps.active, frontier],
+    () => new Map(ps.active.map((p) => [p.id, productMetrics(p, frontier, modsById[p.id])])),
+    [ps.active, frontier, modsById],
   );
   const totalMrr = ps.active.reduce((s, p) => s + (metrics.get(p.id)?.mrr ?? 0), 0);
   const totalMargin = ps.active.reduce((s, p) => s + (metrics.get(p.id)?.margin ?? 0), 0);
@@ -280,6 +284,7 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
         <ProductDetail
           game={game}
           productId={detailId}
+          mods={modsById[detailId]}
           onClose={() => setDetailId(null)}
           onStartUpgrade={onStartUpgrade}
           onSetPrice={onSetPrice}

@@ -1,5 +1,6 @@
 import type { GameState } from "./types";
 import { industryNews } from "./balance/news";
+import { balance } from "./balance/config";
 import { currentEra } from "./eras";
 import { playerMarketRank, rivalsBeaten } from "./market";
 
@@ -33,6 +34,19 @@ export function reactiveNews(state: GameState): string[] {
 
   const beaten = rivalsBeaten(state);
   if (beaten >= 3) out.push(`Singularity Inc. now outranks ${beaten} named rivals, who are 'focusing on safety'.`);
+
+  // Team, scrutiny, and endgame dimensions — so the ticker reacts to more than
+  // just market rank. All read-only flavor; the tuned economy never sees these.
+  const emps = state.employees.length;
+  if (emps >= 25) out.push("Singularity Inc. headcount passes 25; the all-hands needs a bigger room and a shorter agenda.");
+  else if (emps >= 10) out.push("Singularity Inc. staffs up again; someone drew an org chart, then quietly deleted it.");
+
+  if (state.heat >= balance.heat.max * 0.66) out.push("Regulators name-check Singularity Inc. in a hearing; the founder 'welcomes thoughtful oversight' through a fixed smile.");
+
+  if (state.repEndowment > 0) out.push("The Singularity Inc. Endowment funds a chair in 'Applied Inevitability' at three universities at once.");
+  else if (state.preprints >= 5) out.push(`Singularity Inc. posts preprint #${state.preprints}; peer review is a formality it has elected to skip.`);
+
+  if (state.products.active.length >= 4) out.push("Singularity Inc.'s product line sprawls; even the sales team keeps a cheat sheet.");
 
   return out;
 }

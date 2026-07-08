@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Portal } from "./Portal";
-import type { GameState } from "../engine/types";
+import type { GameState, ProductMods } from "../engine/types";
 import { products as B, productFeatures, type FeatureLane, type ProductTypeId } from "../engine/balance/products";
 import {
   typeDef, productMetrics, canStartUpgrade, canBuyFeature, versionCostFor, featureMods,
@@ -47,6 +47,9 @@ const TAB_ICON: Record<Tab, JSX.Element> = {
 interface Props {
   game: GameState;
   productId: string;
+  /** This product's live staff/faction/heat mods, so the sheet's Revenue/Profit/churn
+   *  reflect the real economy (not the mods-blind baseline). Neutral when absent. */
+  mods?: ProductMods | undefined;
   onClose: () => void;
   onStartUpgrade: (id: string) => void;
   onSetPrice: (id: string, v: number) => void;
@@ -83,7 +86,7 @@ const fill = (pct: number) => ({ background: `linear-gradient(90deg, #7c5cff 0%,
 
 /** Phase 3 — per-product management, redesigned into a clean, soft, card-based sheet
  *  (icon chips, segmented tabs, purple accent) so the depth stays legible. */
-export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onSetChannelMix, onBuyFeature, onRename, onRetire }: Props) {
+export function ProductDetail({ game, productId, mods, onClose, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onSetChannelMix, onBuyFeature, onRename, onRetire }: Props) {
   const [tab, setTab] = useState<Tab>("overview");
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -95,7 +98,7 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
   if (!p) return null;
   const t = typeDef(p.type);
   const frontier = game.products.frontier;
-  const me = productMetrics(p, frontier);
+  const me = productMetrics(p, frontier, mods);
   const up = p.upgrade;
   // Effective TAM includes feature boosts (e.g. Localization), which is also what
   // the sim caps MAU at — so penetration can't read >100% any more.

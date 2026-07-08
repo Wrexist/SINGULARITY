@@ -88,6 +88,8 @@ import { chartersUnlocked } from "../engine/charter";
 import { preprintsUnlocked } from "../engine/preprints";
 import { legacyAvailable } from "../engine/legacyTree";
 import { endowmentUnlocked } from "../engine/reputation";
+import { canBuyOfficePerk } from "../engine/actions";
+import { modelReadyNote, researchStartNote, soldNote, hireWelcome, fireSendoff } from "../engine/notices";
 import { currentEra } from "../engine/eras";
 import { recordTelemetry } from "../state/telemetry";
 
@@ -525,7 +527,7 @@ export function App() {
       // The flagship you just shipped is waiting as a free-to-launch product —
       // make sure the player knows (a ship that "gave nothing" was the #1 confusion).
       if (game.products.drafts.length > 0) {
-        pushToast("Your shipped model is ready — commercialise it free in Products", "good");
+        pushToast(modelReadyNote(game.prestige.ships), "good");
       }
       // An AGI ascension (a ship in the Post-Singularity era) gets the grander beat:
       // the ascend fanfare + a gold screen flash + a big central particle bloom.
@@ -572,11 +574,27 @@ export function App() {
       else if (dm.gt(0)) fxFloat(at.x, at.y - 6, `+$${fmt(dm)}/s`, "#16b364", 15);
     }
   };
-  const onHireCandidate = (i: number) => { haptics.celebrate(); sound.purchase(); doHireCandidate(i); };
+  const onHireCandidate = (i: number) => {
+    // Capture the candidate BEFORE the hire (doHireCandidate removes them). A named
+    // person joining used to be silent — now they get a welcome-aboard beat.
+    const c = useGame.getState().candidates?.[i];
+    haptics.celebrate(); sound.purchase();
+    if (doHireCandidate(i) && c) pushToast(hireWelcome(c.name, c.roleId), "good");
+  };
   const onTrain = (id: string) => { haptics.tap(); sound.tap(); doTrainEmployee(id); };
   const onAssignEmp = (id: string, productId: string | null) => { haptics.tap(); doAssignEmployeeToProduct(id, productId); };
-  const onFire = (id: string) => { haptics.tap(); doFireEmployee(id); };
-  const onBuyPerk = (id: string) => { haptics.tap(); sound.purchase(); doBuyOfficePerk(id); };
+  const onFire = (id: string) => {
+    // Look up the person before they're gone, then give them a send-off (was silent).
+    const e = game.employees.find((x) => x.id === id);
+    haptics.tap(); doFireEmployee(id);
+    if (e) pushToast(fireSendoff(e.name, e.roleId), "neutral");
+  };
+  const onBuyPerk = (id: string) => {
+    // Surface WHAT you bought — office perks have satirical copy that was never shown.
+    const perk = canBuyOfficePerk(game, id) ? balance.office.perks.find((p) => p.id === id) : null;
+    haptics.tap(); sound.purchase(); doBuyOfficePerk(id);
+    if (perk) pushToast(`${perk.name} — ${perk.desc}`, "good");
+  };
   const onLaunchDraft = (draftId: string, type: ProductTypeId, name: string) => {
     // Only fire the tentpole moment if the launch actually happened (a stale tap
     // on a full/unaffordable portfolio must not celebrate a phantom product).
@@ -590,7 +608,7 @@ export function App() {
     // Kicking off research is a small commit beat; the big payoff lands when it
     // COMPLETES (the store fires a "good" notice → celebration in the notice effect).
     haptics.tap(); sound.tap();
-    if (p && !p.upgrade) pushToast(`${p.name} — researching v${p.version + 1}…`, "neutral");
+    if (p && !p.upgrade) pushToast(researchStartNote(p.name, p.version + 1), "neutral");
   };
   // Selling a product asks first via the in-app ConfirmSheet (never window.confirm
   // — native panel, and it froze the game loop while open). Cancelling leaves the
@@ -606,7 +624,7 @@ export function App() {
     const payout = retirePayout(game, id);
     doRetireProduct(id);
     haptics.success(); sound.purchase();
-    pushToast(`Sold ${p.name} for ${fmtMoney(Big.of(Math.round(payout)))}`, "neutral");
+    pushToast(soldNote(p.name, fmtMoney(Big.of(Math.round(payout)))), "neutral");
   };
   const onClaimContract = (id: string, rep: number, title: string) => {
     doClaimContract(id);
@@ -739,6 +757,7 @@ export function App() {
         {tab === "products" && showProducts ? (
           <ProductsPanel
             game={game}
+            derived={d}
             onLaunchDraft={onLaunchDraft}
             onStartUpgrade={onStartUpgrade}
             onSetPrice={doSetProductPrice}
