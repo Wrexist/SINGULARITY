@@ -975,7 +975,18 @@ export function App() {
         <WorldEventCard
           event={worldEvent}
           onDismiss={dismissWorldEvent}
-          onChoose={(i) => { haptics.tap(); sound.tap(); chooseWorldEvent(i); }}
+          onChoose={(i) => {
+            haptics.tap(); sound.tap();
+            // Confirm the decision + its consequence. Matters most for instant
+            // resource grants, which (unlike timed buffs) leave no modifier-bar
+            // trace — so without this the high-agency choice had zero feedback.
+            const choice = worldEvent.choices?.[i];
+            chooseWorldEvent(i);
+            if (choice) {
+              const decision = choice.label.replace(/\s*\([^)]*\)\s*$/, "");
+              pushToast(choice.summary ? `${decision} — ${choice.summary}` : `Decided: ${decision}`, "good");
+            }
+          }}
         />
       )}
       {/* One-time "what does Shipping do" explainer, shown the first time a ship

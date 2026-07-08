@@ -105,9 +105,9 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
   // by ship count so it can't snowball). Other modes start from the clean slate.
   const kickstart = modeDef.moneyKickstartPerShip * ships;
 
-  // Open-source "community momentum": some ship modes leave the next run with a
-  // short, temporary all-lane buff (the community iterating on your release).
-  // Temporary modifiers can't inflate the permanent curve; only open-source sets one.
+  // "Community momentum": some ship modes leave the next run with a short, temporary
+  // all-lane buff (the community iterating on your release, or launch-week hype).
+  // Temporary modifiers can't inflate the permanent curve; open-source and splash set one.
   const momentum = modeDef.momentum;
   const momentumMods: GameState["modifiers"] = momentum
     ? (["computeMult", "dataMult", "moneyMult"] as const).map((target) => ({

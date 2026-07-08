@@ -10,7 +10,7 @@ import { fmt } from "./format";
 import { Big } from "../engine/math/Big";
 import { ReputationModal } from "./ReputationModal";
 import { ConfirmSheet } from "./ConfirmSheet";
-import { LandmarkIcon, RocketIcon, GlobeIcon, CoinIcon, SwordsIcon } from "./Icons";
+import { LandmarkIcon, RocketIcon, GlobeIcon, CoinIcon, SwordsIcon, MegaphoneIcon } from "./Icons";
 import type { ReactNode } from "react";
 
 /** Per-ship-mode icon (keyed by mode id; matches the engine's shipModes). */
@@ -19,6 +19,7 @@ const SHIP_MODE_ICON: Record<string, ReactNode> = {
   open_source: <GlobeIcon size={20} />,
   sell: <CoinIcon size={20} />,
   hard: <SwordsIcon size={20} />,
+  splash: <MegaphoneIcon size={20} />,
 };
 
 interface Props {

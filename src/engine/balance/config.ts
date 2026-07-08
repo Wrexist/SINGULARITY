@@ -1631,6 +1631,17 @@ export const balance = {
         legacyMult: 1.5, keepsDraft: true, moneyKickstartPerShip: 0, frontierPenalty: 6, unlockShips: 3,
         reputationBonus: 0, momentum: null as null | { factor: number; durationSec: number },
       },
+      // Hyperscaler-era option (fills the ship 6–8 unlock gap): keep the flagship as a
+      // product draft AND ride a launch-week wave — a temporary all-lane surge into the
+      // next run — for a small (−10%) cut to Legacy Weights. Uses only generic levers
+      // (keepsDraft + momentum + legacyMult), so no new stat/save surface, and the sim
+      // never picks it (it ships `deploy`), so the tuned curve is untouched.
+      splash: {
+        id: "splash", label: "Launch with a splash",
+        blurb: "Keep the model as a product AND ride the launch-week hype: a temporary all-lane surge into your next run, for a small cut to Legacy Weights.",
+        legacyMult: 0.9, keepsDraft: true, moneyKickstartPerShip: 0, frontierPenalty: 0, unlockShips: 6,
+        reputationBonus: 0, momentum: { factor: 1.3, durationSec: 90 } as null | { factor: number; durationSec: number },
+      },
     },
   },
 
