@@ -3,6 +3,7 @@ import { useSettings } from "./settings";
 import { iap, PREMIUM_PRICE } from "./iap";
 import { haptics as hpt } from "./haptics";
 import { sound as snd } from "./sound";
+import { remindersSupported, ensureReminderPermission, cancelReturnReminder } from "./notifications";
 import { balance } from "../engine/balance/config";
 import { useGame, previewBackup, type BackupPreview } from "../state/store";
 import { fmtMoney } from "./format";
@@ -61,7 +62,7 @@ interface Props {
 
 /** iOS-style bottom sheet for feel preferences (clean-to-play, GAMEPLAN §8). */
 export function SettingsSheet({ onClose }: Props) {
-  const { sound, music, haptics, hapticsLight, reducedMotion, scientificNotation, hallTheme, rackSkin, toggle, setHallTheme, setRackSkin } = useSettings();
+  const { sound, music, haptics, hapticsLight, reducedMotion, scientificNotation, notifyReminders, hallTheme, rackSkin, toggle, setHallTheme, setRackSkin, setNotifyReminders } = useSettings();
   const rows: { key: ToggleKey; label: string; hint: string; value: boolean; hidden?: boolean }[] = [
     { key: "sound", label: "Sound effects", hint: "Synthesized taps, claims & ship chimes", value: sound },
     { key: "music", label: "Music", hint: "Ambient bed + era & ship swells", value: music },
@@ -199,6 +200,23 @@ export function SettingsSheet({ onClose }: Props) {
               onToggle={() => toggle(r.key)}
             />
           ))}
+          {/* Return reminders — native-only (needs OS notifications). Turning it on
+              asks permission; if denied, it stays off (can't schedule without it). */}
+          {remindersSupported() && (
+            <ToggleRow
+              label="Return reminders"
+              hint="One honest nudge when your offline cap fills — no spam, no streaks"
+              value={notifyReminders}
+              onToggle={() => {
+                if (notifyReminders) {
+                  setNotifyReminders(false);
+                  void cancelReturnReminder();
+                } else {
+                  void ensureReminderPermission().then((ok) => setNotifyReminders(ok));
+                }
+              }}
+            />
+          )}
         </div>
         {/* Hall theme collection — cosmetic only (never affects gameplay). Earn themes
             by playing (R6.3); locked chips show how to unlock them. */}

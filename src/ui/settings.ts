@@ -18,6 +18,9 @@ export interface Settings {
   hapticsLight: boolean;
   /** Endgame number display: scientific (1.23e9) instead of suffixes (1.23B). */
   scientificNotation: boolean;
+  /** Return reminders: one honest local notification when the offline cap fills.
+   *  Opt-in (default off) and OS-permission gated; native only. */
+  notifyReminders: boolean;
   /** Last successful save backup (export/share), ms epoch — null = never.
    *  Drives the one-time gentle backup nudge; no timers, no urgency. */
   lastBackupAt: number | null;
@@ -40,7 +43,7 @@ function prefersReducedMotion(): boolean {
   }
 }
 
-const DEFAULTS: Settings = { sound: true, music: true, haptics: true, reducedMotion: prefersReducedMotion(), hallTheme: "classic", rackSkin: "classic", onboarded: false, shipExplained: false, hapticsLight: false, scientificNotation: false, lastBackupAt: null, achievementsSeen: 0 };
+const DEFAULTS: Settings = { sound: true, music: true, haptics: true, reducedMotion: prefersReducedMotion(), hallTheme: "classic", rackSkin: "classic", onboarded: false, shipExplained: false, hapticsLight: false, scientificNotation: false, lastBackupAt: null, achievementsSeen: 0, notifyReminders: false };
 
 function load(): Settings {
   try {
@@ -56,7 +59,7 @@ function persist(s: Settings): void {
   try {
     localStorage.setItem(
       KEY,
-      JSON.stringify({ sound: s.sound, music: s.music, haptics: s.haptics, reducedMotion: s.reducedMotion, hallTheme: s.hallTheme, rackSkin: s.rackSkin, onboarded: s.onboarded, shipExplained: s.shipExplained, hapticsLight: s.hapticsLight, scientificNotation: s.scientificNotation, lastBackupAt: s.lastBackupAt, achievementsSeen: s.achievementsSeen }),
+      JSON.stringify({ sound: s.sound, music: s.music, haptics: s.haptics, reducedMotion: s.reducedMotion, hallTheme: s.hallTheme, rackSkin: s.rackSkin, onboarded: s.onboarded, shipExplained: s.shipExplained, hapticsLight: s.hapticsLight, scientificNotation: s.scientificNotation, lastBackupAt: s.lastBackupAt, achievementsSeen: s.achievementsSeen, notifyReminders: s.notifyReminders }),
     );
   } catch {
     /* ignore */
@@ -67,6 +70,8 @@ interface SettingsStore extends Settings {
   toggle: (key: "sound" | "music" | "haptics" | "hapticsLight" | "reducedMotion" | "scientificNotation") => void;
   setHallTheme: (id: string) => void;
   setRackSkin: (id: string) => void;
+  /** Return-reminder toggle (permission handling lives in the UI before this is set). */
+  setNotifyReminders: (on: boolean) => void;
   completeOnboarding: () => void;
   markShipExplained: () => void;
   markBackedUp: () => void;
@@ -86,6 +91,10 @@ export const useSettings = create<SettingsStore>((set, get) => ({
   },
   setRackSkin: (id) => {
     set({ rackSkin: id });
+    persist(get());
+  },
+  setNotifyReminders: (on) => {
+    set({ notifyReminders: on });
     persist(get());
   },
   completeOnboarding: () => {
