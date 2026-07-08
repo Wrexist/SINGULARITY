@@ -10,9 +10,11 @@ import type { GameState } from "./types";
  * follows the same lifecycle). The end-of-run dead zone becomes a real
  * spend-vs-ship decision.
  *
- * Curve-safety: preprintMult is EXACTLY 1 at zero papers, the balance sim's
- * greedy player only buys `balance.research` nodes, and the per-run cap bounds
- * the compounding ceiling (perLevelMult^maxPerRun ≈ ×1.22).
+ * Curve-safety: preprintMult is EXACTLY 1 at zero papers and the balance sim's
+ * greedy player only buys `balance.research` nodes (never publishes). The REAL gate
+ * is the escalating Compute+Data cost (growth 1.9/paper), which outruns any run's
+ * production long before the high safety cap (maxPerRun) — so the panel never goes
+ * inert, and the theoretical ceiling (perLevelMult^maxPerRun) is never approached.
  */
 
 const P = balance.preprints;

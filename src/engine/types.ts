@@ -298,6 +298,9 @@ export interface ProductsState {
 /** Everything the sim and UI read each frame, folded from upgrades + research + prestige. */
 export interface Derived {
   computePerSec: Big;
+  /** The folded Compute multiplier stack (symmetric with dataMult/moneyMult) — for the
+   *  Lab Stats display, so Compute isn't the only lane shown as a bare rate. */
+  computeMult: Big;
   dataMult: Big;
   moneyMult: Big;
   runDurationSec: number;

@@ -1,5 +1,5 @@
 import { balance } from "./balance/config";
-import { contractBoard } from "./contracts";
+import { contractBoard, sponsorView } from "./contracts";
 import { achievementDefs, achievementProgress } from "./achievements";
 import { currentEra, eraName } from "./eras";
 import { productMilestones } from "./balance/products";
@@ -63,6 +63,13 @@ export function goalCandidates(state: GameState): Goal[] {
     if (!c.ready && c.progress < 1) {
       goals.push({ kind: "contract", label: c.def.title, desc: c.def.desc, progress: c.progress });
     }
+  }
+
+  // The daily sponsor objective (the post-ladder endgame chase) is a live goal too —
+  // without this the "always-ticking" strip goes blank once the finite ladder is done.
+  const sp = sponsorView(state);
+  if (sp && !sp.ready && !sp.claimed && sp.progress < 1) {
+    goals.push({ kind: "contract", label: sp.def.title, desc: sp.def.desc, progress: sp.progress });
   }
 
   // Product milestones: mid-game carrots once the business exists. The board's

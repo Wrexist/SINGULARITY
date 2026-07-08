@@ -1499,7 +1499,7 @@ export const balance = {
         hire: { base: 7_000, growth: 1.6 },
         payroll: 18,
         team: "product",
-        affinity: ["consumer", "prosumer"], // acquisition funnels shine on broad-market products
+        affinity: ["consumer", "prosumer", "api"], // acquisition funnels shine on broad-market + developer products
         effect: { kind: "product", lane: "acquisition", perLevel: 0.08 },
       },
       {

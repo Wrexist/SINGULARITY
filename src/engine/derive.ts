@@ -306,6 +306,7 @@ export function derive(state: GameState): Derived {
 
   return {
     computePerSec,
+    computeMult,
     dataMult,
     moneyMult,
     runDurationSec: Math.max(balance.run.minDurationSec, runDurationSec),

@@ -1,7 +1,7 @@
 import { balance } from "./balance/config";
 import { productMetrics, productsUnlocked, canStartUpgrade, maxActiveProducts } from "./products";
-import { reputationBalance, canBuyReputationPerk } from "./reputation";
-import { contractBoard } from "./contracts";
+import { reputationBalance, canBuyReputationPerk, canBuyEndowment } from "./reputation";
+import { contractBoard, sponsorView } from "./contracts";
 import { canBuyResearch } from "./actions";
 import { canPrestige } from "./prestige";
 import { hireCost } from "./employees";
@@ -141,10 +141,23 @@ export function advisorItems(state: GameState): AdvisorItem[] {
     });
   }
 
+  // A daily sponsor objective is met and waiting — free Reputation on the board (the
+  // endgame's day-to-day nudge; previously never surfaced by the advisor).
+  const sponsor = sponsorView(state);
+  if (sponsor?.ready) {
+    items.push({ tab: "lab", section: "hq", text: `Claim the "${sponsor.def.title}" sponsor — +${sponsor.def.rep} Rep`, priority: 76 });
+  }
+
   // Lab Reputation: a gentle nudge when a permanent perk is affordable (surfaces the
   // meta-layer, which lives in the Prestige panel and is easy to miss).
   if (reputationBalance.perks.some((p) => canBuyReputationPerk(state, p.id))) {
     items.push({ tab: "lab", section: "hq", text: "You can afford a Lab Reputation perk", priority: 40 });
+  }
+
+  // Endgame: once the perk tree is owned, nudge the Endowment (the infinite Rep sink)
+  // when affordable — otherwise surplus Reputation piles up with no visible use.
+  if (canBuyEndowment(state)) {
+    items.push({ tab: "lab", section: "hq", text: "Endow a permanent boost — spend surplus Reputation", priority: 41 });
   }
 
   return items.sort((a, b) => b.priority - a.priority);

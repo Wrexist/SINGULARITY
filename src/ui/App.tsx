@@ -45,6 +45,7 @@ import { isPremium } from "../state/premium";
 import { scheduleReturnReminder, cancelReturnReminder } from "./notifications";
 import { balance } from "../engine/balance/config";
 import { HallCanvas } from "./HallCanvas";
+import { NewsTicker } from "./NewsTicker";
 import { ExpandConfirm } from "./ExpandConfirm";
 import { ConfirmSheet } from "./ConfirmSheet";
 import { RigBayPanel } from "./RigBayPanel";
@@ -60,6 +61,7 @@ import { canPrestige } from "../engine/prestige";
 import { chartersUnlocked } from "../engine/charter";
 import { preprintsUnlocked } from "../engine/preprints";
 import { legacyAvailable } from "../engine/legacyTree";
+import { endowmentUnlocked } from "../engine/reputation";
 import { currentEra } from "../engine/eras";
 import { recordTelemetry } from "../state/telemetry";
 
@@ -277,6 +279,7 @@ export function App() {
     { key: "rigbay", fact: componentsUnlocked(game), when: true, text: "Rig Bay unlocked — slot components into your racks for extra output. It's on the Build tab.", tone: "good" },
     { key: "preprints", fact: preprintsUnlocked(game), when: true, text: "Research tree complete — publish frontier Preprints in Research for a repeatable, escalating boost.", tone: "good" },
     { key: "legacytree", fact: legacyAvailable(game).gt(0), when: true, text: "Legacy Investments unlocked — spend Legacy Weights on a permanent lane focus in HQ → Prestige.", tone: "good" },
+    { key: "endowment", fact: endowmentUnlocked(game), when: true, text: "Reputation Endowment unlocked — you own the whole perk tree; pour surplus Reputation into a permanent, escalating boost in HQ → Lab Reputation.", tone: "good" },
     // Heat used to explain itself only by punishing you (pre-launch audit).
     { key: "heat", fact: game.heat >= 25, when: true, text: "Regulatory Heat is rising — fines and raids get likelier. Time and lobbying cool it.", tone: "neutral" },
     // Gentle backup nudge (R8.2): once real progress exists and no backup ever
@@ -758,6 +761,7 @@ export function App() {
                     layout-invisible (same flat stage as before). */}
                 <div className="stage-left">
                   <HallCanvas onExpand={setPendingExpansion} />
+                  <NewsTicker />
                   {firstStepsVisible(game) && <FirstSteps game={game} />}
                   <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} onSetFocus={setComputeFocus} />
                 </div>

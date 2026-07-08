@@ -63,6 +63,7 @@ import { balance } from "../engine/balance/config";
 import { recordTelemetry } from "./telemetry";
 import { purchaseSignature } from "../engine/telemetry";
 import { currentEra } from "../engine/eras";
+import { codexBalance, codexUnlocked } from "../engine/codex";
 import type { Big } from "../engine/math/Big";
 
 const SAVE_KEY = "singularity.save.v1";
@@ -368,6 +369,21 @@ export const useGame = create<GameStore>((set, get) => ({
         } else if (newAch.length > 1) {
           const first = ACHIEVEMENT_DEFS.find((a) => a.id === newAch[0]);
           pushNotice(`${newAch.length} achievements unlocked${first ? ` — incl. ${first.label}` : ""}`, "achievement");
+        }
+      }
+
+      // Codex / Field Notes: unlocking a lore entry used to be SILENT (the whole
+      // satire wedge appeared only if you opened the panel). Surface it as a gentle
+      // "new field note" toast — a good-tone notice with no special kind, so it gets
+      // the soft discovery chime, not the achievement fanfare. One per tick (coalesced).
+      {
+        const newCodex = codexBalance.entries.filter((e) => !codexUnlocked(s.game, e) && codexUnlocked(game, e));
+        if (newCodex.length >= 1) {
+          noticeKey += 1;
+          const msg = newCodex.length === 1
+            ? `New Field Note — “${newCodex[0]!.title}”`
+            : `${newCodex.length} new Field Notes — incl. “${newCodex[0]!.title}”`;
+          earned.push({ key: noticeKey, message: msg, tone: "good" });
         }
       }
 
