@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Big } from "../engine/math/Big";
 import { fmt, m$ } from "./format";
-import { shipHeadline, runStory } from "./headlines";
+import { shipHeadline, runStory, shipSubtitle } from "./headlines";
 import { shareRunCard } from "./shareCard";
 import { useSettings } from "./settings";
 import { RocketIcon } from "./Icons";
@@ -58,8 +58,9 @@ export function Celebration({ weightsGained, totalWeights, report, onDone }: Pro
     if (note) setShareNote(note);
   };
 
-  // History-aware: the headline reflects what THIS run achieved (A3).
+  // History-aware: the headline AND the subtitle reflect what THIS run achieved (A3).
   const headline = report ? shipHeadline(report) : "Model Shipped";
+  const subtitle = report ? shipSubtitle(report) : "Investors are “thrilled.” You banked:";
   const story = report ? runStory(report) : [];
 
   const reducedMotion = useSettings((s) => s.reducedMotion);
@@ -85,7 +86,7 @@ export function Celebration({ weightsGained, totalWeights, report, onDone }: Pro
         <div className="celebrate-rocket"><RocketIcon size={40} /></div>
         {report && <div className="celebrate-gen">Generation {report.gen}</div>}
         <h2>{headline}</h2>
-        <p className="celebrate-sub">Investors are “thrilled.” You banked:</p>
+        <p className="celebrate-sub">{subtitle}</p>
         <div className="celebrate-weights">
           +{fmt(weightsGained)}
           <span>Legacy Weights</span>

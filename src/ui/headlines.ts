@@ -69,6 +69,31 @@ export function shipHeadline(r: HeadlineInput): string {
   return ROTATION[(r.gen - 1) % ROTATION.length]!;
 }
 
+/** The tentpole subtitle under the headline — a one-line reaction to THIS run that
+ *  leads into the banked weights. Was a single frozen "Investors are thrilled";
+ *  now it reflects the run's standout (era, rank, scale, stance). Pure; always ends
+ *  with the "You banked:" lead-in so the weights block reads on from it. */
+export function shipSubtitle(r: HeadlineInput): string {
+  const tail = " You banked:";
+  if (r.era != null && r.era >= 5) return "The singularity files its own press release." + tail;
+  if (r.rank === 1) return "The board is already drafting a bigger fund." + tail;
+  if (r.peakMrr >= 100_000) return "Finance is doing a quiet victory lap." + tail;
+  if (r.peakCompute.gte(Big.of(1e12))) return "The cluster finally earned its power bill." + tail;
+  if (r.rank != null && r.rank <= 3) return "The press is paying attention now." + tail;
+  if (r.alignment != null && r.alignment <= -0.4) return "The safety team sleeps easy tonight." + tail;
+  if (r.alignment != null && r.alignment >= 0.4) return "e/acc is in the mentions, approvingly." + tail;
+  if (r.productsLive === 0) return "You shipped the model and skipped the business. Bold." + tail;
+  const generic = [
+    "Investors are “thrilled.”",
+    "The all-hands erupts.",
+    "Somewhere, a rival refreshes your blog.",
+    "The changelog is short; the mood is not.",
+    "Marketing has already made the graphic.",
+    "The group chat is all rocket emoji.",
+  ];
+  return generic[(r.gen - 1 + generic.length * 100) % generic.length]! + tail;
+}
+
 const plural = (n: number) => (n === 1 ? "" : "s");
 
 /** A 2–3 line satirical recap of the run just shipped (A5). Auto-generated from run
