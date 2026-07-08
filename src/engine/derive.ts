@@ -10,7 +10,12 @@ import { preprintMult } from "./preprints";
 import { powerStats } from "./power";
 import { rackTier } from "./hall";
 import { tierComputeMult, loadoutDataPerSec } from "./components";
+import { products as PRODUCTS, type SegmentSkew } from "./balance/products";
 import type { Derived, Employee, GameState } from "./types";
+
+/** Product type id → market segment, resolved once (static catalog data). Feeds the
+ *  staff segment-synergy: an assigned specialist matched to the product's segment. */
+const SEG_BY_TYPE: Record<string, SegmentSkew> = Object.fromEntries(PRODUCTS.types.map((t) => [t.id, t.segment]));
 
 // Single-slot memo for the staff aggregation (see derive()). Keyed on the employees
 // array IDENTITY (stable between ticks) + morale + the product-id set.
@@ -166,9 +171,13 @@ export function derive(state: GameState): Derived {
   // hire/fire/train/assign/perk — not every 10Hz tick. derive() runs every render, so
   // caching here turns ~100+ employees into a no-op on the common path.
   const idsKey = state.products.active.map((p) => p.id).join(",");
+  // Product id → segment for the staff synergy. Cheap to rebuild; the cache still keys
+  // on idsKey because a product's type (hence segment) is fixed for its whole life.
+  const productSegments: Record<string, SegmentSkew> = {};
+  for (const p of state.products.active) productSegments[p.id] = SEG_BY_TYPE[p.type] ?? "consumer";
   const fx = staffCacheGet(state.employees, morale, idsKey)
     ?? staffCacheSet(state.employees, morale, idsKey,
-      computeStaffEffects(state.employees, state.products.active.map((p) => p.id), morale, balance.staff.assignFocusMult));
+      computeStaffEffects(state.employees, state.products.active.map((p) => p.id), morale, balance.staff.assignFocusMult, productSegments));
   computeMult = computeMult.mul(fx.computeMultF);
   dataMult = dataMult.mul(fx.dataMultF);
   moneyMult = moneyMult.mul(fx.moneyMultF);

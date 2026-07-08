@@ -2611,9 +2611,14 @@ button.modchip.workable:active { transform: scale(0.94); }
 .emp-proj-meta { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 650; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .emp-proj-crew { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-height: 30px; }
 .emp-proj-empty { font-size: 11.5px; color: var(--ink-3); }
-.emp-crew-av { border: none; background: none; padding: 0; cursor: pointer; border-radius: 50%; transition: transform 0.12s; }
+.emp-crew-av { border: none; background: none; padding: 0; cursor: pointer; border-radius: 50%; transition: transform 0.12s; position: relative; }
 .emp-crew-av:hover { transform: scale(1.08); }
+.emp-crew-av.synergy { box-shadow: 0 0 0 2px #f5a623, 0 0 8px rgba(245, 166, 35, 0.6); border-radius: 50%; }
+.emp-crew-star { position: absolute; top: -4px; right: -4px; font-size: 11px; color: #f5a623; text-shadow: 0 1px 2px rgba(0,0,0,0.4); }
 .emp-role-chip { font-size: 10.5px; font-weight: 750; color: #5a43c8; background: rgba(124, 92, 255, 0.1); border-radius: 999px; padding: 3px 9px; }
+/* Segment synergy — a warm gold accent so "matched assignment" reads instantly. */
+.emp-tag.synergy { color: #b26a00; background: rgba(245, 166, 35, 0.16); }
+.emp-proj-synergy { flex: 0 0 auto; font-size: 10.5px; font-weight: 850; padding: 3px 9px; border-radius: 999px; color: #b26a00; background: rgba(245, 166, 35, 0.18); }
 .emp-proj.dragover { border-color: #7c5cff; border-style: solid; background: rgba(124, 92, 255, 0.05); transform: translateY(-1px); }
 
 /* Available-list role filter + drag grip */

@@ -1,5 +1,6 @@
 import { balance } from "./balance/config";
 import type { StaffRole, StaffTrait, ProductStaffLane } from "./balance/config";
+import type { SegmentSkew } from "./balance/products";
 import type { Employee, GameState, ProductMods } from "./types";
 
 /**
@@ -15,6 +16,14 @@ const TRAIT_BY_ID: Record<string, StaffTrait> = Object.fromEntries(S.traits.map(
 
 export function roleDef(id: string): StaffRole | undefined { return ROLE_BY_ID[id]; }
 export function traitDef(id: string | null): StaffTrait | undefined { return id ? TRAIT_BY_ID[id] : undefined; }
+
+/** The market segments a product-team role synergizes with (empty = none). For the UI
+ *  to surface "assign here for a bonus". Pure. */
+export function roleAffinity(id: string): SegmentSkew[] { return roleDef(id)?.affinity ?? []; }
+/** Does assigning a `roleId` specialist to a `segment` product trigger the synergy bonus? */
+export function roleMatchesSegment(id: string, segment: SegmentSkew): boolean {
+  return (roleDef(id)?.affinity ?? []).includes(segment);
+}
 
 /** Output multiplier from a person's seniority level (1 = junior). */
 export function levelEffectMult(level: number): number {
@@ -165,6 +174,10 @@ export function computeStaffEffects(
   activeProductIds: string[],
   morale: number,
   focus: number,
+  /** Product id → market segment, so an assigned specialist whose role affinity matches
+   *  gets the segment-synergy bonus. Empty (the default, and what the balance sim uses)
+   *  means no product has a segment → no synergy → the tuned curve is untouched. */
+  productSegments: Record<string, SegmentSkew> = {},
 ): StaffEffects {
   let payroll = 0;
   const activeSet = new Set(activeProductIds);
@@ -190,7 +203,13 @@ export function computeStaffEffects(
     } else {
       // Assigned to a LIVE product → that product's focus bucket; else benched (global).
       const bucket = e.assignedProductId && activeSet.has(e.assignedProductId) ? e.assignedProductId : "";
-      prodLane[role.effect.lane].push({ value: role.effect.perLevel * eff, bucket });
+      // Segment synergy: a matched, product-assigned specialist's buff is amplified.
+      // Only when actually assigned to a live product whose segment is in the role's
+      // affinity — benched ("") and mismatched keep the baseline (synergy = 1).
+      const seg = bucket ? productSegments[bucket] : undefined;
+      const matched = !!bucket && !!role.affinity && !!seg && role.affinity.includes(seg);
+      const synergy = matched ? S.segmentSynergy : 1;
+      prodLane[role.effect.lane].push({ value: role.effect.perLevel * eff * synergy, bucket });
     }
   }
 

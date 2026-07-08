@@ -3,6 +3,7 @@
  * hardcodes a curve number. Expect to retune this file hundreds of times during
  * the balance pass — that's the point of keeping it isolated from logic.
  */
+import type { SegmentSkew } from "./products";
 
 export interface UpgradeDef {
   id: string;
@@ -93,6 +94,11 @@ export interface StaffRole {
   payroll: number;
   /** Which team the role belongs to (for the Employees page grouping). */
   team: "infra" | "product";
+  /** Product-team roles only: the market segments this role is strongest on. Assigning
+   *  the specialist to a product whose segment matches multiplies their focus buff by
+   *  `staff.segmentSynergy` — so "put the Sales Exec on the enterprise product" is a
+   *  real decision. Omitted = no synergy (the role helps any product equally). */
+  affinity?: SegmentSkew[];
   effect:
     // Infrastructure team — multiplies a lab production lane (Phase 2).
     | { kind: "lane"; lane: "computeMult" | "dataMult" | "moneyMult"; perLevel: number }
@@ -1379,6 +1385,12 @@ export const balance = {
     /** Assigned product-staff are this much more effective than unassigned, but only
      *  on their one product (the spread-vs-concentrate trade-off). */
     assignFocusMult: 2,
+    /** Extra multiplier when an assigned specialist's `affinity` matches the product's
+     *  market segment (a Sales Exec on an enterprise product, Growth on a consumer app).
+     *  Turns "assign anyone anywhere" into a real matching decision. Applies ONLY to a
+     *  matched, product-assigned specialist — benched/mismatched are unchanged, and the
+     *  balance sim never assigns staff, so the tuned curve is untouched. */
+    segmentSynergy: 1.4,
     /** Reveal the panel once the lab is established (after the first research). */
     revealAtResearch: 1,
     /** Seniority levels (1 = junior). Each level above 1 multiplies a person's
@@ -1457,6 +1469,7 @@ export const balance = {
         hire: { base: 4_000, growth: 1.55 },
         payroll: 12,
         team: "product",
+        affinity: ["prosumer", "api"], // fast iteration shines on technical / dev products
         effect: { kind: "product", lane: "upgradeSpeed", perLevel: 0.12 },
       },
       {
@@ -1466,6 +1479,7 @@ export const balance = {
         hire: { base: 5_000, growth: 1.6 },
         payroll: 14,
         team: "product",
+        affinity: ["api", "consumer"], // serving cost bites hardest at high volume
         effect: { kind: "product", lane: "serveCost", perLevel: 0.05 },
       },
       {
@@ -1475,6 +1489,7 @@ export const balance = {
         hire: { base: 6_000, growth: 1.6 },
         payroll: 16,
         team: "product",
+        affinity: ["enterprise", "prosumer"], // retention matters most for paying pro/ent users
         effect: { kind: "product", lane: "churn", perLevel: 0.05 },
       },
       {
@@ -1484,6 +1499,7 @@ export const balance = {
         hire: { base: 7_000, growth: 1.6 },
         payroll: 18,
         team: "product",
+        affinity: ["consumer", "prosumer"], // acquisition funnels shine on broad-market products
         effect: { kind: "product", lane: "acquisition", perLevel: 0.08 },
       },
       {
@@ -1493,6 +1509,7 @@ export const balance = {
         hire: { base: 8_000, growth: 1.6 },
         payroll: 20,
         team: "product",
+        affinity: ["enterprise"], // revenue-per-user is a big-deal, enterprise game
         effect: { kind: "product", lane: "arpu", perLevel: 0.07 },
       },
       {
@@ -1502,6 +1519,7 @@ export const balance = {
         hire: { base: 9_000, growth: 1.6 },
         payroll: 22,
         team: "product",
+        affinity: ["consumer", "enterprise"], // public consumer apps + regulated enterprise draw scrutiny
         effect: { kind: "product", lane: "heat", perLevel: 0.1 },
       },
       // ---- Infrastructure additions ----
