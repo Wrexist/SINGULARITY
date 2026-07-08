@@ -491,6 +491,10 @@ svg { vertical-align: middle; }
     position: sticky;
     top: 12px;
   }
+  /* The split column has vertical room to spare — let the centrepiece breathe. */
+  .app-split .stage-left .hall {
+    height: 372px;
+  }
 }
 .stage > *:nth-child(1) { animation-delay: 0.04s; }
 .stage > *:nth-child(2) { animation-delay: 0.1s; }
@@ -1043,7 +1047,9 @@ svg { vertical-align: middle; }
 /* ---------- The 2.5D Hall (Phase 1) ---------- */
 .hall {
   position: relative;
-  height: 230px;
+  /* Taller than the old 230px banner — the hall is the manifestation pillar (GDD §5),
+     so it earns real screen presence: bigger racks, more room for depth + atmosphere. */
+  height: 292px;
   border-radius: var(--radius);
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.12);

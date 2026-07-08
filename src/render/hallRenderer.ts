@@ -242,17 +242,44 @@ export function drawHallStatic(ctx: CanvasRenderingContext2D, model: HallModel, 
   ctx.fillRect(0, 0, W, H);
 
   const L = computeLayout(model.cols, model.rows, model.gxMin, model.gyMin, W, H);
+
+  // Hero backlight — a soft, era-tinted bloom rising from behind the rack cluster, so
+  // the floor of glowing hardware reads as lit-from-within depth instead of a flat
+  // panel. Cheap (one gradient) and lives in the cached static layer → zero per-frame cost.
+  {
+    const fc = eraFloor(model.era);
+    const cx = W / 2, cy = H * 0.44;
+    const bloom = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.6);
+    bloom.addColorStop(0, rgba(shade(fc, 2.3), 0.22));
+    bloom.addColorStop(0.55, rgba(shade(fc, 1.4), 0.09));
+    bloom.addColorStop(1, rgba(fc, 0));
+    ctx.fillStyle = bloom;
+    ctx.fillRect(0, 0, W, H);
+  }
+
   // IDEAS #4 — the race on the horizon, behind the room shell.
   if (model.skyline.length > 0) drawSkyline(ctx, model.skyline, W, H, L);
   // Housings only — the spinning blades live in the dynamic layer (QW2) so the
   // fans actually turn while the room shell stays cached.
   drawRoom(ctx, L, model.era, H, model.coolingUnits);
+  // Hyperscaler+ (era ≥ 4) earns real new geometry, not just a recolour: glowing power
+  // bus-bars run the back walls — the "we bought a substation" energy the era is about.
+  if (model.era >= 4) drawPowerBus(ctx, L, H, model.era);
   drawFloor(ctx, L, model.era);
   drawPartitions(ctx, L, model);
   // IDEAS #8/#6 — the run's charter hangs on the back-right wall; shipped
   // generations stand as trophy plinths along the back-left one.
   if (model.charter) drawCharterBanner(ctx, L, H, model.charter);
   if (model.wall.length > 0) drawLegacyWall(ctx, L, H, model.wall);
+
+  // Vignette — gently darken the corners so the lit floor is the focus (depth + polish).
+  // Drawn last in the STATIC layer, so it sits under the dynamic racks: the room and
+  // floor edges fall away while the glowing hardware stays crisp and bright on top.
+  const vig = ctx.createRadialGradient(W / 2, H * 0.5, Math.min(W, H) * 0.3, W / 2, H * 0.5, Math.max(W, H) * 0.74);
+  vig.addColorStop(0, "rgba(0,0,0,0)");
+  vig.addColorStop(1, "rgba(6,8,16,0.36)");
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, W, H);
 }
 
 /** IDEAS #4 — rival datacenter silhouettes on the horizon, height ∝ market
@@ -695,6 +722,36 @@ function drawCoolingFans(ctx: CanvasRenderingContext2D, L: Layout, H: number, un
   }
 }
 
+/** Hyperscaler+ power infrastructure: a bright bus-bar along each back wall with
+ *  evenly-spaced tap-off nodes — new geometry that makes crossing into Era 4 (and the
+ *  Era-5 payoff) read as a scale change, not a palette swap. Static (cached). */
+function drawPowerBus(ctx: CanvasRenderingContext2D, L: Layout, H: number, era: number): void {
+  const { iso, gxMin, gyMin, gxMax, gyMax } = L;
+  const a = iso(gxMin, gyMin), b = iso(gxMax, gyMin), d = iso(gxMin, gyMax);
+  const wallH = H * 0.22;
+  // Gold conduit at Hyperscaler (energy deals); it shifts to hot iridescent at Era 5.
+  const col: RGB = era >= 5 ? [180, 150, 255] : [255, 208, 120];
+  const at = (p0: Pt, p1: Pt, u: number, v: number): Pt => {
+    const bp = lerp(p0, p1, u);
+    return { x: bp.x, y: bp.y - v * wallH };
+  };
+  for (const [p0, p1] of [[a, b] as const, [a, d] as const]) {
+    const y0 = at(p0, p1, 0.04, 0.5), y1 = at(p0, p1, 0.96, 0.5);
+    stroke(ctx, y0, y1, rgba(col, 0.22), 5); // outer glow
+    stroke(ctx, y0, y1, rgba(col, 0.85), 2); // bright core
+    const nodes = 5;
+    for (let k = 1; k <= nodes; k++) {
+      const p = at(p0, p1, k / (nodes + 1), 0.5);
+      ctx.fillStyle = rgba(shade(col, 1.3), 0.95);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+      // a short drop lead toward the floor, hinting the feed to the racks below
+      stroke(ctx, p, at(p0, p1, k / (nodes + 1), 0.24), rgba(col, 0.4), 1.2);
+    }
+  }
+}
+
 function drawFloor(ctx: CanvasRenderingContext2D, L: Layout, era: number): void {
   const { iso, gxMin, gyMin, gxMax, gyMax } = L;
   const a = iso(gxMin, gyMin), b = iso(gxMax, gyMin), c = iso(gxMax, gyMax), d = iso(gxMin, gyMax);
@@ -794,6 +851,15 @@ function drawRack(
     poly(ctx, [bLeft, bBottom, { x: bBottom.x, y: bBottom.y - ph }, { x: bLeft.x, y: bLeft.y - ph }], rgb(shade(base, 0.7)));
     poly(ctx, [bBottom, bRight, { x: bRight.x, y: bRight.y - ph }, { x: bBottom.x, y: bBottom.y - ph }], rgb(shade(base, 0.48)));
     poly(ctx, [tLeft, tTop, tRight, tBottom], rgb(shade(base, 1.25)));
+    // Keep the fleet ALIVE at scale: below the detail threshold (huge floors, where
+    // the LED strip and component bays are too small to draw) each rack still shows one
+    // emissive LED, so a 300-rack hall twinkles instead of collapsing to flat dots.
+    const lit = active ? 1 : ((blink * 0.8 + tier * 0.3) % 1 > 0.5 ? 0.9 : 0.3);
+    const glow = Math.max(lit, powerOn * 0.8);
+    ctx.fillStyle = rgba(led, clamp(glow, 0.22, 1));
+    ctx.beginPath();
+    ctx.ellipse(sx, sy - ph * 0.55, Math.max(0.9, hw * 0.2), Math.max(0.9, hw * 0.2), 0, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   const rfp = (u: number, v: number): Pt => ({
