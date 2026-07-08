@@ -29,8 +29,10 @@ export const legacyTree = {
     { id: "leg_compute1", name: "Compute Specialist", desc: "+20% Compute, every run.", cost: 12, effect: { lane: "compute", value: 0.2 } },
     { id: "leg_data1", name: "Data Specialist", desc: "+20% Data, every run.", cost: 12, effect: { lane: "data", value: 0.2 } },
     { id: "leg_money1", name: "Revenue Specialist", desc: "+20% Money, every run.", cost: 12, effect: { lane: "money", value: 0.2 } },
-    // Tier 2 — double down (requires the tier-1 of that lane).
+    // Tier 2 — double down (requires the tier-1 of that lane). All three lanes have a
+    // mastery node so no lane is a dead-end (the data lane was previously un-masterable).
     { id: "leg_compute2", name: "Compute Mastery", desc: "+35% more Compute.", cost: 40, requires: "leg_compute1", effect: { lane: "compute", value: 0.35 } },
+    { id: "leg_data2", name: "Data Mastery", desc: "+35% more Data.", cost: 40, requires: "leg_data1", effect: { lane: "data", value: 0.35 } },
     { id: "leg_money2", name: "Revenue Mastery", desc: "+35% more Money.", cost: 40, requires: "leg_money1", effect: { lane: "money", value: 0.35 } },
   ] satisfies LegacyPerkDef[],
 };

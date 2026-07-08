@@ -1394,6 +1394,13 @@ svg { vertical-align: middle; }
 .modchip em { font-style: normal; font-variant-numeric: tabular-nums; opacity: 0.7; }
 .modchip.good { color: #0b7a43; background: rgba(22, 179, 100, 0.12); border-color: rgba(22, 179, 100, 0.3); }
 .modchip.bad { color: #b3243f; background: rgba(255, 56, 92, 0.1); border-color: rgba(255, 56, 92, 0.28); }
+/* A BAD modifier the player can "work" (shave time) is now a real, accessible button
+   (previously only tappable on the aria-hidden hall canvas). Reset the native button
+   chrome so it matches the span chips; the dashed edge hints it's actionable. */
+button.modchip { font-family: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+button.modchip.workable { border-style: dashed; }
+button.modchip.workable:active { transform: scale(0.94); }
+.modchip-work { font-size: 10px; opacity: 0.85; }
 
 /* ---------- Era transition (tentpole moment) ---------- */
 .era-backdrop { z-index: 85; }

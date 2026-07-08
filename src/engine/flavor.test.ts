@@ -11,11 +11,13 @@ describe("R7.1 — tiered upgrade flavor", () => {
     const at6 = upgradeFlavor("rack_basic", 6, "base");
     const at16 = upgradeFlavor("rack_basic", 16, "base");
     const at30 = upgradeFlavor("rack_basic", 30, "base");
+    const atTop = upgradeFlavor("rack_basic", 100, "base"); // the deepest breakpoint
     expect(at6).not.toBe("base");
     expect(at16).not.toBe(at6);
     expect(at30).not.toBe(at16);
+    expect(atTop).not.toBe(at30);
     // Way past the top tier still shows the top tier (no overflow).
-    expect(upgradeFlavor("rack_basic", 999, "base")).toBe(at30);
+    expect(upgradeFlavor("rack_basic", 999, "base")).toBe(atTop);
   });
 
   it("returns the fallback for upgrades with no tiered flavor", () => {

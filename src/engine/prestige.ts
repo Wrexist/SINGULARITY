@@ -31,11 +31,6 @@ export function charterConvictionMult(state: GameState): number {
     : 1;
 }
 
-/** Is the conviction bonus live this ship? (For the UI to surface it.) */
-export function charterConvictionActive(state: GameState): boolean {
-  return canPrestige(state) && charterConvictionMult(state) > 1;
-}
-
 /** Legacy Weights a given ship mode would actually bank (base × mode mult × conviction). */
 export function legacyWeightsForMode(state: GameState, mode: ShipMode): Big {
   const base = legacyWeightsGain(state);

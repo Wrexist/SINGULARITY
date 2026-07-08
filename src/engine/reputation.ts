@@ -1,4 +1,3 @@
-import { Big } from "./math/Big";
 import { achievements as ACH_DEFS, achievementRep } from "./balance/achievements";
 import { reputation as R } from "./balance/reputation";
 import { contractsReputation } from "./contracts";
@@ -122,15 +121,4 @@ export function bonusProductSlots(state: GameState): number {
     if (p.effect.kind === "productSlot" && state.reputation.perks.includes(p.id)) n += p.effect.value;
   }
   return n;
-}
-
-/** As Big multipliers (convenience for derive). */
-export function reputationBigMods(state: GameState) {
-  const m = reputationMods(state);
-  return {
-    computeMult: Big.of(m.computeMult),
-    dataMult: Big.of(m.dataMult),
-    moneyMult: Big.of(m.moneyMult),
-    payrollMult: Big.of(m.payrollMult),
-  };
 }

@@ -416,12 +416,6 @@ function drawPartitions(ctx: CanvasRenderingContext2D, L: Layout, model: HallMod
   if (model.splitGy !== null) wall(iso(gxMin, model.splitGy), iso(gxMax, model.splitGy));
 }
 
-/** The full hall (static + animated) in one pass. Kept for any non-cached use. */
-export function drawHall(ctx: CanvasRenderingContext2D, model: HallModel, o: DrawOpts): void {
-  drawHallStatic(ctx, model, o.width, o.height);
-  drawHallDynamic(ctx, model, o);
-}
-
 /** The ANIMATED layer: drifting motes, racks, claim burst, expansion markers. */
 export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel, o: DrawOpts): void {
   const { width: W, height: H } = o;

@@ -5,6 +5,7 @@ import { contractBoard } from "./contracts";
 import { canBuyResearch } from "./actions";
 import { canPrestige } from "./prestige";
 import { hireCost } from "./employees";
+import { derive } from "./derive";
 import type { GameState } from "./types";
 
 /** The first research node (no prereqs) — the new player's first capability buy. */
@@ -111,6 +112,21 @@ export function advisorItems(state: GameState): AdvisorItem[] {
     const cheapestHire = Math.min(...balance.staff.roles.map((r) => hireCost(r.id)));
     if (state.resources.money.gte(cheapestHire)) {
       items.push({ tab: "employees", text: "Hire your first specialist", priority: 85 });
+    }
+  }
+
+  // Payroll outrunning income: a structural over-hire warning. Compares wages against
+  // GROSS revenue (passive money + product MRR, before serving/marketing costs), so a
+  // deliberate marketing-investment loss never trips it — consistent with the "don't
+  // flag investment losses" policy above. Only fires with staff actually on payroll.
+  if (state.employees.length > 0) {
+    const d = derive(state);
+    if (d.payrollPerSec.gt(0)) {
+      let grossIncome = d.passiveMoneyPerSec;
+      for (const p of ps.active) grossIncome = grossIncome.add(productMetrics(p, ps.frontier).mrr);
+      if (d.payrollPerSec.gt(grossIncome)) {
+        items.push({ tab: "employees", text: "Payroll is outrunning your income — grow revenue or let someone go", priority: 58 });
+      }
     }
   }
 

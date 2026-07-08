@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useGame } from "./store";
+import { balance } from "../engine/balance/config";
+import { isPremium } from "./premium";
 
 /**
  * Drives the simulation in real time. Reads the wall clock here (the UI layer),
@@ -18,7 +20,14 @@ export function useGameLoop(tickHz = 10, saveEverySec = 5) {
     const tickMs = 1000 / tickHz;
     const loop = window.setInterval(() => {
       const t = performance.now();
-      const elapsed = t - last.current;
+      // Clamp a single live-tick delta to the offline cap. If the machine sleeps (or
+      // the tab is frozen by the OS) with the app open, one interval can fire with
+      // hours of real time in it — without this clamp that becomes an UNCAPPED
+      // single-tick windfall that bypasses the very cap the offline (tab-closed) path
+      // enforces. A normal tick is ~100ms, so this only ever bites a long suspend, and
+      // it's never more generous than simply closing the tab would have been.
+      const capMs = (isPremium() ? balance.offline.premiumMaxHours : balance.offline.maxHours) * 3_600_000;
+      const elapsed = Math.min(t - last.current, capMs);
       last.current = t;
       advance(elapsed);
     }, tickMs);

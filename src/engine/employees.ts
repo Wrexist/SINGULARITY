@@ -78,7 +78,11 @@ export function advanceTraining(employees: Employee[], seconds: number): Trainin
     if (remainingSec <= 0) {
       const level = Math.min(S.maxLevel, e.level + 1);
       completed.push({ id: e.id, name: e.name, level });
-      return { ...e, level, training: null };
+      // A training "sabbatical" revives a burned-out specialist — the burned_out trait's
+      // own copy promises exactly this ("A training sabbatical might revive them"), so
+      // completing training clears it, restoring full output. Other traits are kept.
+      const trait = e.trait === "burned_out" ? null : e.trait;
+      return { ...e, level, trait, training: null };
     }
     return { ...e, training: { ...e.training, remainingSec } };
   });

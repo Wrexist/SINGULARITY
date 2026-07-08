@@ -20,14 +20,18 @@ const UPGRADE_FLAVOR: Record<string, FlavorTier[]> = {
     { at: 6, text: "One shelf became several. The hum is now a drone." },
     { at: 16, text: "Your landlord has questions about the power bill." },
     { at: 30, text: "Technically a 'compute facility' now. Technically." },
+    { at: 50, text: "The fire marshal has opinions. You have earplugs." },
+    { at: 100, text: "You've stopped counting racks and started counting rows." },
   ],
   rack_server: [
     { at: 8, text: "An aisle of blinking servers. You feel important." },
     { at: 20, text: "The cooling bill rivals a small nation's GDP." },
+    { at: 40, text: "The server room needs its own postal code now." },
   ],
   rack_tpu: [
     { at: 5, text: "Pods upon pods. The future is loud." },
     { at: 15, text: "You no longer remember what a CPU is." },
+    { at: 30, text: "The pods have pods. The loudness has achieved sentience." },
   ],
   overclock: [
     { at: 4, text: "The fans scream. You call it 'productivity'." },
@@ -50,6 +54,7 @@ const UPGRADE_FLAVOR: Record<string, FlavorTier[]> = {
   psu_bay: [
     { at: 4, text: "The breaker panel is now a wall." },
     { at: 10, text: "The utility company sends a fruit basket every quarter." },
+    { at: 20, text: "You have a substation on speed-dial and a backup substation for the speed-dial." },
   ],
   cooling_loop: [
     { at: 4, text: "The lab is technically a river now." },
@@ -58,6 +63,7 @@ const UPGRADE_FLAVOR: Record<string, FlavorTier[]> = {
   substation: [
     { at: 3, text: "Your own transformer. The neighbors' lights dim on big runs." },
     { at: 8, text: "The grid operator has you on speed dial. It's not friendly." },
+    { at: 16, text: "You now generate more than you draw. The town's electricity bill is your problem now." },
   ],
   web_scraper: [
     { at: 6, text: "The internet is 'publicly available'. All of it. Twice." },

@@ -7,7 +7,6 @@ import {
   type HeatEvent,
   type WorldEvent,
   type WorldEventEffect,
-  type StaffRole,
 } from "./balance/config";
 import { derive } from "./derive";
 import { alignmentHeatMult } from "./alignment";
@@ -170,47 +169,11 @@ export function buyUpgradeBulk(state: GameState, id: string, want: number): Game
   return s;
 }
 
-// ---------- Staff (Phase 2) ----------
-
-const STAFF_BY_ID: Record<string, StaffRole> = Object.fromEntries(
-  balance.staff.roles.map((r) => [r.id, r]),
-);
-
-/** Recruiters cut hire costs: multiplier ≤ 1 from `hireDiscount` perLevel, floored. */
-export function staffHireDiscount(state: GameState): number {
-  if (!balance.staff.enabled) return 1;
-  let cut = 0;
-  for (const role of balance.staff.roles) {
-    if (role.effect.kind === "meta" && role.effect.lane === "hireDiscount") {
-      cut += role.effect.perLevel * (state.upgrades[role.id] ?? 0);
-    }
-  }
-  return Math.max(balance.staff.hireDiscountFloor, 1 - cut);
-}
-
-/** Cost to hire the next of a role: base * growth^owned, after any Recruiter discount. */
-export function staffHireCost(role: StaffRole, owned: number, discount = 1): Big {
-  return Big.of(role.hire.base).mul(Big.of(role.hire.growth).pow(owned)).mul(discount);
-}
-
-export function canHireStaff(state: GameState, id: string): boolean {
-  const role = STAFF_BY_ID[id];
-  if (!role || !balance.staff.enabled) return false;
-  return state.resources.money.gte(staffHireCost(role, state.upgrades[id] ?? 0, staffHireDiscount(state)));
-}
-
-/** Hire one of a role. No-op if unaffordable. Counts live in the upgrades map. */
-export function hireStaff(state: GameState, id: string): GameState {
-  if (!canHireStaff(state, id)) return state;
-  const role = STAFF_BY_ID[id]!;
-  const owned = state.upgrades[id] ?? 0;
-  const cost = staffHireCost(role, owned, staffHireDiscount(state));
-  return {
-    ...state,
-    resources: { ...state.resources, money: state.resources.money.sub(cost) },
-    upgrades: { ...state.upgrades, [id]: owned + 1 },
-  };
-}
+// ---------- Office perks (Phase 2) ----------
+// NOTE: the old per-role staff-hire path (hireStaff/canHireStaff/staffHireCost/
+// staffHireDiscount) was superseded by the individual-employee system in
+// engine/employees.ts (hiring runs through the store's doHireCandidate) and has
+// been removed as dead code.
 
 /** Office perks are one-time (0/1) purchases living in the upgrades map. */
 export function canBuyOfficePerk(state: GameState, id: string): boolean {
@@ -318,10 +281,6 @@ export interface MarketOutcome {
   dataGained: Big;
   moneyLost: Big;
   message: string;
-}
-
-export function dataOfferById(id: string): DataOffer | undefined {
-  return OFFER_BY_ID[id];
 }
 
 export function canBuyDataOffer(state: GameState, id: string): boolean {

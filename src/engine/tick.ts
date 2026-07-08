@@ -64,9 +64,18 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   // multiple times within one big offline tick.
   if (run.active) {
     let remaining = seconds;
-    // Guard against pathological loops on huge offline deltas.
+    // Guard against pathological loops on huge offline deltas. Sized to the window:
+    // the most runs that can legitimately complete is (elapsed / shortest run), so a
+    // premium 24h catch-up at the run-duration floor (86400/0.5 = 172800 runs) no
+    // longer trips a fixed cap and under-report the offline haul. Still capped as a
+    // hard backstop against a zero-length run, and the divisor is floored so it can't
+    // divide by zero.
     let guard = 0;
-    while (run.active && remaining > 0 && guard < 100000) {
+    const guardLimit = Math.min(
+      5_000_000,
+      Math.ceil(seconds / Math.max(0.05, balance.run.minDurationSec)) + 100,
+    );
+    while (run.active && remaining > 0 && guard < guardLimit) {
       guard++;
       const secsToFinish = (1 - run.progress) * d.runDurationSec;
       if (remaining >= secsToFinish) {

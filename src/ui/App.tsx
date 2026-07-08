@@ -593,6 +593,13 @@ export function App() {
       <ModifierBar
         modifiers={game.modifiers}
         status={regulatorIsNamed(game) ? [{ key: "regulator", label: `⚖ ${regulatorState(game).name}: ${regulatorState(game).label}`, tone: "bad" as const }] : []}
+        workShaveSec={balance.worldEvents.workShaveSec}
+        onWork={(id) => {
+          // Accessible twin of tapping the incident in the hall (HallCanvas): shave a
+          // bounded slice off a bad modifier, once. Same feedback as a claim.
+          haptics.tap(); sound.tap();
+          useGame.getState().doWorkProblem(id);
+        }}
       />
 
       <main className="stage">

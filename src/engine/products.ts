@@ -2,6 +2,7 @@ import {
   products as B, productMilestones, productFeatures,
   type ProductTypeId, type ProductTypeDef, type MilestoneDef, type FeatureLane,
 } from "./balance/products";
+import { balance } from "./balance/config";
 import type { GameState, ProductMods, ProductState, ProductsState, UpgradeState } from "./types";
 import { bonusProductSlots } from "./reputation";
 import { derive } from "./derive";
@@ -109,8 +110,16 @@ export function enterpriseUnlocked(state: GameState): boolean {
  *  single eased value. Returns pre-mods ARPU (callers apply staff mods.arpu). */
 function tierEconomics(p: ProductState, t: ProductTypeDef, qf: number, fm: FeatureMods) {
   const base = t.baseConversion * qf * fm.conversion;
-  const proConv = base / p.priceMult;
-  const entConv = p.enterprise ? (base * B.enterprise.convShare) / Math.max(1e-9, p.enterprisePrice) : 0;
+  // Conversion falls LINEARLY with the price dial (not as 1/price), so it no longer
+  // exactly cancels the ×price ARPU gain: net revenue/user now rises with price to an
+  // interior peak (~1.5× Pro / ~1.9× Enterprise) and then declines — and higher price
+  // still lifts churn — so pricing is a real "premium vs volume" decision instead of a
+  // slider that does nothing. IDENTITY at the default dials (priceMult / enterprisePrice
+  // = 1), so the tuned curve and the balance sim (which never move price) are unchanged.
+  const proConv = base * Math.max(0, 1 - B.priceConvSlope * (p.priceMult - 1));
+  const entConv = p.enterprise
+    ? base * B.enterprise.convShare * Math.max(0, 1 - B.enterprise.convSlope * (p.enterprisePrice - 1))
+    : 0;
   const proArpu = t.baseArpu * p.priceMult * p.quality * fm.arpu;
   const entArpu = t.baseArpu * p.enterprisePrice * B.enterprise.arpuMult * p.quality * fm.arpu;
   const total = proConv + entConv;
@@ -333,7 +342,9 @@ export function maybeProductEvent(
     paid: Math.max(0, Math.min(p.paid * (ev.paidMult ?? 1), mau)),
     buzzSec: ev.buzz ? B.buzzDurationSec : p.buzzSec,
   };
-  const heat = ev.heat ? state.heat + ev.heat : state.heat;
+  // Clamp like every other Heat write — an event at near-max Heat must not push it
+  // over the ceiling even for the frame before the next tick re-clamps.
+  const heat = ev.heat ? Math.min(balance.heat.max, state.heat + ev.heat) : state.heat;
   return {
     state: {
       ...state,

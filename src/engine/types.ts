@@ -10,8 +10,6 @@ export interface ComponentsState {
   loadout: Array<Partial<Record<SlotClass, string>>>;
 }
 
-export type ResourceId = "compute" | "data" | "money";
-
 export interface Resources {
   compute: Big;
   data: Big;
