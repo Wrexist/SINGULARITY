@@ -166,6 +166,8 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     challenges: state.challenges,
     // Lab Objectives persist too (an onboarding-grind ladder consumed once across runs).
     objectives: state.objectives,
+    // Automation toggles are a permanent QoL choice — they persist across the reset.
+    automation: state.automation,
     // Contracts completed are career progress (and feed Reputation) — they persist.
     contracts: state.contracts,
     // Legacy Investments are permanent prestige-tree progress — they persist.

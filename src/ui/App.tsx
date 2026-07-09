@@ -95,6 +95,8 @@ import { GrandChallengesPanel } from "./GrandChallengesPanel";
 import { ChallengeComplete } from "./ChallengeComplete";
 import { objectivesUnlocked } from "../engine/objectives";
 import { ObjectivesPanel } from "./ObjectivesPanel";
+import { automationUnlockedAny } from "../engine/automation";
+import { AutomationPanel } from "./AutomationPanel";
 import { currentEra } from "../engine/eras";
 import { recordTelemetry } from "../state/telemetry";
 
@@ -111,7 +113,7 @@ export function App() {
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
     doClaimContract, doClaimSponsor, doBuyPreprint, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
-    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival, doFundChallenge, doClaimObjective } =
+    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival, doFundChallenge, doClaimObjective, doToggleAutomation } =
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
@@ -641,6 +643,7 @@ export function App() {
       if (at && !reducedMotion) fxFloat(at.x, at.y - 6, "funded", "#7c5cff", 14);
     }
   };
+  const onToggleAutomation = (id: string) => { haptics.tap(); sound.tap(); doToggleAutomation(id); };
   const onClaimObjective = (id: string, at?: { x: number; y: number }) => {
     doClaimObjective(id);
     // Juice at the tap: a small burst + a satisfied chord. The reward itself is visible
@@ -867,6 +870,7 @@ export function App() {
               <>
                 {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} onBuyEndowment={() => { haptics.celebrate(); sound.purchase(); doBuyEndowment(); }} onBuyLegacyPerk={(id) => { haptics.success(); sound.purchase(); doBuyLegacyPerk(id); }} />}
                 {showResearch && <ContractsPanel game={game} onClaim={onClaimContract} onClaimSponsor={() => { haptics.success(); sound.success(); doClaimSponsor(); }} />}
+                {automationUnlockedAny(game) && <AutomationPanel game={game} onToggle={onToggleAutomation} />}
                 {challengesUnlocked(game) && <GrandChallengesPanel game={game} onFund={onFundChallenge} />}
                 <StatsPanel game={game} derived={d} />
                 {game.prestige.ships > 0 && <CodexPanel game={game} />}

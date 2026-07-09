@@ -11,6 +11,7 @@ import { components as COMPONENTS, SLOTS_BY_TIER, type SlotClass } from "./balan
 import { market as MARKET } from "./balance/market";
 import { challenges as CHALLENGES } from "./balance/challenges";
 import { objectives as OBJECTIVES } from "./balance/objectives";
+import { automation as AUTOMATION } from "./balance/automation";
 import { freshComponents } from "./components";
 import type { ChallengeState } from "./types";
 import type { ActiveModifier, ComponentsState, DraftModel, Employee, GameState, LifetimeStats, ModifierTarget, ProductsState, ProductState, UpgradeState } from "./types";
@@ -295,6 +296,8 @@ interface SavedShape {
   };
   /** Lab Objectives — claimed objective ids. Migrated at v22. */
   objectives: { completed: string[] };
+  /** Automation — which autopilots are switched on. Migrated at v23. */
+  automation: Record<string, boolean>;
 }
 
 export function serialize(state: GameState): string {
@@ -360,8 +363,17 @@ export function serialize(state: GameState): string {
       completed: state.challenges.completed,
     },
     objectives: state.objectives,
+    automation: state.automation,
   };
   return JSON.stringify(shape);
+}
+
+/** Automation toggles, sanitized: only KNOWN autopilot ids, only the ones set to true. */
+function sanitizeAutomation(raw: unknown): Record<string, boolean> {
+  const out: Record<string, boolean> = {};
+  const r = (raw ?? {}) as Record<string, unknown>;
+  for (const def of AUTOMATION.list) if (r[def.id] === true) out[def.id] = true;
+  return out;
 }
 
 /** Grand Challenge progress, sanitized as untrusted input. Funding is clamped per-resource
@@ -530,6 +542,9 @@ export function deserialize(json: string): GameState {
     // Lab Objectives: claimed ids only (rewards were applied at claim time, never re-derived
     // from state, so a tampered list just skips objectives — known-id/dedupe is enough).
     objectives: { completed: dedupeKnownIds((raw.objectives as { completed?: unknown } | undefined)?.completed, OBJECTIVE_IDS) },
+    // Automation toggles — known ids only. (Whether an autopilot actually runs is re-checked
+    // against its ship-count unlock every tick, so a toggled-on-but-locked entry does nothing.)
+    automation: sanitizeAutomation(raw.automation),
     // Generation-scoped (not persisted): a mid-run reload simply re-accrues the run
     // peaks, and the ship report is transient — both start fresh on load.
     runPeakCompute: fresh.runPeakCompute,
@@ -792,6 +807,10 @@ export function migrate(raw: any): SavedShape {
   if (s.version === 21) {
     // v21 → v22: Lab Objectives. Existing runs start with none claimed (sanitizer-defaulted).
     s = { ...s, version: 22, objectives: s.objectives ?? { completed: [] } };
+  }
+  if (s.version === 22) {
+    // v22 → v23: Automation toggles. Existing runs start with every autopilot off.
+    s = { ...s, version: 23, automation: s.automation ?? {} };
   }
   return s as SavedShape;
 }

@@ -46,12 +46,15 @@ import {
   maybeProductEvent,
   canBuyFeature,
   buyFeature,
+  maxActiveProducts,
 } from "../engine/products";
 import { productMilestones as PRODUCT_MILESTONES, type ProductTypeId } from "../engine/balance/products";
 import { achievements as ACHIEVEMENT_DEFS } from "../engine/balance/achievements";
 import { buyReputationPerk, buyEndowment } from "../engine/reputation";
 import { fundChallenge } from "../engine/challenges";
 import { claimObjective } from "../engine/objectives";
+import { applyAutomation, automationUnlockedAny, automationEnabled, toggleAutomation } from "../engine/automation";
+import { automation as AUTOMATION } from "../engine/balance/automation";
 import { claimContract, rollSponsor, claimSponsor } from "../engine/contracts";
 import { buyPreprint } from "../engine/preprints";
 import { setCharter, lockCharter } from "../engine/charter";
@@ -172,6 +175,8 @@ interface GameStore {
   doFundChallenge: (id: string) => boolean;
   /** Claim a met Lab Objective (applies its boost/windfall reward). */
   doClaimObjective: (id: string) => void;
+  /** Flip an Automation autopilot on/off (no-op if still locked). */
+  doToggleAutomation: (id: string) => void;
   setComputeFocus: (v: number) => void;
   /** Returns true if the release succeeded (so the UI only celebrates on a real ship). */
   doReleaseProduct: (type: ProductTypeId, name: string) => boolean;
@@ -476,6 +481,27 @@ export const useGame = create<GameStore>((set, get) => ({
         }
       }
 
+      // Automation (IDEAS #C): run the toggled-on autopilots on the post-tick state. Silent
+      // by design — the point is to remove chores, not add feedback. Off by default, gated by
+      // ship count, and never enabled by the sim, so the tuned curve is untouched.
+      if (automationUnlockedAny(game)) {
+        game = applyAutomation(game);
+        // Auto-launch needs id minting, so it runs here rather than in the pure engine: a
+        // freshly-shipped draft is commercialised into any free slot (as a General product).
+        if (automationEnabled(game, "auto_launch")) {
+          let guard = 0;
+          while (game.products.drafts.length > 0 && game.products.active.length < maxActiveProducts(game) && guard++ < 8) {
+            const draft = game.products.drafts[0]!;
+            const type: ProductTypeId = "general";
+            if (!canLaunchDraft(game, draft.id, type)) break;
+            productKey += 1;
+            const name = AUTOMATION.names[productKey % AUTOMATION.names.length]!;
+            game = launchDraft(game, { draftId: draft.id, type, name, id: `prod-${productKey}` });
+          }
+        }
+        patch.game = game;
+      }
+
       // Telemetry (R8.1): detect a progress purchase or era arrival by diffing across
       // ticks — one hook instead of touching every buy action. Only fires on the rare
       // transition (signature/era increase), never the 10Hz trickle. On-device only.
@@ -569,6 +595,7 @@ export const useGame = create<GameStore>((set, get) => ({
     return justCompleted;
   },
   doClaimObjective: (id) => set((s) => ({ game: claimObjective(s.game, id) })),
+  doToggleAutomation: (id) => set((s) => ({ game: toggleAutomation(s.game, id) })),
   setComputeFocus: (v) =>
     set((s) => ({ game: { ...s.game, computeFocus: Math.max(0, Math.min(1, v)) } })),
   // The store mints the product id (nondeterminism stays out of the engine).

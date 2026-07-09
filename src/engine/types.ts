@@ -153,6 +153,9 @@ export interface GameState {
   /** Lab Objectives (IDEAS #B) — early/mid rotating tasks. Claimed ids (the board is the
    *  first few uncompleted). Persists across prestige (an onboarding-grind ladder). */
   objectives: { completed: string[] };
+  /** Automation (IDEAS #C) — which "autopilot" toggles are switched on (id → true).
+   *  Unlocked by ship count; persists across prestige (a permanent QoL choice). */
+  automation: Record<string, boolean>;
 }
 
 /** Grand Challenge progress. `funded` holds only challenges the player has contributed to. */
