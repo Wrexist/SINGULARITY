@@ -4,6 +4,7 @@ import type { GameState } from "../engine/types";
 import { currentEra } from "../engine/eras";
 import { powerStats } from "../engine/power";
 import { productMetrics } from "../engine/products";
+import { products as PRODUCTS_BAL } from "../engine/balance/products";
 import { componentsUnlocked, componentDef, SLOTS_BY_TIER } from "../engine/components";
 import type { SlotClass } from "../engine/balance/components";
 import { regulatorState, regulatorIsNamed } from "../engine/regulator";
@@ -95,6 +96,10 @@ export interface HallModel {
   /** C2 — one entry per live product: 0..1 beam intensity (revenue, normalised to the
    *  portfolio's top earner) → glowing "uplink beams" rising from the floor. */
   beams: number[];
+  /** Per-product launch/viral "buzz" (0..1, = buzzSec / window). Drives a brief, brighter
+   *  beam surge so a product going viral is FELT in the room. Refreshed per-frame in
+   *  HallCanvas (buzzSec decays every tick), like heatCrates/skyline — index-aligned to `beams`. */
+  beamBuzz: number[];
   /** C2 — faction alignment (−1 doomer … +1 accel) → a subtle room colour tint. */
   alignment: number;
   /** Bare Metal — per-tier component bays (index = rack tier), or null while the
@@ -248,6 +253,11 @@ export function buildHallModel(game: GameState): HallModel {
   const mrrs = game.products.active.map((p) => Math.max(0, productMetrics(p, game.products.frontier).mrr));
   const maxMrr = mrrs.reduce((m, v) => Math.max(m, v), 0) || 1;
   const beams = mrrs.map((m) => Math.max(0.18, Math.min(1, m / maxMrr)));
+  // Launch/viral "buzz" per product (0..1) — a bright, self-limiting beam surge so a
+  // product going viral is felt in the room. Index-aligned to `beams`; refreshed
+  // per-frame in HallCanvas since buzzSec decays every tick.
+  const buzzWin = PRODUCTS_BAL.buzzDurationSec;
+  const beamBuzz = game.products.active.map((p) => (buzzWin > 0 ? Math.max(0, Math.min(1, p.buzzSec / buzzWin)) : 0));
 
   // Manifest software upgrades that used to change only a number: overclock makes
   // racks visibly run hotter; auto-train puts a little ops bot on the floor.
@@ -293,6 +303,7 @@ export function buildHallModel(game: GameState): HallModel {
     gxMin,
     gyMin,
     sides: sideMarkers(game),
+    beamBuzz,
     active: game.run.active,
     busy: game.run.active || game.products.active.length > 0,
     readyToClaim: game.run.readyToClaim,

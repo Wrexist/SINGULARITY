@@ -528,7 +528,7 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
 
   // C2 — product "uplink beams": one glowing column per live product, rising from the
   // back of the floor, height ∝ revenue. Drawn before staff so agents read in front.
-  if (model.beams.length > 0) drawBeams(ctx, L, model.beams, o.timeMs, o.reducedMotion);
+  if (model.beams.length > 0) drawBeams(ctx, L, model.beams, model.beamBuzz, o.timeMs, o.reducedMotion);
 
   // C2/#7 — staff on the floor: real employees working the room (tap for their card).
   if (model.agents.length > 0) drawStaffAgents(ctx, model.agents, agentSpots(model, W, H, o.timeMs, o.reducedMotion), o.timeMs, o.reducedMotion);
@@ -1087,20 +1087,25 @@ function drawThermalStress(
 /** C2 — product uplink beams. One translucent gradient column per live product,
  *  rising from a back-floor anchor; height/alpha scale with the product's revenue
  *  share. Tier-cycled colours; a soft top bloom. Reduced-motion → no flicker. */
-function drawBeams(ctx: CanvasRenderingContext2D, L: Layout, beams: number[], t: number, reducedMotion: boolean): void {
+function drawBeams(ctx: CanvasRenderingContext2D, L: Layout, beams: number[], buzz: number[], t: number, reducedMotion: boolean): void {
   const cols: RGB[] = [[63, 134, 240], [155, 81, 224], [52, 210, 126], [245, 180, 10], [255, 99, 132]];
   const n = beams.length;
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
   for (let i = 0; i < n; i++) {
-    const intensity = beams[i]!;
+    // A product in its launch/viral "buzz" window surges: brighter, a touch taller, and
+    // livelier — self-limiting (buzzSec decays to 0 over ~45s), so the room celebrates a
+    // launch/viral spike then settles. `b` is 0 for a steady product → identical to before.
+    const b = buzz[i] ?? 0;
+    const intensity = Math.min(1.1, beams[i]! * (1 + 0.45 * b));
     // Anchor along the OPEN front edge (high gy) so beams rise over the room and read
     // clearly instead of hiding among the back racks. Spread left→right.
     const gx = L.gxMin + ((i + 0.5) / n) * (L.gxMax - L.gxMin);
     const base = L.iso(gx, L.gyMax - 0.35);
     const col = cols[i % cols.length]!;
     const h = (L.tileH * 9 + L.tileH * 26 * intensity);
-    const flick = reducedMotion ? 1 : 0.85 + 0.15 * Math.sin(t / 260 + i * 1.3);
+    // Base flicker + a faster, stronger shimmer while buzzing (both off under reduced motion).
+    const flick = reducedMotion ? 1 : 0.85 + 0.15 * Math.sin(t / 260 + i * 1.3) + (b > 0 ? b * 0.22 * (0.5 + 0.5 * Math.sin(t / 110 + i)) : 0);
     const w = Math.max(4, L.tileW * 0.2);
     const g = ctx.createLinearGradient(base.x, base.y, base.x, base.y - h);
     g.addColorStop(0, rgba(col, 0.55 * flick));
@@ -1116,6 +1121,19 @@ function drawBeams(ctx: CanvasRenderingContext2D, L: Layout, beams: number[], t:
     ctx.beginPath();
     ctx.arc(base.x, base.y - h, w * 0.6 * flick, 0, Math.PI * 2);
     ctx.fill();
+    // Buzz: a few motes rising up the beam and fading — reads as "energy surging" during a
+    // launch/viral moment. Only while buzzing and not reduced-motion; 3 dots, no allocations.
+    if (b > 0.04 && !reducedMotion) {
+      for (let s = 0; s < 3; s++) {
+        const phase = ((t / 900) + s / 3 + i * 0.37) % 1; // 0 (base) → 1 (top)
+        const sy = base.y - phase * h;
+        const sx = base.x + Math.sin(phase * 6 + i) * w * 0.35;
+        ctx.fillStyle = rgba(col, b * (1 - phase) * 0.75);
+        ctx.beginPath();
+        ctx.arc(sx, sy, w * 0.22, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
   }
   ctx.restore();
 }
