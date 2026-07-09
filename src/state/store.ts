@@ -394,21 +394,10 @@ export const useGame = create<GameStore>((set, get) => ({
         }
       }
 
-      // One queue, oldest first — a notice earned this tick never jumps ahead of
-      // one still waiting from a previous tick. Cap the backlog so an extreme
-      // offline catch-up can't toast for minutes.
-      if (earned.length > 0) pendingNotices = [...pendingNotices, ...earned].slice(0, 6);
-      // Drain at most one per NOTICE_GATE_MS of real time (not one per 100ms tick), so a
-      // same-tick burst / catch-up backlog surfaces as readable, staggered toasts. The
-      // gate idles at 0, so a single notice after a quiet stretch still fires at once.
-      if (noticeGateMs > 0) noticeGateMs = Math.max(0, noticeGateMs - elapsedMs);
-      if (pendingNotices.length > 0 && noticeGateMs === 0) {
-        patch.notice = pendingNotices[0]!;
-        pendingNotices = pendingNotices.slice(1);
-        noticeGateMs = NOTICE_GATE_MS;
-      }
-
-      // Heat-driven regulatory event (only when there's heat to drive it).
+      // Heat-driven regulatory event FIRST (only when there's heat to drive it). A fine is
+      // urgent, so it takes this tick's single feedback slot — a completion notice then
+      // waits one tick in the queue rather than firing a second toast + a clashing chord
+      // over the top of the "uh-oh".
       if (game.heat > 0) {
         const res = maybeHeatEvent(game, secs, Math.random(), Math.random());
         if (res) {
@@ -417,6 +406,21 @@ export const useGame = create<GameStore>((set, get) => ({
           patch.game = game;
           patch.event = { key: eventKey, message: res.event.message, tone: res.event.tone };
         }
+      }
+
+      // One queue, oldest first — a notice earned this tick never jumps ahead of
+      // one still waiting from a previous tick. Cap the backlog so an extreme
+      // offline catch-up can't toast for minutes.
+      if (earned.length > 0) pendingNotices = [...pendingNotices, ...earned].slice(0, 6);
+      // Drain at most one per NOTICE_GATE_MS of real time (not one per 100ms tick), so a
+      // same-tick burst / catch-up backlog surfaces as readable, staggered toasts; and hold
+      // while a heat event claimed this tick. The gate idles at 0, so a single notice after
+      // a quiet stretch still fires at once.
+      if (noticeGateMs > 0) noticeGateMs = Math.max(0, noticeGateMs - elapsedMs);
+      if (!patch.event && pendingNotices.length > 0 && noticeGateMs === 0) {
+        patch.notice = pendingNotices[0]!;
+        pendingNotices = pendingNotices.slice(1);
+        noticeGateMs = NOTICE_GATE_MS;
       }
 
       // Regulator negotiation (IMPROVEMENTS #9): deterministic, outranks the

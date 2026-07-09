@@ -753,26 +753,19 @@ svg { vertical-align: middle; }
 @keyframes item-in { from { opacity: 0; transform: translateY(9px) scale(0.99); } }
 .card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 .card:active { transform: scale(0.97); }
-/* Affordable items breathe + catch a slow sheen, so the eye is always drawn to
-   what you can buy RIGHT NOW — the panels feel alive, not a static price list. */
+/* Affordable items get a green tint + border and a slow breathing glow, so the eye is
+   drawn to what you can buy RIGHT NOW. (A moving diagonal "sheen" used to sweep across
+   every affordable card too — removed: with several cards affordable at once, N sweeps
+   read as ambient shimmer competing with the meaningful motion. Tint + border + breathe
+   already signal affordability clearly.) */
 .card.affordable {
   border-color: color-mix(in srgb, var(--money) 45%, transparent);
   background: linear-gradient(180deg, rgba(22, 179, 100, 0.07), var(--glass-strong));
   animation: item-in 0.34s var(--ease-out) backwards, afford-breathe 2.6s ease-in-out 0.34s infinite;
 }
-.card.affordable::after, .node.affordable::after {
-  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-  background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, 0.55) 50%, transparent 62%);
-  background-size: 220% 100%; background-repeat: no-repeat;
-  animation: card-sheen 3.4s ease-in-out infinite;
-}
 @keyframes afford-breathe {
   0%, 100% { box-shadow: 0 1px 3px rgba(16, 24, 40, 0.04); }
   50% { box-shadow: 0 0 0 4px rgba(22, 179, 100, 0.14), 0 6px 16px -8px rgba(22, 179, 100, 0.5); }
-}
-@keyframes card-sheen {
-  0% { background-position: 150% 0; }
-  55%, 100% { background-position: -40% 0; }
 }
 /* The purchase "punch" is driven via the Web Animations API (see fx.ts punch()),
    NOT a CSS class — toggling a class that owns `animation` re-triggered the card's

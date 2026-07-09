@@ -363,14 +363,21 @@ export function App() {
   // Guarded by the same hydration sync so it never fires on a returning load.
   const seenEra = useRef(era);
   const syncedEra = useRef(false);
+  const eraShips = useRef(game.prestige.ships); // ships count at the last era-effect run
   useEffect(() => {
     if (!initialized) return;
-    if (!syncedEra.current) { seenEra.current = era; syncedEra.current = true; return; }
+    if (!syncedEra.current) { seenEra.current = era; eraShips.current = game.prestige.ships; syncedEra.current = true; return; }
     // The era beat has its OWN chord (sound.era()). A ship that crosses an era already
-    // fired haptics.celebrate() + sound.ship() in the claim effect, so re-firing sound.ship()
-    // here doubled the ship sound — drop it; keep the era chord (and a haptic for the
-    // research-gated era-1 transition, which crosses without a ship).
-    if (era > seenEra.current) { setEraMoment(era); haptics.celebrate(); sound.era(); }
+    // fired haptics.celebrate() + sound.ship() in the claim effect, so this effect adds
+    // ONLY the era chord there. But a research-driven crossing (era 0→1, or era→2 via the
+    // Scale-Up node) has no ship, so it needs its own celebrate haptic — fire it only when
+    // ships DIDN'T change, so a ship-crossing never double-buzzes.
+    if (era > seenEra.current) {
+      setEraMoment(era);
+      sound.era();
+      if (game.prestige.ships === eraShips.current) haptics.celebrate();
+    }
+    eraShips.current = game.prestige.ships;
     seenEra.current = era;
   }, [initialized, era]);
 
