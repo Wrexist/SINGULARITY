@@ -36,7 +36,7 @@ export function NewsTicker() {
 
   useEffect(() => {
     if (reduced) return; // respect reduced motion — hold on one headline
-    const t = window.setInterval(() => setN((x) => x + 1), 8200);
+    const t = window.setInterval(() => setN((x) => x + 1), 11000); // was 8.2s — calmer feed cadence
     return () => window.clearInterval(t);
   }, [reduced]);
 

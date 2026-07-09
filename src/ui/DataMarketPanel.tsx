@@ -32,7 +32,7 @@ function HeatMeter({ heat }: { heat: number }) {
 
 interface Props {
   game: GameState;
-  onBuyData: (id: string) => void;
+  onBuyData: (id: string, at?: { x: number; y: number }) => void;
   onBuyTool: (id: string) => void;
   onLobby: () => void;
 }
@@ -56,7 +56,7 @@ export function DataMarketPanel({ game, onBuyData, onBuyTool, onLobby }: Props) 
               key={o.id}
               className={`card ${affordable ? "affordable" : ""}`}
               disabled={!affordable}
-              onClick={() => onBuyData(o.id)}
+              onClick={(e) => onBuyData(o.id, { x: e.clientX, y: e.clientY })}
             >
               <div className="card-main">
                 <span className="card-name">
@@ -95,7 +95,7 @@ export function DataMarketPanel({ game, onBuyData, onBuyTool, onLobby }: Props) 
               key={o.id}
               className={`card shady-card ${affordable ? "affordable" : ""}`}
               disabled={!affordable}
-              onClick={() => onBuyData(o.id)}
+              onClick={(e) => onBuyData(o.id, { x: e.clientX, y: e.clientY })}
             >
               <div className="card-main">
                 <span className="card-name">

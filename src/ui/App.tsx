@@ -33,7 +33,7 @@ import { EventLog } from "./EventLog";
 import { FxCanvas } from "./FxCanvas";
 import { burst as fxBurst, floatText as fxFloat } from "./fx";
 import { ProductLaunch } from "./ProductLaunch";
-import { productsUnlocked, productMetrics, typeDef, retirePayout } from "../engine/products";
+import { productsUnlocked, typeDef, retirePayout } from "../engine/products";
 import { advisorItems, type AdvisorTab, type LabSection } from "../engine/advisor";
 import { nextGoal } from "../engine/goals";
 import { marketLeaderboard, playerMarketRank, rivalsBeaten } from "../engine/market";
@@ -366,7 +366,11 @@ export function App() {
   useEffect(() => {
     if (!initialized) return;
     if (!syncedEra.current) { seenEra.current = era; syncedEra.current = true; return; }
-    if (era > seenEra.current) { setEraMoment(era); haptics.celebrate(); sound.ship(); sound.era(); }
+    // The era beat has its OWN chord (sound.era()). A ship that crosses an era already
+    // fired haptics.celebrate() + sound.ship() in the claim effect, so re-firing sound.ship()
+    // here doubled the ship sound — drop it; keep the era chord (and a haptic for the
+    // research-gated era-1 transition, which crosses without a ship).
+    if (era > seenEra.current) { setEraMoment(era); haptics.celebrate(); sound.era(); }
     seenEra.current = era;
   }, [initialized, era]);
 
@@ -461,36 +465,10 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notice?.key]);
 
-  // Staleness nudge: when a live product slips below ~50% competitiveness (rivals
-  // pulled ahead since its last version), poke the player once to push an update.
-  // Ref-tracked per product so it fires on the downward crossing, not every tick.
-  const staleSeen = useRef<Record<string, boolean>>({});
-  // Cheap per-render signal so the effect only re-runs when a product crosses the
-  // staleness line (or the roster changes) — NOT every 10Hz tick, since
-  // `game.products` is a fresh object reference every frame.
-  const staleKey = game.products.active
-    .map((p) => `${p.id}:${productMetrics(p, game.products.frontier).qf < 0.5 ? 1 : 0}`)
-    .join("|");
-  useEffect(() => {
-    if (!initialized) return;
-    const frontier = game.products.frontier;
-    const live = new Set(game.products.active.map((p) => p.id));
-    for (const p of game.products.active) {
-      const qf = productMetrics(p, frontier).qf;
-      const wasStale = staleSeen.current[p.id] ?? false;
-      if (qf < 0.5 && !wasStale) {
-        pushToast(`${p.name} is falling behind rivals — push a new version`, "bad");
-        staleSeen.current[p.id] = true;
-      } else if (qf >= 0.66 && wasStale) {
-        staleSeen.current[p.id] = false; // re-armed once you've caught back up
-      }
-    }
-    // Forget retired products so a recycled id can re-arm.
-    for (const id of Object.keys(staleSeen.current)) {
-      if (!live.has(id)) delete staleSeen.current[id];
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialized, staleKey]);
+  // (Staleness "falling behind rivals" was ALSO a one-time "bad" toast here — removed as
+  // redundant noise. The same qf<0.5 condition is already surfaced, more calmly and
+  // persistently, by the advisor chip (a tappable wayfinder → Products) and the Products
+  // tab attention badge, with ambient churn quips for flavor. One alert channel, not four.)
 
   const syncedShips = useRef(false);
   useEffect(() => {
@@ -642,18 +620,23 @@ export function App() {
     // Surface the node's satirical flavor as a breakthrough toast — completing research
     // used to be silent. Only on a REAL new unlock (doResearch no-ops if unaffordable).
     if (!had && useGame.getState().game.research.includes(id)) {
+      // Skip the flavor toast on the VERY FIRST research: that same tap already fires the
+      // "Data Market / path to shipping unlocked" transition toasts, and a third on top
+      // read as a burst for a brand-new player. Later breakthroughs keep their flavor.
       const def = balance.research.find((r) => r.id === id);
-      if (def) pushToast(`Breakthrough: ${def.name} — ${def.desc}`, "good");
+      if (def && useGame.getState().game.research.length > 1) pushToast(`Breakthrough: ${def.name} — ${def.desc}`, "good");
     }
   };
-  const onBuyData = (id: string) => {
+  const onBuyData = (id: string, at?: { x: number; y: number }) => {
     const outcome = doBuyData(id);
     if (!outcome) return;
-    // The reveal IS the dopamine: reward clean hauls, sting the bad rolls.
+    // Buying data is a repeatable grind — a toast on every tap was the game's most
+    // reproducible spam. Clean hauls now float "+X data" at the tap point (exactly like
+    // hardware buys), quiet and in-place; only the raid/poison STING keeps its interrupt.
     if (outcome.kind === "clean") {
-      pushToast(outcome.message, "neutral");
       haptics.success();
       sound.success();
+      if (at) fxFloat(at.x, at.y - 6, `+${fmt(outcome.dataGained)} data`, "#9b51e0", 15);
     } else {
       pushToast(outcome.message, "bad");
       haptics.warn();

@@ -212,6 +212,12 @@ let productKey = 0;
 /** Same-tick notices beyond the single slot wait here and drain one per tick —
  *  a level-up landing the same tick as a version-ship is delayed, never lost. */
 let pendingNotices: FiredEvent[] = [];
+/** Minimum gap between surfaced queue-notices. The queue used to drain one per 10Hz
+ *  tick (100ms), so a big catch-up tick that earned 5–6 completions flushed them in
+ *  ~600ms — faster than a toast can be read. This staggers them into a calm, readable
+ *  cadence instead. Sits at 0 when idle (a lone notice fires immediately). */
+const NOTICE_GATE_MS = 900;
+let noticeGateMs = 0;
 
 /** Advance the product-id counter past every persisted `prod-N` id so the next
  *  release can't collide with a saved product (ids are React keys + find() keys). */
@@ -392,9 +398,14 @@ export const useGame = create<GameStore>((set, get) => ({
       // one still waiting from a previous tick. Cap the backlog so an extreme
       // offline catch-up can't toast for minutes.
       if (earned.length > 0) pendingNotices = [...pendingNotices, ...earned].slice(0, 6);
-      if (pendingNotices.length > 0) {
+      // Drain at most one per NOTICE_GATE_MS of real time (not one per 100ms tick), so a
+      // same-tick burst / catch-up backlog surfaces as readable, staggered toasts. The
+      // gate idles at 0, so a single notice after a quiet stretch still fires at once.
+      if (noticeGateMs > 0) noticeGateMs = Math.max(0, noticeGateMs - elapsedMs);
+      if (pendingNotices.length > 0 && noticeGateMs === 0) {
         patch.notice = pendingNotices[0]!;
         pendingNotices = pendingNotices.slice(1);
+        noticeGateMs = NOTICE_GATE_MS;
       }
 
       // Heat-driven regulatory event (only when there's heat to drive it).

@@ -102,7 +102,10 @@ export function Tagline() {
 
   useEffect(() => {
     if (reduced) return;
-    const t = window.setInterval(() => setN((x) => x + 1), 9000);
+    // Slow, occasional refresh (was 9s). The Tagline is a decorative subtitle, not a
+    // feed — pairing a fast rotation here with the NewsTicker on the same screen read as
+    // two things competing for the glance. A calmer cadence keeps it alive without churn.
+    const t = window.setInterval(() => setN((x) => x + 1), 16000);
     return () => window.clearInterval(t);
   }, [reduced]);
 
