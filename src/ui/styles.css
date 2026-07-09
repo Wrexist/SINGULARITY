@@ -2796,3 +2796,29 @@ button.modchip.workable:active { transform: scale(0.94); }
 
 /* Charter explicit lock-in (owner UX fix) */
 .charter-lock-btn { margin-top: 12px; }
+
+/* App-wide crash guard fallback (ErrorBoundary) — calm, on-brand, reassuring. Light
+   theme to match the app; centered card with one clear recovery action. */
+.crash-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+  z-index: 9999;
+}
+.crash-card {
+  max-width: 400px;
+  text-align: center;
+  background: #fff;
+  border: 1px solid rgba(20, 22, 27, 0.08);
+  border-radius: 18px;
+  padding: 30px 26px;
+  box-shadow: 0 24px 60px -24px rgba(20, 22, 27, 0.28);
+}
+.crash-mark { font-size: 40px; line-height: 1; margin-bottom: 10px; }
+.crash-card h1 { font-size: 20px; font-weight: 800; color: var(--ink); margin: 0 0 10px; }
+.crash-card p { font-size: 14px; line-height: 1.5; color: var(--ink-2); margin: 0 0 22px; }
+.crash-card .btn { width: 100%; }
