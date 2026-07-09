@@ -185,4 +185,29 @@ describe("security round 2 — display + tick degrade gracefully on non-finite",
     expect(tick(s, NaN)).toBe(s); // unchanged
     expect(tick(s, -5)).toBe(s);
   });
+
+  describe("hardening — audit follow-ups", () => {
+    it("caps a crafted modifiers flood so tick() can't stack-overflow", () => {
+      const flood = Array.from({ length: 200 }, (_, i) => ({
+        id: `m${i}`, target: "computeMult", factor: 1.5,
+        remainingSec: 0.01 + i * 0.001, label: "x", tone: "good",
+      }));
+      const s = loadMutated((r) => { r.modifiers = flood; });
+      expect(s.modifiers.length).toBeLessThanOrEqual(20);
+      // A 24h offline tick expires all of them (recursive segmentation) — must not overflow.
+      expect(() => tick(s, 24 * 3600 * 1000)).not.toThrow();
+    });
+
+    it("rejects an over-limit exponent string as a non-finite Big", () => {
+      const s = loadMutated((r) => { r.resources.money = "1e9000000000000000"; r.lifetimeMoney = "1e9000000000000000"; });
+      expect(s.resources.money.isFinite()).toBe(true);
+      expect(s.lifetimeMoney.isFinite()).toBe(true);
+    });
+
+    it("clamps a tampered ships count (Game Center leaderboard hygiene)", () => {
+      const s = loadMutated((r) => { r.prestige.ships = 1e18; });
+      expect(s.prestige.ships).toBeLessThanOrEqual(10_000_000);
+      expect(Number.isFinite(s.prestige.ships)).toBe(true);
+    });
+  });
 });

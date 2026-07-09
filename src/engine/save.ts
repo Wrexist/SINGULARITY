@@ -51,7 +51,13 @@ const NUM_RE = /^\d+(\.\d+)?(e\+?\d+)?$/i;
 function safeBig(v: unknown, fallback: Big = Big.ZERO): Big {
   if (v instanceof Big) return v;
   if (typeof v === "number") return Number.isFinite(v) && v >= 0 ? Big.of(v) : fallback;
-  if (typeof v === "string" && NUM_RE.test(v.trim())) return Big.of(v.trim());
+  if (typeof v === "string" && NUM_RE.test(v.trim())) {
+    // NUM_RE admits an arbitrarily large exponent (e.g. "1e9000000000000000") that
+    // constructs an INFINITY Big past break_infinity's limit — reject those so a
+    // non-finite value never enters money/lifetime/legacy math.
+    const b = Big.of(v.trim());
+    return b.isFinite() ? b : fallback;
+  }
   return fallback;
 }
 
@@ -352,8 +358,13 @@ export function deserialize(json: string): GameState {
     typeof raw.suspicion === "number" && Number.isFinite(raw.suspicion)
       ? Math.max(0, Math.min(100, raw.suspicion))
       : fresh.suspicion;
+  // Cap the persisted modifier list. tick() segments a frame recursively at each
+  // modifier expiry (tick.ts), so an unbounded count from a crafted/shared save
+  // overflows the stack on the next tick. Legit play never exceeds a handful (a few
+  // world-event buffs + momentum/daily), so 20 is generous headroom and far below the
+  // ~50 that empirically overflows. This is the one persisted collection that lacked a cap.
   const modifiers = Array.isArray(raw.modifiers)
-    ? raw.modifiers.filter(isWellFormedModifier)
+    ? raw.modifiers.filter(isWellFormedModifier).slice(0, 20)
     : fresh.modifiers;
   const alignment =
     typeof raw.alignment === "number" && Number.isFinite(raw.alignment)
@@ -434,7 +445,10 @@ export function deserialize(json: string): GameState {
     },
     prestige: {
       legacyWeights: safeBig(pres.legacyWeights),
-      ships: safeCount(pres.ships),
+      // Ceiling as well as floor: ships is submitted verbatim to the Game Center
+      // leaderboard (gameCenter.ts), so an unclamped tampered value would post an absurd
+      // score. 1e7 is unreachable in real play (one ship per prestige) yet caps abuse.
+      ships: Math.min(safeCount(pres.ships), 10_000_000),
     },
     lifetimeMoney: safeBig(raw.lifetimeMoney ?? res.money),
     heat,
