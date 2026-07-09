@@ -51,6 +51,7 @@ import { productMilestones as PRODUCT_MILESTONES, type ProductTypeId } from "../
 import { achievements as ACHIEVEMENT_DEFS } from "../engine/balance/achievements";
 import { buyReputationPerk, buyEndowment } from "../engine/reputation";
 import { fundChallenge } from "../engine/challenges";
+import { claimObjective } from "../engine/objectives";
 import { claimContract, rollSponsor, claimSponsor } from "../engine/contracts";
 import { buyPreprint } from "../engine/preprints";
 import { setCharter, lockCharter } from "../engine/charter";
@@ -169,6 +170,8 @@ interface GameStore {
   doBuyEndowment: () => void;
   /** Pour affordable resources into a Grand Challenge. Returns true if THIS call finished it. */
   doFundChallenge: (id: string) => boolean;
+  /** Claim a met Lab Objective (applies its boost/windfall reward). */
+  doClaimObjective: (id: string) => void;
   setComputeFocus: (v: number) => void;
   /** Returns true if the release succeeded (so the UI only celebrates on a real ship). */
   doReleaseProduct: (type: ProductTypeId, name: string) => boolean;
@@ -565,6 +568,7 @@ export const useGame = create<GameStore>((set, get) => ({
     });
     return justCompleted;
   },
+  doClaimObjective: (id) => set((s) => ({ game: claimObjective(s.game, id) })),
   setComputeFocus: (v) =>
     set((s) => ({ game: { ...s.game, computeFocus: Math.max(0, Math.min(1, v)) } })),
   // The store mints the product id (nondeterminism stays out of the engine).

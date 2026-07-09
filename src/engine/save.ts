@@ -10,6 +10,7 @@ import { balance } from "./balance/config";
 import { components as COMPONENTS, SLOTS_BY_TIER, type SlotClass } from "./balance/components";
 import { market as MARKET } from "./balance/market";
 import { challenges as CHALLENGES } from "./balance/challenges";
+import { objectives as OBJECTIVES } from "./balance/objectives";
 import { freshComponents } from "./components";
 import type { ChallengeState } from "./types";
 import type { ActiveModifier, ComponentsState, DraftModel, Employee, GameState, LifetimeStats, ModifierTarget, ProductsState, ProductState, UpgradeState } from "./types";
@@ -21,6 +22,7 @@ const PRODUCT_TYPE_IDS = PRODUCTS.types.map((t) => t.id);
 // editable text, so these arrays must hold KNOWN ids, EXACTLY ONCE — otherwise a
 // hand-edited dupe (e.g. contracts.completed) inflates a permanent meta-currency.
 const CONTRACT_IDS = new Set(CONTRACTS.pool.map((c) => c.id));
+const OBJECTIVE_IDS = new Set(OBJECTIVES.pool.map((o) => o.id));
 const LEGACY_IDS = new Set(LEGACY.perks.map((p) => p.id));
 const REP_PERK_COST = new Map(REPUTATION.perks.map((p) => [p.id, p.cost]));
 const CHARTER_IDS = new Set(CHARTERS.list.map((c) => c.id));
@@ -291,6 +293,8 @@ interface SavedShape {
     funded: Record<string, { compute: string; data: string; money: string }>;
     completed: string[];
   };
+  /** Lab Objectives — claimed objective ids. Migrated at v22. */
+  objectives: { completed: string[] };
 }
 
 export function serialize(state: GameState): string {
@@ -355,6 +359,7 @@ export function serialize(state: GameState): string {
       ),
       completed: state.challenges.completed,
     },
+    objectives: state.objectives,
   };
   return JSON.stringify(shape);
 }
@@ -522,6 +527,9 @@ export function deserialize(json: string): GameState {
     // funding is clamped to each cost, and a challenge is only "completed" if it is
     // actually fully funded (a tampered `completed` without funding grants nothing).
     challenges: sanitizeChallenges(raw.challenges),
+    // Lab Objectives: claimed ids only (rewards were applied at claim time, never re-derived
+    // from state, so a tampered list just skips objectives — known-id/dedupe is enough).
+    objectives: { completed: dedupeKnownIds((raw.objectives as { completed?: unknown } | undefined)?.completed, OBJECTIVE_IDS) },
     // Generation-scoped (not persisted): a mid-run reload simply re-accrues the run
     // peaks, and the ship report is transient — both start fresh on load.
     runPeakCompute: fresh.runPeakCompute,
@@ -780,6 +788,10 @@ export function migrate(raw: any): SavedShape {
     // v20 → v21: Grand Challenges. Existing runs start with none funded; the sanitizer
     // defaults it anyway, so this just stamps the version.
     s = { ...s, version: 21, challenges: s.challenges ?? { funded: {}, completed: [] } };
+  }
+  if (s.version === 21) {
+    // v21 → v22: Lab Objectives. Existing runs start with none claimed (sanitizer-defaulted).
+    s = { ...s, version: 22, objectives: s.objectives ?? { completed: [] } };
   }
   return s as SavedShape;
 }

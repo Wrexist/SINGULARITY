@@ -93,6 +93,8 @@ import { modelReadyNote, researchStartNote, soldNote, hireWelcome, fireSendoff }
 import { challengesUnlocked, challengeById } from "../engine/challenges";
 import { GrandChallengesPanel } from "./GrandChallengesPanel";
 import { ChallengeComplete } from "./ChallengeComplete";
+import { objectivesUnlocked } from "../engine/objectives";
+import { ObjectivesPanel } from "./ObjectivesPanel";
 import { currentEra } from "../engine/eras";
 import { recordTelemetry } from "../state/telemetry";
 
@@ -109,7 +111,7 @@ export function App() {
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
     doClaimContract, doClaimSponsor, doBuyPreprint, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
-    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival, doFundChallenge } =
+    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival, doFundChallenge, doClaimObjective } =
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
@@ -639,6 +641,14 @@ export function App() {
       if (at && !reducedMotion) fxFloat(at.x, at.y - 6, "funded", "#7c5cff", 14);
     }
   };
+  const onClaimObjective = (id: string, at?: { x: number; y: number }) => {
+    doClaimObjective(id);
+    // Juice at the tap: a small burst + a satisfied chord. The reward itself is visible
+    // in place (resources tick up for a windfall, a boost chip appears in the bar) — no
+    // toast needed, keeping the frequent early/mid claims clean.
+    haptics.celebrate(); sound.success();
+    if (at && !reducedMotion) fxBurst(at.x, at.y, { count: 16, power: 1.1, colors: ["#7c5cff", "#ffd60a", "#16b364"] });
+  };
   const onResearch = (id: string) => {
     haptics.tap(); sound.purchase();
     const had = game.research.includes(id);
@@ -829,6 +839,7 @@ export function App() {
                   <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} onSetFocus={setComputeFocus} />
                 </div>
                 <div className="stage-right">
+                  {objectivesUnlocked(game) && <ObjectivesPanel game={game} onClaim={onClaimObjective} />}
                   <CharterPanel
                     game={game}
                     onSet={(id) => { haptics.tap(); sound.tap(); doSetCharter(id); }}

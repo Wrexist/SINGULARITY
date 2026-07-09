@@ -150,6 +150,9 @@ export interface GameState {
    *  `funded` accumulates per-resource contributions; `completed` ids grant permanent
    *  rewards. Persists across prestige (a career-spanning grind). */
   challenges: ChallengeState;
+  /** Lab Objectives (IDEAS #B) — early/mid rotating tasks. Claimed ids (the board is the
+   *  first few uncompleted). Persists across prestige (an onboarding-grind ladder). */
+  objectives: { completed: string[] };
 }
 
 /** Grand Challenge progress. `funded` holds only challenges the player has contributed to. */

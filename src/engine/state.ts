@@ -4,7 +4,7 @@ import { initialStats } from "./stats";
 import { freshComponents } from "./components";
 import type { GameState } from "./types";
 
-export const SAVE_VERSION = 21;
+export const SAVE_VERSION = 22;
 
 /** A fresh lab: empty closet, a trickle of free Compute, nothing owned. */
 export function createInitialState(): GameState {
@@ -55,5 +55,7 @@ export function createInitialState(): GameState {
     preprints: 0,
     // Grand Challenges — no funding yet; persists across prestige once started.
     challenges: { funded: {}, completed: [] },
+    // Lab Objectives — none claimed yet; persists across prestige (onboarding-grind ladder).
+    objectives: { completed: [] },
   };
 }
