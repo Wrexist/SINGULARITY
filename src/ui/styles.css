@@ -588,6 +588,16 @@ svg { vertical-align: middle; }
   0%, 100% { box-shadow: 0 0 12px -2px rgba(255, 90, 60, 0.5); }
   50% { box-shadow: 0 0 26px 2px rgba(255, 90, 60, 0.75); }
 }
+/* A gentle "it's working" heartbeat while a run is actively training — the dock used
+   to only come alive at completion. A third the intensity of the ready glow, slow and
+   calm; caught by the global reduced-motion kill switch like every other animation. */
+.progress.active .progress-fill {
+  animation: run-breathe 2.8s ease-in-out infinite;
+}
+@keyframes run-breathe {
+  0%, 100% { box-shadow: 0 0 14px -3px rgba(47, 123, 246, 0.4); }
+  50% { box-shadow: 0 0 22px -1px rgba(47, 123, 246, 0.6); }
+}
 .progress-label {
   position: absolute;
   inset: 0;
