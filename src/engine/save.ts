@@ -9,7 +9,9 @@ import { charters as CHARTERS } from "./balance/charters";
 import { balance } from "./balance/config";
 import { components as COMPONENTS, SLOTS_BY_TIER, type SlotClass } from "./balance/components";
 import { market as MARKET } from "./balance/market";
+import { challenges as CHALLENGES } from "./balance/challenges";
 import { freshComponents } from "./components";
+import type { ChallengeState } from "./types";
 import type { ActiveModifier, ComponentsState, DraftModel, Employee, GameState, LifetimeStats, ModifierTarget, ProductsState, ProductState, UpgradeState } from "./types";
 
 const MODIFIER_TARGETS: ModifierTarget[] = ["computeMult", "dataMult", "moneyMult"];
@@ -284,6 +286,11 @@ interface SavedShape {
   sponsor: GameState["sponsor"];
   /** IDEAS #10 — preprints published this run. Sanitizer-defaulted (0). */
   preprints: number;
+  /** Grand Challenges — funded amounts (Big → strings) + completed ids. Migrated at v21. */
+  challenges: {
+    funded: Record<string, { compute: string; data: string; money: string }>;
+    completed: string[];
+  };
 }
 
 export function serialize(state: GameState): string {
@@ -339,8 +346,40 @@ export function serialize(state: GameState): string {
     shipLog: state.shipLog,
     sponsor: state.sponsor,
     preprints: state.preprints,
+    challenges: {
+      funded: Object.fromEntries(
+        Object.entries(state.challenges.funded).map(([id, f]) => [
+          id,
+          { compute: f.compute.toJSON(), data: f.data.toJSON(), money: f.money.toJSON() },
+        ]),
+      ),
+      completed: state.challenges.completed,
+    },
   };
   return JSON.stringify(shape);
+}
+
+/** Grand Challenge progress, sanitized as untrusted input. Funding is clamped per-resource
+ *  to [0, cost] (safeBig rejects NaN/Infinity/negative), and `completed` is DERIVED purely
+ *  from whether funding meets the cost — never trusted from the save. Since funding can't
+ *  exceed cost, a challenge is "complete" iff it was actually fully funded, so a tampered
+ *  save can't mint a permanent reward for less than its full price (the reputation-perk
+ *  anti-cheat policy). Iterating the def list also dedupes and drops unknown ids. */
+function sanitizeChallenges(raw: unknown): ChallengeState {
+  const out: ChallengeState = { funded: {}, completed: [] };
+  const r = (raw ?? {}) as { funded?: Record<string, unknown> };
+  const rawFunded = (r.funded ?? {}) as Record<string, { compute?: unknown; data?: unknown; money?: unknown }>;
+  for (const def of CHALLENGES.list) {
+    const f = rawFunded[def.id];
+    if (!f || typeof f !== "object") continue;
+    const cost = { compute: Big.of(def.cost.compute), data: Big.of(def.cost.data), money: Big.of(def.cost.money) };
+    const compute = safeBig(f.compute).min(cost.compute);
+    const data = safeBig(f.data).min(cost.data);
+    const money = safeBig(f.money).min(cost.money);
+    if (compute.gt(0) || data.gt(0) || money.gt(0)) out.funded[def.id] = { compute, data, money };
+    if (compute.gte(cost.compute) && data.gte(cost.data) && money.gte(cost.money)) out.completed.push(def.id);
+  }
+  return out;
 }
 
 export function deserialize(json: string): GameState {
@@ -479,6 +518,10 @@ export function deserialize(json: string): GameState {
     sponsor: sanitizeSponsor(raw.sponsor),
     // Preprints multiply into derive, so the count is clamped to the per-run cap.
     preprints: Math.min(balance.preprints.maxPerRun, safeCount(raw.preprints)),
+    // Grand Challenge rewards are permanent multipliers, so anti-cheat like reputation:
+    // funding is clamped to each cost, and a challenge is only "completed" if it is
+    // actually fully funded (a tampered `completed` without funding grants nothing).
+    challenges: sanitizeChallenges(raw.challenges),
     // Generation-scoped (not persisted): a mid-run reload simply re-accrues the run
     // peaks, and the ship report is transient — both start fresh on load.
     runPeakCompute: fresh.runPeakCompute,
@@ -732,6 +775,11 @@ export function migrate(raw: any): SavedShape {
     // v19 → v20: endgame Reputation Endowment (a level count). Nothing bought on old
     // saves — the sanitizer defaults it to 0, so this just stamps the version.
     s = { ...s, version: 20, repEndowment: s.repEndowment ?? 0 };
+  }
+  if (s.version === 20) {
+    // v20 → v21: Grand Challenges. Existing runs start with none funded; the sanitizer
+    // defaults it anyway, so this just stamps the version.
+    s = { ...s, version: 21, challenges: s.challenges ?? { funded: {}, completed: [] } };
   }
   return s as SavedShape;
 }

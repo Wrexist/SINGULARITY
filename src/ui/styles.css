@@ -2790,6 +2790,83 @@ button.modchip.workable:active { transform: scale(0.94); }
 /* Charter explicit lock-in (owner UX fix) */
 .charter-lock-btn { margin-top: 12px; }
 
+/* Grand Challenges — late-game moonshots. Card = a filling bar + three resource pledges
+   + one Fund button; a completed card goes green with its reward "Active". */
+.challenges-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.challenges-count {
+  font-size: 12px; font-weight: 800; color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: 999px; padding: 2px 10px;
+}
+.challenges-intro { font-size: 12.5px; line-height: 1.45; color: var(--ink-3); margin: 2px 0 10px; }
+.challenge-card {
+  border: 1px solid var(--line, rgba(20, 22, 27, 0.08));
+  border-radius: 14px; padding: 12px 13px; background: var(--glass-strong, #fff);
+  display: flex; flex-direction: column; gap: 9px;
+  transition: border-color 0.25s, background 0.25s, box-shadow 0.25s;
+}
+.challenge-card.complete {
+  border-color: color-mix(in srgb, var(--money) 45%, transparent);
+  background: linear-gradient(180deg, rgba(22, 179, 100, 0.08), var(--glass-strong, #fff));
+}
+.challenge-top { display: flex; align-items: flex-start; gap: 10px; }
+.challenge-icon { font-size: 24px; line-height: 1.1; flex-shrink: 0; }
+.challenge-titles { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.challenge-name { font-size: 14.5px; font-weight: 800; color: var(--ink); }
+.challenge-blurb { font-size: 12px; line-height: 1.4; color: var(--ink-3); }
+.challenge-bar {
+  position: relative; height: 22px; border-radius: 9px; overflow: hidden;
+  background: color-mix(in srgb, var(--accent) 8%, #e9e6f5);
+}
+.challenge-fill {
+  position: absolute; inset: 0; border-radius: 9px;
+  background: linear-gradient(90deg, var(--accent), #a98bff);
+  transition: width 0.5s var(--ease-out);
+  box-shadow: 0 0 14px -3px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+.challenge-card.complete .challenge-fill { background: linear-gradient(90deg, var(--money), #4fe0a0); }
+.challenge-bar-label {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 11.5px; font-weight: 800; color: #fff; letter-spacing: 0.02em;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+.challenge-res { display: flex; flex-wrap: wrap; gap: 6px; }
+.challenge-pledge {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 11px; font-weight: 700; color: var(--ink-2);
+  background: rgba(20, 22, 27, 0.04); border-radius: 999px; padding: 3px 9px;
+}
+.challenge-pledge.done { color: var(--money); background: color-mix(in srgb, var(--money) 12%, transparent); }
+.challenge-pledge-ic { display: inline-flex; opacity: 0.7; }
+.challenge-pledge.done .challenge-pledge-ic { opacity: 1; }
+.challenge-pledge-sep { opacity: 0.45; margin: 0 1px; }
+.challenge-pledge-check { margin-left: 2px; }
+.challenge-foot { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+.challenge-reward {
+  font-size: 12px; font-weight: 700; color: var(--ink-2);
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.challenge-fund {
+  width: 100%; padding: 9px 18px; font-size: 13.5px; font-weight: 800;
+  color: #fff; background: linear-gradient(180deg, var(--accent), #6a4bff);
+  border-radius: 11px; box-shadow: 0 6px 14px -8px color-mix(in srgb, var(--accent) 80%, transparent);
+}
+.challenge-fund:disabled { background: #cfc9e6; color: #fff; box-shadow: none; opacity: 0.85; }
+.challenge-fund:not(:disabled):active { transform: scale(0.98); }
+.challenge-active {
+  font-size: 12.5px; font-weight: 800; color: var(--money); text-align: center;
+  padding: 7px; border-radius: 10px;
+  background: color-mix(in srgb, var(--money) 10%, transparent);
+}
+.challenge-active::before { content: "✓ "; }
+/* The "Grand Challenge complete" moment reuses the era-modal treatment. */
+.challenge-complete-icon {
+  font-size: 56px; line-height: 1; margin: 6px 0 2px;
+  filter: drop-shadow(0 6px 20px rgba(124, 92, 255, 0.45));
+  animation: challenge-pop 0.5s var(--ease-out) backwards;
+}
+@keyframes challenge-pop { from { opacity: 0; transform: scale(0.4) rotate(-12deg); } }
+
 /* App-wide crash guard fallback (ErrorBoundary) — calm, on-brand, reassuring. Light
    theme to match the app; centered card with one clear recovery action. */
 .crash-screen {

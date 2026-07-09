@@ -50,6 +50,7 @@ import {
 import { productMilestones as PRODUCT_MILESTONES, type ProductTypeId } from "../engine/balance/products";
 import { achievements as ACHIEVEMENT_DEFS } from "../engine/balance/achievements";
 import { buyReputationPerk, buyEndowment } from "../engine/reputation";
+import { fundChallenge } from "../engine/challenges";
 import { claimContract, rollSponsor, claimSponsor } from "../engine/contracts";
 import { buyPreprint } from "../engine/preprints";
 import { setCharter, lockCharter } from "../engine/charter";
@@ -166,6 +167,8 @@ interface GameStore {
   doBuyReputationPerk: (id: string) => void;
   /** Buy one endgame Reputation Endowment level (post-tree infinite sink). */
   doBuyEndowment: () => void;
+  /** Pour affordable resources into a Grand Challenge. Returns true if THIS call finished it. */
+  doFundChallenge: (id: string) => boolean;
   setComputeFocus: (v: number) => void;
   /** Returns true if the release succeeded (so the UI only celebrates on a real ship). */
   doReleaseProduct: (type: ProductTypeId, name: string) => boolean;
@@ -553,6 +556,15 @@ export const useGame = create<GameStore>((set, get) => ({
   doBuyOfficePerk: (id) => set((s) => ({ game: buyOfficePerk(s.game, id) })),
   doBuyReputationPerk: (id) => set((s) => ({ game: buyReputationPerk(s.game, id) })),
   doBuyEndowment: () => set((s) => ({ game: buyEndowment(s.game) })),
+  doFundChallenge: (id) => {
+    let justCompleted = false;
+    set((s) => {
+      const res = fundChallenge(s.game, id);
+      justCompleted = res.justCompleted;
+      return res.state === s.game ? {} : { game: res.state };
+    });
+    return justCompleted;
+  },
   setComputeFocus: (v) =>
     set((s) => ({ game: { ...s.game, computeFocus: Math.max(0, Math.min(1, v)) } })),
   // The store mints the product id (nondeterminism stays out of the engine).

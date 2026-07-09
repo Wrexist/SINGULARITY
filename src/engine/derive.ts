@@ -7,6 +7,7 @@ import { charterMods } from "./charter";
 import { legacyAvailable, legacyTreeMods } from "./legacyTree";
 import { ascensionMultiplier } from "./prestige";
 import { preprintMult } from "./preprints";
+import { challengeMods } from "./challenges";
 import { powerStats } from "./power";
 import { rackTier } from "./hall";
 import { tierComputeMult, loadoutDataPerSec } from "./components";
@@ -243,6 +244,14 @@ export function derive(state: GameState): Derived {
   computeMult = computeMult.mul(ppMult);
   dataMult = dataMult.mul(ppMult);
   moneyMult = moneyMult.mul(ppMult);
+
+  // Grand Challenges (IDEAS #A): permanent per-lane boosts from COMPLETED moonshots.
+  // Identity (all ×1) until one is finished — the sim never funds one, so the tuned
+  // curve is untouched.
+  const chMods = challengeMods(state);
+  computeMult = computeMult.mul(chMods.compute);
+  dataMult = dataMult.mul(chMods.data);
+  moneyMult = moneyMult.mul(chMods.money);
 
   // Lab Reputation perks — permanent global multipliers bought with meta-currency.
   // Owned perks are empty on a fresh run, so this is 1.0 until the player spends.

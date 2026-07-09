@@ -90,6 +90,9 @@ import { legacyAvailable } from "../engine/legacyTree";
 import { endowmentUnlocked } from "../engine/reputation";
 import { canBuyOfficePerk } from "../engine/actions";
 import { modelReadyNote, researchStartNote, soldNote, hireWelcome, fireSendoff } from "../engine/notices";
+import { challengesUnlocked, challengeById } from "../engine/challenges";
+import { GrandChallengesPanel } from "./GrandChallengesPanel";
+import { ChallengeComplete } from "./ChallengeComplete";
 import { currentEra } from "../engine/eras";
 import { recordTelemetry } from "../state/telemetry";
 
@@ -106,7 +109,7 @@ export function App() {
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
     doClaimContract, doClaimSponsor, doBuyPreprint, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
-    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival } =
+    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival, doFundChallenge } =
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
@@ -144,6 +147,7 @@ export function App() {
   const [confirmReset, setConfirmReset] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
+  const [challengeDoneId, setChallengeDoneId] = useState<string | null>(null); // Grand Challenge just completed → moment
   const [flash, setFlash] = useState(0); // AGI ascension screen flash (key replays the anim)
   const [dailyOn, setDailyOn] = useState(() => dailyAvailable());
   // The "next goal" carrot: the era/contract/achievement closest to popping
@@ -620,6 +624,21 @@ export function App() {
     pushToast(`${quip}: "${title}" · +${rep} Lab Reputation`, "good");
     if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.4, { count: 24, power: 1.3, colors: ["#ff9f0a", "#ffd60a", "#16b364"] });
   };
+  const onFundChallenge = (id: string, at?: { x: number; y: number }) => {
+    const completed = doFundChallenge(id);
+    if (completed) {
+      // The moonshot's tentpole payoff — a full-screen moment with its lore + reward,
+      // plus a central bloom and the achievement chord. Earned once, ever, per challenge.
+      haptics.celebrate(); sound.achievement();
+      setChallengeDoneId(id);
+      if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.4, { count: 40, power: 1.8, colors: ["#7c5cff", "#ffd60a", "#16b364", "#2f7bf6", "#fff"] });
+    } else {
+      // A contribution: light feedback + a floater at the tap so the resource drain reads
+      // as progress in place (no toast — the bar animating is the confirmation).
+      haptics.tap(); sound.purchase();
+      if (at && !reducedMotion) fxFloat(at.x, at.y - 6, "funded", "#7c5cff", 14);
+    }
+  };
   const onResearch = (id: string) => {
     haptics.tap(); sound.purchase();
     const had = game.research.includes(id);
@@ -837,6 +856,7 @@ export function App() {
               <>
                 {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} onBuyEndowment={() => { haptics.celebrate(); sound.purchase(); doBuyEndowment(); }} onBuyLegacyPerk={(id) => { haptics.success(); sound.purchase(); doBuyLegacyPerk(id); }} />}
                 {showResearch && <ContractsPanel game={game} onClaim={onClaimContract} onClaimSponsor={() => { haptics.success(); sound.success(); doClaimSponsor(); }} />}
+                {challengesUnlocked(game) && <GrandChallengesPanel game={game} onFund={onFundChallenge} />}
                 <StatsPanel game={game} derived={d} />
                 {game.prestige.ships > 0 && <CodexPanel game={game} />}
                 <EventLog log={log} />
@@ -917,6 +937,9 @@ export function App() {
       )}
       {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} />}
       {showAchievements && <AchievementsModal game={game} onClose={() => setShowAchievements(false)} />}
+      {challengeDoneId && challengeById.get(challengeDoneId) && (
+        <ChallengeComplete challenge={challengeById.get(challengeDoneId)!} onDone={() => setChallengeDoneId(null)} />
+      )}
       {pendingExpansion && (
         <ExpandConfirm
           id={pendingExpansion}

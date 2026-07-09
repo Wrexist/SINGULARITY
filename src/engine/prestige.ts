@@ -162,6 +162,8 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     reputation: state.reputation,
     // The Reputation Endowment is permanent too (survives prestige AND ascension).
     repEndowment: state.repEndowment,
+    // Grand Challenges are a career-spanning grind — funding + completions persist.
+    challenges: state.challenges,
     // Contracts completed are career progress (and feed Reputation) — they persist.
     contracts: state.contracts,
     // Legacy Investments are permanent prestige-tree progress — they persist.

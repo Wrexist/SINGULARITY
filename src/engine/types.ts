@@ -146,6 +146,16 @@ export interface GameState {
    *  research). Hard-capped (balance.preprints.maxPerRun); resets on prestige
    *  like the research tree it extends. */
   preprints: number;
+  /** Grand Challenges (IDEAS #A) — late-game moonshots funded over long horizons.
+   *  `funded` accumulates per-resource contributions; `completed` ids grant permanent
+   *  rewards. Persists across prestige (a career-spanning grind). */
+  challenges: ChallengeState;
+}
+
+/** Grand Challenge progress. `funded` holds only challenges the player has contributed to. */
+export interface ChallengeState {
+  funded: Record<string, { compute: Big; data: Big; money: Big }>;
+  completed: string[];
 }
 
 /** A rolled daily sponsor objective (IDEAS #9). */
