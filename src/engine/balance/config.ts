@@ -2194,7 +2194,37 @@ export const balance = {
       desc: "Many machines, one loss curve.",
       requires: ["mixed_precision", "curated_data"],
       cost: { compute: 6000, data: 400 },
-      effect: { kind: "moneyMult", factor: 1.8 },
+      effect: { kind: "moneyMult", factor: 1.5 },
+    },
+    // --- Pre-ship build choice (per-run; research resets each prestige). A FREE pick-one
+    // "point your training run" boon that unlocks the moment Distributed Training is owned.
+    // Both are LEAVES (nothing `requires` them), so neither can brick the ship gate.
+    // CURVE-NEUTRAL by construction: the balance sim buys research in ARRAY ORDER
+    // (scripts/balance-sim.ts) and both are free + exclusive, so it ALWAYS takes the FIRST
+    // sibling (`commercialize`) in the SAME pass it buys `distributed` — no tick of delay,
+    // no cost. `distributed`'s moneyMult was split 1.8 → 1.5 and `commercialize` restores
+    // the ×1.2 that same tick, so `distributed + commercialize` reconstitute the old node
+    // EXACTLY (cost 6000c/400d unchanged, moneyMult 1.5 × 1.2 = 1.8) — verified byte-
+    // identical via `npm run sim`. Only a human who picks `scale_up` diverges, trading the
+    // run-money ×1.2 for raw compute ×1.2. Keep `commercialize` FIRST, both siblings free,
+    // and distributed_money × commercialize_money = 1.8. ---
+    {
+      id: "commercialize",
+      name: "Commercialize the Run",
+      desc: "Point the run at revenue: wire the training loop to a billing API. Cash now, questions later.",
+      requires: ["distributed"],
+      exclusiveGroup: "run_focus",
+      cost: { compute: 0, data: 0 },
+      effect: { kind: "moneyMult", factor: 1.2 },
+    },
+    {
+      id: "scale_up",
+      name: "Scale the Run",
+      desc: "Point the run at capability: pour the same budget into bigger batches. Raw compute over cash.",
+      requires: ["distributed"],
+      exclusiveGroup: "run_focus",
+      cost: { compute: 0, data: 0 },
+      effect: { kind: "computeMult", factor: 1.2 },
     },
     {
       id: "rlhf",

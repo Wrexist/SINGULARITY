@@ -42,6 +42,8 @@ export const researchCategoryOf: Record<string, string> = {
   quantization: "efficiency",
   // — Scale —
   distributed: "scale",
+  commercialize: "scale",
+  scale_up: "scale",
   moe: "scale",
   scaling_laws: "scale",
   synthetic_data: "scale",

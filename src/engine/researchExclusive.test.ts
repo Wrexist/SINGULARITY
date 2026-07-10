@@ -53,6 +53,16 @@ describe("mutually-exclusive research branches", () => {
     expect(buyResearch(s, "closed_api")).toBe(s); // locked sibling — pure no-op
   });
 
+  it("the pre-ship run_focus fork (commercialize vs scale_up) is a real pick-one off distributed", () => {
+    let s = atChoices(); // owns distributed (non-exclusive) → the fork is available
+    expect(researchAvailable(s, "commercialize")).toBe(true);
+    expect(researchAvailable(s, "scale_up")).toBe(true);
+    s = buyResearch(s, "commercialize"); // the sim's deterministic (first-in-array) pick
+    expect(s.research).toContain("commercialize");
+    expect(researchLockedOut(s, "scale_up")).toBe(true);
+    expect(buyResearch(s, "scale_up")).toBe(s); // locked sibling — pure no-op
+  });
+
   it("a fresh run (post-prestige) re-opens every choice (research resets)", () => {
     // Drive this through the REAL prestige reset, not createInitialState(), so it
     // would catch a regression where the ship path forgot to clear prior choices.
