@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { GameState } from "../engine/types";
+import type { GameState, Derived } from "../engine/types";
 import { products as B, type ProductTypeId } from "../engine/balance/products";
 import { productMilestones } from "../engine/balance/products";
 import { marketLeaderboard, playerMarketRank, canCounterRival, counterCost, counterCooldownRemaining } from "../engine/market";
@@ -11,12 +11,13 @@ import {
 import { m$, numOf as num, fmtDur } from "./format";
 import { ProductDetail, TYPE_GLYPH } from "./ProductDetail";
 import { EditableName } from "./EditableName";
-import { TagIcon, AtomIcon, LockIcon, SparkIcon, TrendDownIcon, TrophyIcon, BarsIcon } from "./Icons";
+import { TagIcon, AtomIcon, LockIcon, SparkIcon, TrendDownIcon, TrophyIcon, BarsIcon, AlertTriangleIcon, BoltIcon } from "./Icons";
 
 const FUN_NAMES = ["Nimbus", "Oracle", "Synthia", "Cortex", "Lumen", "Vertex", "Sage", "Atlas", "Echo", "Prism", "Nova", "Helix", "Quasar", "Mirage"];
 
 interface Props {
   game: GameState;
+  derived: Derived;
   onLaunchDraft: (draftId: string, type: ProductTypeId, name: string) => void;
   onStartUpgrade: (id: string) => void;
   onSetPrice: (id: string, v: number) => void;
@@ -32,7 +33,7 @@ interface Props {
 
 /** Phase 3 — the Products tab: commercialise the models you ship, market them, set
  *  pricing, research new versions over time, and watch the dashboard. */
-export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onSetChannelMix, onBuyFeature, onRename, onRetire, onCounterRival }: Props) {
+export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onSetChannelMix, onBuyFeature, onRename, onRetire, onCounterRival }: Props) {
   // Which draft (by id) is currently showing the type-picker, if any.
   const [picking, setPicking] = useState<string | null>(null);
   // Which product's deep-management screen is open, if any. If that product
@@ -55,9 +56,12 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
   const maxSlots = maxActiveProducts(game);
   const slotsFull = ps.active.length >= maxSlots;
   // One metrics pass per product (was computed up to 3× each, every 10Hz tick).
+  // Mods-aware: the cards now reflect staff assignment + heat/faction buffs, so
+  // assigning a Sales Exec or SRE visibly moves Revenue/s and Profit/s.
+  const modsById = derived.productModsById;
   const metrics = useMemo(
-    () => new Map(ps.active.map((p) => [p.id, productMetrics(p, frontier)])),
-    [ps.active, frontier],
+    () => new Map(ps.active.map((p) => [p.id, productMetrics(p, frontier, modsById[p.id])])),
+    [ps.active, frontier, modsById],
   );
   const totalMrr = ps.active.reduce((s, p) => s + (metrics.get(p.id)?.mrr ?? 0), 0);
   const totalMargin = ps.active.reduce((s, p) => s + (metrics.get(p.id)?.margin ?? 0), 0);
@@ -83,7 +87,7 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
       <p className="floor-meter">
         Portfolio: <b>{m$(totalMrr)}/s</b> revenue · {totalMargin >= 0 ? "+" : ""}{m$(totalMargin)}/s profit · {ps.active.length}/{maxSlots} slots
         {ps.sold > 0 && <> · <span className="prod-sold-badge"><TagIcon size={12} /> {ps.sold} sold</span></>}
-        {attentionCount > 0 && <> · <span className="prod-attention-badge">⚠ {attentionCount} need{attentionCount === 1 ? "s" : ""} attention</span></>}
+        {attentionCount > 0 && <> · <span className="prod-attention-badge"><AlertTriangleIcon size={12} /> {attentionCount} need{attentionCount === 1 ? "s" : ""} attention</span></>}
       </p>
 
       {/* Raw models from Ship the Model — commercialise them into products. */}
@@ -252,7 +256,7 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
                   <span className="market-rank">{i + 1}</span>
                   <div className="market-main">
                     <div className="market-top">
-                      <span className="market-name">{e.name}{strikes > 0 && <span className="market-struck" title="Press blitzes landed this run">⚡×{strikes}</span>}</span>
+                      <span className="market-name">{e.name}{strikes > 0 && <span className="market-struck" title="Press blitzes landed this run"><BoltIcon size={11} />×{strikes}</span>}</span>
                       <span className="market-share">{(e.share * 100).toFixed(e.share < 0.01 ? 2 : 1)}%</span>
                     </div>
                     <div className="market-bar"><div className="market-bar-fill" style={{ width: `${Math.min(100, e.share * 100)}%` }} /></div>
@@ -265,7 +269,7 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
                         title={cooldown > 0 ? `The press cycle resets in ${cooldown}s` : undefined}
                         onClick={() => onCounterRival(e.name)}
                       >
-                        {cooldown > 0 ? `⚡ Press blitz — ready in ${cooldown}s` : `⚡ Press blitz — ${m$(cost)}`}
+                        <BoltIcon size={12} /> {cooldown > 0 ? `Press blitz — ready in ${cooldown}s` : `Press blitz — ${m$(cost)}`}
                       </button>
                     )}
                   </div>
@@ -280,6 +284,7 @@ export function ProductsPanel({ game, onLaunchDraft, onStartUpgrade, onSetPrice,
         <ProductDetail
           game={game}
           productId={detailId}
+          mods={modsById[detailId]}
           onClose={() => setDetailId(null)}
           onStartUpgrade={onStartUpgrade}
           onSetPrice={onSetPrice}

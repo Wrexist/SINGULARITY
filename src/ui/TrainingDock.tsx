@@ -47,7 +47,7 @@ export function TrainingDock({ game, derived, onStart, onClaim, onSetFocus }: Pr
         </span>
       </div>
 
-      <div className={`progress ${run.readyToClaim ? "ready" : ""}`}>
+      <div className={`progress ${run.readyToClaim ? "ready" : run.active ? "active" : ""}`}>
         <div className="progress-fill" style={{ width: `${run.readyToClaim ? 100 : pct}%` }} />
         <span className="progress-label">
           {run.readyToClaim ? "Complete" : run.active ? `${pct.toFixed(0)}%` : "Idle"}

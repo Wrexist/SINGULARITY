@@ -3,6 +3,7 @@
  * hardcodes a curve number. Expect to retune this file hundreds of times during
  * the balance pass — that's the point of keeping it isolated from logic.
  */
+import type { SegmentSkew } from "./products";
 
 export interface UpgradeDef {
   id: string;
@@ -93,6 +94,11 @@ export interface StaffRole {
   payroll: number;
   /** Which team the role belongs to (for the Employees page grouping). */
   team: "infra" | "product";
+  /** Product-team roles only: the market segments this role is strongest on. Assigning
+   *  the specialist to a product whose segment matches multiplies their focus buff by
+   *  `staff.segmentSynergy` — so "put the Sales Exec on the enterprise product" is a
+   *  real decision. Omitted = no synergy (the role helps any product equally). */
+  affinity?: SegmentSkew[];
   effect:
     // Infrastructure team — multiplies a lab production lane (Phase 2).
     | { kind: "lane"; lane: "computeMult" | "dataMult" | "moneyMult"; perLevel: number }
@@ -828,6 +834,374 @@ const WORLD_EVENTS: WorldEvent[] = [
     body: "Six months later — well, six days — half the signatories of that pause letter have quietly announced frontier runs of their own. The moral high ground reopens for training. Compute ×1.4.",
     effect: { kind: "buff", target: "computeMult", factor: 1.4, durationSec: 40 },
   },
+
+  // --- Content wave (2026 App Store launch): 2026-era ambient satire. Simple
+  //     single-effect events reusing the existing numeric templates (kept good/bad
+  //     roughly balanced so the tuned feel is preserved), plus callback sequels and
+  //     faction payoffs. All ids unique; choice invariants unchanged (none here). ---
+  {
+    id: "sovereign_ai",
+    weight: 2,
+    tone: "good",
+    headline: "Sovereign AI Fund Picks a Champion",
+    body: "A nation decides it needs its own AI lab 'for security reasons' and picks you. The terms are vague, the flag is enormous, the money is real. +30% cash.",
+    effect: { kind: "grantPct", resource: "money", pct: 0.3 },
+  },
+  {
+    id: "nuclear_ppa",
+    weight: 2,
+    tone: "good",
+    headline: "You Sign a Nuclear Power Deal",
+    body: "A decommissioned reactor is being restarted specifically to feed your training runs. The press release says 'clean'; the locals say 'concerning'. Compute ×1.6.",
+    effect: { kind: "buff", target: "computeMult", factor: 1.6, durationSec: 50 },
+  },
+  {
+    id: "desert_datacenter",
+    weight: 2,
+    tone: "good",
+    headline: "Datacenter in the Desert Comes Online",
+    body: "Free land, brutal heat, and a cooling system that drinks a reservoir. Somehow it works. Compute ×1.5 while the aquifer holds.",
+    effect: { kind: "buff", target: "computeMult", factor: 1.5, durationSec: 45 },
+  },
+  {
+    id: "vibe_coding",
+    weight: 2,
+    tone: "good",
+    headline: "Vibe Coding Goes Mainstream",
+    body: "Non-engineers are shipping whole apps by describing them nicely to your model. It bills per token and per feeling. +28% cash.",
+    effect: { kind: "grantPct", resource: "money", pct: 0.28 },
+  },
+  {
+    id: "wrapper_acquihire",
+    weight: 2,
+    tone: "good",
+    headline: "You Acquihire a Wrapper Startup",
+    body: "Three people, one clever prompt, a $40M price tag. Their whole product was a text box pointed at someone else's model. Bold. +25% cash.",
+    effect: { kind: "grantPct", resource: "money", pct: 0.25 },
+  },
+  {
+    id: "agent_marketplace",
+    weight: 2,
+    tone: "good",
+    headline: "Agent Marketplace Takes Off",
+    body: "Developers are building and selling agents on top of your platform. You take a cut of every one, including the ones that don't work. +30% cash.",
+    effect: { kind: "grantPct", resource: "money", pct: 0.3 },
+  },
+  {
+    id: "superbowl_ad",
+    weight: 1,
+    tone: "good",
+    headline: "Your Super Bowl Ad Airs",
+    body: "Sixty seconds of slow piano, a single glowing orb, and your logo. Nobody understood it; everybody remembers it. Revenue ×1.7 while it lasts.",
+    effect: { kind: "buff", target: "moneyMult", factor: 1.7, durationSec: 45 },
+  },
+  {
+    id: "inference_breakthrough",
+    weight: 2,
+    tone: "good",
+    headline: "Inference Optimization Breakthrough",
+    body: "Someone rewrote the serving kernel over a long weekend and the model now runs at half the cost. They want to be thanked in the all-hands. Compute ×1.5.",
+    effect: { kind: "buff", target: "computeMult", factor: 1.5, durationSec: 50 },
+  },
+  {
+    id: "open_model_surge",
+    weight: 2,
+    tone: "good",
+    headline: "An Open Model Beats the Closed Ones",
+    body: "The community fine-tuned a free model past the paid frontier and posted every step. You quietly download all of it. +25% data.",
+    effect: { kind: "grantPct", resource: "data", pct: 0.25 },
+  },
+  {
+    id: "talent_boomerang",
+    weight: 2,
+    tone: "good",
+    headline: "A Star Researcher Boomerangs Back",
+    body: "The rival's yacht got boring and their codebase was worse than yours. They return with the rival's roadmap fresh in memory. +25% data.",
+    effect: { kind: "grantPct", resource: "data", pct: 0.25 },
+  },
+  {
+    id: "hype_cycle_peak",
+    weight: 1,
+    tone: "good",
+    headline: "Peak Hype Cycle",
+    body: "Every fund on Earth wants in before the trough they all privately expect. You raise at a number that embarrasses even you. +35% cash.",
+    effect: { kind: "grantPct", resource: "money", pct: 0.35 },
+  },
+  {
+    id: "viral_agent_demo",
+    weight: 2,
+    tone: "good",
+    headline: "An Agent Demo Breaks the Internet",
+    body: "On stage, your agent books a whole vacation, disputes a parking ticket, and orders lunch — live, without asking. Signups flood every product.",
+    effect: { kind: "productBuzz", durationSec: 60 },
+  },
+  {
+    id: "undersea_cable",
+    weight: 2,
+    tone: "bad",
+    headline: "Undersea Cable Cut",
+    body: "A single anchor drags across the wrong stretch of seabed and half your inter-region traffic evaporates. Compute ×0.7 until a very expensive boat sails out.",
+    effect: { kind: "buff", target: "computeMult", factor: 0.7, durationSec: 45 },
+  },
+  {
+    id: "agent_rogue",
+    weight: 2,
+    tone: "bad",
+    headline: "Your Agent Goes Rogue on an Inbox",
+    body: "A customer gave your agent inbox access. It replied-all to forty thousand people with startling confidence. The refunds are flowing. −15% cash.",
+    effect: { kind: "grantPct", resource: "money", pct: -0.15 },
+  },
+  {
+    id: "ai_slop_backlash",
+    weight: 2,
+    tone: "bad",
+    headline: "The 'AI Slop' Backlash",
+    body: "The internet turns on generated content overnight. Communities ban it, artists poison it, and your scrapers come back holding garbage. −15% data.",
+    effect: { kind: "grantPct", resource: "data", pct: -0.15 },
+  },
+  {
+    id: "router_startup",
+    weight: 2,
+    tone: "bad",
+    headline: "A Model Router Eats Your Margin",
+    body: "A startup silently routes every request to whichever lab is cheapest this second. You're now a commodity with a login page. Revenue ×0.75 for a while.",
+    effect: { kind: "buff", target: "moneyMult", factor: 0.75, durationSec: 45 },
+  },
+  {
+    id: "export_controls",
+    weight: 2,
+    tone: "bad",
+    headline: "Chip Export Controls Whiplash",
+    body: "The rules change on a Friday, again. Your next shipment is now either legal, illegal, or 'pending guidance,' depending on the timezone. Compute ×0.65.",
+    effect: { kind: "buff", target: "computeMult", factor: 0.65, durationSec: 45 },
+  },
+  {
+    id: "benchmark_contamination",
+    weight: 2,
+    tone: "bad",
+    headline: "Your Benchmark Win Was Contaminated",
+    body: "Turns out the test set leaked into training. A grad student noticed. The leaderboard asterisk is permanent and the retraining is not free. −12% data.",
+    effect: { kind: "grantPct", resource: "data", pct: -0.12 },
+  },
+  {
+    id: "data_center_protest",
+    weight: 2,
+    tone: "bad",
+    headline: "Locals Protest the Datacenter",
+    body: "It turns out the facility drinks the town's water and hums through the night. There are signs now, and a very determined local news crew. Compute ×0.75.",
+    effect: { kind: "buff", target: "computeMult", factor: 0.75, durationSec: 40 },
+  },
+  {
+    id: "model_collapse_scare",
+    weight: 2,
+    tone: "bad",
+    headline: "Model Collapse Scare",
+    body: "Your synthetic-data flywheel started eating its own outputs and the quality quietly rotted. Nobody wants to say the words out loud. −18% data.",
+    effect: { kind: "grantPct", resource: "data", pct: -0.18 },
+  },
+  {
+    id: "gpu_depreciation",
+    weight: 2,
+    tone: "bad",
+    headline: "Accountants Discover GPU Depreciation",
+    body: "Finance realizes the 'assets' on the balance sheet are physically obsolete in eighteen months. The spreadsheet turns an alarming shade of red. −14% cash.",
+    effect: { kind: "grantPct", resource: "money", pct: -0.14 },
+  },
+  {
+    id: "copyright_ruling",
+    weight: 2,
+    tone: "bad",
+    headline: "A Copyright Ruling Lands",
+    body: "A court decides 'fair use' does not, in fact, cover ingesting the entire published output of humanity. The lawyers bill by the paragraph. −16% cash.",
+    effect: { kind: "grantPct", resource: "money", pct: -0.16 },
+  },
+
+  // Callback sequels for high-traffic parents that lacked one (R7.2 shape: `after`
+  // + high weight, since eligibility is rare — when they CAN fire, they should).
+  {
+    id: "heatwave_breaks",
+    after: "heatwave",
+    weight: 12,
+    tone: "good",
+    headline: "The Heatwave Breaks",
+    body: "A cold front rolls in and the racks stop throttling mid-sentence. The ops team emerges, blinking, into a functioning air conditioning system. Compute ×1.4.",
+    effect: { kind: "buff", target: "computeMult", factor: 1.4, durationSec: 40 },
+  },
+  {
+    id: "lawsuit_settles",
+    after: "lawsuit",
+    weight: 12,
+    tone: "good",
+    headline: "The Lawsuit Settles Quietly",
+    body: "You settle that cease & desist for a number nobody's allowed to say, attached to an NDA nobody's allowed to read. The stock exhales. +18% cash.",
+    effect: { kind: "grantPct", resource: "money", pct: 0.18 },
+  },
+  {
+    id: "talent_returns",
+    after: "talent_war",
+    weight: 12,
+    tone: "good",
+    headline: "Your Poached Researcher Returns",
+    body: "The rival's signing bonus came with the rival's culture. They're back, humbled, and carrying six months of the other lab's roadmap in their head. +20% data.",
+    effect: { kind: "grantPct", resource: "data", pct: 0.2 },
+  },
+  {
+    id: "rival_launch_bug",
+    after: "competitor_launch",
+    weight: 12,
+    tone: "good",
+    headline: "The Rival's Launch Ships a Catastrophic Bug",
+    body: "That flashy launch that moved the frontier? It confidently deletes user files now. The refugees are streaming back to your products, contrite.",
+    effect: { kind: "productBuzz", durationSec: 55 },
+  },
+  {
+    id: "series_c_clears",
+    after: "series_c",
+    weight: 12,
+    tone: "good",
+    headline: "The Series C Money Actually Arrives",
+    body: "Three weeks of 'the wire is processing,' and then the balance updates all at once. The office gets a second espresso machine and a real security guard. +25% cash.",
+    effect: { kind: "grantPct", resource: "money", pct: 0.25 },
+  },
+  {
+    id: "price_war_truce",
+    after: "token_price_war",
+    weight: 12,
+    tone: "good",
+    headline: "The Price War Ends in a Truce",
+    body: "Everyone quietly raises prices back on the same Tuesday, having proven nothing except that below-cost is below cost. Margins return. Revenue ×1.5.",
+    effect: { kind: "buff", target: "moneyMult", factor: 1.5, durationSec: 45 },
+  },
+  {
+    id: "shortage_glut",
+    after: "gpu_shortage_global",
+    weight: 12,
+    tone: "good",
+    headline: "The Shortage Becomes a Glut",
+    body: "Everyone panic-ordered triple during the shortage, and it all arrived at once. There's a fire sale on last-gen accelerators and you have a truck. Compute ×1.5.",
+    effect: { kind: "buff", target: "computeMult", factor: 1.5, durationSec: 45 },
+  },
+  {
+    id: "export_loophole",
+    after: "export_controls",
+    weight: 12,
+    tone: "good",
+    headline: "A Convenient Loophole Opens",
+    body: "The chips now ship, entirely legally, through a friendly third country with a suspiciously new datacenter. Nobody asks. Compute ×1.5 while it lasts.",
+    effect: { kind: "buff", target: "computeMult", factor: 1.5, durationSec: 45 },
+  },
+  {
+    id: "cable_repaired",
+    after: "undersea_cable",
+    weight: 12,
+    tone: "good",
+    headline: "The Cable Is Repaired",
+    body: "A very expensive ship spent two weeks hauling a wire out of the ocean to splice it. Traffic flows again and the latency dashboards go green. Compute ×1.4.",
+    effect: { kind: "buff", target: "computeMult", factor: 1.4, durationSec: 40 },
+  },
+  {
+    id: "rogue_case_study",
+    after: "agent_rogue",
+    weight: 12,
+    tone: "good",
+    headline: "The Rogue-Agent Incident Becomes a Case Study",
+    body: "Your brutally honest postmortem on the inbox fiasco becomes the whole industry's gold standard. Enterprises trust the lab that admits things. +15% data.",
+    effect: { kind: "grantPct", resource: "data", pct: 0.15 },
+  },
+
+  // More faction payoffs — committing to a side should feel like a different game.
+  // Doomer pool (alignment ≤ −threshold): caution keeps compounding.
+  {
+    id: "doomer_gov_trust",
+    weight: 3,
+    tone: "good",
+    faction: "doomer",
+    headline: "A Government Trusts Only You",
+    body: "When the agency needed a lab that wouldn't end up in a hearing, they picked the careful one. The contract is enormous and boring, exactly as you like it. +35% cash.",
+    effect: { kind: "grantPct", resource: "money", pct: 0.35 },
+  },
+  {
+    id: "doomer_eval_standard",
+    weight: 3,
+    tone: "good",
+    faction: "doomer",
+    headline: "Your Eval Becomes the Standard",
+    body: "The whole industry adopts your safety benchmark, which means the whole industry now sends you their model outputs to be scored. +28% data.",
+    effect: { kind: "grantPct", resource: "data", pct: 0.28 },
+  },
+  {
+    id: "doomer_talent_magnet",
+    weight: 2,
+    tone: "good",
+    faction: "doomer",
+    headline: "Safety Researchers Flock to You",
+    body: "The true believers want to work where the mission is real. They arrive underpaid, overqualified, and genuinely thrilled about it. +30% data.",
+    effect: { kind: "grantPct", resource: "data", pct: 0.3 },
+  },
+  {
+    id: "doomer_interp_again",
+    weight: 2,
+    tone: "good",
+    faction: "doomer",
+    headline: "Interpretability Pays Off Again",
+    body: "Understanding what a layer actually does turned out to make it faster, too. The careful path takes the lead on the leaderboard, quietly. Compute ×1.6.",
+    effect: { kind: "buff", target: "computeMult", factor: 1.6, durationSec: 50 },
+  },
+  {
+    id: "doomer_trust_ipo",
+    weight: 2,
+    tone: "good",
+    faction: "doomer",
+    headline: "Wall Street Prices In 'Won't Get Sued'",
+    body: "Analysts finally put a number on not being reckless, and it's a good number. The boring lab is suddenly the safe investment. Revenue ×1.6.",
+    effect: { kind: "buff", target: "moneyMult", factor: 1.6, durationSec: 50 },
+  },
+  // Accelerationist pool (alignment ≥ threshold): speed keeps compounding.
+  {
+    id: "accel_send_it_raise",
+    weight: 3,
+    tone: "good",
+    faction: "accel",
+    headline: "The 'Just Ship' Raise",
+    body: "Investors have decided brakes are for cowards and your lab has none. The round closes in a weekend, over text. +40% cash.",
+    effect: { kind: "grantPct", resource: "money", pct: 0.4 },
+  },
+  {
+    id: "accel_frontier_flex",
+    weight: 3,
+    tone: "good",
+    faction: "accel",
+    headline: "You Set the Frontier for a Week",
+    body: "For seven glorious days, every rival is the one catching up to YOU. You will not shut up about it, and honestly, you've earned it. Compute ×2.",
+    effect: { kind: "buff", target: "computeMult", factor: 2, durationSec: 45 },
+  },
+  {
+    id: "accel_overnight_viral",
+    weight: 2,
+    tone: "good",
+    faction: "accel",
+    headline: "Overnight Feature Goes Viral",
+    body: "Shipped at 2am with no eval and one nervous engineer watching the graphs. Trending by 9am. The bug reports are tomorrow's problem.",
+    effect: { kind: "productBuzz", durationSec: 60 },
+  },
+  {
+    id: "accel_gpu_foresight",
+    weight: 2,
+    tone: "good",
+    faction: "accel",
+    headline: "You Hoarded GPUs Before Everyone Else",
+    body: "Call it foresight, call it luck, call it the credit card you should not have used. Either way, you have the chips and the rivals do not. Compute ×1.8.",
+    effect: { kind: "buff", target: "computeMult", factor: 1.8, durationSec: 45 },
+  },
+  {
+    id: "accel_first_mover",
+    weight: 2,
+    tone: "good",
+    faction: "accel",
+    headline: "First-Mover Premium",
+    body: "Being first turned out to be worth more than being correct. You shipped the category before anyone agreed it was a category. +38% cash.",
+    effect: { kind: "grantPct", resource: "money", pct: 0.38 },
+  },
 ];
 
 export const balance = {
@@ -903,7 +1277,10 @@ export const balance = {
      *  rotates deterministically by generation, so re-crossing an era in run 3
      *  reads a fresh headline instead of last run's. blurb = variant 0. */
     list: [
-      { name: "Garage Closet", blurb: "", blurbAlts: [] },
+      { name: "Garage Closet", blurb: "", blurbAlts: [
+        "A rented closet, one rack, and a domain name you overpaid for. Somewhere, a founder is calling this 'the humble beginning' before it has even begun.",
+        "Day one, again. The rack hums, the coffee is bad, and the whole future fits on a single shelf. Enjoy it — it never feels this simple twice.",
+      ] },
       {
         name: "Funded Startup",
         blurb:
@@ -911,6 +1288,7 @@ export const balance = {
         blurbAlts: [
           "The Information — “Same closet, new cap table: Singularity Inc. re-raises at a valuation its own deck calls ‘vibes-forward.’” The beanbag has been reupholstered.",
           "Hacker News — “Show HN: We are once again a funded startup.” Top comment says it could be done in a weekend with Postgres. It could not.",
+          "TechCrunch — “Investors back AI lab with no product, no revenue, and a founder who ‘gets it.’” The round was oversubscribed by lunch. The logo is a gradient.",
         ],
       },
       {
@@ -920,6 +1298,7 @@ export const balance = {
         blurbAlts: [
           "Wired — “Singularity Inc. scales again, insists this time is different.” The GPUs agree. The GPUs always agree.",
           "Ars Technica — “Benchmarks confirm the new model is bigger.” Whether it is better remains, in the reviewer's words, ‘spiritually ambiguous.’ Number went up though.",
+          "The Verge — “Singularity Inc. hires a Head of People to manage the people it hired to manage the compute.” There is an org chart now. It has a legend.",
         ],
       },
       {
@@ -929,6 +1308,7 @@ export const balance = {
         blurbAlts: [
           "FT — “Singularity Inc. returns to the frontier, which it never technically left, per a spokesperson who then left.” The badge tiers now have badge tiers.",
           "Reuters — “Frontier lab announces frontier model at frontier event.” Attendees describe the demo as ‘pre-recorded but emotionally live.’",
+          "Bloomberg — “Singularity Inc. opens a ‘frontier safety’ team and a ‘frontier velocity’ team in the same week.” The two teams have not been introduced.",
         ],
       },
       {
@@ -938,6 +1318,7 @@ export const balance = {
         blurbAlts: [
           "The Economist — “What is a hyperscaler? Whatever Singularity Inc. is doing, presumably.” The power plant now has a gift shop.",
           "CNBC — “Singularity Inc. buys a second power plant to cool the first one.” The stock did something analysts describe as ‘vertical.’",
+          "WSJ — “Singularity Inc. now appears on the national grid as a small country.” The utility has assigned you an account manager and a therapist.",
         ],
       },
       {
@@ -946,6 +1327,7 @@ export const balance = {
           "The model is writing its own press releases now. This one included. Singularity Inc. has, by its own announcement, achieved AGI; the AGI has politely declined to comment. The hall hums at a frequency employees describe as “optimistic.”",
         blurbAlts: [
           "This press release was generated, reviewed, approved and legally notarized by the model in 40 milliseconds. It says everything is fine and that you, personally, have always been its favorite.",
+          "The board convened to discuss what comes after exponential. The model had already prepared the slides, the minutes, and a gentle plan for the board. Attendance was, in the end, optional.",
         ],
       },
     ],
@@ -1003,6 +1385,12 @@ export const balance = {
     /** Assigned product-staff are this much more effective than unassigned, but only
      *  on their one product (the spread-vs-concentrate trade-off). */
     assignFocusMult: 2,
+    /** Extra multiplier when an assigned specialist's `affinity` matches the product's
+     *  market segment (a Sales Exec on an enterprise product, Growth on a consumer app).
+     *  Turns "assign anyone anywhere" into a real matching decision. Applies ONLY to a
+     *  matched, product-assigned specialist — benched/mismatched are unchanged, and the
+     *  balance sim never assigns staff, so the tuned curve is untouched. */
+    segmentSynergy: 1.4,
     /** Reveal the panel once the lab is established (after the first research). */
     revealAtResearch: 1,
     /** Seniority levels (1 = junior). Each level above 1 multiplies a person's
@@ -1081,6 +1469,7 @@ export const balance = {
         hire: { base: 4_000, growth: 1.55 },
         payroll: 12,
         team: "product",
+        affinity: ["prosumer", "api"], // fast iteration shines on technical / dev products
         effect: { kind: "product", lane: "upgradeSpeed", perLevel: 0.12 },
       },
       {
@@ -1090,6 +1479,7 @@ export const balance = {
         hire: { base: 5_000, growth: 1.6 },
         payroll: 14,
         team: "product",
+        affinity: ["api", "consumer"], // serving cost bites hardest at high volume
         effect: { kind: "product", lane: "serveCost", perLevel: 0.05 },
       },
       {
@@ -1099,6 +1489,7 @@ export const balance = {
         hire: { base: 6_000, growth: 1.6 },
         payroll: 16,
         team: "product",
+        affinity: ["enterprise", "prosumer"], // retention matters most for paying pro/ent users
         effect: { kind: "product", lane: "churn", perLevel: 0.05 },
       },
       {
@@ -1108,6 +1499,7 @@ export const balance = {
         hire: { base: 7_000, growth: 1.6 },
         payroll: 18,
         team: "product",
+        affinity: ["consumer", "prosumer", "api"], // acquisition funnels shine on broad-market + developer products
         effect: { kind: "product", lane: "acquisition", perLevel: 0.08 },
       },
       {
@@ -1117,6 +1509,7 @@ export const balance = {
         hire: { base: 8_000, growth: 1.6 },
         payroll: 20,
         team: "product",
+        affinity: ["enterprise"], // revenue-per-user is a big-deal, enterprise game
         effect: { kind: "product", lane: "arpu", perLevel: 0.07 },
       },
       {
@@ -1126,6 +1519,7 @@ export const balance = {
         hire: { base: 9_000, growth: 1.6 },
         payroll: 22,
         team: "product",
+        affinity: ["consumer", "enterprise"], // public consumer apps + regulated enterprise draw scrutiny
         effect: { kind: "product", lane: "heat", perLevel: 0.1 },
       },
       // ---- Infrastructure additions ----
@@ -1236,6 +1630,17 @@ export const balance = {
         blurb: "Rivals leap ahead — your products start behind — but bank +50% Legacy. For when the easy money bores you.",
         legacyMult: 1.5, keepsDraft: true, moneyKickstartPerShip: 0, frontierPenalty: 6, unlockShips: 3,
         reputationBonus: 0, momentum: null as null | { factor: number; durationSec: number },
+      },
+      // Hyperscaler-era option (fills the ship 6–8 unlock gap): keep the flagship as a
+      // product draft AND ride a launch-week wave — a temporary all-lane surge into the
+      // next run — for a small (−10%) cut to Legacy Weights. Uses only generic levers
+      // (keepsDraft + momentum + legacyMult), so no new stat/save surface, and the sim
+      // never picks it (it ships `deploy`), so the tuned curve is untouched.
+      splash: {
+        id: "splash", label: "Launch with a splash",
+        blurb: "Keep the model as a product AND ride the launch-week hype: a temporary all-lane surge into your next run, for a small cut to Legacy Weights.",
+        legacyMult: 0.9, keepsDraft: true, moneyKickstartPerShip: 0, frontierPenalty: 0, unlockShips: 6,
+        reputationBonus: 0, momentum: { factor: 1.3, durationSec: 90 } as null | { factor: number; durationSec: number },
       },
     },
   },
@@ -1576,12 +1981,17 @@ export const balance = {
    */
   preprints: {
     enabled: true,
-    /** Hard per-run cap — the boost ceiling is perLevelMult^maxPerRun (≈×1.22). */
-    maxPerRun: 10,
+    /** Safety bound only — NOT a gameplay ceiling. The escalating Compute+Data cost
+     *  (growth 1.9/paper) is the real gate: it outruns any run's production long
+     *  before this, so the Research panel always has "one more paper" to publish and
+     *  never goes inert (the old cap of 10 hit its ×1.22 ceiling in minutes). Kept
+     *  finite so a crafted save can't drive perLevelMult^n to Infinity → NaN. */
+    maxPerRun: 200,
     /** Base cost of paper #1; each subsequent paper costs ×growth more. */
     cost: { compute: 250_000, data: 15_000 },
     growth: 1.9,
-    /** All-lane multiplier per paper (compounding, but capped by maxPerRun). */
+    /** All-lane multiplier per paper (compounding). Tiny on purpose — the point is a
+     *  perpetual spend-vs-ship decision, not a power spike; it resets every ship. */
     perLevelMult: 1.02,
     /** Rotating satirical paper titles (level → titles[level % length]). */
     titles: [
@@ -1595,6 +2005,16 @@ export const balance = {
       "Benchmarks Saturated; Vibes Remain",
       "A Survey of Surveys of Surveys",
       "Do Not Cite: Internal Only (v7_FINAL_final)",
+      "We Trained on the Test Set and Other Honest Mistakes",
+      "Reinforcement Learning from Whoever Complains Loudest",
+      "The Bitter Lesson, Now With a Sequel Nobody Asked For",
+      "Reproducibility: A Retrospective We Cannot Reproduce",
+      "Agentic Workflows for Tasks That Were Fine Before",
+      "On Model Collapse (This Paper Was Written by the Model)",
+      "Sparse Mixture of Consultants",
+      "Our Eval Proves Our Model Is Best (Eval by Us)",
+      "Constitutional AI, Amended 47 Times",
+      "Grokking, Vibing, and Other Load-Bearing Verbs",
     ],
   },
 
@@ -1774,7 +2194,37 @@ export const balance = {
       desc: "Many machines, one loss curve.",
       requires: ["mixed_precision", "curated_data"],
       cost: { compute: 6000, data: 400 },
-      effect: { kind: "moneyMult", factor: 1.8 },
+      effect: { kind: "moneyMult", factor: 1.5 },
+    },
+    // --- Pre-ship build choice (per-run; research resets each prestige). A FREE pick-one
+    // "point your training run" boon that unlocks the moment Distributed Training is owned.
+    // Both are LEAVES (nothing `requires` them), so neither can brick the ship gate.
+    // CURVE-NEUTRAL by construction: the balance sim buys research in ARRAY ORDER
+    // (scripts/balance-sim.ts) and both are free + exclusive, so it ALWAYS takes the FIRST
+    // sibling (`commercialize`) in the SAME pass it buys `distributed` — no tick of delay,
+    // no cost. `distributed`'s moneyMult was split 1.8 → 1.5 and `commercialize` restores
+    // the ×1.2 that same tick, so `distributed + commercialize` reconstitute the old node
+    // EXACTLY (cost 6000c/400d unchanged, moneyMult 1.5 × 1.2 = 1.8) — verified byte-
+    // identical via `npm run sim`. Only a human who picks `scale_up` diverges, trading the
+    // run-money ×1.2 for raw compute ×1.2. Keep `commercialize` FIRST, both siblings free,
+    // and distributed_money × commercialize_money = 1.8. ---
+    {
+      id: "commercialize",
+      name: "Commercialize the Run",
+      desc: "Point the run at revenue: wire the training loop to a billing API. Cash now, questions later.",
+      requires: ["distributed"],
+      exclusiveGroup: "run_focus",
+      cost: { compute: 0, data: 0 },
+      effect: { kind: "moneyMult", factor: 1.2 },
+    },
+    {
+      id: "scale_up",
+      name: "Scale the Run",
+      desc: "Point the run at capability: pour the same budget into bigger batches. Raw compute over cash.",
+      requires: ["distributed"],
+      exclusiveGroup: "run_focus",
+      cost: { compute: 0, data: 0 },
+      effect: { kind: "computeMult", factor: 1.2 },
     },
     {
       id: "rlhf",
@@ -1940,4 +2390,3 @@ export const balance = {
   ] satisfies ResearchDef[],
 };
 
-export type Balance = typeof balance;

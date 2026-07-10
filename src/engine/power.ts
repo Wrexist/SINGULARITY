@@ -8,10 +8,10 @@ import type { GameState } from "./types";
  * the power soft-cap: total rack draw vs. power capacity → a `thermalFactor` that
  * throttles Compute when over-subscribed. No React, no mutation.
  *
- * Gated by `balance.power.enabled` (default false): until turned on, derive()
- * never applies the factor, so the live game is unchanged. Power-CAPACITY upgrades
- * (PSU / cooling loop) are added as content when the system is switched on; for
- * now capacity is the flat base budget.
+ * Gated by `balance.power.enabled` (currently ON): derive() applies the
+ * `thermalFactor` so an over-subscribed floor throttles Compute toward
+ * `throttleFloor`. Power-CAPACITY upgrades (PSU / cooling loop) raise the budget.
+ * The flag remains as a kill-switch — flip it off to restore the pre-power curve.
  */
 
 export interface PowerStats {

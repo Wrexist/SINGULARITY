@@ -1,11 +1,12 @@
 import { balance } from "./balance/config";
 import { productMetrics, productsUnlocked, canStartUpgrade, maxActiveProducts } from "./products";
-import { reputationBalance, canBuyReputationPerk } from "./reputation";
-import { contractBoard } from "./contracts";
-import { canBuyResearch } from "./actions";
+import { reputationBalance, canBuyReputationPerk, canBuyEndowment } from "./reputation";
+import { contractBoard, sponsorView } from "./contracts";
+import { canBuyResearch, researchStalled } from "./actions";
 import { canPrestige } from "./prestige";
 import { hireCost } from "./employees";
-import type { GameState } from "./types";
+import { derive } from "./derive";
+import type { Derived, GameState } from "./types";
 
 /** The first research node (no prereqs) — the new player's first capability buy. */
 const FIRST_RESEARCH = balance.research[0]?.id ?? "";
@@ -47,9 +48,20 @@ function staffUnlocked(state: GameState): boolean {
  * rivals have left behind). Investment losses — running marketing at a deliberate
  * loss to grow — are NOT flagged.
  */
-export function advisorItems(state: GameState): AdvisorItem[] {
+export function advisorItems(state: GameState, precomputed?: Derived): AdvisorItem[] {
   const items: AdvisorItem[] = [];
   const ps = state.products;
+  // Reuse the caller's derived economy when given (the UI already memoizes one per
+  // frame) — advisorItems runs at UI cadence, so a second derive() here is pure waste.
+  const derived = precomputed ?? derive(state);
+
+  // Research has stalled against the auto-train Compute ceiling — the node the player
+  // wants is unreachable until they ease intensity or grow Compute. Teach the slider at
+  // the one moment it matters, through the nudge channel that already exists (no popup).
+  // Any run can hit this (re-climbing the tree), so it isn't gated to the first session.
+  if (researchStalled(state, derived)) {
+    items.push({ tab: "lab", section: "build", text: "Ease training intensity to bank Compute", priority: 66 });
+  }
 
   // ---- First-session hook: until the first Ship, hand-hold the core loop so a
   // brand-new player always has one obvious next move (claim → start → research
@@ -84,7 +96,7 @@ export function advisorItems(state: GameState): AdvisorItem[] {
     }
 
     for (const p of ps.active) {
-      const m = productMetrics(p, ps.frontier);
+      const m = productMetrics(p, ps.frontier, derived.productModsById[p.id]);
       // Rivals have pulled ahead and no new version is in the works — the one
       // unambiguous "this product needs you" signal. Suppressed during the launch /
       // new-version buzz window, matching churnReason's buzz guard, so a just-shipped
@@ -114,6 +126,20 @@ export function advisorItems(state: GameState): AdvisorItem[] {
     }
   }
 
+  // Payroll outrunning income: a structural over-hire warning. Compares wages against
+  // GROSS revenue (passive money + product MRR, before serving/marketing costs), so a
+  // deliberate marketing-investment loss never trips it — consistent with the "don't
+  // flag investment losses" policy above. Only fires with staff actually on payroll.
+  if (state.employees.length > 0) {
+    if (derived.payrollPerSec.gt(0)) {
+      let grossIncome = derived.passiveMoneyPerSec;
+      for (const p of ps.active) grossIncome = grossIncome.add(productMetrics(p, ps.frontier, derived.productModsById[p.id]).mrr);
+      if (derived.payrollPerSec.gt(grossIncome)) {
+        items.push({ tab: "employees", text: "Payroll is outrunning your income — grow revenue or let someone go", priority: 58 });
+      }
+    }
+  }
+
   // A contract is met and waiting — a free Reputation reward sitting on the board.
   const readyContract = contractBoard(state).find((c) => c.ready);
   if (readyContract) {
@@ -125,10 +151,23 @@ export function advisorItems(state: GameState): AdvisorItem[] {
     });
   }
 
+  // A daily sponsor objective is met and waiting — free Reputation on the board (the
+  // endgame's day-to-day nudge; previously never surfaced by the advisor).
+  const sponsor = sponsorView(state);
+  if (sponsor?.ready) {
+    items.push({ tab: "lab", section: "hq", text: `Claim the "${sponsor.def.title}" sponsor — +${sponsor.def.rep} Rep`, priority: 76 });
+  }
+
   // Lab Reputation: a gentle nudge when a permanent perk is affordable (surfaces the
   // meta-layer, which lives in the Prestige panel and is easy to miss).
   if (reputationBalance.perks.some((p) => canBuyReputationPerk(state, p.id))) {
     items.push({ tab: "lab", section: "hq", text: "You can afford a Lab Reputation perk", priority: 40 });
+  }
+
+  // Endgame: once the perk tree is owned, nudge the Endowment (the infinite Rep sink)
+  // when affordable — otherwise surplus Reputation piles up with no visible use.
+  if (canBuyEndowment(state)) {
+    items.push({ tab: "lab", section: "hq", text: "Endow a permanent boost — spend surplus Reputation", priority: 41 });
   }
 
   return items.sort((a, b) => b.priority - a.priority);

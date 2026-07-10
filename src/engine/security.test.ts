@@ -48,6 +48,21 @@ describe("security — a save is untrusted input (backup/import is editable text
       expect(s.upgrades.str).toBeUndefined();
       expect((s.upgrades as any).evil).toBeUndefined();
     });
+    it("cheated/huge upgrade counts are clamped on load — no Infinity overflow, caps enforced", () => {
+      // A save cheated to 1e308 racks used to overflow Compute to Infinity (→ NaN via Inf−Inf).
+      const s = loadMutated((r) => { r.upgrades = { rack_basic: 1e308, rack_server: 1e300 }; });
+      expect(s.upgrades.rack_basic).toBeLessThanOrEqual(1e7);
+      // Running the sim from the clamped save keeps Compute finite (the real brick guard).
+      let g = s;
+      for (let i = 0; i < 30; i++) g = tick(g, 100);
+      expect(finite(g.resources.compute)).toBe(true);
+      // A capped upgrade can't exceed its own cap on load (e.g. a ×N booster claimed 1000×).
+      const capped = balance.upgrades.find((u) => Number.isFinite(u.max));
+      if (capped) {
+        const s2 = loadMutated((r) => { r.upgrades = { [capped.id]: (capped.max as number) + 500 }; });
+        expect(s2.upgrades[capped.id]).toBe(capped.max);
+      }
+    });
     it("research that isn't a string[] is rejected; non-strings filtered", () => {
       expect(loadMutated((r) => { r.research = "inference_api"; }).research).toEqual([]);
       expect(loadMutated((r) => { r.research = ["backprop", 5, null, "rlhf"]; }).research).toEqual(["backprop", "rlhf"]);
@@ -184,5 +199,30 @@ describe("security round 2 — display + tick degrade gracefully on non-finite",
     const s = { ...createInitialState(), resources: { ...createInitialState().resources, compute: Big.of(100) } };
     expect(tick(s, NaN)).toBe(s); // unchanged
     expect(tick(s, -5)).toBe(s);
+  });
+
+  describe("hardening — audit follow-ups", () => {
+    it("caps a crafted modifiers flood so tick() can't stack-overflow", () => {
+      const flood = Array.from({ length: 200 }, (_, i) => ({
+        id: `m${i}`, target: "computeMult", factor: 1.5,
+        remainingSec: 0.01 + i * 0.001, label: "x", tone: "good",
+      }));
+      const s = loadMutated((r) => { r.modifiers = flood; });
+      expect(s.modifiers.length).toBeLessThanOrEqual(20);
+      // A 24h offline tick expires all of them (recursive segmentation) — must not overflow.
+      expect(() => tick(s, 24 * 3600 * 1000)).not.toThrow();
+    });
+
+    it("rejects an over-limit exponent string as a non-finite Big", () => {
+      const s = loadMutated((r) => { r.resources.money = "1e9000000000000000"; r.lifetimeMoney = "1e9000000000000000"; });
+      expect(s.resources.money.isFinite()).toBe(true);
+      expect(s.lifetimeMoney.isFinite()).toBe(true);
+    });
+
+    it("clamps a tampered ships count (Game Center leaderboard hygiene)", () => {
+      const s = loadMutated((r) => { r.prestige.ships = 1e18; });
+      expect(s.prestige.ships).toBeLessThanOrEqual(10_000_000);
+      expect(Number.isFinite(s.prestige.ships)).toBe(true);
+    });
   });
 });

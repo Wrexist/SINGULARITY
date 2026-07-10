@@ -104,3 +104,23 @@ describe("tick — passive money capability", () => {
     expect(next.lifetimeMoney.gt(0)).toBe(true);
   });
 });
+
+describe("tick — modifier stack is bounded (no stack overflow)", () => {
+  it("a pathological runtime buff stack survives a 24h tick and is capped", () => {
+    const s = createInitialState();
+    // 150 live buffs at distinct expiries — well past anything legit play can build, and
+    // past the point the recursive window-split would approach the call-stack limit.
+    s.modifiers = Array.from({ length: 150 }, (_, i) => ({
+      id: `flood_${i}`,
+      target: "computeMult" as const,
+      factor: 1.01,
+      remainingSec: 30 + i, // all distinct, all within a 24h window → 150 split points
+      label: "x",
+      tone: "good" as const,
+    }));
+    // Must not throw (RangeError: Maximum call stack size exceeded) and must stay finite.
+    const next = tick(s, 24 * 3600 * 1000);
+    expect(next.modifiers.length).toBeLessThanOrEqual(48);
+    expect(Number.isFinite(next.resources.compute.toNumber()) || next.resources.compute.gt(Big.of("1e300"))).toBe(true);
+  });
+});

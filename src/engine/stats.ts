@@ -1,6 +1,6 @@
 import { Big } from "./math/Big";
 import { productMetrics } from "./products";
-import type { LifetimeStats, ProductsState } from "./types";
+import type { LifetimeStats, ProductsState, ProductMods } from "./types";
 
 /**
  * Lifetime stats (Phase 3) — pure, monotonic counters that survive prestige and
@@ -38,11 +38,14 @@ export function accrueStats(
   earnedThisTick: Big,
   seconds: number,
   rivalsBeatenNow: number,
+  modsById: Record<string, ProductMods> = {},
 ): LifetimeStats {
   let mrr = 0;
   let mau = 0;
   for (const p of products.active) {
-    const m = productMetrics(p, products.frontier);
+    // Mods-aware so peakMrr tracks the player's REAL (staff/faction-buffed) revenue —
+    // the same number the product cards now show. Empty map ⇒ neutral (curve-safe).
+    const m = productMetrics(p, products.frontier, modsById[p.id]);
     mrr += m.mrr;
     mau += m.mau;
   }

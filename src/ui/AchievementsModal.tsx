@@ -15,6 +15,25 @@ const CAT_META: Record<AchCategory, { label: string; icon: ReactNode; hue: numbe
 const CATS = Object.keys(CAT_META) as AchCategory[];
 type Filter = "all" | AchCategory;
 
+// Secret achievements stay secret, but a wall of identical "Keep playing…" lines read
+// as copy-paste. Vary the tease by a stable per-id hash so each masked card feels
+// distinct without revealing its condition.
+const SECRET_TEASES = [
+  "Keep playing to discover this one.",
+  "You'll know it when you trip over it.",
+  "Not everything announces itself.",
+  "Some milestones prefer to make an entrance.",
+  "This one is earned, not explained.",
+  "The lab keeps a few secrets.",
+  "Do something worth writing down.",
+  "Hidden — for now.",
+];
+const secretTease = (id: string): string => {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return SECRET_TEASES[h % SECRET_TEASES.length]!;
+};
+
 /** Phase 3 — the Achievements collection: a cross-system badge wall with progress.
  *  Reads the lifetime-stats store via achievementProgress; honest goals, no rewards
  *  to chase-buy (the badge is the point). Secret ones stay masked until earned. */
@@ -73,7 +92,7 @@ export function AchievementsModal({ game, onClose }: { game: GameState; onClose:
                 </span>
                 <div className="ach-card-main">
                   <div className="ach-name">{masked ? "Secret achievement" : def.label}</div>
-                  <div className="ach-desc">{masked ? "Keep playing to discover this one." : def.desc}</div>
+                  <div className="ach-desc">{masked ? secretTease(def.id) : def.desc}</div>
                   {!got && !masked && (
                     <div className="ach-bar"><div className="ach-bar-fill" style={{ width: `${pct * 100}%`, background: `hsl(${hue} 60% 55%)` }} /></div>
                   )}

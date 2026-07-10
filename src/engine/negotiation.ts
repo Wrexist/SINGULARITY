@@ -67,7 +67,7 @@ export function applyNegotiationChoice(state: GameState, choiceIndex: number): G
       ...state,
       resources: { ...state.resources, money: state.resources.money.mul(Math.max(0, 1 + N.settle.moneyPct)).max(Big.ZERO) },
       suspicion: clampSuspicion(state.suspicion + N.settle.suspicion),
-      modifiers: mods([], `⚖ ${R.name}: case settled`),
+      modifiers: mods([], `${R.name}: case settled`),
       stats: { ...state.stats, worldEventsResolved: state.stats.worldEventsResolved + 1 },
     };
   }
@@ -79,7 +79,7 @@ export function applyNegotiationChoice(state: GameState, choiceIndex: number): G
       suspicion: clampSuspicion(state.suspicion + N.lobby.suspicion),
       heat: Math.max(0, Math.min(100, state.heat + N.lobby.heat)),
       alignment: Math.max(-1, Math.min(1, state.alignment + N.lobby.alignment)),
-      modifiers: mods([], `⚖ ${R.name}: quietly appeased`),
+      modifiers: mods([], `${R.name}: quietly appeased`),
       stats: { ...state.stats, worldEventsResolved: state.stats.worldEventsResolved + 1 },
     };
   }
@@ -98,7 +98,7 @@ export function applyNegotiationChoice(state: GameState, choiceIndex: number): G
       suspicion: clampSuspicion(state.suspicion + N.defy.suspicion),
       heat: Math.max(0, Math.min(100, state.heat + N.defy.heat)),
       alignment: Math.max(-1, Math.min(1, state.alignment + N.defy.alignment)),
-      modifiers: mods([buff], `⚖ ${R.name} prepares the paperwork`),
+      modifiers: mods([buff], `${R.name} prepares the paperwork`),
       stats: { ...state.stats, worldEventsResolved: state.stats.worldEventsResolved + 1 },
     };
   }

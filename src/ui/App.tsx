@@ -33,7 +33,7 @@ import { EventLog } from "./EventLog";
 import { FxCanvas } from "./FxCanvas";
 import { burst as fxBurst, floatText as fxFloat } from "./fx";
 import { ProductLaunch } from "./ProductLaunch";
-import { productsUnlocked, productMetrics, typeDef, retirePayout } from "../engine/products";
+import { productsUnlocked, typeDef, retirePayout } from "../engine/products";
 import { advisorItems, type AdvisorTab, type LabSection } from "../engine/advisor";
 import { nextGoal } from "../engine/goals";
 import { marketLeaderboard, playerMarketRank, rivalsBeaten } from "../engine/market";
@@ -41,8 +41,11 @@ import { FlaskIcon, BoxIcon, TeamIcon, TrophyIcon, GearIcon, GiftIcon, TargetIco
 import { fmt, fmtMoney } from "./format";
 import type { ProductTypeId } from "../engine/balance/products";
 import { iap } from "./iap";
+import { isPremium } from "../state/premium";
+import { scheduleReturnReminder, cancelReturnReminder } from "./notifications";
 import { balance } from "../engine/balance/config";
 import { HallCanvas } from "./HallCanvas";
+import { NewsTicker } from "./NewsTicker";
 import { ExpandConfirm } from "./ExpandConfirm";
 import { ConfirmSheet } from "./ConfirmSheet";
 import { RigBayPanel } from "./RigBayPanel";
@@ -50,11 +53,50 @@ import { componentsUnlocked, earnedDefs } from "../engine/components";
 
 // Trophy-part defs are static catalog data — resolve once, not per render.
 const TROPHY_DEFS = earnedDefs();
+
+// Rotating framings for a claimed contract — picked by hashing the contract id so
+// each deal reads the same way every time but the board as a whole feels varied.
+const CONTRACT_DONE_QUIPS = [
+  "Delivered",
+  "Signed and shipped",
+  "The client is thrilled",
+  "Deliverable accepted",
+  "Another one in the bag",
+  "Milestone booked",
+  "Invoice sent",
+  "Handshake complete",
+];
+
+// A morning-momentum flavor line for the daily boost — varied by day so the once-a-day
+// beat feels like a new day at the lab, not the same confetti every time.
+const DAILY_QUIPS = [
+  "The clusters are warm and the coffee is hot",
+  "A good day to ship",
+  "Morning standup went suspiciously well",
+  "The GPUs are purring",
+  "Overnight training actually converged",
+  "The team came in early — for once",
+  "Investors sent a suspiciously nice email",
+  "Every dashboard is green. Enjoy it.",
+];
 import { EraTransition } from "./EraTransition";
 import { WorldEventCard } from "./WorldEventCard";
 import { ModifierBar } from "./ModifierBar";
 import { regulatorIsNamed, regulatorState } from "../engine/regulator";
 import { canPrestige } from "../engine/prestige";
+import { chartersUnlocked } from "../engine/charter";
+import { preprintsUnlocked } from "../engine/preprints";
+import { legacyAvailable } from "../engine/legacyTree";
+import { endowmentUnlocked } from "../engine/reputation";
+import { canBuyOfficePerk } from "../engine/actions";
+import { modelReadyNote, researchStartNote, soldNote, hireWelcome, fireSendoff } from "../engine/notices";
+import { challengesUnlocked, challengeById } from "../engine/challenges";
+import { GrandChallengesPanel } from "./GrandChallengesPanel";
+import { ChallengeComplete } from "./ChallengeComplete";
+import { objectivesUnlocked } from "../engine/objectives";
+import { ObjectivesPanel } from "./ObjectivesPanel";
+import { automationUnlockedAny } from "../engine/automation";
+import { AutomationPanel } from "./AutomationPanel";
 import { currentEra } from "../engine/eras";
 import { recordTelemetry } from "../state/telemetry";
 
@@ -67,11 +109,11 @@ export function App() {
   const notice = useGame((s) => s.notice);
   const worldEvent = useGame((s) => s.worldEvent);
   const candidates = useGame((s) => s.candidates);
-  const { doStartRun, doClaim, doBuyUpgrade, doBuyUpgradeBulk, doBuyOfficePerk, doBuyReputationPerk, doBuyLegacyPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
+  const { doStartRun, doClaim, doBuyUpgrade, doBuyUpgradeBulk, doBuyOfficePerk, doBuyReputationPerk, doBuyEndowment, doBuyLegacyPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
     doClaimContract, doClaimSponsor, doBuyPreprint, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
-    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival } =
+    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival, doFundChallenge, doClaimObjective, doToggleAutomation } =
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
@@ -81,7 +123,7 @@ export function App() {
   // A waiting run-claim is counted in the BADGES only (not the chip — the big
   // bobbing Claim button is its own nudge): with the Lab sectioned, the button
   // can be off-screen on Research/HQ, and a claim must never be signal-less.
-  const advisor = useMemo(() => advisorItems(game), [game]);
+  const advisor = useMemo(() => advisorItems(game, d), [game, d]);
   const claimWaiting = game.run.readyToClaim;
   const attention = useMemo(() => {
     const counts: Record<AdvisorTab, number> = { lab: 0, products: 0, employees: 0 };
@@ -109,6 +151,7 @@ export function App() {
   const [confirmReset, setConfirmReset] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
+  const [challengeDoneId, setChallengeDoneId] = useState<string | null>(null); // Grand Challenge just completed → moment
   const [flash, setFlash] = useState(0); // AGI ascension screen flash (key replays the anim)
   const [dailyOn, setDailyOn] = useState(() => dailyAvailable());
   // The "next goal" carrot: the era/contract/achievement closest to popping
@@ -133,6 +176,7 @@ export function App() {
   const moment = offline ? "offline"
     : celebration ? "celebration"
     : eraMoment !== null ? "era"
+    : challengeDoneId ? "challenge"
     : launch ? "launch"
     : worldEvent ? "world"
     : null;
@@ -153,6 +197,26 @@ export function App() {
   // Re-validate the premium entitlement against StoreKit at launch (native only;
   // no-op on web). Keeps the localStorage cache from being the source of truth.
   useEffect(() => { void iap.refresh(); }, []);
+
+  // Return reminders (opt-in, native-only): on background, schedule ONE honest
+  // notification for when the offline cap fills; on return, cancel it. Reads fresh
+  // state in the handler so it always reflects the current setting / production /
+  // premium cap. A safe no-op on web and until the player enables the toggle.
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === "hidden") {
+        if (!useSettings.getState().notifyReminders) return;
+        const g = useGame.getState().game;
+        const producing = derive(g).computePerSec.gt(0) || g.products.active.length > 0;
+        const capHours = isPremium() ? balance.offline.premiumMaxHours : balance.offline.maxHours;
+        void scheduleReturnReminder(capHours, producing);
+      } else {
+        void cancelReturnReminder();
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
 
   // The daily boost was only checked at mount, so a session left open across the
   // day rollover never saw the bar reappear. Re-check on a slow tick and whenever
@@ -246,6 +310,13 @@ export function App() {
     { key: "align", fact: alignDir, when: "doomer", text: "Your choices tilt the lab doomer — safer, steadier. See Lab Stats.", tone: "neutral" },
     { key: "autoTrain", fact: d.autoTrain, when: true, text: "Auto-train online — runs restart themselves. Set your training intensity.", tone: "good" },
     { key: "hired", fact: game.stats.employeesHired > 0, when: true, text: "First hire aboard — specialists level up as they work", tone: "good" },
+    // Systems that used to appear as unexplained new panels (onboarding audit): one
+    // line each, the first time they unlock, saying what they are and where to find them.
+    { key: "charter", fact: chartersUnlocked(game), when: true, text: "Lab Charter unlocked — pick a run focus on the Build tab before you lock into research.", tone: "good" },
+    { key: "rigbay", fact: componentsUnlocked(game), when: true, text: "Rig Bay unlocked — slot components into your racks for extra output. It's on the Build tab.", tone: "good" },
+    { key: "preprints", fact: preprintsUnlocked(game), when: true, text: "Research tree complete — publish frontier Preprints in Research for a repeatable, escalating boost.", tone: "good" },
+    { key: "legacytree", fact: legacyAvailable(game).gt(0), when: true, text: "Legacy Investments unlocked — spend Legacy Weights on a permanent lane focus in HQ → Prestige.", tone: "good" },
+    { key: "endowment", fact: endowmentUnlocked(game), when: true, text: "Reputation Endowment unlocked — you own the whole perk tree; pour surplus Reputation into a permanent, escalating boost in HQ → Lab Reputation.", tone: "good" },
     // Heat used to explain itself only by punishing you (pre-launch audit).
     { key: "heat", fact: game.heat >= 25, when: true, text: "Regulatory Heat is rising — fines and raids get likelier. Time and lobbying cool it.", tone: "neutral" },
     // Gentle backup nudge (R8.2): once real progress exists and no backup ever
@@ -301,10 +372,21 @@ export function App() {
   // Guarded by the same hydration sync so it never fires on a returning load.
   const seenEra = useRef(era);
   const syncedEra = useRef(false);
+  const eraShips = useRef(game.prestige.ships); // ships count at the last era-effect run
   useEffect(() => {
     if (!initialized) return;
-    if (!syncedEra.current) { seenEra.current = era; syncedEra.current = true; return; }
-    if (era > seenEra.current) { setEraMoment(era); haptics.celebrate(); sound.ship(); sound.era(); }
+    if (!syncedEra.current) { seenEra.current = era; eraShips.current = game.prestige.ships; syncedEra.current = true; return; }
+    // The era beat has its OWN chord (sound.era()). A ship that crosses an era already
+    // fired haptics.celebrate() + sound.ship() in the claim effect, so this effect adds
+    // ONLY the era chord there. But a research-driven crossing (era 0→1, or era→2 via the
+    // Scale-Up node) has no ship, so it needs its own celebrate haptic — fire it only when
+    // ships DIDN'T change, so a ship-crossing never double-buzzes.
+    if (era > seenEra.current) {
+      setEraMoment(era);
+      sound.era();
+      if (game.prestige.ships === eraShips.current) haptics.celebrate();
+    }
+    eraShips.current = game.prestige.ships;
     seenEra.current = era;
   }, [initialized, era]);
 
@@ -332,7 +414,7 @@ export function App() {
     if (bestRank.current != null && myRank < bestRank.current) {
       bestRank.current = myRank;
       const passed = marketLeaderboard(game).slice(myRank).find((e) => !e.isYou);
-      pushToast(myRank === 1 ? "🏆 You're #1 on the AI market!" : `📈 You overtook ${passed?.name ?? "a rival"} — now #${myRank} on the market!`, "good");
+      pushToast(myRank === 1 ? "You're #1 on the AI market!" : `You overtook ${passed?.name ?? "a rival"} — now #${myRank} on the market!`, "good");
       haptics.celebrate(); sound.success();
     }
   }, [initialized, myRank]);
@@ -399,36 +481,10 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notice?.key]);
 
-  // Staleness nudge: when a live product slips below ~50% competitiveness (rivals
-  // pulled ahead since its last version), poke the player once to push an update.
-  // Ref-tracked per product so it fires on the downward crossing, not every tick.
-  const staleSeen = useRef<Record<string, boolean>>({});
-  // Cheap per-render signal so the effect only re-runs when a product crosses the
-  // staleness line (or the roster changes) — NOT every 10Hz tick, since
-  // `game.products` is a fresh object reference every frame.
-  const staleKey = game.products.active
-    .map((p) => `${p.id}:${productMetrics(p, game.products.frontier).qf < 0.5 ? 1 : 0}`)
-    .join("|");
-  useEffect(() => {
-    if (!initialized) return;
-    const frontier = game.products.frontier;
-    const live = new Set(game.products.active.map((p) => p.id));
-    for (const p of game.products.active) {
-      const qf = productMetrics(p, frontier).qf;
-      const wasStale = staleSeen.current[p.id] ?? false;
-      if (qf < 0.5 && !wasStale) {
-        pushToast(`${p.name} is falling behind rivals — push a new version`, "bad");
-        staleSeen.current[p.id] = true;
-      } else if (qf >= 0.66 && wasStale) {
-        staleSeen.current[p.id] = false; // re-armed once you've caught back up
-      }
-    }
-    // Forget retired products so a recycled id can re-arm.
-    for (const id of Object.keys(staleSeen.current)) {
-      if (!live.has(id)) delete staleSeen.current[id];
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialized, staleKey]);
+  // (Staleness "falling behind rivals" was ALSO a one-time "bad" toast here — removed as
+  // redundant noise. The same qf<0.5 condition is already surfaced, more calmly and
+  // persistently, by the advisor chip (a tappable wayfinder → Products) and the Products
+  // tab attention badge, with ambient churn quips for flavor. One alert channel, not four.)
 
   const syncedShips = useRef(false);
   useEffect(() => {
@@ -465,7 +521,7 @@ export function App() {
       // The flagship you just shipped is waiting as a free-to-launch product —
       // make sure the player knows (a ship that "gave nothing" was the #1 confusion).
       if (game.products.drafts.length > 0) {
-        pushToast("Your shipped model is ready — commercialise it free in Products", "good");
+        pushToast(modelReadyNote(game.prestige.ships), "good");
       }
       // An AGI ascension (a ship in the Post-Singularity era) gets the grander beat:
       // the ascend fanfare + a gold screen flash + a big central particle bloom.
@@ -485,6 +541,12 @@ export function App() {
   const onClaim = () => { haptics.success(); sound.success(); doClaim(); };
   const onClaimDaily = () => {
     haptics.celebrate(); sound.success(); doClaimDaily(); markDailyClaimed(); setDailyOn(false);
+    // Confirm the claim in words — the confetti was pretty but wordless. Vary the line
+    // by local day so returning tomorrow reads as a fresh day, not a repeat.
+    const pct = Math.round((balance.daily.factor - 1) * 100);
+    const min = Math.round(balance.daily.durationSec / 60);
+    const quip = DAILY_QUIPS[Math.floor(Date.now() / 86_400_000) % DAILY_QUIPS.length]!;
+    pushToast(`${quip} · +${pct}% output for ${min} min`, "good");
     if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.32, { count: 30, power: 1.5, colors: ["#7c5cff", "#ffd60a", "#16b364", "#2f7bf6"] });
   };
   // Hardware buys float the rate you actually gained ("+120/s") at the tap point —
@@ -506,11 +568,30 @@ export function App() {
       else if (dm.gt(0)) fxFloat(at.x, at.y - 6, `+$${fmt(dm)}/s`, "#16b364", 15);
     }
   };
-  const onHireCandidate = (i: number) => { haptics.celebrate(); sound.purchase(); doHireCandidate(i); };
+  const onHireCandidate = (i: number) => {
+    // Capture the candidate BEFORE the hire (doHireCandidate removes them). A named
+    // person joining used to be silent — now they get a welcome-aboard beat.
+    const c = useGame.getState().candidates?.[i];
+    // Only celebrate a hire that actually happened — a stale tap on an unaffordable
+    // candidate must not buzz + play the purchase chime for a phantom signing.
+    if (!doHireCandidate(i)) { haptics.warn(); return; }
+    haptics.celebrate(); sound.purchase();
+    if (c) pushToast(hireWelcome(c.name, c.roleId), "good");
+  };
   const onTrain = (id: string) => { haptics.tap(); sound.tap(); doTrainEmployee(id); };
   const onAssignEmp = (id: string, productId: string | null) => { haptics.tap(); doAssignEmployeeToProduct(id, productId); };
-  const onFire = (id: string) => { haptics.tap(); doFireEmployee(id); };
-  const onBuyPerk = (id: string) => { haptics.tap(); sound.purchase(); doBuyOfficePerk(id); };
+  const onFire = (id: string) => {
+    // Look up the person before they're gone, then give them a send-off (was silent).
+    const e = game.employees.find((x) => x.id === id);
+    haptics.tap(); doFireEmployee(id);
+    if (e) pushToast(fireSendoff(e.name, e.roleId), "neutral");
+  };
+  const onBuyPerk = (id: string) => {
+    // Surface WHAT you bought — office perks have satirical copy that was never shown.
+    const perk = canBuyOfficePerk(game, id) ? balance.office.perks.find((p) => p.id === id) : null;
+    haptics.tap(); sound.purchase(); doBuyOfficePerk(id);
+    if (perk) pushToast(`${perk.name} — ${perk.desc}`, "good");
+  };
   const onLaunchDraft = (draftId: string, type: ProductTypeId, name: string) => {
     // Only fire the tentpole moment if the launch actually happened (a stale tap
     // on a full/unaffordable portfolio must not celebrate a phantom product).
@@ -524,7 +605,7 @@ export function App() {
     // Kicking off research is a small commit beat; the big payoff lands when it
     // COMPLETES (the store fires a "good" notice → celebration in the notice effect).
     haptics.tap(); sound.tap();
-    if (p && !p.upgrade) pushToast(`${p.name} — researching v${p.version + 1}…`, "neutral");
+    if (p && !p.upgrade) pushToast(researchStartNote(p.name, p.version + 1), "neutral");
   };
   // Selling a product asks first via the in-app ConfirmSheet (never window.confirm
   // — native panel, and it froze the game loop while open). Cancelling leaves the
@@ -540,23 +621,65 @@ export function App() {
     const payout = retirePayout(game, id);
     doRetireProduct(id);
     haptics.success(); sound.purchase();
-    pushToast(`Sold ${p.name} for ${fmtMoney(Big.of(Math.round(payout)))}`, "neutral");
+    pushToast(soldNote(p.name, fmtMoney(Big.of(Math.round(payout)))), "neutral");
   };
-  const onClaimContract = (id: string, rep: number) => {
+  const onClaimContract = (id: string, rep: number, title: string) => {
     doClaimContract(id);
     haptics.celebrate(); sound.success();
-    pushToast(`Contract complete — +${rep} Lab Reputation`, "good");
+    // Name the deliverable and vary the framing so a claim reads like closing a
+    // real contract, not a generic "+Rep" ping. Stable per contract (hash the id).
+    const quip = CONTRACT_DONE_QUIPS[[...id].reduce((a, c) => a + c.charCodeAt(0), 0) % CONTRACT_DONE_QUIPS.length]!;
+    pushToast(`${quip}: "${title}" · +${rep} Lab Reputation`, "good");
     if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.4, { count: 24, power: 1.3, colors: ["#ff9f0a", "#ffd60a", "#16b364"] });
   };
-  const onResearch = (id: string) => { haptics.tap(); sound.purchase(); doResearch(id); };
-  const onBuyData = (id: string) => {
+  const onFundChallenge = (id: string, at?: { x: number; y: number }) => {
+    const completed = doFundChallenge(id);
+    if (completed) {
+      // The moonshot's tentpole payoff — a full-screen moment with its lore + reward,
+      // plus a central bloom and the achievement chord. Earned once, ever, per challenge.
+      haptics.celebrate(); sound.achievement();
+      setChallengeDoneId(id);
+      if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.4, { count: 40, power: 1.8, colors: ["#7c5cff", "#ffd60a", "#16b364", "#2f7bf6", "#fff"] });
+    } else {
+      // A contribution: light feedback + a floater at the tap so the resource drain reads
+      // as progress in place (no toast — the bar animating is the confirmation).
+      haptics.tap(); sound.purchase();
+      if (at && !reducedMotion) fxFloat(at.x, at.y - 6, "funded", "#7c5cff", 14);
+    }
+  };
+  const onToggleAutomation = (id: string) => { haptics.tap(); sound.tap(); doToggleAutomation(id); };
+  const onClaimObjective = (id: string, target?: "computeMult" | "dataMult" | "moneyMult", at?: { x: number; y: number }) => {
+    doClaimObjective(id, target);
+    // Juice at the tap: a small burst + a satisfied chord. The reward itself is visible
+    // in place (resources tick up for a windfall, a boost chip appears in the bar) — no
+    // toast needed, keeping the frequent early/mid claims clean.
+    haptics.celebrate(); sound.success();
+    if (at && !reducedMotion) fxBurst(at.x, at.y, { count: 16, power: 1.1, colors: ["#7c5cff", "#ffd60a", "#16b364"] });
+  };
+  const onResearch = (id: string) => {
+    haptics.tap(); sound.purchase();
+    const had = game.research.includes(id);
+    doResearch(id);
+    // Surface the node's satirical flavor as a breakthrough toast — completing research
+    // used to be silent. Only on a REAL new unlock (doResearch no-ops if unaffordable).
+    if (!had && useGame.getState().game.research.includes(id)) {
+      // Skip the flavor toast on the VERY FIRST research: that same tap already fires the
+      // "Data Market / path to shipping unlocked" transition toasts, and a third on top
+      // read as a burst for a brand-new player. Later breakthroughs keep their flavor.
+      const def = balance.research.find((r) => r.id === id);
+      if (def && useGame.getState().game.research.length > 1) pushToast(`Breakthrough: ${def.name} — ${def.desc}`, "good");
+    }
+  };
+  const onBuyData = (id: string, at?: { x: number; y: number }) => {
     const outcome = doBuyData(id);
     if (!outcome) return;
-    // The reveal IS the dopamine: reward clean hauls, sting the bad rolls.
+    // Buying data is a repeatable grind — a toast on every tap was the game's most
+    // reproducible spam. Clean hauls now float "+X data" at the tap point (exactly like
+    // hardware buys), quiet and in-place; only the raid/poison STING keeps its interrupt.
     if (outcome.kind === "clean") {
-      pushToast(outcome.message, "neutral");
       haptics.success();
       sound.success();
+      if (at) fxFloat(at.x, at.y - 6, `+${fmt(outcome.dataGained)} data`, "#9b51e0", 15);
     } else {
       pushToast(outcome.message, "bad");
       haptics.warn();
@@ -592,7 +715,14 @@ export function App() {
       />
       <ModifierBar
         modifiers={game.modifiers}
-        status={regulatorIsNamed(game) ? [{ key: "regulator", label: `⚖ ${regulatorState(game).name}: ${regulatorState(game).label}`, tone: "bad" as const }] : []}
+        status={regulatorIsNamed(game) ? [{ key: "regulator", label: `${regulatorState(game).name}: ${regulatorState(game).label}`, tone: "bad" as const }] : []}
+        workShaveSec={balance.worldEvents.workShaveSec}
+        onWork={(id) => {
+          // Accessible twin of tapping the incident in the hall (HallCanvas): shave a
+          // bounded slice off a bad modifier, once. Same feedback as a claim.
+          haptics.tap(); sound.tap();
+          useGame.getState().doWorkProblem(id);
+        }}
       />
 
       <main className="stage">
@@ -653,6 +783,7 @@ export function App() {
         {tab === "products" && showProducts ? (
           <ProductsPanel
             game={game}
+            derived={d}
             onLaunchDraft={onLaunchDraft}
             onStartUpgrade={onStartUpgrade}
             onSetPrice={doSetProductPrice}
@@ -710,10 +841,12 @@ export function App() {
                     layout-invisible (same flat stage as before). */}
                 <div className="stage-left">
                   <HallCanvas onExpand={setPendingExpansion} />
+                  <NewsTicker />
                   {firstStepsVisible(game) && <FirstSteps game={game} />}
                   <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} onSetFocus={setComputeFocus} />
                 </div>
                 <div className="stage-right">
+                  {objectivesUnlocked(game) && <ObjectivesPanel game={game} onClaim={onClaimObjective} />}
                   <CharterPanel
                     game={game}
                     onSet={(id) => { haptics.tap(); sound.tap(); doSetCharter(id); }}
@@ -739,8 +872,10 @@ export function App() {
             )}
             {section === "hq" && (
               <>
-                {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} onBuyLegacyPerk={(id) => { haptics.success(); sound.purchase(); doBuyLegacyPerk(id); }} />}
+                {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} onBuyEndowment={() => { haptics.celebrate(); sound.purchase(); doBuyEndowment(); }} onBuyLegacyPerk={(id) => { haptics.success(); sound.purchase(); doBuyLegacyPerk(id); }} />}
                 {showResearch && <ContractsPanel game={game} onClaim={onClaimContract} onClaimSponsor={() => { haptics.success(); sound.success(); doClaimSponsor(); }} />}
+                {automationUnlockedAny(game) && <AutomationPanel game={game} onToggle={onToggleAutomation} />}
+                {challengesUnlocked(game) && <GrandChallengesPanel game={game} onFund={onFundChallenge} />}
                 <StatsPanel game={game} derived={d} />
                 {game.prestige.ships > 0 && <CodexPanel game={game} />}
                 <EventLog log={log} />
@@ -798,11 +933,11 @@ export function App() {
         </button>
       </nav>
 
-      {/* MOMENT QUEUE: the five full-screen moments render ONE at a time, by
-          priority (offline recap > ship celebration > era transition > product
-          launch > world event). Each keeps its own state; dismissing one lets
-          the next in line show. Replaces pairwise !x guards — any same-tick
-          combination now sequences instead of stacking. */}
+      {/* MOMENT QUEUE: the full-screen moments render ONE at a time, by priority
+          (offline recap > ship celebration > era transition > grand-challenge
+          complete > product launch > world event). Each keeps its own state;
+          dismissing one lets the next in line show. Replaces pairwise !x guards —
+          any same-tick combination now sequences instead of stacking. */}
       {moment === "offline" && offline && <OfflineModal summary={offline} onClose={dismissOffline} />}
       {moment === "celebration" && celebration && (
         <Celebration
@@ -821,6 +956,9 @@ export function App() {
       )}
       {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} />}
       {showAchievements && <AchievementsModal game={game} onClose={() => setShowAchievements(false)} />}
+      {moment === "challenge" && challengeDoneId && challengeById.get(challengeDoneId) && (
+        <ChallengeComplete challenge={challengeById.get(challengeDoneId)!} onDone={() => setChallengeDoneId(null)} />
+      )}
       {pendingExpansion && (
         <ExpandConfirm
           id={pendingExpansion}
@@ -869,7 +1007,18 @@ export function App() {
         <WorldEventCard
           event={worldEvent}
           onDismiss={dismissWorldEvent}
-          onChoose={(i) => { haptics.tap(); sound.tap(); chooseWorldEvent(i); }}
+          onChoose={(i) => {
+            haptics.tap(); sound.tap();
+            // Confirm the decision + its consequence. Matters most for instant
+            // resource grants, which (unlike timed buffs) leave no modifier-bar
+            // trace — so without this the high-agency choice had zero feedback.
+            const choice = worldEvent.choices?.[i];
+            chooseWorldEvent(i);
+            if (choice) {
+              const decision = choice.label.replace(/\s*\([^)]*\)\s*$/, "");
+              pushToast(choice.summary ? `${decision} — ${choice.summary}` : `Decided: ${decision}`, "good");
+            }
+          }}
         />
       )}
       {/* One-time "what does Shipping do" explainer, shown the first time a ship

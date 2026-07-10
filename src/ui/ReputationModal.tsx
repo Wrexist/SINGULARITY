@@ -2,15 +2,20 @@ import { useEffect } from "react";
 import { Portal } from "./Portal";
 import { burst, punch } from "./fx";
 import type { GameState } from "../engine/types";
-import { reputationBalance, reputationAvailable, earnedReputation, canBuyReputationPerk } from "../engine/reputation";
+import {
+  reputationBalance, reputationAvailable, earnedReputation, canBuyReputationPerk,
+  endowmentUnlocked, endowmentCost, canBuyEndowment, endowmentMult,
+} from "../engine/reputation";
 import { LandmarkIcon } from "./Icons";
 
 /** Phase 3 — the Lab Reputation perk tree: spend meta-currency earned from
  *  achievements + ascensions on permanent, run-spanning boosts. Honest goals,
- *  legible effects; survives every reset. */
-export function ReputationModal({ game, onBuy, onClose }: {
+ *  legible effects; survives every reset. Once the whole tree is owned, the
+ *  endgame Endowment (below) is the infinite home for surplus Reputation. */
+export function ReputationModal({ game, onBuy, onBuyEndowment, onClose }: {
   game: GameState;
   onBuy: (id: string) => void;
+  onBuyEndowment: () => void;
   onClose: () => void;
 }) {
   const available = reputationAvailable(game);
@@ -67,6 +72,33 @@ export function ReputationModal({ game, onBuy, onClose }: {
             );
           })}
         </div>
+
+        {/* Endgame Endowment — appears only once every finite perk is owned, so
+            surplus Reputation (and the daily sponsor's payout) always has a home. */}
+        {endowmentUnlocked(game) && (
+          <div className="rep-endowment">
+            <div className="rep-endow-head">
+              <span className="card-name">✦ Singularity Endowment</span>
+              <span className="rep-endow-lvl">Level {game.repEndowment} · +{Math.round((endowmentMult(game) - 1) * 100)}% all production</span>
+            </div>
+            <button
+              className={`card rep-card ${canBuyEndowment(game) ? "affordable" : ""}`}
+              disabled={!canBuyEndowment(game)}
+              onClick={(e) => {
+                const r = e.currentTarget.getBoundingClientRect();
+                burst(r.right - 24, r.top + r.height / 2, { count: 22, power: 1.3, colors: ["#a855f7", "#ffd60a", "#16b364"] });
+                punch(e.currentTarget);
+                onBuyEndowment();
+              }}
+            >
+              <div className="card-main">
+                <span className="card-name">Endow the next level</span>
+                <span className="card-desc">+{Math.round(reputationBalance.endowment.perLevel * 100)}% to all production, permanently. The tree is finished — this is where legend compounds now.</span>
+              </div>
+              <div className="card-cost"><span className="rep-cost">{endowmentCost(game).toLocaleString()} pts</span></div>
+            </button>
+          </div>
+        )}
       </div>
     </div>
     </Portal>

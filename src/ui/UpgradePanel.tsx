@@ -11,7 +11,7 @@ import type { Derived, GameState } from "../engine/types";
 import { fmt, effRate, fmtEta } from "./format";
 import { BoltIcon } from "./Icons";
 import { burst, punch } from "./fx";
-import { UpgradeIcon, EffectPill, upgradeGroup, UP_GROUP_ORDER } from "./effectVisual";
+import { UpgradeRingIcon, EffectPill, upgradeGroup, UP_GROUP_ORDER } from "./effectVisual";
 
 const RES_HEX: Record<string, string> = { compute: "#2f7bf6", data: "#9b51e0", money: "#16b364" };
 
@@ -109,6 +109,13 @@ export function UpgradePanel({ game, derived, onBuy }: Props) {
       : null;
     const showBulk = !!bulk && bulk.count > 1;
     const displayCost = showBulk ? bulk!.totalCost : cost;
+    // Ring progress toward the next purchase (single-resource, accrues smoothly). Full
+    // when affordable/maxed; the ring is hidden by CSS on maxed cards.
+    const have = game.resources[def.cost.resource];
+    const pct = maxed || affordable ? 1 : (() => {
+      const r = have.div(cost).toNumber();
+      return Number.isFinite(r) ? Math.max(0, Math.min(1, r)) : 0;
+    })();
     return (
       <button
         key={def.id}
@@ -122,7 +129,7 @@ export function UpgradePanel({ game, derived, onBuy }: Props) {
           onBuy(def.id, want, { x: r.right - 26, y: r.top + 6 });
         }}
       >
-        <UpgradeIcon id={def.id} kind={def.effect.kind} />
+        <UpgradeRingIcon id={def.id} kind={def.effect.kind} pct={pct} showPct={isHero && !affordable && !maxed} />
         <div className="card-main">
           <span className="card-name">
             {def.name}

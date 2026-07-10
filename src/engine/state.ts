@@ -4,7 +4,7 @@ import { initialStats } from "./stats";
 import { freshComponents } from "./components";
 import type { GameState } from "./types";
 
-export const SAVE_VERSION = 19;
+export const SAVE_VERSION = 23;
 
 /** A fresh lab: empty closet, a trickle of free Compute, nothing owned. */
 export function createInitialState(): GameState {
@@ -33,6 +33,8 @@ export function createInitialState(): GameState {
     stats: initialStats(),
     achievements: [],
     reputation: { spent: 0, perks: [] },
+    // Endgame Reputation Endowment — nothing bought until the whole perk tree is owned.
+    repEndowment: 0,
     contracts: { completed: [] },
     charter: null,
     charterLocked: false,
@@ -51,5 +53,11 @@ export function createInitialState(): GameState {
     sponsor: null,
     // IDEAS #10 — no preprints published; resets each run like research.
     preprints: 0,
+    // Grand Challenges — no funding yet; persists across prestige once started.
+    challenges: { funded: {}, completed: [] },
+    // Lab Objectives — none claimed yet; persists across prestige (onboarding-grind ladder).
+    objectives: { completed: [] },
+    // Automation — every autopilot off by default; unlocked by ship count, persists.
+    automation: {},
   };
 }

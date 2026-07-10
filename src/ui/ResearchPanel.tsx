@@ -1,11 +1,13 @@
 import { balance } from "../engine/balance/config";
 import { canBuyResearch, researchAvailable, researchLockedOut, researchCost } from "../engine/actions";
+import { computeBankCeiling } from "../engine/derive";
 import { canBuyPreprint, preprintCost, preprintTitle } from "../engine/preprints";
+import { Big } from "../engine/math/Big";
 import type { Derived, GameState } from "../engine/types";
 import { fmt, fmtDur, etaSecs, effRate } from "./format";
 import { burst, punch } from "./fx";
 import { CheckIcon, LockIcon } from "./Icons";
-import { ResearchIcon, EffectPill } from "./effectVisual";
+import { ResearchRingIcon, EffectPill } from "./effectVisual";
 import { groupByCategory } from "../engine/researchCategories";
 
 interface Props {
@@ -26,8 +28,28 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint }: Prop
   });
 
   type Def = (typeof balance.research)[number];
+  // Compute the auto-train bank ceiling once: any node costing more Compute than this is
+  // unreachable at the current intensity, so a "~2m" ETA would be a lie (see derive.ts).
+  const ceiling = computeBankCeiling(game, derived);
+  const computeWalled = (computeCost: Big) => ceiling !== null && computeCost.gt(ceiling);
+  const clamp01 = (x: number) => (Number.isFinite(x) ? Math.max(0, Math.min(1, x)) : 0);
+  // Progress toward affording a node (0..1) = the min across its costed resources, so the
+  // ring reflects the true bottleneck. Compute uses the auto-train ceiling (the bank's
+  // stable maximum) rather than the live balance, which oscillates every run cycle — that
+  // keeps the ring from flickering. Data uses the live balance (it accrues steadily).
+  const progressFor = (def: Def): number => {
+    const c = researchCost(game, def);
+    const ratios: number[] = [];
+    if (c.compute.gt(Big.ZERO)) {
+      const reach = ceiling !== null ? ceiling.max(game.resources.compute) : game.resources.compute;
+      ratios.push(clamp01(reach.div(c.compute).toNumber()));
+    }
+    if (c.data.gt(Big.ZERO)) ratios.push(clamp01(game.resources.data.div(c.data).toNumber()));
+    return ratios.length ? Math.min(...ratios) : 1;
+  };
   const etaFor = (def: Def): number | null => {
     const c = researchCost(game, def); // discounted by Research Fellowship if owned
+    if (def.cost.compute > 0 && computeWalled(c.compute)) return null; // unreachable until intensity eases
     const legs = [
       def.cost.compute > 0 ? etaSecs(c.compute, game.resources.compute, effRate(derived, "compute")) : null,
       def.cost.data > 0 ? etaSecs(c.data, game.resources.data, effRate(derived, "data")) : null,
@@ -54,6 +76,9 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint }: Prop
     const lockedOut = !owned && researchLockedOut(game, def.id);
     const state = owned ? "owned" : lockedOut ? "excluded" : avail ? "available" : "locked";
     const eta = !owned && avail && !canBuy ? etaFor(def) : null;
+    // Ring progress: full for owned/affordable, live affordability climb while available,
+    // empty for locked (its blocker is prerequisites, not resources — a ring would lie).
+    const pct = owned || canBuy ? 1 : avail ? progressFor(def) : 0;
     return (
       <button
         key={def.id}
@@ -66,7 +91,7 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint }: Prop
           onResearch(def.id);
         }}
       >
-        <ResearchIcon kind={def.effect.kind} />
+        <ResearchRingIcon kind={def.effect.kind} pct={pct} showPct={isHero && avail && !owned && !canBuy} />
         <div className="node-body">
           <div className="node-head">
             <span className="node-name">{def.name}</span>
@@ -79,6 +104,9 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint }: Prop
           <span className="node-desc">{def.desc}</span>
           {!owned && (() => {
             const c = researchCost(game, def); // reflects the Research Fellowship discount
+            // Walled = the auto-train bank can't hold this much Compute at the current
+            // intensity. Show the real lever, not a countdown that will never arrive.
+            const walled = def.cost.compute > 0 && !canBuy && computeWalled(c.compute);
             return (
               <span className="node-cost">
                 {def.cost.compute > 0 && (
@@ -87,7 +115,9 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint }: Prop
                 {def.cost.data > 0 && (
                   <span style={{ color: "var(--data)" }}>{fmt(c.data)} data</span>
                 )}
-                {eta != null && <span className="cost-eta">~{fmtDur(eta)}</span>}
+                {walled ? (
+                  <span className="cost-eta walled" title="Auto-train is draining Compute — ease training intensity to let the bank climb">ease intensity ↓</span>
+                ) : eta != null && <span className="cost-eta">~{fmtDur(eta)}</span>}
               </span>
             );
           })()}
@@ -124,7 +154,13 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint }: Prop
         }
         const c = preprintCost(game);
         const canBuy = canBuyPreprint(game);
-        const eta = !canBuy
+        const preprintWalled = !canBuy && computeWalled(c.compute);
+        const preprintReach = ceiling !== null ? ceiling.max(game.resources.compute) : game.resources.compute;
+        const preprintPct = canBuy ? 1 : Math.min(
+          c.compute.gt(Big.ZERO) ? clamp01(preprintReach.div(c.compute).toNumber()) : 1,
+          c.data.gt(Big.ZERO) ? clamp01(game.resources.data.div(c.data).toNumber()) : 1,
+        );
+        const eta = !canBuy && !preprintWalled
           ? Math.max(
               etaSecs(c.compute, game.resources.compute, effRate(derived, "compute")) ?? 0,
               etaSecs(c.data, game.resources.data, effRate(derived, "data")) ?? 0,
@@ -143,7 +179,7 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint }: Prop
                 onBuyPreprint();
               }}
             >
-              <ResearchIcon kind="mult" />
+              <ResearchRingIcon kind="mult" pct={preprintPct} showPct={!canBuy} />
               <div className="node-body">
                 <div className="node-head">
                   <span className="node-name">“{preprintTitle(level)}”</span>
@@ -154,7 +190,9 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint }: Prop
                 <span className="node-cost">
                   <span style={{ color: "var(--compute)" }}>{fmt(c.compute)} compute </span>
                   <span style={{ color: "var(--data)" }}>{fmt(c.data)} data</span>
-                  {eta != null && eta > 0 && <span className="cost-eta">~{fmtDur(eta)}</span>}
+                  {preprintWalled ? (
+                    <span className="cost-eta walled" title="Auto-train is draining Compute — ease training intensity to let the bank climb">ease intensity ↓</span>
+                  ) : eta != null && eta > 0 && <span className="cost-eta">~{fmtDur(eta)}</span>}
                 </span>
               </div>
             </button>

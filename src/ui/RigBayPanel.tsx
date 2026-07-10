@@ -9,7 +9,7 @@ import type { SlotClass, ComponentDef, ComponentGrade } from "../engine/balance/
 import { RACK_IDS } from "../engine/hall";
 import { balance } from "../engine/balance/config";
 import { fmtMoney } from "./format";
-import { ChipIcon, SnowIcon, LinkIcon, LockIcon, TrophyIcon } from "./Icons";
+import { ChipIcon, SnowIcon, LinkIcon, LockIcon, TrophyIcon, SparkIcon } from "./Icons";
 import type { GameState } from "../engine/types";
 import type { ReactNode } from "react";
 
@@ -111,7 +111,7 @@ export function RigBayPanel({ game, onBuy, onEquip, onFuse }: Props) {
                   </button>
                   {fusable && def.fusesInto && (
                     <button className="rig-fuse" onClick={() => onFuse(def.id)}>
-                      ⚗ Fuse {componentsBalance.fuseCount} spares → 1× {componentDef(def.fusesInto)?.name}
+                      <SparkIcon size={13} /> Fuse {componentsBalance.fuseCount} spares → 1× {componentDef(def.fusesInto)?.name}
                     </button>
                   )}
                 </div>

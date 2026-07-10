@@ -242,17 +242,44 @@ export function drawHallStatic(ctx: CanvasRenderingContext2D, model: HallModel, 
   ctx.fillRect(0, 0, W, H);
 
   const L = computeLayout(model.cols, model.rows, model.gxMin, model.gyMin, W, H);
+
+  // Hero backlight — a soft, era-tinted bloom rising from behind the rack cluster, so
+  // the floor of glowing hardware reads as lit-from-within depth instead of a flat
+  // panel. Cheap (one gradient) and lives in the cached static layer → zero per-frame cost.
+  {
+    const fc = eraFloor(model.era);
+    const cx = W / 2, cy = H * 0.44;
+    const bloom = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.6);
+    bloom.addColorStop(0, rgba(shade(fc, 2.3), 0.22));
+    bloom.addColorStop(0.55, rgba(shade(fc, 1.4), 0.09));
+    bloom.addColorStop(1, rgba(fc, 0));
+    ctx.fillStyle = bloom;
+    ctx.fillRect(0, 0, W, H);
+  }
+
   // IDEAS #4 — the race on the horizon, behind the room shell.
   if (model.skyline.length > 0) drawSkyline(ctx, model.skyline, W, H, L);
   // Housings only — the spinning blades live in the dynamic layer (QW2) so the
   // fans actually turn while the room shell stays cached.
   drawRoom(ctx, L, model.era, H, model.coolingUnits);
+  // Hyperscaler+ (era ≥ 4) earns real new geometry, not just a recolour: glowing power
+  // bus-bars run the back walls — the "we bought a substation" energy the era is about.
+  if (model.era >= 4) drawPowerBus(ctx, L, H, model.era);
   drawFloor(ctx, L, model.era);
   drawPartitions(ctx, L, model);
   // IDEAS #8/#6 — the run's charter hangs on the back-right wall; shipped
   // generations stand as trophy plinths along the back-left one.
   if (model.charter) drawCharterBanner(ctx, L, H, model.charter);
   if (model.wall.length > 0) drawLegacyWall(ctx, L, H, model.wall);
+
+  // Vignette — gently darken the corners so the lit floor is the focus (depth + polish).
+  // Drawn last in the STATIC layer, so it sits under the dynamic racks: the room and
+  // floor edges fall away while the glowing hardware stays crisp and bright on top.
+  const vig = ctx.createRadialGradient(W / 2, H * 0.5, Math.min(W, H) * 0.3, W / 2, H * 0.5, Math.max(W, H) * 0.74);
+  vig.addColorStop(0, "rgba(0,0,0,0)");
+  vig.addColorStop(1, "rgba(6,8,16,0.36)");
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, W, H);
 }
 
 /** IDEAS #4 — rival datacenter silhouettes on the horizon, height ∝ market
@@ -416,12 +443,6 @@ function drawPartitions(ctx: CanvasRenderingContext2D, L: Layout, model: HallMod
   if (model.splitGy !== null) wall(iso(gxMin, model.splitGy), iso(gxMax, model.splitGy));
 }
 
-/** The full hall (static + animated) in one pass. Kept for any non-cached use. */
-export function drawHall(ctx: CanvasRenderingContext2D, model: HallModel, o: DrawOpts): void {
-  drawHallStatic(ctx, model, o.width, o.height);
-  drawHallDynamic(ctx, model, o);
-}
-
 /** The ANIMATED layer: drifting motes, racks, claim burst, expansion markers. */
 export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel, o: DrawOpts): void {
   const { width: W, height: H } = o;
@@ -507,7 +528,7 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
 
   // C2 — product "uplink beams": one glowing column per live product, rising from the
   // back of the floor, height ∝ revenue. Drawn before staff so agents read in front.
-  if (model.beams.length > 0) drawBeams(ctx, L, model.beams, o.timeMs, o.reducedMotion);
+  if (model.beams.length > 0) drawBeams(ctx, L, model.beams, model.beamBuzz, o.timeMs, o.reducedMotion);
 
   // C2/#7 — staff on the floor: real employees working the room (tap for their card).
   if (model.agents.length > 0) drawStaffAgents(ctx, model.agents, agentSpots(model, W, H, o.timeMs, o.reducedMotion), o.timeMs, o.reducedMotion);
@@ -701,6 +722,36 @@ function drawCoolingFans(ctx: CanvasRenderingContext2D, L: Layout, H: number, un
   }
 }
 
+/** Hyperscaler+ power infrastructure: a bright bus-bar along each back wall with
+ *  evenly-spaced tap-off nodes — new geometry that makes crossing into Era 4 (and the
+ *  Era-5 payoff) read as a scale change, not a palette swap. Static (cached). */
+function drawPowerBus(ctx: CanvasRenderingContext2D, L: Layout, H: number, era: number): void {
+  const { iso, gxMin, gyMin, gxMax, gyMax } = L;
+  const a = iso(gxMin, gyMin), b = iso(gxMax, gyMin), d = iso(gxMin, gyMax);
+  const wallH = H * 0.22;
+  // Gold conduit at Hyperscaler (energy deals); it shifts to hot iridescent at Era 5.
+  const col: RGB = era >= 5 ? [180, 150, 255] : [255, 208, 120];
+  const at = (p0: Pt, p1: Pt, u: number, v: number): Pt => {
+    const bp = lerp(p0, p1, u);
+    return { x: bp.x, y: bp.y - v * wallH };
+  };
+  for (const [p0, p1] of [[a, b] as const, [a, d] as const]) {
+    const y0 = at(p0, p1, 0.04, 0.5), y1 = at(p0, p1, 0.96, 0.5);
+    stroke(ctx, y0, y1, rgba(col, 0.22), 5); // outer glow
+    stroke(ctx, y0, y1, rgba(col, 0.85), 2); // bright core
+    const nodes = 5;
+    for (let k = 1; k <= nodes; k++) {
+      const p = at(p0, p1, k / (nodes + 1), 0.5);
+      ctx.fillStyle = rgba(shade(col, 1.3), 0.95);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+      // a short drop lead toward the floor, hinting the feed to the racks below
+      stroke(ctx, p, at(p0, p1, k / (nodes + 1), 0.24), rgba(col, 0.4), 1.2);
+    }
+  }
+}
+
 function drawFloor(ctx: CanvasRenderingContext2D, L: Layout, era: number): void {
   const { iso, gxMin, gyMin, gxMax, gyMax } = L;
   const a = iso(gxMin, gyMin), b = iso(gxMax, gyMin), c = iso(gxMax, gyMax), d = iso(gxMin, gyMax);
@@ -800,6 +851,15 @@ function drawRack(
     poly(ctx, [bLeft, bBottom, { x: bBottom.x, y: bBottom.y - ph }, { x: bLeft.x, y: bLeft.y - ph }], rgb(shade(base, 0.7)));
     poly(ctx, [bBottom, bRight, { x: bRight.x, y: bRight.y - ph }, { x: bBottom.x, y: bBottom.y - ph }], rgb(shade(base, 0.48)));
     poly(ctx, [tLeft, tTop, tRight, tBottom], rgb(shade(base, 1.25)));
+    // Keep the fleet ALIVE at scale: below the detail threshold (huge floors, where
+    // the LED strip and component bays are too small to draw) each rack still shows one
+    // emissive LED, so a 300-rack hall twinkles instead of collapsing to flat dots.
+    const lit = active ? 1 : ((blink * 0.8 + tier * 0.3) % 1 > 0.5 ? 0.9 : 0.3);
+    const glow = Math.max(lit, powerOn * 0.8);
+    ctx.fillStyle = rgba(led, clamp(glow, 0.22, 1));
+    ctx.beginPath();
+    ctx.ellipse(sx, sy - ph * 0.55, Math.max(0.9, hw * 0.2), Math.max(0.9, hw * 0.2), 0, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   const rfp = (u: number, v: number): Pt => ({
@@ -1027,20 +1087,25 @@ function drawThermalStress(
 /** C2 — product uplink beams. One translucent gradient column per live product,
  *  rising from a back-floor anchor; height/alpha scale with the product's revenue
  *  share. Tier-cycled colours; a soft top bloom. Reduced-motion → no flicker. */
-function drawBeams(ctx: CanvasRenderingContext2D, L: Layout, beams: number[], t: number, reducedMotion: boolean): void {
+function drawBeams(ctx: CanvasRenderingContext2D, L: Layout, beams: number[], buzz: number[], t: number, reducedMotion: boolean): void {
   const cols: RGB[] = [[63, 134, 240], [155, 81, 224], [52, 210, 126], [245, 180, 10], [255, 99, 132]];
   const n = beams.length;
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
   for (let i = 0; i < n; i++) {
-    const intensity = beams[i]!;
+    // A product in its launch/viral "buzz" window surges: brighter, a touch taller, and
+    // livelier — self-limiting (buzzSec decays to 0 over ~45s), so the room celebrates a
+    // launch/viral spike then settles. `b` is 0 for a steady product → identical to before.
+    const b = buzz[i] ?? 0;
+    const intensity = Math.min(1.1, beams[i]! * (1 + 0.45 * b));
     // Anchor along the OPEN front edge (high gy) so beams rise over the room and read
     // clearly instead of hiding among the back racks. Spread left→right.
     const gx = L.gxMin + ((i + 0.5) / n) * (L.gxMax - L.gxMin);
     const base = L.iso(gx, L.gyMax - 0.35);
     const col = cols[i % cols.length]!;
     const h = (L.tileH * 9 + L.tileH * 26 * intensity);
-    const flick = reducedMotion ? 1 : 0.85 + 0.15 * Math.sin(t / 260 + i * 1.3);
+    // Base flicker + a faster, stronger shimmer while buzzing (both off under reduced motion).
+    const flick = reducedMotion ? 1 : 0.85 + 0.15 * Math.sin(t / 260 + i * 1.3) + (b > 0 ? b * 0.22 * (0.5 + 0.5 * Math.sin(t / 110 + i)) : 0);
     const w = Math.max(4, L.tileW * 0.2);
     const g = ctx.createLinearGradient(base.x, base.y, base.x, base.y - h);
     g.addColorStop(0, rgba(col, 0.55 * flick));
@@ -1056,6 +1121,19 @@ function drawBeams(ctx: CanvasRenderingContext2D, L: Layout, beams: number[], t:
     ctx.beginPath();
     ctx.arc(base.x, base.y - h, w * 0.6 * flick, 0, Math.PI * 2);
     ctx.fill();
+    // Buzz: a few motes rising up the beam and fading — reads as "energy surging" during a
+    // launch/viral moment. Only while buzzing and not reduced-motion; 3 dots, no allocations.
+    if (b > 0.04 && !reducedMotion) {
+      for (let s = 0; s < 3; s++) {
+        const phase = ((t / 900) + s / 3 + i * 0.37) % 1; // 0 (base) → 1 (top)
+        const sy = base.y - phase * h;
+        const sx = base.x + Math.sin(phase * 6 + i) * w * 0.35;
+        ctx.fillStyle = rgba(col, b * (1 - phase) * 0.75);
+        ctx.beginPath();
+        ctx.arc(sx, sy, w * 0.22, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
   }
   ctx.restore();
 }

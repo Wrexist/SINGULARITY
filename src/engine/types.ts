@@ -10,8 +10,6 @@ export interface ComponentsState {
   loadout: Array<Partial<Record<SlotClass, string>>>;
 }
 
-export type ResourceId = "compute" | "data" | "money";
-
 export interface Resources {
   compute: Big;
   data: Big;
@@ -89,6 +87,13 @@ export interface GameState {
    *  earned − spent (earned is derived from achievements/ships/ascensions). Survives
    *  prestige AND ascension. */
   reputation: { spent: number; perks: string[] };
+  /** Endgame Reputation Endowment: the number of times the repeatable "Singularity
+   *  Endowment" has been bought. Unlocks only once the entire finite perk tree is
+   *  owned, then absorbs surplus Reputation forever (escalating cost, a small
+   *  permanent all-lane boost per level). Its cost is charged to reputation.spent;
+   *  this is just the level count. Survives prestige AND ascension. Top-level (not
+   *  nested in `reputation`) so no rebuild path can silently drop it. */
+  repEndowment: number;
   /** Phase 4 — Contracts: completed objective ids (the board is derived from this).
    *  Persists across prestige; completed contracts feed earned Reputation. */
   contracts: { completed: string[] };
@@ -141,6 +146,22 @@ export interface GameState {
    *  research). Hard-capped (balance.preprints.maxPerRun); resets on prestige
    *  like the research tree it extends. */
   preprints: number;
+  /** Grand Challenges (IDEAS #A) — late-game moonshots funded over long horizons.
+   *  `funded` accumulates per-resource contributions; `completed` ids grant permanent
+   *  rewards. Persists across prestige (a career-spanning grind). */
+  challenges: ChallengeState;
+  /** Lab Objectives (IDEAS #B) — early/mid rotating tasks. Claimed ids (the board is the
+   *  first few uncompleted). Persists across prestige (an onboarding-grind ladder). */
+  objectives: { completed: string[] };
+  /** Automation (IDEAS #C) — which "autopilot" toggles are switched on (id → true).
+   *  Unlocked by ship count; persists across prestige (a permanent QoL choice). */
+  automation: Record<string, boolean>;
+}
+
+/** Grand Challenge progress. `funded` holds only challenges the player has contributed to. */
+export interface ChallengeState {
+  funded: Record<string, { compute: Big; data: Big; money: Big }>;
+  completed: string[];
 }
 
 /** A rolled daily sponsor objective (IDEAS #9). */
@@ -293,6 +314,9 @@ export interface ProductsState {
 /** Everything the sim and UI read each frame, folded from upgrades + research + prestige. */
 export interface Derived {
   computePerSec: Big;
+  /** The folded Compute multiplier stack (symmetric with dataMult/moneyMult) — for the
+   *  Lab Stats display, so Compute isn't the only lane shown as a bare rate. */
+  computeMult: Big;
   dataMult: Big;
   moneyMult: Big;
   runDurationSec: number;

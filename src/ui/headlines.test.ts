@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { shipHeadline, runStory } from "./headlines";
+import { shipHeadline, runStory, shipSubtitle } from "./headlines";
 import { Big } from "../engine/math/Big";
 
 const base = { gen: 2, rank: null as number | null, peakCompute: Big.of(0), peakMrr: 0 };
@@ -30,6 +30,24 @@ describe("A3 — history-aware ship headlines", () => {
     const b = shipHeadline({ ...base, gen: 3 });
     expect(a).toBe(b);
     expect(typeof a).toBe("string");
+  });
+});
+
+describe("ship subtitle — reactive tentpole line", () => {
+  it("always leads into the banked weights", () => {
+    expect(shipSubtitle(base).endsWith("You banked:")).toBe(true);
+    expect(shipSubtitle({ ...base, rank: 1 }).endsWith("You banked:")).toBe(true);
+  });
+
+  it("reacts to the run's standout (rank / stance / post-singularity)", () => {
+    expect(shipSubtitle({ ...base, rank: 1 })).toMatch(/fund/i);
+    expect(shipSubtitle({ ...base, era: 5 })).toMatch(/singularity/i);
+    expect(shipSubtitle({ ...base, alignment: -0.6 })).toMatch(/safety/i);
+    expect(shipSubtitle({ ...base, alignment: 0.6 })).toMatch(/e\/acc/i);
+  });
+
+  it("is deterministic in the generic tier", () => {
+    expect(shipSubtitle({ ...base, gen: 4 })).toBe(shipSubtitle({ ...base, gen: 4 }));
   });
 });
 

@@ -17,10 +17,6 @@ export { themes, rackSkins };
 const BY_ID = new Map(themes.map((t) => [t.id, t]));
 const SKIN_BY_ID = new Map(rackSkins.map((t) => [t.id, t]));
 
-export function themeDef(id: string): ThemeDef | undefined {
-  return BY_ID.get(id);
-}
-
 /** Is this unlock condition satisfied by the current progress? Pure. */
 export function isUnlocked(state: GameState, isPremium: boolean, u: CosmeticUnlock): boolean {
   const s = state.stats;

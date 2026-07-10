@@ -31,11 +31,6 @@ export function charterConvictionMult(state: GameState): number {
     : 1;
 }
 
-/** Is the conviction bonus live this ship? (For the UI to surface it.) */
-export function charterConvictionActive(state: GameState): boolean {
-  return canPrestige(state) && charterConvictionMult(state) > 1;
-}
-
 /** Legacy Weights a given ship mode would actually bank (base × mode mult × conviction). */
 export function legacyWeightsForMode(state: GameState, mode: ShipMode): Big {
   const base = legacyWeightsGain(state);
@@ -110,9 +105,9 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
   // by ship count so it can't snowball). Other modes start from the clean slate.
   const kickstart = modeDef.moneyKickstartPerShip * ships;
 
-  // Open-source "community momentum": some ship modes leave the next run with a
-  // short, temporary all-lane buff (the community iterating on your release).
-  // Temporary modifiers can't inflate the permanent curve; only open-source sets one.
+  // "Community momentum": some ship modes leave the next run with a short, temporary
+  // all-lane buff (the community iterating on your release, or launch-week hype).
+  // Temporary modifiers can't inflate the permanent curve; open-source and splash set one.
   const momentum = modeDef.momentum;
   const momentumMods: GameState["modifiers"] = momentum
     ? (["computeMult", "dataMult", "moneyMult"] as const).map((target) => ({
@@ -165,6 +160,14 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     achievements: state.achievements,
     // Lab Reputation (points + bought perks) is permanent meta-progression.
     reputation: state.reputation,
+    // The Reputation Endowment is permanent too (survives prestige AND ascension).
+    repEndowment: state.repEndowment,
+    // Grand Challenges are a career-spanning grind — funding + completions persist.
+    challenges: state.challenges,
+    // Lab Objectives persist too (an onboarding-grind ladder consumed once across runs).
+    objectives: state.objectives,
+    // Automation toggles are a permanent QoL choice — they persist across the reset.
+    automation: state.automation,
     // Contracts completed are career progress (and feed Reputation) — they persist.
     contracts: state.contracts,
     // Legacy Investments are permanent prestige-tree progress — they persist.

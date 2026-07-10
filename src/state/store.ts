@@ -5,8 +5,9 @@ import { tick } from "../engine/tick";
 import { derive } from "../engine/derive";
 import {
   addEmployee, startTraining, canTrain, fireEmployee, hireCost,
-  assignEmployee as assignEmployeeToProduct,
+  assignEmployee as assignEmployeeToProduct, levelUpNote,
 } from "../engine/employees";
+import { versionShipNote } from "../engine/notices";
 import {
   startRun,
   claimRun,
@@ -45,10 +46,15 @@ import {
   maybeProductEvent,
   canBuyFeature,
   buyFeature,
+  maxActiveProducts,
 } from "../engine/products";
 import { productMilestones as PRODUCT_MILESTONES, type ProductTypeId } from "../engine/balance/products";
 import { achievements as ACHIEVEMENT_DEFS } from "../engine/balance/achievements";
-import { buyReputationPerk } from "../engine/reputation";
+import { buyReputationPerk, buyEndowment } from "../engine/reputation";
+import { fundChallenge } from "../engine/challenges";
+import { claimObjective } from "../engine/objectives";
+import { applyAutomation, automationUnlockedAny, automationEnabled, toggleAutomation } from "../engine/automation";
+import { automation as AUTOMATION } from "../engine/balance/automation";
 import { claimContract, rollSponsor, claimSponsor } from "../engine/contracts";
 import { buyPreprint } from "../engine/preprints";
 import { setCharter, lockCharter } from "../engine/charter";
@@ -63,6 +69,7 @@ import { balance } from "../engine/balance/config";
 import { recordTelemetry } from "./telemetry";
 import { purchaseSignature } from "../engine/telemetry";
 import { currentEra } from "../engine/eras";
+import { codexBalance, codexUnlocked } from "../engine/codex";
 import type { Big } from "../engine/math/Big";
 
 const SAVE_KEY = "singularity.save.v1";
@@ -162,6 +169,14 @@ interface GameStore {
   /** Buy a one-time office perk (morale / payroll). */
   doBuyOfficePerk: (id: string) => void;
   doBuyReputationPerk: (id: string) => void;
+  /** Buy one endgame Reputation Endowment level (post-tree infinite sink). */
+  doBuyEndowment: () => void;
+  /** Pour affordable resources into a Grand Challenge. Returns true if THIS call finished it. */
+  doFundChallenge: (id: string) => boolean;
+  /** Claim a met Lab Objective, steering its boost to the chosen lane (default = headline). */
+  doClaimObjective: (id: string, target?: "computeMult" | "dataMult" | "moneyMult") => void;
+  /** Flip an Automation autopilot on/off (no-op if still locked). */
+  doToggleAutomation: (id: string) => void;
   setComputeFocus: (v: number) => void;
   /** Returns true if the release succeeded (so the UI only celebrates on a real ship). */
   doReleaseProduct: (type: ProductTypeId, name: string) => boolean;
@@ -208,6 +223,12 @@ let productKey = 0;
 /** Same-tick notices beyond the single slot wait here and drain one per tick —
  *  a level-up landing the same tick as a version-ship is delayed, never lost. */
 let pendingNotices: FiredEvent[] = [];
+/** Minimum gap between surfaced queue-notices. The queue used to drain one per 10Hz
+ *  tick (100ms), so a big catch-up tick that earned 5–6 completions flushed them in
+ *  ~600ms — faster than a toast can be read. This staggers them into a calm, readable
+ *  cadence instead. Sits at 0 when idle (a lone notice fires immediately). */
+const NOTICE_GATE_MS = 900;
+let noticeGateMs = 0;
 
 /** Advance the product-id counter past every persisted `prod-N` id so the next
  *  release can't collide with a saved product (ids are React keys + find() keys). */
@@ -348,11 +369,11 @@ export const useGame = create<GameStore>((set, get) => ({
 
       // Several can finish in one tick (offline catch-up) — name one, count the rest.
       const finished = game.products.active.filter((p) => wasUpgrading.get(p.id) && !p.upgrade);
-      if (finished.length === 1) pushNotice(`${finished[0]!.name} v${finished[0]!.version} shipped — back at the frontier`, "ship");
+      if (finished.length === 1) pushNotice(versionShipNote(finished[0]!.name, finished[0]!.version), "ship");
       else if (finished.length > 1) pushNotice(`${finished.length} products shipped new versions — back at the frontier`, "ship");
 
       const trained = game.employees.filter((e) => wasTraining.get(e.id) && !e.training);
-      if (trained.length === 1) pushNotice(`${trained[0]!.name} leveled up to L${trained[0]!.level}`, "levelup");
+      if (trained.length === 1) pushNotice(levelUpNote(trained[0]!), "levelup");
       else if (trained.length > 1) pushNotice(`${trained.length} specialists leveled up`, "levelup");
 
       // Achievements: several can land in one tick (offline catch-up) — show the
@@ -369,16 +390,25 @@ export const useGame = create<GameStore>((set, get) => ({
         }
       }
 
-      // One queue, oldest first — a notice earned this tick never jumps ahead of
-      // one still waiting from a previous tick. Cap the backlog so an extreme
-      // offline catch-up can't toast for minutes.
-      if (earned.length > 0) pendingNotices = [...pendingNotices, ...earned].slice(0, 6);
-      if (pendingNotices.length > 0) {
-        patch.notice = pendingNotices[0]!;
-        pendingNotices = pendingNotices.slice(1);
+      // Codex / Field Notes: unlocking a lore entry used to be SILENT (the whole
+      // satire wedge appeared only if you opened the panel). Surface it as a gentle
+      // "new field note" toast — a good-tone notice with no special kind, so it gets
+      // the soft discovery chime, not the achievement fanfare. One per tick (coalesced).
+      {
+        const newCodex = codexBalance.entries.filter((e) => !codexUnlocked(s.game, e) && codexUnlocked(game, e));
+        if (newCodex.length >= 1) {
+          noticeKey += 1;
+          const msg = newCodex.length === 1
+            ? `New Field Note — “${newCodex[0]!.title}”`
+            : `${newCodex.length} new Field Notes — incl. “${newCodex[0]!.title}”`;
+          earned.push({ key: noticeKey, message: msg, tone: "good" });
+        }
       }
 
-      // Heat-driven regulatory event (only when there's heat to drive it).
+      // Heat-driven regulatory event FIRST (only when there's heat to drive it). A fine is
+      // urgent, so it takes this tick's single feedback slot — a completion notice then
+      // waits one tick in the queue rather than firing a second toast + a clashing chord
+      // over the top of the "uh-oh".
       if (game.heat > 0) {
         const res = maybeHeatEvent(game, secs, Math.random(), Math.random());
         if (res) {
@@ -387,6 +417,21 @@ export const useGame = create<GameStore>((set, get) => ({
           patch.game = game;
           patch.event = { key: eventKey, message: res.event.message, tone: res.event.tone };
         }
+      }
+
+      // One queue, oldest first — a notice earned this tick never jumps ahead of
+      // one still waiting from a previous tick. Cap the backlog so an extreme
+      // offline catch-up can't toast for minutes.
+      if (earned.length > 0) pendingNotices = [...pendingNotices, ...earned].slice(0, 6);
+      // Drain at most one per NOTICE_GATE_MS of real time (not one per 100ms tick), so a
+      // same-tick burst / catch-up backlog surfaces as readable, staggered toasts; and hold
+      // while a heat event claimed this tick. The gate idles at 0, so a single notice after
+      // a quiet stretch still fires at once.
+      if (noticeGateMs > 0) noticeGateMs = Math.max(0, noticeGateMs - elapsedMs);
+      if (!patch.event && pendingNotices.length > 0 && noticeGateMs === 0) {
+        patch.notice = pendingNotices[0]!;
+        pendingNotices = pendingNotices.slice(1);
+        noticeGateMs = NOTICE_GATE_MS;
       }
 
       // Regulator negotiation (IMPROVEMENTS #9): deterministic, outranks the
@@ -434,6 +479,27 @@ export const useGame = create<GameStore>((set, get) => ({
           noticeKey += 1;
           patch.notice = { key: noticeKey, message: flavor.message, tone: "neutral" };
         }
+      }
+
+      // Automation (IDEAS #C): run the toggled-on autopilots on the post-tick state. Silent
+      // by design — the point is to remove chores, not add feedback. Off by default, gated by
+      // ship count, and never enabled by the sim, so the tuned curve is untouched.
+      if (automationUnlockedAny(game)) {
+        game = applyAutomation(game);
+        // Auto-launch needs id minting, so it runs here rather than in the pure engine: a
+        // freshly-shipped draft is commercialised into any free slot (as a General product).
+        if (automationEnabled(game, "auto_launch")) {
+          let guard = 0;
+          while (game.products.drafts.length > 0 && game.products.active.length < maxActiveProducts(game) && guard++ < 8) {
+            const draft = game.products.drafts[0]!;
+            const type: ProductTypeId = "general";
+            if (!canLaunchDraft(game, draft.id, type)) break;
+            productKey += 1;
+            const name = AUTOMATION.names[productKey % AUTOMATION.names.length]!;
+            game = launchDraft(game, { draftId: draft.id, type, name, id: `prod-${productKey}` });
+          }
+        }
+        patch.game = game;
       }
 
       // Telemetry (R8.1): detect a progress purchase or era arrival by diffing across
@@ -518,6 +584,18 @@ export const useGame = create<GameStore>((set, get) => ({
   doFireEmployee: (id) => set((s) => ({ game: fireEmployee(s.game, id) })),
   doBuyOfficePerk: (id) => set((s) => ({ game: buyOfficePerk(s.game, id) })),
   doBuyReputationPerk: (id) => set((s) => ({ game: buyReputationPerk(s.game, id) })),
+  doBuyEndowment: () => set((s) => ({ game: buyEndowment(s.game) })),
+  doFundChallenge: (id) => {
+    let justCompleted = false;
+    set((s) => {
+      const res = fundChallenge(s.game, id);
+      justCompleted = res.justCompleted;
+      return res.state === s.game ? {} : { game: res.state };
+    });
+    return justCompleted;
+  },
+  doClaimObjective: (id, target) => set((s) => ({ game: claimObjective(s.game, id, target) })),
+  doToggleAutomation: (id) => set((s) => ({ game: toggleAutomation(s.game, id) })),
   setComputeFocus: (v) =>
     set((s) => ({ game: { ...s.game, computeFocus: Math.max(0, Math.min(1, v)) } })),
   // The store mints the product id (nondeterminism stays out of the engine).

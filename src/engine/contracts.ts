@@ -153,8 +153,3 @@ export function contractBoard(state: GameState): ContractView[] {
     };
   });
 }
-
-/** How many contracts are ready to claim (drives a tab/board badge). */
-export function contractsReadyCount(state: GameState): number {
-  return activeContracts(state).filter((d) => contractReady(state, d.id)).length;
-}

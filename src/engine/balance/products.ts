@@ -29,7 +29,9 @@ export interface ProductTypeDef {
   computePerUser: number;
   /** Organic word-of-mouth growth factor per second. */
   virality: number;
-  /** Sensitivity to hype world-events (used later). */
+  /** Sensitivity to hype world-events: scales the buzz-wave duration an industry_hype
+   *  event grants this product (1 = neutral; a trendy Multimodal Studio rides it far
+   *  longer than a boring Fast API). Applied in actions.ts applyEffect. */
   hype: number;
   /** Regulatory Heat added per second while the product has paying users. */
   heatPerSec: number;
@@ -105,9 +107,20 @@ export const products = {
       { id: "viral", tone: "good", message: "{name} is trending — signups are spiking!", mauMult: 1.18, buzz: true },
       { id: "press_good", tone: "good", message: "{name} got a glowing review — buzz incoming.", buzz: true },
       { id: "enterprise_deal", tone: "good", message: "{name} landed a big enterprise contract.", paidMult: 1.12 },
+      { id: "featured", tone: "good", message: "{name} got featured on the App Store — downloads are pouring in.", mauMult: 1.22, buzz: true },
+      { id: "influencer_love", tone: "good", message: "A big AI influencer swears by {name} in a viral video. Signups spike.", mauMult: 1.14, buzz: true },
+      { id: "rival_outage", tone: "good", message: "A rival had a day-long outage — refugees are flooding into {name}.", mauMult: 1.13, paidMult: 1.05 },
+      { id: "meme_good", tone: "good", message: "{name} became a meme, for the right reasons. Free marketing, briefly.", mauMult: 1.1, buzz: true },
+      { id: "enterprise_whale", tone: "good", message: "{name} closed a whale — one logo worth a thousand seats.", paidMult: 1.15 },
+      { id: "integration", tone: "good", message: "A popular app shipped a native {name} integration. Sticky new users.", mauMult: 1.08, paidMult: 1.04 },
       { id: "outage", tone: "bad", message: "{name} had an outage — some users bounced.", mauMult: 0.93, paidMult: 0.9 },
       { id: "breach", tone: "bad", message: "{name} leaked some data — regulators are curious.", paidMult: 0.92, heat: 6 },
       { id: "price_war", tone: "bad", message: "A rival undercut {name} on price — churn ticked up.", paidMult: 0.9 },
+      { id: "jailbreak", tone: "bad", message: "{name} got jailbroken into saying something unhinged. Screenshots everywhere.", paidMult: 0.93, heat: 5 },
+      { id: "hallucination", tone: "bad", message: "{name} confidently invented a fact in front of a journalist. Awkward.", mauMult: 0.95, paidMult: 0.95, heat: 4 },
+      { id: "rate_limit", tone: "bad", message: "{name} throttled paying users during a traffic spike. They are furious.", paidMult: 0.9 },
+      { id: "api_revolt", tone: "bad", message: "{name} deprecated an API overnight. Developers are revolting on GitHub.", mauMult: 0.94, paidMult: 0.93 },
+      { id: "copycat", tone: "bad", message: "A well-funded clone of {name} launched with a free tier. Ouch.", mauMult: 0.93, paidMult: 0.95 },
     ],
   },
 
@@ -119,6 +132,11 @@ export const products = {
     unlockShips: 3,
     convShare: 0.18, // enterprise converts ~18% as readily as Pro…
     arpuMult: 7,     // …but pays ~7× the revenue/user
+    /** Conversion falls this much per +1.0 of the Enterprise price dial (linear, not
+     *  1/price), so a pricier Enterprise tier trades deal count for deal size and has
+     *  an interior sweet spot (~1.9×) instead of being an inert slider. Identity at
+     *  enterprisePrice = 1 (the default), so the tuned economy is unchanged. */
+    convSlope: 0.35,
     priceMin: 0.5,
     priceMax: 3,
   },
@@ -153,6 +171,13 @@ export const products = {
   /** Player pricing strategy bounds (×revenue/user; higher = more $/user, less conversion). */
   priceMin: 0.5,
   priceMax: 2,
+  /** Pro conversion falls this much per +1.0 of the price dial (LINEAR, not 1/price).
+   *  This is what makes pricing a real decision: because conversion no longer falls as
+   *  fast as ARPU rises, net revenue/user climbs with price to an interior peak (~1.5×)
+   *  and only then declines — while higher price also lifts churn — so "premium vs
+   *  volume" is a genuine tradeoff. Identity at priceMult = 1 (the curve/sim default),
+   *  so the tuned economy is byte-unchanged; only off-default dials behave sensibly. */
+  priceConvSlope: 0.5,
   /** Marketing-dial ceiling scales with quality (≈ game progress): cap = quality × this.
    *  Kept tight so you can't simply buy your way to scale with a weak early model —
    *  the ceiling rises as quality (versions/frontier) climbs. */
@@ -178,12 +203,28 @@ export const products = {
         "A competitor just leapfrogged {name}. The fickle masses have noticed.",
         "{name} is starting to feel last-season. Churn is creeping up.",
         "\"Is {name} still being maintained?\" — an actual {name} user, leaving.",
+        "{name}'s changelog is starting to read like a tombstone. Users noticed.",
+        "A rival shipped the one feature {name} users have begged for since launch. Oof.",
+        "{name} got quietly added to a 'dead AI products' listicle. The traffic followed it out.",
+        "Someone forked an open model and rebuilt {name} over a weekend. Theirs is free.",
+        "{name} users are migrating to whatever trended on Hacker News this morning.",
+        "The {name} subreddit is now mostly 'is there a better alternative?' threads.",
+        "{name}'s 'state of the art' badge expired about three model generations ago.",
+        "A rival's migration guide literally has {name} in the title. Subtle.",
       ],
       pricey: [
         "{name} subscribers are rage-canceling over the price. Too rich for their blood.",
         "\"{name} is great but I'm not made of money\" — a former {name} subscriber.",
         "Sticker shock is thinning {name}'s paid tier. The dial may be cranked too high.",
         "{name} churn is spiking — turns out people read the invoice.",
+        "A viral thread did the annual-cost math on {name}. The replies are merciless.",
+        "{name} users found a free tool that's 80% as good. Math is, tragically, math.",
+        "Finance calls {name}'s pricing 'aspirational.' Users call it 'a reason to leave.'",
+        "{name}'s price-hike email had a 'learn more' link. Nobody learned; everyone left.",
+        "There's a 'cancel your {name} subscription' TikTok now. It has legs.",
+        "A procurement team benchmarked {name} against 'anything cheaper' and won.",
+        "{name} users are quietly downgrading to the free tier they forgot existed.",
+        "{name} priced itself into the enterprise bracket. The enterprises noticed too.",
       ],
     },
   },
@@ -247,8 +288,6 @@ export const products = {
     },
   ] satisfies ProductTypeDef[],
 };
-
-export type ProductsBalance = typeof products;
 
 /** Per-product feature lanes — multipliers folded into that product's economics. */
 export type FeatureLane = "acq" | "arpu" | "conversion" | "churn" | "serveCost" | "tam" | "heat";

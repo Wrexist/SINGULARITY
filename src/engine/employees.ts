@@ -1,5 +1,6 @@
 import { balance } from "./balance/config";
 import type { StaffRole, StaffTrait, ProductStaffLane } from "./balance/config";
+import type { SegmentSkew } from "./balance/products";
 import type { Employee, GameState, ProductMods } from "./types";
 
 /**
@@ -15,6 +16,36 @@ const TRAIT_BY_ID: Record<string, StaffTrait> = Object.fromEntries(S.traits.map(
 
 export function roleDef(id: string): StaffRole | undefined { return ROLE_BY_ID[id]; }
 export function traitDef(id: string | null): StaffTrait | undefined { return id ? TRAIT_BY_ID[id] : undefined; }
+
+/** The market segments a product-team role synergizes with (empty = none). For the UI
+ *  to surface "assign here for a bonus". Pure. */
+export function roleAffinity(id: string): SegmentSkew[] { return roleDef(id)?.affinity ?? []; }
+/** Does assigning a `roleId` specialist to a `segment` product trigger the synergy bonus? */
+export function roleMatchesSegment(id: string, segment: SegmentSkew): boolean {
+  return (roleDef(id)?.affinity ?? []).includes(segment);
+}
+
+/** Short, role-flavored tail for a level-up notice (UI copy). Keyed by role so the
+ *  beat reads like a person growing into their job, not a generic "+1". Falls back
+ *  to a neutral line so a future role never breaks the notice. Pure. */
+const LEVEL_QUIPS: Record<string, string> = {
+  staff_researcher: "cites themselves in the related work now",
+  staff_engineer: "the racks have learned to fear them",
+  staff_ops: "found three revenue lines before lunch",
+  staff_ml: "checkpoints converge on command",
+  staff_sre: "the pager has gone quiet",
+  staff_success: "churn wouldn't dare",
+  staff_growth: "the funnel bends to their will",
+  staff_sales: "closed a deal mid-sentence",
+  staff_pr: "makes the subpoenas disappear",
+  staff_data_eng: "the pipelines break less now, allegedly",
+  staff_recruiter: "knows two more guys now",
+};
+
+export function levelUpNote(emp: Employee): string {
+  const quip = LEVEL_QUIPS[emp.roleId] ?? "leveled up and knows it";
+  return `${emp.name} made L${emp.level} — ${quip}`;
+}
 
 /** Output multiplier from a person's seniority level (1 = junior). */
 export function levelEffectMult(level: number): number {
@@ -78,7 +109,11 @@ export function advanceTraining(employees: Employee[], seconds: number): Trainin
     if (remainingSec <= 0) {
       const level = Math.min(S.maxLevel, e.level + 1);
       completed.push({ id: e.id, name: e.name, level });
-      return { ...e, level, training: null };
+      // A training "sabbatical" revives a burned-out specialist — the burned_out trait's
+      // own copy promises exactly this ("A training sabbatical might revive them"), so
+      // completing training clears it, restoring full output. Other traits are kept.
+      const trait = e.trait === "burned_out" ? null : e.trait;
+      return { ...e, level, trait, training: null };
     }
     return { ...e, training: { ...e.training, remainingSec } };
   });
@@ -161,6 +196,10 @@ export function computeStaffEffects(
   activeProductIds: string[],
   morale: number,
   focus: number,
+  /** Product id → market segment, so an assigned specialist whose role affinity matches
+   *  gets the segment-synergy bonus. Empty (the default, and what the balance sim uses)
+   *  means no product has a segment → no synergy → the tuned curve is untouched. */
+  productSegments: Record<string, SegmentSkew> = {},
 ): StaffEffects {
   let payroll = 0;
   const activeSet = new Set(activeProductIds);
@@ -186,7 +225,13 @@ export function computeStaffEffects(
     } else {
       // Assigned to a LIVE product → that product's focus bucket; else benched (global).
       const bucket = e.assignedProductId && activeSet.has(e.assignedProductId) ? e.assignedProductId : "";
-      prodLane[role.effect.lane].push({ value: role.effect.perLevel * eff, bucket });
+      // Segment synergy: a matched, product-assigned specialist's buff is amplified.
+      // Only when actually assigned to a live product whose segment is in the role's
+      // affinity — benched ("") and mismatched keep the baseline (synergy = 1).
+      const seg = bucket ? productSegments[bucket] : undefined;
+      const matched = !!bucket && !!role.affinity && !!seg && role.affinity.includes(seg);
+      const synergy = matched ? S.segmentSynergy : 1;
+      prodLane[role.effect.lane].push({ value: role.effect.perLevel * eff * synergy, bucket });
     }
   }
 

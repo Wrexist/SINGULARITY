@@ -7,10 +7,16 @@ import { charterMods } from "./charter";
 import { legacyAvailable, legacyTreeMods } from "./legacyTree";
 import { ascensionMultiplier } from "./prestige";
 import { preprintMult } from "./preprints";
+import { challengeMods } from "./challenges";
 import { powerStats } from "./power";
 import { rackTier } from "./hall";
 import { tierComputeMult, loadoutDataPerSec } from "./components";
+import { products as PRODUCTS, type SegmentSkew } from "./balance/products";
 import type { Derived, Employee, GameState } from "./types";
+
+/** Product type id → market segment, resolved once (static catalog data). Feeds the
+ *  staff segment-synergy: an assigned specialist matched to the product's segment. */
+const SEG_BY_TYPE: Record<string, SegmentSkew> = Object.fromEntries(PRODUCTS.types.map((t) => [t.id, t.segment]));
 
 // Single-slot memo for the staff aggregation (see derive()). Keyed on the employees
 // array IDENTITY (stable between ticks) + morale + the product-id set.
@@ -166,9 +172,13 @@ export function derive(state: GameState): Derived {
   // hire/fire/train/assign/perk — not every 10Hz tick. derive() runs every render, so
   // caching here turns ~100+ employees into a no-op on the common path.
   const idsKey = state.products.active.map((p) => p.id).join(",");
+  // Product id → segment for the staff synergy. Cheap to rebuild; the cache still keys
+  // on idsKey because a product's type (hence segment) is fixed for its whole life.
+  const productSegments: Record<string, SegmentSkew> = {};
+  for (const p of state.products.active) productSegments[p.id] = SEG_BY_TYPE[p.type] ?? "consumer";
   const fx = staffCacheGet(state.employees, morale, idsKey)
     ?? staffCacheSet(state.employees, morale, idsKey,
-      computeStaffEffects(state.employees, state.products.active.map((p) => p.id), morale, balance.staff.assignFocusMult));
+      computeStaffEffects(state.employees, state.products.active.map((p) => p.id), morale, balance.staff.assignFocusMult, productSegments));
   computeMult = computeMult.mul(fx.computeMultF);
   dataMult = dataMult.mul(fx.dataMultF);
   moneyMult = moneyMult.mul(fx.moneyMultF);
@@ -235,6 +245,14 @@ export function derive(state: GameState): Derived {
   dataMult = dataMult.mul(ppMult);
   moneyMult = moneyMult.mul(ppMult);
 
+  // Grand Challenges (IDEAS #A): permanent per-lane boosts from COMPLETED moonshots.
+  // Identity (all ×1) until one is finished — the sim never funds one, so the tuned
+  // curve is untouched.
+  const chMods = challengeMods(state);
+  computeMult = computeMult.mul(chMods.compute);
+  dataMult = dataMult.mul(chMods.data);
+  moneyMult = moneyMult.mul(chMods.money);
+
   // Lab Reputation perks — permanent global multipliers bought with meta-currency.
   // Owned perks are empty on a fresh run, so this is 1.0 until the player spends.
   const rep = reputationMods(state);
@@ -297,6 +315,7 @@ export function derive(state: GameState): Derived {
 
   return {
     computePerSec,
+    computeMult,
     dataMult,
     moneyMult,
     runDurationSec: Math.max(balance.run.minDurationSec, runDurationSec),
@@ -313,4 +332,20 @@ export function derive(state: GameState): Derived {
     productModsById,
     hireDiscount,
   };
+}
+
+/**
+ * The ceiling the Compute bank floats to while auto-train is running. A fresh run
+ * fires — draining `runComputeCost` — the instant Compute reaches `runComputeCost /
+ * focus` (see tick.ts's `autoTrainReady`), so under auto-train the bank can never
+ * climb past that point. Anything costing more is unreachable by waiting: the player
+ * must ease training intensity (a lower focus raises the ceiling) or grow Compute
+ * production. Returns null when the bank is unbounded — auto-train off, or focus 0,
+ * which halts training so Compute accrues freely. Pure; the honest input to the
+ * research/upgrade ETAs (a raw `cost / computePerSec` estimate silently lies here,
+ * promising a countdown for a node the drained bank will never reach).
+ */
+export function computeBankCeiling(state: GameState, d: Derived): Big | null {
+  if (!d.autoTrain || !Number.isFinite(state.computeFocus) || state.computeFocus <= 0) return null;
+  return d.runComputeCost.div(state.computeFocus);
 }

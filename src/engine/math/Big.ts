@@ -85,6 +85,14 @@ export class Big {
     return new Big(Decimal.min(this.d, Big.of(v).d));
   }
 
+  /** True unless this is NaN or ±∞. A tampered/absurd save string (e.g. an exponent
+   *  past break_infinity's limit) can construct a non-finite Decimal; callers loading
+   *  untrusted values reject those. break_infinity stores NaN as mantissa=NaN and ±∞ as
+   *  an exponent sentinel (~9e15), mirroring the detection in formatBig. */
+  isFinite(): boolean {
+    return !Number.isNaN(this.d.mantissa) && this.d.exponent < 1e15;
+  }
+
   /** For UI ratios only (progress bars etc). May lose precision on huge values. */
   toNumber(): number {
     return this.d.toNumber();

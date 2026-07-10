@@ -3,13 +3,14 @@ import { canPrestige, legacyWeightsGain, legacyWeightsForMode, ascensionMultipli
 import { currentEra } from "../engine/eras";
 import { reputationAvailable } from "../engine/reputation";
 import { legacyTreeBalance, legacyAvailable, canBuyLegacyPerk } from "../engine/legacyTree";
+import { maxActiveProducts, productsUnlocked } from "../engine/products";
 import { balance } from "../engine/balance/config";
 import type { GameState } from "../engine/types";
 import { fmt } from "./format";
 import { Big } from "../engine/math/Big";
 import { ReputationModal } from "./ReputationModal";
 import { ConfirmSheet } from "./ConfirmSheet";
-import { LandmarkIcon, RocketIcon, GlobeIcon, CoinIcon, SwordsIcon } from "./Icons";
+import { LandmarkIcon, RocketIcon, GlobeIcon, CoinIcon, SwordsIcon, MegaphoneIcon } from "./Icons";
 import type { ReactNode } from "react";
 
 /** Per-ship-mode icon (keyed by mode id; matches the engine's shipModes). */
@@ -18,18 +19,20 @@ const SHIP_MODE_ICON: Record<string, ReactNode> = {
   open_source: <GlobeIcon size={20} />,
   sell: <CoinIcon size={20} />,
   hard: <SwordsIcon size={20} />,
+  splash: <MegaphoneIcon size={20} />,
 };
 
 interface Props {
   game: GameState;
   onPrestige: (mode: ShipMode) => void;
   onBuyReputationPerk: (id: string) => void;
+  onBuyEndowment: () => void;
   onBuyLegacyPerk: (id: string) => void;
 }
 
 const legacyPerkName = (id?: string) => legacyTreeBalance.perks.find((p) => p.id === id)?.name ?? "a prerequisite";
 
-export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyLegacyPerk }: Props) {
+export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndowment, onBuyLegacyPerk }: Props) {
   const [confirming, setConfirming] = useState(false);
   // A ship mode that discards the post-ship product draft gets an explicit
   // confirm (QW3) — the 4-word tag alone let players give the model away
@@ -119,6 +122,33 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyLega
         </div>
       )}
 
+      {/* Timing guidance (the classic idle "ship now or keep going?" decision): the
+          weights you'd bank RIGHT NOW, and how close lifetime earnings are to the next
+          whole weight — so the reset is an informed choice, not a shot in the dark.
+          Pure display over legacyWeightsGain; weights diminish (exponent < 1), which the
+          progress-to-next visibly encodes. */}
+      {ready && !confirming && (() => {
+        const exp = balance.prestige.exponent;
+        const lAt = Big.of(balance.prestige.scale).mul(gain.pow(1 / exp));
+        const lNext = Big.of(balance.prestige.scale).mul(gain.add(1).pow(1 / exp));
+        const span = lNext.sub(lAt);
+        const pct = span.gt(0) ? Math.max(0, Math.min(1, game.lifetimeMoney.sub(lAt).div(span).toNumber())) : 1;
+        return (
+          <div className="prestige-timing">
+            <div className="prestige-timing-row">
+              <span>Ship now → <b>+{fmt(legacyWeightsForMode(game, "deploy"))}</b> weights</span>
+              <span className="prestige-timing-next">next weight {Math.floor(pct * 100)}%</span>
+            </div>
+            <div className="prestige-timing-bar"><div className="prestige-timing-fill" style={{ width: `${pct * 100}%` }} /></div>
+            <p className="prestige-timing-note">
+              {pct >= 0.8
+                ? "You're close to your next weight — a little longer banks more."
+                : "Weights grow with lifetime earnings, but with diminishing returns. Big jump now, or hold for the next one."}
+            </p>
+          </div>
+        );
+      })()}
+
       {!confirming ? (
         <button className={`btn btn-ship${willAscend ? " btn-ascend" : ""}`} disabled={!ready} onClick={() => setConfirming(true)}>
           {!ready ? "Locked — deploy a model first" : willAscend ? `✦ Ascend — choose how to ship` : `Ship — choose how`}
@@ -130,7 +160,14 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyLega
             <button className="link-btn" onClick={() => setConfirming(false)}>cancel</button>
           </div>
           <p className="ship-choose-tip">Resets Compute, Data, $, racks and research. Your team, products, achievements and Reputation stay.</p>
-          {Object.values(balance.prestige.shipModes).filter((m) => game.prestige.ships >= m.unlockShips).map((m) => {
+          {/* When the portfolio is already full, a kept draft can't be launched until a
+              slot frees up — so the "keeps a product" perk is deferred, not immediate.
+              Surfacing this stops the mature-portfolio trap where Deploy looks strictly
+              better but its one edge (the draft) is parked while give-it-away modes bank
+              legacy + Rep + momentum right now. */}
+          {(() => {
+            const slotsFull = productsUnlocked(game) && game.products.active.length >= maxActiveProducts(game);
+            return Object.values(balance.prestige.shipModes).filter((m) => game.prestige.ships >= m.unlockShips).map((m) => {
             const banked = legacyWeightsForMode(game, m.id as ShipMode);
             const kickstart = m.moneyKickstartPerShip * (game.prestige.ships + 1);
             return (
@@ -147,7 +184,9 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyLega
                   <span className="ship-mode-blurb">{m.blurb}</span>
                   <div className="ship-mode-tags">
                     {m.keepsDraft
-                      ? <span className="ship-tag good">✓ Product to sell in Products</span>
+                      ? (slotsFull
+                          ? <span className="ship-tag warn">⧗ Draft parked — portfolio full ({game.products.active.length}/{maxActiveProducts(game)})</span>
+                          : <span className="ship-tag good">✓ Product to sell in Products</span>)
                       : <span className="ship-tag warn">✗ No product — you gave the model away</span>}
                     {kickstart > 0 && <span className="ship-tag good">+ ${kickstart} cash</span>}
                     {m.reputationBonus > 0 && <span className="ship-tag good">+ {m.reputationBonus} Reputation</span>}
@@ -156,7 +195,8 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyLega
                 </div>
               </button>
             );
-          })}
+          });
+          })()}
         </div>
       )}
 
@@ -180,7 +220,7 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyLega
           />
         );
       })()}
-      {repOpen && <ReputationModal game={game} onBuy={onBuyReputationPerk} onClose={() => setRepOpen(false)} />}
+      {repOpen && <ReputationModal game={game} onBuy={onBuyReputationPerk} onBuyEndowment={onBuyEndowment} onClose={() => setRepOpen(false)} />}
     </section>
   );
 }

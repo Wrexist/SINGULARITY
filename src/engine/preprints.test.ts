@@ -61,14 +61,28 @@ describe("frontier preprints (IDEAS #10)", () => {
     const c1 = preprintCost(after1);
     expect(c1.compute.toNumber()).toBeCloseTo(c0.compute.toNumber() * balance.preprints.growth, 3);
 
-    // Publish to the cap — the next buy is refused no matter how rich.
-    let cur = s;
-    for (let i = 0; i < balance.preprints.maxPerRun; i++) cur = buyPreprint(cur);
-    expect(cur.preprints).toBe(balance.preprints.maxPerRun);
+    // With finite resources, the ESCALATING COST is the gate (not the cap): you
+    // publish a bounded number of papers, then the next buy is refused for
+    // affordability — well before the high safety cap. The panel never goes inert.
+    let cur = s; // 1e12 compute/data
+    let n = 0;
+    while (canBuyPreprint(cur) && n < 1000) { cur = buyPreprint(cur); n++; }
+    expect(n).toBeGreaterThan(0);
+    expect(n).toBeLessThan(balance.preprints.maxPerRun); // stopped on COST, not the cap
     expect(canBuyPreprint(cur)).toBe(false);
-    expect(buyPreprint(cur)).toBe(cur);
-    // The compounding ceiling stays bounded (~×1.22 at 1.02^10).
-    expect(preprintMult(cur).toNumber()).toBeLessThan(1.25);
+    expect(buyPreprint(cur)).toBe(cur); // same-ref no-op when unaffordable
+    // The boost is exactly perLevelMult^papers (compounding, uncapped in practice).
+    expect(preprintMult(cur).toNumber()).toBeCloseTo(Math.pow(balance.preprints.perLevelMult, n), 4);
+  });
+
+  it("the per-run cap is a high safety bound, reached only with unlimited resources", () => {
+    const s = fullTree();
+    s.resources.compute = Big.of("1e80");
+    s.resources.data = Big.of("1e80");
+    let cur = s;
+    for (let i = 0; i < balance.preprints.maxPerRun + 5; i++) cur = buyPreprint(cur);
+    expect(cur.preprints).toBe(balance.preprints.maxPerRun); // clamps at the bound
+    expect(canBuyPreprint(cur)).toBe(false);
   });
 
   it("titles rotate deterministically per level", () => {

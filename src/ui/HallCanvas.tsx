@@ -10,8 +10,12 @@ import { currentEra, eraName } from "../engine/eras";
 import { hallRooms } from "../engine/hall";
 import { regulatorState } from "../engine/regulator";
 import { balance } from "../engine/balance/config";
+import { products as PRODUCTS_BAL } from "../engine/balance/products";
 import { rackInfo } from "../engine/rackInfo";
 import { themeFilter } from "./hallThemes";
+
+/** Product launch/viral buzz window (s) — normalises buzzSec to a 0..1 beam-surge factor. */
+const BUZZ_WINDOW_SEC = PRODUCTS_BAL.buzzDurationSec;
 
 /**
  * The 2.5D hall (Phase 1 pillar). A self-driving canvas: an rAF loop reads game
@@ -183,6 +187,9 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       for (const s of model.sides) s.affordable = !s.maxed && money.gte(s.cost);
       // Heat moves every tick too — refresh the entrance crate pile the same way.
       model.heatCrates = heatCrateCount(game.heat);
+      // Product buzz decays every tick — refresh the per-beam surge factor in place so a
+      // launch/viral window is felt live (index-aligned to the model's beams).
+      model.beamBuzz = game.products.active.map((p) => Math.max(0, Math.min(1, p.buzzSec / BUZZ_WINDOW_SEC)));
       // The horizon race drifts continuously (rival pools scale with the
       // frontier; your MAU grows). Refresh it cheaply; the static cache below
       // only repaints when the COARSE signature actually moves.

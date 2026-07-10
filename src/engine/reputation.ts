@@ -1,4 +1,3 @@
-import { Big } from "./math/Big";
 import { achievements as ACH_DEFS, achievementRep } from "./balance/achievements";
 import { reputation as R } from "./balance/reputation";
 import { contractsReputation } from "./contracts";
@@ -52,10 +51,56 @@ export function buyReputationPerk(state: GameState, id: string): GameState {
   return {
     ...state,
     reputation: {
+      ...state.reputation,
       spent: state.reputation.spent + perk.cost,
       perks: [...state.reputation.perks, id],
     },
   };
+}
+
+// ---------- Endgame Reputation Endowment (post-AGI infinite sink) ----------
+
+const E = R.endowment;
+
+/** True once the ENTIRE finite perk tree is owned — the Endowment's unlock gate.
+ *  A fresh run / the sim owns no perks, so this is false through the whole tuned game. */
+export function endowmentUnlocked(state: GameState): boolean {
+  return E.enabled && R.perks.every((p) => state.reputation.perks.includes(p.id));
+}
+
+/** Reputation cost of the NEXT endowment level (escalating: base × growth^level). */
+export function endowmentCost(state: GameState): number {
+  return Math.ceil(E.baseCost * Math.pow(E.growth, Math.max(0, state.repEndowment)));
+}
+
+/** Total Reputation to reach `level` endowment levels — for save reconciliation, so a
+ *  crafted repEndowment forces a matching `spent` (same policy as the perk tree). */
+export function endowmentCostSum(level: number): number {
+  const n = Math.max(0, Math.min(E.maxLevel, Math.floor(level)));
+  let sum = 0;
+  for (let k = 0; k < n; k++) sum += Math.ceil(E.baseCost * Math.pow(E.growth, k));
+  return sum;
+}
+
+export function canBuyEndowment(state: GameState): boolean {
+  if (!endowmentUnlocked(state) || state.repEndowment >= E.maxLevel) return false;
+  return reputationAvailable(state) >= endowmentCost(state);
+}
+
+/** Buy one endowment level: charge Reputation (via spent) and bump the level count. */
+export function buyEndowment(state: GameState): GameState {
+  if (!canBuyEndowment(state)) return state;
+  const cost = endowmentCost(state);
+  return {
+    ...state,
+    repEndowment: state.repEndowment + 1,
+    reputation: { ...state.reputation, spent: state.reputation.spent + cost },
+  };
+}
+
+/** Permanent all-lane multiplier from the Endowment (1 at level 0 — identity). */
+export function endowmentMult(state: GameState): number {
+  return 1 + Math.max(0, state.repEndowment) * E.perLevel;
 }
 
 export interface ReputationMods {
@@ -82,6 +127,13 @@ export function reputationMods(state: GameState): ReputationMods {
     else if (kind === "payrollMult") payrollMult *= 1 - value;
     // "automate" perks are unlock flags (read by autoResearchEnabled), not multipliers.
   }
+  // Endgame Endowment: a permanent all-lane boost on top of the perk tree. Identity
+  // (×1) at level 0, so it's dormant through the whole tuned game — only a deep-endgame
+  // lab that already owns every perk can raise it.
+  const endow = endowmentMult(state);
+  computeMult *= endow;
+  dataMult *= endow;
+  moneyMult *= endow;
   return { computeMult, dataMult, moneyMult, payrollMult };
 }
 
@@ -122,15 +174,4 @@ export function bonusProductSlots(state: GameState): number {
     if (p.effect.kind === "productSlot" && state.reputation.perks.includes(p.id)) n += p.effect.value;
   }
   return n;
-}
-
-/** As Big multipliers (convenience for derive). */
-export function reputationBigMods(state: GameState) {
-  const m = reputationMods(state);
-  return {
-    computeMult: Big.of(m.computeMult),
-    dataMult: Big.of(m.dataMult),
-    moneyMult: Big.of(m.moneyMult),
-    payrollMult: Big.of(m.payrollMult),
-  };
 }

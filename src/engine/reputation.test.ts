@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   earnedReputation, reputationAvailable, canBuyReputationPerk, buyReputationPerk, reputationMods, reputationBalance,
+  endowmentUnlocked, endowmentCost, canBuyEndowment, buyEndowment,
 } from "./reputation";
 import { derive } from "./derive";
 import { prestige } from "./prestige";
@@ -112,5 +113,56 @@ describe("lab reputation", () => {
     const restored = deserialize(serialize(s));
     expect(restored.reputation.perks).toContain("rep_compute1");
     expect(restored.reputation.spent).toBe(8);
+  });
+});
+
+describe("endgame reputation endowment (post-AGI infinite sink)", () => {
+  const allPerks = () => reputationBalance.perks.map((p) => p.id);
+  /** A deep-endgame lab: every finite perk owned, plenty of earned Reputation. */
+  const owned = () => {
+    const s = createInitialState();
+    s.stats.totalShips = 100_000; // lots of earned Reputation
+    s.reputation = { spent: 0, perks: allPerks() };
+    return s;
+  };
+
+  it("is locked until the ENTIRE perk tree is owned (curve-safe endgame gate)", () => {
+    const partial = createInitialState();
+    partial.stats.totalShips = 100_000;
+    partial.reputation = { spent: 0, perks: allPerks().slice(0, -1) }; // one short
+    expect(endowmentUnlocked(partial)).toBe(false);
+    expect(canBuyEndowment(partial)).toBe(false);
+    expect(buyEndowment(partial)).toBe(partial); // no-op
+    expect(endowmentUnlocked(owned())).toBe(true);
+  });
+
+  it("buying charges escalating Reputation, bumps the level, and boosts every lane", () => {
+    const s = owned();
+    const base = derive({ ...s, upgrades: { rack_basic: 10 } });
+    const c0 = endowmentCost(s);
+    const after = buyEndowment(s);
+    expect(after.repEndowment).toBe(1);
+    expect(after.reputation.spent).toBe(c0); // charged to the shared `spent`
+    const boosted = derive({ ...after, upgrades: { rack_basic: 10 } });
+    const ratio = boosted.computePerSec.div(base.computePerSec).toNumber();
+    expect(ratio).toBeCloseTo(1 + reputationBalance.endowment.perLevel, 5); // +2%/level, all lanes
+    expect(endowmentCost(after)).toBeGreaterThan(c0); // next level costs more
+  });
+
+  it("is permanent (survives prestige) and round-trips; a crafted level forces the spend", () => {
+    let s = owned();
+    s.research = [balance.prestige.capabilityResearch];
+    s.lifetimeMoney = Big.of(1e6);
+    s = buyEndowment(buyEndowment(s)); // level 2
+    expect(s.repEndowment).toBe(2);
+    expect(prestige(s).repEndowment).toBe(2); // survives the ship
+    expect(deserialize(serialize(s)).repEndowment).toBe(2);
+    // Anti-cheat: a save claiming levels with zero spend has `spent` reconciled up.
+    const crafted = JSON.parse(serialize(s));
+    crafted.repEndowment = 5;
+    crafted.reputation.spent = 0;
+    const fixed = deserialize(JSON.stringify(crafted));
+    expect(fixed.repEndowment).toBe(5);
+    expect(fixed.reputation.spent).toBeGreaterThan(0); // 5 levels can't be free
   });
 });

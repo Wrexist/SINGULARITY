@@ -291,6 +291,11 @@ svg { vertical-align: middle; }
 .rep-card .card-note.rep-req { color: var(--coral); }
 .rep-cost { font-weight: 800; color: var(--data); white-space: nowrap; }
 .rep-card.owned .rep-cost { color: var(--ink-3); }
+/* Endgame Endowment block: a distinct, celebratory section below the finished tree. */
+.rep-endowment { margin-top: 12px; padding-top: 10px; border-top: 1px dashed rgba(168, 85, 247, 0.4); }
+.rep-endow-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.rep-endow-head .card-name { color: #a855f7; font-weight: 850; }
+.rep-endow-lvl { font-size: 12px; font-weight: 700; color: var(--ink-3); white-space: nowrap; }
 
 /* ---------- Glass material (shared) ---------- */
 .glass,
@@ -486,6 +491,10 @@ svg { vertical-align: middle; }
     position: sticky;
     top: 12px;
   }
+  /* The split column has vertical room to spare — let the centrepiece breathe. */
+  .app-split .stage-left .hall {
+    height: 372px;
+  }
 }
 .stage > *:nth-child(1) { animation-delay: 0.04s; }
 .stage > *:nth-child(2) { animation-delay: 0.1s; }
@@ -578,6 +587,16 @@ svg { vertical-align: middle; }
 @keyframes pulse-glow {
   0%, 100% { box-shadow: 0 0 12px -2px rgba(255, 90, 60, 0.5); }
   50% { box-shadow: 0 0 26px 2px rgba(255, 90, 60, 0.75); }
+}
+/* A gentle "it's working" heartbeat while a run is actively training — the dock used
+   to only come alive at completion. A third the intensity of the ready glow, slow and
+   calm; caught by the global reduced-motion kill switch like every other animation. */
+.progress.active .progress-fill {
+  animation: run-breathe 2.8s ease-in-out infinite;
+}
+@keyframes run-breathe {
+  0%, 100% { box-shadow: 0 0 14px -3px rgba(47, 123, 246, 0.4); }
+  50% { box-shadow: 0 0 22px -1px rgba(47, 123, 246, 0.6); }
 }
 .progress-label {
   position: absolute;
@@ -734,26 +753,19 @@ svg { vertical-align: middle; }
 @keyframes item-in { from { opacity: 0; transform: translateY(9px) scale(0.99); } }
 .card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 .card:active { transform: scale(0.97); }
-/* Affordable items breathe + catch a slow sheen, so the eye is always drawn to
-   what you can buy RIGHT NOW — the panels feel alive, not a static price list. */
+/* Affordable items get a green tint + border and a slow breathing glow, so the eye is
+   drawn to what you can buy RIGHT NOW. (A moving diagonal "sheen" used to sweep across
+   every affordable card too — removed: with several cards affordable at once, N sweeps
+   read as ambient shimmer competing with the meaningful motion. Tint + border + breathe
+   already signal affordability clearly.) */
 .card.affordable {
   border-color: color-mix(in srgb, var(--money) 45%, transparent);
   background: linear-gradient(180deg, rgba(22, 179, 100, 0.07), var(--glass-strong));
   animation: item-in 0.34s var(--ease-out) backwards, afford-breathe 2.6s ease-in-out 0.34s infinite;
 }
-.card.affordable::after, .node.affordable::after {
-  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-  background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, 0.55) 50%, transparent 62%);
-  background-size: 220% 100%; background-repeat: no-repeat;
-  animation: card-sheen 3.4s ease-in-out infinite;
-}
 @keyframes afford-breathe {
   0%, 100% { box-shadow: 0 1px 3px rgba(16, 24, 40, 0.04); }
   50% { box-shadow: 0 0 0 4px rgba(22, 179, 100, 0.14), 0 6px 16px -8px rgba(22, 179, 100, 0.5); }
-}
-@keyframes card-sheen {
-  0% { background-position: 150% 0; }
-  55%, 100% { background-position: -40% 0; }
 }
 /* The purchase "punch" is driven via the Web Animations API (see fx.ts punch()),
    NOT a CSS class — toggling a class that owns `animation` re-triggered the card's
@@ -819,6 +831,10 @@ svg { vertical-align: middle; }
 .cost-max { color: var(--ship); }
 .cost-eta { font-size: 10.5px; font-weight: 650; color: var(--ink-3); }
 .node-cost .cost-eta { margin-left: 6px; }
+/* Walled: the auto-train bank can't hold this node's Compute at the current intensity,
+   so instead of a lying countdown we point at the real lever. Warm amber (a nudge, not
+   an error), a hair bolder than a plain ETA so the eye lands on the fix. */
+.cost-eta.walled { color: var(--amber, #c67c1e); font-weight: 750; }
 .cost-sub { font-size: 11px; font-weight: 700; color: var(--money); }
 .cost-blocked { color: var(--coral); font-size: 12px; font-weight: 750; }
 
@@ -986,23 +1002,53 @@ svg { vertical-align: middle; }
   display: inline-flex; align-items: center; justify-content: center;
 }
 .node.owned .node-ic, .node.locked .node-ic { filter: saturate(0.6); opacity: 0.75; }
-.node::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: var(--ink-3);
-  opacity: 0.25;
+/* Icon progress ring (research nodes + hardware/upgrade cards) — the effect-tinted icon
+   "charges up" (0→1) as resources close on the item's cost: an at-a-glance, alive readout
+   in the effect's own colour, like a manufacturing progress dial. The conic fill
+   interpolates through the registered --pct property, so it eases smoothly between ticks
+   instead of snapping. (Replaces the former left accent bar entirely.) */
+@property --pct { syntax: "<number>"; inherits: true; initial-value: 0; }
+.icon-ring {
+  position: relative; flex: 0 0 auto;
+  width: 50px; height: 50px;
+  display: grid; place-items: center;
+  transition: --pct 0.5s var(--ease-out);
 }
+.icon-ring::before {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(from -90deg, var(--ring-color, var(--accent)) calc(var(--pct, 0) * 360deg), rgba(17, 24, 39, 0.09) 0);
+  -webkit-mask: radial-gradient(farthest-side, #0000 calc(100% - 4px), #000 calc(100% - 3.5px));
+          mask: radial-gradient(farthest-side, #0000 calc(100% - 4px), #000 calc(100% - 3.5px));
+}
+.icon-ring .node-ic, .icon-ring .card-ic { width: 42px; height: 42px; }
+/* "Ready to buy": a soft breathing halo on the completed ring — the call-to-action the
+   old pulsing bar used to carry, now on the ring itself. */
+.node.affordable .icon-ring::after, .card.affordable .icon-ring::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring-color, var(--accent)) 24%, transparent);
+  animation: ring-ready 1.9s ease-in-out infinite;
+}
+@keyframes ring-ready { 0%, 100% { opacity: 0.4; transform: scale(1); } 50% { opacity: 1; transform: scale(1.02); } }
+/* Hero focal card: a % badge tucked at the ring's foot, like a manufacturing progress
+   dial. Only the recommended item shows it, so the lists themselves stay calm. */
+.icon-ring-pct {
+  position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%);
+  background: #fff; color: var(--ink);
+  font-size: 11px; font-weight: 850; line-height: 1; font-variant-numeric: tabular-nums;
+  padding: 3px 6px; border-radius: 999px; box-shadow: 0 2px 6px rgba(16, 24, 40, 0.16);
+  white-space: nowrap;
+}
+.icon-ring-pct-sign { font-size: 8.5px; font-weight: 800; opacity: 0.6; margin-left: 0.5px; }
+/* Done/locked items drop the donut: a maxed upgrade or owned node needs no dial, and a
+   locked node's blocker is prerequisites (not resources), so a ring there would lie.
+   Keeps the ring meaningful — it only tracks items you're actively working toward. */
+.node.owned .icon-ring::before, .node.locked .icon-ring::before, .node.excluded .icon-ring::before,
+.card.maxed .icon-ring::before { display: none; }
 .node.locked { opacity: 0.5; cursor: not-allowed; }
 .node.excluded { opacity: 0.42; cursor: not-allowed; }
 .node-tag.excl { color: #7c5cff; font-weight: 800; }
-.node.available::before { background: var(--data); opacity: 1; }
 .node:active { transform: scale(0.97); }
 .node.available:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-.node.affordable::before { background: var(--data); opacity: 1; animation: node-accent 1.8s ease-in-out infinite; }
 .node.affordable {
   border-color: color-mix(in srgb, var(--data) 45%, transparent);
   background: linear-gradient(180deg, rgba(155, 81, 224, 0.09), var(--glass-strong));
@@ -1012,14 +1058,6 @@ svg { vertical-align: middle; }
   0%, 100% { box-shadow: 0 1px 3px rgba(16, 24, 40, 0.04); }
   50% { box-shadow: 0 0 0 4px rgba(124, 92, 255, 0.13), 0 6px 16px -8px rgba(124, 92, 255, 0.5); }
 }
-@keyframes node-accent {
-  0%, 100% { width: 4px; }
-  50% { width: 6px; }
-}
-/* Completed nodes drop the left accent bar entirely — the "done" tag carries the
-   state, and a column of green rules read as visual noise (owner feedback). The
-   bar stays only on actionable (available/affordable) nodes as a call-to-action. */
-.node.owned::before { display: none; }
 .node.owned {
   /* A node that just completed sweeps a green fill — research feels like progress. */
   opacity: 0.92;
@@ -1038,7 +1076,9 @@ svg { vertical-align: middle; }
 /* ---------- The 2.5D Hall (Phase 1) ---------- */
 .hall {
   position: relative;
-  height: 230px;
+  /* Taller than the old 230px banner — the hall is the manifestation pillar (GDD §5),
+     so it earns real screen presence: bigger racks, more room for depth + atmosphere. */
+  height: 292px;
   border-radius: var(--radius);
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -1071,6 +1111,28 @@ svg { vertical-align: middle; }
 }
 .hall-era { font-size: 12px; font-weight: 750; color: #fff; letter-spacing: -0.01em; }
 .hall-count { font-size: 11px; font-weight: 650; color: rgba(255, 255, 255, 0.65); }
+
+/* AI Industry Newswire — an ambient satirical ticker under the hall (feel-alive). */
+.news-ticker {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 8px; padding: 7px 12px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #1c2233, #171b28);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  overflow: hidden; white-space: nowrap;
+}
+.news-wire {
+  flex: 0 0 auto; font-size: 10px; font-weight: 850; letter-spacing: 0.05em;
+  color: #ff5c73; text-transform: uppercase;
+}
+.news-line {
+  flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.82);
+  animation: news-in 0.5s var(--ease-out) both;
+}
+.reduce-motion .news-line { animation: none; }
+@keyframes news-in { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
 
 /* Tappable-rack info card (R2.1) — a tap on a rack opens this; tap to dismiss. */
 .rack-card {
@@ -1171,6 +1233,14 @@ svg { vertical-align: middle; }
   border-color: color-mix(in srgb, var(--ship) 28%, var(--glass-edge));
 }
 .prestige-blurb { font-size: 13px; color: var(--ink-2); margin: 0 0 14px; line-height: 1.45; }
+/* Ship-timing guidance: weights-now + progress to the next whole weight. */
+.prestige-timing { margin: 0 0 14px; padding: 12px 14px; border-radius: 14px; background: rgba(124, 92, 255, 0.06); border: 1px solid rgba(124, 92, 255, 0.14); }
+.prestige-timing-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 13px; color: var(--ink); }
+.prestige-timing-row b { color: #5a43c8; }
+.prestige-timing-next { font-size: 11.5px; font-weight: 750; color: var(--ink-3); white-space: nowrap; }
+.prestige-timing-bar { height: 6px; border-radius: 999px; background: rgba(124, 92, 255, 0.14); margin: 8px 0 6px; overflow: hidden; }
+.prestige-timing-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #7c5cff, #9b51e0); transition: width 0.4s var(--ease-out); }
+.prestige-timing-note { margin: 0; font-size: 11.5px; color: var(--ink-3); line-height: 1.4; }
 .prestige-stats {
   display: flex;
   justify-content: space-between;
@@ -1394,6 +1464,13 @@ svg { vertical-align: middle; }
 .modchip em { font-style: normal; font-variant-numeric: tabular-nums; opacity: 0.7; }
 .modchip.good { color: #0b7a43; background: rgba(22, 179, 100, 0.12); border-color: rgba(22, 179, 100, 0.3); }
 .modchip.bad { color: #b3243f; background: rgba(255, 56, 92, 0.1); border-color: rgba(255, 56, 92, 0.28); }
+/* A BAD modifier the player can "work" (shave time) is now a real, accessible button
+   (previously only tappable on the aria-hidden hall canvas). Reset the native button
+   chrome so it matches the span chips; the dashed edge hints it's actionable. */
+button.modchip { font-family: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+button.modchip.workable { border-style: dashed; }
+button.modchip.workable:active { transform: scale(0.94); }
+.modchip-work { font-size: 10px; opacity: 0.85; }
 
 /* ---------- Era transition (tentpole moment) ---------- */
 .era-backdrop { z-index: 85; }
@@ -1419,7 +1496,6 @@ svg { vertical-align: middle; }
   text-align: left;
   background: var(--glass-strong);
   border: 1px solid var(--glass-hairline);
-  border-left: 3px solid var(--coral);
   border-radius: 14px;
   padding: 14px 16px;
   margin-bottom: 20px;
@@ -1867,9 +1943,12 @@ svg { vertical-align: middle; }
   font-weight: 700;
   color: var(--ink-3);
   cursor: pointer;
-  transition: color 0.2s, background 0.2s;
+  transition: color 0.2s, background 0.2s, transform 0.11s var(--ease-out);
 }
 .tab.on { background: var(--glass-strong); color: var(--ink); box-shadow: var(--shadow-sm); }
+/* apple-design §1 (Response): respond on pointer-down. These wayfinders were tappable
+   but gave no instant press feedback — a quick scale acknowledges the touch immediately. */
+.tab:active { transform: scale(0.96); }
 .tab-dot {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 17px; height: 17px; padding: 0 4px; margin-left: 5px;
@@ -1896,7 +1975,10 @@ svg { vertical-align: middle; }
   background: #fff;
   border: 1px solid rgba(17, 24, 39, 0.08);
   box-shadow: var(--shadow-sm);
+  transition: transform 0.11s var(--ease-out);
 }
+/* apple-design §1 (Response): instant press feedback on the tappable wayfinder chip. */
+.advisor-chip:active { transform: scale(0.985); }
 .advisor-mark { color: var(--accent, #7c5cff); font-size: 11px; line-height: 1; }
 .advisor-text { flex: 1; min-width: 0; font-size: clamp(12px, 3.2vw, 13px); font-weight: 650; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .advisor-go { color: var(--ink-3); font-size: 16px; font-weight: 800; line-height: 1; }
@@ -1910,7 +1992,10 @@ svg { vertical-align: middle; }
   background: #fff;
   border: 1px solid rgba(17, 24, 39, 0.08);
   box-shadow: var(--shadow-sm);
+  transition: transform 0.11s var(--ease-out);
 }
+/* apple-design §1 (Response): instant press feedback on the tappable goal carrot. */
+.goal-strip:active { transform: scale(0.985); }
 .goal-fill {
   position: absolute; inset: 0 auto 0 0; pointer-events: none;
   background: color-mix(in srgb, var(--accent, #7c5cff) 13%, transparent);
@@ -2593,9 +2678,14 @@ svg { vertical-align: middle; }
 .emp-proj-meta { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 650; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .emp-proj-crew { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-height: 30px; }
 .emp-proj-empty { font-size: 11.5px; color: var(--ink-3); }
-.emp-crew-av { border: none; background: none; padding: 0; cursor: pointer; border-radius: 50%; transition: transform 0.12s; }
+.emp-crew-av { border: none; background: none; padding: 0; cursor: pointer; border-radius: 50%; transition: transform 0.12s; position: relative; }
 .emp-crew-av:hover { transform: scale(1.08); }
+.emp-crew-av.synergy { box-shadow: 0 0 0 2px #f5a623, 0 0 8px rgba(245, 166, 35, 0.6); border-radius: 50%; }
+.emp-crew-star { position: absolute; top: -4px; right: -4px; font-size: 11px; color: #f5a623; text-shadow: 0 1px 2px rgba(0,0,0,0.4); }
 .emp-role-chip { font-size: 10.5px; font-weight: 750; color: #5a43c8; background: rgba(124, 92, 255, 0.1); border-radius: 999px; padding: 3px 9px; }
+/* Segment synergy — a warm gold accent so "matched assignment" reads instantly. */
+.emp-tag.synergy { color: #b26a00; background: rgba(245, 166, 35, 0.16); }
+.emp-proj-synergy { flex: 0 0 auto; font-size: 10.5px; font-weight: 850; padding: 3px 9px; border-radius: 999px; color: #b26a00; background: rgba(245, 166, 35, 0.18); }
 .emp-proj.dragover { border-color: #7c5cff; border-style: solid; background: rgba(124, 92, 255, 0.05); transform: translateY(-1px); }
 
 /* Available-list role filter + drag grip */
@@ -2733,3 +2823,214 @@ svg { vertical-align: middle; }
 
 /* Charter explicit lock-in (owner UX fix) */
 .charter-lock-btn { margin-top: 12px; }
+
+/* Grand Challenges — late-game moonshots. Card = a filling bar + three resource pledges
+   + one Fund button; a completed card goes green with its reward "Active". */
+.challenges-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.challenges-count {
+  font-size: 12px; font-weight: 800; color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: 999px; padding: 2px 10px;
+}
+.challenges-intro { font-size: 12.5px; line-height: 1.45; color: var(--ink-3); margin: 2px 0 10px; }
+.challenge-card {
+  border: 1px solid var(--line, rgba(20, 22, 27, 0.08));
+  border-radius: 14px; padding: 12px 13px; background: var(--glass-strong, #fff);
+  display: flex; flex-direction: column; gap: 9px;
+  transition: border-color 0.25s, background 0.25s, box-shadow 0.25s;
+}
+.challenge-card.complete {
+  border-color: color-mix(in srgb, var(--money) 45%, transparent);
+  background: linear-gradient(180deg, rgba(22, 179, 100, 0.08), var(--glass-strong, #fff));
+}
+.challenge-top { display: flex; align-items: flex-start; gap: 10px; }
+.challenge-icon { flex-shrink: 0; color: var(--accent); }
+.challenge-titles { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.challenge-name { font-size: 14.5px; font-weight: 800; color: var(--ink); }
+.challenge-blurb { font-size: 12px; line-height: 1.4; color: var(--ink-3); }
+.challenge-bar {
+  position: relative; height: 22px; border-radius: 9px; overflow: hidden;
+  background: color-mix(in srgb, var(--accent) 8%, #e9e6f5);
+}
+.challenge-fill {
+  position: absolute; inset: 0; border-radius: 9px;
+  background: linear-gradient(90deg, var(--accent), #a98bff);
+  transition: width 0.5s var(--ease-out);
+  box-shadow: 0 0 14px -3px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+.challenge-card.complete .challenge-fill { background: linear-gradient(90deg, var(--money), #4fe0a0); }
+.challenge-bar-label {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 11.5px; font-weight: 800; color: #fff; letter-spacing: 0.02em;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+.challenge-res { display: flex; flex-wrap: wrap; gap: 6px; }
+.challenge-pledge {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 11px; font-weight: 700; color: var(--ink-2);
+  background: rgba(20, 22, 27, 0.04); border-radius: 999px; padding: 3px 9px;
+}
+.challenge-pledge.done { color: var(--money); background: color-mix(in srgb, var(--money) 12%, transparent); }
+.challenge-pledge-ic { display: inline-flex; opacity: 0.7; }
+.challenge-pledge.done .challenge-pledge-ic { opacity: 1; }
+.challenge-pledge-sep { opacity: 0.45; margin: 0 1px; }
+.challenge-pledge-check { margin-left: 2px; }
+.challenge-foot { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+.challenge-reward {
+  font-size: 12px; font-weight: 700; color: var(--ink-2);
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.challenge-fund {
+  width: 100%; padding: 9px 18px; font-size: 13.5px; font-weight: 800;
+  color: #fff; background: linear-gradient(180deg, var(--accent), #6a4bff);
+  border-radius: 11px; box-shadow: 0 6px 14px -8px color-mix(in srgb, var(--accent) 80%, transparent);
+}
+.challenge-fund:disabled { background: #cfc9e6; color: #fff; box-shadow: none; opacity: 0.85; }
+.challenge-fund:not(:disabled):active { transform: scale(0.98); }
+.challenge-active {
+  font-size: 12.5px; font-weight: 800; color: var(--money); text-align: center;
+  padding: 7px; border-radius: 10px;
+  background: color-mix(in srgb, var(--money) 10%, transparent);
+}
+.challenge-active::before { content: "✓ "; }
+/* The "Grand Challenge complete" moment reuses the era-modal treatment. */
+.challenge-complete-icon {
+  line-height: 1; margin: 6px 0 2px; color: var(--accent);
+  filter: drop-shadow(0 6px 20px rgba(124, 92, 255, 0.45));
+  animation: challenge-pop 0.5s var(--ease-out) backwards;
+}
+@keyframes challenge-pop { from { opacity: 0; transform: scale(0.4) rotate(-12deg); } }
+
+/* Lab Objectives — early/mid rotating quick goals. Compact card: description + a live bar +
+   reward, with a Claim button that lights up when met. */
+.objectives-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.objectives-count {
+  font-size: 12px; font-weight: 800; color: var(--ink-3);
+  background: rgba(20, 22, 27, 0.05); border-radius: 999px; padding: 2px 10px;
+}
+.objectives-badge {
+  font-size: 11.5px; font-weight: 800; color: #fff;
+  background: linear-gradient(180deg, var(--money), #12a058);
+  border-radius: 999px; padding: 3px 10px; animation: obj-badge 1.6s ease-in-out infinite;
+}
+@keyframes obj-badge {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--money) 55%, transparent); }
+  50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--money) 0%, transparent); }
+}
+.objective-card {
+  display: flex; align-items: center; gap: 10px;
+  border: 1px solid var(--line, rgba(20, 22, 27, 0.08));
+  border-radius: 12px; padding: 10px 11px; background: var(--glass-strong, #fff);
+  transition: border-color 0.2s, background 0.2s;
+}
+.objective-card.ready { border-color: color-mix(in srgb, var(--money) 45%, transparent); background: linear-gradient(180deg, rgba(22, 179, 100, 0.06), var(--glass-strong, #fff)); }
+.objective-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.objective-desc { font-size: 13px; font-weight: 700; color: var(--ink); }
+.objective-bar { position: relative; height: 7px; border-radius: 5px; overflow: hidden; background: color-mix(in srgb, var(--accent) 8%, #e9e6f5); }
+.objective-fill {
+  position: absolute; inset: 0; border-radius: 5px;
+  background: linear-gradient(90deg, var(--accent), #a98bff);
+  transition: width 0.4s var(--ease-out);
+}
+.objective-card.ready .objective-fill { background: linear-gradient(90deg, var(--money), #4fe0a0); }
+.objective-prog { font-size: 11px; font-weight: 600; color: var(--ink-3); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.objective-reward { color: var(--accent); font-weight: 700; }
+.objective-claim {
+  flex-shrink: 0; min-width: 62px; padding: 8px 12px; font-size: 12.5px; font-weight: 800;
+  border-radius: 10px; color: #fff; background: #cfc9e6;
+}
+.objective-card.ready .objective-claim {
+  background: linear-gradient(180deg, var(--money), #12a058);
+  box-shadow: 0 6px 14px -8px color-mix(in srgb, var(--money) 80%, transparent);
+  animation: obj-claim 1.3s ease-in-out infinite;
+}
+.objective-claim:disabled { color: var(--ink-3); opacity: 0.9; }
+.objective-card.ready .objective-claim:disabled { color: #fff; opacity: 1; }
+.objective-claim:not(:disabled):active { transform: scale(0.96); }
+/* Reward-lane choice: a met objective is claimed by steering its boost to one of two
+   lanes (Compute / Data / Revenue). Two compact, lane-tinted buttons replace the single
+   Claim — a small "where do I need this now?" decision. */
+.objective-choice { flex-shrink: 0; display: flex; flex-direction: column; gap: 5px; }
+.objective-lane {
+  min-width: 74px; padding: 6px 10px; font-size: 11.5px; font-weight: 800; white-space: nowrap;
+  border-radius: 9px; cursor: pointer;
+  color: var(--lane, var(--accent));
+  background: color-mix(in srgb, var(--lane, var(--accent)) 13%, #fff);
+  border: 1px solid color-mix(in srgb, var(--lane, var(--accent)) 40%, transparent);
+  transition: transform 0.14s var(--ease-out), background 0.14s;
+  animation: obj-lane-in 0.28s var(--ease-out) backwards;
+}
+.objective-lane:nth-child(2) { animation-delay: 0.05s; }
+.objective-lane:active { transform: scale(0.94); }
+@keyframes obj-lane-in { from { opacity: 0; transform: translateX(6px); } to { opacity: 1; transform: translateX(0); } }
+
+/* Inline line-icons that replaced emoji: sit centred beside their label text (SVGs
+   default to a low baseline). One place, so every swapped glyph aligns the same way. */
+.objective-lane, .objective-reward, .challenge-reward, .set-backup-title, .lobby-text,
+.modchip-work, .prod-attention-badge, .market-struck, .rig-fuse, .market-blitz,
+.pd-total-status, .link-btn-ic {
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.objective-lane { justify-content: center; gap: 5px; }
+.market-blitz { justify-content: center; }
+/* Icon-only chips that used to hold a single emoji — centre the SVG in the box. */
+.automation-ic, .challenge-icon, .challenge-complete-icon, .prod-rename {
+  display: inline-flex; align-items: center; justify-content: center;
+}
+@keyframes obj-claim {
+  0%, 100% { box-shadow: 0 6px 14px -8px color-mix(in srgb, var(--money) 80%, transparent); }
+  50% { box-shadow: 0 6px 20px -6px color-mix(in srgb, var(--money) 95%, transparent); }
+}
+
+/* Automation — mid/late "let the AI run the lab" toggles. A row per autopilot with a switch. */
+.automation-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.automation-count { font-size: 12px; font-weight: 800; color: var(--money); background: color-mix(in srgb, var(--money) 12%, transparent); border-radius: 999px; padding: 2px 10px; }
+.automation-intro { font-size: 12.5px; line-height: 1.45; color: var(--ink-3); margin: 2px 0 10px; }
+.automation-row {
+  display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
+  border: 1px solid var(--line, rgba(20, 22, 27, 0.08)); border-radius: 12px; padding: 10px 12px;
+  background: var(--glass-strong, #fff); transition: border-color 0.2s, background 0.2s, opacity 0.2s;
+}
+.automation-row.on { border-color: color-mix(in srgb, var(--money) 45%, transparent); background: linear-gradient(180deg, rgba(22, 179, 100, 0.06), var(--glass-strong, #fff)); }
+.automation-row.locked { opacity: 0.6; cursor: not-allowed; }
+.automation-row:not(:disabled):active { transform: scale(0.99); }
+.automation-ic { flex-shrink: 0; color: var(--ink); display: inline-flex; align-items: center; justify-content: center; }
+.automation-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.automation-name { font-size: 13.5px; font-weight: 800; color: var(--ink); }
+.automation-desc { font-size: 11.5px; line-height: 1.35; color: var(--ink-3); }
+.automation-switch {
+  flex-shrink: 0; width: 42px; height: 25px; border-radius: 999px; background: #d6d1e6;
+  position: relative; transition: background 0.2s;
+}
+.automation-switch.on { background: linear-gradient(180deg, var(--money), #12a058); }
+.automation-knob {
+  position: absolute; top: 2.5px; left: 2.5px; width: 20px; height: 20px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); transition: transform 0.2s var(--ease-out);
+}
+.automation-switch.on .automation-knob { transform: translateX(17px); }
+
+/* App-wide crash guard fallback (ErrorBoundary) — calm, on-brand, reassuring. Light
+   theme to match the app; centered card with one clear recovery action. */
+.crash-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+  z-index: 9999;
+}
+.crash-card {
+  max-width: 400px;
+  text-align: center;
+  background: #fff;
+  border: 1px solid rgba(20, 22, 27, 0.08);
+  border-radius: 18px;
+  padding: 30px 26px;
+  box-shadow: 0 24px 60px -24px rgba(20, 22, 27, 0.28);
+}
+.crash-mark { line-height: 1; margin-bottom: 10px; color: var(--coral); display: inline-flex; justify-content: center; }
+.crash-card h1 { font-size: 20px; font-weight: 800; color: var(--ink); margin: 0 0 10px; }
+.crash-card p { font-size: 14px; line-height: 1.5; color: var(--ink-2); margin: 0 0 22px; }
+.crash-card .btn { width: 100%; }

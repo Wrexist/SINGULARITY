@@ -5,13 +5,14 @@ import { canBuyOfficePerk } from "../engine/actions";
 import { officeMorale, totalMorale } from "../engine/derive";
 import {
   roleDef, traitDef, employeePayroll, canTrain, trainCost, hireCost,
+  roleAffinity, roleMatchesSegment,
 } from "../engine/employees";
 import { typeDef, productMetrics, upgradeProgress } from "../engine/products";
 import { Big } from "../engine/math/Big";
 import type { GameState, Derived, Employee } from "../engine/types";
 import type { Candidate } from "../state/store";
 import { fmtMoney, m$, fmtDur } from "./format";
-import { TeamIcon, BanknoteIcon, SmileIcon, BarsIcon, BuildingIcon, GradCapIcon, AtomIcon } from "./Icons";
+import { TeamIcon, BanknoteIcon, SmileIcon, BarsIcon, BuildingIcon, GradCapIcon, AtomIcon, RepeatIcon } from "./Icons";
 import { burst } from "./fx";
 
 interface Props {
@@ -142,12 +143,15 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
     return { product: prod, idle: prod.filter((e) => !e.assignedProductId).length };
   }, [team]);
 
-  // One metrics pass per product; crew grouped by assignment.
+  // One metrics pass per product; crew grouped by assignment. Mods-aware so the
+  // revenue shown next to a project reflects the very crew assigned to it — the
+  // whole point of this panel (assigning staff must visibly change the number).
   const frontier = game.products.frontier;
+  const modsById = derived.productModsById;
   const projects = useMemo(() => game.products.active.map((p) => ({
-    p, me: productMetrics(p, frontier),
+    p, me: productMetrics(p, frontier, modsById[p.id]),
     crew: team.filter((e) => e.assignedProductId === p.id),
-  })), [game.products.active, frontier, team]);
+  })), [game.products.active, frontier, team, modsById]);
   const totalMrr = projects.reduce((s, x) => s + x.me.mrr, 0);
 
   const selected = selectedId ? team.find((e) => e.id === selectedId) ?? null : null;
@@ -203,6 +207,9 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
           <div className="emp-person-tags">
             <span className="emp-tag role">{role?.name}</span>
             {trait && <span className="emp-tag" style={{ color: TRAIT_TONE[trait.tone], background: `color-mix(in srgb, ${TRAIT_TONE[trait.tone]} 12%, #fff)` }}>{trait.name}</span>}
+            {roleAffinity(e.roleId).length > 0 && (
+              <span className="emp-tag synergy" title={`Assign to a ${roleAffinity(e.roleId).join(" or ")} product for a +${Math.round((balance.staff.segmentSynergy - 1) * 100)}% synergy bonus`}>★ {roleAffinity(e.roleId).join(" · ")}</span>
+            )}
             {e.training && <span className="emp-tag train"><GradCapIcon size={12} /> training</span>}
           </div>
         </div>
@@ -230,7 +237,7 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
             <>
               <div className="emp-section-head">
                 <span>Pick a candidate</span>
-                <span><button className="link-btn" onClick={onRefresh}>↻ refresh</button> · <button className="link-btn" onClick={onCloseRecruit}>close</button></span>
+                <span><button className="link-btn link-btn-ic" onClick={onRefresh}><RepeatIcon size={12} />refresh</button> · <button className="link-btn" onClick={onCloseRecruit}>close</button></span>
               </div>
               {candidates.map((c, i) => {
                 const role = roleDef(c.roleId);
@@ -360,9 +367,12 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
                 <div className="emp-proj-head">
                   <div className="emp-proj-id">
                     <span className="emp-proj-name">{p.name}</span>
-                    <span className="emp-proj-sub">{t.name} · v{p.version}</span>
+                    <span className="emp-proj-sub">{t.name} · {t.segment} · v{p.version}</span>
                   </div>
-                  <span className={`emp-proj-badge ${tg.cls}`}>{tg.label}</span>
+                  {/* When staffing, a ★ marks projects this specialist synergizes with. */}
+                  {selected && roleMatchesSegment(selected.roleId, t.segment)
+                    ? <span className="emp-proj-synergy" title={`Synergy: a ${roleDef(selected.roleId)?.name} on a ${t.segment} product earns +${Math.round((balance.staff.segmentSynergy - 1) * 100)}%`}>★ synergy</span>
+                    : <span className={`emp-proj-badge ${tg.cls}`}>{tg.label}</span>}
                 </div>
                 <div className="emp-proj-bar"><div className="emp-proj-fill" style={{ width: `${Math.min(100, pct)}%`, background: up ? "#7c5cff" : "var(--money)" }} /></div>
                 <div className="emp-proj-meta">
@@ -371,11 +381,15 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
                 </div>
                 <div className="emp-proj-crew">
                   {crew.length === 0 && <span className="emp-proj-empty">{selected || drag ? "Drop / tap to assign here" : "No crew assigned"}</span>}
-                  {crew.map((e) => (
-                    <button key={e.id} className="emp-crew-av" title={`${e.name} · unassign`} onClick={(ev) => { ev.stopPropagation(); onAssign(e.id, null); }}>
-                      <Avatar name={e.name} size={30} />
-                    </button>
-                  ))}
+                  {crew.map((e) => {
+                    const syn = roleMatchesSegment(e.roleId, t.segment);
+                    return (
+                      <button key={e.id} className={`emp-crew-av ${syn ? "synergy" : ""}`} title={`${e.name}${syn ? " · ★ segment synergy" : ""} · unassign`} onClick={(ev) => { ev.stopPropagation(); onAssign(e.id, null); }}>
+                        <Avatar name={e.name} size={30} />
+                        {syn && <span className="emp-crew-star" aria-hidden="true">★</span>}
+                      </button>
+                    );
+                  })}
                   {[...roleCounts].map(([rid, n]) => (
                     <span className="emp-role-chip" key={rid}>{n} {roleDef(rid)?.name ?? rid}</span>
                   ))}

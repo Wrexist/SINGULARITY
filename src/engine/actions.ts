@@ -7,14 +7,14 @@ import {
   type HeatEvent,
   type WorldEvent,
   type WorldEventEffect,
-  type StaffRole,
 } from "./balance/config";
-import { derive } from "./derive";
+import { derive, computeBankCeiling } from "./derive";
 import { alignmentHeatMult } from "./alignment";
 import { suspicionEventMult, regulatorIsNamed, regulatorState, clampSuspicion } from "./regulator";
 import { autoResearchEnabled, researchCostMult } from "./reputation";
 import { isRackId, floorFull, evictableRackFor } from "./hall";
-import type { ActiveModifier, GameState } from "./types";
+import { typeDef } from "./products";
+import type { ActiveModifier, Derived, GameState } from "./types";
 
 const clampHeat = (h: number) => Math.max(0, Math.min(balance.heat.max, h));
 
@@ -170,47 +170,11 @@ export function buyUpgradeBulk(state: GameState, id: string, want: number): Game
   return s;
 }
 
-// ---------- Staff (Phase 2) ----------
-
-const STAFF_BY_ID: Record<string, StaffRole> = Object.fromEntries(
-  balance.staff.roles.map((r) => [r.id, r]),
-);
-
-/** Recruiters cut hire costs: multiplier ≤ 1 from `hireDiscount` perLevel, floored. */
-export function staffHireDiscount(state: GameState): number {
-  if (!balance.staff.enabled) return 1;
-  let cut = 0;
-  for (const role of balance.staff.roles) {
-    if (role.effect.kind === "meta" && role.effect.lane === "hireDiscount") {
-      cut += role.effect.perLevel * (state.upgrades[role.id] ?? 0);
-    }
-  }
-  return Math.max(balance.staff.hireDiscountFloor, 1 - cut);
-}
-
-/** Cost to hire the next of a role: base * growth^owned, after any Recruiter discount. */
-export function staffHireCost(role: StaffRole, owned: number, discount = 1): Big {
-  return Big.of(role.hire.base).mul(Big.of(role.hire.growth).pow(owned)).mul(discount);
-}
-
-export function canHireStaff(state: GameState, id: string): boolean {
-  const role = STAFF_BY_ID[id];
-  if (!role || !balance.staff.enabled) return false;
-  return state.resources.money.gte(staffHireCost(role, state.upgrades[id] ?? 0, staffHireDiscount(state)));
-}
-
-/** Hire one of a role. No-op if unaffordable. Counts live in the upgrades map. */
-export function hireStaff(state: GameState, id: string): GameState {
-  if (!canHireStaff(state, id)) return state;
-  const role = STAFF_BY_ID[id]!;
-  const owned = state.upgrades[id] ?? 0;
-  const cost = staffHireCost(role, owned, staffHireDiscount(state));
-  return {
-    ...state,
-    resources: { ...state.resources, money: state.resources.money.sub(cost) },
-    upgrades: { ...state.upgrades, [id]: owned + 1 },
-  };
-}
+// ---------- Office perks (Phase 2) ----------
+// NOTE: the old per-role staff-hire path (hireStaff/canHireStaff/staffHireCost/
+// staffHireDiscount) was superseded by the individual-employee system in
+// engine/employees.ts (hiring runs through the store's doHireCandidate) and has
+// been removed as dead code.
 
 /** Office perks are one-time (0/1) purchases living in the upgrades map. */
 export function canBuyOfficePerk(state: GameState, id: string): boolean {
@@ -274,6 +238,32 @@ export function canBuyResearch(state: GameState, id: string): boolean {
 }
 
 /**
+ * True when auto-train's Compute ceiling has STALLED research: training is draining the
+ * bank (auto-train on, intensity > 0), there IS an available node to chase, yet none is
+ * affordable and every available node's Compute cost exceeds what the bank can hold at
+ * this intensity (see `computeBankCeiling`). In that state a `cost / rate` ETA lies — the
+ * node is unreachable by waiting — so the UI points the player at the real fix: ease the
+ * training-intensity slider (which raises the ceiling) or grow Compute production. Nodes
+ * blocked only on Data (Compute fits under the ceiling) are reachable by waiting, so they
+ * do NOT count as stalled. Pure. Off by construction until auto-train is owned, so a
+ * default early run never trips it before the mechanic exists.
+ */
+export function researchStalled(state: GameState, d: Derived): boolean {
+  const ceiling = computeBankCeiling(state, d);
+  if (ceiling === null) return false; // unbounded bank (auto-train off / focus 0) → never stalled
+  const avail = balance.research.filter((def) => researchAvailable(state, def.id));
+  if (avail.length === 0) return false; // tree done / next wave locked on prereqs → not a stall
+  let anyWalled = false;
+  for (const def of avail) {
+    if (canBuyResearch(state, def.id)) return false; // something affordable right now → not stalled
+    const cost = researchCost(state, def);
+    if (!cost.compute.gt(ceiling)) return false; // reachable by waiting (Compute fits) → not stalled
+    anyWalled = true;
+  }
+  return anyWalled;
+}
+
+/**
  * Auto-buy research (R5.3, gated behind the Research Director reputation perk).
  * Buys the cheapest affordable, prerequisite-met node repeatedly until none is
  * affordable. Pure; runs in tick() so it also works during offline catch-up. Does
@@ -318,10 +308,6 @@ export interface MarketOutcome {
   dataGained: Big;
   moneyLost: Big;
   message: string;
-}
-
-export function dataOfferById(id: string): DataOffer | undefined {
-  return OFFER_BY_ID[id];
 }
 
 export function canBuyDataOffer(state: GameState, id: string): boolean {
@@ -596,12 +582,18 @@ function applyEffect(state: GameState, effect: WorldEventEffect, id: string, ton
     return { ...state, products: { ...state.products, frontier: state.products.frontier + effect.amount } };
   }
   if (effect.kind === "productBuzz") {
-    // Industry hype — every live product gets a buzz wave (acquisition + churn cut).
+    // Industry hype — live products get a buzz wave (acquisition + churn cut), scaled by
+    // each type's hype sensitivity: a trendy Multimodal Studio (hype 1.5) rides the wave
+    // far longer than a boring Fast API (hype 0.3). Wires the previously-dead `hype` field.
+    // Only fires from ambient world events, which the balance sim never rolls → curve-safe.
     return {
       ...state,
       products: {
         ...state.products,
-        active: state.products.active.map((p) => ({ ...p, buzzSec: Math.max(p.buzzSec, effect.durationSec) })),
+        active: state.products.active.map((p) => ({
+          ...p,
+          buzzSec: Math.max(p.buzzSec, effect.durationSec * typeDef(p.type).hype),
+        })),
       },
     };
   }

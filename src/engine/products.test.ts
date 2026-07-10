@@ -131,6 +131,23 @@ describe("products — simulation", () => {
     expect(m.margin).toBeLessThan(0);
   });
 
+  it("productMetrics folds per-product mods so assigning crew visibly moves the dashboard (regression: hidden-buff hole)", () => {
+    let s = release();
+    s = { ...s, products: { ...s.products, active: [{ ...s.products.active[0]!, mau: 10_000, paid: 2_000 }] } };
+    const p = s.products.active[0]!;
+    const frontier = s.products.frontier;
+    const neutral = productMetrics(p, frontier); // default NEUTRAL_MODS — the old behavior
+    // Sales Exec (+ARPU) and SRE (−serve cost) buffs MUST show up on the numbers the
+    // player sees — previously productMetrics was mods-blind so these were invisible.
+    const buffed = productMetrics(p, frontier, { upgradeSpeed: 1, serveCost: 0.8, churn: 1, acq: 1, arpu: 1.2, heat: 1 });
+    expect(buffed.mrr).toBeGreaterThan(neutral.mrr);       // +20% ARPU → more revenue
+    expect(buffed.serve).toBeLessThan(neutral.serve);      // −20% serve cost → cheaper
+    expect(buffed.margin).toBeGreaterThan(neutral.margin); // profit improves on both counts
+    // Customer Success (−churn) lowers the shown churn/min; heat/faction churn raises it.
+    const stickier = productMetrics(p, frontier, { upgradeSpeed: 1, serveCost: 1, churn: 0.8, acq: 1, arpu: 1, heat: 1 });
+    expect(stickier.churnPerMin).toBeLessThan(neutral.churnPerMin);
+  });
+
   it("a long offline tick does NOT wipe a still-competitive product's paid base (regression)", () => {
     let s = release(shipped(), "code"); // the stickiest type
     // Keep quality well above the frontier so it stays competitive across the
@@ -580,6 +597,18 @@ describe("products — market world events", () => {
     s = { ...s, products: { ...s.products, active: [{ ...s.products.active[0]!, buzzSec: 0 }] } };
     const { state } = applyWorldEvent(s, "industry_hype");
     expect(state.products.active[0]!.buzzSec).toBeGreaterThan(0);
+  });
+
+  it("industry_hype scales the buzz wave by each type's hype sensitivity (regression: dead hype field)", () => {
+    const base = shipped();
+    base.prestige.ships = 9; // unlock every product type for the comparison
+    const drain = (s: ReturnType<typeof shipped>) =>
+      ({ ...s, products: { ...s.products, active: [{ ...s.products.active[0]!, buzzSec: 0 }] } });
+    const trendy = drain(releaseProduct(base, { type: "multimodal", name: "Trendy", id: "t1" })); // hype 1.5
+    const boring = drain(releaseProduct(base, { type: "small", name: "Boring", id: "b1" }));      // hype 0.3
+    const tBuzz = applyWorldEvent(trendy, "industry_hype").state.products.active[0]!.buzzSec;
+    const bBuzz = applyWorldEvent(boring, "industry_hype").state.products.active[0]!.buzzSec;
+    expect(tBuzz).toBeGreaterThan(bBuzz); // the trendy product rides the wave far longer
   });
 });
 

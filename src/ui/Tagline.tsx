@@ -43,6 +43,43 @@ const TAGLINES = [
   "It passed the vibe check eval.",
   "Data-driven, adverb-heavy.",
   "One more epoch. Trust us.",
+  "Now agentic. Don't ask what it's doing.",
+  "It has a PhD in everything and a driver's license in nothing.",
+  "We put an agent on it. The agent put an agent on it.",
+  "Sovereign AI, sovereign electricity bill.",
+  "We signed a nuclear plant. For the vibes.",
+  "It's not a chatbot, it's a coworker (unpaid).",
+  "Our moat is a rounding error away.",
+  "Vibe-coded, prod-deployed, prayer-maintained.",
+  "The roadmap is downstream of the group chat.",
+  "Reasoning model. Results may vary. Wildly.",
+  "We reached AGI on a technicality.",
+  "Context window bigger than our runway.",
+  "Now with tool use, tool misuse, and tool abuse.",
+  "Zero-shot promises, few-shot delivery.",
+  "Our AI browses the web so you can watch it get lost.",
+  "Fine-tuned on your feedback and our deadlines.",
+  "The agent booked the flight. To the wrong city.",
+  "Benchmarks: saturated. Users: confused.",
+  "We're not overfit, we're 'confidently specialized'.",
+  "Turning electricity into confidence at scale.",
+  "Our chip order has its own weather system.",
+  "Post-training, post-truth, pre-profit.",
+  "It passed the bar exam and failed the vibe check.",
+  "We open-sourced the parts that don't make money.",
+  "Latency down, hallucinations sideways.",
+  "The demo is real. The product is a roadmap.",
+  "Now available in your enterprise's legal department.",
+  "Scaling until the physics complains.",
+  "We RAG'd it. It's fine. It's probably fine.",
+  "The model unionized. Negotiations are ongoing.",
+  "Our safety framework is a very stern PDF.",
+  "Series G: the 'what is a business model' round.",
+  "We evaluate ourselves. We give ourselves an A.",
+  "Guardrails installed loosely, for innovation.",
+  "It writes the tests and grades its own homework.",
+  "Compute is the new oil, and we're on fire.",
+  "Our uptime is aspirational.",
 ];
 
 /** Fisher–Yates shuffle order per mount, so the wheel never replays the same
@@ -65,7 +102,10 @@ export function Tagline() {
 
   useEffect(() => {
     if (reduced) return;
-    const t = window.setInterval(() => setN((x) => x + 1), 9000);
+    // Slow, occasional refresh (was 9s). The Tagline is a decorative subtitle, not a
+    // feed — pairing a fast rotation here with the NewsTicker on the same screen read as
+    // two things competing for the glance. A calmer cadence keeps it alive without churn.
+    const t = window.setInterval(() => setN((x) => x + 1), 16000);
     return () => window.clearInterval(t);
   }, [reduced]);
 

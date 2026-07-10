@@ -10,6 +10,11 @@ import { applyAutoResearch } from "./actions";
 import { rivalsBeaten } from "./market";
 import type { Derived, GameState } from "./types";
 
+/** Hard ceiling on simultaneously-active modifiers processed in a tick. The window-split
+ *  recursion below descends once per distinct expiry, so this bounds its depth against a
+ *  crafted/pathological buff stack. Sits far above any reachable legit stack. */
+const MAX_ACTIVE_MODIFIERS = 48;
+
 /**
  * The deterministic heartbeat. Given a state and elapsed time, returns the next
  * state. The engine never reads the wall clock (CLAUDE.md hard rule) — time is
@@ -32,7 +37,17 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     // Drop already-expired (or malformed) modifiers first. Otherwise minRem
     // could be <= 0, making firstMs <= 0 and the recursive split spin without
     // ever making progress.
-    const active = state.modifiers.filter((m) => Number.isFinite(m.remainingSec) && m.remainingSec > 0);
+    let active = state.modifiers.filter((m) => Number.isFinite(m.remainingSec) && m.remainingSec > 0);
+    // Defense-in-depth: the window-split below descends once per distinct expiry, so an
+    // extreme stack of simultaneous buffs could approach the call-stack limit on a large
+    // offline/tab-resume tick. The load sanitizer caps SAVED modifiers at 20; mirror that
+    // at runtime with a generous ceiling — above any reachable legit stack (a burst of
+    // objective/daily/event buffs tops out well under this), below the danger zone — by
+    // keeping the soonest-expiring MAX so the split depth is always bounded. Legit play
+    // never trips it; only a crafted/pathological state does.
+    if (active.length > MAX_ACTIVE_MODIFIERS) {
+      active = [...active].sort((a, b) => a.remainingSec - b.remainingSec).slice(0, MAX_ACTIVE_MODIFIERS);
+    }
     if (active.length !== state.modifiers.length) {
       return tick({ ...state, modifiers: active }, elapsedMs);
     }
@@ -64,9 +79,18 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   // multiple times within one big offline tick.
   if (run.active) {
     let remaining = seconds;
-    // Guard against pathological loops on huge offline deltas.
+    // Guard against pathological loops on huge offline deltas. Sized to the window:
+    // the most runs that can legitimately complete is (elapsed / shortest run), so a
+    // premium 24h catch-up at the run-duration floor (86400/0.5 = 172800 runs) no
+    // longer trips a fixed cap and under-report the offline haul. Still capped as a
+    // hard backstop against a zero-length run, and the divisor is floored so it can't
+    // divide by zero.
     let guard = 0;
-    while (run.active && remaining > 0 && guard < 100000) {
+    const guardLimit = Math.min(
+      5_000_000,
+      Math.ceil(seconds / Math.max(0.05, balance.run.minDurationSec)) + 100,
+    );
+    while (run.active && remaining > 0 && guard < guardLimit) {
       guard++;
       const secsToFinish = (1 - run.progress) * d.runDurationSec;
       if (remaining >= secsToFinish) {
@@ -154,13 +178,13 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   const rivalsNow = rivalsBeaten({ ...state, products });
   const stats = accrueStats(
     state.stats, products, state.research.length, d.computePerSec,
-    lifetimeMoney.sub(state.lifetimeMoney), seconds, rivalsNow,
+    lifetimeMoney.sub(state.lifetimeMoney), seconds, rivalsNow, d.productModsById,
   );
 
   // Generation-scoped peaks (reset by prestige) for the Generation Report: this run's
   // high-water Compute/sec and total product revenue/sec, NOT the all-time career peaks.
   let curMrr = 0;
-  for (const p of products.active) curMrr += productMetrics(p, products.frontier).mrr;
+  for (const p of products.active) curMrr += productMetrics(p, products.frontier, d.productModsById[p.id]).mrr;
   const runPeakCompute = state.runPeakCompute.max(d.computePerSec);
   const runPeakMrr = Math.max(state.runPeakMrr, curMrr);
 

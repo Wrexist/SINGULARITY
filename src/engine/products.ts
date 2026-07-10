@@ -2,6 +2,7 @@ import {
   products as B, productMilestones, productFeatures,
   type ProductTypeId, type ProductTypeDef, type MilestoneDef, type FeatureLane,
 } from "./balance/products";
+import { balance } from "./balance/config";
 import type { GameState, ProductMods, ProductState, ProductsState, UpgradeState } from "./types";
 import { bonusProductSlots } from "./reputation";
 import { derive } from "./derive";
@@ -109,8 +110,16 @@ export function enterpriseUnlocked(state: GameState): boolean {
  *  single eased value. Returns pre-mods ARPU (callers apply staff mods.arpu). */
 function tierEconomics(p: ProductState, t: ProductTypeDef, qf: number, fm: FeatureMods) {
   const base = t.baseConversion * qf * fm.conversion;
-  const proConv = base / p.priceMult;
-  const entConv = p.enterprise ? (base * B.enterprise.convShare) / Math.max(1e-9, p.enterprisePrice) : 0;
+  // Conversion falls LINEARLY with the price dial (not as 1/price), so it no longer
+  // exactly cancels the ×price ARPU gain: net revenue/user now rises with price to an
+  // interior peak (~1.5× Pro / ~1.9× Enterprise) and then declines — and higher price
+  // still lifts churn — so pricing is a real "premium vs volume" decision instead of a
+  // slider that does nothing. IDENTITY at the default dials (priceMult / enterprisePrice
+  // = 1), so the tuned curve and the balance sim (which never move price) are unchanged.
+  const proConv = base * Math.max(0, 1 - B.priceConvSlope * (p.priceMult - 1));
+  const entConv = p.enterprise
+    ? base * B.enterprise.convShare * Math.max(0, 1 - B.enterprise.convSlope * (p.enterprisePrice - 1))
+    : 0;
   const proArpu = t.baseArpu * p.priceMult * p.quality * fm.arpu;
   const entArpu = t.baseArpu * p.enterprisePrice * B.enterprise.arpuMult * p.quality * fm.arpu;
   const total = proConv + entConv;
@@ -238,15 +247,25 @@ export interface ProductMetrics {
   margin: number; gap: number; churnPerMin: number; qf: number;
 }
 
-export function productMetrics(p: ProductState, frontier: number): ProductMetrics {
+/**
+ * Live economics for the dashboard. Now folds the same per-product `mods` the
+ * SIM applies (staff assignment buffs + heat/faction cross-system effects), so the
+ * Revenue/s, Profit/s and churn a player sees actually move when they assign a
+ * Sales Exec or an SRE — previously these numbers were computed mods-blind, making
+ * the entire product-staff system invisible on the very surfaces that sell it.
+ * Defaults to NEUTRAL_MODS so mods-agnostic callers (milestones, tests) are
+ * unchanged, and identical to the sim when mods are neutral (curve-safe: the
+ * balance sim never assigns staff, so its numbers don't move).
+ */
+export function productMetrics(p: ProductState, frontier: number, mods: ProductMods = NEUTRAL_MODS): ProductMetrics {
   const t = typeDef(p.type);
   const fm = featureMods(p);
   const qf = clamp(p.quality / Math.max(frontier, 1e-9), 0, 1);
-  const arpu = tierEconomics(p, t, qf, fm).arpu; // blended across Pro + Enterprise
+  const arpu = tierEconomics(p, t, qf, fm).arpu * mods.arpu; // blended across Pro + Enterprise, ×ARPU buffs
   const mrr = p.paid * arpu;
-  const serve = p.paid * t.computePerUser * p.quality * fm.serveCost;
+  const serve = p.paid * t.computePerUser * p.quality * fm.serveCost * mods.serveCost;
   const gap = Math.max(0, frontier - p.quality);
-  const churnPerSec = t.baseChurn * (1 + gap * B.stalenessChurn) * p.priceMult * (p.buzzSec > 0 ? B.buzzChurnMult : 1) * fm.churn;
+  const churnPerSec = t.baseChurn * (1 + gap * B.stalenessChurn) * p.priceMult * (p.buzzSec > 0 ? B.buzzChurnMult : 1) * fm.churn * mods.churn;
   return {
     mau: p.mau, paid: p.paid, arpu, mrr, serve,
     margin: mrr - serve - p.marketingPerSec,
@@ -333,7 +352,10 @@ export function maybeProductEvent(
     paid: Math.max(0, Math.min(p.paid * (ev.paidMult ?? 1), mau)),
     buzzSec: ev.buzz ? B.buzzDurationSec : p.buzzSec,
   };
-  const heat = ev.heat ? state.heat + ev.heat : state.heat;
+  // Clamp like every other Heat write — [0, max] both bounds — so an event at near-max
+  // Heat can't push it over the ceiling, and a (future) cooling event can't drive it
+  // negative, even for the frame before the next tick re-clamps.
+  const heat = ev.heat ? Math.max(0, Math.min(balance.heat.max, state.heat + ev.heat)) : state.heat;
   return {
     state: {
       ...state,

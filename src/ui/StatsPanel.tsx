@@ -2,7 +2,8 @@ import { useState } from "react";
 import type { Derived, GameState } from "../engine/types";
 import { fmt, fmtMoney, m$, numOf, fmtDur } from "./format";
 import { achievementDefs } from "../engine/achievements";
-import { reputationAvailable } from "../engine/reputation";
+import { reputationAvailable, endowmentMult } from "../engine/reputation";
+import { preprintMult } from "../engine/preprints";
 import { alignmentProductionMods, alignmentHeatMult, alignmentProductMods } from "../engine/alignment";
 import { regulatorState } from "../engine/regulator";
 import { charterDef, charterMods } from "../engine/charter";
@@ -93,9 +94,14 @@ export function StatsPanel({ game, derived }: Props) {
   const now: Row[] = [
     { label: "Compute / sec", value: fmt(derived.computePerSec) },
     { label: "Data / sec", value: fmt(derived.dataPerSec) },
+    { label: "Compute multiplier", value: `×${fmt(derived.computeMult)}` },
     { label: "Data multiplier", value: `×${fmt(derived.dataMult)}` },
     { label: "$ multiplier", value: `×${fmt(derived.moneyMult)}` },
     { label: "Legacy boost", value: `×${fmt(derived.legacyMult)}` },
+    // Endgame boosts that were previously invisible — surface them the moment they're
+    // non-identity so the "small compounding boosts" actually read as working.
+    ...(game.preprints > 0 ? [{ label: "Preprints", value: `×${preprintMult(game).toNumber().toFixed(2)} · ${game.preprints} paper${game.preprints === 1 ? "" : "s"}` }] : []),
+    ...(game.repEndowment > 0 ? [{ label: "Endowment", value: `+${Math.round((endowmentMult(game) - 1) * 100)}% · L${game.repEndowment}` }] : []),
     { label: "Run duration", value: `${derived.runDurationSec.toFixed(1)}s` },
     { label: "Run payout", value: `${fmt(derived.runDataYield)} data · ${fmtMoney(derived.runMoneyYield)}` },
     { label: "Passive income", value: `${fmtMoney(derived.passiveMoneyPerSec)}/s` },

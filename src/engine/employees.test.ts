@@ -3,7 +3,9 @@ import {
   employeeEffectMult, employeePayroll, levelEffectMult,
   canTrain, startTraining, advanceTraining, trainDurationSec,
   assignEmployee, fireEmployee, addEmployee, teamMorale, computeStaffEffects,
+  roleMatchesSegment,
 } from "./employees";
+import { balance } from "./balance/config";
 import { createInitialState } from "./state";
 import { Big } from "./math/Big";
 import type { Employee } from "./types";
@@ -93,5 +95,34 @@ describe("employees — aggregation", () => {
   it("Mentor trait contributes team morale", () => {
     expect(teamMorale([emp({ trait: "mentor" })])).toBeGreaterThan(0);
     expect(teamMorale([emp({ trait: null })])).toBe(0);
+  });
+
+  describe("segment synergy (role×product-type assignment)", () => {
+    const focus = balance.staff.assignFocusMult;
+    // Sales Exec (arpu) has affinity ["enterprise"]; assign one to product "p1".
+    const sales = emp({ roleId: "staff_sales", assignedProductId: "p1" });
+
+    it("a matched assignment buffs the product MORE than a mismatched one", () => {
+      const matched = computeStaffEffects([sales], ["p1"], 1, focus, { p1: "enterprise" });
+      const mismatched = computeStaffEffects([sales], ["p1"], 1, focus, { p1: "consumer" });
+      expect(matched.productModsById.p1!.arpu).toBeGreaterThan(mismatched.productModsById.p1!.arpu);
+      // The bonus is exactly segmentSynergy on the lane units (arpu = 1 + units).
+      const mUnits = matched.productModsById.p1!.arpu - 1;
+      const xUnits = mismatched.productModsById.p1!.arpu - 1;
+      expect(mUnits / xUnits).toBeCloseTo(balance.staff.segmentSynergy, 5);
+    });
+
+    it("no segment map (the balance-sim path) → no synergy, so the curve is untouched", () => {
+      const withMap = computeStaffEffects([sales], ["p1"], 1, focus, { p1: "consumer" }); // mismatched
+      const noMap = computeStaffEffects([sales], ["p1"], 1, focus); // sim default: {}
+      expect(noMap.productModsById.p1!.arpu).toBe(withMap.productModsById.p1!.arpu);
+    });
+
+    it("roleMatchesSegment reflects the affinity data", () => {
+      expect(roleMatchesSegment("staff_sales", "enterprise")).toBe(true);
+      expect(roleMatchesSegment("staff_sales", "consumer")).toBe(false);
+      expect(roleMatchesSegment("staff_growth", "consumer")).toBe(true);
+      expect(roleMatchesSegment("staff_engineer", "consumer")).toBe(false); // infra role: no affinity
+    });
   });
 });

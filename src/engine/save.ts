@@ -9,7 +9,11 @@ import { charters as CHARTERS } from "./balance/charters";
 import { balance } from "./balance/config";
 import { components as COMPONENTS, SLOTS_BY_TIER, type SlotClass } from "./balance/components";
 import { market as MARKET } from "./balance/market";
+import { challenges as CHALLENGES } from "./balance/challenges";
+import { objectives as OBJECTIVES } from "./balance/objectives";
+import { automation as AUTOMATION } from "./balance/automation";
 import { freshComponents } from "./components";
+import type { ChallengeState } from "./types";
 import type { ActiveModifier, ComponentsState, DraftModel, Employee, GameState, LifetimeStats, ModifierTarget, ProductsState, ProductState, UpgradeState } from "./types";
 
 const MODIFIER_TARGETS: ModifierTarget[] = ["computeMult", "dataMult", "moneyMult"];
@@ -19,6 +23,7 @@ const PRODUCT_TYPE_IDS = PRODUCTS.types.map((t) => t.id);
 // editable text, so these arrays must hold KNOWN ids, EXACTLY ONCE — otherwise a
 // hand-edited dupe (e.g. contracts.completed) inflates a permanent meta-currency.
 const CONTRACT_IDS = new Set(CONTRACTS.pool.map((c) => c.id));
+const OBJECTIVE_IDS = new Set(OBJECTIVES.pool.map((o) => o.id));
 const LEGACY_IDS = new Set(LEGACY.perks.map((p) => p.id));
 const REP_PERK_COST = new Map(REPUTATION.perks.map((p) => [p.id, p.cost]));
 const CHARTER_IDS = new Set(CHARTERS.list.map((c) => c.id));
@@ -51,7 +56,13 @@ const NUM_RE = /^\d+(\.\d+)?(e\+?\d+)?$/i;
 function safeBig(v: unknown, fallback: Big = Big.ZERO): Big {
   if (v instanceof Big) return v;
   if (typeof v === "number") return Number.isFinite(v) && v >= 0 ? Big.of(v) : fallback;
-  if (typeof v === "string" && NUM_RE.test(v.trim())) return Big.of(v.trim());
+  if (typeof v === "string" && NUM_RE.test(v.trim())) {
+    // NUM_RE admits an arbitrarily large exponent (e.g. "1e9000000000000000") that
+    // constructs an INFINITY Big past break_infinity's limit — reject those so a
+    // non-finite value never enters money/lifetime/legacy math.
+    const b = Big.of(v.trim());
+    return b.isFinite() ? b : fallback;
+  }
   return fallback;
 }
 
@@ -65,14 +76,30 @@ function safeCount(v: unknown, fallback = 0): number {
   return typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.floor(v) : fallback;
 }
 
-/** The upgrades map is fully untrusted (it drives derive directly). Keep only
- *  string keys → finite non-negative integer counts; drop `__proto__` & garbage. */
+/** Owned-count ceiling for an uncapped (max: Infinity) upgrade — e.g. racks. Far beyond
+ *  any legit save (hall floor capacity already bounds racks), but low enough that
+ *  count × per-level effect can never overflow Compute to Infinity (which then underflows
+ *  to NaN via Infinity−Infinity). Guards against a save cheated to 1e308 racks. */
+const MAX_UPGRADE_COUNT = 1e7;
+/** Per-upgrade caps, so a tampered save can't exceed a capped upgrade (e.g. a ×25 booster
+ *  claimed 1000 times). Only balance.upgrades have real caps; other keys in the map
+ *  (office perks, etc.) fall back to the global ceiling. */
+const UPGRADE_MAX = new Map(balance.upgrades.map((u) => [u.id, u.max] as const));
+
+/** The upgrades map is fully untrusted (it drives derive directly). Keep only string keys →
+ *  finite positive integer counts, each CLAMPED to its upgrade's max (or the global ceiling
+ *  for uncapped/unknown keys); drop `__proto__` & garbage. Enforces caps on load so a cheated
+ *  or corrupt count can neither exceed a cap nor overflow the economy to Infinity. */
 function sanitizeUpgrades(u: unknown): Record<string, number> {
   if (!u || typeof u !== "object") return {};
   const out: Record<string, number> = {};
   for (const [k, v] of Object.entries(u as Record<string, unknown>)) {
     if (k === "__proto__" || k === "constructor" || k === "prototype") continue;
-    if (typeof v === "number" && Number.isFinite(v) && v > 0) out[k] = Math.floor(v);
+    if (typeof v === "number" && Number.isFinite(v) && v > 0) {
+      const max = UPGRADE_MAX.get(k);
+      const cap = max !== undefined && Number.isFinite(max) ? max : MAX_UPGRADE_COUNT;
+      out[k] = Math.min(Math.floor(v), cap);
+    }
   }
   return out;
 }
@@ -119,7 +146,9 @@ function sanitizeUpgrade(u: unknown): UpgradeState | null {
   if (o.targetVersion! < 2 || o.remainingSec! < 0 || o.totalSec! <= 0) return null;
   if (o.remainingCompute! < 0 || o.remainingData! < 0) return null;
   return {
-    targetVersion: o.targetVersion!,
+    // Clamp to the same ceiling as a product's base version (see loadedProducts), so a
+    // crafted mid-flight upgrade can't push a product to an arbitrary version on completion.
+    targetVersion: Math.min(1000, o.targetVersion!),
     remainingCompute: o.remainingCompute!,
     remainingData: o.remainingData!,
     remainingSec: o.remainingSec!,
@@ -263,6 +292,8 @@ interface SavedShape {
   stats: Record<string, string | number>;
   achievements: string[];
   reputation: { spent: number; perks: string[] };
+  /** Endgame Reputation Endowment level. Sanitizer-defaulted (0) + migrated at v20. */
+  repEndowment: number;
   contracts: { completed: string[] };
   charter: string | null;
   charterLocked: boolean;
@@ -276,6 +307,15 @@ interface SavedShape {
   sponsor: GameState["sponsor"];
   /** IDEAS #10 — preprints published this run. Sanitizer-defaulted (0). */
   preprints: number;
+  /** Grand Challenges — funded amounts (Big → strings) + completed ids. Migrated at v21. */
+  challenges: {
+    funded: Record<string, { compute: string; data: string; money: string }>;
+    completed: string[];
+  };
+  /** Lab Objectives — claimed objective ids. Migrated at v22. */
+  objectives: { completed: string[] };
+  /** Automation — which autopilots are switched on. Migrated at v23. */
+  automation: Record<string, boolean>;
 }
 
 export function serialize(state: GameState): string {
@@ -320,6 +360,7 @@ export function serialize(state: GameState): string {
     },
     achievements: state.achievements,
     reputation: state.reputation,
+    repEndowment: state.repEndowment,
     contracts: state.contracts,
     charter: state.charter,
     charterLocked: state.charterLocked,
@@ -330,8 +371,50 @@ export function serialize(state: GameState): string {
     shipLog: state.shipLog,
     sponsor: state.sponsor,
     preprints: state.preprints,
+    challenges: {
+      funded: Object.fromEntries(
+        Object.entries(state.challenges.funded).map(([id, f]) => [
+          id,
+          { compute: f.compute.toJSON(), data: f.data.toJSON(), money: f.money.toJSON() },
+        ]),
+      ),
+      completed: state.challenges.completed,
+    },
+    objectives: state.objectives,
+    automation: state.automation,
   };
   return JSON.stringify(shape);
+}
+
+/** Automation toggles, sanitized: only KNOWN autopilot ids, only the ones set to true. */
+function sanitizeAutomation(raw: unknown): Record<string, boolean> {
+  const out: Record<string, boolean> = {};
+  const r = (raw ?? {}) as Record<string, unknown>;
+  for (const def of AUTOMATION.list) if (r[def.id] === true) out[def.id] = true;
+  return out;
+}
+
+/** Grand Challenge progress, sanitized as untrusted input. Funding is clamped per-resource
+ *  to [0, cost] (safeBig rejects NaN/Infinity/negative), and `completed` is DERIVED purely
+ *  from whether funding meets the cost — never trusted from the save. Since funding can't
+ *  exceed cost, a challenge is "complete" iff it was actually fully funded, so a tampered
+ *  save can't mint a permanent reward for less than its full price (the reputation-perk
+ *  anti-cheat policy). Iterating the def list also dedupes and drops unknown ids. */
+function sanitizeChallenges(raw: unknown): ChallengeState {
+  const out: ChallengeState = { funded: {}, completed: [] };
+  const r = (raw ?? {}) as { funded?: Record<string, unknown> };
+  const rawFunded = (r.funded ?? {}) as Record<string, { compute?: unknown; data?: unknown; money?: unknown }>;
+  for (const def of CHALLENGES.list) {
+    const f = rawFunded[def.id];
+    if (!f || typeof f !== "object") continue;
+    const cost = { compute: Big.of(def.cost.compute), data: Big.of(def.cost.data), money: Big.of(def.cost.money) };
+    const compute = safeBig(f.compute).min(cost.compute);
+    const data = safeBig(f.data).min(cost.data);
+    const money = safeBig(f.money).min(cost.money);
+    if (compute.gt(0) || data.gt(0) || money.gt(0)) out.funded[def.id] = { compute, data, money };
+    if (compute.gte(cost.compute) && data.gte(cost.data) && money.gte(cost.money)) out.completed.push(def.id);
+  }
+  return out;
 }
 
 export function deserialize(json: string): GameState {
@@ -349,8 +432,13 @@ export function deserialize(json: string): GameState {
     typeof raw.suspicion === "number" && Number.isFinite(raw.suspicion)
       ? Math.max(0, Math.min(100, raw.suspicion))
       : fresh.suspicion;
+  // Cap the persisted modifier list. tick() segments a frame recursively at each
+  // modifier expiry (tick.ts), so an unbounded count from a crafted/shared save
+  // overflows the stack on the next tick. Legit play never exceeds a handful (a few
+  // world-event buffs + momentum/daily), so 20 is generous headroom and far below the
+  // ~50 that empirically overflows. This is the one persisted collection that lacked a cap.
   const modifiers = Array.isArray(raw.modifiers)
-    ? raw.modifiers.filter(isWellFormedModifier)
+    ? raw.modifiers.filter(isWellFormedModifier).slice(0, 20)
     : fresh.modifiers;
   const alignment =
     typeof raw.alignment === "number" && Number.isFinite(raw.alignment)
@@ -366,6 +454,10 @@ export function deserialize(json: string): GameState {
     ? raw.achievements.filter((a): a is string => typeof a === "string")
     : [];
   const contracts = sanitizeContracts(raw.contracts);
+  // Endgame Endowment level: a finite non-negative int, clamped to the safety bound so
+  // a crafted value can't drive the cost-sum / boost math to Infinity. Its cost is then
+  // reconciled into reputation.spent below (same anti-cheat policy as the perk tree).
+  const repEndowment = Math.min(REPUTATION.endowment.maxLevel, safeCount(raw.repEndowment));
   const loadedProducts = isWellFormedProducts(raw.products) ? raw.products : fresh.products;
   // `sold` was added after v6 shipped, `drafts`/`upgrade` in v7; default them for
   // saves that predate each, and sanitize the untrusted nested shapes.
@@ -427,7 +519,10 @@ export function deserialize(json: string): GameState {
     },
     prestige: {
       legacyWeights: safeBig(pres.legacyWeights),
-      ships: safeCount(pres.ships),
+      // Ceiling as well as floor: ships is submitted verbatim to the Game Center
+      // leaderboard (gameCenter.ts), so an unclamped tampered value would post an absurd
+      // score. 1e7 is unreachable in real play (one ship per prestige) yet caps abuse.
+      ships: Math.min(safeCount(pres.ships), 10_000_000),
     },
     lifetimeMoney: safeBig(raw.lifetimeMoney ?? res.money),
     heat,
@@ -439,7 +534,8 @@ export function deserialize(json: string): GameState {
     employees: sanitizeEmployees(raw.employees),
     stats: sanitizeStats(raw.stats),
     achievements,
-    reputation: sanitizeReputation(raw.reputation),
+    reputation: sanitizeReputation(raw.reputation, repEndowment),
+    repEndowment,
     contracts,
     // Validate against KNOWN charter ids: an unknown/crafted id would still grant the
     // +15% conviction bonus (charter === lastCharter) without a real two-run commitment.
@@ -457,6 +553,16 @@ export function deserialize(json: string): GameState {
     sponsor: sanitizeSponsor(raw.sponsor),
     // Preprints multiply into derive, so the count is clamped to the per-run cap.
     preprints: Math.min(balance.preprints.maxPerRun, safeCount(raw.preprints)),
+    // Grand Challenge rewards are permanent multipliers, so anti-cheat like reputation:
+    // funding is clamped to each cost, and a challenge is only "completed" if it is
+    // actually fully funded (a tampered `completed` without funding grants nothing).
+    challenges: sanitizeChallenges(raw.challenges),
+    // Lab Objectives: claimed ids only (rewards were applied at claim time, never re-derived
+    // from state, so a tampered list just skips objectives — known-id/dedupe is enough).
+    objectives: { completed: dedupeKnownIds((raw.objectives as { completed?: unknown } | undefined)?.completed, OBJECTIVE_IDS) },
+    // Automation toggles — known ids only. (Whether an autopilot actually runs is re-checked
+    // against its ship-count unlock every tick, so a toggled-on-but-locked entry does nothing.)
+    automation: sanitizeAutomation(raw.automation),
     // Generation-scoped (not persisted): a mid-run reload simply re-accrues the run
     // peaks, and the ship report is transient — both start fresh on load.
     runPeakCompute: fresh.runPeakCompute,
@@ -581,13 +687,25 @@ function sanitizeComponents(c: unknown, completedContracts: string[], achievemen
   return out;
 }
 
+/** Total Reputation owed for a given Endowment level (Σ escalating costs) — computed
+ *  inline from the balance constants (no engine import → no cycle) so a crafted
+ *  repEndowment forces a matching `spent`, the same policy as the perk tree. */
+function endowmentOwed(level: number): number {
+  const E = REPUTATION.endowment;
+  const n = Math.max(0, Math.min(E.maxLevel, Math.floor(level)));
+  let sum = 0;
+  for (let k = 0; k < n; k++) sum += Math.ceil(E.baseCost * Math.pow(E.growth, k));
+  return sum;
+}
+
 /** Reputation is untrusted: KNOWN perk ids (deduped), and `spent` reconciled so it's
- *  at least the cost of the perks you own — a save can't grant owned perks for free
- *  (under-reported spent) the way `legacySpent` (derived) already can't. */
-function sanitizeReputation(r: unknown): { spent: number; perks: string[] } {
+ *  at least the cost of the perks you own PLUS the Endowment levels you claim — a save
+ *  can't grant owned perks or endowment levels for free (under-reported spent). */
+function sanitizeReputation(r: unknown, endowmentLevel = 0): { spent: number; perks: string[] } {
   const o = (r ?? {}) as { spent?: unknown; perks?: unknown };
   const perks = dedupeKnownIds(o.perks, new Set(REP_PERK_COST.keys()));
-  const owedForOwned = perks.reduce((sum, id) => sum + (REP_PERK_COST.get(id) ?? 0), 0);
+  const owedForOwned =
+    perks.reduce((sum, id) => sum + (REP_PERK_COST.get(id) ?? 0), 0) + endowmentOwed(endowmentLevel);
   const loadedSpent = typeof o.spent === "number" && Number.isFinite(o.spent) && o.spent >= 0 ? o.spent : 0;
   return { spent: Math.max(loadedSpent, owedForOwned), perks };
 }
@@ -693,6 +811,24 @@ export function migrate(raw: any): SavedShape {
   if (s.version === 18) {
     // v18 → v19: rival counterplay. No strikes landed on existing saves.
     s = { ...s, version: 19, rivalOps: s.rivalOps ?? { strikes: {}, lastStrikeSec: null } };
+  }
+  if (s.version === 19) {
+    // v19 → v20: endgame Reputation Endowment (a level count). Nothing bought on old
+    // saves — the sanitizer defaults it to 0, so this just stamps the version.
+    s = { ...s, version: 20, repEndowment: s.repEndowment ?? 0 };
+  }
+  if (s.version === 20) {
+    // v20 → v21: Grand Challenges. Existing runs start with none funded; the sanitizer
+    // defaults it anyway, so this just stamps the version.
+    s = { ...s, version: 21, challenges: s.challenges ?? { funded: {}, completed: [] } };
+  }
+  if (s.version === 21) {
+    // v21 → v22: Lab Objectives. Existing runs start with none claimed (sanitizer-defaulted).
+    s = { ...s, version: 22, objectives: s.objectives ?? { completed: [] } };
+  }
+  if (s.version === 22) {
+    // v22 → v23: Automation toggles. Existing runs start with every autopilot off.
+    s = { ...s, version: 23, automation: s.automation ?? {} };
   }
   return s as SavedShape;
 }

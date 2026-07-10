@@ -79,17 +79,39 @@ function Chip({ meta, className }: { meta: Meta; className: string }) {
   );
 }
 
-/** Upgrade chip — racks get a distinct "server" glyph; everything else by effect. */
-export function UpgradeIcon({ id, kind }: { id: string; kind: string }) {
-  const meta = id.startsWith("rack")
-    ? { tint: C.compute, icon: <ServerIcon size={19} /> }
-    : metaForKind(kind);
-  return <Chip meta={meta} className="card-ic" />;
+
+/**
+ * Research chip wrapped in a progress ring: the effect-tinted icon "charges up" (0→1)
+ * as you close on affording the node — an at-a-glance, alive readout in the effect's
+ * own colour. `pct` is clamped here. `showPct` renders a % badge for the hero focal
+ * card (mirrors the reference "in production" ring). The conic fill interpolates via a
+ * registered --pct custom property, so it eases smoothly between ticks.
+ */
+export function ResearchRingIcon({ kind, pct, showPct = false }: { kind: string; pct: number; showPct?: boolean }) {
+  return <RingIcon meta={metaForKind(kind)} icClass="node-ic" pct={pct} showPct={showPct} />;
 }
 
-/** Research chip — by the node's effect. */
-export function ResearchIcon({ kind }: { kind: string }) {
-  return <Chip meta={metaForKind(kind)} className="node-ic" />;
+/**
+ * Hardware/upgrade chip in the same progress ring as research — the Build tab reads as
+ * alive and consistent with the Research tab. Racks keep their "server" glyph.
+ */
+export function UpgradeRingIcon({ id, kind, pct, showPct = false }: { id: string; kind: string; pct: number; showPct?: boolean }) {
+  const meta = id.startsWith("rack") ? { tint: C.compute, icon: <ServerIcon size={19} /> } : metaForKind(kind);
+  return <RingIcon meta={meta} icClass="card-ic" pct={pct} showPct={showPct} />;
+}
+
+/** Shared ring wrapper: a conic --pct dial around a tinted icon chip, with an optional
+ *  % badge for the hero focal card. `pct` is clamped here. */
+function RingIcon({ meta, icClass, pct, showPct }: { meta: Meta; icClass: string; pct: number; showPct: boolean }) {
+  const p = Math.max(0, Math.min(1, Number.isFinite(pct) ? pct : 0));
+  return (
+    <span className="icon-ring" style={{ ["--pct" as string]: p, ["--ring-color" as string]: meta.tint }}>
+      <Chip meta={meta} className={icClass} />
+      {showPct && (
+        <span className="icon-ring-pct">{Math.round(p * 100)}<span className="icon-ring-pct-sign">%</span></span>
+      )}
+    </span>
+  );
 }
 
 /** Upgrade grouping — Hardware (racks/floor/power), Boosts (multipliers), Automation. */

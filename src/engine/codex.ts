@@ -52,6 +52,40 @@ export function codexBody(state: GameState, entry: CodexEntry): string {
   return entry.body;
 }
 
+/** Compact number for an unlock hint (1_000_000 → "1M"). Local so codex.ts stays
+ *  UI-free; the thresholds are small integers or round powers, so this is plenty. */
+const compact = (n: number): string => {
+  if (n >= 1e9) return `${+(n / 1e9).toFixed(1)}B`;
+  if (n >= 1e6) return `${+(n / 1e6).toFixed(1)}M`;
+  if (n >= 1e3) return `${+(n / 1e3).toFixed(1)}K`;
+  return String(n);
+};
+
+const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
+
+/** What it takes to unlock a still-locked field note — the panel promises "locked
+ *  entries show what unlocks them", but every one used to read the same placeholder.
+ *  Pure; phrased per metric from the entry's own threshold. */
+export function codexUnlockHint(entry: CodexEntry): string {
+  const n = entry.threshold;
+  switch (entry.metric) {
+    case "totalShips": return `Unlocks at ${plural(n, "model")} shipped`;
+    case "ascensions": return `Unlocks at ${plural(n, "AGI ascension")}`;
+    case "openSourceShips": return `Unlocks after open-sourcing ${plural(n, "model")}`;
+    case "productsLaunched": return `Unlocks after launching ${plural(n, "product")}`;
+    case "employeesHired": return `Unlocks after hiring ${plural(n, "specialist")}`;
+    case "peakComputePerSec": return `Unlocks at ${compact(n)} Compute/sec`;
+    case "peakMau": return `Unlocks at ${compact(n)} total users`;
+    case "peakMrr": return `Unlocks at $${compact(n)}/sec revenue`;
+    case "worldEventsResolved": return `Unlocks after ${plural(n, "world event")}`;
+    case "peakResearchCount": return `Unlocks with ${plural(n, "research node")} owned`;
+    case "contractsCompleted": return `Unlocks after ${plural(n, "contract")}`;
+    case "rivalsBeaten": return `Unlocks after outranking ${plural(n, "rival")}`;
+    case "legacyInvested": return `Unlocks after ${plural(n, "Legacy investment")}`;
+    case "themesUnlocked": return `Unlocks after earning ${plural(n, "hall theme")}`;
+  }
+}
+
 export interface CodexView {
   entry: CodexEntry;
   unlocked: boolean;

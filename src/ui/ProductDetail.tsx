@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Portal } from "./Portal";
-import type { GameState } from "../engine/types";
+import type { GameState, ProductMods } from "../engine/types";
 import { products as B, productFeatures, type FeatureLane, type ProductTypeId } from "../engine/balance/products";
 import {
   typeDef, productMetrics, canStartUpgrade, canBuyFeature, versionCostFor, featureMods,
@@ -12,7 +12,7 @@ import type { ReactNode } from "react";
 import {
   ChatIcon, CodeIcon, BrainIcon, PaletteIcon, BoltIcon, ScalesIcon, HeartIcon, AtomIcon,
   MegaphoneIcon, SproutIcon, PersonIcon, MicIcon, SparkIcon, TrendDownIcon, CoinIcon,
-  LockIcon, TargetIcon, BarsIcon,
+  LockIcon, TargetIcon, BarsIcon, CheckIcon, AlertTriangleIcon,
 } from "./Icons";
 
 /** Short human label for a feature's effect lane. */
@@ -47,6 +47,9 @@ const TAB_ICON: Record<Tab, JSX.Element> = {
 interface Props {
   game: GameState;
   productId: string;
+  /** This product's live staff/faction/heat mods, so the sheet's Revenue/Profit/churn
+   *  reflect the real economy (not the mods-blind baseline). Neutral when absent. */
+  mods?: ProductMods | undefined;
   onClose: () => void;
   onStartUpgrade: (id: string) => void;
   onSetPrice: (id: string, v: number) => void;
@@ -83,7 +86,7 @@ const fill = (pct: number) => ({ background: `linear-gradient(90deg, #7c5cff 0%,
 
 /** Phase 3 — per-product management, redesigned into a clean, soft, card-based sheet
  *  (icon chips, segmented tabs, purple accent) so the depth stays legible. */
-export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onSetChannelMix, onBuyFeature, onRename, onRetire }: Props) {
+export function ProductDetail({ game, productId, mods, onClose, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onSetChannelMix, onBuyFeature, onRename, onRetire }: Props) {
   const [tab, setTab] = useState<Tab>("overview");
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -95,7 +98,7 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
   if (!p) return null;
   const t = typeDef(p.type);
   const frontier = game.products.frontier;
-  const me = productMetrics(p, frontier);
+  const me = productMetrics(p, frontier, mods);
   const up = p.upgrade;
   // Effective TAM includes feature boosts (e.g. Localization), which is also what
   // the sim caps MAU at — so penetration can't read >100% any more.
@@ -156,6 +159,11 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
               {statCard("Profit /s", `${me.margin >= 0 ? "+" : ""}${m$(me.margin)}/s`, me.margin >= 0 ? "pos" : "neg")}
               {statCard("Paying users", num(me.paid))}
               {statCard("Total users", num(me.mau))}
+              {/* Churn + per-user revenue were computed but never shown — now mods-aware, so
+                  a Customer Success hire visibly shrinks "leaving/min" and a Sales Exec lifts
+                  "Revenue/user" (the staff you assigned finally read on the sheet). */}
+              {statCard("Users leaving /min", num(Math.round(me.churnPerMin * me.paid)), "neg")}
+              {statCard("Revenue /user", perUserPrice(me.arpu))}
             </div>
             {barCard("Competitiveness vs rivals", me.qf * 100, qfColor, `${Math.round(me.qf * 100)}%`)}
             {barCard(`Market penetration (of ${num(effTam)})`, penetration * 100, "var(--data)", `${(penetration * 100).toFixed(penetration < 0.01 ? 2 : 1)}%`)}
@@ -258,7 +266,7 @@ export function ProductDetail({ game, productId, onClose, onStartUpgrade, onSetP
                   <span className="pd-total-label">Total allocation</span>
                   <span className="pd-total-sub">100% of {m$(p.marketingPerSec)}/s</span>
                 </div>
-                <span className={`pd-total-status ${activeCount >= 2 ? "ok" : "warn"}`}>{activeCount >= 2 ? "✓ Balanced" : "● Concentrated"}</span>
+                <span className={`pd-total-status ${activeCount >= 2 ? "ok" : "warn"}`}>{activeCount >= 2 ? <><CheckIcon size={13} /> Balanced</> : <><AlertTriangleIcon size={13} /> Concentrated</>}</span>
               </div>
             </div>
           );
