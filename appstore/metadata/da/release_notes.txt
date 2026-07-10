@@ -1,7 +1,7 @@
 Denne opdatering:
 
 • Grand Challenges — langsigtede moonshots med permanente belønninger.
-• Lab Objectives — en helt ny stige af mål, der rækker langt ind i endgame.
+• Lab Objectives — en helt ny stribe mål, der rækker langt ind i endgame.
 • Automation — autopiloter til rugbrødsarbejdet.
 • En ny forgrening i forskningstræet i hvert run og mere liv i fremdriften på skærmen.
 • Og så er butikssiden her nu på dansk.

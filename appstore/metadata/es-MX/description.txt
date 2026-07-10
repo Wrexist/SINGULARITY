@@ -1,6 +1,6 @@
 Levantaste una ronda semilla y rentaste un clóset de servidores. Hora de construir a Dios — o al menos una API rentable.
 
-Singularity Inc. es un idle tycoon satírico sobre la fiebre del oro de la IA. Empieza con un solo GPU zumbando y escala hasta un clúster de cómputo del tamaño de un planeta, mientras tu centro de datos en 2.5D se llena físicamente de racks. Tres recursos, un loop limpio y "sinergia" infinita.
+Singularity Inc. es un idle tycoon satírico sobre la fiebre del oro de la IA. Empieza con una sola GPU zumbando y escala hasta un clúster de cómputo del tamaño de un planeta, mientras tu centro de datos en 2.5D se llena físicamente de racks. Tres recursos, un loop limpio y "sinergia" infinita.
 
 EL LOOP
 • Genera Cómputo, inviértelo en runs de entrenamiento y cobra Datos + Dinero.

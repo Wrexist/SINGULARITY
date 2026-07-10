@@ -5,13 +5,13 @@ Singularity Inc. je satirický idle tycoon o zlaté horečce kolem umělé intel
 HERNÍ SMYČKA
 • Generuj Compute, spal ho v trénovacích bězích, sklízej Data + Peníze.
 • Reinvestuj do racků, chlazení, přetaktování a automatizace – každý koupený upgrade se opravdu objeví v hale.
-• Prošplhej výzkumný strom čím dál absurdnějších AI schopností.
-• „Ship the Model“ = prestiž: reset výměnou za trvalé multiplikátory Legacy Weight. A pak celé znovu – rychleji.
+• Prokousej se výzkumným stromem čím dál absurdnějších AI schopností.
+• „Ship the Model“ = prestiž: reset výměnou za trvalé multiplikátory Legacy Weight. A pak to celé znovu – rychleji.
 
 SVĚT, KTERÝ ROSTE S TEBOU
 • Přehledná 2,5D hala datacentra se rozsvěcí a rozrůstá, jak škáluješ – žádné dvě laboratoře nevypadají stejně.
 • Ťukni na volný okraj podlahy a kup rozšíření – místnost fyzicky vyroste přesně tím směrem.
-• Přechod do nové éry převlékne celou halu a k tvému povýšení vystřelí satirickou „tiskovku“.
+• Přechod do nové éry převlékne celou halu a tvoje povýšení oslaví satirickou „tiskovkou“.
 
 KUP SI DATA – LEGÁLNĚ, NEBO TAKY NE
 • Trénovací data ber od licencovaných dodavatelů… nebo kup levnější bajty z druhé ruky na darkwebovém Bazaru.
@@ -21,7 +21,7 @@ KUP SI DATA – LEGÁLNĚ, NEBO TAKY NE
 FÉROVÉ UŽ OD ZÁKLADU
 • Žádné reklamy. Nikdy.
 • Žádné pay-to-win. Žádné časovače na energii. Žádná vyskakovací okna s falešnou panikou.
-• Hraje i offline – laboratoř vydělává, i když jsi pryč. Ranní standup se nekoná.
+• Funguje i offline – laboratoř vydělává, i když jsi pryč. Ranní standup se nekoná.
 • Jediný volitelný nákup Premium – čistě kosmetika a pohodlí (delší offline limit, status Founder, budoucí vzhledy haly). Celá hra je zdarma a štědrá.
 • Texty ve hře jsou zatím v angličtině – v AI průmyslu je to koneckonců úřední jazyk.
 

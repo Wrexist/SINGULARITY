@@ -1,1 +1,1 @@
-klikkeri,clicker,peli,ai,yritys,raha,strategia,simulaattori,startup,automaatio,prestige,offline,gpu
+klikkeri,clicker,peli,ai,yritys,strategia,simulaattori,startup,incremental,prestige,offline,gpu,afk

@@ -1,1 +1,1 @@
-gioco,clicker,incrementale,gestionale,magnate,azienda,soldi,simulazione,strategia,gpu,startup,ia,bot
+clicker,incrementale,gestionale,magnate,azienda,soldi,simulatore,strategia,gpu,startup,ia,capitalist

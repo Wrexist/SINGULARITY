@@ -1,4 +1,4 @@
-Ez a frissítés:
+Ebben a frissítésben:
 
 • Grand Challenges — hosszú távra szóló moonshotok, maradandó jutalmakkal.
 • Lab Objectives — vadonatúj célranglétra, egészen az endgame mélyéig.
@@ -6,6 +6,6 @@ Ez a frissítés:
 • Kutatási elágazás minden egyes menetben, plusz élénkebb haladásjelzés.
 • És az App Store-oldal mostantól magyarul beszél.
 
-Mellé balansz- és stabilitási javítások.
+Emellett balansz- és stabilitásjavítások.
 
 Reklám továbbra sincs. Pay-to-win továbbra sincs.

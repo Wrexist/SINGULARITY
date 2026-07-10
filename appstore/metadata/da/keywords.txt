@@ -1,1 +1,1 @@
-spil,klikker,clicker,virksomhed,penge,magnat,simulator,strategi,gpu,server,startup,fabrik,milliardær
+incremental,clicker,simulator,startup,gpu,server,penge,fabrik,milliardær,offline,strategi,capitalist

@@ -1,1 +1,1 @@
-klicker,clicker,wirtschaftssimulation,simulation,firma,fabrik,geld,forschung,manager,startup,gpu
+clicker,simulator,simulation,wirtschaft,manager,fabrik,startup,geld,forschung,prestige,gpu,firma

@@ -5,7 +5,7 @@ Singularity Inc. é um idle tycoon satírico sobre a corrida do ouro da IA. Come
 O LOOP
 • Gere Computação, gaste em runs de treinamento, colete Dados + Dinheiro.
 • Reinvista em racks, refrigeração, overclock e automação — cada upgrade comprado aparece fisicamente no galpão.
-• Suba uma árvore de pesquisa com capacidades de IA cada vez mais absurdas.
+• Avance por uma árvore de pesquisa com capacidades de IA cada vez mais absurdas.
 • "Ship the Model" = prestígio: zere tudo em troca de multiplicadores permanentes de Legacy Weight — e faça tudo de novo, agora mais rápido.
 
 UM MUNDO QUE CRESCE

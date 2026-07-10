@@ -1,1 +1,1 @@
-mesterséges,intelligencia,játék,klikkelős,clicker,cég,pénz,gyár,magnát,szimulátor,stratégia,startup
+mesterséges,intelligencia,kattintós,clicker,cég,pénz,gyár,offline,szimulátor,stratégia,startup,gpu

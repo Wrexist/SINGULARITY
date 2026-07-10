@@ -1,6 +1,6 @@
 Du har tagit in en såddrunda och hyrt en städskrubb med fiber. Dags att bygga Gud — eller åtminstone ett API med sunda marginaler.
 
-Singularity Inc. är en satirisk idle tycoon om guldruschen kring AI. Börja med en ensam surrande GPU och skala till ett beräkningskluster i planetklass, medan ditt 2.5D-datacenter fylls med rack — fysiskt, mitt i rummet — för varje köp. Tre resurser, en ren loop, oändligt med ”synergier”.
+Singularity Inc. är en satirisk idle tycoon om guldruschen kring AI. Börja med en ensam surrande GPU och skala till ett beräkningskluster i planetklass, medan ditt 2.5D-datacenter fysiskt fylls med rack för varje köp. Tre resurser, en ren loop, oändligt med ”synergier”.
 
 LOOPEN
 • Generera Compute, bränn den på träningskörningar, kvittera ut Data + Pengar.
@@ -11,21 +11,21 @@ LOOPEN
 EN VÄRLD SOM VÄXER
 • En ren 2.5D-serverhall som tänds och breder ut sig i takt med att du skalar — inga två labb ser likadana ut.
 • Tryck på golvets öppna kanter för att köpa utbyggnader; rummet växer fysiskt åt det hållet.
-• Varje ny era klär om hela hallen och slår upp ett satiriskt ”pressmeddelande” i helskärm när imperiet levlar upp.
+• Varje ny era klär om hela hallen och smäller upp ett satiriskt ”pressmeddelande” i helskärm när imperiet levlar upp.
 
 KÖP DIN DATA — LAGLIGT, ELLER INTE
-• Köp träningsdata av licensierade leverantörer… eller fynda billigare bytes på mörka nätets basar.
+• Köp träningsdata av licensierade leverantörer… eller fynda billigare bytes på darknet-basaren.
 • Håll ett öga på din Regulatory Heat: pressar du för hårt kan en oanmäld granskning dyka upp och vilja ha ”sin del av kakan”.
 • Ett dussintal satiriska världshändelser — virala demos, GPU-brist, öppna brev, talangkrig — rör om i varje runda.
 
 ÄRLIGT SPEL
 • Inga annonser. Aldrig.
-• Ingen pay-to-win. Inga energitimers. Inga popuper med konstgjord brådska.
+• Ingen pay-to-win. Inga energitimers. Inga popups med konstgjord brådska.
 • Funkar offline — labbet fortsätter tjäna pengar medan du är borta. Inga standups krävs.
 • Ett enda valfritt Premium-köp, enbart kosmetik och bekvämlighet (längre offline-tak, Founder-status, framtida teman till hallen). Hela spelet är gratis och generöst.
 • Spelets texter är just nu på engelska — se det som gratis kompetensutveckling.
 
 FÖR VEM?
-Älskar du idle-, klickar- och tycoonspel men vill ha en renare ekonomi, en värld som växer på riktigt och en välriktad känga åt AI-branschen? Då är du hemma.
+Älskar du idle-, clicker- och tycoonspel men vill ha en renare ekonomi, en värld som växer på riktigt och en välriktad känga åt AI-branschen? Då är du hemma.
 
 Definitivt ingen bubbla.

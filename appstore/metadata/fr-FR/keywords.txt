@@ -1,1 +1,1 @@
-clicker,incrémental,magnat,entreprise,laboratoire,argent,simulation,prestige,startup,gpu,afk,usine
+clicker,incrémental,capitaliste,milliardaire,business,simulation,prestige,startup,gpu,afk,usine

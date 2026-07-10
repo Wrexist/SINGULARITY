@@ -1,0 +1,1 @@
+Munta un laboratori d'IA: d'un armari de servidors a un clúster planetari. El laboratori segueix produint mentre no hi ets. Sense anuncis, sense pagar per guanyar.

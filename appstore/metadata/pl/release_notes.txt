@@ -1,4 +1,4 @@
-To wydanie:
+W tym wydaniu:
 
 • Grand Challenges — moonshoty na długi dystans z trwałymi nagrodami.
 • Lab Objectives — nowa drabinka celów, sięgająca głęboko w endgame.
@@ -6,6 +6,6 @@ To wydanie:
 • Fork badań w każdym podejściu, do tego żywsze animacje postępu.
 • No i strona w App Store mówi już po polsku.
 
-Do tego poprawki balansu i stabilności.
+Poza tym poprawki balansu i stabilności.
 
 Reklam wciąż zero. Pay-to-win wciąż zero.

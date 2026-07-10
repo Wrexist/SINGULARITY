@@ -1,1 +1,1 @@
-jogo,clicker,tycoon,gestão,empresa,dinheiro,simulador,incremental,prestígio,startup,gpu,negócio,afk
+clicker,tycoon,incremental,simulador,gestão,offline,capitalista,fábrica,startup,gpu,negócios,afk

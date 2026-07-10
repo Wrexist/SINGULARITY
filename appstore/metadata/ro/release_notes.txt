@@ -1,6 +1,6 @@
 Ce aduce update-ul:
 
-• Grand Challenges — pariuri de tip moonshot, pe termen lung, cu recompense permanente.
+• Grand Challenges — pariuri moonshot pe termen lung, cu recompense permanente.
 • Lab Objectives — o scară nouă de obiective care ține până adânc în endgame.
 • Automatizare — autopilot pentru toată corvoada.
 • O bifurcație în arborele de cercetare la fiecare rundă și vizualuri de progres mai vii.

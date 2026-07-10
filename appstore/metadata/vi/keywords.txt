@@ -1,1 +1,1 @@
-game,nhấp,trí tuệ nhân tạo,công ty,tiền,tài phiệt,tỷ phú,mô phỏng,kinh doanh,quản lý,treo máy,gpu
+treo máy,clicker,tỷ phú,mô phỏng,kinh doanh,quản lý,làm giàu,khởi nghiệp,tài phiệt,công ty,gpu,game
