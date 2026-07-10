@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 import {
   TargetIcon, RocketIcon, TeamIcon, WrenchIcon, DocIcon,
   SunIcon, HelixIcon, ScrollIcon, ShieldIcon, NetworkIcon, InfinityIcon, SparkIcon,
+  DysonIcon, MindIcon, SingularityIcon,
 } from "./Icons";
 
 const REGISTRY: Record<string, (size: number) => ReactNode> = {
@@ -24,6 +25,9 @@ const REGISTRY: Record<string, (size: number) => ReactNode> = {
   shield: (s) => <ShieldIcon size={s} />,
   network: (s) => <NetworkIcon size={s} />,
   infinity: (s) => <InfinityIcon size={s} />,
+  dyson: (s) => <DysonIcon size={s} />,
+  mind: (s) => <MindIcon size={s} />,
+  singularity: (s) => <SingularityIcon size={s} />,
 };
 
 export function iconFor(key: string, size = 18): ReactNode {

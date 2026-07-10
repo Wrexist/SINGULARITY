@@ -94,6 +94,16 @@ export const objectives = {
     { id: "o_contract2", desc: "Complete 8 contracts.", metric: "contracts", target: 8, reward: boost("computeMult", 3.3, 135) },
     { id: "o_money6", desc: "Earn $10,000,000,000 lifetime.", metric: "lifetimeMoney", target: 10_000_000_000, reward: boost("dataMult", 3.3, 135) },
     { id: "o_mau3", desc: "Reach 20,000,000 total users.", metric: "mau", target: 20_000_000, reward: boost("moneyMult", 3.4, 140) },
+    // Late-game continuation (IDEAS #B, wave 3): past o_mau3 the board would empty again for
+    // the deep ship-focused player. These push each metric one tier deeper (ships, staff,
+    // compute, revenue, contracts, lifetime money) and keep the ramp going. Still claim-only
+    // temp boosts, so curve-safe; factor/duration continue the existing escalation.
+    { id: "o_ship6", desc: "Ship 20 models.", metric: "ships", target: 20, reward: boost("computeMult", 3.5, 145) },
+    { id: "o_emp4", desc: "Employ 16 specialists.", metric: "employees", target: 16, reward: boost("dataMult", 3.5, 148) },
+    { id: "o_cmp6", desc: "Reach 50,000,000 Compute/sec.", metric: "compute", target: 50_000_000, reward: boost("computeMult", 3.6, 150) },
+    { id: "o_mrr4", desc: "Reach $200,000/sec product revenue.", metric: "mrr", target: 200_000, reward: boost("moneyMult", 3.6, 153) },
+    { id: "o_contract3", desc: "Complete 15 contracts.", metric: "contracts", target: 15, reward: boost("computeMult", 3.7, 156) },
+    { id: "o_money7", desc: "Earn $1,000,000,000,000 lifetime.", metric: "lifetimeMoney", target: 1_000_000_000_000, reward: boost("dataMult", 3.8, 160) },
   ] as Objective[],
 };
 

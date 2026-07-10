@@ -652,3 +652,36 @@ export function InfinityIcon({ size = 18 }: IconProps) {
     </Icon>
   );
 }
+
+/** Dyson swarm — a caged sun ringed by broken collector arcs (Grand Challenge). */
+export function DysonIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <circle cx="12" cy="12" r="2.8" />
+      <path d="M5 8.2a8 8 0 0 1 14 0" />
+      <path d="M19 15.8a8 8 0 0 1-14 0" />
+      <path d="M8.6 6.6a6 6 0 0 1 6.8 0" />
+      <path d="M15.4 17.4a6 6 0 0 1-6.8 0" />
+    </Icon>
+  );
+}
+
+/** Uploaded mind — a head with consciousness rising off the crown (Grand Challenge). */
+export function MindIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <circle cx="12" cy="14" r="5.6" />
+      <circle cx="12" cy="14" r="1.3" />
+      <path d="M12 8.4V5.4M8.6 9.4 7.2 6.8M15.4 9.4l1.4-2.6" />
+    </Icon>
+  );
+}
+
+/** The singularity — history's curve coiling to a dimensionless point (Grand Challenge). */
+export function SingularityIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="M20 12a8 8 0 1 1-8-8 5.6 5.6 0 0 1 5.6 5.6 3.3 3.3 0 0 1-3.3 3.3 1.5 1.5 0 0 1-1.4-1.6" />
+    </Icon>
+  );
+}
