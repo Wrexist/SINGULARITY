@@ -76,14 +76,30 @@ function safeCount(v: unknown, fallback = 0): number {
   return typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.floor(v) : fallback;
 }
 
-/** The upgrades map is fully untrusted (it drives derive directly). Keep only
- *  string keys → finite non-negative integer counts; drop `__proto__` & garbage. */
+/** Owned-count ceiling for an uncapped (max: Infinity) upgrade — e.g. racks. Far beyond
+ *  any legit save (hall floor capacity already bounds racks), but low enough that
+ *  count × per-level effect can never overflow Compute to Infinity (which then underflows
+ *  to NaN via Infinity−Infinity). Guards against a save cheated to 1e308 racks. */
+const MAX_UPGRADE_COUNT = 1e7;
+/** Per-upgrade caps, so a tampered save can't exceed a capped upgrade (e.g. a ×25 booster
+ *  claimed 1000 times). Only balance.upgrades have real caps; other keys in the map
+ *  (office perks, etc.) fall back to the global ceiling. */
+const UPGRADE_MAX = new Map(balance.upgrades.map((u) => [u.id, u.max] as const));
+
+/** The upgrades map is fully untrusted (it drives derive directly). Keep only string keys →
+ *  finite positive integer counts, each CLAMPED to its upgrade's max (or the global ceiling
+ *  for uncapped/unknown keys); drop `__proto__` & garbage. Enforces caps on load so a cheated
+ *  or corrupt count can neither exceed a cap nor overflow the economy to Infinity. */
 function sanitizeUpgrades(u: unknown): Record<string, number> {
   if (!u || typeof u !== "object") return {};
   const out: Record<string, number> = {};
   for (const [k, v] of Object.entries(u as Record<string, unknown>)) {
     if (k === "__proto__" || k === "constructor" || k === "prototype") continue;
-    if (typeof v === "number" && Number.isFinite(v) && v > 0) out[k] = Math.floor(v);
+    if (typeof v === "number" && Number.isFinite(v) && v > 0) {
+      const max = UPGRADE_MAX.get(k);
+      const cap = max !== undefined && Number.isFinite(max) ? max : MAX_UPGRADE_COUNT;
+      out[k] = Math.min(Math.floor(v), cap);
+    }
   }
   return out;
 }

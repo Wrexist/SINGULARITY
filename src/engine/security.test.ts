@@ -48,6 +48,21 @@ describe("security — a save is untrusted input (backup/import is editable text
       expect(s.upgrades.str).toBeUndefined();
       expect((s.upgrades as any).evil).toBeUndefined();
     });
+    it("cheated/huge upgrade counts are clamped on load — no Infinity overflow, caps enforced", () => {
+      // A save cheated to 1e308 racks used to overflow Compute to Infinity (→ NaN via Inf−Inf).
+      const s = loadMutated((r) => { r.upgrades = { rack_basic: 1e308, rack_server: 1e300 }; });
+      expect(s.upgrades.rack_basic).toBeLessThanOrEqual(1e7);
+      // Running the sim from the clamped save keeps Compute finite (the real brick guard).
+      let g = s;
+      for (let i = 0; i < 30; i++) g = tick(g, 100);
+      expect(finite(g.resources.compute)).toBe(true);
+      // A capped upgrade can't exceed its own cap on load (e.g. a ×N booster claimed 1000×).
+      const capped = balance.upgrades.find((u) => Number.isFinite(u.max));
+      if (capped) {
+        const s2 = loadMutated((r) => { r.upgrades = { [capped.id]: (capped.max as number) + 500 }; });
+        expect(s2.upgrades[capped.id]).toBe(capped.max);
+      }
+    });
     it("research that isn't a string[] is rejected; non-strings filtered", () => {
       expect(loadMutated((r) => { r.research = "inference_api"; }).research).toEqual([]);
       expect(loadMutated((r) => { r.research = ["backprop", 5, null, "rlhf"]; }).research).toEqual(["backprop", "rlhf"]);
