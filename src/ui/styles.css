@@ -831,6 +831,10 @@ svg { vertical-align: middle; }
 .cost-max { color: var(--ship); }
 .cost-eta { font-size: 10.5px; font-weight: 650; color: var(--ink-3); }
 .node-cost .cost-eta { margin-left: 6px; }
+/* Walled: the auto-train bank can't hold this node's Compute at the current intensity,
+   so instead of a lying countdown we point at the real lever. Warm amber (a nudge, not
+   an error), a hair bolder than a plain ETA so the eye lands on the fix. */
+.cost-eta.walled { color: var(--amber, #c67c1e); font-weight: 750; }
 .cost-sub { font-size: 11px; font-weight: 700; color: var(--money); }
 .cost-blocked { color: var(--coral); font-size: 12px; font-weight: 750; }
 

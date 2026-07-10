@@ -8,13 +8,13 @@ import {
   type WorldEvent,
   type WorldEventEffect,
 } from "./balance/config";
-import { derive } from "./derive";
+import { derive, computeBankCeiling } from "./derive";
 import { alignmentHeatMult } from "./alignment";
 import { suspicionEventMult, regulatorIsNamed, regulatorState, clampSuspicion } from "./regulator";
 import { autoResearchEnabled, researchCostMult } from "./reputation";
 import { isRackId, floorFull, evictableRackFor } from "./hall";
 import { typeDef } from "./products";
-import type { ActiveModifier, GameState } from "./types";
+import type { ActiveModifier, Derived, GameState } from "./types";
 
 const clampHeat = (h: number) => Math.max(0, Math.min(balance.heat.max, h));
 
@@ -235,6 +235,32 @@ export function canBuyResearch(state: GameState, id: string): boolean {
   if (!def || !researchAvailable(state, id)) return false;
   const cost = researchCost(state, def);
   return state.resources.compute.gte(cost.compute) && state.resources.data.gte(cost.data);
+}
+
+/**
+ * True when auto-train's Compute ceiling has STALLED research: training is draining the
+ * bank (auto-train on, intensity > 0), there IS an available node to chase, yet none is
+ * affordable and every available node's Compute cost exceeds what the bank can hold at
+ * this intensity (see `computeBankCeiling`). In that state a `cost / rate` ETA lies — the
+ * node is unreachable by waiting — so the UI points the player at the real fix: ease the
+ * training-intensity slider (which raises the ceiling) or grow Compute production. Nodes
+ * blocked only on Data (Compute fits under the ceiling) are reachable by waiting, so they
+ * do NOT count as stalled. Pure. Off by construction until auto-train is owned, so a
+ * default early run never trips it before the mechanic exists.
+ */
+export function researchStalled(state: GameState, d: Derived): boolean {
+  const ceiling = computeBankCeiling(state, d);
+  if (ceiling === null) return false; // unbounded bank (auto-train off / focus 0) → never stalled
+  const avail = balance.research.filter((def) => researchAvailable(state, def.id));
+  if (avail.length === 0) return false; // tree done / next wave locked on prereqs → not a stall
+  let anyWalled = false;
+  for (const def of avail) {
+    if (canBuyResearch(state, def.id)) return false; // something affordable right now → not stalled
+    const cost = researchCost(state, def);
+    if (!cost.compute.gt(ceiling)) return false; // reachable by waiting (Compute fits) → not stalled
+    anyWalled = true;
+  }
+  return anyWalled;
 }
 
 /**

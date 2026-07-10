@@ -2,7 +2,7 @@ import { balance } from "./balance/config";
 import { productMetrics, productsUnlocked, canStartUpgrade, maxActiveProducts } from "./products";
 import { reputationBalance, canBuyReputationPerk, canBuyEndowment } from "./reputation";
 import { contractBoard, sponsorView } from "./contracts";
-import { canBuyResearch } from "./actions";
+import { canBuyResearch, researchStalled } from "./actions";
 import { canPrestige } from "./prestige";
 import { hireCost } from "./employees";
 import { derive } from "./derive";
@@ -51,6 +51,15 @@ function staffUnlocked(state: GameState): boolean {
 export function advisorItems(state: GameState): AdvisorItem[] {
   const items: AdvisorItem[] = [];
   const ps = state.products;
+  const derived = derive(state);
+
+  // Research has stalled against the auto-train Compute ceiling — the node the player
+  // wants is unreachable until they ease intensity or grow Compute. Teach the slider at
+  // the one moment it matters, through the nudge channel that already exists (no popup).
+  // Any run can hit this (re-climbing the tree), so it isn't gated to the first session.
+  if (researchStalled(state, derived)) {
+    items.push({ tab: "lab", section: "build", text: "Ease training intensity to bank Compute", priority: 66 });
+  }
 
   // ---- First-session hook: until the first Ship, hand-hold the core loop so a
   // brand-new player always has one obvious next move (claim → start → research
@@ -120,11 +129,10 @@ export function advisorItems(state: GameState): AdvisorItem[] {
   // deliberate marketing-investment loss never trips it — consistent with the "don't
   // flag investment losses" policy above. Only fires with staff actually on payroll.
   if (state.employees.length > 0) {
-    const d = derive(state);
-    if (d.payrollPerSec.gt(0)) {
-      let grossIncome = d.passiveMoneyPerSec;
+    if (derived.payrollPerSec.gt(0)) {
+      let grossIncome = derived.passiveMoneyPerSec;
       for (const p of ps.active) grossIncome = grossIncome.add(productMetrics(p, ps.frontier).mrr);
-      if (d.payrollPerSec.gt(grossIncome)) {
+      if (derived.payrollPerSec.gt(grossIncome)) {
         items.push({ tab: "employees", text: "Payroll is outrunning your income — grow revenue or let someone go", priority: 58 });
       }
     }

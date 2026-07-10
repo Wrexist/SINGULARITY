@@ -1,6 +1,8 @@
 import { balance } from "../engine/balance/config";
 import { canBuyResearch, researchAvailable, researchLockedOut, researchCost } from "../engine/actions";
+import { computeBankCeiling } from "../engine/derive";
 import { canBuyPreprint, preprintCost, preprintTitle } from "../engine/preprints";
+import { Big } from "../engine/math/Big";
 import type { Derived, GameState } from "../engine/types";
 import { fmt, fmtDur, etaSecs, effRate } from "./format";
 import { burst, punch } from "./fx";
@@ -26,8 +28,13 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint }: Prop
   });
 
   type Def = (typeof balance.research)[number];
+  // Compute the auto-train bank ceiling once: any node costing more Compute than this is
+  // unreachable at the current intensity, so a "~2m" ETA would be a lie (see derive.ts).
+  const ceiling = computeBankCeiling(game, derived);
+  const computeWalled = (computeCost: Big) => ceiling !== null && computeCost.gt(ceiling);
   const etaFor = (def: Def): number | null => {
     const c = researchCost(game, def); // discounted by Research Fellowship if owned
+    if (def.cost.compute > 0 && computeWalled(c.compute)) return null; // unreachable until intensity eases
     const legs = [
       def.cost.compute > 0 ? etaSecs(c.compute, game.resources.compute, effRate(derived, "compute")) : null,
       def.cost.data > 0 ? etaSecs(c.data, game.resources.data, effRate(derived, "data")) : null,
@@ -79,6 +86,9 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint }: Prop
           <span className="node-desc">{def.desc}</span>
           {!owned && (() => {
             const c = researchCost(game, def); // reflects the Research Fellowship discount
+            // Walled = the auto-train bank can't hold this much Compute at the current
+            // intensity. Show the real lever, not a countdown that will never arrive.
+            const walled = def.cost.compute > 0 && !canBuy && computeWalled(c.compute);
             return (
               <span className="node-cost">
                 {def.cost.compute > 0 && (
@@ -87,7 +97,9 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint }: Prop
                 {def.cost.data > 0 && (
                   <span style={{ color: "var(--data)" }}>{fmt(c.data)} data</span>
                 )}
-                {eta != null && <span className="cost-eta">~{fmtDur(eta)}</span>}
+                {walled ? (
+                  <span className="cost-eta walled" title="Auto-train is draining Compute — ease training intensity to let the bank climb">ease intensity ↓</span>
+                ) : eta != null && <span className="cost-eta">~{fmtDur(eta)}</span>}
               </span>
             );
           })()}
@@ -124,7 +136,8 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint }: Prop
         }
         const c = preprintCost(game);
         const canBuy = canBuyPreprint(game);
-        const eta = !canBuy
+        const preprintWalled = !canBuy && computeWalled(c.compute);
+        const eta = !canBuy && !preprintWalled
           ? Math.max(
               etaSecs(c.compute, game.resources.compute, effRate(derived, "compute")) ?? 0,
               etaSecs(c.data, game.resources.data, effRate(derived, "data")) ?? 0,
@@ -154,7 +167,9 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint }: Prop
                 <span className="node-cost">
                   <span style={{ color: "var(--compute)" }}>{fmt(c.compute)} compute </span>
                   <span style={{ color: "var(--data)" }}>{fmt(c.data)} data</span>
-                  {eta != null && eta > 0 && <span className="cost-eta">~{fmtDur(eta)}</span>}
+                  {preprintWalled ? (
+                    <span className="cost-eta walled" title="Auto-train is draining Compute — ease training intensity to let the bank climb">ease intensity ↓</span>
+                  ) : eta != null && eta > 0 && <span className="cost-eta">~{fmtDur(eta)}</span>}
                 </span>
               </div>
             </button>

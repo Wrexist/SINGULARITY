@@ -333,3 +333,19 @@ export function derive(state: GameState): Derived {
     hireDiscount,
   };
 }
+
+/**
+ * The ceiling the Compute bank floats to while auto-train is running. A fresh run
+ * fires — draining `runComputeCost` — the instant Compute reaches `runComputeCost /
+ * focus` (see tick.ts's `autoTrainReady`), so under auto-train the bank can never
+ * climb past that point. Anything costing more is unreachable by waiting: the player
+ * must ease training intensity (a lower focus raises the ceiling) or grow Compute
+ * production. Returns null when the bank is unbounded — auto-train off, or focus 0,
+ * which halts training so Compute accrues freely. Pure; the honest input to the
+ * research/upgrade ETAs (a raw `cost / computePerSec` estimate silently lies here,
+ * promising a countdown for a node the drained bank will never reach).
+ */
+export function computeBankCeiling(state: GameState, d: Derived): Big | null {
+  if (!d.autoTrain || !Number.isFinite(state.computeFocus) || state.computeFocus <= 0) return null;
+  return d.runComputeCost.div(state.computeFocus);
+}
