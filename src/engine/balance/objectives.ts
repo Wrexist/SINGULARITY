@@ -79,6 +79,21 @@ export const objectives = {
     { id: "o_ship3", desc: "Ship 8 models.", metric: "ships", target: 8, reward: boost("computeMult", 3, 110) },
     { id: "o_mrr2", desc: "Reach $2,000/sec product revenue.", metric: "mrr", target: 2_000, reward: boost("moneyMult", 3, 115) },
     { id: "o_money5", desc: "Earn $100,000,000 lifetime.", metric: "lifetimeMoney", target: 100_000_000, reward: boost("dataMult", 3, 120) },
+    // Mid-game continuation (IDEAS #B, wave 2): the ship 9–15 window used to open a
+    // "desert" — every system finishes unlocking by ship 6 and the old ladder topped out
+    // at ship 8, so a ship-focused player ran out of varied objectives right there. These
+    // higher rungs keep the board full and interleaved (ships, compute, staff, product,
+    // revenue, users, contracts) through the mid game. Still claim-only temp boosts, so
+    // curve-safe. Escalating factor/duration continues the existing ramp.
+    { id: "o_ship4", desc: "Ship 12 models.", metric: "ships", target: 12, reward: boost("computeMult", 3.1, 120) },
+    { id: "o_cmp5", desc: "Reach 2,000,000 Compute/sec.", metric: "compute", target: 2_000_000, reward: boost("computeMult", 3.1, 120) },
+    { id: "o_emp3", desc: "Employ 8 specialists.", metric: "employees", target: 8, reward: boost("dataMult", 3.1, 125) },
+    { id: "o_prod3", desc: "Run 3 live products.", metric: "products", target: 3, reward: boost("moneyMult", 3.2, 125) },
+    { id: "o_mrr3", desc: "Reach $20,000/sec product revenue.", metric: "mrr", target: 20_000, reward: boost("moneyMult", 3.2, 130) },
+    { id: "o_ship5", desc: "Ship 15 models.", metric: "ships", target: 15, reward: boost("computeMult", 3.3, 130) },
+    { id: "o_contract2", desc: "Complete 8 contracts.", metric: "contracts", target: 8, reward: boost("computeMult", 3.3, 135) },
+    { id: "o_money6", desc: "Earn $10,000,000,000 lifetime.", metric: "lifetimeMoney", target: 10_000_000_000, reward: boost("dataMult", 3.3, 135) },
+    { id: "o_mau3", desc: "Reach 20,000,000 total users.", metric: "mau", target: 20_000_000, reward: boost("moneyMult", 3.4, 140) },
   ] as Objective[],
 };
 
