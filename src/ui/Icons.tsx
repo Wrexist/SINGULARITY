@@ -559,3 +559,96 @@ export function LinkIcon({ size = 18 }: IconProps) {
     </Icon>
   );
 }
+
+/** Version / repair — a wrench (auto_upgrade). */
+export function WrenchIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="M15.5 4.5a4.5 4.5 0 0 0-5.9 5.6L4 15.7 8.3 20l5.6-5.6a4.5 4.5 0 0 0 5.6-5.9l-2.7 2.7-2.5-.5-.5-2.5z" />
+    </Icon>
+  );
+}
+
+/** Contract / document — a page (auto_contracts). */
+export function DocIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="M6.5 3h6.5l5 5v13h-11.5z" />
+      <path d="M13 3v5h5" />
+      <path d="M9 12.5h6M9 16h6" />
+    </Icon>
+  );
+}
+
+/** Edit / rename — a pencil. */
+export function PencilIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="M4 20l1.2-4.2L15.8 5.2a2 2 0 0 1 2.8 0l.2.2a2 2 0 0 1 0 2.8L8.2 18.8z" />
+      <path d="M14.5 6.5l3 3" />
+    </Icon>
+  );
+}
+
+/** Fusion reactor — a sun (Grand Challenge: fusion datacenter). */
+export function SunIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <circle cx="12" cy="12" r="4.4" />
+      <path d="M12 2v2.6M12 19.4V22M2 12h2.6M19.4 12H22M4.9 4.9l1.9 1.9M17.2 17.2l1.9 1.9M19.1 4.9l-1.9 1.9M6.8 17.2l-1.9 1.9" />
+    </Icon>
+  );
+}
+
+/** Synthetic data — a DNA double helix (Grand Challenge: synthetic foundry). */
+export function HelixIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="M7 3c0 4.5 10 6.5 10 9s-10 4.5-10 9" />
+      <path d="M17 3c0 4.5-10 6.5-10 9s10 4.5 10 9" />
+      <path d="M8.5 6h7M8.5 18h7M10 9h4M10 15h4" />
+    </Icon>
+  );
+}
+
+/** Long context — a scroll (Grand Challenge: trillion-token context). */
+export function ScrollIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="M6 5a2 2 0 0 1 2-2h9v13a3 3 0 0 1-3 3H7" />
+      <path d="M17 16a3 3 0 0 0 3 3H8a2 2 0 0 1-2-2V5" />
+      <path d="M9.5 7.5h4.5M9.5 11h4.5" />
+    </Icon>
+  );
+}
+
+/** Alignment / safety — a shield with a check (Grand Challenge: aligned AGI). */
+export function ShieldIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="M12 3l7 2.4v6.1c0 4.4-3 7.4-7 8.9-4-1.5-7-4.5-7-8.9V5.4z" />
+      <path d="M9 12l2 2 4-4.2" />
+    </Icon>
+  );
+}
+
+/** Distributed grid — connected nodes (Grand Challenge: inference grid). */
+export function NetworkIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <circle cx="5" cy="6" r="2.2" />
+      <circle cx="19" cy="6" r="2.2" />
+      <circle cx="12" cy="18" r="2.2" />
+      <path d="M6.8 7.4 10.5 16M17.2 7.4 13.5 16M7.2 6h9.6" />
+    </Icon>
+  );
+}
+
+/** Endless scaling — an infinity loop (Grand Challenge: the bitter lesson). */
+export function InfinityIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="M8 8.5c-2 0-3.5 1.6-3.5 3.5S6 15.5 8 15.5c3 0 5-7 8-7 2 0 3.5 1.6 3.5 3.5S17.5 15.5 15.5 15.5c-3 0-5-7-8-7z" />
+    </Icon>
+  );
+}

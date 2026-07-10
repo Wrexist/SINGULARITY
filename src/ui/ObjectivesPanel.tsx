@@ -1,11 +1,14 @@
+import type { ReactNode } from "react";
 import type { GameState } from "../engine/types";
 import { objectiveBoard, claimableObjectives } from "../engine/objectives";
 import { objectives as O, objectiveRewardOptions, objectiveRewardStrength, laneLabel } from "../engine/balance/objectives";
 import { fmt } from "./format";
 import { Big } from "../engine/math/Big";
+import { GiftIcon, BoltIcon, DataIcon, CoinIcon } from "./Icons";
 
 type Lane = "computeMult" | "dataMult" | "moneyMult";
 const LANE_COLOR: Record<Lane, string> = { computeMult: "var(--compute)", dataMult: "var(--data)", moneyMult: "var(--money)" };
+const LANE_ICON: Record<Lane, ReactNode> = { computeMult: <BoltIcon size={13} />, dataMult: <DataIcon size={13} />, moneyMult: <CoinIcon size={13} /> };
 
 interface Props {
   game: GameState;
@@ -45,7 +48,7 @@ export function ObjectivesPanel({ game, onClaim }: Props) {
               </div>
               <span className="objective-prog">
                 {fmt(Big.of(Math.floor(value)))} / {fmt(Big.of(def.target))}
-                <span className="objective-reward">🎁 {objectiveRewardStrength(def.reward)}{isReady ? " — pick a lane" : ""}</span>
+                  <span className="objective-reward"><GiftIcon size={13} /> {objectiveRewardStrength(def.reward)}{isReady ? " — pick a lane" : ""}</span>
               </span>
             </div>
             {isReady ? (
@@ -57,6 +60,7 @@ export function ObjectivesPanel({ game, onClaim }: Props) {
                     style={{ ["--lane" as string]: LANE_COLOR[o.target as Lane] }}
                     onClick={(e) => onClaim(def.id, o.target as Lane, { x: e.clientX, y: e.clientY })}
                   >
+                    {LANE_ICON[o.target as Lane]}
                     {laneLabel(o.target)}
                   </button>
                 ))}

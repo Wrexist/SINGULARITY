@@ -11,7 +11,7 @@ import {
 import { m$, numOf as num, fmtDur } from "./format";
 import { ProductDetail, TYPE_GLYPH } from "./ProductDetail";
 import { EditableName } from "./EditableName";
-import { TagIcon, AtomIcon, LockIcon, SparkIcon, TrendDownIcon, TrophyIcon, BarsIcon } from "./Icons";
+import { TagIcon, AtomIcon, LockIcon, SparkIcon, TrendDownIcon, TrophyIcon, BarsIcon, AlertTriangleIcon, BoltIcon } from "./Icons";
 
 const FUN_NAMES = ["Nimbus", "Oracle", "Synthia", "Cortex", "Lumen", "Vertex", "Sage", "Atlas", "Echo", "Prism", "Nova", "Helix", "Quasar", "Mirage"];
 
@@ -87,7 +87,7 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
       <p className="floor-meter">
         Portfolio: <b>{m$(totalMrr)}/s</b> revenue · {totalMargin >= 0 ? "+" : ""}{m$(totalMargin)}/s profit · {ps.active.length}/{maxSlots} slots
         {ps.sold > 0 && <> · <span className="prod-sold-badge"><TagIcon size={12} /> {ps.sold} sold</span></>}
-        {attentionCount > 0 && <> · <span className="prod-attention-badge">⚠ {attentionCount} need{attentionCount === 1 ? "s" : ""} attention</span></>}
+        {attentionCount > 0 && <> · <span className="prod-attention-badge"><AlertTriangleIcon size={12} /> {attentionCount} need{attentionCount === 1 ? "s" : ""} attention</span></>}
       </p>
 
       {/* Raw models from Ship the Model — commercialise them into products. */}
@@ -256,7 +256,7 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
                   <span className="market-rank">{i + 1}</span>
                   <div className="market-main">
                     <div className="market-top">
-                      <span className="market-name">{e.name}{strikes > 0 && <span className="market-struck" title="Press blitzes landed this run">⚡×{strikes}</span>}</span>
+                      <span className="market-name">{e.name}{strikes > 0 && <span className="market-struck" title="Press blitzes landed this run"><BoltIcon size={11} />×{strikes}</span>}</span>
                       <span className="market-share">{(e.share * 100).toFixed(e.share < 0.01 ? 2 : 1)}%</span>
                     </div>
                     <div className="market-bar"><div className="market-bar-fill" style={{ width: `${Math.min(100, e.share * 100)}%` }} /></div>
@@ -269,7 +269,7 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
                         title={cooldown > 0 ? `The press cycle resets in ${cooldown}s` : undefined}
                         onClick={() => onCounterRival(e.name)}
                       >
-                        {cooldown > 0 ? `⚡ Press blitz — ready in ${cooldown}s` : `⚡ Press blitz — ${m$(cost)}`}
+                        <BoltIcon size={12} /> {cooldown > 0 ? `Press blitz — ready in ${cooldown}s` : `Press blitz — ${m$(cost)}`}
                       </button>
                     )}
                   </div>

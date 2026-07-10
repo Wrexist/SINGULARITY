@@ -4,7 +4,7 @@ import { Big } from "../engine/math/Big";
 import type { GameState } from "../engine/types";
 import { upgradeFlavor } from "../engine/flavor";
 import { fmt, fmtMoney } from "./format";
-import { SkullIcon, AlertTriangleIcon } from "./Icons";
+import { SkullIcon, AlertTriangleIcon, ScalesIcon } from "./Icons";
 
 function HeatMeter({ heat }: { heat: number }) {
   const pct = Math.min(100, (heat / balance.heat.max) * 100);
@@ -82,7 +82,7 @@ export function DataMarketPanel({ game, onBuyData, onBuyTool, onLobby }: Props) 
         <HeatMeter heat={game.heat} />
         {game.heat > balance.heat.lobby.minHeat && (
           <button className="lobby-btn" disabled={!canLobby(game)} onClick={onLobby}>
-            <span className="lobby-text">🤝 Lobby regulators — cool Heat by {Math.round(balance.heat.lobby.reductionFraction * 100)}%</span>
+            <span className="lobby-text"><ScalesIcon size={14} /> Lobby regulators — cool Heat by {Math.round(balance.heat.lobby.reductionFraction * 100)}%</span>
             <span className="lobby-cost">{fmtMoney(lobbyCost(game))}</span>
           </button>
         )}

@@ -2954,6 +2954,19 @@ button.modchip.workable:active { transform: scale(0.94); }
 .objective-lane:nth-child(2) { animation-delay: 0.05s; }
 .objective-lane:active { transform: scale(0.94); }
 @keyframes obj-lane-in { from { opacity: 0; transform: translateX(6px); } to { opacity: 1; transform: translateX(0); } }
+
+/* Inline line-icons that replaced emoji: sit centred beside their label text (SVGs
+   default to a low baseline). One place, so every swapped glyph aligns the same way. */
+.objective-lane, .objective-reward, .challenge-reward, .set-backup-title, .lobby-text,
+.modchip-work, .prod-attention-badge, .market-struck, .rig-fuse, .market-blitz {
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.objective-lane { justify-content: center; gap: 5px; }
+.market-blitz { justify-content: center; }
+/* Icon-only chips that used to hold a single emoji — centre the SVG in the box. */
+.automation-ic, .challenge-icon, .challenge-complete-icon, .prod-rename {
+  display: inline-flex; align-items: center; justify-content: center;
+}
 @keyframes obj-claim {
   0%, 100% { box-shadow: 0 6px 14px -8px color-mix(in srgb, var(--money) 80%, transparent); }
   50% { box-shadow: 0 6px 20px -6px color-mix(in srgb, var(--money) 95%, transparent); }

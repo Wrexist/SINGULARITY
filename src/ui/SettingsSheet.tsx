@@ -9,7 +9,7 @@ import { useGame, previewBackup, type BackupPreview } from "../state/store";
 import { fmtMoney } from "./format";
 import { themeStyle, skinSwatch } from "./hallThemes";
 import { themes, rackSkins, themeUnlocked, skinUnlocked, collectionProgress, skinProgress, unlockHint } from "../engine/cosmetics";
-import { PaletteIcon, DownloadIcon, LockIcon, CheckIcon } from "./Icons";
+import { PaletteIcon, DownloadIcon, LockIcon, CheckIcon, BarsIcon } from "./Icons";
 import { ConfirmSheet } from "./ConfirmSheet";
 import { version as APP_VERSION } from "../../package.json";
 import { telemetryEnabled, setTelemetryEnabled, getTelemetryEvents, clearTelemetry } from "../state/telemetry";
@@ -315,7 +315,7 @@ export function SettingsSheet({ onClose }: Props) {
         {/* Diagnostics — on-device only (R8.1). Never leaves this device; shown to you. */}
         <div className="set-backup">
           <button className="set-backup-head" onClick={() => setDiagOpen((o) => !o)} aria-expanded={diagOpen}>
-            <span className="set-backup-title">📊 Diagnostics (on-device)</span>
+            <span className="set-backup-title"><BarsIcon size={14} /> Diagnostics (on-device)</span>
             <span className="set-backup-chev">{diagOpen ? "▾" : "▸"}</span>
           </button>
           {diagOpen && (

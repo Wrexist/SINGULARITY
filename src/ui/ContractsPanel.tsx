@@ -47,7 +47,7 @@ export function ContractsPanel({ game, onClaim, onClaimSponsor }: Props) {
             <p className="contracts-empty">Daily sponsor objective — a new one calls tomorrow.</p>
           </div>
         ) : (
-          <p className="contracts-empty">All contracts cleared. Sponsors are circling — check back tomorrow. 📈</p>
+          <p className="contracts-empty">All contracts cleared. Sponsors are circling — check back tomorrow.</p>
         )
       ) : (
         <div className="list">

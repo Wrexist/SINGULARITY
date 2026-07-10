@@ -1,4 +1,6 @@
 import type { GrandChallenge } from "../engine/balance/challenges";
+import { iconFor } from "./iconRegistry";
+import { GiftIcon } from "./Icons";
 
 interface Props {
   challenge: GrandChallenge;
@@ -13,10 +15,10 @@ export function ChallengeComplete({ challenge, onDone }: Props) {
     <div className="modal-backdrop era-backdrop" onClick={onDone}>
       <div className="modal era-modal challenge-complete" onClick={(e) => e.stopPropagation()}>
         <div className="era-kicker">GRAND CHALLENGE COMPLETE</div>
-        <div className="challenge-complete-icon" aria-hidden="true">{challenge.icon}</div>
+        <div className="challenge-complete-icon" aria-hidden="true">{iconFor(challenge.icon, 40)}</div>
         <h2 className="era-title">{challenge.name}</h2>
         <div className="era-press">
-          <span className="era-press-tag">🎁 {challenge.reward.desc}</span>
+          <span className="era-press-tag"><GiftIcon size={14} /> {challenge.reward.desc}</span>
           <p>{challenge.lore}</p>
         </div>
         <button className="btn btn-primary" onClick={onDone}>Onward</button>

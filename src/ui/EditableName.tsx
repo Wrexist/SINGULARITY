@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { PencilIcon } from "./Icons";
 
 /**
  * Tap-to-rename in place. Replaces window.prompt (which is unreliable / ugly on
@@ -38,7 +39,7 @@ export function EditableName({ value, onCommit, className, max = 32 }: {
   }
   return (
     <button className={className} title="Rename" onClick={() => { done.current = false; setDraft(value); setEditing(true); }}>
-      {value} <span className="prod-rename">✎</span>
+      {value} <span className="prod-rename" aria-hidden="true"><PencilIcon size={12} /></span>
     </button>
   );
 }

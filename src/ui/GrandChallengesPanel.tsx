@@ -2,7 +2,8 @@ import type { GameState } from "../engine/types";
 import { visibleChallenges, challengeView, canFundChallenge } from "../engine/challenges";
 import { challenges as C } from "../engine/balance/challenges";
 import { fmt } from "./format";
-import { BoltIcon, AtomIcon, CoinIcon } from "./Icons";
+import { BoltIcon, AtomIcon, CoinIcon, GiftIcon } from "./Icons";
+import { iconFor } from "./iconRegistry";
 
 interface Props {
   game: GameState;
@@ -42,7 +43,7 @@ export function GrandChallengesPanel({ game, onFund }: Props) {
           return (
             <div key={def.id} className={`challenge-card ${v.complete ? "complete" : ""}`}>
               <div className="challenge-top">
-                <span className="challenge-icon" aria-hidden="true">{def.icon}</span>
+                <span className="challenge-icon" aria-hidden="true">{iconFor(def.icon, 22)}</span>
                 <div className="challenge-titles">
                   <span className="challenge-name">{def.name}</span>
                   <span className="challenge-blurb">{def.blurb}</span>
@@ -65,7 +66,7 @@ export function GrandChallengesPanel({ game, onFund }: Props) {
               </div>
 
               <div className="challenge-foot">
-                <span className="challenge-reward">🎁 {def.reward.desc}</span>
+                <span className="challenge-reward"><GiftIcon size={13} /> {def.reward.desc}</span>
                 {v.complete ? (
                   <span className="challenge-active">Active</span>
                 ) : (

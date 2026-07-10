@@ -1,5 +1,7 @@
 import type { GameState } from "../engine/types";
 import { automationList, automationUnlocked } from "../engine/automation";
+import { iconFor } from "./iconRegistry";
+import { LockIcon } from "./Icons";
 
 interface Props {
   game: GameState;
@@ -34,7 +36,7 @@ export function AutomationPanel({ game, onToggle }: Props) {
               onClick={() => onToggle(def.id)}
               aria-pressed={on}
             >
-              <span className="automation-ic" aria-hidden="true">{unlocked ? def.icon : "🔒"}</span>
+              <span className="automation-ic" aria-hidden="true">{unlocked ? iconFor(def.icon, 21) : <LockIcon size={18} />}</span>
               <div className="automation-text">
                 <span className="automation-name">{def.name}</span>
                 <span className="automation-desc">{unlocked ? def.desc : `Unlocks at ${def.unlockShips} models shipped`}</span>

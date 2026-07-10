@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { AlertTriangleIcon } from "./Icons";
 
 interface Props { children: ReactNode }
 interface State { error: Error | null }
@@ -27,7 +28,7 @@ export class ErrorBoundary extends Component<Props, State> {
     return (
       <div className="crash-screen" role="alert">
         <div className="crash-card">
-          <div className="crash-mark" aria-hidden="true">⚠</div>
+          <div className="crash-mark" aria-hidden="true"><AlertTriangleIcon size={30} /></div>
           <h1>Something glitched</h1>
           <p>
             The lab hit an unexpected error — but your progress is safe on this

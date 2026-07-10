@@ -1,4 +1,5 @@
 import type { ActiveModifier } from "../engine/types";
+import { GearIcon } from "./Icons";
 
 /** A persistent (non-countdown) status chip, e.g. an active standing the player
  *  should keep in view — regulator scrutiny, an open commitment, etc. */
@@ -53,7 +54,7 @@ export function ModifierBar({
               aria-label={`${m.label}, ${Math.ceil(m.remainingSec)} seconds left. Work the problem to shave ${workShaveSec} seconds.`}
             >
               {m.label} <em>{Math.ceil(m.remainingSec)}s</em>
-              <span className="modchip-work" aria-hidden="true">⚙ −{workShaveSec}s</span>
+              <span className="modchip-work" aria-hidden="true"><GearIcon size={11} /> −{workShaveSec}s</span>
             </button>
           );
         }

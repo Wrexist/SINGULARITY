@@ -413,7 +413,7 @@ export function App() {
     if (bestRank.current != null && myRank < bestRank.current) {
       bestRank.current = myRank;
       const passed = marketLeaderboard(game).slice(myRank).find((e) => !e.isYou);
-      pushToast(myRank === 1 ? "🏆 You're #1 on the AI market!" : `📈 You overtook ${passed?.name ?? "a rival"} — now #${myRank} on the market!`, "good");
+      pushToast(myRank === 1 ? "You're #1 on the AI market!" : `You overtook ${passed?.name ?? "a rival"} — now #${myRank} on the market!`, "good");
       haptics.celebrate(); sound.success();
     }
   }, [initialized, myRank]);
@@ -711,7 +711,7 @@ export function App() {
       />
       <ModifierBar
         modifiers={game.modifiers}
-        status={regulatorIsNamed(game) ? [{ key: "regulator", label: `⚖ ${regulatorState(game).name}: ${regulatorState(game).label}`, tone: "bad" as const }] : []}
+        status={regulatorIsNamed(game) ? [{ key: "regulator", label: `${regulatorState(game).name}: ${regulatorState(game).label}`, tone: "bad" as const }] : []}
         workShaveSec={balance.worldEvents.workShaveSec}
         onWork={(id) => {
           // Accessible twin of tapping the incident in the hall (HallCanvas): shave a
