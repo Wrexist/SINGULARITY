@@ -173,8 +173,8 @@ interface GameStore {
   doBuyEndowment: () => void;
   /** Pour affordable resources into a Grand Challenge. Returns true if THIS call finished it. */
   doFundChallenge: (id: string) => boolean;
-  /** Claim a met Lab Objective (applies its boost/windfall reward). */
-  doClaimObjective: (id: string) => void;
+  /** Claim a met Lab Objective, steering its boost to the chosen lane (default = headline). */
+  doClaimObjective: (id: string, target?: "computeMult" | "dataMult" | "moneyMult") => void;
   /** Flip an Automation autopilot on/off (no-op if still locked). */
   doToggleAutomation: (id: string) => void;
   setComputeFocus: (v: number) => void;
@@ -594,7 +594,7 @@ export const useGame = create<GameStore>((set, get) => ({
     });
     return justCompleted;
   },
-  doClaimObjective: (id) => set((s) => ({ game: claimObjective(s.game, id) })),
+  doClaimObjective: (id, target) => set((s) => ({ game: claimObjective(s.game, id, target) })),
   doToggleAutomation: (id) => set((s) => ({ game: toggleAutomation(s.game, id) })),
   setComputeFocus: (v) =>
     set((s) => ({ game: { ...s.game, computeFocus: Math.max(0, Math.min(1, v)) } })),

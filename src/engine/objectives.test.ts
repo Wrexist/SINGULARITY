@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createInitialState } from "./state";
 import { objectiveBoard, claimObjective, canClaimObjective, objectivesUnlocked, claimableObjectives } from "./objectives";
-import { objectives as O } from "./balance/objectives";
+import { objectives as O, objectiveRewardOptions, nextLane } from "./balance/objectives";
 import { serialize, deserialize } from "./save";
 import { prestige } from "./prestige";
 import { balance } from "./balance/config";
@@ -39,6 +39,31 @@ describe("Lab Objectives", () => {
     expect(after.modifiers.some((m) => m.id === `obj_${id}` && m.target === O.pool[0]!.reward.target)).toBe(true);
     expect(claimObjective(after, id)).toBe(after); // already claimed → same-ref no-op
     expect(objectiveBoard(after)[0]!.def.id).not.toBe(id); // next pool entry rotated in
+  });
+
+  it("offers two lanes of equal strength — the pick is placement, not power (curve-safe)", () => {
+    const r = O.pool[0]!.reward;
+    const opts = objectiveRewardOptions(r);
+    expect(opts.length).toBe(2);
+    expect(opts[0]!.target).toBe(r.target); // headline lane first
+    expect(opts[1]!.target).toBe(nextLane(r.target)); // then the next lane in the cycle
+    expect(opts[0]!.target).not.toBe(opts[1]!.target);
+    // Identical factor + duration on both → choosing a lane can't inflate the reward.
+    for (const o of opts) { expect(o.factor).toBe(r.factor); expect(o.durationSec).toBe(r.durationSec); }
+  });
+
+  it("claim steers the boost to the chosen lane; an unoffered lane falls back to the headline", () => {
+    const s = started();
+    const id = O.pool[0]!.id;
+    const headline = O.pool[0]!.reward.target;
+    const alt = nextLane(headline);
+    // Picking the offered alternate lane lands the boost there.
+    expect(claimObjective(s, id, alt).modifiers.some((m) => m.id === `obj_${id}` && m.target === alt)).toBe(true);
+    // A lane the card never offered (the third one, or any tampered value) → headline lane.
+    const offered = objectiveRewardOptions(O.pool[0]!.reward).map((o) => o.target);
+    const unoffered = (["computeMult", "dataMult", "moneyMult"] as const).find((l) => !offered.includes(l))!;
+    const mod = claimObjective(s, id, unoffered).modifiers.find((m) => m.id === `obj_${id}`)!;
+    expect(mod.target).toBe(headline);
   });
 
   it("progress persists across prestige and a save round-trip", () => {

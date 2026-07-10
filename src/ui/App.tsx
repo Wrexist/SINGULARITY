@@ -644,8 +644,8 @@ export function App() {
     }
   };
   const onToggleAutomation = (id: string) => { haptics.tap(); sound.tap(); doToggleAutomation(id); };
-  const onClaimObjective = (id: string, at?: { x: number; y: number }) => {
-    doClaimObjective(id);
+  const onClaimObjective = (id: string, target?: "computeMult" | "dataMult" | "moneyMult", at?: { x: number; y: number }) => {
+    doClaimObjective(id, target);
     // Juice at the tap: a small burst + a satisfied chord. The reward itself is visible
     // in place (resources tick up for a windfall, a boost chip appears in the bar) — no
     // toast needed, keeping the frequent early/mid claims clean.

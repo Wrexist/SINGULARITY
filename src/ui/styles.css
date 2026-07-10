@@ -2938,6 +2938,22 @@ button.modchip.workable:active { transform: scale(0.94); }
 .objective-claim:disabled { color: var(--ink-3); opacity: 0.9; }
 .objective-card.ready .objective-claim:disabled { color: #fff; opacity: 1; }
 .objective-claim:not(:disabled):active { transform: scale(0.96); }
+/* Reward-lane choice: a met objective is claimed by steering its boost to one of two
+   lanes (Compute / Data / Revenue). Two compact, lane-tinted buttons replace the single
+   Claim — a small "where do I need this now?" decision. */
+.objective-choice { flex-shrink: 0; display: flex; flex-direction: column; gap: 5px; }
+.objective-lane {
+  min-width: 74px; padding: 6px 10px; font-size: 11.5px; font-weight: 800; white-space: nowrap;
+  border-radius: 9px; cursor: pointer;
+  color: var(--lane, var(--accent));
+  background: color-mix(in srgb, var(--lane, var(--accent)) 13%, #fff);
+  border: 1px solid color-mix(in srgb, var(--lane, var(--accent)) 40%, transparent);
+  transition: transform 0.14s var(--ease-out), background 0.14s;
+  animation: obj-lane-in 0.28s var(--ease-out) backwards;
+}
+.objective-lane:nth-child(2) { animation-delay: 0.05s; }
+.objective-lane:active { transform: scale(0.94); }
+@keyframes obj-lane-in { from { opacity: 0; transform: translateX(6px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes obj-claim {
   0%, 100% { box-shadow: 0 6px 14px -8px color-mix(in srgb, var(--money) 80%, transparent); }
   50% { box-shadow: 0 6px 20px -6px color-mix(in srgb, var(--money) 95%, transparent); }

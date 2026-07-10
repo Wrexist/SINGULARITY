@@ -1,4 +1,4 @@
-import { objectives as O, objectiveRewardLabel, type Objective, type ObjectiveMetric } from "./balance/objectives";
+import { objectives as O, objectiveRewardLabel, objectiveRewardOptions, type Objective, type ObjectiveMetric, type ObjectiveReward } from "./balance/objectives";
 import { totalRacks } from "./hall";
 import type { GameState } from "./types";
 
@@ -71,13 +71,18 @@ export function canClaimObjective(state: GameState, id: string): boolean {
 /**
  * Claim a met objective: apply its reward (a short output-boost modifier) and record
  * completion so the next pool entry rotates onto the board. Pure; same-ref no-op if not
- * claimable. The reward multiplies current output, so it's always meaningful and never
- * inflates the permanent curve (temporary + the sim never claims).
+ * claimable. The player may steer the boost to either lane the card offers (see
+ * `objectiveRewardOptions`) — all options share the same factor/duration, so `target` is a
+ * placement choice only and can't inflate the reward. An absent/invalid `target` falls back
+ * to the headline lane (so the balance sim's non-claiming path and old saves are unaffected).
+ * The reward multiplies current output, so it's always meaningful and never inflates the
+ * permanent curve (temporary + the sim never claims).
  */
-export function claimObjective(state: GameState, id: string): GameState {
+export function claimObjective(state: GameState, id: string, target?: ObjectiveReward["target"]): GameState {
   if (!canClaimObjective(state, id)) return state;
   const r = BY_ID.get(id)!.reward;
-  const mod = { id: `obj_${id}`, target: r.target, factor: r.factor, remainingSec: r.durationSec, label: `Objective ×${r.factor}`, tone: "good" as const };
+  const chosen = objectiveRewardOptions(r).find((o) => o.target === target) ?? r;
+  const mod = { id: `obj_${id}`, target: chosen.target, factor: chosen.factor, remainingSec: chosen.durationSec, label: `Objective ×${chosen.factor}`, tone: "good" as const };
   return {
     ...state,
     // id-keyed so a (re)claim refreshes rather than duplicates.

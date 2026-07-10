@@ -1,19 +1,23 @@
 import type { GameState } from "../engine/types";
-import { objectiveBoard, objectiveRewardLabel, claimableObjectives } from "../engine/objectives";
-import { objectives as O } from "../engine/balance/objectives";
+import { objectiveBoard, claimableObjectives } from "../engine/objectives";
+import { objectives as O, objectiveRewardOptions, objectiveRewardStrength, laneLabel } from "../engine/balance/objectives";
 import { fmt } from "./format";
 import { Big } from "../engine/math/Big";
 
+type Lane = "computeMult" | "dataMult" | "moneyMult";
+const LANE_COLOR: Record<Lane, string> = { computeMult: "var(--compute)", dataMult: "var(--data)", moneyMult: "var(--money)" };
+
 interface Props {
   game: GameState;
-  onClaim: (id: string, at?: { x: number; y: number }) => void;
+  onClaim: (id: string, target?: Lane, at?: { x: number; y: number }) => void;
 }
 
 /**
  * Lab Objectives — an early/mid "lots to do" board: three rotating quick goals, each with a
- * live progress bar and a reward that lands on Claim (a temp boost, or a resource windfall).
- * Clearing one rotates the next pool entry in, so there's always a next payoff. Hidden once
- * the ladder is cleared (it's an onboarding-grind feature).
+ * live progress bar. A met objective is claimed by picking WHICH lane its boost lands on
+ * (Compute / Data / Revenue) — a small "where do I need this now?" decision rather than an
+ * auto-resolve. Both lanes share the same strength, so the pick is placement only. Hidden
+ * once the ladder is cleared (it's an onboarding-grind feature).
  */
 export function ObjectivesPanel({ game, onClaim }: Props) {
   const board = objectiveBoard(game);
@@ -41,16 +45,25 @@ export function ObjectivesPanel({ game, onClaim }: Props) {
               </div>
               <span className="objective-prog">
                 {fmt(Big.of(Math.floor(value)))} / {fmt(Big.of(def.target))}
-                <span className="objective-reward">🎁 {objectiveRewardLabel(def.reward)}</span>
+                <span className="objective-reward">🎁 {objectiveRewardStrength(def.reward)}{isReady ? " — pick a lane" : ""}</span>
               </span>
             </div>
-            <button
-              className="objective-claim"
-              disabled={!isReady}
-              onClick={(e) => onClaim(def.id, { x: e.clientX, y: e.clientY })}
-            >
-              {isReady ? "Claim" : `${Math.round(progress * 100)}%`}
-            </button>
+            {isReady ? (
+              <div className="objective-choice" role="group" aria-label={`Claim reward — pick a lane`}>
+                {objectiveRewardOptions(def.reward).map((o) => (
+                  <button
+                    key={o.target}
+                    className="objective-lane"
+                    style={{ ["--lane" as string]: LANE_COLOR[o.target as Lane] }}
+                    onClick={(e) => onClaim(def.id, o.target as Lane, { x: e.clientX, y: e.clientY })}
+                  >
+                    {laneLabel(o.target)}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <button className="objective-claim" disabled>{Math.round(progress * 100)}%</button>
+            )}
           </div>
         ))}
       </div>
