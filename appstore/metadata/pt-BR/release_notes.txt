@@ -4,7 +4,7 @@ Nesta atualização:
 • Objetivos de Laboratório — uma nova trilha de metas que vai fundo no endgame.
 • Automação — piloto automático para a parte chata.
 • Um fork de pesquisa a cada run e visuais de progresso mais vivos.
-• E a página da loja, agora em português.
+• E a página da loja agora fala português.
 
 De quebra: ajustes de balanceamento e estabilidade.
 

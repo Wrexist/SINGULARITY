@@ -3,7 +3,7 @@ Hankit siemenrahoituksen ja vuokrasit palvelinkomeron. On aika rakentaa Jumala �
 Singularity Inc. on satiirinen idle-tycoon-peli tekoälyn kultaryntäyksestä. Aloita yhdellä hurisevalla GPU:lla ja skaalaa labra planeetan kokoiseksi laskentaklusteriksi — 2.5D-konesalisi täyttyy räkki räkiltä ihan oikeasti. Kolme resurssia, yksi puhdas luuppi, loputtomasti "synergiaa".
 
 NÄIN SE PYÖRII
-• Tuota laskentatehoa, upota se koulutusajoihin ja kuittaa palkaksi dataa ja rahaa.
+• Tuota laskentatehoa, upota se koulutusajoihin ja kuittaa palkkioksi dataa ja rahaa.
 • Sijoita voitot räkkeihin, jäähdytykseen, ylikellotukseen ja automaatioon — jokainen ostos ilmestyy halliin ihan fyysisesti.
 • Kiipeä tutkimuspuussa kohti yhä absurdimpia tekoälykykyjä.
 • "Ship the Model" on pelin prestige: nollaa labra ja lunasta pysyvät Legacy Weight -kertoimet. Sitten sama uusiksi — nopeammin.
@@ -15,7 +15,7 @@ MAAILMA, JOKA KASVAA
 
 OSTA DATASI — LAILLISESTI, TAI SITTEN EI
 • Hanki koulutusdata lisensoiduilta toimittajilta… tai nappaa halvemmat tavut dark webin Bazaarista.
-• Pidä sääntelylämpö (Regulatory Heat) kurissa: venytä onneasi, niin yllätystarkastus saattaa käydä "pyytämässä siivunsa".
+• Pidä sääntelylämpö (Regulatory Heat) kurissa: koettele onneasi liikaa, niin yllätystarkastus saattaa käydä "pyytämässä siivunsa".
 • Toistakymmentä satiirista maailmantapahtumaa — viraalidemot, GPU-pula, avoimet kirjeet, osaajasodat — ravistelee jokaista pelikertaa.
 
 REILU PELI

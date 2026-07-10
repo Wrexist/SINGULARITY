@@ -3,7 +3,7 @@ Denne oppdateringen:
 • Grand Challenges – månelandinger med lang horisont og permanente belønninger. (Disse lander faktisk.)
 • Lab Objectives – en fersk målstige som strekker seg langt inn i endgame.
 • Automation – autopilot for rutinearbeidet.
-• Forskningen forgrener seg på nytt hver runde, og fremdriften har fått mer levende grafikk.
+• Forskningen forgrener seg på nytt hver runde, og fremdriften har fått livligere grafikk.
 • Butikksiden er nå på norsk – selve spillet snakker fortsatt engelsk, enn så lenge.
 
 Pluss balanse- og stabilitetsfikser.

@@ -1,0 +1,31 @@
+Runda seed w banku, serwerownia w wynajętej kanciapie. Czas zbudować Boga — albo chociaż rentowne API.
+
+Singularity Inc. to satyryczny idle tycoon o gorączce złota w AI. Zaczynasz z jednym buczącym GPU, kończysz z klastrem obliczeniowym wielkości planety — a twoja hala w 2,5D przez cały ten czas fizycznie zapełnia się szafami. Trzy zasoby, jedna czysta pętla, nieskończona „synergia”.
+
+PĘTLA GRY
+• Generuj Compute, przepalaj go na treningi modeli, zgarniaj Dane + Pieniądze.
+• Reinwestuj w szafy, chłodzenie, podkręcanie i automatyzację — każde kupione ulepszenie naprawdę staje w hali.
+• Wspinaj się po drzewku badań pełnym coraz absurdalniejszych zdolności AI.
+• „Ship the Model” to prestiż: reset w zamian za trwałe mnożniki Legacy Weight. A potem wszystko od nowa — tylko szybciej.
+
+ŚWIAT, KTÓRY NAPRAWDĘ ROŚNIE
+• Czysta hala serwerowni w 2,5D rozświetla się i rozrasta razem z twoją firmą — nie ma dwóch takich samych laboratoriów.
+• Stukaj w otwarte krawędzie podłogi, by dokupować powierzchnię — pomieszczenie fizycznie rośnie w tę stronę.
+• Zmiana ery przebiera całą halę na nowo i publikuje satyryczny „komunikat prasowy” o twoim awansie.
+
+KUP SOBIE DANE — LEGALNIE ALBO TANIEJ
+• Bierz dane treningowe od licencjonowanych dostawców… albo zajrzyj na darknetowy Bazar, gdzie bajty są podejrzanie tanie.
+• Pilnuj wskaźnika Regulatory Heat: przeciągniesz strunę, a niezapowiedziana kontrola uprzejmie „upomni się o swoją dolę”.
+• Kilkanaście satyrycznych wydarzeń — viralowe dema, niedobory GPU, listy otwarte, wojny o talenty — tasuje każdą rozgrywkę od nowa.
+
+UCZCIWOŚĆ W STANDARDZIE
+• Zero reklam. Na zawsze.
+• Zero pay-to-win, zero pasków energii, zero okienek z fałszywą presją.
+• Działa offline — laboratorium zarabia, kiedy cię nie ma. Żadnych daily.
+• Dokładnie jeden opcjonalny zakup Premium — czysta kosmetyka i wygoda (dłuższy limit offline, status Założyciela, przyszłe motywy hali). Cała gra jest darmowa i hojna.
+• Teksty w grze są na razie po angielsku — pełna immersja w realia branży AI.
+
+DLA KOGO?
+Kochasz gry idle, incremental, klikacze i tycoony, ale chcesz czystszej ekonomii, świata, który rośnie w oczach, i ciętego humoru o branży AI? W takim razie witaj w zarządzie.
+
+Zdecydowanie nie bańka.

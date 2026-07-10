@@ -1,6 +1,6 @@
-Du har landet en såkornrunde og leid et serverskap. På tide å bygge Gud – eller i det minste et lønnsomt API.
+Du har hentet en såkornrunde og leid et serverskap. På tide å bygge Gud – eller i det minste et lønnsomt API.
 
-Singularity Inc. er et satirisk idle-/tycoonspill om AI-gullrushet. Start med én summende GPU, og skaler til en regneklynge på størrelse med en planet – mens 2.5D-datasenteret ditt fysisk fylles med racks etter hvert som du vokser. Tre ressurser, én ren loop, uendelig med «synergi».
+Singularity Inc. er et satirisk idle-tycoonspill om AI-gullrushet. Start med én summende GPU, og skaler til en regneklynge på størrelse med en planet – mens 2.5D-datasenteret ditt fysisk fylles med racks etter hvert som du vokser. Tre ressurser, én ren loop, uendelig med «synergi».
 
 LOOPEN
 • Generer Compute, bruk den på treningskjøringer, og høst Data + Penger.
@@ -14,13 +14,13 @@ EN VERDEN SOM VOKSER
 • Æraoverganger kler hele hallen i ny drakt og slipper en satirisk «pressemelding» hver gang imperiet rykker opp et nivå.
 
 KJØP DATAENE DINE – LOVLIG, ELLER IKKE
-• Hent treningsdata fra lisensierte leverandører … eller fra det lyssky Bazaar-markedet, der alt er billigere og ingenting har kvittering.
+• Hent treningsdata fra lisensierte leverandører … eller fra Bazaaren på det mørke nettet, der alt er billigere og ingenting kommer med kvittering.
 • Hold et øye med Regulatory Heat: presser du for hardt, står det plutselig et uanmeldt tilsyn i døra og «ber om sin andel».
-• Et dusin+ satiriske verdenshendelser – virale demoer, GPU-tørke, åpne brev, talentkriger – snur opp ned på hver runde.
+• Over et dusin satiriske verdenshendelser – virale demoer, GPU-tørke, åpne brev, talentkriger – snur opp ned på hver runde.
 
 ÆRLIGHET SOM FORRETNINGSMODELL
 • Ingen reklame. Aldri.
-• Ingen pay-to-win. Ingen energisystem. Ingen popup-vinduer med kunstig hastverk.
+• Ingen pay-to-win. Ingen energisperrer. Ingen popups med falsk hastverk.
 • Spilles offline – laben tjener videre mens du er borte. Helt uten morgenmøter.
 • Én valgfri Premium-oppgradering, kun kosmetikk og komfort (lengre offline-tak, Founder-status, fremtidige halltemaer). Hele spillet er gratis og raust.
 • Spillteksten er foreløpig på engelsk – akkurat som resten av AI-bransjen.

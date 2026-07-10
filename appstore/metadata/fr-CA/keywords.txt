@@ -1,1 +1,1 @@
-jeu,gestion,clicker,magnat,entreprise,compagnie,argent,simulation,incremental,prestige,gpu,startup
+clicker,magnat,entreprise,compagnie,argent,simulation,incremental,prestige,gpu,startup,labo,afk,data

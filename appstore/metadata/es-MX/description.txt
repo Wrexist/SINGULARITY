@@ -1,4 +1,4 @@
-Levantaste una ronda semilla y rentaste un clóset con un solo servidor. Hora de construir a Dios — o al menos una API rentable.
+Levantaste una ronda semilla y rentaste un clóset de servidores. Hora de construir a Dios — o al menos una API rentable.
 
 Singularity Inc. es un idle tycoon satírico sobre la fiebre del oro de la IA. Empieza con un solo GPU zumbando y escala hasta un clúster de cómputo del tamaño de un planeta, mientras tu centro de datos en 2.5D se llena físicamente de racks. Tres recursos, un loop limpio y "sinergia" infinita.
 
@@ -11,11 +11,11 @@ EL LOOP
 UN MUNDO QUE CRECE
 • Una sala de centro de datos en 2.5D, limpia y elegante, que se ilumina y se extiende conforme escalas — no hay dos laboratorios iguales.
 • Toca los bordes libres del piso para comprar expansiones: la sala crece físicamente hacia ese lado.
-• Cada cambio de era renueva la sala completa y lanza un "comunicado de prensa" satírico sobre tu ascenso.
+• Cada cambio de era renueva la sala entera y celebra tu ascenso con un "comunicado de prensa" satírico a pantalla completa.
 
 COMPRA TUS DATOS — LEGALES, O NO TANTO
 • Consigue datos de entrenamiento con proveedores con licencia… o arriésgate en el Bazar de la dark web por bytes más baratos.
-• Vigila tu Regulatory Heat: si estiras la suerte de más, una auditoría sorpresa pasará a "pedir su tajada".
+• Vigila tu Regulatory Heat: abusa de tu suerte y te cae una auditoría sorpresa a "pedir su tajada".
 • Más de una docena de eventos mundiales satíricos — demos virales, escasez de GPUs, cartas abiertas, guerras por el talento — sacuden cada partida.
 
 HONESTO POR DISEÑO

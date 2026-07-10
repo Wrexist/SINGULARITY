@@ -1,1 +1,1 @@
-spill,klikker,selskap,penger,imperium,magnat,datasenter,simulering,strategi,fabrikk,bedrift,gpu,ki
+spill,klikker,clicker,selskap,penger,imperium,simulator,strategi,fabrikk,bedrift,startup,gpu,ki,ceo

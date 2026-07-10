@@ -1,0 +1,31 @@
+Bạn vừa chốt xong vòng hạt giống và thuê tạm một cái kho nhỏ làm phòng server. Giờ thì bắt tay tạo ra Thượng Đế — hoặc bét ra là một con API có lãi.
+
+Singularity Inc. là game idle tycoon châm biếm về cơn sốt vàng AI. Khởi đầu với đúng một chiếc GPU kêu vo vo, vươn tới cụm máy chủ cỡ hành tinh — và trung tâm dữ liệu 2.5D của bạn chật thêm rack theo đúng nghĩa đen sau mỗi lần xuống tiền. Ba loại tài nguyên, một vòng lặp gọn gàng, còn "synergy" thì vô hạn.
+
+VÒNG LẶP
+• Tạo Compute, đổ vào các đợt huấn luyện, thu về Dữ liệu + Tiền.
+• Tái đầu tư vào rack, làm mát, ép xung, tự động hóa — mọi nâng cấp bạn mua đều mọc lên ngay giữa sảnh máy.
+• Leo cây nghiên cứu AI với những năng lực càng lúc càng nhảm một cách rất nghiêm túc.
+• "Ship the Model" để prestige: reset tất cả, nhận hệ số Legacy Weight vĩnh viễn, rồi chơi lại từ đầu — lần này nhanh hơn hẳn.
+
+THẾ GIỚI LỚN LÊN TRƯỚC MẮT BẠN
+• Sảnh trung tâm dữ liệu 2.5D sáng đèn và lan rộng theo đà làm ăn của bạn — không có hai phòng lab nào giống nhau.
+• Chạm vào mép sàn còn trống để mua phần mở rộng; căn phòng phình ra đúng hướng đó, ngay trước mắt.
+• Mỗi lần sang kỷ nguyên mới, cả sảnh thay da đổi thịt, kèm một "thông cáo báo chí" châm biếm chiếm trọn màn hình.
+
+MUA DỮ LIỆU — HỢP PHÁP HAY KHÔNG, TÙY BẠN
+• Nhập dữ liệu huấn luyện từ nhà cung cấp có giấy phép… hoặc liều một phen ở chợ đen Bazaar, rẻ được byte nào hay byte đó.
+• Nhớ canh thanh Regulatory Heat: tham quá là một đoàn thanh tra bất ngờ ghé chơi và lịch sự "xin nhận phần của mình".
+• Hơn một tá sự kiện thế giới châm biếm — demo gây bão, khan hiếm GPU, thư ngỏ kêu gọi dừng AI, cuộc chiến giành nhân tài — xáo tung mọi ván chơi.
+
+SÒNG PHẲNG TỪ TRONG THIẾT KẾ
+• Không quảng cáo. Không bao giờ.
+• Không pay-to-win. Không hẹn giờ năng lượng. Không pop-up hối thúc giả tạo.
+• Chơi offline vô tư — phòng lab vẫn cày khi bạn vắng mặt. Khỏi cần chấm công.
+• Đúng một gói Premium tùy chọn, thuần trang trí và tiện nghi (nới trần thu nhập offline, danh hiệu Founder, theme sảnh máy trong tương lai). Bản miễn phí đã là trọn vẹn trò chơi, không giấu bài.
+• Chữ trong game hiện vẫn là tiếng Anh — mà dân làm AI thì kiểu gì chẳng đọc tiếng Anh cả ngày.
+
+GAME NÀY DÀNH CHO AI?
+Nếu bạn mê game idle, incremental, clicker hay tycoon nhưng muốn một nền kinh tế sạch sẽ hơn, một thế giới thấy rõ mình lớn lên từng ngày, và khiếu hài đủ sắc để cười cả ngành AI — game này sinh ra cho bạn.
+
+Chắc chắn không phải bong bóng đâu. Nguồn: tin chúng tôi đi.

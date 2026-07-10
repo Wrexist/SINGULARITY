@@ -3,9 +3,8 @@ Cette mise à jour :
 • Grand Challenges — des moonshots de longue haleine, avec des récompenses permanentes.
 • Objectifs de labo — une nouvelle échelle de buts qui se rend loin dans l'endgame.
 • Automatisation — des autopilotes pour la job plate.
-• Un embranchement de recherche à chaque run et des visuels de progression plus vivants.
-• Et la fiche App Store est maintenant en français, comme il se doit.
+• Un embranchement de recherche à chaque run, des visuels de progression plus vivants — et la fiche App Store est maintenant en français, comme il se doit.
 
 Plus des correctifs d'équilibrage et de stabilité.
 
-Toujours pas de publicité. Toujours pas de pay-to-win.
+Toujours pas de pub. Toujours pas de pay-to-win.

@@ -1,10 +1,10 @@
 Dieses Update:
 
 • Grand Challenges – Moonshots mit langem Atem und permanenten Belohnungen.
-• Labor-Ziele – neue Etappenziele bis tief ins Endgame.
-• Automatisierung – Autopiloten für den Routinekram.
+• Lab Objectives – frische Etappenziele bis tief ins Endgame.
+• Automation – Autopiloten für den ganzen Routinekram.
 • Ein Forschungs-Fork in jedem Run, dazu lebendigere Fortschritts-Visuals.
-• Und: Die Store-Seite spricht jetzt Deutsch.
+• Und ja: Die Store-Seite spricht jetzt Deutsch.
 
 Obendrauf Balance- und Stabilitätsfixes.
 
