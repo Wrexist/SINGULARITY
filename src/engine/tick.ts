@@ -10,6 +10,11 @@ import { applyAutoResearch } from "./actions";
 import { rivalsBeaten } from "./market";
 import type { Derived, GameState } from "./types";
 
+/** Hard ceiling on simultaneously-active modifiers processed in a tick. The window-split
+ *  recursion below descends once per distinct expiry, so this bounds its depth against a
+ *  crafted/pathological buff stack. Sits far above any reachable legit stack. */
+const MAX_ACTIVE_MODIFIERS = 48;
+
 /**
  * The deterministic heartbeat. Given a state and elapsed time, returns the next
  * state. The engine never reads the wall clock (CLAUDE.md hard rule) — time is
@@ -32,7 +37,17 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     // Drop already-expired (or malformed) modifiers first. Otherwise minRem
     // could be <= 0, making firstMs <= 0 and the recursive split spin without
     // ever making progress.
-    const active = state.modifiers.filter((m) => Number.isFinite(m.remainingSec) && m.remainingSec > 0);
+    let active = state.modifiers.filter((m) => Number.isFinite(m.remainingSec) && m.remainingSec > 0);
+    // Defense-in-depth: the window-split below descends once per distinct expiry, so an
+    // extreme stack of simultaneous buffs could approach the call-stack limit on a large
+    // offline/tab-resume tick. The load sanitizer caps SAVED modifiers at 20; mirror that
+    // at runtime with a generous ceiling — above any reachable legit stack (a burst of
+    // objective/daily/event buffs tops out well under this), below the danger zone — by
+    // keeping the soonest-expiring MAX so the split depth is always bounded. Legit play
+    // never trips it; only a crafted/pathological state does.
+    if (active.length > MAX_ACTIVE_MODIFIERS) {
+      active = [...active].sort((a, b) => a.remainingSec - b.remainingSec).slice(0, MAX_ACTIVE_MODIFIERS);
+    }
     if (active.length !== state.modifiers.length) {
       return tick({ ...state, modifiers: active }, elapsedMs);
     }

@@ -146,7 +146,9 @@ function sanitizeUpgrade(u: unknown): UpgradeState | null {
   if (o.targetVersion! < 2 || o.remainingSec! < 0 || o.totalSec! <= 0) return null;
   if (o.remainingCompute! < 0 || o.remainingData! < 0) return null;
   return {
-    targetVersion: o.targetVersion!,
+    // Clamp to the same ceiling as a product's base version (see loadedProducts), so a
+    // crafted mid-flight upgrade can't push a product to an arbitrary version on completion.
+    targetVersion: Math.min(1000, o.targetVersion!),
     remainingCompute: o.remainingCompute!,
     remainingData: o.remainingData!,
     remainingSec: o.remainingSec!,
