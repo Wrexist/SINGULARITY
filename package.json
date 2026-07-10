@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "sim": "vite-node scripts/balance-sim.ts",
     "shot": "node scripts/screenshot.mjs",
+    "validate:store": "node scripts/validate-store-metadata.mjs",
     "icons": "node scripts/stamp-icons.mjs",
     "cap:sync": "npm run build && cap sync ios"
   },
