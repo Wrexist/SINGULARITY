@@ -12,6 +12,11 @@ numeric safety, and a calm, premium feel are non-negotiable.
   styles. The owner rejected this pattern outright (2026-07); do not reintroduce it
   anywhere. Signal emphasis another way instead: a full-card tint or border, a **progress
   ring on the icon**, a badge/tag, a size bump, or a soft glow.
+- **No emoji in the UI — use SVG line icons.** Every glyph the player sees comes from the
+  `Icons.tsx` family (`currentColor` line icons), never a color emoji (🎁🔒🎯…). Add a new
+  icon to `Icons.tsx` and, for icons named by pure balance data, a key in `iconRegistry`.
+  Don't bake emoji into engine/label strings either — the tone icon or text carries it.
+  (Monochrome typographic marks like ✓ ✗ ★ are fine.)
 - **Clean, not noisy.** Bias toward AMBIENT, wordless aliveness — motion, a ring filling,
   a gentle glow — over adding text, popups, toasts, or badges. When in doubt, remove
   noise rather than add a label. Every animation must respect `prefers-reduced-motion`
