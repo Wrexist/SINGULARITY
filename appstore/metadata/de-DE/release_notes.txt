@@ -1,0 +1,11 @@
+Dieses Update:
+
+• Grand Challenges – Moonshots mit langem Atem und permanenten Belohnungen.
+• Labor-Ziele – neue Etappenziele bis tief ins Endgame.
+• Automatisierung – Autopiloten für den Routinekram.
+• Ein Forschungs-Fork in jedem Run, dazu lebendigere Fortschritts-Visuals.
+• Und: Die Store-Seite spricht jetzt Deutsch.
+
+Obendrauf Balance- und Stabilitätsfixes.
+
+Weiterhin keine Werbung. Weiterhin kein Pay-to-win.

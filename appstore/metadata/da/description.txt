@@ -1,0 +1,31 @@
+Du har rejst en seed-runde og lejet et serverskab. Nu skal der bygges en gud — eller i det mindste en API med sorte tal på bundlinjen.
+
+Singularity Inc. er et satirisk idle-tycoon-spil om AI-guldfeberen. Start med én summende GPU, og skalér til et compute-cluster på størrelse med en planet, mens dit 2.5D-datacenter helt bogstaveligt fyldes med racks. Tre ressourcer, ét rent loop, uendelig "synergi".
+
+LOOPET
+• Generér Compute, brug det på træningskørsler, og høst Data + Penge.
+• Geninvestér i racks, køling, overclocking og automatisering — hver eneste opgradering dukker fysisk op i hallen.
+• Kravl op ad et forskningstræ af stadig mere absurde AI-evner.
+• "Ship the Model" er spillets prestige: nulstil og få permanente Legacy Weight-multiplikatorer, og gør det hele igen — bare hurtigere.
+
+EN VERDEN, DER VOKSER
+• En ren 2.5D-serverhal, der lyser op og breder sig, i takt med at du skalerer — ingen to laboratorier ligner hinanden.
+• Tryk på gulvets åbne kanter for at købe udvidelser; rummet vokser fysisk i netop den retning.
+• Æraskift giver hele hallen nyt look og smækker en satirisk "pressemeddelelse" op, når dit imperium rykker et niveau op.
+
+KØB DINE DATA — LOVLIGT ELLER EJ
+• Hent træningsdata hos licenserede leverandører … eller tag chancen på dark web-Basaren, hvor bytes er billigere.
+• Hold øje med din Regulatory Heat: pres den for hårdt, og pludselig står der et uanmeldt tilsyn og "beder om sin andel".
+• Over et dusin satiriske verdensbegivenheder — virale demoer, GPU-mangel, åbne breve, talentkrige — ryster hvert eneste run.
+
+ÆRLIGT SPIL
+• Ingen reklamer. Nogensinde.
+• Intet pay-to-win. Ingen energi-timere. Ingen pop-ups med kunstig panik.
+• Spiller offline — laboratoriet tjener videre, mens du er væk. Helt uden statusmøder.
+• Ét valgfrit Premium-køb — kun kosmetik og bekvemmelighed (længere offline-loft, Founder-status, kommende hal-temaer). Hele spillet er gratis og gavmildt.
+• Spillets tekst er indtil videre på engelsk — betragt det som gratis efteruddannelse.
+
+HVEM ER DET TIL?
+Elsker du idle-, incremental-, clicker- og tycoon-spil, men vil have en renere økonomi, en verden, der synligt vokser, og en spids pen vendt mod AI-branchen? Så er det her dit spil.
+
+Helt sikkert ikke en boble.

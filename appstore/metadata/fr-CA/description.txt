@@ -1,0 +1,31 @@
+Tu as levé une ronde de financement et loué un placard à serveurs. Il est temps de bâtir Dieu — ou, au pire, une API payante.
+
+Singularity Inc. est un idle tycoon satirique sur la ruée vers l'or de l'IA. Pars d'un seul GPU qui ronronne et scale jusqu'à un cluster de calcul grand comme la planète, pendant que ton centre de données en 2,5D se remplit de racks sous tes yeux. Trois ressources, une boucle propre, de la « synergie » à volonté.
+
+LA BOUCLE
+• Génère du Compute, investis-le dans des runs d'entraînement, puis encaisse Données + Argent.
+• Réinvestis dans les racks, le refroidissement, l'overclocking et l'automatisation — chaque achat apparaît pour vrai dans la salle.
+• Grimpe un arbre de recherche rempli de capacités d'IA de plus en plus absurdes.
+• « Ship the Model » = prestige : réinitialise pour des multiplicateurs de Legacy Weight permanents, puis refais tout — en plus vite.
+
+UN MONDE QUI GRANDIT
+• Une salle de serveurs 2,5D épurée qui s'illumine et s'étale à mesure que tu prends de l'expansion — aucun labo ne ressemble à un autre.
+• Touche les côtés libres du plancher pour acheter des agrandissements : la salle pousse physiquement dans cette direction.
+• Chaque changement d'ère rhabille la salle au complet et publie un faux « communiqué de presse » pour souligner ta montée en grade.
+
+ACHÈTE TES DONNÉES — LÉGALEMENT, OU PAS
+• Approvisionne-toi en données d'entraînement chez des fournisseurs sous licence… ou va magasiner des octets pas chers au Bazaar du dark web.
+• Surveille ta Regulatory Heat : si tu pousses ta luck, un audit-surprise pourrait « réclamer sa part ».
+• Plus d'une douzaine d'événements mondiaux satiriques — démos virales, pénuries de GPU, lettres ouvertes, guerres de talents — viennent brasser chaque run.
+
+HONNÊTE PAR DESIGN
+• Pas de publicité. Jamais.
+• Pas de pay-to-win. Pas de minuteries d'énergie. Pas de fenêtres de fausse urgence.
+• Fonctionne hors ligne — ton labo continue d'engranger pendant que t'es ailleurs. Aucun standup obligatoire.
+• Un seul achat Premium optionnel, purement cosmétique et confort (plafond hors ligne allongé, statut de Fondateur, futurs thèmes de salle). Le jeu au complet est gratuit et généreux.
+• Les textes du jeu sont en anglais pour l'instant — notre dossier de francisation est en traitement.
+
+C'EST POUR QUI?
+Tu aimes les jeux idle, incrémentaux, clicker et tycoon, mais tu veux une économie plus propre, un monde qui grandit pour vrai et un humour affûté sur l'industrie de l'IA? T'es en business.
+
+Une bulle? Pantoute.

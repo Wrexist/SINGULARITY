@@ -1,0 +1,31 @@
+Hankit siemenrahoituksen ja vuokrasit palvelinkomeron. On aika rakentaa Jumala — tai edes kannattava API.
+
+Singularity Inc. on satiirinen idle-tycoon-peli tekoälyn kultaryntäyksestä. Aloita yhdellä hurisevalla GPU:lla ja skaalaa labra planeetan kokoiseksi laskentaklusteriksi — 2.5D-konesalisi täyttyy räkki räkiltä ihan oikeasti. Kolme resurssia, yksi puhdas luuppi, loputtomasti "synergiaa".
+
+NÄIN SE PYÖRII
+• Tuota laskentatehoa, upota se koulutusajoihin ja kuittaa palkaksi dataa ja rahaa.
+• Sijoita voitot räkkeihin, jäähdytykseen, ylikellotukseen ja automaatioon — jokainen ostos ilmestyy halliin ihan fyysisesti.
+• Kiipeä tutkimuspuussa kohti yhä absurdimpia tekoälykykyjä.
+• "Ship the Model" on pelin prestige: nollaa labra ja lunasta pysyvät Legacy Weight -kertoimet. Sitten sama uusiksi — nopeammin.
+
+MAAILMA, JOKA KASVAA
+• Siisti 2.5D-konesali syttyy eloon ja leviää sitä mukaa, kun skaalaat — kahta samanlaista labraa ei ole.
+• Napauta lattian avointa reunaa ja osta laajennus — halli kasvaa juuri siihen suuntaan.
+• Kun imperiumisi loikkaa uudelle aikakaudelle, koko halli saa uuden ilmeen ja ruutuun paukahtaa satiirinen "lehdistötiedote".
+
+OSTA DATASI — LAILLISESTI, TAI SITTEN EI
+• Hanki koulutusdata lisensoiduilta toimittajilta… tai nappaa halvemmat tavut dark webin Bazaarista.
+• Pidä sääntelylämpö (Regulatory Heat) kurissa: venytä onneasi, niin yllätystarkastus saattaa käydä "pyytämässä siivunsa".
+• Toistakymmentä satiirista maailmantapahtumaa — viraalidemot, GPU-pula, avoimet kirjeet, osaajasodat — ravistelee jokaista pelikertaa.
+
+REILU PELI
+• Ei mainoksia. Ei koskaan.
+• Ei pay-to-winiä. Ei energiamittareita. Ei keinotekoista kiirettä — täällä vain äly on keinotekoista.
+• Toimii offline — labra tienaa, vaikka olisit muualla. Ei pakollisia daileja.
+• Yksi vapaaehtoinen kertaostos, Premium: pelkkää kosmetiikkaa ja mukavuutta (pidempi offline-katto, Founder-status, tulevia halliteemoja). Koko peli on ilmainen ja antelias.
+• Ja rehellisyyden nimissä: itse peli puhuu toistaiseksi englantia — kuten tekoälyala yleensäkin.
+
+KENELLE TÄMÄ ON TEHTY
+Jos rakastat idle-, incremental-, klikkeri- ja tycoon-pelejä, mutta kaipaat siistimpää taloutta, maailmaa, joka oikeasti kasvaa, ja terävää huumoria tekoälybisneksen kustannuksella — tämä on sinun pelisi.
+
+Ei tämä ole kupla. Luota meihin.
