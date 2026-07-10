@@ -2835,7 +2835,7 @@ button.modchip.workable:active { transform: scale(0.94); }
   background: linear-gradient(180deg, rgba(22, 179, 100, 0.08), var(--glass-strong, #fff));
 }
 .challenge-top { display: flex; align-items: flex-start; gap: 10px; }
-.challenge-icon { font-size: 24px; line-height: 1.1; flex-shrink: 0; }
+.challenge-icon { flex-shrink: 0; color: var(--accent); }
 .challenge-titles { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .challenge-name { font-size: 14.5px; font-weight: 800; color: var(--ink); }
 .challenge-blurb { font-size: 12px; line-height: 1.4; color: var(--ink-3); }
@@ -2886,7 +2886,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 .challenge-active::before { content: "✓ "; }
 /* The "Grand Challenge complete" moment reuses the era-modal treatment. */
 .challenge-complete-icon {
-  font-size: 56px; line-height: 1; margin: 6px 0 2px;
+  line-height: 1; margin: 6px 0 2px; color: var(--accent);
   filter: drop-shadow(0 6px 20px rgba(124, 92, 255, 0.45));
   animation: challenge-pop 0.5s var(--ease-out) backwards;
 }
@@ -2958,7 +2958,8 @@ button.modchip.workable:active { transform: scale(0.94); }
 /* Inline line-icons that replaced emoji: sit centred beside their label text (SVGs
    default to a low baseline). One place, so every swapped glyph aligns the same way. */
 .objective-lane, .objective-reward, .challenge-reward, .set-backup-title, .lobby-text,
-.modchip-work, .prod-attention-badge, .market-struck, .rig-fuse, .market-blitz {
+.modchip-work, .prod-attention-badge, .market-struck, .rig-fuse, .market-blitz,
+.pd-total-status, .link-btn-ic {
   display: inline-flex; align-items: center; gap: 4px;
 }
 .objective-lane { justify-content: center; gap: 5px; }
@@ -2984,7 +2985,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 .automation-row.on { border-color: color-mix(in srgb, var(--money) 45%, transparent); background: linear-gradient(180deg, rgba(22, 179, 100, 0.06), var(--glass-strong, #fff)); }
 .automation-row.locked { opacity: 0.6; cursor: not-allowed; }
 .automation-row:not(:disabled):active { transform: scale(0.99); }
-.automation-ic { font-size: 20px; line-height: 1; flex-shrink: 0; }
+.automation-ic { flex-shrink: 0; color: var(--ink); display: inline-flex; align-items: center; justify-content: center; }
 .automation-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .automation-name { font-size: 13.5px; font-weight: 800; color: var(--ink); }
 .automation-desc { font-size: 11.5px; line-height: 1.35; color: var(--ink-3); }
@@ -3020,7 +3021,7 @@ button.modchip.workable:active { transform: scale(0.94); }
   padding: 30px 26px;
   box-shadow: 0 24px 60px -24px rgba(20, 22, 27, 0.28);
 }
-.crash-mark { font-size: 40px; line-height: 1; margin-bottom: 10px; }
+.crash-mark { line-height: 1; margin-bottom: 10px; color: var(--coral); display: inline-flex; justify-content: center; }
 .crash-card h1 { font-size: 20px; font-weight: 800; color: var(--ink); margin: 0 0 10px; }
 .crash-card p { font-size: 14px; line-height: 1.5; color: var(--ink-2); margin: 0 0 22px; }
 .crash-card .btn { width: 100%; }

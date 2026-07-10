@@ -12,7 +12,7 @@ import { Big } from "../engine/math/Big";
 import type { GameState, Derived, Employee } from "../engine/types";
 import type { Candidate } from "../state/store";
 import { fmtMoney, m$, fmtDur } from "./format";
-import { TeamIcon, BanknoteIcon, SmileIcon, BarsIcon, BuildingIcon, GradCapIcon, AtomIcon } from "./Icons";
+import { TeamIcon, BanknoteIcon, SmileIcon, BarsIcon, BuildingIcon, GradCapIcon, AtomIcon, RepeatIcon } from "./Icons";
 import { burst } from "./fx";
 
 interface Props {
@@ -237,7 +237,7 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
             <>
               <div className="emp-section-head">
                 <span>Pick a candidate</span>
-                <span><button className="link-btn" onClick={onRefresh}>↻ refresh</button> · <button className="link-btn" onClick={onCloseRecruit}>close</button></span>
+                <span><button className="link-btn link-btn-ic" onClick={onRefresh}><RepeatIcon size={12} />refresh</button> · <button className="link-btn" onClick={onCloseRecruit}>close</button></span>
               </div>
               {candidates.map((c, i) => {
                 const role = roleDef(c.roleId);

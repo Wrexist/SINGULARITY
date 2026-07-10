@@ -12,7 +12,7 @@ import type { ReactNode } from "react";
 import {
   ChatIcon, CodeIcon, BrainIcon, PaletteIcon, BoltIcon, ScalesIcon, HeartIcon, AtomIcon,
   MegaphoneIcon, SproutIcon, PersonIcon, MicIcon, SparkIcon, TrendDownIcon, CoinIcon,
-  LockIcon, TargetIcon, BarsIcon,
+  LockIcon, TargetIcon, BarsIcon, CheckIcon, AlertTriangleIcon,
 } from "./Icons";
 
 /** Short human label for a feature's effect lane. */
@@ -266,7 +266,7 @@ export function ProductDetail({ game, productId, mods, onClose, onStartUpgrade, 
                   <span className="pd-total-label">Total allocation</span>
                   <span className="pd-total-sub">100% of {m$(p.marketingPerSec)}/s</span>
                 </div>
-                <span className={`pd-total-status ${activeCount >= 2 ? "ok" : "warn"}`}>{activeCount >= 2 ? "✓ Balanced" : "● Concentrated"}</span>
+                <span className={`pd-total-status ${activeCount >= 2 ? "ok" : "warn"}`}>{activeCount >= 2 ? <><CheckIcon size={13} /> Balanced</> : <><AlertTriangleIcon size={13} /> Concentrated</>}</span>
               </div>
             </div>
           );

@@ -2,7 +2,7 @@ import type { GameState } from "../engine/types";
 import { visibleChallenges, challengeView, canFundChallenge } from "../engine/challenges";
 import { challenges as C } from "../engine/balance/challenges";
 import { fmt } from "./format";
-import { BoltIcon, AtomIcon, CoinIcon, GiftIcon } from "./Icons";
+import { ComputeIcon, DataIcon, MoneyIcon, GiftIcon } from "./Icons";
 import { iconFor } from "./iconRegistry";
 
 interface Props {
@@ -10,7 +10,7 @@ interface Props {
   onFund: (id: string, at?: { x: number; y: number }) => void;
 }
 
-const RES_ICON = { compute: <BoltIcon size={12} />, data: <AtomIcon size={12} />, money: <CoinIcon size={12} /> };
+const RES_ICON = { compute: <ComputeIcon size={12} />, data: <DataIcon size={12} />, money: <MoneyIcon size={12} /> };
 
 /**
  * Grand Challenges — late-game moonshots you fund over long horizons for a permanent
