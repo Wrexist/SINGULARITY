@@ -92,6 +92,26 @@ export function ResearchIcon({ kind }: { kind: string }) {
   return <Chip meta={metaForKind(kind)} className="node-ic" />;
 }
 
+/**
+ * Research chip wrapped in a progress ring: the effect-tinted icon "charges up" (0→1)
+ * as you close on affording the node — an at-a-glance, alive readout in the effect's
+ * own colour. `pct` is clamped here. `showPct` renders a % badge for the hero focal
+ * card (mirrors the reference "in production" ring). The conic fill interpolates via a
+ * registered --pct custom property, so it eases smoothly between ticks.
+ */
+export function ResearchRingIcon({ kind, pct, showPct = false }: { kind: string; pct: number; showPct?: boolean }) {
+  const meta = metaForKind(kind);
+  const p = Math.max(0, Math.min(1, Number.isFinite(pct) ? pct : 0));
+  return (
+    <span className="node-ring" style={{ ["--pct" as string]: p, ["--ring-color" as string]: meta.tint }}>
+      <span className="node-ic" style={{ background: `${meta.tint}1f`, color: meta.tint }}>{meta.icon}</span>
+      {showPct && (
+        <span className="node-ring-pct">{Math.round(p * 100)}<span className="node-ring-pct-sign">%</span></span>
+      )}
+    </span>
+  );
+}
+
 /** Upgrade grouping — Hardware (racks/floor/power), Boosts (multipliers), Automation. */
 export type UpGroup = "Hardware" | "Boosts" | "Automation";
 export function upgradeGroup(id: string, kind: string): UpGroup {

@@ -1002,23 +1002,51 @@ svg { vertical-align: middle; }
   display: inline-flex; align-items: center; justify-content: center;
 }
 .node.owned .node-ic, .node.locked .node-ic { filter: saturate(0.6); opacity: 0.75; }
-.node::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: var(--ink-3);
-  opacity: 0.25;
+/* Research node progress ring — the effect-tinted icon "charges up" (0→1) as resources
+   close on the node's cost: an at-a-glance, alive readout in the effect's own colour.
+   The conic fill interpolates through the registered --pct property, so it eases smoothly
+   between ticks instead of snapping. (Replaces the former left accent bar entirely.) */
+@property --pct { syntax: "<number>"; inherits: true; initial-value: 0; }
+.node-ring {
+  position: relative; flex: 0 0 auto;
+  width: 50px; height: 50px;
+  display: grid; place-items: center;
+  transition: --pct 0.5s var(--ease-out);
 }
+.node-ring::before {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(from -90deg, var(--ring-color, var(--accent)) calc(var(--pct, 0) * 360deg), rgba(17, 24, 39, 0.09) 0);
+  -webkit-mask: radial-gradient(farthest-side, #0000 calc(100% - 4px), #000 calc(100% - 3.5px));
+          mask: radial-gradient(farthest-side, #0000 calc(100% - 4px), #000 calc(100% - 3.5px));
+}
+.node-ring .node-ic { width: 42px; height: 42px; }
+/* "Ready to buy": a soft breathing halo on the completed ring — the call-to-action the
+   old pulsing bar used to carry, now on the ring itself. */
+.node.affordable .node-ring::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring-color, var(--accent)) 24%, transparent);
+  animation: ring-ready 1.9s ease-in-out infinite;
+}
+@keyframes ring-ready { 0%, 100% { opacity: 0.4; transform: scale(1); } 50% { opacity: 1; transform: scale(1.02); } }
+/* Hero focal card: a % badge tucked at the ring's foot, like a manufacturing progress
+   dial. Only the recommended node shows it, so the list itself stays calm. */
+.node-ring-pct {
+  position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%);
+  background: #fff; color: var(--ink);
+  font-size: 11px; font-weight: 850; line-height: 1; font-variant-numeric: tabular-nums;
+  padding: 3px 6px; border-radius: 999px; box-shadow: 0 2px 6px rgba(16, 24, 40, 0.16);
+  white-space: nowrap;
+}
+.node-ring-pct-sign { font-size: 8.5px; font-weight: 800; opacity: 0.6; margin-left: 0.5px; }
+/* Owned/locked/excluded nodes drop the donut: a "done" node needs no dial, and a locked
+   node's blocker is prerequisites (not resources), so a progress ring there would lie.
+   Keeps the ring meaningful — it only tracks nodes you're actively working toward. */
+.node.owned .node-ring::before, .node.locked .node-ring::before, .node.excluded .node-ring::before { display: none; }
 .node.locked { opacity: 0.5; cursor: not-allowed; }
 .node.excluded { opacity: 0.42; cursor: not-allowed; }
 .node-tag.excl { color: #7c5cff; font-weight: 800; }
-.node.available::before { background: var(--data); opacity: 1; }
 .node:active { transform: scale(0.97); }
 .node.available:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-.node.affordable::before { background: var(--data); opacity: 1; animation: node-accent 1.8s ease-in-out infinite; }
 .node.affordable {
   border-color: color-mix(in srgb, var(--data) 45%, transparent);
   background: linear-gradient(180deg, rgba(155, 81, 224, 0.09), var(--glass-strong));
@@ -1028,14 +1056,6 @@ svg { vertical-align: middle; }
   0%, 100% { box-shadow: 0 1px 3px rgba(16, 24, 40, 0.04); }
   50% { box-shadow: 0 0 0 4px rgba(124, 92, 255, 0.13), 0 6px 16px -8px rgba(124, 92, 255, 0.5); }
 }
-@keyframes node-accent {
-  0%, 100% { width: 4px; }
-  50% { width: 6px; }
-}
-/* Completed nodes drop the left accent bar entirely — the "done" tag carries the
-   state, and a column of green rules read as visual noise (owner feedback). The
-   bar stays only on actionable (available/affordable) nodes as a call-to-action. */
-.node.owned::before { display: none; }
 .node.owned {
   /* A node that just completed sweeps a green fill — research feels like progress. */
   opacity: 0.92;
@@ -1474,7 +1494,6 @@ button.modchip.workable:active { transform: scale(0.94); }
   text-align: left;
   background: var(--glass-strong);
   border: 1px solid var(--glass-hairline);
-  border-left: 3px solid var(--coral);
   border-radius: 14px;
   padding: 14px 16px;
   margin-bottom: 20px;
