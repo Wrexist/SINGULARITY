@@ -1129,10 +1129,10 @@ svg { vertical-align: middle; }
 .news-line {
   flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis;
   font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.82);
-  animation: newsIn 0.5s var(--ease-out) both;
+  animation: news-in 0.5s var(--ease-out) both;
 }
 .reduce-motion .news-line { animation: none; }
-@keyframes newsIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
+@keyframes news-in { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
 
 /* Tappable-rack info card (R2.1) — a tap on a rack opens this; tap to dismiss. */
 .rack-card {

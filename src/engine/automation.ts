@@ -3,7 +3,7 @@ import { objectiveBoard, claimObjective } from "./objectives";
 import { contractBoard, claimContract } from "./contracts";
 import { assignEmployee, roleMatchesSegment, roleDef } from "./employees";
 import { canStartUpgrade, startUpgrade, productMetrics } from "./products";
-import { products as PRODUCTS } from "./balance/products";
+import { products as PRODUCTS, type ProductTypeId, type SegmentSkew } from "./balance/products";
 import type { GameState } from "./types";
 
 /**
@@ -16,7 +16,7 @@ import type { GameState } from "./types";
  */
 
 const BY_ID = new Map(A.list.map((a) => [a.id, a]));
-const SEG_BY_TYPE: Record<string, string> = Object.fromEntries(PRODUCTS.types.map((t) => [t.id, t.segment]));
+const SEG_BY_TYPE = Object.fromEntries(PRODUCTS.types.map((t) => [t.id, t.segment])) as Record<ProductTypeId, SegmentSkew>;
 
 export function automationList(): AutomationDef[] {
   return A.list;
@@ -62,9 +62,9 @@ export function applyAutomation(state: GameState): GameState {
 
   if (automationEnabled(s, "auto_assign") && s.products.active.length > 0) {
     // Post each idle product-team specialist to a product it synergizes with (else the first).
-    for (const e of state.employees) {
+    for (const e of s.employees) {
       if (e.assignedProductId !== null || roleDef(e.roleId)?.team !== "product") continue;
-      const match = s.products.active.find((p) => roleMatchesSegment(e.roleId, (SEG_BY_TYPE[p.type] ?? "consumer") as never));
+      const match = s.products.active.find((p) => roleMatchesSegment(e.roleId, SEG_BY_TYPE[p.type] ?? "consumer"));
       const target = match ?? s.products.active[0];
       if (target) s = assignEmployee(s, e.id, target.id);
     }
@@ -72,7 +72,7 @@ export function applyAutomation(state: GameState): GameState {
 
   if (automationEnabled(s, "auto_upgrade")) {
     // Start the next version on a product that's fallen behind rivals, if it's affordable now.
-    for (const p of state.products.active) {
+    for (const p of s.products.active) {
       if (p.upgrade) continue;
       if (productMetrics(p, s.products.frontier).qf < 0.6 && canStartUpgrade(s, p.id)) s = startUpgrade(s, p.id);
     }

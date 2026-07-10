@@ -6,7 +6,7 @@ import { canBuyResearch, researchStalled } from "./actions";
 import { canPrestige } from "./prestige";
 import { hireCost } from "./employees";
 import { derive } from "./derive";
-import type { GameState } from "./types";
+import type { Derived, GameState } from "./types";
 
 /** The first research node (no prereqs) — the new player's first capability buy. */
 const FIRST_RESEARCH = balance.research[0]?.id ?? "";
@@ -48,10 +48,12 @@ function staffUnlocked(state: GameState): boolean {
  * rivals have left behind). Investment losses — running marketing at a deliberate
  * loss to grow — are NOT flagged.
  */
-export function advisorItems(state: GameState): AdvisorItem[] {
+export function advisorItems(state: GameState, precomputed?: Derived): AdvisorItem[] {
   const items: AdvisorItem[] = [];
   const ps = state.products;
-  const derived = derive(state);
+  // Reuse the caller's derived economy when given (the UI already memoizes one per
+  // frame) — advisorItems runs at UI cadence, so a second derive() here is pure waste.
+  const derived = precomputed ?? derive(state);
 
   // Research has stalled against the auto-train Compute ceiling — the node the player
   // wants is unreachable until they ease intensity or grow Compute. Teach the slider at
@@ -94,7 +96,7 @@ export function advisorItems(state: GameState): AdvisorItem[] {
     }
 
     for (const p of ps.active) {
-      const m = productMetrics(p, ps.frontier);
+      const m = productMetrics(p, ps.frontier, derived.productModsById[p.id]);
       // Rivals have pulled ahead and no new version is in the works — the one
       // unambiguous "this product needs you" signal. Suppressed during the launch /
       // new-version buzz window, matching churnReason's buzz guard, so a just-shipped
@@ -131,7 +133,7 @@ export function advisorItems(state: GameState): AdvisorItem[] {
   if (state.employees.length > 0) {
     if (derived.payrollPerSec.gt(0)) {
       let grossIncome = derived.passiveMoneyPerSec;
-      for (const p of ps.active) grossIncome = grossIncome.add(productMetrics(p, ps.frontier).mrr);
+      for (const p of ps.active) grossIncome = grossIncome.add(productMetrics(p, ps.frontier, derived.productModsById[p.id]).mrr);
       if (derived.payrollPerSec.gt(grossIncome)) {
         items.push({ tab: "employees", text: "Payroll is outrunning your income — grow revenue or let someone go", priority: 58 });
       }

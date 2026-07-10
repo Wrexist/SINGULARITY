@@ -352,9 +352,10 @@ export function maybeProductEvent(
     paid: Math.max(0, Math.min(p.paid * (ev.paidMult ?? 1), mau)),
     buzzSec: ev.buzz ? B.buzzDurationSec : p.buzzSec,
   };
-  // Clamp like every other Heat write — an event at near-max Heat must not push it
-  // over the ceiling even for the frame before the next tick re-clamps.
-  const heat = ev.heat ? Math.min(balance.heat.max, state.heat + ev.heat) : state.heat;
+  // Clamp like every other Heat write — [0, max] both bounds — so an event at near-max
+  // Heat can't push it over the ceiling, and a (future) cooling event can't drive it
+  // negative, even for the frame before the next tick re-clamps.
+  const heat = ev.heat ? Math.max(0, Math.min(balance.heat.max, state.heat + ev.heat)) : state.heat;
   return {
     state: {
       ...state,

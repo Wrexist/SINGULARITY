@@ -96,9 +96,10 @@ export function fundChallenge(state: GameState, id: string): { state: GameState;
     data: cur.data.add(give.data),
     money: cur.money.add(give.money),
   };
+  // The early return above already bailed on an id in `completed`, so reaching here
+  // means it isn't complete yet — no need to re-check `already`.
   const complete =
     nextFunded.compute.gte(cost.compute) && nextFunded.data.gte(cost.data) && nextFunded.money.gte(cost.money);
-  const already = state.challenges.completed.includes(id);
 
   return {
     state: {
@@ -111,10 +112,10 @@ export function fundChallenge(state: GameState, id: string): { state: GameState;
       },
       challenges: {
         funded: { ...state.challenges.funded, [id]: nextFunded },
-        completed: complete && !already ? [...state.challenges.completed, id] : state.challenges.completed,
+        completed: complete ? [...state.challenges.completed, id] : state.challenges.completed,
       },
     },
-    justCompleted: complete && !already,
+    justCompleted: complete,
   };
 }
 

@@ -123,7 +123,7 @@ export function App() {
   // A waiting run-claim is counted in the BADGES only (not the chip — the big
   // bobbing Claim button is its own nudge): with the Lab sectioned, the button
   // can be off-screen on Research/HQ, and a claim must never be signal-less.
-  const advisor = useMemo(() => advisorItems(game), [game]);
+  const advisor = useMemo(() => advisorItems(game, d), [game, d]);
   const claimWaiting = game.run.readyToClaim;
   const attention = useMemo(() => {
     const counts: Record<AdvisorTab, number> = { lab: 0, products: 0, employees: 0 };
@@ -176,6 +176,7 @@ export function App() {
   const moment = offline ? "offline"
     : celebration ? "celebration"
     : eraMoment !== null ? "era"
+    : challengeDoneId ? "challenge"
     : launch ? "launch"
     : worldEvent ? "world"
     : null;
@@ -571,8 +572,11 @@ export function App() {
     // Capture the candidate BEFORE the hire (doHireCandidate removes them). A named
     // person joining used to be silent — now they get a welcome-aboard beat.
     const c = useGame.getState().candidates?.[i];
+    // Only celebrate a hire that actually happened — a stale tap on an unaffordable
+    // candidate must not buzz + play the purchase chime for a phantom signing.
+    if (!doHireCandidate(i)) { haptics.warn(); return; }
     haptics.celebrate(); sound.purchase();
-    if (doHireCandidate(i) && c) pushToast(hireWelcome(c.name, c.roleId), "good");
+    if (c) pushToast(hireWelcome(c.name, c.roleId), "good");
   };
   const onTrain = (id: string) => { haptics.tap(); sound.tap(); doTrainEmployee(id); };
   const onAssignEmp = (id: string, productId: string | null) => { haptics.tap(); doAssignEmployeeToProduct(id, productId); };
@@ -929,11 +933,11 @@ export function App() {
         </button>
       </nav>
 
-      {/* MOMENT QUEUE: the five full-screen moments render ONE at a time, by
-          priority (offline recap > ship celebration > era transition > product
-          launch > world event). Each keeps its own state; dismissing one lets
-          the next in line show. Replaces pairwise !x guards — any same-tick
-          combination now sequences instead of stacking. */}
+      {/* MOMENT QUEUE: the full-screen moments render ONE at a time, by priority
+          (offline recap > ship celebration > era transition > grand-challenge
+          complete > product launch > world event). Each keeps its own state;
+          dismissing one lets the next in line show. Replaces pairwise !x guards —
+          any same-tick combination now sequences instead of stacking. */}
       {moment === "offline" && offline && <OfflineModal summary={offline} onClose={dismissOffline} />}
       {moment === "celebration" && celebration && (
         <Celebration
@@ -952,7 +956,7 @@ export function App() {
       )}
       {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} />}
       {showAchievements && <AchievementsModal game={game} onClose={() => setShowAchievements(false)} />}
-      {challengeDoneId && challengeById.get(challengeDoneId) && (
+      {moment === "challenge" && challengeDoneId && challengeById.get(challengeDoneId) && (
         <ChallengeComplete challenge={challengeById.get(challengeDoneId)!} onDone={() => setChallengeDoneId(null)} />
       )}
       {pendingExpansion && (
