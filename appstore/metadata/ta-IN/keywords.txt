@@ -1,1 +1,1 @@
-clicker,gpu,startup,simulation,பணம்,நிறுவனம்,தொழில்,விளையாட்டு,முதலாளி,வணிகம்,offline,lab,management
+business,offline,clicker,simulator,money,factory,empire,startup,management,gpu,sim,பணம்,விளையாட்டு

@@ -1,1 +1,1 @@
-clicker,incremental,simulation,business,startup,gpu,offline,money,empire,कंपनी,व्यवसाय,खेळ,गेम,sim
+clicker,incremental,simulator,business,startup,offline,money,empire,गेम,factory,billionaire,tap,ceo

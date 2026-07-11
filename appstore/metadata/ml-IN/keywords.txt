@@ -1,1 +1,1 @@
-കമ്പനി,ബിസിനസ്,ഗെയിം,കോടീശ്വരൻ,clicker,incremental,simulation,startup,gpu,offline,money,empire,sim
+clicker,business,offline,simulator,billionaire,money,factory,empire,startup,incremental,gpu,ഗെയിം

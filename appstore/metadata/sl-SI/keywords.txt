@@ -1,1 +1,1 @@
-igra,klikanje,podjetje,simulacija,imperij,denar,ai,tycoon,gpu,podatki,magnat,clicker,strežnik,biznis
+tycoon,clicker,simulator,incremental,startup,kapitalist,ai,gpu,imperij,magnat,simulacija,sci-fi

@@ -1,1 +1,1 @@
-clicker,કંપની,ધંધો,રમત,કરોડપતિ,incremental,simulation,startup,business,offline,money,gpu,empire,sim
+clicker,ધંધો,ગેમ,કરોડપતિ,incremental,simulator,startup,business,offline,money,factory,empire,sim,tap

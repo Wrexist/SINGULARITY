@@ -1,1 +1,1 @@
-clicker,simulation,business,startup,empire,money,offline,incremental,gpu,వ్యాపారం,సామ్రాజ్యం,గేమ్
+clicker,simulator,business,startup,empire,money,offline,incremental,gpu,factory,billionaire,గేమ్

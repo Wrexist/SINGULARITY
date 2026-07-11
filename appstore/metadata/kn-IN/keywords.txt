@@ -1,1 +1,1 @@
-clicker,simulation,business,startup,empire,money,offline,incremental,gpu,sim,ವ್ಯಾಪಾರ,ಸಾಮ್ರಾಜ್ಯ,ಆಟ
+offline,business,startup,clicker,simulation,factory,management,empire,tap,capitalist,incremental,ಆಟ

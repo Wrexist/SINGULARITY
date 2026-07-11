@@ -3,7 +3,7 @@ Seed runda je v žepu, strežniška omara najeta. Zdaj pa zgradi boga – ali vs
 Singularity Inc. je satirični idle tajkun o zlati mrzlici umetne inteligence. Začneš z enim samim brnečim GPU-jem, končaš z računsko gručo planetarnih razsežnosti – vmes pa tvoj 2,5D podatkovni center z vsakim nakupom čisto fizično zraste. Trije viri, ena čista zanka in neomejena zaloga »sinergije«.
 
 ZANKA
-• Ustvarjaš računsko moč, jo kuriš v treningih modelov in pobiraš podatke + denar.
+• Ustvarjaš računsko moč, jo kuriš za treniranje modelov in pobiraš podatke + denar.
 • Dobiček vračaš v strežniške omare, hlajenje, overclocking in avtomatizacijo – vsak nakup se čisto zares pojavi v dvorani.
 • Plezaš po raziskovalnem drevesu vse bolj absurdnih AI-zmožnosti.
 • »Ship the Model« = prestiž: laboratorij resetiraš, trajni množilniki Legacy Weight pa ostanejo. In potem vse še enkrat – hitreje.
@@ -14,7 +14,7 @@ SVET, KI RASTE
 • Ob prehodu v novo ero se cela dvorana preobleče, zraven pa izide izmišljeno »sporočilo za javnost«.
 
 KUPUJ PODATKE – LEGALNO ALI PA NE
-• Učne podatke jemlji pri licenciranih ponudnikih … ali pa po cenejše bajte skoči na Bazaar, tržnico temnega spleta.
+• Učne podatke nabavljaj pri licenciranih ponudnikih … ali pa po cenejše bajte skoči na Bazaar, tržnico temnega spleta.
 • Pazi na Regulatory Heat: preveč poguma in nenapovedana revizija si bo »vzela svoj delež«.
 • Več kot ducat satiričnih svetovnih dogodkov – viralni demo posnetki, pomanjkanje GPU-jev, odprta pisma, vojne za talente – premeša vsako partijo.
 
@@ -22,7 +22,7 @@ POŠTENO ŽE V ZASNOVI
 • Brez oglasov. Nikoli.
 • Brez pay-to-win. Brez energijskih časovnikov. Brez pojavnih oken, ki hlinijo nujo.
 • Deluje brez povezave – laboratorij služi, tudi ko te ni. Brez obveznih standupov.
-• Ena sama neobvezna nadgradnja Premium – zgolj kozmetika in udobje (daljša omejitev zaslužka brez povezave, status Founderja, prihodnje teme dvorane). Cela igra je brezplačna in radodarna.
+• Ena sama neobvezna nadgradnja Premium – zgolj kozmetika in udobje (daljši čas zaslužka brez povezave, status Founderja, prihodnje teme dvorane). Cela igra je brezplačna in radodarna.
 • Besedilo v igri je zaenkrat v angleščini – številke, ki rastejo, pa so tako ali tako univerzalni jezik.
 
 ZA KOGA JE

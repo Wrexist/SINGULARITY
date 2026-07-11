@@ -1,1 +1,1 @@
-clicker,ਕੰਪਨੀ,ਕਾਰੋਬਾਰ,ਖੇਡ,ਕਰੋੜਪਤੀ,incremental,simulation,startup,business,offline,money,gpu,empire
+clicker,incremental,simulator,business,startup,offline,money,gpu,empire,billionaire,factory,ਕਾਰੋਬਾਰ
