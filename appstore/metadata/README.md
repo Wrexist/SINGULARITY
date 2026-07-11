@@ -2,7 +2,7 @@
 
 Every directory here is one App Store Connect localization in Fastlane `deliver` layout
 (six files: `name.txt`, `subtitle.txt`, `keywords.txt`, `description.txt`,
-`promotional_text.txt`, `release_notes.txt`). `en-US` is the master; the other 38 are
+`promotional_text.txt`, `release_notes.txt`). `en-US` is the master; the other 49 are
 **transcreations** (native copy + per-market keyword research), not literal translations —
 each was written by a native-language pass and reviewed by an independent native-editor
 pass. Together they cover **every locale App Store Connect supports**.

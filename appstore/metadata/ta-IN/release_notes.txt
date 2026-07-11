@@ -1,0 +1,10 @@
+இந்த update-இல்:
+
+• Grand Challenges — வருடக்கணக்கில் யோசிக்கும் moonshot திட்டங்கள்; முடித்தால் வெகுமதிகள் நிரந்தரம்.
+• Lab Objectives — endgame ஆழம் வரை நீளும் புத்தம் புதிய இலக்கு ஏணி.
+• Automation — சின்னச் சின்ன busywork-க்கு இனி autopilot உண்டு.
+• ஒவ்வொரு ஆட்டத்திலும் ஒரு research fork; முன்பை விட உயிர்ப்பான progress visuals.
+• App Store பக்கம் இப்போது தமிழில் — வணக்கம்!
+• கூடவே balance மற்றும் stability சரிசெய்தல்கள்.
+
+இப்போதும் விளம்பரம் இல்லை. இப்போதும் pay-to-win இல்லை.
