@@ -1,0 +1,10 @@
+Trong bản cập nhật này:
+
+• Grand Challenges — những cú moonshot dài hơi, phần thưởng vĩnh viễn.
+• Lab Objectives — nấc thang mục tiêu mới, kéo dài tới tận endgame.
+• Automation — dàn autopilot gánh hộ bạn đống việc vặt.
+• Mỗi ván một ngã rẽ nghiên cứu riêng, hiệu ứng tiến độ sống động hơn — và trang cửa hàng giờ đã nói tiếng Việt.
+
+Kèm nhiều tinh chỉnh cân bằng và cải thiện độ ổn định.
+
+Vẫn không quảng cáo. Vẫn không pay-to-win.

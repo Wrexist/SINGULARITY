@@ -1,0 +1,31 @@
+Lezártad a seed kört, kibérelted a szerverszobát. Ideje Istent építeni — vagy legalább egy nyereséges API-t.
+
+A Singularity Inc. szatirikus idle tycoon a nagy AI-aranylázról. Egyetlen zümmögő GPU-val indulsz, és egy bolygóméretű számítási klaszternél kötsz ki — miközben a 2,5D-s adatközpontod a szemed láttára telik meg rackekkel. Három erőforrás, egyetlen letisztult körforgás, végtelen „szinergia”.
+
+A KÖRFORGÁS
+• Termelj Compute-ot, költsd tanítási futásokra, majd söpörd be az Adatot és a Pénzt.
+• Forgasd vissza rackekbe, hűtésbe, tuningba, automatizálásba — minden megvett fejlesztés tényleg megjelenik a csarnokban.
+• Mássz egyre feljebb a kutatási fán, ahol az AI-képességek szintről szintre abszurdabbak.
+• A „Ship the Model” a presztízs: reset, cserébe maradandó Legacy Weight szorzók — aztán az egész elölről, csak épp gyorsabban.
+
+EGY VILÁG, AMI TÉNYLEG NŐ
+• Letisztult, 2,5D-s szervercsarnok, ami veled együtt kel életre és terpeszkedik szét — nincs két egyforma labor.
+• Koppints a padló nyitott széleire: a terem fizikailag abba az irányba épül tovább.
+• Korszakváltáskor az egész csarnok új külsőt kap, te pedig egy szatirikus „sajtóközleményt” a felemelkedésedről.
+
+VEDD MEG AZ ADATOT — LEGÁLISAN VAGY MAJDNEM
+• Szerezz tanítóadatot licencelt beszállítóktól… vagy kockáztasd meg a dark webes Bazárt, ahol gyanúsan olcsó a bájt.
+• Tartsd szemmel a Regulatory Heat mutatót: ha túltolod, egy váratlan ellenőrzés udvariasan „elkéri a jussát”.
+• Tucatnyi szatirikus világesemény — virális demók, GPU-hiány, nyílt levelek, tehetségháború — forgatja fel újra meg újra a menetet.
+
+GYÁRILAG TISZTESSÉGES
+• Reklám nincs. Soha.
+• Pay-to-win sincs. Energiacsík sincs. Kamu sürgetés felugró ablakban? Az sincs.
+• Offline is termel — a labor dolgozik, amíg máshol jársz. Reggeli standup nélkül.
+• Egyetlen opcionális Premium feloldás van — tisztán kozmetika és kényelem (hosszabb offline limit, Alapítói státusz, később új csarnoktémák). A teljes játék ingyenes és bőkezű.
+• A játék szövegei egyelőre angolul futnak — tekintsd ingyenes szaknyelvi gyakorlásnak: az AI-iparban úgyis ez a munkanyelv.
+
+KINEK SZÓL?
+Ha szereted az idle, inkrementális, klikkelős és tycoon játékokat, de közben tisztább gazdaságra, látványosan növekvő világra és csípős AI-ipari humorra vágysz — ez a te játékod.
+
+Egészen biztosan nem lufi.

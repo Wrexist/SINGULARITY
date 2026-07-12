@@ -113,10 +113,15 @@ toolchain — see the iOS TestFlight workflow). Web favicons / PWA icons live in
 > debates. It is a risk-based in-game purchase using in-game currency with no real-world money, no
 > prizes, and no casino/betting mechanics.
 
-## 10. Localization
-Ship **English (U.S.)** first. The copy is written to translate cleanly; high-value next locales for
-idle games: **German, French, Spanish (LatAm), Portuguese (Brazil), Japanese, Korean, Simplified
-Chinese**. Re-do the keyword research per locale (don't machine-translate the keyword field).
+## 10. Localization — SHIPPED for all 50 App Store Connect locales
+`appstore/metadata/` now holds a transcreated listing for **every locale App Store Connect
+supports** (en-US master + 49 others, including the 2025 expansion set: nine Indic languages,
+Urdu, and Slovenian), each with per-market keyword research — the keyword
+fields were researched per locale, not machine-translated, exactly as planned. Every locale
+passed a native-editor review pass and `npm run validate:store` (limits, brand, keyword
+hygiene). See `appstore/metadata/README.md` for the per-locale strategy, guarantees, and
+upload instructions. Non-English descriptions note (inside HONEST BY DESIGN) that the game's
+interface is currently English — honest, and it protects ratings in localized storefronts.
 
 ## 11. Post-launch ASO loop (keep iterating)
 - **Promotional text** is editable without a review — rotate it for events/updates.

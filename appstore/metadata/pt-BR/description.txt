@@ -1,0 +1,31 @@
+Você levantou uma rodada seed e alugou um quartinho de servidores. Hora de construir Deus — ou, na pior das hipóteses, uma API lucrativa.
+
+Singularity Inc. é um idle tycoon satírico sobre a corrida do ouro da IA. Comece com uma única GPU zumbindo e escale até um cluster de computação do tamanho de um planeta, vendo seu data center em 2.5D se encher de racks de verdade conforme você cresce. Três recursos, um loop limpo, "sinergia" infinita.
+
+O LOOP
+• Gere Computação, gaste em runs de treinamento, colete Dados + Dinheiro.
+• Reinvista em racks, refrigeração, overclock e automação — cada upgrade comprado aparece fisicamente no galpão.
+• Avance por uma árvore de pesquisa com capacidades de IA cada vez mais absurdas.
+• "Ship the Model" = prestígio: zere tudo em troca de multiplicadores permanentes de Legacy Weight — e faça tudo de novo, agora mais rápido.
+
+UM MUNDO QUE CRESCE
+• Um galpão de data center em 2.5D, limpo e elegante, que acende e se espalha conforme você escala — não existem dois laboratórios iguais.
+• Toque nas bordas livres do piso para comprar expansões: o galpão cresce fisicamente naquela direção.
+• Cada virada de era repagina o galpão inteiro e solta um "press release" satírico sobre a sua ascensão.
+
+COMPRE SEUS DADOS — DENTRO DA LEI, OU NEM TANTO
+• Garanta dados de treinamento com fornecedores licenciados… ou se arrisque no Bazar da dark web atrás de bytes mais baratos.
+• Fique de olho no seu Regulatory Heat: force a barra e uma auditoria surpresa aparece para "pedir a parte dela".
+• Mais de uma dúzia de eventos mundiais satíricos — demos virais, escassez de GPU, cartas abertas, guerra por talentos — sacodem cada run.
+
+HONESTO POR DESIGN
+• Sem anúncios. Nunca.
+• Sem pay-to-win. Sem timer de energia. Sem pop-up de falsa urgência.
+• Funciona offline: seu laboratório continua rendendo enquanto você vive a sua vida. E ninguém marca daily.
+• Um único desbloqueio Premium opcional, puramente cosmético e de conforto (limite offline maior, status de Founder, futuros temas para o galpão). O jogo completo é grátis e generoso.
+• Por enquanto, os textos dentro do jogo estão em inglês — que, convenhamos, é o idioma oficial dessa indústria.
+
+PARA QUEM É
+Se você ama jogos idle, incremental, clicker e tycoon, mas quer uma economia mais limpa, um mundo que cresce na sua frente e um humor afiado sobre a indústria da IA — esse aqui é pra você.
+
+Definitivamente não é uma bolha.
