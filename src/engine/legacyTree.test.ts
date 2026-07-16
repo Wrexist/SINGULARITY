@@ -55,6 +55,22 @@ describe("R5.4 — Legacy Investments tree", () => {
     expect(canBuyLegacyPerk(s, "leg_data1")).toBe(false); // 0 left to spend
   });
 
+  it("tier-3 Frontier extends the chain: gated on tier-2, escalating cost, effects stack", () => {
+    const s = withWeights(200);
+    // Frontier requires the full lane (tier-1 → tier-2) below it.
+    expect(canBuyLegacyPerk(s, "leg_compute3")).toBe(false);
+    const t1 = buyLegacyPerk(s, "leg_compute1"); // 12
+    expect(canBuyLegacyPerk(t1, "leg_compute3")).toBe(false); // still needs tier-2
+    const t2 = buyLegacyPerk(t1, "leg_compute2"); // +40 → 52 spent
+    expect(canBuyLegacyPerk(t2, "leg_compute3")).toBe(true);
+    const t3 = buyLegacyPerk(t2, "leg_compute3"); // +120 → 172 spent
+    expect(legacySpent(t3)).toBe(172);
+    // All three tiers stack additively on the lane (1 + .20 + .35 + .50).
+    expect(legacyTreeMods(t3).computeMult).toBeCloseTo(2.05, 6);
+    // 172 weights is a genuine long-horizon sink: unaffordable at 100.
+    expect(canBuyLegacyPerk(withWeights(100), "leg_compute3")).toBe(false);
+  });
+
   it("persists across prestige and a save round-trip (and migrates from v13)", () => {
     let s = withWeights(50);
     s = buyLegacyPerk(s, "leg_money1");
