@@ -60,6 +60,24 @@ export const reputation = {
     /** Finite safety bound (a crafted save can't drive the cost sum / boost to
      *  Infinity). Astronomically expensive to reach legitimately, so never a real cap. */
     maxLevel: 2000,
+    /** Endowment DIRECTIVES (2026-07 depth pass): the flat all-lane boost is
+     *  decisionless, so every `interval` levels the player also earns ONE Directive
+     *  pick — a permanent lane doctrine. This turns "endow the next level" into a
+     *  build choice (lean Compute, diversify, go all-in Revenue) that repeats across
+     *  the deep endgame. Picks are FREE (a reward of levelling, not a Reputation
+     *  spend), so no cost reconciliation is needed. Curve-safe: repEndowment is 0
+     *  through the whole tuned game (the Endowment can't unlock until every perk is
+     *  owned), so no tier is ever earned and no directive is ever applied in the sim.
+     *  The same doctrine may be picked more than once to stack a lane. */
+    directives: {
+      /** One Directive pick per this many endowment levels. */
+      interval: 10,
+      defs: [
+        { id: "dir_compute", name: "Compute Doctrine", lane: "compute", value: 0.3, desc: "+30% Compute, permanently." },
+        { id: "dir_data", name: "Research Doctrine", lane: "data", value: 0.3, desc: "+30% Data, permanently." },
+        { id: "dir_money", name: "Commercial Doctrine", lane: "money", value: 0.3, desc: "+30% Money, permanently." },
+      ],
+    },
   },
 
   perks: [

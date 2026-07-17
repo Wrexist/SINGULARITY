@@ -94,6 +94,11 @@ export interface GameState {
    *  this is just the level count. Survives prestige AND ascension. Top-level (not
    *  nested in `reputation`) so no rebuild path can silently drop it. */
   repEndowment: number;
+  /** Endowment Directives (2026-07): the lane doctrine chosen at each Directive tier
+   *  (one earned per `endowment.directives.interval` levels). A multiset of directive
+   *  ids — the same doctrine may repeat to stack a lane. Empty until the deep endgame,
+   *  so identity through the whole tuned curve. Survives prestige AND ascension. */
+  endowmentDirectives: string[];
   /** Phase 4 — Contracts: completed objective ids (the board is derived from this).
    *  Persists across prestige; completed contracts feed earned Reputation. */
   contracts: { completed: string[] };

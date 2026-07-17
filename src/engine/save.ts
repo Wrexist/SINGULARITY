@@ -29,6 +29,7 @@ const REP_PERK_COST = new Map(REPUTATION.perks.map((p) => [p.id, p.cost]));
 const CHARTER_IDS = new Set(CHARTERS.list.map((c) => c.id));
 const RIVAL_NAMES = new Set(MARKET.rivals.map((r) => r.name));
 const RESEARCH_IDS = new Set(balance.research.map((r) => r.id));
+const DIRECTIVE_IDS = new Set(REPUTATION.endowment.directives.defs.map((d) => d.id));
 
 /** Keep only known ids, each at most once (order preserved). Closes the duplicate /
  *  unknown-id save-edit class for contracts / legacy investments / reputation perks. */
@@ -38,6 +39,21 @@ function dedupeKnownIds(arr: unknown, known: Set<string>): string[] {
   const out: string[] = [];
   for (const x of arr) {
     if (typeof x === "string" && known.has(x) && !seen.has(x)) { seen.add(x); out.push(x); }
+  }
+  return out;
+}
+
+/** Endowment Directives sanitizer: a MULTISET (duplicates allowed to stack a lane),
+ *  so it keeps known ids in order WITHOUT deduping — but caps the length to the number
+ *  of tiers `repEndowment` has actually earned, so a crafted save can't grant more lane
+ *  biases than levels were bought. */
+function sanitizeDirectives(arr: unknown, repEndowment: number): string[] {
+  if (!Array.isArray(arr)) return [];
+  const maxTiers = Math.floor(Math.max(0, repEndowment) / REPUTATION.endowment.directives.interval);
+  const out: string[] = [];
+  for (const x of arr) {
+    if (out.length >= maxTiers) break;
+    if (typeof x === "string" && DIRECTIVE_IDS.has(x)) out.push(x);
   }
   return out;
 }
@@ -294,6 +310,9 @@ interface SavedShape {
   reputation: { spent: number; perks: string[] };
   /** Endgame Reputation Endowment level. Sanitizer-defaulted (0) + migrated at v20. */
   repEndowment: number;
+  /** Endowment Directives: chosen lane-doctrine ids. Sanitized (known ids, capped to
+   *  the tiers repEndowment has earned) + migrated at v24. */
+  endowmentDirectives: string[];
   contracts: { completed: string[] };
   charter: string | null;
   charterLocked: boolean;
@@ -361,6 +380,7 @@ export function serialize(state: GameState): string {
     achievements: state.achievements,
     reputation: state.reputation,
     repEndowment: state.repEndowment,
+    endowmentDirectives: state.endowmentDirectives,
     contracts: state.contracts,
     charter: state.charter,
     charterLocked: state.charterLocked,
@@ -536,6 +556,7 @@ export function deserialize(json: string): GameState {
     achievements,
     reputation: sanitizeReputation(raw.reputation, repEndowment),
     repEndowment,
+    endowmentDirectives: sanitizeDirectives(raw.endowmentDirectives, repEndowment),
     contracts,
     // Validate against KNOWN charter ids: an unknown/crafted id would still grant the
     // +15% conviction bonus (charter === lastCharter) without a real two-run commitment.
@@ -829,6 +850,11 @@ export function migrate(raw: any): SavedShape {
   if (s.version === 22) {
     // v22 → v23: Automation toggles. Existing runs start with every autopilot off.
     s = { ...s, version: 23, automation: s.automation ?? {} };
+  }
+  if (s.version === 23) {
+    // v23 → v24: Endowment Directives. Existing runs have chosen none (sanitizer also
+    // defaults + caps this to the tiers repEndowment has earned).
+    s = { ...s, version: 24, endowmentDirectives: s.endowmentDirectives ?? [] };
   }
   return s as SavedShape;
 }

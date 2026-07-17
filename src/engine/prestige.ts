@@ -162,6 +162,8 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     reputation: state.reputation,
     // The Reputation Endowment is permanent too (survives prestige AND ascension).
     repEndowment: state.repEndowment,
+    // The lane Directives chosen while levelling the Endowment are permanent as well.
+    endowmentDirectives: state.endowmentDirectives,
     // Grand Challenges are a career-spanning grind — funding + completions persist.
     challenges: state.challenges,
     // Lab Objectives persist too (an onboarding-grind ladder consumed once across runs).

@@ -296,6 +296,11 @@ svg { vertical-align: middle; }
 .rep-endow-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; }
 .rep-endow-head .card-name { color: #a855f7; font-weight: 850; }
 .rep-endow-lvl { font-size: 12px; font-weight: 700; color: var(--ink-3); white-space: nowrap; }
+.rep-directives { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.rep-directive-summary { font-size: 12px; font-weight: 750; color: var(--ink-3); }
+.rep-directive-prompt { font-size: 12px; font-weight: 800; color: #a855f7; }
+.rep-directive-choices { display: flex; flex-direction: column; gap: 6px; }
+.rep-directive-choice .card-name { font-weight: 800; }
 
 /* ---------- Glass material (shared) ---------- */
 .glass,

@@ -103,6 +103,53 @@ export function endowmentMult(state: GameState): number {
   return 1 + Math.max(0, state.repEndowment) * E.perLevel;
 }
 
+// ---------- Endowment Directives (endgame build decisions on top of the sink) ----------
+
+const DIRECTIVE_BY_ID = new Map(E.directives.defs.map((d) => [d.id, d]));
+/** The set of valid directive ids — exported for the save sanitizer. */
+export const DIRECTIVE_IDS = new Set(E.directives.defs.map((d) => d.id));
+
+/** How many Directive picks the player has EARNED (one per `interval` endowment levels). */
+export function directiveTiersEarned(state: GameState): number {
+  if (!E.enabled) return 0;
+  return Math.floor(Math.max(0, state.repEndowment) / E.directives.interval);
+}
+
+/** Unclaimed Directive picks waiting for a choice (earned − already picked, ≥ 0). */
+export function directivePicksAvailable(state: GameState): number {
+  return Math.max(0, directiveTiersEarned(state) - state.endowmentDirectives.length);
+}
+
+/** Can the player claim a directive with this id right now? */
+export function canPickDirective(state: GameState, id: string): boolean {
+  if (!E.enabled) return false;
+  if (!DIRECTIVE_BY_ID.has(id)) return false;
+  return directivePicksAvailable(state) > 0;
+}
+
+/** Claim one Directive pick as the given doctrine. Pure; no-op if none available or
+ *  the id is unknown. Directives are a multiset — the same doctrine may repeat to
+ *  stack a lane. */
+export function pickEndowmentDirective(state: GameState, id: string): GameState {
+  if (!canPickDirective(state, id)) return state;
+  return { ...state, endowmentDirectives: [...state.endowmentDirectives, id] };
+}
+
+/** Owned directive lane biases as multipliers (all 1.0 with nothing chosen). Each
+ *  entry multiplies its lane by (1 + value), like the reputation perks. */
+export function endowmentDirectiveMods(state: GameState): { computeMult: number; dataMult: number; moneyMult: number } {
+  let computeMult = 1, dataMult = 1, moneyMult = 1;
+  if (!E.enabled) return { computeMult, dataMult, moneyMult };
+  for (const id of state.endowmentDirectives) {
+    const def = DIRECTIVE_BY_ID.get(id);
+    if (!def) continue;
+    if (def.lane === "compute") computeMult *= 1 + def.value;
+    else if (def.lane === "data") dataMult *= 1 + def.value;
+    else moneyMult *= 1 + def.value;
+  }
+  return { computeMult, dataMult, moneyMult };
+}
+
 export interface ReputationMods {
   computeMult: number;
   dataMult: number;
@@ -134,6 +181,13 @@ export function reputationMods(state: GameState): ReputationMods {
   computeMult *= endow;
   dataMult *= endow;
   moneyMult *= endow;
+  // Endowment Directives: per-lane doctrines the player chose while levelling the
+  // Endowment. Identity (all ×1) until the first directive is claimed — which can't
+  // happen until repEndowment ≥ interval, a deep-endgame state the sim never reaches.
+  const dir = endowmentDirectiveMods(state);
+  computeMult *= dir.computeMult;
+  dataMult *= dir.dataMult;
+  moneyMult *= dir.moneyMult;
   return { computeMult, dataMult, moneyMult, payrollMult };
 }
 
