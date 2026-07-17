@@ -50,9 +50,12 @@ export function DoctrinePanel({ game, onClaim }: Props) {
 
   return (
     <>
-      <p className="doctrine-note">
-        Your stance is a build. Commit to a side to claim its perks — the other stays locked, to draw you back another run.
-      </p>
+      {/* First-run scaffolding — hide once the player has claimed a doctrine perk. */}
+      {game.doctrines.length === 0 && (
+        <p className="doctrine-note">
+          Your stance is a build. Commit to a side to claim its perks — the other stays locked, to draw you back another run.
+        </p>
+      )}
       <div className="doctrine-tracks">
         {track("doomer")}
         {track("accel")}

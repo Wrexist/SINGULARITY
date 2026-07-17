@@ -25,9 +25,12 @@ export function TrialsPanel({ game, onStart, onAbandon }: Props) {
 
   return (
     <>
-      <p className="trials-note">
-        Constrained runs — commit before you can ship, endure the handicap, then bank a permanent edge.
-      </p>
+      {/* First-run scaffolding — hide once the player has completed a Trial. */}
+      {game.trialsDone.length === 0 && (
+        <p className="trials-note">
+          Constrained runs — commit before you can ship, endure the handicap, then bank a permanent edge.
+        </p>
+      )}
 
       {active && (() => {
         const condMet = trialConditionMet(game);

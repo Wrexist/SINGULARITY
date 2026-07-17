@@ -140,7 +140,8 @@ export function RigBayPanel({ game, onBuy, onEquip, onFuse }: Props) {
         <h2 className="panel-title">Rig Bay</h2>
         <span className="rig-collection">{ownedDistinct}/{componentsBalance.catalog.length} parts</span>
       </div>
-      <p className="rig-blurb">Fit components per rack tier — one part upgrades every rack of that tier.</p>
+      {/* First-run scaffolding — drop it once the player owns a part (noise sweep). */}
+      {ownedDistinct === 0 && <p className="rig-blurb">Fit components per rack tier — one part upgrades every rack of that tier.</p>}
       {tiersWithRacks.map((tier) => (
         <div className="rig-tier" key={tier}>
           <div className="rig-tier-head">
