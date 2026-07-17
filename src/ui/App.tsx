@@ -109,7 +109,7 @@ export function App() {
   const notice = useGame((s) => s.notice);
   const worldEvent = useGame((s) => s.worldEvent);
   const candidates = useGame((s) => s.candidates);
-  const { doStartRun, doClaim, doBuyUpgrade, doBuyUpgradeBulk, doBuyOfficePerk, doBuyReputationPerk, doBuyEndowment, doBuyLegacyPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
+  const { doStartRun, doClaim, doBuyUpgrade, doBuyUpgradeBulk, doBuyOfficePerk, doBuyReputationPerk, doBuyEndowment, doPickDirective, doBuyLegacyPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
     doClaimContract, doClaimSponsor, doBuyPreprint, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
@@ -891,7 +891,7 @@ export function App() {
             )}
             {section === "hq" && (
               <>
-                {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} onBuyEndowment={() => { haptics.celebrate(); sound.purchase(); doBuyEndowment(); }} onBuyLegacyPerk={(id) => { haptics.success(); sound.purchase(); doBuyLegacyPerk(id); }} />}
+                {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} onBuyEndowment={() => { haptics.celebrate(); sound.purchase(); doBuyEndowment(); }} onPickDirective={(id) => { haptics.celebrate(); sound.purchase(); doPickDirective(id); }} onBuyLegacyPerk={(id) => { haptics.success(); sound.purchase(); doBuyLegacyPerk(id); }} />}
                 {showResearch && <ContractsPanel game={game} onClaim={onClaimContract} onClaimSponsor={() => { haptics.success(); sound.success(); doClaimSponsor(); }} />}
                 {automationUnlockedAny(game) && <AutomationPanel game={game} onToggle={onToggleAutomation} />}
                 {challengesUnlocked(game) && <GrandChallengesPanel game={game} onFund={onFundChallenge} />}
@@ -922,11 +922,15 @@ export function App() {
       <nav className="botnav" aria-label="Primary">
         {/* Destinations use aria-current; Awards/More are actions (open modals),
             so this is a nav bar, not a tablist (the panes aren't tab panels). */}
-        <button className={`botnav-item ${tab === "lab" ? "on" : ""} ${shipReady && tab !== "lab" ? "ship-ready" : ""}`} aria-current={tab === "lab" ? "page" : undefined} onClick={() => { haptics.tap(); if (shipReady && tab !== "lab") goSection("hq"); goTab("lab"); }}>
+        <button className={`botnav-item ${tab === "lab" ? "on" : ""} ${shipReady && tab !== "lab" ? "ship-ready" : ""}`} aria-current={tab === "lab" ? "page" : undefined} aria-label={shipReady && tab !== "lab" ? "Lab — ready to ship" : undefined} onClick={() => { haptics.tap(); if (shipReady && tab !== "lab") goSection("hq"); goTab("lab"); }}>
           <span className="botnav-ic"><FlaskIcon size={23} /></span><span className="botnav-lbl">Lab</span>
-          {shipReady && tab !== "lab"
-            ? <span className="botnav-badge ship" aria-label="Ready to ship">Ship</span>
-            : attention.lab > 0 && <span className="botnav-badge">{attention.lab}</span>}
+          {/* Ship-ready is signalled AMBIENTLY here by the pulsing icon (the
+              `ship-ready` class) — the word "Ship" was a redundant text badge on
+              the SAME button (de-noising audit 2026-07: ambient over text, per
+              CLAUDE.md). The value framing + wayfinding still live in the advisor
+              chip and the HQ "Ship" pill; screen readers get the aria-label above.
+              The numeric attention badge still surfaces other pulls in the Lab. */}
+          {attention.lab > 0 && <span className="botnav-badge">{attention.lab}</span>}
         </button>
         {showProducts && (
           <button className={`botnav-item ${tab === "products" ? "on" : ""}`} aria-current={tab === "products" ? "page" : undefined} onClick={() => { haptics.tap(); goTab("products"); }}>

@@ -57,13 +57,21 @@ Net effect: steady-state toast volume drops by the large majority, with no lost
 information and no engine/save changes. Verified: `tsc` clean, 578 tests green,
 built app driven headless with **zero console errors**.
 
+### Also shipped ✅ — the Ship-signal de-duplication
+The nav Lab button showed **both** a pulsing icon *and* a "Ship" text badge on the
+**same element** — the one true on-element duplication. Dropped the text badge and
+kept the ambient pulse (with an `aria-label="Lab — ready to ship"` so screen
+readers still get it), per CLAUDE.md's ambient-over-text rule. The **value framing**
+and wayfinding still live in the advisor chip, the HQ "Ship" pill, and the one-time
+first-ship explainer — so nothing that *teaches* was removed, only a redundant word.
+
 ### Recommended next (owner call — deliberately not shipped unilaterally)
 | Fix | Why it's held | Effort |
 |---|---|---|
-| **Collapse the "Ship" signal from 4 channels to 2** (drop the nav "Ship" text badge + first-run advisor chip; keep the ambient icon pulse + HQ tab-dot pill) | Touches the game's single most important action **and** first-ship onboarding — a subjective trade the owner should make, not me. | S |
 | **Single attention arbiter** — one badged pull per view; replace numeric counts with an ambient dot; suppress badges for anything automation will claim | The nav Lab count is by construction the sum of the three sub-tab dots ("3" vs "1+1+1"). Worth doing, but changes badge semantics broadly. | S/M |
 | **Tame the HQ 7-panel wall** — make StatsPanel + CodexPanel collapsible (mirror EventLog), collapsed by default, so HQ opens on the actionable panels | Pure-safe but a layout change worth a design pass. | M |
 | **Pause the NewsTicker while a nudge / world-event is active** | Stops ambient motion fighting the do-this-now layer. | M |
+| **Drop the first-run advisor "Ship the Model" chip** | Now the *only* remaining ship-signal beyond pulse + pill + explainer; a fair cut, but it uniquely carries the "reset for a permanent boost" value framing, so it's a judgment call. | S |
 
 ---
 
@@ -119,7 +127,7 @@ variant ("hard" ship mode, `config.ts:1628`) plus the chooser UI. Framed as
   field (SAVE_VERSION bump + migration + sanitize); some modifiers must disable
   specific automations.
 
-### #4 — Endowment Directives + Reputation tree tiers · S · low risk
+### #4 — Endowment Directives + Reputation tree tiers · S · low risk · **SHIPPED (Directives) ✅**
 **Pitch:** Every 10 Endowment levels the player picks a **Directive** (a lane bias
 or a milestone perk: +offline cap, contract slot, event control), and the
 Reputation tree gains 2–3 new tiers whose top nodes unlock content rather than +%
@@ -223,12 +231,25 @@ counter and Era 5 is the ceiling. Every long-lived idle eventually ships this la
 
 ---
 
-## Part 3 — What shipped this pass (all verified: `tsc` clean · 578 tests · 0 console errors)
+## Part 3 — What shipped (all verified: `tsc` clean · 583 tests · 0 console errors · balance sim unaffected)
 
 **Less noisy (Part 1):** `logEvent()` channel + 9 self-click confirmations and the
-achievement/level-up/churn notices moved to log-only.
+achievement/level-up/churn notices moved to log-only; the redundant nav "Ship" text
+badge removed in favor of the ambient icon pulse (accessible label retained).
 
-**More to grind toward (feature #1, first increment):** a third **"Frontier"** tier
+**More to grind toward — feature #4 (Endowment Directives):** every 10 Endowment
+levels now grants a **Directive** pick — a permanent lane doctrine (Compute /
+Research / Commercial, +30% each, stackable). The deep-endgame Reputation sink is
+finally a *decision* (lean a lane, diversify, go all-in), not just a rising +2%/level
+number. New persisted field `endowmentDirectives` (SAVE_VERSION 23→24 + migration +
+a multiset sanitizer that caps picks to the tiers actually earned), survives prestige
+& ascension, folded into `reputationMods`. Curve-safe by construction: `repEndowment`
+is 0 through the whole tuned game, so no tier is ever earned and the directive fold is
+identity in the sim (unit-tested: `reputationMods(fresh)` is byte-identical). Verified
+in-app: the picker renders 3 doctrines, a claim registers "Directives — Compute +30%",
+zero console errors.
+
+**More to grind toward — feature #1, first increment:** a third **"Frontier"** tier
 per Legacy lane — Compute / Data / Revenue Frontier, +50% each, cost 120 weights,
 gated on the tier-2 Mastery node. Fully committing a lane now costs 172 weights
 (12+40+120), a genuine long-horizon sink where the tree previously topped out early.
