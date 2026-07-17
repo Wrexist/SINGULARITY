@@ -115,7 +115,7 @@ export function App() {
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
     doClaimContract, doClaimSponsor, doBuyPreprint, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
-    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival, doFundChallenge, doChooseFork, doClaimObjective, doToggleAutomation, doStartTrial, doAbandonTrial } =
+    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival, doFundChallenge, doChooseFork, doClaimObjective, doToggleAutomation, doStartTrial, doAbandonTrial, doSetFlagship } =
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
@@ -815,6 +815,7 @@ export function App() {
             onBuyFeature={doBuyFeature}
             onRename={doRenameProduct}
             onRetire={onRetireProductFx}
+            onSetFlagship={(id) => { haptics.tap(); sound.tap(); doSetFlagship(id); }}
             onCounterRival={(name) => {
               if (!doCounterRival(name)) return;
               haptics.success(); sound.alert();

@@ -6,6 +6,7 @@ import { alignmentProductionMods, alignmentProductMods } from "./alignment";
 import { charterMods } from "./charter";
 import { legacyAvailable, legacyTreeMods } from "./legacyTree";
 import { trialMods } from "./trials";
+import { flagshipMoneyMult } from "./flagship";
 import { ascensionMultiplier } from "./prestige";
 import { preprintMult } from "./preprints";
 import { challengeMods } from "./challenges";
@@ -284,6 +285,10 @@ export function derive(state: GameState): Derived {
   computeMult = computeMult.mul(tr.computeMult);
   dataMult = dataMult.mul(tr.dataMult);
   moneyMult = moneyMult.mul(tr.moneyMult);
+
+  // Flagship brand: a bounded permanent revenue bonus from the designated flagship's
+  // cross-ship tenure. 1.0 with no flagship (tenure 0), so identity through the sim.
+  moneyMult = moneyMult.mul(flagshipMoneyMult(state));
 
   // Legacy Investments (R5.4): owned prestige-tree lane biases. All 1.0 with
   // nothing invested, so this is identity until the player spends weights.

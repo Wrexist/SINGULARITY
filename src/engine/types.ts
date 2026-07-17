@@ -105,6 +105,10 @@ export interface GameState {
    *  survives prestige; `activeTrial` completes on ship. */
   activeTrial: string | null;
   trialsDone: string[];
+  /** Flagship (2026-07): the designated flagship product id (or null) and its cross-ship
+   *  `tenure` (ships survived as flagship). Grants a bounded permanent revenue bonus.
+   *  Curve-safe: the sim never launches products, so productId stays null / tenure 0. */
+  flagship: { productId: string | null; tenure: number };
   /** Phase 4 — Contracts: completed objective ids (the board is derived from this).
    *  Persists across prestige; completed contracts feed earned Reputation. */
   contracts: { completed: string[] };

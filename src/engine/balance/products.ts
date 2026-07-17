@@ -46,6 +46,20 @@ export const products = {
   /** How many products can run at once (owner: "a few concurrent"). */
   maxActive: 3,
 
+  /** Flagship (2026-07): the player designates ONE active product as the flagship; its
+   *  brand compounds across ships (tenure = ships survived as the flagship), granting a
+   *  BOUNDED permanent revenue bonus. Rewards nurturing one product across generations
+   *  instead of set-and-forget. Curve-safe: the sim never launches products, so it never
+   *  has a flagship (tenure 0 → identity). */
+  flagship: {
+    enabled: true,
+    /** Permanent revenue bonus per ship of flagship tenure. */
+    perShip: 0.03,
+    /** Tenure cap — the bonus tops out at capShips × perShip (= +30% revenue). Bounded
+     *  so a long-lived flagship can never trivialize the economy. */
+    capShips: 10,
+  },
+
   /** Compute + Data to train and release v1. */
   releaseCost: { compute: 50_000, data: 5_000 },
   /** Base Compute + Data to push the next version; ×growth^(version-1). */

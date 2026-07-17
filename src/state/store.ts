@@ -52,6 +52,7 @@ import { productMilestones as PRODUCT_MILESTONES, type ProductTypeId } from "../
 import { achievements as ACHIEVEMENT_DEFS } from "../engine/balance/achievements";
 import { buyReputationPerk, buyEndowment, pickEndowmentDirective } from "../engine/reputation";
 import { startTrial, abandonTrial } from "../engine/trials";
+import { setFlagship } from "../engine/flagship";
 import { fundChallenge, chooseFork } from "../engine/challenges";
 import { claimObjective } from "../engine/objectives";
 import { applyAutomation, automationUnlockedAny, automationEnabled, toggleAutomation } from "../engine/automation";
@@ -181,6 +182,7 @@ interface GameStore {
   doPickDirective: (id: string) => void;
   doStartTrial: (id: string) => void;
   doAbandonTrial: () => void;
+  doSetFlagship: (id: string | null) => void;
   /** Pour affordable resources into a Grand Challenge. Returns true if THIS call finished it. */
   doFundChallenge: (id: string) => boolean;
   doChooseFork: (id: string, forkId: string) => void;
@@ -607,6 +609,7 @@ export const useGame = create<GameStore>((set, get) => ({
   doPickDirective: (id) => set((s) => ({ game: pickEndowmentDirective(s.game, id) })),
   doStartTrial: (id) => set((s) => ({ game: startTrial(s.game, id) })),
   doAbandonTrial: () => set((s) => ({ game: abandonTrial(s.game) })),
+  doSetFlagship: (id) => set((s) => ({ game: setFlagship(s.game, id) })),
   doFundChallenge: (id) => {
     let justCompleted = false;
     set((s) => {

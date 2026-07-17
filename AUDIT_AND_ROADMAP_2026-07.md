@@ -155,7 +155,7 @@ concept an AI-lab game can add.
   needs care (prefer meta-currency cost or ship-gating past the sim window over
   in-run resource cost); each paradigm needs its own balance pass + sim extension.
 
-### #6 — Product Empire *(flagships, slot unlocks, deep milestone ladder)* · L · medium · **slot unlocks + deep milestones SHIPPED ✅**
+### #6 — Product Empire *(flagships, slot unlocks, deep milestone ladder)* · L · medium · **flagship + slot unlocks + deep milestones SHIPPED ✅**
 **Pitch:** Meta-unlocked concurrent-slot increases, one designatable **flagship**
 whose brand persists and compounds across ships, and a milestone ladder extended
 deep into the late game — so the company grows **bigger**, not just re-optimizes the
@@ -306,19 +306,30 @@ Curve-safe: the deploy-only sim never opts into a Trial, so `activeTrial` stays 
 `trialsDone` empty — the fold is identity (unit-tested byte-for-byte on a fresh run).
 Verified in-app: 3 Attempt buttons, committing activates the handicap, zero console errors.
 
+**More to grind toward — feature #6 (Flagship):** the player designates ONE active
+product as the company **flagship**; every ship it survives raises its **tenure**, which
+grants a **bounded** permanent revenue bonus (capped at 10 ships × 3% = +30%). Rewards
+nurturing a single product across generations instead of set-and-forget — the "memory"
+the depth audit called the top gap. New `flagship.ts` (own module, so `derive` folds the
+money bonus without the products.ts→derive cycle); `advanceFlagship` runs in `prestige`
+(tenure++ if the product survived, brand lost if retired); new persisted `flagship`
+(SAVE_VERSION 26→27 + migration + a sanitizer that clears a phantom id and clamps
+tenure to the cap). A ★/☆ toggle in ProductDetail. Curve-safe: the sim never launches a
+product, so it never has a flagship — the fold is identity in the tuned run.
+
 ### Suggested build order from here
-1. **#2 Grand Challenge forks** — turn the decisionless funding bars into choices. *(M)*
-2. Continue **#6** — a persistent **flagship** product (cross-ship memory). *(M/L)*
-3. More **Trials** — harder tiers, cross-lane rewards, a "no-hires/speedrun" variety
-   that reads a run condition instead of a production handicap. *(S each)*
-4. The L/XL arcs (#5 Paradigm research, #10 Institute), each behind its own design +
-   balance pass.
+1. **Megaprojects II** — a repeatable post-#2 loop so the challenge layer never empties. *(M)*
+2. **#5 Paradigm Research** — generational reveal tiers (slots under the Legacy unlock
+   plumbing already shipped). *(L)*
+3. **#9 Doctrine Consequences** — aligned vs accel exclusive content. *(M)*
+4. **#10 The Institute** — third prestige layer (now that #1/#6 give it things to unlock). *(XL)*
 
 ### Shipped across this branch (running tally)
 Less noisy: `logEvent` + 9 confirmations & achievement/level-up/churn → log-only; nav
 "Ship" text badge → ambient pulse. Foundation: purity guardrail (RNG/clock), corrupt-
 save stash, migration-ladder completeness test. More gameplay: Legacy **Frontier**
-tier-3 + **Product Division** slot-unlock node; **Endowment Directives**; deep
-**product-milestone** ladder; **Prestige Trials**. All verified — `tsc` clean, **592
-tests**, balance sim unaffected (structural + identity-tested), driven in-app with zero
-console errors.
+tier-3 + **Product Division** slot-unlock; **Endowment Directives**; deep
+**product-milestone** ladder; **Prestige Trials** (+ Solo Run condition & cross-lane
+tiers); **Grand Challenge forks**; **Flagship** brand. All verified — `tsc` clean, **600
+tests**, balance sim unaffected (structural + identity-tested), each driven in-app with
+zero console errors.

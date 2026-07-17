@@ -6,6 +6,7 @@ import {
   typeDef, productMetrics, canStartUpgrade, canBuyFeature, versionCostFor, featureMods,
   upgradeDurationSec, upgradeProgress, retirePayout, enterpriseUnlocked, suggestChannelMix,
 } from "../engine/products";
+import { flagshipMoneyMult } from "../engine/flagship";
 import { m$, numOf as num, fmtDur } from "./format";
 import { EditableName } from "./EditableName";
 import type { ReactNode } from "react";
@@ -60,6 +61,7 @@ interface Props {
   onBuyFeature: (id: string, featureId: string) => void;
   onRename: (id: string, name: string) => void;
   onRetire: (id: string) => void;
+  onSetFlagship: (id: string | null) => void;
 }
 
 function featureEffect(lane: FeatureLane, factor: number): string {
@@ -86,7 +88,7 @@ const fill = (pct: number) => ({ background: `linear-gradient(90deg, #7c5cff 0%,
 
 /** Phase 3 — per-product management, redesigned into a clean, soft, card-based sheet
  *  (icon chips, segmented tabs, purple accent) so the depth stays legible. */
-export function ProductDetail({ game, productId, mods, onClose, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onSetChannelMix, onBuyFeature, onRename, onRetire }: Props) {
+export function ProductDetail({ game, productId, mods, onClose, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onSetChannelMix, onBuyFeature, onRename, onRetire, onSetFlagship }: Props) {
   const [tab, setTab] = useState<Tab>("overview");
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -182,6 +184,23 @@ export function ProductDetail({ game, productId, mods, onClose, onStartUpgrade, 
             {crew.length > 0 && (
               <div className="pd-crew">{crew.map((e) => <span className="pd-crew-chip" key={e.id}>{e.name.split(" ")[0]} · L{e.level}</span>)}</div>
             )}
+            {/* Flagship: designate this product as the company brand — its tenure (ships
+                survived as flagship) grows a bounded permanent revenue bonus. ★/☆ are
+                allowed monochrome marks (CLAUDE.md). */}
+            {B.flagship.enabled && (() => {
+              const isFlagship = game.flagship.productId === p.id;
+              const pct = Math.round((flagshipMoneyMult(game) - 1) * 100);
+              return (
+                <button
+                  className={`pd-flagship ${isFlagship ? "on" : ""}`}
+                  onClick={() => onSetFlagship(isFlagship ? null : p.id)}
+                >
+                  {isFlagship
+                    ? `★ Flagship · +${pct}% revenue — grows each ship you keep it`
+                    : "☆ Make this your flagship"}
+                </button>
+              );
+            })()}
             {/* onRetire asks for confirmation upstream; the sheet stays open on
                 cancel, and self-dismisses via the `!p` guard once actually sold. */}
             <button className="pd-sell" onClick={() => onRetire(p.id)}>Sell this product · {m$(retirePayout(game, p.id))}</button>

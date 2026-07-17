@@ -319,6 +319,8 @@ interface SavedShape {
    *  known ids + migrated at v25. */
   activeTrial: string | null;
   trialsDone: string[];
+  /** Flagship: designated product id (or null) + cross-ship tenure. Migrated at v27. */
+  flagship: { productId: string | null; tenure: number };
   contracts: { completed: string[] };
   charter: string | null;
   charterLocked: boolean;
@@ -391,6 +393,7 @@ export function serialize(state: GameState): string {
     endowmentDirectives: state.endowmentDirectives,
     activeTrial: state.activeTrial,
     trialsDone: state.trialsDone,
+    flagship: state.flagship,
     contracts: state.contracts,
     charter: state.charter,
     charterLocked: state.charterLocked,
@@ -580,6 +583,14 @@ export function deserialize(json: string): GameState {
     // completed ids are filtered to known, deduped (the reward folds per unique id).
     activeTrial: typeof raw.activeTrial === "string" && TRIAL_IDS.has(raw.activeTrial) ? raw.activeTrial : null,
     trialsDone: dedupeKnownIds(raw.trialsDone, TRIAL_IDS),
+    // Flagship: the id must point at a real (sanitized) active product, else it's
+    // cleared; tenure is clamped to [0, cap] so a crafted save can't over-brand.
+    flagship: (() => {
+      const rf = raw.flagship as { productId?: unknown; tenure?: unknown } | undefined;
+      const id = typeof rf?.productId === "string" && products.active.some((p) => p.id === rf.productId) ? rf.productId : null;
+      const tenure = id ? clampNum(rf?.tenure, 0, PRODUCTS.flagship.capShips, 0) : 0;
+      return { productId: id, tenure: Math.floor(tenure) };
+    })(),
     contracts,
     // Validate against KNOWN charter ids: an unknown/crafted id would still grant the
     // +15% conviction bonus (charter === lastCharter) without a real two-run commitment.
@@ -887,6 +898,10 @@ export function migrate(raw: any): SavedShape {
     // v25 → v26: Grand Challenge forks. Existing completed challenges have no chosen
     // arm yet (the sanitizer defaults the map; the UI prompts for any pending choice).
     s = { ...s, version: 26, challenges: { ...(s.challenges ?? { funded: {}, completed: [] }), forks: s.challenges?.forks ?? {} } };
+  }
+  if (s.version === 26) {
+    // v26 → v27: Flagship. Existing runs have none designated (sanitizer-defaulted).
+    s = { ...s, version: 27, flagship: s.flagship ?? { productId: null, tenure: 0 } };
   }
   return s as SavedShape;
 }

@@ -7,6 +7,7 @@ import { startingRacks } from "./reputation";
 import { hallCapacity } from "./hall";
 import { currentEra } from "./eras";
 import { trials as TRIALS_DATA } from "./balance/trials";
+import { advanceFlagship } from "./flagship";
 import type { DraftModel, GameState } from "./types";
 
 /**
@@ -139,6 +140,9 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     // reset and keep earning Money into the next run (the meta-reward for shipping).
     // A "hard" ship leaps the competitive frontier so carried products start behind.
     products: { ...state.products, drafts, frontier: state.products.frontier + modeDef.frontierPenalty },
+    // Flagship brand: if the designated product survived to this ship, its tenure grows
+    // (capped); if it was retired, the brand is lost. The sim never has a flagship.
+    flagship: advanceFlagship(state),
     // Your team stays with you across a ship (they're employed by the company,
     // not the run) — but their product assignments reset since the lab is fresh.
     employees: state.employees.map((e) => ({ ...e, assignedProductId: null })),
