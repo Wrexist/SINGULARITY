@@ -55,6 +55,7 @@ import { startTrial, abandonTrial } from "../engine/trials";
 import { setFlagship } from "../engine/flagship";
 import { buyParadigm } from "../engine/paradigms";
 import { claimDoctrine } from "../engine/doctrine";
+import { buyInstitute } from "../engine/institute";
 import { fundChallenge, chooseFork, fundMegaproject } from "../engine/challenges";
 import { claimObjective } from "../engine/objectives";
 import { applyAutomation, automationUnlockedAny, automationEnabled, toggleAutomation } from "../engine/automation";
@@ -187,6 +188,7 @@ interface GameStore {
   doSetFlagship: (id: string | null) => void;
   doBuyParadigm: (id: string) => void;
   doClaimDoctrine: (id: string) => void;
+  doBuyInstitute: (id: string) => void;
   /** Pour affordable resources into a Grand Challenge. Returns true if THIS call finished it. */
   doFundChallenge: (id: string) => boolean;
   doChooseFork: (id: string, forkId: string) => void;
@@ -617,6 +619,7 @@ export const useGame = create<GameStore>((set, get) => ({
   doSetFlagship: (id) => set((s) => ({ game: setFlagship(s.game, id) })),
   doBuyParadigm: (id) => set((s) => ({ game: buyParadigm(s.game, id) })),
   doClaimDoctrine: (id) => set((s) => ({ game: claimDoctrine(s.game, id) })),
+  doBuyInstitute: (id) => set((s) => ({ game: buyInstitute(s.game, id) })),
   doFundChallenge: (id) => {
     let justCompleted = false;
     set((s) => {

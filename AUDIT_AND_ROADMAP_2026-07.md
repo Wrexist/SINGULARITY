@@ -215,7 +215,7 @@ runs their payoff.
   regulator escalation risks feeling punishing vs the "calm" mandate; gating real
   power invites "one true doctrine" complaints — branches must be sidegrades.
 
-### #10 — The Institute *(third prestige layer above ascension)* · XL · high
+### #10 — The Institute *(third prestige layer above ascension)* · XL · high · **SHIPPED (soft layer) ✅**
 **Pitch:** After N ascensions, found an **Institute**: a reset converting
 accumulated ascensions/Reputation into a new meta-currency spent on a fresh tree of
 content-bearing unlocks — a 5th slot, a new ship mode, a new event branch, permanent
@@ -351,12 +351,26 @@ off-tone). New `doctrine.ts` + `balance/doctrine.ts` folded into `derive`; new p
 Curve-safe TWICE over: perks are claim-gated (player-only) AND require alignment past the
 commit threshold, and the sim never fires a faction event → it stays neutral → identity.
 
-### The one remaining roadmap feature
-**#10 The Institute** — a third prestige reset layer. #1/#5/#6 now give it plenty to
-unlock (paradigm access, product slots, ship modes). This is XL and a major structural
-change to the endgame (new reset semantics + onboarding) that warrants a deliberate,
-owner-scoped effort rather than a fast follow. Everything else on the ranked list has
-shipped.
+**More gameplay — feature #10 (The Institute):** the third meta-layer, above AGI
+ascension — shipped as the SAFE **soft** version (no reset, no lost progress, per owner
+choice). Ascensions mint **Grants** (a new meta-currency); you found and expand the
+Institute's wings — Institutional Compute / Sovereign Data Trust / Endowment Fund →
+Interdisciplinary Synthesis → **The Singularity Institute** (+80% all output) — a fresh
+tree of powerful permanent unlocks that gives the deepest players a new mountain. New
+`institute.ts` + `balance/institute.ts` folded into `derive`; new persisted `institute`
+(SAVE_VERSION 30→31 + migration + known-id filter); prestige carryover. Curve-safe: Grants
+come only from ascensions and the sim never SPENDS them, so the tree stays empty →
+identity (the sim earns Grants exactly as it earns Reputation it never spends).
+
+**Cleaner, not noisier (standing owner rule):** rather than pile the Institute onto the
+already-dense HQ, added a reusable **`Collapsible`** and folded the deep-endgame panels
+(Trials, Doctrine, The Institute) into compact collapsed headers — Trials/Doctrine show
+as one-line "TRIALS 0/5 ▾" rows, and the Institute auto-expands only when it has Grants
+to spend. HQ opens tidy instead of a wall of stacked panels.
+
+### All 10 ranked features shipped ✅
+Nothing remains on the ranked list. Further depth = deepening shipped systems (more
+Institute wings, Paradigm tiers, Trial varieties) or new directions from playtest notes.
 
 ### Shipped across this branch (running tally)
 Less noisy: `logEvent` + 9 confirmations & achievement/level-up/churn → log-only; nav
@@ -365,6 +379,7 @@ save stash, migration-ladder completeness test. More gameplay: Legacy **Frontier
 tier-3 + **Product Division** slot-unlock; **Endowment Directives**; deep
 **product-milestone** ladder; **Prestige Trials** (+ Solo Run condition & cross-lane
 tiers); **Grand Challenge forks** + **Megaprojects II**; **Flagship** brand; **Paradigm
-Research**; **Doctrine Consequences**. All verified — `tsc` clean, **612 tests**, balance
-sim unaffected (structural + identity-tested), each driven in-app with zero console
-errors. 9 of the 10 ranked features shipped (only #10 The Institute remains).
+Research**; **Doctrine Consequences**; **The Institute** (+ HQ **Collapsible** de-noising).
+Plus a two-pass **early-game balance retune** (flowier opening, first ship ~58→~30 min).
+All verified — `tsc` clean, **616 tests**, balance sim re-tuned + identity-tested, each
+driven in-app with zero console errors. **All 10 ranked features shipped.**

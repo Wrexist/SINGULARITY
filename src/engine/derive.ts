@@ -9,6 +9,7 @@ import { trialMods } from "./trials";
 import { flagshipMoneyMult } from "./flagship";
 import { paradigmMods } from "./paradigms";
 import { doctrineMods } from "./doctrine";
+import { instituteMods } from "./institute";
 import { ascensionMultiplier } from "./prestige";
 import { preprintMult } from "./preprints";
 import { challengeMods } from "./challenges";
@@ -306,6 +307,13 @@ export function derive(state: GameState): Derived {
   dataMult = dataMult.mul(doc.dataMult);
   moneyMult = moneyMult.mul(doc.moneyMult);
 
+  // The Institute: the third meta-layer's permanent wings. All 1.0 with none founded,
+  // so identity through the tuned run (the sim never spends Grants).
+  const inst = instituteMods(state);
+  computeMult = computeMult.mul(inst.computeMult);
+  dataMult = dataMult.mul(inst.dataMult);
+  moneyMult = moneyMult.mul(inst.moneyMult);
+
   // Legacy Investments (R5.4): owned prestige-tree lane biases. All 1.0 with
   // nothing invested, so this is identity until the player spends weights.
   const lt = legacyTreeMods(state);
@@ -321,7 +329,7 @@ export function derive(state: GameState): Derived {
   // on a fresh run with no active events.
   const dataPerSec = dataPerSecFlat
     .mul(scraperDataMult)
-    .mul(legacyMult).mul(ascensionMult).mul(ppMult).mul(rep.dataMult).mul(ch.dataMult).mul(lt.dataMult).mul(tr.dataMult).mul(para.dataMult).mul(doc.dataMult)
+    .mul(legacyMult).mul(ascensionMult).mul(ppMult).mul(rep.dataMult).mul(ch.dataMult).mul(lt.dataMult).mul(tr.dataMult).mul(para.dataMult).mul(doc.dataMult).mul(inst.dataMult)
     .mul(balance.difficulty.productionMult); // global production dilation (see computePerSec)
 
   let computePerSec = computeFlat.mul(computeMult);

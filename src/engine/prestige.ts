@@ -173,6 +173,8 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     paradigms: state.paradigms,
     // Doctrine perks claimed by committing to a stance are permanent progression.
     doctrines: state.doctrines,
+    // The Institute's founded wings are the deepest permanent meta-progression.
+    institute: state.institute,
     // Prestige Trials: shipping ends the active constrained run. Bank its reward IF
     // its run condition (if any) held — a "solo" Trial needs an empty staff roster at
     // ship. Cleared either way (a failed condition just gives no reward, retry next

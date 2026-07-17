@@ -112,6 +112,9 @@ export interface GameState {
   /** Doctrine Consequences (2026-07): claimed stance-exclusive perk ids. Claim-gated +
    *  alignment-gated, so empty for the sim → identity. Permanent (survives prestige). */
   doctrines: string[];
+  /** The Institute (2026-07): owned wing ids (third meta-layer, funded by ascension
+   *  Grants). Empty for the sim → identity. Permanent (survives prestige + ascension). */
+  institute: string[];
   /** Flagship (2026-07): the designated flagship product id (or null) and its cross-ship
    *  `tenure` (ships survived as flagship). Grants a bounded permanent revenue bonus.
    *  Curve-safe: the sim never launches products, so productId stays null / tenure 0. */

@@ -1,5 +1,5 @@
 import type { GameState } from "../engine/types";
-import { trialsBalance, trialsUnlocked, canStartTrial, trialConditionMet } from "../engine/trials";
+import { trialsBalance, canStartTrial, trialConditionMet } from "../engine/trials";
 import { canPrestige } from "../engine/prestige";
 
 interface Props {
@@ -16,20 +16,15 @@ const LANE_LABEL: Record<string, string> = { compute: "Compute", data: "Data", m
  * complete it by shipping — banking a small PERMANENT reward. Makes a generation feel
  * different, not just faster. Curve-safe: the sim never opts in (see engine/trials.ts).
  */
+/** Rendered inside a Collapsible (which supplies the panel section + title), so this
+ *  returns just the body. */
 export function TrialsPanel({ game, onStart, onAbandon }: Props) {
-  if (!trialsUnlocked(game)) return null;
-
   const active = game.activeTrial ? trialsBalance.list.find((t) => t.id === game.activeTrial) : null;
   const done = new Set(game.trialsDone);
   const shippable = canPrestige(game);
-  const doneCount = trialsBalance.list.filter((t) => done.has(t.id)).length;
 
   return (
-    <section className="panel trials">
-      <div className="trials-head">
-        <h2 className="panel-title" style={{ margin: 0 }}>Trials</h2>
-        <span className="trials-count">{doneCount}/{trialsBalance.list.length}</span>
-      </div>
+    <>
       <p className="trials-note">
         Constrained runs — commit before you can ship, endure the handicap, then bank a permanent edge.
       </p>
@@ -83,6 +78,12 @@ export function TrialsPanel({ game, onStart, onAbandon }: Props) {
           );
         })}
       </div>
-    </section>
+    </>
   );
 }
+
+/** Trials completed / total — for the Collapsible badge. */
+export function trialsDoneCount(game: GameState): number {
+  return trialsBalance.list.filter((t) => game.trialsDone.includes(t.id)).length;
+}
+export const trialsTotal = trialsBalance.list.length;

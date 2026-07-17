@@ -92,12 +92,15 @@ import { canBuyOfficePerk } from "../engine/actions";
 import { modelReadyNote, researchStartNote, soldNote, hireWelcome, fireSendoff } from "../engine/notices";
 import { challengesUnlocked, challengeById } from "../engine/challenges";
 import { GrandChallengesPanel } from "./GrandChallengesPanel";
-import { TrialsPanel } from "./TrialsPanel";
+import { TrialsPanel, trialsDoneCount, trialsTotal } from "./TrialsPanel";
 import { trialsUnlocked } from "../engine/trials";
 import { ParadigmPanel } from "./ParadigmPanel";
 import { paradigmsUnlocked } from "../engine/paradigms";
-import { DoctrinePanel } from "./DoctrinePanel";
+import { DoctrinePanel, doctrineDoneCount, doctrineTotal } from "./DoctrinePanel";
 import { doctrineUnlocked } from "../engine/doctrine";
+import { InstitutePanel } from "./InstitutePanel";
+import { instituteUnlocked, grantsAvailable } from "../engine/institute";
+import { Collapsible } from "./Collapsible";
 import { ChallengeComplete } from "./ChallengeComplete";
 import { objectivesUnlocked } from "../engine/objectives";
 import { ObjectivesPanel } from "./ObjectivesPanel";
@@ -119,7 +122,7 @@ export function App() {
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
     doClaimContract, doClaimSponsor, doBuyPreprint, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
-    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival, doFundChallenge, doChooseFork, doFundMegaproject, doClaimObjective, doToggleAutomation, doStartTrial, doAbandonTrial, doSetFlagship, doBuyParadigm, doClaimDoctrine } =
+    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival, doFundChallenge, doChooseFork, doFundMegaproject, doClaimObjective, doToggleAutomation, doStartTrial, doAbandonTrial, doSetFlagship, doBuyParadigm, doClaimDoctrine, doBuyInstitute } =
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
@@ -904,13 +907,24 @@ export function App() {
                 {automationUnlockedAny(game) && <AutomationPanel game={game} onToggle={onToggleAutomation} />}
                 {challengesUnlocked(game) && <GrandChallengesPanel game={game} onFund={onFundChallenge} onChooseFork={(id, forkId) => { haptics.celebrate(); sound.purchase(); doChooseFork(id, forkId); }} onFundMegaproject={(at) => { const done = doFundMegaproject(); if (done) { haptics.celebrate(); sound.success(); if (at) fxBurst(at.x, at.y, { count: 26, power: 1.4, colors: ["#a855f7", "#ffd60a", "#16b364"] }); } else { haptics.tap(); sound.tap(); } }} />}
                 {trialsUnlocked(game) && (
-                  <TrialsPanel
-                    game={game}
-                    onStart={(id) => { haptics.success(); sound.tap(); doStartTrial(id); }}
-                    onAbandon={() => { haptics.tap(); doAbandonTrial(); }}
-                  />
+                  <Collapsible title="Trials" defaultOpen={!!game.activeTrial} badge={game.activeTrial ? "running" : `${trialsDoneCount(game)}/${trialsTotal}`}>
+                    <TrialsPanel
+                      game={game}
+                      onStart={(id) => { haptics.success(); sound.tap(); doStartTrial(id); }}
+                      onAbandon={() => { haptics.tap(); doAbandonTrial(); }}
+                    />
+                  </Collapsible>
                 )}
-                {doctrineUnlocked(game) && <DoctrinePanel game={game} onClaim={(id) => { haptics.celebrate(); sound.success(); doClaimDoctrine(id); }} />}
+                {doctrineUnlocked(game) && (
+                  <Collapsible title="Doctrine" badge={`${doctrineDoneCount(game)}/${doctrineTotal}`}>
+                    <DoctrinePanel game={game} onClaim={(id) => { haptics.celebrate(); sound.success(); doClaimDoctrine(id); }} />
+                  </Collapsible>
+                )}
+                {instituteUnlocked(game) && (
+                  <Collapsible title="The Institute" defaultOpen={grantsAvailable(game) > 0} badge={grantsAvailable(game) > 0 ? `${grantsAvailable(game)} grants` : "founded"}>
+                    <InstitutePanel game={game} onBuy={(id) => { haptics.celebrate(); sound.purchase(); doBuyInstitute(id); }} />
+                  </Collapsible>
+                )}
                 <StatsPanel game={game} derived={d} />
                 {game.prestige.ships > 0 && <CodexPanel game={game} />}
                 <EventLog log={log} />

@@ -1,5 +1,5 @@
 import type { GameState } from "../engine/types";
-import { doctrineBalance, doctrineUnlocked, committedSide, canClaimDoctrine } from "../engine/doctrine";
+import { doctrineBalance, committedSide, canClaimDoctrine } from "../engine/doctrine";
 import type { DoctrineSide } from "../engine/balance/doctrine";
 
 interface Props {
@@ -19,11 +19,10 @@ const SIDE_HINT: Record<DoctrineSide, string> = {
  * The other side stays visible but locked — a reason to replay committed the other way.
  * Hidden until factions matter; curve-safe (see engine/doctrine.ts).
  */
+/** Rendered inside a Collapsible (which supplies the section + title) — body only. */
 export function DoctrinePanel({ game, onClaim }: Props) {
-  if (!doctrineUnlocked(game)) return null;
   const owned = new Set(game.doctrines);
   const side = committedSide(game);
-  const doneCount = doctrineBalance.perks.filter((p) => owned.has(p.id)).length;
 
   const track = (s: DoctrineSide) => (
     <div className="doctrine-track" key={s}>
@@ -50,11 +49,7 @@ export function DoctrinePanel({ game, onClaim }: Props) {
   );
 
   return (
-    <section className="panel doctrine">
-      <div className="doctrine-head">
-        <h2 className="panel-title" style={{ margin: 0 }}>Doctrine</h2>
-        <span className="doctrine-count">{doneCount}/{doctrineBalance.perks.length}</span>
-      </div>
+    <>
       <p className="doctrine-note">
         Your stance is a build. Commit to a side to claim its perks — the other stays locked, to draw you back another run.
       </p>
@@ -62,6 +57,12 @@ export function DoctrinePanel({ game, onClaim }: Props) {
         {track("doomer")}
         {track("accel")}
       </div>
-    </section>
+    </>
   );
 }
+
+/** Doctrine perks claimed / total — for the Collapsible badge. */
+export function doctrineDoneCount(game: GameState): number {
+  return doctrineBalance.perks.filter((p) => game.doctrines.includes(p.id)).length;
+}
+export const doctrineTotal = doctrineBalance.perks.length;
