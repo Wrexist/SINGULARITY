@@ -99,6 +99,12 @@ export interface GameState {
    *  ids — the same doctrine may repeat to stack a lane. Empty until the deep endgame,
    *  so identity through the whole tuned curve. Survives prestige AND ascension. */
   endowmentDirectives: string[];
+  /** Prestige Trials (2026-07): the id of the Trial constraining the CURRENT run
+   *  (null = unconstrained), and the ids of COMPLETED Trials (permanent rewards).
+   *  Both empty through the whole tuned game, so identity for the sim. `trialsDone`
+   *  survives prestige; `activeTrial` completes on ship. */
+  activeTrial: string | null;
+  trialsDone: string[];
   /** Phase 4 — Contracts: completed objective ids (the board is derived from this).
    *  Persists across prestige; completed contracts feed earned Reputation. */
   contracts: { completed: string[] };

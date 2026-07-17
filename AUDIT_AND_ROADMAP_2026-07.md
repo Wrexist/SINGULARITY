@@ -114,7 +114,7 @@ Preprints already prove the infinite-diminishing-sink pattern to reuse.
   20 new tuned effects to write/test; permanent forked bonuses need sim-side
   verification that the completed set stays empty in the tuned run.
 
-### #3 — Prestige Challenges board *(run modifiers + one-time unlocks)* · M · low
+### #3 — Prestige Challenges board *(run modifiers + one-time unlocks)* · M · low · **SHIPPED (as "Trials") ✅**
 **Pitch:** An opt-in board of challenge runs — "No Hires", "Half Compute / Double
 Legacy", "Doctrine Locked: Accel", "Speedrun" — each granting a one-time permanent
 unlock. Generations finally feel **different**, not just faster.
@@ -292,11 +292,25 @@ panel (verified in-app, zero console errors).
   target deep into the endgame. Curve-safe: the deploy-only sim never launches a
   product, so no product milestone ever fires in the tuned run (unit-tested).
 
+**More to grind toward — feature #3 (Prestige Trials):** an opt-in board of
+**constrained training runs** in HQ. You commit to a Trial *early* in a generation
+(gated on `!canPrestige` — before a deployable exists, so the handicap is endured for a
+full run, not switched on the instant before a ship), play under its handicap, and
+**complete it by shipping** — banking a small permanent reward. Three to start: *Ablation
+Study* (½ Compute → +10% Compute forever), *Lean Budget* (½ Money → +10% Money), *Data
+Scarcity* (½ Data → +10% Data). New engine module `trials.ts` + `balance/trials.ts`,
+folded into `derive` (handicap × completed rewards), completion inlined in `prestige`
+(cycle-free), new persisted `activeTrial`/`trialsDone` (SAVE_VERSION 24→25 + migration +
+known-id sanitizers), a `TrialsPanel` (active-Trial full-card tint — no accent bar).
+Curve-safe: the deploy-only sim never opts into a Trial, so `activeTrial` stays null and
+`trialsDone` empty — the fold is identity (unit-tested byte-for-byte on a fresh run).
+Verified in-app: 3 Attempt buttons, committing activates the handicap, zero console errors.
+
 ### Suggested build order from here
-1. **#3 Prestige Challenges** — biggest replay-variety win (needs a run-modifier +
-   completion-reward pass; touches the ship flow, so its own design round). *(M)*
-2. **#2 Grand Challenge forks** — turn the decisionless funding bars into choices. *(M)*
-3. Continue **#6** — a persistent **flagship** product (cross-ship memory). *(M/L)*
+1. **#2 Grand Challenge forks** — turn the decisionless funding bars into choices. *(M)*
+2. Continue **#6** — a persistent **flagship** product (cross-ship memory). *(M/L)*
+3. More **Trials** — harder tiers, cross-lane rewards, a "no-hires/speedrun" variety
+   that reads a run condition instead of a production handicap. *(S each)*
 4. The L/XL arcs (#5 Paradigm research, #10 Institute), each behind its own design +
    balance pass.
 
@@ -305,5 +319,6 @@ Less noisy: `logEvent` + 9 confirmations & achievement/level-up/churn → log-on
 "Ship" text badge → ambient pulse. Foundation: purity guardrail (RNG/clock), corrupt-
 save stash, migration-ladder completeness test. More gameplay: Legacy **Frontier**
 tier-3 + **Product Division** slot-unlock node; **Endowment Directives**; deep
-**product-milestone** ladder. All verified — `tsc` clean, **586 tests**, balance sim
-unaffected, driven in-app with zero console errors.
+**product-milestone** ladder; **Prestige Trials**. All verified — `tsc` clean, **592
+tests**, balance sim unaffected (structural + identity-tested), driven in-app with zero
+console errors.

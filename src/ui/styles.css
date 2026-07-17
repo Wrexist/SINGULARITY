@@ -2922,6 +2922,34 @@ button.modchip.workable:active { transform: scale(0.94); }
   0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--money) 55%, transparent); }
   50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--money) 0%, transparent); }
 }
+
+/* ---------- Prestige Trials ---------- */
+.trials-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.trials-count { font-size: 12px; font-weight: 800; color: var(--ink-3); background: rgba(20, 22, 27, 0.05); border-radius: 999px; padding: 2px 10px; }
+.trials-note { font-size: 12px; color: var(--ink-3); margin: 0 0 8px; }
+.trial-card {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 6px;
+  border: 1px solid var(--line, rgba(20, 22, 27, 0.08));
+  border-radius: 12px; padding: 10px 11px; background: var(--glass-strong, #fff);
+}
+/* Active Trial: a full-card tint + border (NOT a left-edge bar — house rule). */
+.trial-card.trial-on { border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 8%, transparent), var(--glass-strong, #fff)); }
+.trial-card.trial-done { opacity: 0.78; }
+.trial-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.trial-name { font-size: 13px; font-weight: 800; color: var(--ink); }
+.trial-desc { font-size: 12px; color: var(--ink-2, #4a4a55); }
+.trial-status { font-size: 11.5px; font-weight: 700; color: var(--accent); }
+.trial-req { font-size: 11px; color: var(--ink-3); }
+.trial-attempt {
+  flex-shrink: 0; font-size: 12px; font-weight: 800; color: #fff; border: none;
+  background: linear-gradient(180deg, var(--accent), #7b5cff); border-radius: 999px; padding: 7px 14px;
+}
+.trial-attempt:disabled { background: rgba(20, 22, 27, 0.12); color: var(--ink-3); }
+.trial-abandon {
+  flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--ink-3);
+  background: rgba(20, 22, 27, 0.06); border: none; border-radius: 999px; padding: 7px 12px;
+}
+.trial-owned { flex-shrink: 0; font-size: 12px; font-weight: 800; color: var(--money); }
 .objective-card {
   display: flex; align-items: center; gap: 10px;
   border: 1px solid var(--line, rgba(20, 22, 27, 0.08));

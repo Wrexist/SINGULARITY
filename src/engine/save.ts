@@ -5,6 +5,7 @@ import { products as PRODUCTS } from "./balance/products";
 import { contracts as CONTRACTS } from "./balance/contracts";
 import { legacyTree as LEGACY } from "./balance/legacyTree";
 import { reputation as REPUTATION } from "./balance/reputation";
+import { trials as TRIALS } from "./balance/trials";
 import { charters as CHARTERS } from "./balance/charters";
 import { balance } from "./balance/config";
 import { components as COMPONENTS, SLOTS_BY_TIER, type SlotClass } from "./balance/components";
@@ -30,6 +31,7 @@ const CHARTER_IDS = new Set(CHARTERS.list.map((c) => c.id));
 const RIVAL_NAMES = new Set(MARKET.rivals.map((r) => r.name));
 const RESEARCH_IDS = new Set(balance.research.map((r) => r.id));
 const DIRECTIVE_IDS = new Set(REPUTATION.endowment.directives.defs.map((d) => d.id));
+const TRIAL_IDS = new Set(TRIALS.list.map((t) => t.id));
 
 /** Keep only known ids, each at most once (order preserved). Closes the duplicate /
  *  unknown-id save-edit class for contracts / legacy investments / reputation perks. */
@@ -313,6 +315,10 @@ interface SavedShape {
   /** Endowment Directives: chosen lane-doctrine ids. Sanitized (known ids, capped to
    *  the tiers repEndowment has earned) + migrated at v24. */
   endowmentDirectives: string[];
+  /** Prestige Trials: the active Trial id (or null) + completed ids. Sanitized to
+   *  known ids + migrated at v25. */
+  activeTrial: string | null;
+  trialsDone: string[];
   contracts: { completed: string[] };
   charter: string | null;
   charterLocked: boolean;
@@ -381,6 +387,8 @@ export function serialize(state: GameState): string {
     reputation: state.reputation,
     repEndowment: state.repEndowment,
     endowmentDirectives: state.endowmentDirectives,
+    activeTrial: state.activeTrial,
+    trialsDone: state.trialsDone,
     contracts: state.contracts,
     charter: state.charter,
     charterLocked: state.charterLocked,
@@ -557,6 +565,10 @@ export function deserialize(json: string): GameState {
     reputation: sanitizeReputation(raw.reputation, repEndowment),
     repEndowment,
     endowmentDirectives: sanitizeDirectives(raw.endowmentDirectives, repEndowment),
+    // Prestige Trials: the active id must be a known Trial (else no active run), and
+    // completed ids are filtered to known, deduped (the reward folds per unique id).
+    activeTrial: typeof raw.activeTrial === "string" && TRIAL_IDS.has(raw.activeTrial) ? raw.activeTrial : null,
+    trialsDone: dedupeKnownIds(raw.trialsDone, TRIAL_IDS),
     contracts,
     // Validate against KNOWN charter ids: an unknown/crafted id would still grant the
     // +15% conviction bonus (charter === lastCharter) without a real two-run commitment.
@@ -855,6 +867,10 @@ export function migrate(raw: any): SavedShape {
     // v23 → v24: Endowment Directives. Existing runs have chosen none (sanitizer also
     // defaults + caps this to the tiers repEndowment has earned).
     s = { ...s, version: 24, endowmentDirectives: s.endowmentDirectives ?? [] };
+  }
+  if (s.version === 24) {
+    // v24 → v25: Prestige Trials. Existing runs have none active and none completed.
+    s = { ...s, version: 25, activeTrial: s.activeTrial ?? null, trialsDone: s.trialsDone ?? [] };
   }
   return s as SavedShape;
 }

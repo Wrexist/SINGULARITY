@@ -5,6 +5,7 @@ import { reputationMods } from "./reputation";
 import { alignmentProductionMods, alignmentProductMods } from "./alignment";
 import { charterMods } from "./charter";
 import { legacyAvailable, legacyTreeMods } from "./legacyTree";
+import { trialMods } from "./trials";
 import { ascensionMultiplier } from "./prestige";
 import { preprintMult } from "./preprints";
 import { challengeMods } from "./challenges";
@@ -275,6 +276,15 @@ export function derive(state: GameState): Derived {
   dataMult = dataMult.mul(ch.dataMult);
   moneyMult = moneyMult.mul(ch.moneyMult);
 
+  // Prestige Trials: the active run's handicap × banked permanent rewards. All 1.0
+  // with no Trial active/done, so this is identity through the whole tuned run (the
+  // sim never opts into a Trial). The active handicap makes a constrained generation
+  // genuinely harder; the reward compounds forever once completed.
+  const tr = trialMods(state);
+  computeMult = computeMult.mul(tr.computeMult);
+  dataMult = dataMult.mul(tr.dataMult);
+  moneyMult = moneyMult.mul(tr.moneyMult);
+
   // Legacy Investments (R5.4): owned prestige-tree lane biases. All 1.0 with
   // nothing invested, so this is identity until the player spends weights.
   const lt = legacyTreeMods(state);
@@ -290,7 +300,7 @@ export function derive(state: GameState): Derived {
   // on a fresh run with no active events.
   const dataPerSec = dataPerSecFlat
     .mul(scraperDataMult)
-    .mul(legacyMult).mul(ascensionMult).mul(ppMult).mul(rep.dataMult).mul(ch.dataMult).mul(lt.dataMult)
+    .mul(legacyMult).mul(ascensionMult).mul(ppMult).mul(rep.dataMult).mul(ch.dataMult).mul(lt.dataMult).mul(tr.dataMult)
     .mul(balance.difficulty.productionMult); // global production dilation (see computePerSec)
 
   let computePerSec = computeFlat.mul(computeMult);

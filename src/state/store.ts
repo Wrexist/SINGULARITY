@@ -51,6 +51,7 @@ import {
 import { productMilestones as PRODUCT_MILESTONES, type ProductTypeId } from "../engine/balance/products";
 import { achievements as ACHIEVEMENT_DEFS } from "../engine/balance/achievements";
 import { buyReputationPerk, buyEndowment, pickEndowmentDirective } from "../engine/reputation";
+import { startTrial, abandonTrial } from "../engine/trials";
 import { fundChallenge } from "../engine/challenges";
 import { claimObjective } from "../engine/objectives";
 import { applyAutomation, automationUnlockedAny, automationEnabled, toggleAutomation } from "../engine/automation";
@@ -178,6 +179,8 @@ interface GameStore {
   /** Buy one endgame Reputation Endowment level (post-tree infinite sink). */
   doBuyEndowment: () => void;
   doPickDirective: (id: string) => void;
+  doStartTrial: (id: string) => void;
+  doAbandonTrial: () => void;
   /** Pour affordable resources into a Grand Challenge. Returns true if THIS call finished it. */
   doFundChallenge: (id: string) => boolean;
   /** Claim a met Lab Objective, steering its boost to the chosen lane (default = headline). */
@@ -601,6 +604,8 @@ export const useGame = create<GameStore>((set, get) => ({
   doBuyReputationPerk: (id) => set((s) => ({ game: buyReputationPerk(s.game, id) })),
   doBuyEndowment: () => set((s) => ({ game: buyEndowment(s.game) })),
   doPickDirective: (id) => set((s) => ({ game: pickEndowmentDirective(s.game, id) })),
+  doStartTrial: (id) => set((s) => ({ game: startTrial(s.game, id) })),
+  doAbandonTrial: () => set((s) => ({ game: abandonTrial(s.game) })),
   doFundChallenge: (id) => {
     let justCompleted = false;
     set((s) => {

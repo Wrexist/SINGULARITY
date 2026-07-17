@@ -92,6 +92,8 @@ import { canBuyOfficePerk } from "../engine/actions";
 import { modelReadyNote, researchStartNote, soldNote, hireWelcome, fireSendoff } from "../engine/notices";
 import { challengesUnlocked, challengeById } from "../engine/challenges";
 import { GrandChallengesPanel } from "./GrandChallengesPanel";
+import { TrialsPanel } from "./TrialsPanel";
+import { trialsUnlocked } from "../engine/trials";
 import { ChallengeComplete } from "./ChallengeComplete";
 import { objectivesUnlocked } from "../engine/objectives";
 import { ObjectivesPanel } from "./ObjectivesPanel";
@@ -113,7 +115,7 @@ export function App() {
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
     doClaimContract, doClaimSponsor, doBuyPreprint, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
-    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival, doFundChallenge, doClaimObjective, doToggleAutomation } =
+    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival, doFundChallenge, doClaimObjective, doToggleAutomation, doStartTrial, doAbandonTrial } =
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
@@ -895,6 +897,13 @@ export function App() {
                 {showResearch && <ContractsPanel game={game} onClaim={onClaimContract} onClaimSponsor={() => { haptics.success(); sound.success(); doClaimSponsor(); }} />}
                 {automationUnlockedAny(game) && <AutomationPanel game={game} onToggle={onToggleAutomation} />}
                 {challengesUnlocked(game) && <GrandChallengesPanel game={game} onFund={onFundChallenge} />}
+                {trialsUnlocked(game) && (
+                  <TrialsPanel
+                    game={game}
+                    onStart={(id) => { haptics.success(); sound.tap(); doStartTrial(id); }}
+                    onAbandon={() => { haptics.tap(); doAbandonTrial(); }}
+                  />
+                )}
                 <StatsPanel game={game} derived={d} />
                 {game.prestige.ships > 0 && <CodexPanel game={game} />}
                 <EventLog log={log} />

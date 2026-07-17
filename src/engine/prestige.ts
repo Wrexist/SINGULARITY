@@ -164,6 +164,13 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     repEndowment: state.repEndowment,
     // The lane Directives chosen while levelling the Endowment are permanent as well.
     endowmentDirectives: state.endowmentDirectives,
+    // Prestige Trials: shipping COMPLETES the active constrained run — bank its id
+    // as a permanent reward (once) and clear it so the fresh run is unconstrained.
+    // Inlined here (not imported from trials.ts) to keep prestige cycle-free.
+    activeTrial: null,
+    trialsDone: state.activeTrial && !state.trialsDone.includes(state.activeTrial)
+      ? [...state.trialsDone, state.activeTrial]
+      : state.trialsDone,
     // Grand Challenges are a career-spanning grind — funding + completions persist.
     challenges: state.challenges,
     // Lab Objectives persist too (an onboarding-grind ladder consumed once across runs).

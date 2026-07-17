@@ -4,7 +4,7 @@ import { initialStats } from "./stats";
 import { freshComponents } from "./components";
 import type { GameState } from "./types";
 
-export const SAVE_VERSION = 24;
+export const SAVE_VERSION = 25;
 
 /** A fresh lab: empty closet, a trickle of free Compute, nothing owned. */
 export function createInitialState(): GameState {
@@ -36,6 +36,8 @@ export function createInitialState(): GameState {
     // Endgame Reputation Endowment — nothing bought until the whole perk tree is owned.
     repEndowment: 0,
     endowmentDirectives: [],
+    activeTrial: null,
+    trialsDone: [],
     contracts: { completed: [] },
     charter: null,
     charterLocked: false,
