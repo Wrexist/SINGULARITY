@@ -529,7 +529,7 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
 
   // C2 — product "uplink beams": one glowing column per live product, rising from the
   // back of the floor, height ∝ revenue. Drawn before staff so agents read in front.
-  if (model.beams.length > 0) drawBeams(ctx, L, model.beams, model.beamBuzz, o.timeMs, o.reducedMotion);
+  if (model.beams.length > 0) drawBeams(ctx, L, model.beams, model.beamBuzz, o.timeMs, o.reducedMotion, model.batching, model.monetize);
 
   // C2/#7 — staff on the floor: real employees working the room (tap for their card).
   if (model.agents.length > 0) drawStaffAgents(ctx, model.agents, agentSpots(model, W, H, o.timeMs, o.reducedMotion), o.timeMs, o.reducedMotion);
@@ -1088,8 +1088,9 @@ function drawThermalStress(
 /** C2 — product uplink beams. One translucent gradient column per live product,
  *  rising from a back-floor anchor; height/alpha scale with the product's revenue
  *  share. Tier-cycled colours; a soft top bloom. Reduced-motion → no flicker. */
-function drawBeams(ctx: CanvasRenderingContext2D, L: Layout, beams: number[], buzz: number[], t: number, reducedMotion: boolean): void {
+function drawBeams(ctx: CanvasRenderingContext2D, L: Layout, beams: number[], buzz: number[], t: number, reducedMotion: boolean, batching = 0, monetize = 0): void {
   const cols: RGB[] = [[63, 134, 240], [155, 81, 224], [52, 210, 126], [245, 180, 10], [255, 99, 132]];
+  const GOLD: RGB = [255, 205, 70];
   const n = beams.length;
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
@@ -1132,6 +1133,28 @@ function drawBeams(ctx: CanvasRenderingContext2D, L: Layout, beams: number[], bu
         ctx.fillStyle = rgba(col, b * (1 - phase) * 0.75);
         ctx.beginPath();
         ctx.arc(sx, sy, w * 0.22, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Throughput pulses: steady packets riding UP the beam. Their rise SPEED scales
+    // with the Batch Scheduler (a faster scheduler visibly pumps the beam quicker),
+    // and the Monetization Layer tints them from the beam's colour toward gold — so
+    // two upgrades that used to move only a number now change the room. Both default
+    // to 0 (no pulses), and the whole block is motion, so reduced-motion skips it.
+    if (!reducedMotion && (batching > 0.001 || monetize > 0.001)) {
+      const speed = 1 + batching * 2.4;                 // batching → faster rise
+      const pcol: RGB = monetize > 0.001
+        ? [col[0] + (GOLD[0] - col[0]) * monetize, col[1] + (GOLD[1] - col[1]) * monetize, col[2] + (GOLD[2] - col[2]) * monetize]
+        : col;
+      const pAlpha = 0.35 + 0.4 * batching + 0.45 * monetize;
+      for (let s = 0; s < 2; s++) {
+        const phase = (((t / 1500) * speed) + s / 2 + i * 0.29) % 1;
+        const py = base.y - phase * h;
+        const px = base.x + Math.sin(phase * 5 + i) * w * 0.22;
+        ctx.fillStyle = rgba(pcol, (1 - phase) * pAlpha);
+        ctx.beginPath();
+        ctx.arc(px, py, w * (0.16 + 0.06 * monetize), 0, Math.PI * 2);
         ctx.fill();
       }
     }

@@ -90,6 +90,12 @@ export interface HallModel {
   autoBot: boolean;
   /** 0..1 data-pipeline intensity → denser/brighter drifting data-motes. */
   dataFlow: number;
+  /** 0..1 Batch Scheduler intensity → throughput pulses ride UP the revenue beams
+   *  faster, so the run-speed upgrade is felt in the room (not just a number). */
+  batching: number;
+  /** 0..1 Monetization Layer intensity → those beam pulses carry a golden glint
+   *  (revenue turning into money, made visible). */
+  monetize: number;
   /** C2 — power draw ÷ capacity (>1 = throttled). Drives a thermal "heat shimmer"
    *  + red rim over the racks so the power soft-cap is legible in the room. */
   loadFrac: number;
@@ -267,6 +273,10 @@ export function buildHallModel(game: GameState): HallModel {
   const overclock = Math.min(1, (game.upgrades["overclock"] ?? 0) * 0.1);
   const autoBot = (game.upgrades["auto_train"] ?? 0) > 0;
   const dataFlow = Math.min(1, (game.upgrades["data_pipeline"] ?? 0) * 0.12);
+  // Batch Scheduler (max 12) and Monetization Layer (max 25) had no room presence.
+  // Normalise so even the first level shows, saturating well before the cap.
+  const batching = Math.min(1, (game.upgrades["batching"] ?? 0) / 8);
+  const monetize = Math.min(1, (game.upgrades["monetize"] ?? 0) / 10);
 
   const owned = RACK_IDS.map((id) => game.upgrades[id] ?? 0);
   const totalOwned = owned[0]! + owned[1]! + owned[2]!;
@@ -318,6 +328,8 @@ export function buildHallModel(game: GameState): HallModel {
     overclock,
     autoBot,
     dataFlow,
+    batching,
+    monetize,
     loadFrac,
     staff,
     beams,
