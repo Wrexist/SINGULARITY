@@ -581,7 +581,10 @@ export function App() {
   // seeing the number go up IS the reward. Derived before/after the synchronous
   // action; only rate-moving buys float (power/floor purchases stay quiet).
   const onBuy = (id: string, count = 1, at?: { x: number; y: number }) => {
-    haptics.tap(); sound.purchase();
+    // Bigger batches get the heavier success haptic — a Max buy should feel weightier
+    // than a single tap. (Haptics no-op when the setting is off, like the rest of fx.)
+    if (count >= 10) haptics.success(); else haptics.tap();
+    sound.purchase();
     // `d` (this render's derive) is the pre-buy baseline — rates only move on
     // purchases/modifier changes, so re-deriving "before" would duplicate it.
     const before = at ? d : null;
@@ -856,7 +859,7 @@ export function App() {
                 </button>
                 <button className={`tab ${section === "hq" ? "on" : ""}`} aria-current={section === "hq" ? "true" : undefined} onClick={() => { haptics.tap(); goSection("hq"); }}>
                   HQ{shipReady && section !== "hq"
-                    ? <span className="tab-dot ship">Ship</span>
+                    ? <span className="tab-dot ship-pulse" role="status" aria-label="Ship ready" />
                     : labAttention.hq > 0 && <span className="tab-dot">{labAttention.hq}</span>}
                 </button>
               </nav>

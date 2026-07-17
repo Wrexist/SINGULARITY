@@ -105,7 +105,8 @@ export function StatsPanel({ game, derived }: Props) {
     { label: "Run duration", value: `${derived.runDurationSec.toFixed(1)}s` },
     { label: "Run payout", value: `${fmt(derived.runDataYield)} data · ${fmtMoney(derived.runMoneyYield)}` },
     { label: "Passive income", value: `${fmtMoney(derived.passiveMoneyPerSec)}/s` },
-    { label: "Faction stance", value: alignmentLabel(game.alignment) },
+    // (The "Faction stance" text row was dropped — the align-bar below already carries
+    // the stance name; keep only the numeric tilt. 2026-07 noise sweep.)
     ...(stance ? [{ label: "Stance effects", value: stance }] : []),
     ...(game.suspicion > 0 ? [{ label: "Regulator", value: `${regulatorState(game).name} · ${regulatorState(game).label}` }] : []),
     ...(game.employees.length > 0 ? [{ label: "Team morale", value: `×${totalMorale(game).toFixed(2)}` }] : []),
@@ -123,6 +124,7 @@ export function StatsPanel({ game, derived }: Props) {
     ...(s.ascensions > 0 ? [{ label: "AGI ascensions", value: `${s.ascensions} (×${ascensionMultiplier(game).toFixed(2)})` }] : []),
     ...(s.openSourceShips > 0 ? [{ label: "Models open-sourced", value: String(s.openSourceShips) }] : []),
     { label: "Products launched", value: String(s.productsLaunched) },
+    ...(game.products.sold > 0 ? [{ label: "Products sold", value: String(game.products.sold) }] : []),
     { label: "Employees hired", value: String(s.employeesHired) },
     { label: "World events", value: String(s.worldEventsResolved) },
     { label: "Achievements", value: `${game.achievements.length} / ${achievementDefs.length}` },

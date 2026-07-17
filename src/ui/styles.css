@@ -779,6 +779,7 @@ svg { vertical-align: middle; }
 .card:disabled:not(.affordable):hover { transform: none; box-shadow: none; }
 .card.maxed { opacity: 0.65; }
 .card-main { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.rack-tier-mark { font-size: 9px; letter-spacing: 1px; margin-right: 5px; vertical-align: 1px; opacity: 0.9; }
 .card-name {
   font-weight: 700;
   font-size: 14px;
@@ -1962,6 +1963,18 @@ button.modchip.workable:active { transform: scale(0.94); }
 }
 /* The golden "a ship is waiting" pill on the HQ segment (mirrors the nav badge). */
 .tab-dot.ship { background: linear-gradient(135deg, #f5b40a, #ff8c42); color: #1a1205; }
+/* Ambient ship-ready cue on the HQ sub-tab — a pulsing golden dot, NO word (matches the
+   bottom-nav decision to prefer the pulse over the "Ship" text badge). 2026-07 noise sweep. */
+.tab-dot.ship-pulse {
+  min-width: 9px; width: 9px; height: 9px; padding: 0; border-radius: 50%;
+  background: linear-gradient(135deg, #f5b40a, #ff8c42);
+  animation: shipDotPulse 1.6s ease-in-out infinite;
+}
+@keyframes shipDotPulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, #f5b40a 60%, transparent); }
+  50% { box-shadow: 0 0 0 5px color-mix(in srgb, #f5b40a 0%, transparent); }
+}
+.reduce-motion .tab-dot.ship-pulse { animation: none; }
 
 /* Capstone line — a small celebratory note when a whole system is cleared
    (research tree, achievements, codex). Conquered, not dead. */
@@ -2465,6 +2478,9 @@ button.modchip.workable:active { transform: scale(0.94); }
 .pd-total-status { flex: 0 0 auto; font-size: 12.5px; font-weight: 750; }
 .pd-total-status.ok { color: var(--money); }
 .pd-total-status.warn { color: #f97316; }
+.pd-mix-status { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; font-size: 12px; font-weight: 700; }
+.pd-mix-status.ok { color: var(--money); }
+.pd-mix-status.warn { color: #f97316; }
 
 /* Upgrades — feature rows */
 .pd-feature { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #fff; border-radius: 16px; padding: 13px 15px; box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05); }

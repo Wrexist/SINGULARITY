@@ -13,7 +13,7 @@ import type { ReactNode } from "react";
 import {
   ChatIcon, CodeIcon, BrainIcon, PaletteIcon, BoltIcon, ScalesIcon, HeartIcon, AtomIcon,
   MegaphoneIcon, SproutIcon, PersonIcon, MicIcon, SparkIcon, TrendDownIcon, CoinIcon,
-  LockIcon, TargetIcon, BarsIcon, CheckIcon, AlertTriangleIcon,
+  LockIcon, TargetIcon, CheckIcon, AlertTriangleIcon,
 } from "./Icons";
 
 /** Short human label for a feature's effect lane. */
@@ -279,14 +279,13 @@ export function ProductDetail({ game, productId, mods, onClose, onStartUpgrade, 
                   </label>
                 );
               })}
-              <div className="pd-total-card">
-                <span className="pd-total-ic"><BarsIcon size={18} /></span>
-                <div className="pd-total-text">
-                  <span className="pd-total-label">Total allocation</span>
-                  <span className="pd-total-sub">100% of {m$(p.marketingPerSec)}/s</span>
-                </div>
-                <span className={`pd-total-status ${activeCount >= 2 ? "ok" : "warn"}`}>{activeCount >= 2 ? <><CheckIcon size={13} /> Balanced</> : <><AlertTriangleIcon size={13} /> Concentrated</>}</span>
-              </div>
+              {/* Collapsed from a whole "Total allocation" card to one inline status line
+                  (2026-07 noise sweep): the "100% of $X/s" restated the always-100% split
+                  and the budget shown just above — only the Balanced/Concentrated cue was
+                  live signal, so that's all that survives. */}
+              <span className={`pd-mix-status ${activeCount >= 2 ? "ok" : "warn"}`}>
+                {activeCount >= 2 ? <><CheckIcon size={13} /> Balanced mix</> : <><AlertTriangleIcon size={13} /> Concentrated mix</>}
+              </span>
             </div>
           );
         })()}
