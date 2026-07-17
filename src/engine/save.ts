@@ -5,6 +5,10 @@ import { products as PRODUCTS } from "./balance/products";
 import { contracts as CONTRACTS } from "./balance/contracts";
 import { legacyTree as LEGACY } from "./balance/legacyTree";
 import { reputation as REPUTATION } from "./balance/reputation";
+import { trials as TRIALS } from "./balance/trials";
+import { paradigms as PARADIGMS } from "./balance/paradigms";
+import { doctrine as DOCTRINE } from "./balance/doctrine";
+import { institute as INSTITUTE } from "./balance/institute";
 import { charters as CHARTERS } from "./balance/charters";
 import { balance } from "./balance/config";
 import { components as COMPONENTS, SLOTS_BY_TIER, type SlotClass } from "./balance/components";
@@ -29,6 +33,12 @@ const REP_PERK_COST = new Map(REPUTATION.perks.map((p) => [p.id, p.cost]));
 const CHARTER_IDS = new Set(CHARTERS.list.map((c) => c.id));
 const RIVAL_NAMES = new Set(MARKET.rivals.map((r) => r.name));
 const RESEARCH_IDS = new Set(balance.research.map((r) => r.id));
+const DIRECTIVE_IDS = new Set(REPUTATION.endowment.directives.defs.map((d) => d.id));
+const TRIAL_IDS = new Set(TRIALS.list.map((t) => t.id));
+const PARADIGM_IDS = new Set(PARADIGMS.list.map((p) => p.id));
+const PARADIGM_COST = new Map(PARADIGMS.list.map((p) => [p.id, p.cost]));
+const DOCTRINE_IDS = new Set(DOCTRINE.perks.map((p) => p.id));
+const INSTITUTE_IDS = new Set(INSTITUTE.perks.map((p) => p.id));
 
 /** Keep only known ids, each at most once (order preserved). Closes the duplicate /
  *  unknown-id save-edit class for contracts / legacy investments / reputation perks. */
@@ -38,6 +48,21 @@ function dedupeKnownIds(arr: unknown, known: Set<string>): string[] {
   const out: string[] = [];
   for (const x of arr) {
     if (typeof x === "string" && known.has(x) && !seen.has(x)) { seen.add(x); out.push(x); }
+  }
+  return out;
+}
+
+/** Endowment Directives sanitizer: a MULTISET (duplicates allowed to stack a lane),
+ *  so it keeps known ids in order WITHOUT deduping — but caps the length to the number
+ *  of tiers `repEndowment` has actually earned, so a crafted save can't grant more lane
+ *  biases than levels were bought. */
+function sanitizeDirectives(arr: unknown, repEndowment: number): string[] {
+  if (!Array.isArray(arr)) return [];
+  const maxTiers = Math.floor(Math.max(0, repEndowment) / REPUTATION.endowment.directives.interval);
+  const out: string[] = [];
+  for (const x of arr) {
+    if (out.length >= maxTiers) break;
+    if (typeof x === "string" && DIRECTIVE_IDS.has(x)) out.push(x);
   }
   return out;
 }
@@ -294,6 +319,21 @@ interface SavedShape {
   reputation: { spent: number; perks: string[] };
   /** Endgame Reputation Endowment level. Sanitizer-defaulted (0) + migrated at v20. */
   repEndowment: number;
+  /** Endowment Directives: chosen lane-doctrine ids. Sanitized (known ids, capped to
+   *  the tiers repEndowment has earned) + migrated at v24. */
+  endowmentDirectives: string[];
+  /** Prestige Trials: the active Trial id (or null) + completed ids. Sanitized to
+   *  known ids + migrated at v25. */
+  activeTrial: string | null;
+  trialsDone: string[];
+  /** Paradigm Research — owned node ids (Reputation cost reconciled into spent). v29. */
+  paradigms: string[];
+  /** Doctrine Consequences — claimed stance-perk ids (known-id filtered). v30. */
+  doctrines: string[];
+  /** The Institute — owned wing ids (known-id filtered; Grants derive from ascensions). v31. */
+  institute: string[];
+  /** Flagship: designated product id (or null) + cross-ship tenure. Migrated at v27. */
+  flagship: { productId: string | null; tenure: number };
   contracts: { completed: string[] };
   charter: string | null;
   charterLocked: boolean;
@@ -311,7 +351,11 @@ interface SavedShape {
   challenges: {
     funded: Record<string, { compute: string; data: string; money: string }>;
     completed: string[];
+    /** Chosen fork arm per completed forked challenge. Migrated at v26. */
+    forks: Record<string, string>;
   };
+  /** Megaprojects II — cycles completed + current-cycle funding (Big → strings). v28. */
+  megaprojects: { level: number; funded: { compute: string; data: string; money: string } };
   /** Lab Objectives — claimed objective ids. Migrated at v22. */
   objectives: { completed: string[] };
   /** Automation — which autopilots are switched on. Migrated at v23. */
@@ -361,6 +405,13 @@ export function serialize(state: GameState): string {
     achievements: state.achievements,
     reputation: state.reputation,
     repEndowment: state.repEndowment,
+    endowmentDirectives: state.endowmentDirectives,
+    activeTrial: state.activeTrial,
+    trialsDone: state.trialsDone,
+    paradigms: state.paradigms,
+    doctrines: state.doctrines,
+    institute: state.institute,
+    flagship: state.flagship,
     contracts: state.contracts,
     charter: state.charter,
     charterLocked: state.charterLocked,
@@ -379,6 +430,15 @@ export function serialize(state: GameState): string {
         ]),
       ),
       completed: state.challenges.completed,
+      forks: state.challenges.forks,
+    },
+    megaprojects: {
+      level: state.megaprojects.level,
+      funded: {
+        compute: state.megaprojects.funded.compute.toJSON(),
+        data: state.megaprojects.funded.data.toJSON(),
+        money: state.megaprojects.funded.money.toJSON(),
+      },
     },
     objectives: state.objectives,
     automation: state.automation,
@@ -401,8 +461,8 @@ function sanitizeAutomation(raw: unknown): Record<string, boolean> {
  *  save can't mint a permanent reward for less than its full price (the reputation-perk
  *  anti-cheat policy). Iterating the def list also dedupes and drops unknown ids. */
 function sanitizeChallenges(raw: unknown): ChallengeState {
-  const out: ChallengeState = { funded: {}, completed: [] };
-  const r = (raw ?? {}) as { funded?: Record<string, unknown> };
+  const out: ChallengeState = { funded: {}, completed: [], forks: {} };
+  const r = (raw ?? {}) as { funded?: Record<string, unknown>; forks?: Record<string, unknown> };
   const rawFunded = (r.funded ?? {}) as Record<string, { compute?: unknown; data?: unknown; money?: unknown }>;
   for (const def of CHALLENGES.list) {
     const f = rawFunded[def.id];
@@ -414,7 +474,34 @@ function sanitizeChallenges(raw: unknown): ChallengeState {
     if (compute.gt(0) || data.gt(0) || money.gt(0)) out.funded[def.id] = { compute, data, money };
     if (compute.gte(cost.compute) && data.gte(cost.data) && money.gte(cost.money)) out.completed.push(def.id);
   }
+  // Forks: a chosen arm is legitimate ONLY for a COMPLETED forked challenge and must be
+  // a real arm id of that challenge (else a crafted save could pick a phantom reward).
+  const rawForks = (r.forks ?? {}) as Record<string, unknown>;
+  for (const def of CHALLENGES.list) {
+    if (!def.forks || !out.completed.includes(def.id)) continue;
+    const chosen = rawForks[def.id];
+    if (typeof chosen === "string" && def.forks.some((f) => f.id === chosen)) out.forks[def.id] = chosen;
+  }
   return out;
+}
+
+/** Megaprojects: a non-negative integer level, and current-cycle funding clamped to the
+ *  level's cost (so a crafted save can't pre-bank a completion or over-fund). */
+function sanitizeMegaprojects(raw: unknown): GameState["megaprojects"] {
+  const r = (raw ?? {}) as { level?: unknown; funded?: { compute?: unknown; data?: unknown; money?: unknown } };
+  const level = Math.max(0, Math.floor(Number(r.level) || 0));
+  const M = CHALLENGES.megaproject;
+  const g = Math.pow(M.growth, level);
+  const cost = { compute: Big.of(M.baseCost.compute).mul(g), data: Big.of(M.baseCost.data).mul(g), money: Big.of(M.baseCost.money).mul(g) };
+  const f = r.funded ?? {};
+  return {
+    level,
+    funded: {
+      compute: safeBig(f.compute).min(cost.compute),
+      data: safeBig(f.data).min(cost.data),
+      money: safeBig(f.money).min(cost.money),
+    },
+  };
 }
 
 export function deserialize(json: string): GameState {
@@ -458,6 +545,10 @@ export function deserialize(json: string): GameState {
   // a crafted value can't drive the cost-sum / boost math to Infinity. Its cost is then
   // reconciled into reputation.spent below (same anti-cheat policy as the perk tree).
   const repEndowment = Math.min(REPUTATION.endowment.maxLevel, safeCount(raw.repEndowment));
+  // Paradigm Research: keep only known node ids; their Reputation cost is reconciled into
+  // reputation.spent below (same anti-cheat policy as perks + the endowment).
+  const paradigms = dedupeKnownIds(raw.paradigms, PARADIGM_IDS);
+  const paradigmOwed = paradigms.reduce((sum, id) => sum + (PARADIGM_COST.get(id) ?? 0), 0);
   const loadedProducts = isWellFormedProducts(raw.products) ? raw.products : fresh.products;
   // `sold` was added after v6 shipped, `drafts`/`upgrade` in v7; default them for
   // saves that predate each, and sanitize the untrusted nested shapes.
@@ -534,8 +625,24 @@ export function deserialize(json: string): GameState {
     employees: sanitizeEmployees(raw.employees),
     stats: sanitizeStats(raw.stats),
     achievements,
-    reputation: sanitizeReputation(raw.reputation, repEndowment),
+    reputation: sanitizeReputation(raw.reputation, repEndowment, paradigmOwed),
     repEndowment,
+    paradigms,
+    doctrines: dedupeKnownIds(raw.doctrines, DOCTRINE_IDS),
+    institute: dedupeKnownIds(raw.institute, INSTITUTE_IDS),
+    endowmentDirectives: sanitizeDirectives(raw.endowmentDirectives, repEndowment),
+    // Prestige Trials: the active id must be a known Trial (else no active run), and
+    // completed ids are filtered to known, deduped (the reward folds per unique id).
+    activeTrial: typeof raw.activeTrial === "string" && TRIAL_IDS.has(raw.activeTrial) ? raw.activeTrial : null,
+    trialsDone: dedupeKnownIds(raw.trialsDone, TRIAL_IDS),
+    // Flagship: the id must point at a real (sanitized) active product, else it's
+    // cleared; tenure is clamped to [0, cap] so a crafted save can't over-brand.
+    flagship: (() => {
+      const rf = raw.flagship as { productId?: unknown; tenure?: unknown } | undefined;
+      const id = typeof rf?.productId === "string" && products.active.some((p) => p.id === rf.productId) ? rf.productId : null;
+      const tenure = id ? clampNum(rf?.tenure, 0, PRODUCTS.flagship.capShips, 0) : 0;
+      return { productId: id, tenure: Math.floor(tenure) };
+    })(),
     contracts,
     // Validate against KNOWN charter ids: an unknown/crafted id would still grant the
     // +15% conviction bonus (charter === lastCharter) without a real two-run commitment.
@@ -557,6 +664,7 @@ export function deserialize(json: string): GameState {
     // funding is clamped to each cost, and a challenge is only "completed" if it is
     // actually fully funded (a tampered `completed` without funding grants nothing).
     challenges: sanitizeChallenges(raw.challenges),
+    megaprojects: sanitizeMegaprojects(raw.megaprojects),
     // Lab Objectives: claimed ids only (rewards were applied at claim time, never re-derived
     // from state, so a tampered list just skips objectives — known-id/dedupe is enough).
     objectives: { completed: dedupeKnownIds((raw.objectives as { completed?: unknown } | undefined)?.completed, OBJECTIVE_IDS) },
@@ -701,11 +809,11 @@ function endowmentOwed(level: number): number {
 /** Reputation is untrusted: KNOWN perk ids (deduped), and `spent` reconciled so it's
  *  at least the cost of the perks you own PLUS the Endowment levels you claim — a save
  *  can't grant owned perks or endowment levels for free (under-reported spent). */
-function sanitizeReputation(r: unknown, endowmentLevel = 0): { spent: number; perks: string[] } {
+function sanitizeReputation(r: unknown, endowmentLevel = 0, paradigmOwed = 0): { spent: number; perks: string[] } {
   const o = (r ?? {}) as { spent?: unknown; perks?: unknown };
   const perks = dedupeKnownIds(o.perks, new Set(REP_PERK_COST.keys()));
   const owedForOwned =
-    perks.reduce((sum, id) => sum + (REP_PERK_COST.get(id) ?? 0), 0) + endowmentOwed(endowmentLevel);
+    perks.reduce((sum, id) => sum + (REP_PERK_COST.get(id) ?? 0), 0) + endowmentOwed(endowmentLevel) + paradigmOwed;
   const loadedSpent = typeof o.spent === "number" && Number.isFinite(o.spent) && o.spent >= 0 ? o.spent : 0;
   return { spent: Math.max(loadedSpent, owedForOwned), perks };
 }
@@ -829,6 +937,41 @@ export function migrate(raw: any): SavedShape {
   if (s.version === 22) {
     // v22 → v23: Automation toggles. Existing runs start with every autopilot off.
     s = { ...s, version: 23, automation: s.automation ?? {} };
+  }
+  if (s.version === 23) {
+    // v23 → v24: Endowment Directives. Existing runs have chosen none (sanitizer also
+    // defaults + caps this to the tiers repEndowment has earned).
+    s = { ...s, version: 24, endowmentDirectives: s.endowmentDirectives ?? [] };
+  }
+  if (s.version === 24) {
+    // v24 → v25: Prestige Trials. Existing runs have none active and none completed.
+    s = { ...s, version: 25, activeTrial: s.activeTrial ?? null, trialsDone: s.trialsDone ?? [] };
+  }
+  if (s.version === 25) {
+    // v25 → v26: Grand Challenge forks. Existing completed challenges have no chosen
+    // arm yet (the sanitizer defaults the map; the UI prompts for any pending choice).
+    s = { ...s, version: 26, challenges: { ...(s.challenges ?? { funded: {}, completed: [] }), forks: s.challenges?.forks ?? {} } };
+  }
+  if (s.version === 26) {
+    // v26 → v27: Flagship. Existing runs have none designated (sanitizer-defaulted).
+    s = { ...s, version: 27, flagship: s.flagship ?? { productId: null, tenure: 0 } };
+  }
+  if (s.version === 27) {
+    // v27 → v28: Megaprojects II. Existing runs are at level 0 with nothing funded
+    // (the sanitizer defaults + clamps this anyway; this just stamps the version).
+    s = { ...s, version: 28, megaprojects: s.megaprojects ?? { level: 0, funded: { compute: "0", data: "0", money: "0" } } };
+  }
+  if (s.version === 28) {
+    // v28 → v29: Paradigm Research. Existing runs own none (sanitizer-defaulted).
+    s = { ...s, version: 29, paradigms: s.paradigms ?? [] };
+  }
+  if (s.version === 29) {
+    // v29 → v30: Doctrine Consequences. Existing runs have claimed none.
+    s = { ...s, version: 30, doctrines: s.doctrines ?? [] };
+  }
+  if (s.version === 30) {
+    // v30 → v31: The Institute. Existing runs have founded no wings.
+    s = { ...s, version: 31, institute: s.institute ?? [] };
   }
   return s as SavedShape;
 }

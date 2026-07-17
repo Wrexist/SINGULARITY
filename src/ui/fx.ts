@@ -80,6 +80,23 @@ export function punch(el: Element | null) {
   );
 }
 
+/**
+ * Buy-streak crescendo: rapid consecutive buys build a streak (0..MAX) that callers fold
+ * into their burst count/power so the 8th quick tap feels like a run, not the 1st repeated.
+ * Decays to 0 after a short pause. UI-only timing (performance.now is fine here — this is
+ * not the engine). Returns the current streak level AFTER registering this buy.
+ */
+let lastBuyAt = -1e9;
+let streak = 0;
+const STREAK_MAX = 5;
+const STREAK_WINDOW_MS = 700;
+export function registerBuyStreak(): number {
+  const now = typeof performance !== "undefined" ? performance.now() : 0;
+  streak = now - lastBuyAt < STREAK_WINDOW_MS ? Math.min(STREAK_MAX, streak + 1) : 0;
+  lastBuyAt = now;
+  return streak;
+}
+
 /** Internal: live arrays for the renderer. */
 export function _fxState() { return { particles, floaters }; }
 /** Internal: register a wake callback so the renderer can restart its idle rAF. */

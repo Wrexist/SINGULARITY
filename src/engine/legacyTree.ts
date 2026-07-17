@@ -41,16 +41,29 @@ export function buyLegacyPerk(state: GameState, id: string): GameState {
   return { ...state, legacyInvestments: [...state.legacyInvestments, id] };
 }
 
-/** Owned lane biases as multipliers (all 1.0 with nothing invested). */
+/** Owned lane biases as multipliers (all 1.0 with nothing invested). Non-lane
+ *  effects (unlock nodes) are skipped here — they're read by their own helpers. */
 export function legacyTreeMods(state: GameState): { computeMult: number; dataMult: number; moneyMult: number } {
   let computeMult = 1, dataMult = 1, moneyMult = 1;
   if (!L.enabled) return { computeMult, dataMult, moneyMult };
   for (const id of state.legacyInvestments) {
     const perk = BY_ID.get(id);
-    if (!perk) continue;
+    if (!perk || !("lane" in perk.effect)) continue;
     if (perk.effect.lane === "compute") computeMult += perk.effect.value;
     else if (perk.effect.lane === "data") dataMult += perk.effect.value;
     else moneyMult += perk.effect.value;
   }
   return { computeMult, dataMult, moneyMult };
+}
+
+/** Extra concurrent product slots from owned Legacy unlock nodes (0 with none).
+ *  Stacks with the Reputation `rep_slot` perk in maxActiveProducts. */
+export function legacyBonusProductSlots(state: GameState): number {
+  if (!L.enabled) return 0;
+  let n = 0;
+  for (const id of state.legacyInvestments) {
+    const perk = BY_ID.get(id);
+    if (perk && "unlock" in perk.effect && perk.effect.unlock === "productSlot") n += perk.effect.value;
+  }
+  return n;
 }

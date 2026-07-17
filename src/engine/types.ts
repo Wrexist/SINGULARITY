@@ -94,6 +94,31 @@ export interface GameState {
    *  this is just the level count. Survives prestige AND ascension. Top-level (not
    *  nested in `reputation`) so no rebuild path can silently drop it. */
   repEndowment: number;
+  /** Endowment Directives (2026-07): the lane doctrine chosen at each Directive tier
+   *  (one earned per `endowment.directives.interval` levels). A multiset of directive
+   *  ids — the same doctrine may repeat to stack a lane. Empty until the deep endgame,
+   *  so identity through the whole tuned curve. Survives prestige AND ascension. */
+  endowmentDirectives: string[];
+  /** Prestige Trials (2026-07): the id of the Trial constraining the CURRENT run
+   *  (null = unconstrained), and the ids of COMPLETED Trials (permanent rewards).
+   *  Both empty through the whole tuned game, so identity for the sim. `trialsDone`
+   *  survives prestige; `activeTrial` completes on ship. */
+  activeTrial: string | null;
+  trialsDone: string[];
+  /** Paradigm Research (2026-07): owned deep-endgame capability node ids, bought with
+   *  Reputation (charged to reputation.spent). Empty until the deep endgame → identity
+   *  for the sim. Permanent meta-progression (survives prestige + ascension). */
+  paradigms: string[];
+  /** Doctrine Consequences (2026-07): claimed stance-exclusive perk ids. Claim-gated +
+   *  alignment-gated, so empty for the sim → identity. Permanent (survives prestige). */
+  doctrines: string[];
+  /** The Institute (2026-07): owned wing ids (third meta-layer, funded by ascension
+   *  Grants). Empty for the sim → identity. Permanent (survives prestige + ascension). */
+  institute: string[];
+  /** Flagship (2026-07): the designated flagship product id (or null) and its cross-ship
+   *  `tenure` (ships survived as flagship). Grants a bounded permanent revenue bonus.
+   *  Curve-safe: the sim never launches products, so productId stays null / tenure 0. */
+  flagship: { productId: string | null; tenure: number };
   /** Phase 4 — Contracts: completed objective ids (the board is derived from this).
    *  Persists across prestige; completed contracts feed earned Reputation. */
   contracts: { completed: string[] };
@@ -150,6 +175,10 @@ export interface GameState {
    *  `funded` accumulates per-resource contributions; `completed` ids grant permanent
    *  rewards. Persists across prestige (a career-spanning grind). */
   challenges: ChallengeState;
+  /** Megaprojects II — the repeatable post-challenge loop. `level` = cycles completed
+   *  (drives the bounded all-lane bonus); `funded` = progress toward the current cycle.
+   *  Empty/0 until the deep endgame, so identity for the sim. Persists across prestige. */
+  megaprojects: { level: number; funded: { compute: Big; data: Big; money: Big } };
   /** Lab Objectives (IDEAS #B) — early/mid rotating tasks. Claimed ids (the board is the
    *  first few uncompleted). Persists across prestige (an onboarding-grind ladder). */
   objectives: { completed: string[] };
@@ -162,6 +191,9 @@ export interface GameState {
 export interface ChallengeState {
   funded: Record<string, { compute: Big; data: Big; money: Big }>;
   completed: string[];
+  /** Chosen fork arm per completed forked challenge (challengeId → forkId). A forked
+   *  challenge grants no reward until its fork is picked. Empty until the deep endgame. */
+  forks: Record<string, string>;
 }
 
 /** A rolled daily sponsor objective (IDEAS #9). */

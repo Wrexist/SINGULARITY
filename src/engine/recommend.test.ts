@@ -73,7 +73,10 @@ describe("bulk upgrade buying (×10 / Max)", () => {
 
   it("caps the batch at what you can actually afford", () => {
     const s = createInitialState();
-    s.resources.money = sumCost(0, 3); // exactly three racks' worth
+    // Just over three racks' worth — but far below the (much larger) 4th rack's cost.
+    // A hair of headroom keeps this off the exact-equality float knife-edge (the running
+    // total's accumulation order differs from sumCost's by an epsilon).
+    s.resources.money = sumCost(0, 3).mul(1.001);
     const plan = planBulkUpgrade(s, "rack_basic", 10);
     expect(plan.count).toBe(3); // not 10 — can't afford the 4th
   });

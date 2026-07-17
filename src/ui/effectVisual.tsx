@@ -95,9 +95,20 @@ export function ResearchRingIcon({ kind, pct, showPct = false }: { kind: string;
  * Hardware/upgrade chip in the same progress ring as research — the Build tab reads as
  * alive and consistent with the Research tab. Racks keep their "server" glyph.
  */
+/** The three rack tiers finally read as distinct hardware: basic=green, server=blue,
+ *  TPU=violet (the same ramp the hall rack swatch uses). Any other rack falls back to
+ *  compute-blue. Static tint only — identical with/without reduced motion. */
+const RACK_TIER_TINT: Record<string, string> = { rack_basic: "rgb(52,210,126)", rack_server: "rgb(63,134,240)", rack_tpu: "rgb(155,81,224)" };
 export function UpgradeRingIcon({ id, kind, pct, showPct = false }: { id: string; kind: string; pct: number; showPct?: boolean }) {
-  const meta = id.startsWith("rack") ? { tint: C.compute, icon: <ServerIcon size={19} /> } : metaForKind(kind);
+  const meta = id.startsWith("rack")
+    ? { tint: RACK_TIER_TINT[id] ?? C.compute, icon: <ServerIcon size={19} /> }
+    : metaForKind(kind);
   return <RingIcon meta={meta} icClass="card-ic" pct={pct} showPct={showPct} />;
+}
+
+/** Monochrome tier mark for a rack (★ / ★★ / ★★★), or "" for non-racks. */
+export function rackTierMark(id: string): string {
+  return id === "rack_basic" ? "★" : id === "rack_server" ? "★★" : id === "rack_tpu" ? "★★★" : "";
 }
 
 /** Shared ring wrapper: a conic --pct dial around a tinted icon chip, with an optional

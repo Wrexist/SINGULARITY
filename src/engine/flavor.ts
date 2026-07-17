@@ -94,3 +94,18 @@ export function upgradeFlavor(id: string, owned: number, fallback: string): stri
   }
   return line;
 }
+
+/**
+ * If buying from `before` to `after` owned crossed one or more flavor breakpoints, the
+ * highest newly-unlocked flavor line (else null) — for the UI's ambient "milestone beat".
+ * Pure. A batch buy that leaps several tiers returns the top one it reached.
+ */
+export function crossedFlavorTier(id: string, before: number, after: number): string | null {
+  const tiers = UPGRADE_FLAVOR[id];
+  if (!tiers) return null;
+  let crossed: string | null = null;
+  for (const tier of tiers) {
+    if (tier.at > before && tier.at <= after) crossed = tier.text;
+  }
+  return crossed;
+}

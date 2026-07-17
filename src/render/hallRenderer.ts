@@ -453,7 +453,8 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
   // "Lively" = a manual run OR a live product business. Keeps the hall breathing
   // between runs once you've shipped something, instead of going dead.
   const lively = model.active || model.busy;
-  drawMotes(ctx, W, H, originY, o.timeMs, lively, model.total, o.reducedMotion, 0.6);
+  // The data pipeline thickens the motes — a cleaner pipeline is visibly busier air.
+  drawMotes(ctx, W, H, originY, o.timeMs, lively, model.total, o.reducedMotion, 0.6 + model.dataFlow * 0.7);
 
   // Fan blades spin over the cached housings (the walls sit behind the racks).
   drawCoolingFans(ctx, L, H, model.coolingUnits, o.timeMs, o.reducedMotion);

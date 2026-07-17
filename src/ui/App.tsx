@@ -92,6 +92,15 @@ import { canBuyOfficePerk } from "../engine/actions";
 import { modelReadyNote, researchStartNote, soldNote, hireWelcome, fireSendoff } from "../engine/notices";
 import { challengesUnlocked, challengeById } from "../engine/challenges";
 import { GrandChallengesPanel } from "./GrandChallengesPanel";
+import { TrialsPanel, trialsDoneCount, trialsTotal } from "./TrialsPanel";
+import { trialsUnlocked } from "../engine/trials";
+import { ParadigmPanel } from "./ParadigmPanel";
+import { paradigmsUnlocked } from "../engine/paradigms";
+import { DoctrinePanel, doctrineDoneCount, doctrineTotal } from "./DoctrinePanel";
+import { doctrineUnlocked } from "../engine/doctrine";
+import { InstitutePanel } from "./InstitutePanel";
+import { instituteUnlocked, grantsAvailable } from "../engine/institute";
+import { Collapsible } from "./Collapsible";
 import { ChallengeComplete } from "./ChallengeComplete";
 import { objectivesUnlocked } from "../engine/objectives";
 import { ObjectivesPanel } from "./ObjectivesPanel";
@@ -109,11 +118,11 @@ export function App() {
   const notice = useGame((s) => s.notice);
   const worldEvent = useGame((s) => s.worldEvent);
   const candidates = useGame((s) => s.candidates);
-  const { doStartRun, doClaim, doBuyUpgrade, doBuyUpgradeBulk, doBuyOfficePerk, doBuyReputationPerk, doBuyEndowment, doBuyLegacyPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
+  const { doStartRun, doClaim, doBuyUpgrade, doBuyUpgradeBulk, doBuyOfficePerk, doBuyReputationPerk, doBuyEndowment, doPickDirective, doBuyLegacyPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
     doClaimContract, doClaimSponsor, doBuyPreprint, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
-    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival, doFundChallenge, doClaimObjective, doToggleAutomation } =
+    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival, doFundChallenge, doChooseFork, doFundMegaproject, doClaimObjective, doToggleAutomation, doStartTrial, doAbandonTrial, doSetFlagship, doBuyParadigm, doClaimDoctrine, doBuyInstitute } =
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
@@ -292,6 +301,16 @@ export function App() {
     setToasts((ts) => [...ts, { id, text, tone }].slice(-MAX_TOASTS));
     setLog((l) => [{ id, text, tone }, ...l].slice(0, MAX_LOG));
   }, []);
+  // Log-only sibling of pushToast: records an event to the "Recent activity" log
+  // WITHOUT a transient popup. Routine confirmations of the player's own tap (a
+  // hire appearing in the roster, a research node completing in-panel, a sold
+  // product leaving the list) are already confirmed by the UI they act on — a
+  // toast on top is noise. The event still lands in EventLog, so no information is
+  // lost; the player can review it there. (De-noising audit, 2026-07.)
+  const logEvent = useCallback((text: string, tone: ToastData["tone"] = "neutral") => {
+    toastId.current += 1;
+    setLog((l) => [{ id: toastId.current, text, tone }, ...l].slice(0, MAX_LOG));
+  }, []);
   const dropToast = useCallback((id: number) => setToasts((ts) => ts.filter((t) => t.id !== id)), []);
 
   // Transition toasts, data-driven: each row is a keyed fact of the state; when a
@@ -441,7 +460,16 @@ export function App() {
   // regulatory warn) keeps them feeling like ambient color, not an alarm.
   useEffect(() => {
     if (!notice) return;
-    pushToast(notice.message, notice.tone);
+    // Notice triage (de-noising audit, 2026-07): achievements, level-ups, and the
+    // neutral churn quips already have their own confirmation — the Awards modal +
+    // "new" badge, the Team star-pop, and low-stakes ambient flavor respectively —
+    // so a transient toast on top just trains players to ignore toasts. Route those
+    // to the log-only channel (their fx/haptics below are UNCHANGED); keep toasts
+    // for the beats that genuinely want the screen: milestones, shipped versions,
+    // discoveries, and bad ops events.
+    const logOnly = notice.kind === "achievement" || notice.kind === "levelup" || notice.tone === "neutral";
+    if (logOnly) logEvent(notice.message, notice.tone);
+    else pushToast(notice.message, notice.tone);
     // A "good" notice is a win (version shipped, milestone, viral) — full beat. A
     // "bad" ops event (outage/breach) feels bad. Neutral churn quips stay a light tap.
     // Achievement unlocks get their own bright chime so they feel distinct.
@@ -546,14 +574,17 @@ export function App() {
     const pct = Math.round((balance.daily.factor - 1) * 100);
     const min = Math.round(balance.daily.durationSec / 60);
     const quip = DAILY_QUIPS[Math.floor(Date.now() / 86_400_000) % DAILY_QUIPS.length]!;
-    pushToast(`${quip} · +${pct}% output for ${min} min`, "good");
+    logEvent(`${quip} · +${pct}% output for ${min} min`, "good");
     if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.32, { count: 30, power: 1.5, colors: ["#7c5cff", "#ffd60a", "#16b364", "#2f7bf6"] });
   };
   // Hardware buys float the rate you actually gained ("+120/s") at the tap point —
   // seeing the number go up IS the reward. Derived before/after the synchronous
   // action; only rate-moving buys float (power/floor purchases stay quiet).
   const onBuy = (id: string, count = 1, at?: { x: number; y: number }) => {
-    haptics.tap(); sound.purchase();
+    // Bigger batches get the heavier success haptic — a Max buy should feel weightier
+    // than a single tap. (Haptics no-op when the setting is off, like the rest of fx.)
+    if (count >= 10) haptics.success(); else haptics.tap();
+    sound.purchase();
     // `d` (this render's derive) is the pre-buy baseline — rates only move on
     // purchases/modifier changes, so re-deriving "before" would duplicate it.
     const before = at ? d : null;
@@ -576,7 +607,7 @@ export function App() {
     // candidate must not buzz + play the purchase chime for a phantom signing.
     if (!doHireCandidate(i)) { haptics.warn(); return; }
     haptics.celebrate(); sound.purchase();
-    if (c) pushToast(hireWelcome(c.name, c.roleId), "good");
+    if (c) logEvent(hireWelcome(c.name, c.roleId), "good");
   };
   const onTrain = (id: string) => { haptics.tap(); sound.tap(); doTrainEmployee(id); };
   const onAssignEmp = (id: string, productId: string | null) => { haptics.tap(); doAssignEmployeeToProduct(id, productId); };
@@ -584,13 +615,13 @@ export function App() {
     // Look up the person before they're gone, then give them a send-off (was silent).
     const e = game.employees.find((x) => x.id === id);
     haptics.tap(); doFireEmployee(id);
-    if (e) pushToast(fireSendoff(e.name, e.roleId), "neutral");
+    if (e) logEvent(fireSendoff(e.name, e.roleId), "neutral");
   };
   const onBuyPerk = (id: string) => {
     // Surface WHAT you bought — office perks have satirical copy that was never shown.
     const perk = canBuyOfficePerk(game, id) ? balance.office.perks.find((p) => p.id === id) : null;
     haptics.tap(); sound.purchase(); doBuyOfficePerk(id);
-    if (perk) pushToast(`${perk.name} — ${perk.desc}`, "good");
+    if (perk) logEvent(`${perk.name} — ${perk.desc}`, "good");
   };
   const onLaunchDraft = (draftId: string, type: ProductTypeId, name: string) => {
     // Only fire the tentpole moment if the launch actually happened (a stale tap
@@ -605,7 +636,7 @@ export function App() {
     // Kicking off research is a small commit beat; the big payoff lands when it
     // COMPLETES (the store fires a "good" notice → celebration in the notice effect).
     haptics.tap(); sound.tap();
-    if (p && !p.upgrade) pushToast(researchStartNote(p.name, p.version + 1), "neutral");
+    if (p && !p.upgrade) logEvent(researchStartNote(p.name, p.version + 1), "neutral");
   };
   // Selling a product asks first via the in-app ConfirmSheet (never window.confirm
   // — native panel, and it froze the game loop while open). Cancelling leaves the
@@ -621,7 +652,7 @@ export function App() {
     const payout = retirePayout(game, id);
     doRetireProduct(id);
     haptics.success(); sound.purchase();
-    pushToast(soldNote(p.name, fmtMoney(Big.of(Math.round(payout)))), "neutral");
+    logEvent(soldNote(p.name, fmtMoney(Big.of(Math.round(payout)))), "neutral");
   };
   const onClaimContract = (id: string, rep: number, title: string) => {
     doClaimContract(id);
@@ -629,7 +660,7 @@ export function App() {
     // Name the deliverable and vary the framing so a claim reads like closing a
     // real contract, not a generic "+Rep" ping. Stable per contract (hash the id).
     const quip = CONTRACT_DONE_QUIPS[[...id].reduce((a, c) => a + c.charCodeAt(0), 0) % CONTRACT_DONE_QUIPS.length]!;
-    pushToast(`${quip}: "${title}" · +${rep} Lab Reputation`, "good");
+    logEvent(`${quip}: "${title}" · +${rep} Lab Reputation`, "good");
     if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.4, { count: 24, power: 1.3, colors: ["#ff9f0a", "#ffd60a", "#16b364"] });
   };
   const onFundChallenge = (id: string, at?: { x: number; y: number }) => {
@@ -667,7 +698,7 @@ export function App() {
       // "Data Market / path to shipping unlocked" transition toasts, and a third on top
       // read as a burst for a brand-new player. Later breakthroughs keep their flavor.
       const def = balance.research.find((r) => r.id === id);
-      if (def && useGame.getState().game.research.length > 1) pushToast(`Breakthrough: ${def.name} — ${def.desc}`, "good");
+      if (def && useGame.getState().game.research.length > 1) logEvent(`Breakthrough: ${def.name} — ${def.desc}`, "good");
     }
   };
   const onBuyData = (id: string, at?: { x: number; y: number }) => {
@@ -794,10 +825,11 @@ export function App() {
             onBuyFeature={doBuyFeature}
             onRename={doRenameProduct}
             onRetire={onRetireProductFx}
+            onSetFlagship={(id) => { haptics.tap(); sound.tap(); doSetFlagship(id); }}
             onCounterRival={(name) => {
               if (!doCounterRival(name)) return;
               haptics.success(); sound.alert();
-              pushToast(`Press blitz lands on ${name} — their comms team scrambles.`, "good");
+              logEvent(`Press blitz lands on ${name} — their comms team scrambles.`, "good");
             }}
           />
         ) : tab === "employees" && showStaff ? (
@@ -827,7 +859,7 @@ export function App() {
                 </button>
                 <button className={`tab ${section === "hq" ? "on" : ""}`} aria-current={section === "hq" ? "true" : undefined} onClick={() => { haptics.tap(); goSection("hq"); }}>
                   HQ{shipReady && section !== "hq"
-                    ? <span className="tab-dot ship">Ship</span>
+                    ? <span className="tab-dot ship-pulse" role="status" aria-label="Ship ready" />
                     : labAttention.hq > 0 && <span className="tab-dot">{labAttention.hq}</span>}
                 </button>
               </nav>
@@ -867,15 +899,35 @@ export function App() {
             {section === "research" && (
               <>
                 {showResearch && <ResearchPanel game={game} derived={d} onResearch={onResearch} onBuyPreprint={() => { haptics.success(); sound.purchase(); doBuyPreprint(); }} />}
+                {paradigmsUnlocked(game) && <ParadigmPanel game={game} onBuy={(id) => { haptics.celebrate(); sound.purchase(); doBuyParadigm(id); }} />}
                 {showMarket && <DataMarketPanel game={game} onBuyData={onBuyData} onBuyTool={onBuy} onLobby={() => { haptics.tap(); sound.purchase(); doLobby(); }} />}
               </>
             )}
             {section === "hq" && (
               <>
-                {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} onBuyEndowment={() => { haptics.celebrate(); sound.purchase(); doBuyEndowment(); }} onBuyLegacyPerk={(id) => { haptics.success(); sound.purchase(); doBuyLegacyPerk(id); }} />}
+                {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} onBuyEndowment={() => { haptics.celebrate(); sound.purchase(); doBuyEndowment(); }} onPickDirective={(id) => { haptics.celebrate(); sound.purchase(); doPickDirective(id); }} onBuyLegacyPerk={(id) => { haptics.success(); sound.purchase(); doBuyLegacyPerk(id); }} />}
                 {showResearch && <ContractsPanel game={game} onClaim={onClaimContract} onClaimSponsor={() => { haptics.success(); sound.success(); doClaimSponsor(); }} />}
                 {automationUnlockedAny(game) && <AutomationPanel game={game} onToggle={onToggleAutomation} />}
-                {challengesUnlocked(game) && <GrandChallengesPanel game={game} onFund={onFundChallenge} />}
+                {challengesUnlocked(game) && <GrandChallengesPanel game={game} onFund={onFundChallenge} onChooseFork={(id, forkId) => { haptics.celebrate(); sound.purchase(); doChooseFork(id, forkId); }} onFundMegaproject={(at) => { const done = doFundMegaproject(); if (done) { haptics.celebrate(); sound.success(); if (at) fxBurst(at.x, at.y, { count: 26, power: 1.4, colors: ["#a855f7", "#ffd60a", "#16b364"] }); } else { haptics.tap(); sound.tap(); } }} />}
+                {trialsUnlocked(game) && (
+                  <Collapsible title="Trials" defaultOpen={!!game.activeTrial} badge={game.activeTrial ? "running" : `${trialsDoneCount(game)}/${trialsTotal}`}>
+                    <TrialsPanel
+                      game={game}
+                      onStart={(id) => { haptics.success(); sound.tap(); doStartTrial(id); }}
+                      onAbandon={() => { haptics.tap(); doAbandonTrial(); }}
+                    />
+                  </Collapsible>
+                )}
+                {doctrineUnlocked(game) && (
+                  <Collapsible title="Doctrine" badge={`${doctrineDoneCount(game)}/${doctrineTotal}`}>
+                    <DoctrinePanel game={game} onClaim={(id) => { haptics.celebrate(); sound.success(); doClaimDoctrine(id); }} />
+                  </Collapsible>
+                )}
+                {instituteUnlocked(game) && (
+                  <Collapsible title="The Institute" defaultOpen={grantsAvailable(game) > 0} badge={grantsAvailable(game) > 0 ? `${grantsAvailable(game)} grants` : "founded"}>
+                    <InstitutePanel game={game} onBuy={(id) => { haptics.celebrate(); sound.purchase(); doBuyInstitute(id); }} />
+                  </Collapsible>
+                )}
                 <StatsPanel game={game} derived={d} />
                 {game.prestige.ships > 0 && <CodexPanel game={game} />}
                 <EventLog log={log} />
@@ -903,11 +955,15 @@ export function App() {
       <nav className="botnav" aria-label="Primary">
         {/* Destinations use aria-current; Awards/More are actions (open modals),
             so this is a nav bar, not a tablist (the panes aren't tab panels). */}
-        <button className={`botnav-item ${tab === "lab" ? "on" : ""} ${shipReady && tab !== "lab" ? "ship-ready" : ""}`} aria-current={tab === "lab" ? "page" : undefined} onClick={() => { haptics.tap(); if (shipReady && tab !== "lab") goSection("hq"); goTab("lab"); }}>
+        <button className={`botnav-item ${tab === "lab" ? "on" : ""} ${shipReady && tab !== "lab" ? "ship-ready" : ""}`} aria-current={tab === "lab" ? "page" : undefined} aria-label={shipReady && tab !== "lab" ? "Lab — ready to ship" : undefined} onClick={() => { haptics.tap(); if (shipReady && tab !== "lab") goSection("hq"); goTab("lab"); }}>
           <span className="botnav-ic"><FlaskIcon size={23} /></span><span className="botnav-lbl">Lab</span>
-          {shipReady && tab !== "lab"
-            ? <span className="botnav-badge ship" aria-label="Ready to ship">Ship</span>
-            : attention.lab > 0 && <span className="botnav-badge">{attention.lab}</span>}
+          {/* Ship-ready is signalled AMBIENTLY here by the pulsing icon (the
+              `ship-ready` class) — the word "Ship" was a redundant text badge on
+              the SAME button (de-noising audit 2026-07: ambient over text, per
+              CLAUDE.md). The value framing + wayfinding still live in the advisor
+              chip and the HQ "Ship" pill; screen readers get the aria-label above.
+              The numeric attention badge still surfaces other pulls in the Lab. */}
+          {attention.lab > 0 && <span className="botnav-badge">{attention.lab}</span>}
         </button>
         {showProducts && (
           <button className={`botnav-item ${tab === "products" ? "on" : ""}`} aria-current={tab === "products" ? "page" : undefined} onClick={() => { haptics.tap(); goTab("products"); }}>

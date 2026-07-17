@@ -27,12 +27,13 @@ interface Props {
   onPrestige: (mode: ShipMode) => void;
   onBuyReputationPerk: (id: string) => void;
   onBuyEndowment: () => void;
+  onPickDirective: (id: string) => void;
   onBuyLegacyPerk: (id: string) => void;
 }
 
 const legacyPerkName = (id?: string) => legacyTreeBalance.perks.find((p) => p.id === id)?.name ?? "a prerequisite";
 
-export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndowment, onBuyLegacyPerk }: Props) {
+export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndowment, onPickDirective, onBuyLegacyPerk }: Props) {
   const [confirming, setConfirming] = useState(false);
   // A ship mode that discards the post-ship product draft gets an explicit
   // confirm (QW3) — the 4-word tag alone let players give the model away
@@ -60,10 +61,15 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
   return (
     <section className="panel prestige">
       <h2 className="panel-title">Ship the Model</h2>
-      <p className="prestige-blurb">
-        Ship your flagship model to reset the lab and bank <b>Legacy Weights</b> —
-        a permanent +{(balance.prestige.multiplierPerPoint * 100).toFixed(0)}% global boost each.
-      </p>
+      {/* The explainer is first-run scaffolding — hide it once the player has shipped
+          at least once (a veteran knows; the stats + mode buttons carry the numbers).
+          2026-07 noise sweep. */}
+      {game.prestige.ships === 0 && (
+        <p className="prestige-blurb">
+          Ship your flagship model to reset the lab and bank <b>Legacy Weights</b> —
+          a permanent +{(balance.prestige.multiplierPerPoint * 100).toFixed(0)}% global boost each.
+        </p>
+      )}
 
       <div className="prestige-stats">
         <span>Held weights: <b>{fmt(have)}</b> (×{fmt(Big.ONE.add(have.mul(balance.prestige.multiplierPerPoint)))})</span>
@@ -135,9 +141,12 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
         const pct = span.gt(0) ? Math.max(0, Math.min(1, game.lifetimeMoney.sub(lAt).div(span).toNumber())) : 1;
         return (
           <div className="prestige-timing">
+            {/* Owns only the hold-vs-ship timing; the actual weight count is quoted
+                authoritatively by the mode buttons below, so it's not restated here
+                (2026-07 noise sweep). */}
             <div className="prestige-timing-row">
-              <span>Ship now → <b>+{fmt(legacyWeightsForMode(game, "deploy"))}</b> weights</span>
-              <span className="prestige-timing-next">next weight {Math.floor(pct * 100)}%</span>
+              <span>Progress to next Legacy Weight</span>
+              <span className="prestige-timing-next">{Math.floor(pct * 100)}%</span>
             </div>
             <div className="prestige-timing-bar"><div className="prestige-timing-fill" style={{ width: `${pct * 100}%` }} /></div>
             <p className="prestige-timing-note">
@@ -220,7 +229,7 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
           />
         );
       })()}
-      {repOpen && <ReputationModal game={game} onBuy={onBuyReputationPerk} onBuyEndowment={onBuyEndowment} onClose={() => setRepOpen(false)} />}
+      {repOpen && <ReputationModal game={game} onBuy={onBuyReputationPerk} onBuyEndowment={onBuyEndowment} onPickDirective={onPickDirective} onClose={() => setRepOpen(false)} />}
     </section>
   );
 }

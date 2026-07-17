@@ -25,6 +25,32 @@ describe("save/load", () => {
     expect(restored.version).toBe(SAVE_VERSION);
   });
 
+  // Ladder-completeness guard (CLAUDE.md: "bump SAVE_VERSION and add a migration
+  // for every new persisted field"). If a future field lands without a migrate
+  // step for its version, a save stamped at the prior version would stop short of
+  // SAVE_VERSION — this catches that regression for EVERY historical version.
+  it("migrate() always reaches SAVE_VERSION from any prior version", () => {
+    for (let v = 0; v < SAVE_VERSION; v++) {
+      const stub: any = {
+        version: v,
+        resources: { compute: "0", data: "0", money: "0" },
+        upgrades: {},
+        research: [],
+        run: { active: false, progress: 0, readyToClaim: false },
+        prestige: { legacyWeights: "0", ships: 0 },
+      };
+      expect(migrate(stub).version, `migrate from v${v}`).toBe(SAVE_VERSION);
+    }
+  });
+
+  it("migrate() is idempotent at the current version (no-op on a fresh save)", () => {
+    const current = serialize(createInitialState());
+    const once = migrate(JSON.parse(current));
+    const twice = migrate(once);
+    expect(once.version).toBe(SAVE_VERSION);
+    expect(twice).toEqual(once);
+  });
+
   it("migrates a pre-versioning (v0) save up to the current version", () => {
     const v0 = {
       resources: { compute: "100", data: "5", money: "50" },

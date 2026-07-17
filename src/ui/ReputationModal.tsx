@@ -5,6 +5,7 @@ import type { GameState } from "../engine/types";
 import {
   reputationBalance, reputationAvailable, earnedReputation, canBuyReputationPerk,
   endowmentUnlocked, endowmentCost, canBuyEndowment, endowmentMult,
+  directivePicksAvailable, endowmentDirectiveMods,
 } from "../engine/reputation";
 import { LandmarkIcon } from "./Icons";
 
@@ -12,10 +13,11 @@ import { LandmarkIcon } from "./Icons";
  *  achievements + ascensions on permanent, run-spanning boosts. Honest goals,
  *  legible effects; survives every reset. Once the whole tree is owned, the
  *  endgame Endowment (below) is the infinite home for surplus Reputation. */
-export function ReputationModal({ game, onBuy, onBuyEndowment, onClose }: {
+export function ReputationModal({ game, onBuy, onBuyEndowment, onPickDirective, onClose }: {
   game: GameState;
   onBuy: (id: string) => void;
   onBuyEndowment: () => void;
+  onPickDirective: (id: string) => void;
   onClose: () => void;
 }) {
   const available = reputationAvailable(game);
@@ -97,6 +99,51 @@ export function ReputationModal({ game, onBuy, onBuyEndowment, onClose }: {
               </div>
               <div className="card-cost"><span className="rep-cost">{endowmentCost(game).toLocaleString()} pts</span></div>
             </button>
+            {/* Endowment Directives — a build decision earned every few levels, so the
+                infinite sink is a choice (lean a lane) and not just a rising number.
+                Owned doctrines fold into the lane summary; an unclaimed pick shows the
+                three options. Only ever visible in the deep endgame. */}
+            {(() => {
+              const dir = endowmentDirectiveMods(game);
+              const owned: string[] = [];
+              if (dir.computeMult > 1) owned.push(`Compute +${Math.round((dir.computeMult - 1) * 100)}%`);
+              if (dir.dataMult > 1) owned.push(`Data +${Math.round((dir.dataMult - 1) * 100)}%`);
+              if (dir.moneyMult > 1) owned.push(`Revenue +${Math.round((dir.moneyMult - 1) * 100)}%`);
+              const picks = directivePicksAvailable(game);
+              return (
+                <div className="rep-directives">
+                  {owned.length > 0 && (
+                    <div className="rep-directive-summary">Directives — {owned.join(" · ")}</div>
+                  )}
+                  {picks > 0 && (
+                    <>
+                      <div className="rep-directive-prompt">
+                        Choose a Directive{picks > 1 ? ` (${picks} to assign)` : ""} — a permanent doctrine:
+                      </div>
+                      <div className="rep-directive-choices">
+                        {reputationBalance.endowment.directives.defs.map((d) => (
+                          <button
+                            key={d.id}
+                            className="card rep-card affordable rep-directive-choice"
+                            onClick={(e) => {
+                              const r = e.currentTarget.getBoundingClientRect();
+                              burst(r.right - 24, r.top + r.height / 2, { count: 18, power: 1.2, colors: ["#a855f7", "#ffd60a", "#16b364"] });
+                              punch(e.currentTarget);
+                              onPickDirective(d.id);
+                            }}
+                          >
+                            <div className="card-main">
+                              <span className="card-name">{d.name}</span>
+                              <span className="card-desc">{d.desc}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>

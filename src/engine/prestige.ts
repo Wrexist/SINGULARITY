@@ -6,6 +6,8 @@ import { carryEarnedComponents } from "./components";
 import { startingRacks } from "./reputation";
 import { hallCapacity } from "./hall";
 import { currentEra } from "./eras";
+import { trials as TRIALS_DATA } from "./balance/trials";
+import { advanceFlagship } from "./flagship";
 import type { DraftModel, GameState } from "./types";
 
 /**
@@ -138,6 +140,9 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     // reset and keep earning Money into the next run (the meta-reward for shipping).
     // A "hard" ship leaps the competitive frontier so carried products start behind.
     products: { ...state.products, drafts, frontier: state.products.frontier + modeDef.frontierPenalty },
+    // Flagship brand: if the designated product survived to this ship, its tenure grows
+    // (capped); if it was retired, the brand is lost. The sim never has a flagship.
+    flagship: advanceFlagship(state),
     // Your team stays with you across a ship (they're employed by the company,
     // not the run) — but their product assignments reset since the lab is fresh.
     employees: state.employees.map((e) => ({ ...e, assignedProductId: null })),
@@ -162,8 +167,30 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     reputation: state.reputation,
     // The Reputation Endowment is permanent too (survives prestige AND ascension).
     repEndowment: state.repEndowment,
+    // The lane Directives chosen while levelling the Endowment are permanent as well.
+    endowmentDirectives: state.endowmentDirectives,
+    // Paradigm Research nodes are permanent capability unlocks — they persist too.
+    paradigms: state.paradigms,
+    // Doctrine perks claimed by committing to a stance are permanent progression.
+    doctrines: state.doctrines,
+    // The Institute's founded wings are the deepest permanent meta-progression.
+    institute: state.institute,
+    // Prestige Trials: shipping ends the active constrained run. Bank its reward IF
+    // its run condition (if any) held — a "solo" Trial needs an empty staff roster at
+    // ship. Cleared either way (a failed condition just gives no reward, retry next
+    // run). Inlined (data-only import) to keep prestige cycle-free.
+    activeTrial: null,
+    trialsDone: (() => {
+      const id = state.activeTrial;
+      if (!id || state.trialsDone.includes(id)) return state.trialsDone;
+      const def = TRIALS_DATA.list.find((t) => t.id === id);
+      const conditionOk = !def?.condition || (def.condition === "solo" && state.employees.length === 0);
+      return conditionOk ? [...state.trialsDone, id] : state.trialsDone;
+    })(),
     // Grand Challenges are a career-spanning grind — funding + completions persist.
     challenges: state.challenges,
+    // Megaprojects II (the repeatable post-challenge loop) persist across ships too.
+    megaprojects: state.megaprojects,
     // Lab Objectives persist too (an onboarding-grind ladder consumed once across runs).
     objectives: state.objectives,
     // Automation toggles are a permanent QoL choice — they persist across the reset.

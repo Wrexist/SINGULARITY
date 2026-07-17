@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   earnedReputation, reputationAvailable, canBuyReputationPerk, buyReputationPerk, reputationMods, reputationBalance,
   endowmentUnlocked, endowmentCost, canBuyEndowment, buyEndowment,
+  directiveTiersEarned, directivePicksAvailable, canPickDirective, pickEndowmentDirective, endowmentDirectiveMods,
 } from "./reputation";
 import { derive } from "./derive";
 import { prestige } from "./prestige";
@@ -164,5 +165,74 @@ describe("endgame reputation endowment (post-AGI infinite sink)", () => {
     const fixed = deserialize(JSON.stringify(crafted));
     expect(fixed.repEndowment).toBe(5);
     expect(fixed.reputation.spent).toBeGreaterThan(0); // 5 levels can't be free
+  });
+});
+
+describe("endowment directives (endgame lane doctrines)", () => {
+  const INTERVAL = reputationBalance.endowment.directives.interval;
+  const allPerks = () => reputationBalance.perks.map((p) => p.id);
+  /** A deep-endgame lab at `level` endowment levels, every perk owned. */
+  const atLevel = (level: number) => {
+    const s = createInitialState();
+    s.stats.totalShips = 1_000_000;
+    s.reputation = { spent: 0, perks: allPerks() };
+    s.repEndowment = level;
+    return s;
+  };
+
+  it("is fully dormant through the tuned game (curve-safe: nothing until deep endgame)", () => {
+    const fresh = createInitialState();
+    expect(directiveTiersEarned(fresh)).toBe(0);
+    expect(directivePicksAvailable(fresh)).toBe(0);
+    expect(endowmentDirectiveMods(fresh)).toEqual({ computeMult: 1, dataMult: 1, moneyMult: 1 });
+    // A fresh run's economy is identical with the directive fold in place.
+    expect(reputationMods(fresh)).toEqual(reputationMods(createInitialState()));
+  });
+
+  it("earns one pick per interval of endowment levels", () => {
+    expect(directivePicksAvailable(atLevel(INTERVAL - 1))).toBe(0); // not yet
+    expect(directivePicksAvailable(atLevel(INTERVAL))).toBe(1);
+    expect(directivePicksAvailable(atLevel(INTERVAL * 3))).toBe(3);
+  });
+
+  it("claiming a doctrine spends a pick and biases its lane in derive", () => {
+    const s = atLevel(INTERVAL);
+    expect(canPickDirective(s, "dir_compute")).toBe(true);
+    expect(canPickDirective(s, "not_a_directive")).toBe(false);
+    const base = derive({ ...s, upgrades: { rack_basic: 10 } });
+    const after = pickEndowmentDirective(s, "dir_compute");
+    expect(after.endowmentDirectives).toEqual(["dir_compute"]);
+    expect(directivePicksAvailable(after)).toBe(0); // the tier is now spent
+    const boosted = derive({ ...after, upgrades: { rack_basic: 10 } });
+    const ratio = boosted.computePerSec.div(base.computePerSec).toNumber();
+    const def = reputationBalance.endowment.directives.defs.find((d) => d.id === "dir_compute")!;
+    expect(ratio).toBeCloseTo(1 + def.value, 5); // +30% compute, that lane only
+  });
+
+  it("is a multiset — stacking the same doctrine compounds the lane; no free picks", () => {
+    const s = atLevel(INTERVAL * 2); // two picks
+    const one = pickEndowmentDirective(s, "dir_money");
+    const two = pickEndowmentDirective(one, "dir_money");
+    expect(two.endowmentDirectives).toEqual(["dir_money", "dir_money"]);
+    const v = reputationBalance.endowment.directives.defs.find((d) => d.id === "dir_money")!.value;
+    expect(endowmentDirectiveMods(two).moneyMult).toBeCloseTo((1 + v) * (1 + v), 6);
+    // Out of picks → a third claim is a no-op.
+    expect(pickEndowmentDirective(two, "dir_money")).toBe(two);
+  });
+
+  it("persists across prestige and round-trips; a save can't hold more than earned tiers", () => {
+    let s = atLevel(INTERVAL);
+    s = pickEndowmentDirective(s, "dir_data");
+    s.research = [balance.prestige.capabilityResearch];
+    s.lifetimeMoney = Big.of(1e6);
+    expect(prestige(s).endowmentDirectives).toEqual(["dir_data"]); // survives the ship
+    expect(deserialize(serialize(s)).endowmentDirectives).toEqual(["dir_data"]);
+    // Anti-cheat: a crafted save with more directives than tiers earned is capped, and
+    // unknown ids are dropped.
+    const crafted = JSON.parse(serialize(s));
+    crafted.repEndowment = INTERVAL; // only 1 tier earned
+    crafted.endowmentDirectives = ["dir_compute", "dir_money", "bogus_id"]; // claims 3
+    const fixed = deserialize(JSON.stringify(crafted));
+    expect(fixed.endowmentDirectives).toEqual(["dir_compute"]); // capped to 1 known id
   });
 });

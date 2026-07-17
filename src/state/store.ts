@@ -50,8 +50,13 @@ import {
 } from "../engine/products";
 import { productMilestones as PRODUCT_MILESTONES, type ProductTypeId } from "../engine/balance/products";
 import { achievements as ACHIEVEMENT_DEFS } from "../engine/balance/achievements";
-import { buyReputationPerk, buyEndowment } from "../engine/reputation";
-import { fundChallenge } from "../engine/challenges";
+import { buyReputationPerk, buyEndowment, pickEndowmentDirective } from "../engine/reputation";
+import { startTrial, abandonTrial } from "../engine/trials";
+import { setFlagship } from "../engine/flagship";
+import { buyParadigm } from "../engine/paradigms";
+import { claimDoctrine } from "../engine/doctrine";
+import { buyInstitute } from "../engine/institute";
+import { fundChallenge, chooseFork, fundMegaproject } from "../engine/challenges";
 import { claimObjective } from "../engine/objectives";
 import { applyAutomation, automationUnlockedAny, automationEnabled, toggleAutomation } from "../engine/automation";
 import { automation as AUTOMATION } from "../engine/balance/automation";
@@ -74,6 +79,12 @@ import type { Big } from "../engine/math/Big";
 
 const SAVE_KEY = "singularity.save.v1";
 const TIME_KEY = "singularity.lastSeen.v1";
+// Where a whole-file-unparseable save is stashed before we fall back to a fresh
+// state (see init). deserialize() already clamps/filters a *structured* save
+// rather than wiping it; this key covers the one remaining wipe path — a blob so
+// corrupt it won't even parse — so the raw bytes survive for later recovery
+// instead of being silently overwritten by the next autosave.
+const CORRUPT_KEY = "singularity.save.corrupt.v1";
 
 /** Last-seen progress signature + era for telemetry purchase/era-arrival detection.
  *  Module-level (like the event-key counters) — diffed across ticks in advance(). */
@@ -171,8 +182,17 @@ interface GameStore {
   doBuyReputationPerk: (id: string) => void;
   /** Buy one endgame Reputation Endowment level (post-tree infinite sink). */
   doBuyEndowment: () => void;
+  doPickDirective: (id: string) => void;
+  doStartTrial: (id: string) => void;
+  doAbandonTrial: () => void;
+  doSetFlagship: (id: string | null) => void;
+  doBuyParadigm: (id: string) => void;
+  doClaimDoctrine: (id: string) => void;
+  doBuyInstitute: (id: string) => void;
   /** Pour affordable resources into a Grand Challenge. Returns true if THIS call finished it. */
   doFundChallenge: (id: string) => boolean;
+  doChooseFork: (id: string, forkId: string) => void;
+  doFundMegaproject: () => boolean;
   /** Claim a met Lab Objective, steering its boost to the chosen lane (default = headline). */
   doClaimObjective: (id: string, target?: "computeMult" | "dataMult" | "moneyMult") => void;
   /** Flip an Automation autopilot on/off (no-op if still locked). */
@@ -326,6 +346,14 @@ export const useGame = create<GameStore>((set, get) => ({
       }
     } catch (err) {
       console.warn("Save load failed, starting fresh:", err);
+      // A save so corrupt it throws is the ONLY true wipe path (deserialize
+      // sanitizes anything that parses). Preserve the raw bytes under a sibling
+      // key before the next autosave overwrites SAVE_KEY, so the run is
+      // recoverable. Keep the FIRST corrupt blob (don't clobber it on reload).
+      try {
+        const raw = localStorage.getItem(SAVE_KEY);
+        if (raw && !localStorage.getItem(CORRUPT_KEY)) localStorage.setItem(CORRUPT_KEY, raw);
+      } catch { /* storage unavailable/full — nothing more we can do */ }
       game = createInitialState();
     }
     game = migrateStaffCounts(game); // legacy role-counts → individual people
@@ -585,10 +613,27 @@ export const useGame = create<GameStore>((set, get) => ({
   doBuyOfficePerk: (id) => set((s) => ({ game: buyOfficePerk(s.game, id) })),
   doBuyReputationPerk: (id) => set((s) => ({ game: buyReputationPerk(s.game, id) })),
   doBuyEndowment: () => set((s) => ({ game: buyEndowment(s.game) })),
+  doPickDirective: (id) => set((s) => ({ game: pickEndowmentDirective(s.game, id) })),
+  doStartTrial: (id) => set((s) => ({ game: startTrial(s.game, id) })),
+  doAbandonTrial: () => set((s) => ({ game: abandonTrial(s.game) })),
+  doSetFlagship: (id) => set((s) => ({ game: setFlagship(s.game, id) })),
+  doBuyParadigm: (id) => set((s) => ({ game: buyParadigm(s.game, id) })),
+  doClaimDoctrine: (id) => set((s) => ({ game: claimDoctrine(s.game, id) })),
+  doBuyInstitute: (id) => set((s) => ({ game: buyInstitute(s.game, id) })),
   doFundChallenge: (id) => {
     let justCompleted = false;
     set((s) => {
       const res = fundChallenge(s.game, id);
+      justCompleted = res.justCompleted;
+      return res.state === s.game ? {} : { game: res.state };
+    });
+    return justCompleted;
+  },
+  doChooseFork: (id, forkId) => set((s) => ({ game: chooseFork(s.game, id, forkId) })),
+  doFundMegaproject: () => {
+    let justCompleted = false;
+    set((s) => {
+      const res = fundMegaproject(s.game);
       justCompleted = res.justCompleted;
       return res.state === s.game ? {} : { game: res.state };
     });

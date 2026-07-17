@@ -18,6 +18,14 @@ function walk(dir: string): string[] {
   return out;
 }
 
+/** Strip block + line comments so a purity scan matches real CALLS, not the many
+ *  doc comments that mention `Math.random()`/`Date.now()` to explain the pattern
+ *  ("the store supplies Math.random()"). Good enough for a guardrail — it ignores
+ *  the rare `//` inside a string literal, which never carries these tokens here. */
+function stripComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+}
+
 describe("engine architecture guardrails", () => {
   const engineDir = join(process.cwd(), "src", "engine");
   const files = walk(engineDir);
@@ -34,10 +42,28 @@ describe("engine architecture guardrails", () => {
     expect(offenders).toEqual([]);
   });
 
+  // The deterministic-engine invariant (CLAUDE.md hard rule): tick/derive and all
+  // engine code must be pure — the UI/store own the wall clock and RNG. Any of
+  // these tokens as a real call means non-determinism leaked in; pass the value
+  // in from the store instead (see the `store supplies …` comments in actions.ts).
+  const src = (f: string) => stripComments(readFileSync(f, "utf8"));
+  const engineFiles = () => files.filter((f) => !f.endsWith(".test.ts"));
+
   it("never calls Date.now() inside the engine (time must be passed in)", () => {
-    const offenders = files
-      .filter((f) => !f.endsWith(".test.ts"))
-      .filter((f) => /Date\.now\s*\(/.test(readFileSync(f, "utf8")));
+    const offenders = engineFiles().filter((f) => /Date\.now\s*\(/.test(src(f)));
+    expect(offenders).toEqual([]);
+  });
+
+  it("never calls Math.random() inside the engine (rolls must be passed in)", () => {
+    const offenders = engineFiles().filter((f) => /Math\.random\s*\(/.test(src(f)));
+    expect(offenders).toEqual([]);
+  });
+
+  it("never reads a wall clock (performance.now / new Date) inside the engine", () => {
+    const offenders = engineFiles().filter((f) => {
+      const code = src(f);
+      return /performance\.now\s*\(/.test(code) || /new\s+Date\s*\(/.test(code);
+    });
     expect(offenders).toEqual([]);
   });
 });

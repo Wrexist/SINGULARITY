@@ -411,6 +411,26 @@ describe("products — milestones", () => {
     const next = tick(s, 1000);
     expect(next.products.milestones).toContain("users_100k");
   });
+
+  it("late-game rungs extend the ladder — 4 live products pays off the slot unlocks", () => {
+    const one = release().products.active[0]!;
+    const four = { ...shipped(), products: { ...shipped().products, active: [
+      { ...one, id: "a" }, { ...one, id: "b" }, { ...one, id: "c" }, { ...one, id: "d" },
+    ] } };
+    expect(milestoneValue(four, "live")).toBe(4);
+    const r = applyMilestones(four);
+    expect(r.state.products.milestones).toContain("quad_lab");   // new 4-product rung
+    expect(r.state.products.milestones).toContain("full_house"); // 3-product rung also crossed
+    expect(r.state.products.milestones).not.toContain("full_portfolio"); // 5 not yet
+  });
+
+  it("no product milestone can fire without a launched product (curve-safe)", () => {
+    const base = createInitialState(); // the deploy-only sim never launches products
+    for (const m of ["users", "paid", "mrr", "version", "qf", "live", "sold"] as const) {
+      expect(milestoneValue(base, m)).toBe(0);
+    }
+    expect(applyMilestones(base).achieved).toHaveLength(0);
+  });
 });
 
 describe("products — per-product features", () => {

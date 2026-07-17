@@ -23,7 +23,8 @@ export function AutomationPanel({ game, onToggle }: Props) {
         <h2 className="panel-title" style={{ margin: 0 }}>Automation</h2>
         {onCount > 0 && <span className="automation-count">{onCount} on</span>}
       </div>
-      <p className="automation-intro">Let the lab run itself. Ship more models to unlock each autopilot, then switch it on.</p>
+      {/* First-run scaffolding — drop it once an autopilot is running (noise sweep). */}
+      {onCount === 0 && <p className="automation-intro">Let the lab run itself. Ship more models to unlock each autopilot, then switch it on.</p>}
       <div className="list">
         {list.map((def) => {
           const unlocked = automationUnlocked(game, def.id);

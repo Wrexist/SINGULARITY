@@ -6,13 +6,14 @@ import {
   typeDef, productMetrics, canStartUpgrade, canBuyFeature, versionCostFor, featureMods,
   upgradeDurationSec, upgradeProgress, retirePayout, enterpriseUnlocked, suggestChannelMix,
 } from "../engine/products";
+import { flagshipMoneyMult } from "../engine/flagship";
 import { m$, numOf as num, fmtDur } from "./format";
 import { EditableName } from "./EditableName";
 import type { ReactNode } from "react";
 import {
   ChatIcon, CodeIcon, BrainIcon, PaletteIcon, BoltIcon, ScalesIcon, HeartIcon, AtomIcon,
   MegaphoneIcon, SproutIcon, PersonIcon, MicIcon, SparkIcon, TrendDownIcon, CoinIcon,
-  LockIcon, TargetIcon, BarsIcon, CheckIcon, AlertTriangleIcon,
+  LockIcon, TargetIcon, CheckIcon, AlertTriangleIcon,
 } from "./Icons";
 
 /** Short human label for a feature's effect lane. */
@@ -60,6 +61,7 @@ interface Props {
   onBuyFeature: (id: string, featureId: string) => void;
   onRename: (id: string, name: string) => void;
   onRetire: (id: string) => void;
+  onSetFlagship: (id: string | null) => void;
 }
 
 function featureEffect(lane: FeatureLane, factor: number): string {
@@ -86,7 +88,7 @@ const fill = (pct: number) => ({ background: `linear-gradient(90deg, #7c5cff 0%,
 
 /** Phase 3 — per-product management, redesigned into a clean, soft, card-based sheet
  *  (icon chips, segmented tabs, purple accent) so the depth stays legible. */
-export function ProductDetail({ game, productId, mods, onClose, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onSetChannelMix, onBuyFeature, onRename, onRetire }: Props) {
+export function ProductDetail({ game, productId, mods, onClose, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onSetChannelMix, onBuyFeature, onRename, onRetire, onSetFlagship }: Props) {
   const [tab, setTab] = useState<Tab>("overview");
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -182,6 +184,23 @@ export function ProductDetail({ game, productId, mods, onClose, onStartUpgrade, 
             {crew.length > 0 && (
               <div className="pd-crew">{crew.map((e) => <span className="pd-crew-chip" key={e.id}>{e.name.split(" ")[0]} · L{e.level}</span>)}</div>
             )}
+            {/* Flagship: designate this product as the company brand — its tenure (ships
+                survived as flagship) grows a bounded permanent revenue bonus. ★/☆ are
+                allowed monochrome marks (CLAUDE.md). */}
+            {B.flagship.enabled && (() => {
+              const isFlagship = game.flagship.productId === p.id;
+              const pct = Math.round((flagshipMoneyMult(game) - 1) * 100);
+              return (
+                <button
+                  className={`pd-flagship ${isFlagship ? "on" : ""}`}
+                  onClick={() => onSetFlagship(isFlagship ? null : p.id)}
+                >
+                  {isFlagship
+                    ? `★ Flagship · +${pct}% revenue — grows each ship you keep it`
+                    : "☆ Make this your flagship"}
+                </button>
+              );
+            })()}
             {/* onRetire asks for confirmation upstream; the sheet stays open on
                 cancel, and self-dismisses via the `!p` guard once actually sold. */}
             <button className="pd-sell" onClick={() => onRetire(p.id)}>Sell this product · {m$(retirePayout(game, p.id))}</button>
@@ -260,14 +279,13 @@ export function ProductDetail({ game, productId, mods, onClose, onStartUpgrade, 
                   </label>
                 );
               })}
-              <div className="pd-total-card">
-                <span className="pd-total-ic"><BarsIcon size={18} /></span>
-                <div className="pd-total-text">
-                  <span className="pd-total-label">Total allocation</span>
-                  <span className="pd-total-sub">100% of {m$(p.marketingPerSec)}/s</span>
-                </div>
-                <span className={`pd-total-status ${activeCount >= 2 ? "ok" : "warn"}`}>{activeCount >= 2 ? <><CheckIcon size={13} /> Balanced</> : <><AlertTriangleIcon size={13} /> Concentrated</>}</span>
-              </div>
+              {/* Collapsed from a whole "Total allocation" card to one inline status line
+                  (2026-07 noise sweep): the "100% of $X/s" restated the always-100% split
+                  and the budget shown just above — only the Balanced/Concentrated cue was
+                  live signal, so that's all that survives. */}
+              <span className={`pd-mix-status ${activeCount >= 2 ? "ok" : "warn"}`}>
+                {activeCount >= 2 ? <><CheckIcon size={13} /> Balanced mix</> : <><AlertTriangleIcon size={13} /> Concentrated mix</>}
+              </span>
             </div>
           );
         })()}

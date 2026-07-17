@@ -296,6 +296,11 @@ svg { vertical-align: middle; }
 .rep-endow-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; }
 .rep-endow-head .card-name { color: #a855f7; font-weight: 850; }
 .rep-endow-lvl { font-size: 12px; font-weight: 700; color: var(--ink-3); white-space: nowrap; }
+.rep-directives { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.rep-directive-summary { font-size: 12px; font-weight: 750; color: var(--ink-3); }
+.rep-directive-prompt { font-size: 12px; font-weight: 800; color: #a855f7; }
+.rep-directive-choices { display: flex; flex-direction: column; gap: 6px; }
+.rep-directive-choice .card-name { font-weight: 800; }
 
 /* ---------- Glass material (shared) ---------- */
 .glass,
@@ -774,6 +779,7 @@ svg { vertical-align: middle; }
 .card:disabled:not(.affordable):hover { transform: none; box-shadow: none; }
 .card.maxed { opacity: 0.65; }
 .card-main { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.rack-tier-mark { font-size: 9px; letter-spacing: 1px; margin-right: 5px; vertical-align: 1px; opacity: 0.9; }
 .card-name {
   font-weight: 700;
   font-size: 14px;
@@ -1957,6 +1963,18 @@ button.modchip.workable:active { transform: scale(0.94); }
 }
 /* The golden "a ship is waiting" pill on the HQ segment (mirrors the nav badge). */
 .tab-dot.ship { background: linear-gradient(135deg, #f5b40a, #ff8c42); color: #1a1205; }
+/* Ambient ship-ready cue on the HQ sub-tab — a pulsing golden dot, NO word (matches the
+   bottom-nav decision to prefer the pulse over the "Ship" text badge). 2026-07 noise sweep. */
+.tab-dot.ship-pulse {
+  min-width: 9px; width: 9px; height: 9px; padding: 0; border-radius: 50%;
+  background: linear-gradient(135deg, #f5b40a, #ff8c42);
+  animation: shipDotPulse 1.6s ease-in-out infinite;
+}
+@keyframes shipDotPulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, #f5b40a 60%, transparent); }
+  50% { box-shadow: 0 0 0 5px color-mix(in srgb, #f5b40a 0%, transparent); }
+}
+.reduce-motion .tab-dot.ship-pulse { animation: none; }
 
 /* Capstone line — a small celebratory note when a whole system is cleared
    (research tree, achievements, codex). Conquered, not dead. */
@@ -2413,6 +2431,17 @@ button.modchip.workable:active { transform: scale(0.94); }
 /* Sell (subtle destructive) */
 .pd-sell { width: 100%; padding: 11px; border-radius: 13px; border: none; cursor: pointer; background: transparent; color: var(--coral); font-size: 13px; font-weight: 700; transition: background 0.15s; }
 .pd-sell:hover { background: rgba(255, 56, 92, 0.07); }
+.pd-flagship {
+  width: 100%; padding: 11px; border-radius: 13px; cursor: pointer; margin-bottom: 8px;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  color: var(--ink); font-size: 12.5px; font-weight: 700; transition: background 0.15s, border-color 0.15s;
+}
+.pd-flagship.on {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent); font-weight: 800;
+}
 
 /* Pricing — enterprise toggle + iOS-style switch */
 .pd-toggle-row { display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
@@ -2449,6 +2478,9 @@ button.modchip.workable:active { transform: scale(0.94); }
 .pd-total-status { flex: 0 0 auto; font-size: 12.5px; font-weight: 750; }
 .pd-total-status.ok { color: var(--money); }
 .pd-total-status.warn { color: #f97316; }
+.pd-mix-status { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; font-size: 12px; font-weight: 700; }
+.pd-mix-status.ok { color: var(--money); }
+.pd-mix-status.warn { color: #f97316; }
 
 /* Upgrades — feature rows */
 .pd-feature { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #fff; border-radius: 16px; padding: 13px 15px; box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05); }
@@ -2893,6 +2925,26 @@ button.modchip.workable:active { transform: scale(0.94); }
   background: color-mix(in srgb, var(--money) 10%, transparent);
 }
 .challenge-active::before { content: "✓ "; }
+.challenge-choose {
+  font-size: 12.5px; font-weight: 800; color: var(--accent); text-align: center;
+  padding: 7px; border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+/* Megaproject — the repeatable endgame loop. A full-card accent tint (no accent bar). */
+.mega-card { border-color: color-mix(in srgb, var(--accent) 35%, transparent); background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 7%, transparent), var(--glass-strong, #fff)); }
+.mega-level { font-size: 12px; font-weight: 800; color: var(--accent); }
+/* Fork picker — two either/or arms for a completed moonshot. Full-card buttons,
+   no left-edge bar (house rule). */
+.challenge-fork { display: flex; gap: 8px; margin-top: 8px; }
+.challenge-fork-arm {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; align-items: flex-start;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-radius: 10px; padding: 9px 10px; background: color-mix(in srgb, var(--accent) 6%, transparent);
+  text-align: left; cursor: pointer;
+}
+.challenge-fork-arm:active { transform: scale(0.98); }
+.challenge-fork-label { font-size: 12.5px; font-weight: 800; color: var(--ink); }
+.challenge-fork-reward { font-size: 11px; font-weight: 700; color: var(--accent); }
 /* The "Grand Challenge complete" moment reuses the era-modal treatment. */
 .challenge-complete-icon {
   line-height: 1; margin: 6px 0 2px; color: var(--accent);
@@ -2917,6 +2969,109 @@ button.modchip.workable:active { transform: scale(0.94); }
   0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--money) 55%, transparent); }
   50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--money) 0%, transparent); }
 }
+
+/* ---------- Collapsible meta-panel wrapper (keeps HQ clean) ---------- */
+.panel.collapsible { padding-top: 4px; padding-bottom: 4px; }
+.panel.collapsible.open { padding-bottom: 12px; }
+.collapsible-toggle {
+  width: 100%; display: flex; align-items: center; gap: 8px; padding: 8px 2px;
+  background: none; border: none; cursor: pointer; color: inherit; text-align: left;
+}
+.collapsible-toggle .panel-title { flex: 0 0 auto; }
+.collapsible-badge {
+  font-size: 11.5px; font-weight: 800; color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent); border-radius: 999px; padding: 2px 9px;
+}
+.collapsible-toggle .chevron { margin-left: auto; color: var(--ink-3); font-size: 11px; }
+.collapsible-body { padding-top: 4px; }
+
+/* ---------- The Institute (third meta-layer) ---------- */
+.institute-note { font-size: 12px; color: var(--ink-3); margin: 0 0 8px; }
+.institute-count { font-size: 11px; font-weight: 700; color: var(--ink-3); margin-top: 6px; text-align: right; }
+.institute-wing {
+  width: 100%; display: flex; align-items: center; gap: 10px; margin-bottom: 6px; text-align: left; cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 12px; padding: 10px 11px; background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+.institute-wing:disabled { cursor: default; }
+.institute-wing:not(.owned):disabled { opacity: 0.6; border-color: var(--line, rgba(20,22,27,0.08)); background: var(--glass-strong, #fff); }
+.institute-wing.owned { border-color: color-mix(in srgb, var(--money) 40%, transparent); background: color-mix(in srgb, var(--money) 7%, transparent); }
+.institute-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.institute-name { font-size: 13px; font-weight: 800; color: var(--ink); }
+.institute-desc { font-size: 12px; color: var(--ink-2, #4a4a55); }
+.institute-req { font-size: 11px; color: var(--ink-3); }
+.institute-cost { flex-shrink: 0; font-size: 12px; font-weight: 800; color: var(--accent); }
+.institute-wing.owned .institute-cost { color: var(--money); }
+
+/* ---------- Doctrine Consequences ---------- */
+.doctrine-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.doctrine-count { font-size: 12px; font-weight: 800; color: var(--ink-3); background: rgba(20, 22, 27, 0.05); border-radius: 999px; padding: 2px 10px; }
+.doctrine-note { font-size: 12px; color: var(--ink-3); margin: 0 0 8px; }
+.doctrine-tracks { display: flex; flex-direction: column; gap: 12px; }
+.doctrine-track-head { font-size: 12px; font-weight: 800; color: var(--ink-2, #4a4a55); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+.doctrine-active { color: var(--accent); font-weight: 800; margin-left: 6px; text-transform: none; letter-spacing: 0; }
+.doctrine-perk {
+  width: 100%; display: flex; align-items: center; gap: 10px; margin-bottom: 6px; text-align: left; cursor: pointer;
+  border: 1px solid var(--line, rgba(20, 22, 27, 0.08));
+  border-radius: 12px; padding: 10px 11px; background: var(--glass-strong, #fff);
+}
+.doctrine-perk:disabled { cursor: default; }
+.doctrine-perk:not(.owned):disabled { opacity: 0.62; }
+.doctrine-perk.owned { border-color: color-mix(in srgb, var(--money) 40%, transparent); background: color-mix(in srgb, var(--money) 7%, transparent); }
+.doctrine-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.doctrine-name { font-size: 13px; font-weight: 800; color: var(--ink); }
+.doctrine-desc { font-size: 12px; color: var(--ink-2, #4a4a55); }
+.doctrine-req { font-size: 11px; color: var(--ink-3); }
+.doctrine-claim { flex-shrink: 0; font-size: 12px; font-weight: 800; color: var(--accent); }
+.doctrine-perk.owned .doctrine-claim { color: var(--money); }
+.doctrine-perk:not(.owned):disabled .doctrine-claim { color: var(--ink-3); }
+
+/* ---------- Paradigm Research ---------- */
+.paradigms-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.paradigms-count { font-size: 12px; font-weight: 800; color: var(--ink-3); background: rgba(20, 22, 27, 0.05); border-radius: 999px; padding: 2px 10px; }
+.paradigms-note { font-size: 12px; color: var(--ink-3); margin: 0 0 8px; }
+.paradigm-node {
+  width: 100%; display: flex; align-items: center; gap: 10px; margin-bottom: 6px; text-align: left; cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  border-radius: 12px; padding: 10px 11px; background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+.paradigm-node:disabled { cursor: default; }
+.paradigm-node.owned { border-color: color-mix(in srgb, var(--money) 40%, transparent); background: color-mix(in srgb, var(--money) 7%, transparent); }
+.paradigm-node:not(.owned):disabled { opacity: 0.6; border-color: var(--line, rgba(20,22,27,0.08)); background: var(--glass-strong, #fff); }
+.paradigm-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.paradigm-name { font-size: 13px; font-weight: 800; color: var(--ink); }
+.paradigm-desc { font-size: 12px; color: var(--ink-2, #4a4a55); }
+.paradigm-req { font-size: 11px; color: var(--ink-3); }
+.paradigm-cost { flex-shrink: 0; font-size: 12px; font-weight: 800; color: var(--accent); }
+.paradigm-node.owned .paradigm-cost { color: var(--money); }
+
+/* ---------- Prestige Trials ---------- */
+.trials-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.trials-count { font-size: 12px; font-weight: 800; color: var(--ink-3); background: rgba(20, 22, 27, 0.05); border-radius: 999px; padding: 2px 10px; }
+.trials-note { font-size: 12px; color: var(--ink-3); margin: 0 0 8px; }
+.trial-card {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 6px;
+  border: 1px solid var(--line, rgba(20, 22, 27, 0.08));
+  border-radius: 12px; padding: 10px 11px; background: var(--glass-strong, #fff);
+}
+/* Active Trial: a full-card tint + border (NOT a left-edge bar — house rule). */
+.trial-card.trial-on { border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 8%, transparent), var(--glass-strong, #fff)); }
+.trial-card.trial-done { opacity: 0.78; }
+.trial-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.trial-name { font-size: 13px; font-weight: 800; color: var(--ink); }
+.trial-desc { font-size: 12px; color: var(--ink-2, #4a4a55); }
+.trial-status { font-size: 11.5px; font-weight: 700; color: var(--accent); }
+.trial-req { font-size: 11px; color: var(--ink-3); }
+.trial-attempt {
+  flex-shrink: 0; font-size: 12px; font-weight: 800; color: #fff; border: none;
+  background: linear-gradient(180deg, var(--accent), #7b5cff); border-radius: 999px; padding: 7px 14px;
+}
+.trial-attempt:disabled { background: rgba(20, 22, 27, 0.12); color: var(--ink-3); }
+.trial-abandon {
+  flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--ink-3);
+  background: rgba(20, 22, 27, 0.06); border: none; border-radius: 999px; padding: 7px 12px;
+}
+.trial-owned { flex-shrink: 0; font-size: 12px; font-weight: 800; color: var(--money); }
 .objective-card {
   display: flex; align-items: center; gap: 10px;
   border: 1px solid var(--line, rgba(20, 22, 27, 0.08));

@@ -1,5 +1,5 @@
 import type { GameState } from "../engine/types";
-import { visibleChallenges, challengeView, canFundChallenge } from "../engine/challenges";
+import { visibleChallenges, challengeView, canFundChallenge, pendingForkChallenge, megaprojectUnlocked, megaprojectView, canFundMegaproject } from "../engine/challenges";
 import { challenges as C } from "../engine/balance/challenges";
 import { fmt } from "./format";
 import { ComputeIcon, DataIcon, MoneyIcon, GiftIcon } from "./Icons";
@@ -8,6 +8,8 @@ import { iconFor } from "./iconRegistry";
 interface Props {
   game: GameState;
   onFund: (id: string, at?: { x: number; y: number }) => void;
+  onChooseFork: (id: string, forkId: string) => void;
+  onFundMegaproject: (at?: { x: number; y: number }) => void;
 }
 
 const RES_ICON = { compute: <ComputeIcon size={12} />, data: <DataIcon size={12} />, money: <MoneyIcon size={12} /> };
@@ -18,10 +20,13 @@ const RES_ICON = { compute: <ComputeIcon size={12} />, data: <DataIcon size={12}
  * completing one fires the tentpole "Challenge complete" moment (handled in App). Purely a
  * grind target: the whole board is hidden until the deep endgame, and the sim never funds.
  */
-export function GrandChallengesPanel({ game, onFund }: Props) {
+export function GrandChallengesPanel({ game, onFund, onChooseFork, onFundMegaproject }: Props) {
   const list = visibleChallenges(game);
   if (list.length === 0) return null;
   const doneCount = game.challenges.completed.length;
+  const megaOpen = megaprojectUnlocked(game);
+  const mega = megaOpen ? megaprojectView(game) : null;
+  const canMega = megaOpen && canFundMegaproject(game);
 
   return (
     <section className="panel challenges">
@@ -29,12 +34,21 @@ export function GrandChallengesPanel({ game, onFund }: Props) {
         <h2 className="panel-title" style={{ margin: 0 }}>Grand Challenges</h2>
         <span className="challenges-count">{doneCount}/{C.list.length}</span>
       </div>
-      <p className="challenges-intro">Moonshots that reshape the lab forever. Pour your output in — the reward is permanent.</p>
+      {/* First-run scaffolding — drop it once a challenge is complete (noise sweep). */}
+      {doneCount === 0 && <p className="challenges-intro">Moonshots that reshape the lab forever. Pour your output in — the reward is permanent.</p>}
       <div className="list">
         {list.map((def) => {
           const v = challengeView(game, def.id)!;
           const canFund = canFundChallenge(game, def.id);
           const pct = Math.round(v.progress * 100);
+          const chosenForkId = game.challenges.forks[def.id];
+          const chosenFork = def.forks?.find((f) => f.id === chosenForkId);
+          const forkPending = pendingForkChallenge(game, def.id);
+          // The reward line: for a forked challenge it's a choice (pre-completion) or the
+          // chosen arm (post-choice); otherwise the fixed reward.
+          const rewardDesc = def.forks
+            ? (chosenFork ? chosenFork.reward.desc : "Your choice on completion")
+            : def.reward.desc;
           const res = [
             { key: "compute" as const, funded: v.funded.compute, cost: v.cost.compute, done: v.done.compute },
             { key: "data" as const, funded: v.funded.data, cost: v.cost.data, done: v.done.data },
@@ -66,9 +80,9 @@ export function GrandChallengesPanel({ game, onFund }: Props) {
               </div>
 
               <div className="challenge-foot">
-                <span className="challenge-reward"><GiftIcon size={13} /> {def.reward.desc}</span>
+                <span className="challenge-reward"><GiftIcon size={13} /> {rewardDesc}</span>
                 {v.complete ? (
-                  <span className="challenge-active">Active</span>
+                  forkPending ? <span className="challenge-choose">Choose reward ↓</span> : <span className="challenge-active">Active</span>
                 ) : (
                   <button
                     className="btn challenge-fund"
@@ -79,10 +93,58 @@ export function GrandChallengesPanel({ game, onFund }: Props) {
                   </button>
                 )}
               </div>
+
+              {/* Fork picker — a completed moonshot's either/or reward. Once chosen it's
+                  final; the panel then shows the banked arm as the reward line above. */}
+              {forkPending && def.forks && (
+                <div className="challenge-fork" role="group" aria-label="Choose this challenge's permanent reward">
+                  {def.forks.map((f) => (
+                    <button key={f.id} className="challenge-fork-arm" onClick={() => onChooseFork(def.id, f.id)}>
+                      <span className="challenge-fork-label">{f.label}</span>
+                      <span className="challenge-fork-reward">{f.reward.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })}
       </div>
+
+      {/* Megaprojects II — the repeatable loop, once every challenge is done. Escalating
+          cost, a bounded diminishing all-lane bonus, so the endgame never runs dry. */}
+      {mega && (
+        <div className="challenge-card mega-card">
+          <div className="challenge-top">
+            <span className="challenge-icon" aria-hidden="true">{iconFor(C.megaproject.icon, 22)}</span>
+            <div className="challenge-titles">
+              <span className="challenge-name">{C.megaproject.name} <span className="mega-level">· cycle {mega.level + 1}</span></span>
+              <span className="challenge-blurb">{C.megaproject.blurb}</span>
+            </div>
+          </div>
+          <div className="challenge-bar">
+            <div className="challenge-fill" style={{ width: `${Math.round(mega.progress * 100)}%` }} />
+            <span className="challenge-bar-label">{Math.round(mega.progress * 100)}%</span>
+          </div>
+          <div className="challenge-res">
+            {([["compute", mega.funded.compute, mega.cost.compute, mega.done.compute] as const,
+               ["data", mega.funded.data, mega.cost.data, mega.done.data] as const,
+               ["money", mega.funded.money, mega.cost.money, mega.done.money] as const]).map(([key, funded, cost, done]) => (
+              <span key={key} className={`challenge-pledge ${done ? "done" : ""}`}>
+                <span className="challenge-pledge-ic">{RES_ICON[key]}</span>
+                {key === "money" ? "$" : ""}{fmt(funded)}<span className="challenge-pledge-sep">/</span>{key === "money" ? "$" : ""}{fmt(cost)}
+                {done && <span className="challenge-pledge-check">✓</span>}
+              </span>
+            ))}
+          </div>
+          <div className="challenge-foot">
+            <span className="challenge-reward"><GiftIcon size={13} /> +{mega.bonusPct.toFixed(1)}% to ALL output {mega.level > 0 ? "(held)" : "on first cycle"}</span>
+            <button className="btn challenge-fund" disabled={!canMega} onClick={(e) => onFundMegaproject({ x: e.clientX, y: e.clientY })}>
+              {canMega ? "Fund" : "Need output"}
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

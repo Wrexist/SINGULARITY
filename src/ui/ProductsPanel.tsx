@@ -11,7 +11,7 @@ import {
 import { m$, numOf as num, fmtDur } from "./format";
 import { ProductDetail, TYPE_GLYPH } from "./ProductDetail";
 import { EditableName } from "./EditableName";
-import { TagIcon, AtomIcon, LockIcon, SparkIcon, TrendDownIcon, TrophyIcon, BarsIcon, AlertTriangleIcon, BoltIcon } from "./Icons";
+import { AtomIcon, LockIcon, SparkIcon, TrendDownIcon, TrophyIcon, BarsIcon, BoltIcon } from "./Icons";
 
 const FUN_NAMES = ["Nimbus", "Oracle", "Synthia", "Cortex", "Lumen", "Vertex", "Sage", "Atlas", "Echo", "Prism", "Nova", "Helix", "Quasar", "Mirage"];
 
@@ -28,12 +28,13 @@ interface Props {
   onBuyFeature: (id: string, featureId: string) => void;
   onRename: (id: string, name: string) => void;
   onRetire: (id: string) => void;
+  onSetFlagship: (id: string | null) => void;
   onCounterRival: (name: string) => void;
 }
 
 /** Phase 3 — the Products tab: commercialise the models you ship, market them, set
  *  pricing, research new versions over time, and watch the dashboard. */
-export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onSetChannelMix, onBuyFeature, onRename, onRetire, onCounterRival }: Props) {
+export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onSetChannelMix, onBuyFeature, onRename, onRetire, onSetFlagship, onCounterRival }: Props) {
   // Which draft (by id) is currently showing the type-picker, if any.
   const [picking, setPicking] = useState<string | null>(null);
   // Which product's deep-management screen is open, if any. If that product
@@ -68,11 +69,6 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
   // Portfolio health (C1): a product needs attention if it's losing money or falling
   // behind the frontier. Float the bleeders to the top so problems are seen first —
   // sorted by margin-sign only (a stable signal), so the list doesn't jitter at 10Hz.
-  const needsAttention = (p: typeof ps.active[number]) => {
-    const m = metrics.get(p.id);
-    return !!m && (m.margin < 0 || m.qf < 0.5);
-  };
-  const attentionCount = ps.active.filter(needsAttention).length;
   const sortedActive = useMemo(() => {
     return [...ps.active].sort((a, b) => {
       const ma = (metrics.get(a.id)?.margin ?? 0) < 0 ? 0 : 1;
@@ -84,10 +80,12 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
   return (
     <section className="panel">
       <h2 className="panel-title">Products</h2>
+      {/* Just the three LIVE economics figures. The old 'N sold' (a lifetime vanity
+          total → now in Lab Stats) and 'N need attention' (already carried by the
+          bleeder-to-top sort, each card's own status row, and the nav badge) were
+          removed as duplicated noise (2026-07 noise sweep). */}
       <p className="floor-meter">
         Portfolio: <b>{m$(totalMrr)}/s</b> revenue · {totalMargin >= 0 ? "+" : ""}{m$(totalMargin)}/s profit · {ps.active.length}/{maxSlots} slots
-        {ps.sold > 0 && <> · <span className="prod-sold-badge"><TagIcon size={12} /> {ps.sold} sold</span></>}
-        {attentionCount > 0 && <> · <span className="prod-attention-badge"><AlertTriangleIcon size={12} /> {attentionCount} need{attentionCount === 1 ? "s" : ""} attention</span></>}
       </p>
 
       {/* Raw models from Ship the Model — commercialise them into products. */}
@@ -295,6 +293,7 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
           onBuyFeature={onBuyFeature}
           onRename={onRename}
           onRetire={onRetire}
+          onSetFlagship={onSetFlagship}
         />
       )}
     </section>

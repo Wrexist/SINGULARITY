@@ -2,7 +2,7 @@ import { useState } from "react";
 import { balance } from "../engine/balance/config";
 import { upgradeCost, canBuyUpgrade, planBulkUpgrade } from "../engine/actions";
 import { recommendedUpgrade } from "../engine/recommend";
-import { upgradeFlavor } from "../engine/flavor";
+import { upgradeFlavor, crossedFlavorTier } from "../engine/flavor";
 import { hallCapacity, totalRacks, isRackId, evictableRackFor } from "../engine/hall";
 import { powerStats } from "../engine/power";
 import { productMetrics } from "../engine/products";
@@ -10,10 +10,15 @@ import { Big } from "../engine/math/Big";
 import type { Derived, GameState } from "../engine/types";
 import { fmt, effRate, fmtEta } from "./format";
 import { BoltIcon } from "./Icons";
-import { burst, punch } from "./fx";
-import { UpgradeRingIcon, EffectPill, upgradeGroup, UP_GROUP_ORDER } from "./effectVisual";
+import { burst, punch, floatText, registerBuyStreak } from "./fx";
+import { UpgradeRingIcon, EffectPill, upgradeGroup, UP_GROUP_ORDER, rackTierMark } from "./effectVisual";
 
 const RES_HEX: Record<string, string> = { compute: "#2f7bf6", data: "#9b51e0", money: "#16b364" };
+// Rack tiers finally read as three distinct pieces of hardware (the ramp already lives
+// in the hall rack swatch): basic=green, server=blue, TPU=violet. Non-racks fall back to
+// their resource color for buy feedback.
+const RACK_TIER_HEX: Record<string, string> = { rack_basic: "rgb(52,210,126)", rack_server: "rgb(63,134,240)", rack_tpu: "rgb(155,81,224)" };
+const buyColorFor = (id: string, resource: string) => RACK_TIER_HEX[id] ?? RES_HEX[resource] ?? "#9b51e0";
 
 interface Props {
   game: GameState;
@@ -123,15 +128,31 @@ export function UpgradePanel({ game, derived, onBuy }: Props) {
         disabled={!affordable}
         onClick={(e) => {
           const r = e.currentTarget.getBoundingClientRect();
-          burst(r.right - 22, r.top + r.height / 2, { count: isHero ? 16 : 12, power: isHero ? 1.1 : 0.9, colors: [RES_HEX[def.cost.resource] ?? "#9b51e0"] });
+          const units = showBulk ? bulk!.count : 1;
+          // Feedback escalates with the BIGGER of batch size and rapid-tap streak, so a
+          // Max buy and a run of quick taps both feel like more than a single click —
+          // capped so it stays premium, not chaotic. (All fx self-suppress under
+          // reduced-motion; the static end state — new count + rates — is unchanged.)
+          const streak = registerBuyStreak();
+          const escal = Math.max(Math.log2(1 + units), streak * 0.6);
+          // A buy that crosses a flavor-tier breakpoint (6th/16th/30th rack, …) earns a
+          // bigger, gold-flecked beat — the milestone stops passing silently. The card's
+          // own flavor line updates to the newly-earned text (wordless reward).
+          const milestone = crossedFlavorTier(def.id, owned, owned + units);
+          const color = buyColorFor(def.id, def.cost.resource);
+          const count = Math.min(40, Math.round((isHero ? 16 : 12) + escal * 5 + (milestone ? 12 : 0)));
+          const power = Math.min(1.7, (isHero ? 1.1 : 0.9) + escal * 0.12 + (milestone ? 0.35 : 0));
+          burst(r.right - 22, r.top + r.height / 2, { count, power, colors: milestone ? [color, "#ffd60a"] : [color] });
           punch(e.currentTarget);
-          // Pass the tap point so App can float the rate actually gained.
+          if (milestone) floatText(r.left + r.width / 2, r.top + 2, "✦", "#ffd60a", 22);
+          // Pass the tap point + batch size so App can float the gain and scale haptics.
           onBuy(def.id, want, { x: r.right - 26, y: r.top + 6 });
         }}
       >
         <UpgradeRingIcon id={def.id} kind={def.effect.kind} pct={pct} showPct={isHero && !affordable && !maxed} />
         <div className="card-main">
           <span className="card-name">
+            {rackTierMark(def.id) && <span className="rack-tier-mark" style={{ color: buyColorFor(def.id, def.cost.resource) }} aria-hidden="true">{rackTierMark(def.id)}</span>}
             {def.name}
             {def.max !== Infinity && <span key={owned} className="card-owned">{owned}/{def.max}</span>}
             {def.max === Infinity && owned > 0 && <span key={owned} className="card-owned">×{owned}</span>}

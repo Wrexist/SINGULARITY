@@ -5,6 +5,11 @@ import { reputationMods } from "./reputation";
 import { alignmentProductionMods, alignmentProductMods } from "./alignment";
 import { charterMods } from "./charter";
 import { legacyAvailable, legacyTreeMods } from "./legacyTree";
+import { trialMods } from "./trials";
+import { flagshipMoneyMult } from "./flagship";
+import { paradigmMods } from "./paradigms";
+import { doctrineMods } from "./doctrine";
+import { instituteMods } from "./institute";
 import { ascensionMultiplier } from "./prestige";
 import { preprintMult } from "./preprints";
 import { challengeMods } from "./challenges";
@@ -275,6 +280,40 @@ export function derive(state: GameState): Derived {
   dataMult = dataMult.mul(ch.dataMult);
   moneyMult = moneyMult.mul(ch.moneyMult);
 
+  // Prestige Trials: the active run's handicap × banked permanent rewards. All 1.0
+  // with no Trial active/done, so this is identity through the whole tuned run (the
+  // sim never opts into a Trial). The active handicap makes a constrained generation
+  // genuinely harder; the reward compounds forever once completed.
+  const tr = trialMods(state);
+  computeMult = computeMult.mul(tr.computeMult);
+  dataMult = dataMult.mul(tr.dataMult);
+  moneyMult = moneyMult.mul(tr.moneyMult);
+
+  // Flagship brand: a bounded permanent revenue bonus from the designated flagship's
+  // cross-ship tenure. 1.0 with no flagship (tenure 0), so identity through the sim.
+  moneyMult = moneyMult.mul(flagshipMoneyMult(state));
+
+  // Paradigm Research: deep-endgame capability nodes bought with Reputation. All 1.0
+  // with none owned, so identity through the tuned run (the sim never spends Reputation).
+  const para = paradigmMods(state);
+  computeMult = computeMult.mul(para.computeMult);
+  dataMult = dataMult.mul(para.dataMult);
+  moneyMult = moneyMult.mul(para.moneyMult);
+
+  // Doctrine Consequences: permanent perks claimed by committing to a stance. All 1.0
+  // with none claimed, so identity through the tuned run (the sim stays neutral).
+  const doc = doctrineMods(state);
+  computeMult = computeMult.mul(doc.computeMult);
+  dataMult = dataMult.mul(doc.dataMult);
+  moneyMult = moneyMult.mul(doc.moneyMult);
+
+  // The Institute: the third meta-layer's permanent wings. All 1.0 with none founded,
+  // so identity through the tuned run (the sim never spends Grants).
+  const inst = instituteMods(state);
+  computeMult = computeMult.mul(inst.computeMult);
+  dataMult = dataMult.mul(inst.dataMult);
+  moneyMult = moneyMult.mul(inst.moneyMult);
+
   // Legacy Investments (R5.4): owned prestige-tree lane biases. All 1.0 with
   // nothing invested, so this is identity until the player spends weights.
   const lt = legacyTreeMods(state);
@@ -290,7 +329,7 @@ export function derive(state: GameState): Derived {
   // on a fresh run with no active events.
   const dataPerSec = dataPerSecFlat
     .mul(scraperDataMult)
-    .mul(legacyMult).mul(ascensionMult).mul(ppMult).mul(rep.dataMult).mul(ch.dataMult).mul(lt.dataMult)
+    .mul(legacyMult).mul(ascensionMult).mul(ppMult).mul(rep.dataMult).mul(ch.dataMult).mul(lt.dataMult).mul(tr.dataMult).mul(para.dataMult).mul(doc.dataMult).mul(inst.dataMult)
     .mul(balance.difficulty.productionMult); // global production dilation (see computePerSec)
 
   let computePerSec = computeFlat.mul(computeMult);
