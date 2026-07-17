@@ -88,6 +88,8 @@ export interface HallModel {
   /** Auto-train owned → a little "ops bot" roams the floor (the automation, made
    *  visible). */
   autoBot: boolean;
+  /** 0..1 data-pipeline intensity → denser/brighter drifting data-motes. */
+  dataFlow: number;
   /** C2 — power draw ÷ capacity (>1 = throttled). Drives a thermal "heat shimmer"
    *  + red rim over the racks so the power soft-cap is legible in the room. */
   loadFrac: number;
@@ -260,9 +262,11 @@ export function buildHallModel(game: GameState): HallModel {
   const beamBuzz = game.products.active.map((p) => (buzzWin > 0 ? Math.max(0, Math.min(1, p.buzzSec / buzzWin)) : 0));
 
   // Manifest software upgrades that used to change only a number: overclock makes
-  // racks visibly run hotter; auto-train puts a little ops bot on the floor.
+  // racks visibly run hotter; auto-train puts a little ops bot on the floor; the data
+  // pipeline thickens the drifting data-motes so a cleaner pipeline is FELT in the room.
   const overclock = Math.min(1, (game.upgrades["overclock"] ?? 0) * 0.1);
   const autoBot = (game.upgrades["auto_train"] ?? 0) > 0;
+  const dataFlow = Math.min(1, (game.upgrades["data_pipeline"] ?? 0) * 0.12);
 
   const owned = RACK_IDS.map((id) => game.upgrades[id] ?? 0);
   const totalOwned = owned[0]! + owned[1]! + owned[2]!;
@@ -313,6 +317,7 @@ export function buildHallModel(game: GameState): HallModel {
     coolingUnits,
     overclock,
     autoBot,
+    dataFlow,
     loadFrac,
     staff,
     beams,
