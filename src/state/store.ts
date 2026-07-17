@@ -694,7 +694,10 @@ export const useGame = create<GameStore>((set, get) => ({
         t: now(),
         gen: game.prestige.ships,
         playtimeSec: game.stats.playtimeSec,
-        weights: Number.isFinite(weightsNum) ? weightsNum : Number.MAX_SAFE_INTEGER,
+        // MAX_VALUE (not MAX_SAFE_INTEGER) on overflow: keeps an overflowing weight
+        // ABOVE every finite value ever recorded, so the telemetry stays monotonic
+        // instead of cratering ~9e15 below the prior sample (CodeRabbit #34).
+        weights: Number.isFinite(weightsNum) ? weightsNum : Number.MAX_VALUE,
         era: currentEra(s.game), // the era reached in the run just shipped
       });
       // The fresh run starts with no upgrades/research and at era 0 — reset baselines
