@@ -1239,8 +1239,12 @@ export const balance = {
     upgradeCostRampLevels: 12,
   },
 
-  /** The rented server closet generates a trickle of Compute for free. */
-  baseComputePerSec: 1,
+  /** The rented server closet generates a trickle of Compute for free. Raised 1→2.5
+   *  (2026-07 flow retune, owner: "make the beginning easy, players feel a flow"): the
+   *  cold-start bites hardest with zero racks, so a bigger free floor makes the first
+   *  run pay and the first rack land in ~30s instead of ~65s, then tapers to noise once
+   *  real racks dwarf it — "easy at the beginning", full difficulty later. */
+  baseComputePerSec: 2.5,
 
   run: {
     /**
@@ -2247,7 +2251,7 @@ export const balance = {
       name: "Model Distillation",
       desc: "Smaller, faster, mostly the same.",
       requires: ["distributed"],
-      cost: { compute: 22000, data: 1500 },
+      cost: { compute: 15000, data: 1000 },
       effect: { kind: "runSpeed", factor: 0.75 },
     },
     {
@@ -2255,7 +2259,7 @@ export const balance = {
       name: "Mixture of Experts",
       desc: "A dozen mediocre models in a trench coat.",
       requires: ["caching", "distillation"],
-      cost: { compute: 75000, data: 3000 },
+      cost: { compute: 38000, data: 2000 },
       effect: { kind: "computeMult", factor: 2 },
     },
     {
@@ -2263,7 +2267,7 @@ export const balance = {
       name: "Ship: Inference API",
       desc: "Deploy the model as a product. It earns while you sleep.",
       requires: ["distillation", "rlhf"],
-      cost: { compute: 130000, data: 7000 },
+      cost: { compute: 62000, data: 3500 },
       // Money/sec per unit of Compute/sec — a fraction of throughput becomes revenue.
       effect: { kind: "unlockPassiveMoney", perSec: 0.3 },
     },
