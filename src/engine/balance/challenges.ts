@@ -13,6 +13,15 @@
 
 export type ChallengeRewardKind = "computeMult" | "dataMult" | "moneyMult" | "legacyMult";
 
+/** One arm of a Challenge FORK — a permanent either/or reward the player picks on
+ *  completion, so a moonshot is a strategy decision, not a decisionless bar. */
+export interface ChallengeFork {
+  id: string;
+  /** Short choice label (e.g. "Grid Independence"). */
+  label: string;
+  reward: { kind: ChallengeRewardKind; magnitude: number; desc: string };
+}
+
 export interface GrandChallenge {
   id: string;
   name: string;
@@ -33,6 +42,10 @@ export interface GrandChallenge {
   lore: string;
   /** Ships required before this challenge appears (staggered so the board reveals over time). */
   unlockShips: number;
+  /** Optional either/or FORK: on completion the player picks ONE arm's reward (the
+   *  top-level `reward` above is the pre-completion preview). Curve-safe like the base
+   *  reward — nothing applies until the player completes AND chooses. */
+  forks?: [ChallengeFork, ChallengeFork];
 }
 
 export const challenges = {
@@ -50,6 +63,10 @@ export const challenges = {
       reward: { kind: "computeMult", magnitude: 0.35, desc: "+35% Compute, forever" },
       lore: "First plasma at 03:14. The turbines spin, the racks drink deep, and the utility company's lawyer is on hold. You are, for the first time, not power-limited. It feels like cheating. It is not (technically).",
       unlockShips: 6,
+      forks: [
+        { id: "grid_independence", label: "Grid Independence", reward: { kind: "computeMult", magnitude: 0.35, desc: "+35% Compute, forever" } },
+        { id: "sell_surplus", label: "Sell the Surplus", reward: { kind: "moneyMult", magnitude: 0.35, desc: "+35% all revenue, forever" } },
+      ],
     },
     {
       id: "synth_foundry",
@@ -60,6 +77,10 @@ export const challenges = {
       reward: { kind: "dataMult", magnitude: 0.4, desc: "+40% Data yield, forever" },
       lore: "The foundry produces flawless, labelled, license-clean data at industrial scale — none of it real, all of it useful. Somewhere a copyright lawyer feels a chill and cannot say why.",
       unlockShips: 9,
+      forks: [
+        { id: "scale_foundry", label: "Scale the Foundry", reward: { kind: "dataMult", magnitude: 0.4, desc: "+40% Data yield, forever" } },
+        { id: "license_method", label: "License the Method", reward: { kind: "moneyMult", magnitude: 0.38, desc: "+38% all revenue, forever" } },
+      ],
     },
     {
       id: "trillion_context",
@@ -80,6 +101,10 @@ export const challenges = {
       reward: { kind: "moneyMult", magnitude: 0.5, desc: "+50% all revenue, forever" },
       lore: "Two hundred pages of formal verification, one press release, and a standing ovation from a room that came to heckle. Enterprise procurement departments weep with relief and sign three-year contracts.",
       unlockShips: 16,
+      forks: [
+        { id: "enterprise_trust", label: "Enterprise Trust", reward: { kind: "moneyMult", magnitude: 0.5, desc: "+50% all revenue, forever" } },
+        { id: "open_the_proof", label: "Open the Proof", reward: { kind: "legacyMult", magnitude: 0.28, desc: "+28% to ALL output, forever" } },
+      ],
     },
     {
       id: "inference_grid",
@@ -110,6 +135,10 @@ export const challenges = {
       reward: { kind: "computeMult", magnitude: 0.6, desc: "+60% Compute, forever" },
       lore: "Panel by panel, you wrap the nearest star in mirrors until daylight becomes a scheduling decision. Astronomers file a formal complaint about the dimming; you file it under 'externalities'. The datacenter no longer receives a power bill — it issues a power dividend.",
       unlockShips: 34,
+      forks: [
+        { id: "compute_dividend", label: "Compute Dividend", reward: { kind: "computeMult", magnitude: 0.6, desc: "+60% Compute, forever" } },
+        { id: "power_the_grid", label: "Power the Grid", reward: { kind: "legacyMult", magnitude: 0.42, desc: "+42% to ALL output, forever" } },
+      ],
     },
     {
       id: "uploaded_multitude",

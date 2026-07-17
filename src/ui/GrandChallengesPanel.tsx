@@ -1,5 +1,5 @@
 import type { GameState } from "../engine/types";
-import { visibleChallenges, challengeView, canFundChallenge } from "../engine/challenges";
+import { visibleChallenges, challengeView, canFundChallenge, pendingForkChallenge } from "../engine/challenges";
 import { challenges as C } from "../engine/balance/challenges";
 import { fmt } from "./format";
 import { ComputeIcon, DataIcon, MoneyIcon, GiftIcon } from "./Icons";
@@ -8,6 +8,7 @@ import { iconFor } from "./iconRegistry";
 interface Props {
   game: GameState;
   onFund: (id: string, at?: { x: number; y: number }) => void;
+  onChooseFork: (id: string, forkId: string) => void;
 }
 
 const RES_ICON = { compute: <ComputeIcon size={12} />, data: <DataIcon size={12} />, money: <MoneyIcon size={12} /> };
@@ -18,7 +19,7 @@ const RES_ICON = { compute: <ComputeIcon size={12} />, data: <DataIcon size={12}
  * completing one fires the tentpole "Challenge complete" moment (handled in App). Purely a
  * grind target: the whole board is hidden until the deep endgame, and the sim never funds.
  */
-export function GrandChallengesPanel({ game, onFund }: Props) {
+export function GrandChallengesPanel({ game, onFund, onChooseFork }: Props) {
   const list = visibleChallenges(game);
   if (list.length === 0) return null;
   const doneCount = game.challenges.completed.length;
@@ -35,6 +36,14 @@ export function GrandChallengesPanel({ game, onFund }: Props) {
           const v = challengeView(game, def.id)!;
           const canFund = canFundChallenge(game, def.id);
           const pct = Math.round(v.progress * 100);
+          const chosenForkId = game.challenges.forks[def.id];
+          const chosenFork = def.forks?.find((f) => f.id === chosenForkId);
+          const forkPending = pendingForkChallenge(game, def.id);
+          // The reward line: for a forked challenge it's a choice (pre-completion) or the
+          // chosen arm (post-choice); otherwise the fixed reward.
+          const rewardDesc = def.forks
+            ? (chosenFork ? chosenFork.reward.desc : "Your choice on completion")
+            : def.reward.desc;
           const res = [
             { key: "compute" as const, funded: v.funded.compute, cost: v.cost.compute, done: v.done.compute },
             { key: "data" as const, funded: v.funded.data, cost: v.cost.data, done: v.done.data },
@@ -66,9 +75,9 @@ export function GrandChallengesPanel({ game, onFund }: Props) {
               </div>
 
               <div className="challenge-foot">
-                <span className="challenge-reward"><GiftIcon size={13} /> {def.reward.desc}</span>
+                <span className="challenge-reward"><GiftIcon size={13} /> {rewardDesc}</span>
                 {v.complete ? (
-                  <span className="challenge-active">Active</span>
+                  forkPending ? <span className="challenge-choose">Choose reward ↓</span> : <span className="challenge-active">Active</span>
                 ) : (
                   <button
                     className="btn challenge-fund"
@@ -79,6 +88,19 @@ export function GrandChallengesPanel({ game, onFund }: Props) {
                   </button>
                 )}
               </div>
+
+              {/* Fork picker — a completed moonshot's either/or reward. Once chosen it's
+                  final; the panel then shows the banked arm as the reward line above. */}
+              {forkPending && def.forks && (
+                <div className="challenge-fork" role="group" aria-label="Choose this challenge's permanent reward">
+                  {def.forks.map((f) => (
+                    <button key={f.id} className="challenge-fork-arm" onClick={() => onChooseFork(def.id, f.id)}>
+                      <span className="challenge-fork-label">{f.label}</span>
+                      <span className="challenge-fork-reward">{f.reward.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })}

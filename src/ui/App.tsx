@@ -115,7 +115,7 @@ export function App() {
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
     doClaimContract, doClaimSponsor, doBuyPreprint, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
-    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival, doFundChallenge, doClaimObjective, doToggleAutomation, doStartTrial, doAbandonTrial } =
+    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival, doFundChallenge, doChooseFork, doClaimObjective, doToggleAutomation, doStartTrial, doAbandonTrial } =
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
@@ -896,7 +896,7 @@ export function App() {
                 {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} onBuyEndowment={() => { haptics.celebrate(); sound.purchase(); doBuyEndowment(); }} onPickDirective={(id) => { haptics.celebrate(); sound.purchase(); doPickDirective(id); }} onBuyLegacyPerk={(id) => { haptics.success(); sound.purchase(); doBuyLegacyPerk(id); }} />}
                 {showResearch && <ContractsPanel game={game} onClaim={onClaimContract} onClaimSponsor={() => { haptics.success(); sound.success(); doClaimSponsor(); }} />}
                 {automationUnlockedAny(game) && <AutomationPanel game={game} onToggle={onToggleAutomation} />}
-                {challengesUnlocked(game) && <GrandChallengesPanel game={game} onFund={onFundChallenge} />}
+                {challengesUnlocked(game) && <GrandChallengesPanel game={game} onFund={onFundChallenge} onChooseFork={(id, forkId) => { haptics.celebrate(); sound.purchase(); doChooseFork(id, forkId); }} />}
                 {trialsUnlocked(game) && (
                   <TrialsPanel
                     game={game}

@@ -336,6 +336,8 @@ interface SavedShape {
   challenges: {
     funded: Record<string, { compute: string; data: string; money: string }>;
     completed: string[];
+    /** Chosen fork arm per completed forked challenge. Migrated at v26. */
+    forks: Record<string, string>;
   };
   /** Lab Objectives — claimed objective ids. Migrated at v22. */
   objectives: { completed: string[] };
@@ -407,6 +409,7 @@ export function serialize(state: GameState): string {
         ]),
       ),
       completed: state.challenges.completed,
+      forks: state.challenges.forks,
     },
     objectives: state.objectives,
     automation: state.automation,
@@ -429,8 +432,8 @@ function sanitizeAutomation(raw: unknown): Record<string, boolean> {
  *  save can't mint a permanent reward for less than its full price (the reputation-perk
  *  anti-cheat policy). Iterating the def list also dedupes and drops unknown ids. */
 function sanitizeChallenges(raw: unknown): ChallengeState {
-  const out: ChallengeState = { funded: {}, completed: [] };
-  const r = (raw ?? {}) as { funded?: Record<string, unknown> };
+  const out: ChallengeState = { funded: {}, completed: [], forks: {} };
+  const r = (raw ?? {}) as { funded?: Record<string, unknown>; forks?: Record<string, unknown> };
   const rawFunded = (r.funded ?? {}) as Record<string, { compute?: unknown; data?: unknown; money?: unknown }>;
   for (const def of CHALLENGES.list) {
     const f = rawFunded[def.id];
@@ -441,6 +444,14 @@ function sanitizeChallenges(raw: unknown): ChallengeState {
     const money = safeBig(f.money).min(cost.money);
     if (compute.gt(0) || data.gt(0) || money.gt(0)) out.funded[def.id] = { compute, data, money };
     if (compute.gte(cost.compute) && data.gte(cost.data) && money.gte(cost.money)) out.completed.push(def.id);
+  }
+  // Forks: a chosen arm is legitimate ONLY for a COMPLETED forked challenge and must be
+  // a real arm id of that challenge (else a crafted save could pick a phantom reward).
+  const rawForks = (r.forks ?? {}) as Record<string, unknown>;
+  for (const def of CHALLENGES.list) {
+    if (!def.forks || !out.completed.includes(def.id)) continue;
+    const chosen = rawForks[def.id];
+    if (typeof chosen === "string" && def.forks.some((f) => f.id === chosen)) out.forks[def.id] = chosen;
   }
   return out;
 }
@@ -871,6 +882,11 @@ export function migrate(raw: any): SavedShape {
   if (s.version === 24) {
     // v24 → v25: Prestige Trials. Existing runs have none active and none completed.
     s = { ...s, version: 25, activeTrial: s.activeTrial ?? null, trialsDone: s.trialsDone ?? [] };
+  }
+  if (s.version === 25) {
+    // v25 → v26: Grand Challenge forks. Existing completed challenges have no chosen
+    // arm yet (the sanitizer defaults the map; the UI prompts for any pending choice).
+    s = { ...s, version: 26, challenges: { ...(s.challenges ?? { funded: {}, completed: [] }), forks: s.challenges?.forks ?? {} } };
   }
   return s as SavedShape;
 }

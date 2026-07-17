@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { createInitialState } from "./state";
 import {
   fundChallenge, challengeMods, challengesUnlocked, visibleChallenges, canFundChallenge, challengeView,
+  chooseFork, pendingForkChallenge,
 } from "./challenges";
 import { challenges as C } from "./balance/challenges";
 import { balance } from "./balance/config";
@@ -66,10 +67,32 @@ describe("Grand Challenges", () => {
   it("a completed reward folds into derive; identity with none completed (curve-safe)", () => {
     const s = rich();
     const base = derive(s).computeMult;
-    const done = fundChallenge(s, first.id).state; // fusion_dc = +35% compute
-    expect(derive(done).computeMult.gt(base)).toBe(true);
+    // fusion_dc is FORKED: completing it grants nothing until an arm is chosen…
+    const done = fundChallenge(s, first.id).state;
+    expect(derive(done).computeMult.eq(base)).toBe(true); // dormant, awaiting the choice
+    // …then the picked arm's reward folds in (Grid Independence = +35% Compute).
+    const picked = chooseFork(done, first.id, "grid_independence");
+    expect(derive(picked).computeMult.gt(base)).toBe(true);
     const m = challengeMods(createInitialState());
     expect(m.compute.eq(Big.ONE) && m.data.eq(Big.ONE) && m.money.eq(Big.ONE)).toBe(true);
+  });
+
+  it("forks: a completed moonshot grants its CHOSEN arm; the choice is final; sanitizer guards it", () => {
+    const s = rich();
+    const done = fundChallenge(s, first.id).state; // fusion_dc, forked
+    expect(pendingForkChallenge(done, first.id)).toBe(true);
+    // Pick the money arm; the compute arm is no longer available (choice is final).
+    const sold = chooseFork(done, first.id, "sell_surplus");
+    expect(sold.challenges.forks[first.id]).toBe("sell_surplus");
+    expect(pendingForkChallenge(sold, first.id)).toBe(false);
+    expect(chooseFork(sold, first.id, "grid_independence")).toBe(sold); // no re-pick
+    expect(challengeMods(sold).money.gt(Big.ONE)).toBe(true);
+    expect(challengeMods(sold).compute.eq(Big.ONE)).toBe(true);
+    // Round-trips; and a crafted fork for an UNCOMPLETED challenge is dropped.
+    expect(deserialize(serialize(sold)).challenges.forks[first.id]).toBe("sell_surplus");
+    const crafted = JSON.parse(serialize(createInitialState()));
+    crafted.challenges = { funded: {}, completed: [], forks: { [first.id]: "sell_surplus" } };
+    expect(deserialize(JSON.stringify(crafted)).challenges.forks[first.id]).toBeUndefined();
   });
 
   it("progress survives prestige and a save round-trip", () => {

@@ -173,6 +173,9 @@ export interface GameState {
 export interface ChallengeState {
   funded: Record<string, { compute: Big; data: Big; money: Big }>;
   completed: string[];
+  /** Chosen fork arm per completed forked challenge (challengeId → forkId). A forked
+   *  challenge grants no reward until its fork is picked. Empty until the deep endgame. */
+  forks: Record<string, string>;
 }
 
 /** A rolled daily sponsor objective (IDEAS #9). */

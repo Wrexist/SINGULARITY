@@ -99,7 +99,7 @@ nothing owned = identity multiplier, tuned curve untouched.
   makes the panel denser on iPhone widths.
 - **First increment shipped this pass ✅** — see Part 3.
 
-### #2 — Grand Challenge forks + Megaprojects II · M · low risk
+### #2 — Grand Challenge forks + Megaprojects II · M · low risk · **forks SHIPPED ✅**
 **Pitch:** Each Grand Challenge completion presents a permanent either/or fork
 (e.g. fusion: "grid independence" compute engine vs "sell surplus power" money
 engine); after all 10, a repeatable **Megaproject** loop opens with escalating

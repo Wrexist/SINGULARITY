@@ -52,7 +52,7 @@ import { productMilestones as PRODUCT_MILESTONES, type ProductTypeId } from "../
 import { achievements as ACHIEVEMENT_DEFS } from "../engine/balance/achievements";
 import { buyReputationPerk, buyEndowment, pickEndowmentDirective } from "../engine/reputation";
 import { startTrial, abandonTrial } from "../engine/trials";
-import { fundChallenge } from "../engine/challenges";
+import { fundChallenge, chooseFork } from "../engine/challenges";
 import { claimObjective } from "../engine/objectives";
 import { applyAutomation, automationUnlockedAny, automationEnabled, toggleAutomation } from "../engine/automation";
 import { automation as AUTOMATION } from "../engine/balance/automation";
@@ -183,6 +183,7 @@ interface GameStore {
   doAbandonTrial: () => void;
   /** Pour affordable resources into a Grand Challenge. Returns true if THIS call finished it. */
   doFundChallenge: (id: string) => boolean;
+  doChooseFork: (id: string, forkId: string) => void;
   /** Claim a met Lab Objective, steering its boost to the chosen lane (default = headline). */
   doClaimObjective: (id: string, target?: "computeMult" | "dataMult" | "moneyMult") => void;
   /** Flip an Automation autopilot on/off (no-op if still locked). */
@@ -615,6 +616,7 @@ export const useGame = create<GameStore>((set, get) => ({
     });
     return justCompleted;
   },
+  doChooseFork: (id, forkId) => set((s) => ({ game: chooseFork(s.game, id, forkId) })),
   doClaimObjective: (id, target) => set((s) => ({ game: claimObjective(s.game, id, target) })),
   doToggleAutomation: (id) => set((s) => ({ game: toggleAutomation(s.game, id) })),
   setComputeFocus: (v) =>

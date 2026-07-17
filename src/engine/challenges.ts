@@ -111,6 +111,7 @@ export function fundChallenge(state: GameState, id: string): { state: GameState;
         money: r.money.sub(give.money).max(Big.ZERO),
       },
       challenges: {
+        ...state.challenges,
         funded: { ...state.challenges.funded, [id]: nextFunded },
         completed: complete ? [...state.challenges.completed, id] : state.challenges.completed,
       },
@@ -119,8 +120,38 @@ export function fundChallenge(state: GameState, id: string): { state: GameState;
   };
 }
 
+/** The reward a completed challenge currently grants: the CHOSEN fork arm for a forked
+ *  challenge (or none until the player picks), else the fixed reward. */
+function activeReward(state: GameState, def: GrandChallenge): GrandChallenge["reward"] | null {
+  if (def.forks) {
+    const pickedId = state.challenges.forks[def.id];
+    const arm = def.forks.find((f) => f.id === pickedId);
+    return arm ? arm.reward : null; // forked but unchosen → no reward yet
+  }
+  return def.reward;
+}
+
+/** A completed forked challenge still awaiting the player's either/or choice. The UI
+ *  shows a fork picker for these; the reward is dormant until one is chosen. */
+export function pendingForkChallenge(state: GameState, id: string): boolean {
+  const def = BY_ID.get(id);
+  return !!def && !!def.forks && state.challenges.completed.includes(id) && !state.challenges.forks[id];
+}
+
+/** Choose a fork arm for a completed forked challenge. Pure; no-op unless the challenge
+ *  is completed, forked, the arm is valid, and no arm was chosen yet (choice is final). */
+export function chooseFork(state: GameState, id: string, forkId: string): GameState {
+  const def = BY_ID.get(id);
+  if (!def || !def.forks) return state;
+  if (!state.challenges.completed.includes(id)) return state;
+  if (state.challenges.forks[id]) return state; // already chosen — final
+  if (!def.forks.some((f) => f.id === forkId)) return state;
+  return { ...state, challenges: { ...state.challenges, forks: { ...state.challenges.forks, [id]: forkId } } };
+}
+
 /** Permanent per-lane multipliers from COMPLETED challenges (identity when none). Folded
- *  into derive like the Legacy/Ascension mults. legacyMult-kind rewards boost all lanes. */
+ *  into derive like the Legacy/Ascension mults. legacyMult-kind rewards boost all lanes.
+ *  A forked challenge contributes only its CHOSEN arm (nothing until the player picks). */
 export function challengeMods(state: GameState): { compute: Big; data: Big; money: Big } {
   let compute = Big.ONE;
   let data = Big.ONE;
@@ -128,8 +159,10 @@ export function challengeMods(state: GameState): { compute: Big; data: Big; mone
   for (const id of state.challenges.completed) {
     const def = BY_ID.get(id);
     if (!def) continue;
-    const m = 1 + def.reward.magnitude;
-    switch (def.reward.kind) {
+    const reward = activeReward(state, def);
+    if (!reward) continue; // forked-but-unchosen → dormant
+    const m = 1 + reward.magnitude;
+    switch (reward.kind) {
       case "computeMult": compute = compute.mul(m); break;
       case "dataMult": data = data.mul(m); break;
       case "moneyMult": money = money.mul(m); break;

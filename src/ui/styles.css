@@ -2898,6 +2898,23 @@ button.modchip.workable:active { transform: scale(0.94); }
   background: color-mix(in srgb, var(--money) 10%, transparent);
 }
 .challenge-active::before { content: "✓ "; }
+.challenge-choose {
+  font-size: 12.5px; font-weight: 800; color: var(--accent); text-align: center;
+  padding: 7px; border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+/* Fork picker — two either/or arms for a completed moonshot. Full-card buttons,
+   no left-edge bar (house rule). */
+.challenge-fork { display: flex; gap: 8px; margin-top: 8px; }
+.challenge-fork-arm {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; align-items: flex-start;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-radius: 10px; padding: 9px 10px; background: color-mix(in srgb, var(--accent) 6%, transparent);
+  text-align: left; cursor: pointer;
+}
+.challenge-fork-arm:active { transform: scale(0.98); }
+.challenge-fork-label { font-size: 12.5px; font-weight: 800; color: var(--ink); }
+.challenge-fork-reward { font-size: 11px; font-weight: 700; color: var(--accent); }
 /* The "Grand Challenge complete" moment reuses the era-modal treatment. */
 .challenge-complete-icon {
   line-height: 1; margin: 6px 0 2px; color: var(--accent);
