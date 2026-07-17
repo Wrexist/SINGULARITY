@@ -27,9 +27,17 @@ export interface ParadigmDef {
 
 export const paradigms = {
   enabled: true,
-  /** The layer reveals once the player is a deep-run veteran (well past onboarding). */
-  revealAtShips: 12,
+  /** The layer reveals in the mid-game (2026-07 pacing pass — was 12). The core research
+   *  tree is byte-identical every generation, so ships ~6-12 showed no NEW research nodes;
+   *  revealing here, with a cheap entry node below, finally gives the repetitive stretch
+   *  its first unseen research. Curve-safe: reveal is a visibility gate only — the sim
+   *  never spends Reputation, so it owns zero paradigms regardless of when they appear. */
+  revealAtShips: 6,
   list: [
+    // Cheap entry node — the affordable "first paradigm" that makes the mid-game reveal
+    // land (priced 0.75%/Rep, exactly like the entry nodes below, so it's not a value
+    // outlier). Standalone: the natural first buy that opens the layer.
+    { id: "para_scaling", name: "Scaling Laws", desc: "Chinchilla-optimal compute, every run. +18% Compute, forever.", cost: 24, effect: { kind: "computeMult", value: 0.18 } },
     // Two entry paradigms — pick a substrate to break the current ceiling.
     { id: "para_neuromorphic", name: "Neuromorphic Compute", desc: "Spiking silicon that thinks in events, not clocks. +45% Compute, forever.", cost: 60, effect: { kind: "computeMult", value: 0.45 } },
     { id: "para_synthetic", name: "Synthetic Cognition", desc: "The model curates its own training reality. +45% Data, forever.", cost: 60, effect: { kind: "dataMult", value: 0.45 } },

@@ -37,13 +37,18 @@ export interface TrialDef {
 export const trials = {
   enabled: true,
   list: [
+    // Reveal cadence (2026-07 pacing pass): spread across 3/5/7/9/11 instead of bunching
+    // at 3-7. Five same-flavoured boards arriving together blurred into one wall, then
+    // ships 8-12 went thin; spacing them drips one fresh Trial into the mid-game gap —
+    // and, crucially, gives a slower player who reaches ship 9-11 WITHOUT ascending
+    // something new. Curve-safe: the sim never opts in, so unlock timing can't move it.
     { id: "trial_ablation", name: "Ablation Study", desc: "Run a whole generation at HALF Compute — then bank +10% Compute, permanently.", unlockShips: 3, handicap: { lane: "compute", factor: 0.5 }, reward: { lane: "compute", value: 0.1 } },
-    { id: "trial_lean", name: "Lean Budget", desc: "Run a whole generation at HALF Revenue — then bank +10% Money, permanently.", unlockShips: 4, handicap: { lane: "money", factor: 0.5 }, reward: { lane: "money", value: 0.1 } },
-    { id: "trial_scarcity", name: "Data Scarcity", desc: "Run a whole generation at HALF Data — then bank +10% Data, permanently.", unlockShips: 5, handicap: { lane: "data", factor: 0.5 }, reward: { lane: "data", value: 0.1 } },
+    { id: "trial_lean", name: "Lean Budget", desc: "Run a whole generation at HALF Revenue — then bank +10% Money, permanently.", unlockShips: 5, handicap: { lane: "money", factor: 0.5 }, reward: { lane: "money", value: 0.1 } },
+    { id: "trial_scarcity", name: "Data Scarcity", desc: "Run a whole generation at HALF Data — then bank +10% Data, permanently.", unlockShips: 7, handicap: { lane: "data", factor: 0.5 }, reward: { lane: "data", value: 0.1 } },
     // Condition Trial (reads a run rule, no production handicap): ship with an EMPTY
     // staff roster. The lean discipline pays out in cash efficiency.
-    { id: "trial_solo", name: "Solo Run", desc: "Ship a whole generation with NO staff on the roster — then bank +12% Money, permanently.", unlockShips: 6, condition: "solo", reward: { lane: "money", value: 0.12 } },
+    { id: "trial_solo", name: "Solo Run", desc: "Ship a whole generation with NO staff on the roster — then bank +12% Money, permanently.", unlockShips: 9, condition: "solo", reward: { lane: "money", value: 0.12 } },
     // Cross-lane handicap: starve one lane, master another. A tougher, later chase.
-    { id: "trial_overclock", name: "Overclocked", desc: "Run a whole generation at HALF Data — then bank +12% Compute, permanently.", unlockShips: 7, handicap: { lane: "data", factor: 0.5 }, reward: { lane: "compute", value: 0.12 } },
+    { id: "trial_overclock", name: "Overclocked", desc: "Run a whole generation at HALF Data — then bank +12% Compute, permanently.", unlockShips: 11, handicap: { lane: "data", factor: 0.5 }, reward: { lane: "compute", value: 0.12 } },
   ] satisfies TrialDef[],
 };
