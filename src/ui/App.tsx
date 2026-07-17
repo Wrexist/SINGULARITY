@@ -94,6 +94,8 @@ import { challengesUnlocked, challengeById } from "../engine/challenges";
 import { GrandChallengesPanel } from "./GrandChallengesPanel";
 import { TrialsPanel } from "./TrialsPanel";
 import { trialsUnlocked } from "../engine/trials";
+import { ParadigmPanel } from "./ParadigmPanel";
+import { paradigmsUnlocked } from "../engine/paradigms";
 import { ChallengeComplete } from "./ChallengeComplete";
 import { objectivesUnlocked } from "../engine/objectives";
 import { ObjectivesPanel } from "./ObjectivesPanel";
@@ -115,7 +117,7 @@ export function App() {
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
     doClaimContract, doClaimSponsor, doBuyPreprint, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
-    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival, doFundChallenge, doChooseFork, doFundMegaproject, doClaimObjective, doToggleAutomation, doStartTrial, doAbandonTrial, doSetFlagship } =
+    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival, doFundChallenge, doChooseFork, doFundMegaproject, doClaimObjective, doToggleAutomation, doStartTrial, doAbandonTrial, doSetFlagship, doBuyParadigm } =
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
@@ -889,6 +891,7 @@ export function App() {
             {section === "research" && (
               <>
                 {showResearch && <ResearchPanel game={game} derived={d} onResearch={onResearch} onBuyPreprint={() => { haptics.success(); sound.purchase(); doBuyPreprint(); }} />}
+                {paradigmsUnlocked(game) && <ParadigmPanel game={game} onBuy={(id) => { haptics.celebrate(); sound.purchase(); doBuyParadigm(id); }} />}
                 {showMarket && <DataMarketPanel game={game} onBuyData={onBuyData} onBuyTool={onBuy} onLobby={() => { haptics.tap(); sound.purchase(); doLobby(); }} />}
               </>
             )}

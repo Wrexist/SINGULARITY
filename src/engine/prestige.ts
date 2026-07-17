@@ -169,6 +169,8 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     repEndowment: state.repEndowment,
     // The lane Directives chosen while levelling the Endowment are permanent as well.
     endowmentDirectives: state.endowmentDirectives,
+    // Paradigm Research nodes are permanent capability unlocks — they persist too.
+    paradigms: state.paradigms,
     // Prestige Trials: shipping ends the active constrained run. Bank its reward IF
     // its run condition (if any) held — a "solo" Trial needs an empty staff roster at
     // ship. Cleared either way (a failed condition just gives no reward, retry next

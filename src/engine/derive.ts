@@ -7,6 +7,7 @@ import { charterMods } from "./charter";
 import { legacyAvailable, legacyTreeMods } from "./legacyTree";
 import { trialMods } from "./trials";
 import { flagshipMoneyMult } from "./flagship";
+import { paradigmMods } from "./paradigms";
 import { ascensionMultiplier } from "./prestige";
 import { preprintMult } from "./preprints";
 import { challengeMods } from "./challenges";
@@ -290,6 +291,13 @@ export function derive(state: GameState): Derived {
   // cross-ship tenure. 1.0 with no flagship (tenure 0), so identity through the sim.
   moneyMult = moneyMult.mul(flagshipMoneyMult(state));
 
+  // Paradigm Research: deep-endgame capability nodes bought with Reputation. All 1.0
+  // with none owned, so identity through the tuned run (the sim never spends Reputation).
+  const para = paradigmMods(state);
+  computeMult = computeMult.mul(para.computeMult);
+  dataMult = dataMult.mul(para.dataMult);
+  moneyMult = moneyMult.mul(para.moneyMult);
+
   // Legacy Investments (R5.4): owned prestige-tree lane biases. All 1.0 with
   // nothing invested, so this is identity until the player spends weights.
   const lt = legacyTreeMods(state);
@@ -305,7 +313,7 @@ export function derive(state: GameState): Derived {
   // on a fresh run with no active events.
   const dataPerSec = dataPerSecFlat
     .mul(scraperDataMult)
-    .mul(legacyMult).mul(ascensionMult).mul(ppMult).mul(rep.dataMult).mul(ch.dataMult).mul(lt.dataMult).mul(tr.dataMult)
+    .mul(legacyMult).mul(ascensionMult).mul(ppMult).mul(rep.dataMult).mul(ch.dataMult).mul(lt.dataMult).mul(tr.dataMult).mul(para.dataMult)
     .mul(balance.difficulty.productionMult); // global production dilation (see computePerSec)
 
   let computePerSec = computeFlat.mul(computeMult);

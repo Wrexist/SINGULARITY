@@ -6,6 +6,7 @@ import { contracts as CONTRACTS } from "./balance/contracts";
 import { legacyTree as LEGACY } from "./balance/legacyTree";
 import { reputation as REPUTATION } from "./balance/reputation";
 import { trials as TRIALS } from "./balance/trials";
+import { paradigms as PARADIGMS } from "./balance/paradigms";
 import { charters as CHARTERS } from "./balance/charters";
 import { balance } from "./balance/config";
 import { components as COMPONENTS, SLOTS_BY_TIER, type SlotClass } from "./balance/components";
@@ -32,6 +33,8 @@ const RIVAL_NAMES = new Set(MARKET.rivals.map((r) => r.name));
 const RESEARCH_IDS = new Set(balance.research.map((r) => r.id));
 const DIRECTIVE_IDS = new Set(REPUTATION.endowment.directives.defs.map((d) => d.id));
 const TRIAL_IDS = new Set(TRIALS.list.map((t) => t.id));
+const PARADIGM_IDS = new Set(PARADIGMS.list.map((p) => p.id));
+const PARADIGM_COST = new Map(PARADIGMS.list.map((p) => [p.id, p.cost]));
 
 /** Keep only known ids, each at most once (order preserved). Closes the duplicate /
  *  unknown-id save-edit class for contracts / legacy investments / reputation perks. */
@@ -319,6 +322,8 @@ interface SavedShape {
    *  known ids + migrated at v25. */
   activeTrial: string | null;
   trialsDone: string[];
+  /** Paradigm Research — owned node ids (Reputation cost reconciled into spent). v29. */
+  paradigms: string[];
   /** Flagship: designated product id (or null) + cross-ship tenure. Migrated at v27. */
   flagship: { productId: string | null; tenure: number };
   contracts: { completed: string[] };
@@ -395,6 +400,7 @@ export function serialize(state: GameState): string {
     endowmentDirectives: state.endowmentDirectives,
     activeTrial: state.activeTrial,
     trialsDone: state.trialsDone,
+    paradigms: state.paradigms,
     flagship: state.flagship,
     contracts: state.contracts,
     charter: state.charter,
@@ -529,6 +535,10 @@ export function deserialize(json: string): GameState {
   // a crafted value can't drive the cost-sum / boost math to Infinity. Its cost is then
   // reconciled into reputation.spent below (same anti-cheat policy as the perk tree).
   const repEndowment = Math.min(REPUTATION.endowment.maxLevel, safeCount(raw.repEndowment));
+  // Paradigm Research: keep only known node ids; their Reputation cost is reconciled into
+  // reputation.spent below (same anti-cheat policy as perks + the endowment).
+  const paradigms = dedupeKnownIds(raw.paradigms, PARADIGM_IDS);
+  const paradigmOwed = paradigms.reduce((sum, id) => sum + (PARADIGM_COST.get(id) ?? 0), 0);
   const loadedProducts = isWellFormedProducts(raw.products) ? raw.products : fresh.products;
   // `sold` was added after v6 shipped, `drafts`/`upgrade` in v7; default them for
   // saves that predate each, and sanitize the untrusted nested shapes.
@@ -605,8 +615,9 @@ export function deserialize(json: string): GameState {
     employees: sanitizeEmployees(raw.employees),
     stats: sanitizeStats(raw.stats),
     achievements,
-    reputation: sanitizeReputation(raw.reputation, repEndowment),
+    reputation: sanitizeReputation(raw.reputation, repEndowment, paradigmOwed),
     repEndowment,
+    paradigms,
     endowmentDirectives: sanitizeDirectives(raw.endowmentDirectives, repEndowment),
     // Prestige Trials: the active id must be a known Trial (else no active run), and
     // completed ids are filtered to known, deduped (the reward folds per unique id).
@@ -786,11 +797,11 @@ function endowmentOwed(level: number): number {
 /** Reputation is untrusted: KNOWN perk ids (deduped), and `spent` reconciled so it's
  *  at least the cost of the perks you own PLUS the Endowment levels you claim — a save
  *  can't grant owned perks or endowment levels for free (under-reported spent). */
-function sanitizeReputation(r: unknown, endowmentLevel = 0): { spent: number; perks: string[] } {
+function sanitizeReputation(r: unknown, endowmentLevel = 0, paradigmOwed = 0): { spent: number; perks: string[] } {
   const o = (r ?? {}) as { spent?: unknown; perks?: unknown };
   const perks = dedupeKnownIds(o.perks, new Set(REP_PERK_COST.keys()));
   const owedForOwned =
-    perks.reduce((sum, id) => sum + (REP_PERK_COST.get(id) ?? 0), 0) + endowmentOwed(endowmentLevel);
+    perks.reduce((sum, id) => sum + (REP_PERK_COST.get(id) ?? 0), 0) + endowmentOwed(endowmentLevel) + paradigmOwed;
   const loadedSpent = typeof o.spent === "number" && Number.isFinite(o.spent) && o.spent >= 0 ? o.spent : 0;
   return { spent: Math.max(loadedSpent, owedForOwned), perks };
 }
@@ -937,6 +948,10 @@ export function migrate(raw: any): SavedShape {
     // v27 → v28: Megaprojects II. Existing runs are at level 0 with nothing funded
     // (the sanitizer defaults + clamps this anyway; this just stamps the version).
     s = { ...s, version: 28, megaprojects: s.megaprojects ?? { level: 0, funded: { compute: "0", data: "0", money: "0" } } };
+  }
+  if (s.version === 28) {
+    // v28 → v29: Paradigm Research. Existing runs own none (sanitizer-defaulted).
+    s = { ...s, version: 29, paradigms: s.paradigms ?? [] };
   }
   return s as SavedShape;
 }

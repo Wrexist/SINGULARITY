@@ -141,7 +141,7 @@ Reputation tree gains 2–3 new tiers whose top nodes unlock content rather than
   stack — total-multiplier audit needed; new persisted choices → migration +
   sanitize (clamp unknown directive ids).
 
-### #5 — Paradigm Research *(generational breakthrough tiers)* · L · medium risk
+### #5 — Paradigm Research *(generational breakthrough tiers)* · L · medium risk · **SHIPPED ✅**
 **Pitch:** New research clusters — Neuromorphic, Quantum Training, Biological
 Substrates, Alignment Theory — **revealed** (not discounted) by meta-progress (ship
 thresholds / first ascension / a Legacy Constellation unlock). For the first time,
@@ -327,11 +327,23 @@ New engine functions in `challenges.ts` folded through `challengeMods`; new pers
 level ≥ 0 and funding to the cycle cost); a Megaproject card in the panel. Curve-safe:
 the sim never completes even one challenge, so it never unlocks the loop (identity).
 
+**More to grind toward — feature #5 (Paradigm Research):** the fix for the audit's #1
+finding — the 25-node research tree is byte-identical every generation, so prestige only
+*discounted* it, never *revealed* anything. Paradigms are genuinely NEW capability nodes
+(Neuromorphic Compute, Synthetic Cognition, Quantum Annealed Training, Biological
+Substrates, Recursive Self-Improvement) that appear only past a deep ship threshold and
+are bought with **Reputation** — so for the first time a veteran sees research they've
+never seen. New `paradigms.ts` + `balance/paradigms.ts`, folded into `derive`; cost is
+charged to `reputation.spent` (reusing the shared pool, no new currency, no import cycle);
+new persisted `paradigms` (SAVE_VERSION 28→29 + migration + known-id filter + spend
+reconciliation like perks/endowment); a `ParadigmPanel` in the Research section.
+Curve-safe by construction: cost is Reputation and the sim never spends it, so paradigms
+stay empty and the fold is identity through the tuned run (unit-tested byte-for-byte).
+
 ### Suggested build order from here
-1. **#5 Paradigm Research** — generational reveal tiers (slots under the Legacy unlock
-   plumbing already shipped). *(L)*
-2. **#9 Doctrine Consequences** — aligned vs accel exclusive content. *(M)*
-3. **#10 The Institute** — third prestige layer (now that #1/#6 give it things to unlock). *(XL)*
+1. **#9 Doctrine Consequences** — aligned vs accel exclusive content. *(M)*
+2. **#10 The Institute** — third prestige layer; #1/#5/#6 now give it plenty to unlock. *(XL)*
+3. Deepen the shipped systems — more Paradigm tiers, Trial varieties, Legacy synergy nodes.
 
 ### Shipped across this branch (running tally)
 Less noisy: `logEvent` + 9 confirmations & achievement/level-up/churn → log-only; nav
@@ -339,6 +351,6 @@ Less noisy: `logEvent` + 9 confirmations & achievement/level-up/churn → log-on
 save stash, migration-ladder completeness test. More gameplay: Legacy **Frontier**
 tier-3 + **Product Division** slot-unlock; **Endowment Directives**; deep
 **product-milestone** ladder; **Prestige Trials** (+ Solo Run condition & cross-lane
-tiers); **Grand Challenge forks** + **Megaprojects II**; **Flagship** brand. All verified
-— `tsc` clean, **604 tests**, balance sim unaffected (structural + identity-tested), each
-driven in-app with zero console errors.
+tiers); **Grand Challenge forks** + **Megaprojects II**; **Flagship** brand; **Paradigm
+Research**. All verified — `tsc` clean, **608 tests**, balance sim unaffected (structural
++ identity-tested), each driven in-app with zero console errors.

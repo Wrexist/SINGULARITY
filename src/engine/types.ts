@@ -105,6 +105,10 @@ export interface GameState {
    *  survives prestige; `activeTrial` completes on ship. */
   activeTrial: string | null;
   trialsDone: string[];
+  /** Paradigm Research (2026-07): owned deep-endgame capability node ids, bought with
+   *  Reputation (charged to reputation.spent). Empty until the deep endgame → identity
+   *  for the sim. Permanent meta-progression (survives prestige + ascension). */
+  paradigms: string[];
   /** Flagship (2026-07): the designated flagship product id (or null) and its cross-ship
    *  `tenure` (ships survived as flagship). Grants a bounded permanent revenue bonus.
    *  Curve-safe: the sim never launches products, so productId stays null / tenure 0. */
