@@ -50,7 +50,7 @@ describe("prestige trials", () => {
     const under = startTrial(base, "trial_ablation");
     expect(under.activeTrial).toBe("trial_ablation");
     const ratio = derive(under).computePerSec.div(derive(base).computePerSec).toNumber();
-    expect(ratio).toBeCloseTo(ABLATION.handicap.factor, 5); // ×0.5 Compute
+    expect(ratio).toBeCloseTo(ABLATION.handicap!.factor, 5); // ×0.5 Compute
   });
 
   it("shipping COMPLETES the active trial: banks the permanent reward, drops the handicap", () => {
@@ -75,6 +75,19 @@ describe("prestige trials", () => {
     // completeActiveTrial twice doesn't double-bank.
     const once = completeActiveTrial(s);
     expect(completeActiveTrial(once).trialsDone).toEqual(["trial_ablation"]);
+  });
+
+  it("a condition Trial (Solo Run) banks only when its rule holds at ship; else clears free", () => {
+    // Solo Run has no production handicap — the constraint is an empty roster at ship.
+    // (Set activeTrial directly: we're testing COMPLETION, not the start gate.)
+    const shippable = { ...buildingRun(6), research: [CAPABILITY], lifetimeMoney: Big.of(1e6) };
+    // Ship WITH staff → condition fails → cleared, NOT banked.
+    const failed = prestige({ ...shippable, activeTrial: "trial_solo", employees: [{ id: "e1" } as any] });
+    expect(failed.activeTrial).toBeNull();
+    expect(failed.trialsDone).not.toContain("trial_solo");
+    // Ship with an EMPTY roster → banked.
+    const banked = prestige({ ...shippable, activeTrial: "trial_solo", employees: [] });
+    expect(banked.trialsDone).toContain("trial_solo");
   });
 
   it("round-trips and sanitizes hostile saves (unknown active → null, unknown done dropped)", () => {

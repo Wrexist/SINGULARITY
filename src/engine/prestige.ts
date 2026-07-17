@@ -6,6 +6,7 @@ import { carryEarnedComponents } from "./components";
 import { startingRacks } from "./reputation";
 import { hallCapacity } from "./hall";
 import { currentEra } from "./eras";
+import { trials as TRIALS_DATA } from "./balance/trials";
 import type { DraftModel, GameState } from "./types";
 
 /**
@@ -164,13 +165,18 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     repEndowment: state.repEndowment,
     // The lane Directives chosen while levelling the Endowment are permanent as well.
     endowmentDirectives: state.endowmentDirectives,
-    // Prestige Trials: shipping COMPLETES the active constrained run — bank its id
-    // as a permanent reward (once) and clear it so the fresh run is unconstrained.
-    // Inlined here (not imported from trials.ts) to keep prestige cycle-free.
+    // Prestige Trials: shipping ends the active constrained run. Bank its reward IF
+    // its run condition (if any) held — a "solo" Trial needs an empty staff roster at
+    // ship. Cleared either way (a failed condition just gives no reward, retry next
+    // run). Inlined (data-only import) to keep prestige cycle-free.
     activeTrial: null,
-    trialsDone: state.activeTrial && !state.trialsDone.includes(state.activeTrial)
-      ? [...state.trialsDone, state.activeTrial]
-      : state.trialsDone,
+    trialsDone: (() => {
+      const id = state.activeTrial;
+      if (!id || state.trialsDone.includes(id)) return state.trialsDone;
+      const def = TRIALS_DATA.list.find((t) => t.id === id);
+      const conditionOk = !def?.condition || (def.condition === "solo" && state.employees.length === 0);
+      return conditionOk ? [...state.trialsDone, id] : state.trialsDone;
+    })(),
     // Grand Challenges are a career-spanning grind — funding + completions persist.
     challenges: state.challenges,
     // Lab Objectives persist too (an onboarding-grind ladder consumed once across runs).

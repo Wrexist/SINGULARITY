@@ -1,5 +1,5 @@
 import type { GameState } from "../engine/types";
-import { trialsBalance, trialsUnlocked, canStartTrial } from "../engine/trials";
+import { trialsBalance, trialsUnlocked, canStartTrial, trialConditionMet } from "../engine/trials";
 import { canPrestige } from "../engine/prestige";
 
 interface Props {
@@ -34,16 +34,26 @@ export function TrialsPanel({ game, onStart, onAbandon }: Props) {
         Constrained runs — commit before you can ship, endure the handicap, then bank a permanent edge.
       </p>
 
-      {active && (
-        <div className="trial-card trial-on">
-          <div className="trial-main">
-            <span className="trial-name">{active.name} — running</span>
-            <span className="trial-desc">{active.desc}</span>
-            <span className="trial-status">Ship the Model to complete and bank +{Math.round(active.reward.value * 100)}% {LANE_LABEL[active.reward.lane]}.</span>
+      {active && (() => {
+        const condMet = trialConditionMet(game);
+        return (
+          <div className="trial-card trial-on">
+            <div className="trial-main">
+              <span className="trial-name">{active.name} — running</span>
+              <span className="trial-desc">{active.desc}</span>
+              {active.condition === "solo" && (
+                <span className="trial-status" style={condMet ? undefined : { color: "var(--ink-3)" }}>
+                  Condition: no staff on the roster — {condMet ? "met ✓" : "not met (fire your team to qualify)"}
+                </span>
+              )}
+              <span className="trial-status">
+                Ship the Model {active.condition && !condMet ? "with the condition met " : ""}to bank +{Math.round(active.reward.value * 100)}% {LANE_LABEL[active.reward.lane]}.
+              </span>
+            </div>
+            <button className="trial-abandon" onClick={onAbandon}>Abandon</button>
           </div>
-          <button className="trial-abandon" onClick={onAbandon}>Abandon</button>
-        </div>
-      )}
+        );
+      })()}
 
       <div className="list">
         {trialsBalance.list.map((t) => {

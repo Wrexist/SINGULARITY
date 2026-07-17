@@ -55,13 +55,25 @@ export function abandonTrial(state: GameState): GameState {
   return state.activeTrial ? { ...state, activeTrial: null } : state;
 }
 
-/** Complete the active Trial (called from prestige on ship): bank its id and clear
- *  active. Idempotent — a Trial already in `trialsDone` just clears active. */
+/** Is the active Trial's run CONDITION (if any) currently satisfied? Handicap-only
+ *  Trials have no condition and are always "met". "solo" = an empty staff roster. */
+export function trialConditionMet(state: GameState): boolean {
+  const id = state.activeTrial;
+  if (!id) return false;
+  const d = BY_ID.get(id);
+  if (!d || !d.condition) return true; // no condition → nothing to fail
+  if (d.condition === "solo") return state.employees.length === 0;
+  return true;
+}
+
+/** Complete the active Trial (called from prestige on ship): bank its id IF its
+ *  condition holds, and clear active either way. Idempotent — an already-banked Trial
+ *  just clears active. A failed condition clears with no reward (retry next run). */
 export function completeActiveTrial(state: GameState): GameState {
   const id = state.activeTrial;
   if (!id) return state;
-  if (state.trialsDone.includes(id)) return { ...state, activeTrial: null };
-  return { ...state, activeTrial: null, trialsDone: [...state.trialsDone, id] };
+  const banks = trialConditionMet(state) && !state.trialsDone.includes(id);
+  return { ...state, activeTrial: null, trialsDone: banks ? [...state.trialsDone, id] : state.trialsDone };
 }
 
 /** The combined Trial production multipliers: the ACTIVE run's handicap × every
@@ -74,10 +86,10 @@ export function trialMods(state: GameState): { computeMult: number; dataMult: nu
     else if (lane === "data") dataMult *= factor;
     else moneyMult *= factor;
   };
-  // Active handicap (only while a Trial is running).
+  // Active handicap (only while a Trial with a production penalty is running).
   if (state.activeTrial) {
     const d = BY_ID.get(state.activeTrial);
-    if (d) apply(d.handicap.lane, d.handicap.factor);
+    if (d?.handicap) apply(d.handicap.lane, d.handicap.factor);
   }
   // Permanent rewards from completed Trials.
   for (const id of state.trialsDone) {

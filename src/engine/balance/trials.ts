@@ -14,15 +14,23 @@
  * permanently better at that lane. "Ablation study" framing = dead-on AI-lab flavor.
  */
 
+/** A run CONDITION some Trials require to hold at ship time to complete (read, not
+ *  enforced — you honor it, the ship checks it). "solo" = an empty staff roster. */
+export type TrialCondition = "solo";
+
 export interface TrialDef {
   id: string;
   name: string;
   desc: string;
   /** Ships required before this Trial can be attempted. */
   unlockShips: number;
-  /** Production handicap ACTIVE during the constrained run (factor < 1). */
-  handicap: { lane: "compute" | "data" | "money"; factor: number };
-  /** Permanent lane bonus banked on completion (additive: mult = 1 + value). */
+  /** Production handicap ACTIVE during the constrained run (factor < 1). Optional:
+   *  a condition-only Trial has no production penalty — the constraint IS the rule. */
+  handicap?: { lane: "compute" | "data" | "money"; factor: number };
+  /** A run condition that must hold at ship time to bank the reward. Optional. */
+  condition?: TrialCondition;
+  /** Permanent lane bonus banked on completion (additive: mult = 1 + value). May be a
+   *  DIFFERENT lane than the handicap — mastering scarcity in one lane can pay another. */
   reward: { lane: "compute" | "data" | "money"; value: number };
 }
 
@@ -32,5 +40,10 @@ export const trials = {
     { id: "trial_ablation", name: "Ablation Study", desc: "Run a whole generation at HALF Compute — then bank +10% Compute, permanently.", unlockShips: 3, handicap: { lane: "compute", factor: 0.5 }, reward: { lane: "compute", value: 0.1 } },
     { id: "trial_lean", name: "Lean Budget", desc: "Run a whole generation at HALF Revenue — then bank +10% Money, permanently.", unlockShips: 4, handicap: { lane: "money", factor: 0.5 }, reward: { lane: "money", value: 0.1 } },
     { id: "trial_scarcity", name: "Data Scarcity", desc: "Run a whole generation at HALF Data — then bank +10% Data, permanently.", unlockShips: 5, handicap: { lane: "data", factor: 0.5 }, reward: { lane: "data", value: 0.1 } },
+    // Condition Trial (reads a run rule, no production handicap): ship with an EMPTY
+    // staff roster. The lean discipline pays out in cash efficiency.
+    { id: "trial_solo", name: "Solo Run", desc: "Ship a whole generation with NO staff on the roster — then bank +12% Money, permanently.", unlockShips: 6, condition: "solo", reward: { lane: "money", value: 0.12 } },
+    // Cross-lane handicap: starve one lane, master another. A tougher, later chase.
+    { id: "trial_overclock", name: "Overclocked", desc: "Run a whole generation at HALF Data — then bank +12% Compute, permanently.", unlockShips: 7, handicap: { lane: "data", factor: 0.5 }, reward: { lane: "compute", value: 0.12 } },
   ] satisfies TrialDef[],
 };
