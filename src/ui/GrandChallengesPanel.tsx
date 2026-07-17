@@ -34,7 +34,8 @@ export function GrandChallengesPanel({ game, onFund, onChooseFork, onFundMegapro
         <h2 className="panel-title" style={{ margin: 0 }}>Grand Challenges</h2>
         <span className="challenges-count">{doneCount}/{C.list.length}</span>
       </div>
-      <p className="challenges-intro">Moonshots that reshape the lab forever. Pour your output in — the reward is permanent.</p>
+      {/* First-run scaffolding — drop it once a challenge is complete (noise sweep). */}
+      {doneCount === 0 && <p className="challenges-intro">Moonshots that reshape the lab forever. Pour your output in — the reward is permanent.</p>}
       <div className="list">
         {list.map((def) => {
           const v = challengeView(game, def.id)!;
