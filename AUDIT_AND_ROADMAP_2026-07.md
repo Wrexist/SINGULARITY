@@ -155,7 +155,7 @@ concept an AI-lab game can add.
   needs care (prefer meta-currency cost or ship-gating past the sim window over
   in-run resource cost); each paradigm needs its own balance pass + sim extension.
 
-### #6 — Product Empire *(flagships, slot unlocks, deep milestone ladder)* · L · medium
+### #6 — Product Empire *(flagships, slot unlocks, deep milestone ladder)* · L · medium · **slot unlocks + deep milestones SHIPPED ✅**
 **Pitch:** Meta-unlocked concurrent-slot increases, one designatable **flagship**
 whose brand persists and compounds across ships, and a milestone ladder extended
 deep into the late game — so the company grows **bigger**, not just re-optimizes the
@@ -280,10 +280,30 @@ panel (verified in-app, zero console errors).
   `SAVE_VERSION` from every prior version and is idempotent at the top, so a future
   persisted field can't silently skip the ladder — `save.test.ts`.
 
+**More to grind toward — feature #6 (Product Empire, first slices):**
+- **Concurrent-slot unlocks** — the Legacy **Product Division** node (above) adds a
+  4th slot; with the Reputation `rep_slot` perk the cap reaches 5, so the business can
+  finally scale in the late game instead of re-optimizing the same 3 products.
+- **Deep milestone ladder** — the product milestone chase previously ended mid-game
+  (10M users, $50K/s, v10), so the next-goal carrot went quiet once a lab matured.
+  Added a late-game tier: 100M users, 1M paid, $500K/s, v20, **run 4 / run 5 products**
+  (the payoff for the slot unlocks), and 20 sold. Pure data on the generic milestone
+  evaluator — the ladder now runs 12 → 19 rungs, extending the visible "grind toward"
+  target deep into the endgame. Curve-safe: the deploy-only sim never launches a
+  product, so no product milestone ever fires in the tuned run (unit-tested).
+
 ### Suggested build order from here
-1. Finish **#1 Legacy Constellation** — add the first **unlock nodes** (4th product
-   slot, offline-cap extension) on the new tier-3 plumbing. *(M)*
-2. **#4 Endowment Directives** — smallest endgame-sink repair. *(S)*
-3. **#3 Prestige Challenges** — biggest replay-variety win. *(M)*
-4. Then the L/XL arcs (#5 Paradigm, #6 Product Empire, #10 Institute), each behind
-   its own design + balance pass.
+1. **#3 Prestige Challenges** — biggest replay-variety win (needs a run-modifier +
+   completion-reward pass; touches the ship flow, so its own design round). *(M)*
+2. **#2 Grand Challenge forks** — turn the decisionless funding bars into choices. *(M)*
+3. Continue **#6** — a persistent **flagship** product (cross-ship memory). *(M/L)*
+4. The L/XL arcs (#5 Paradigm research, #10 Institute), each behind its own design +
+   balance pass.
+
+### Shipped across this branch (running tally)
+Less noisy: `logEvent` + 9 confirmations & achievement/level-up/churn → log-only; nav
+"Ship" text badge → ambient pulse. Foundation: purity guardrail (RNG/clock), corrupt-
+save stash, migration-ladder completeness test. More gameplay: Legacy **Frontier**
+tier-3 + **Product Division** slot-unlock node; **Endowment Directives**; deep
+**product-milestone** ladder. All verified — `tsc` clean, **586 tests**, balance sim
+unaffected, driven in-app with zero console errors.

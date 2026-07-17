@@ -350,4 +350,16 @@ export const productMilestones: MilestoneDef[] = [
   { id: "dominant", label: "Market Leader", desc: "A product at 99% competitiveness", metric: "qf", threshold: 0.99, reward: 120_000 },
   { id: "full_house", label: "Conglomerate", desc: "Run 3 products at once", metric: "live", threshold: 3, reward: 300_000 },
   { id: "flipper", label: "Serial Founder", desc: "Sell 5 products", metric: "sold", threshold: 5, reward: 250_000 },
+  // Late-game tier (2026-07 depth pass): the chase ladder previously ended in the
+  // mid-game, so the next-goal carrot went quiet once a lab matured. These extend it
+  // deep into the endgame. The 4- and 5-product rungs are the payoff for the new
+  // concurrent-slot unlocks (Reputation rep_slot + Legacy Product Division). Curve-safe:
+  // the deploy-only sim never launches a product, so no product milestone ever fires.
+  { id: "users_100m", label: "Planetary Scale", desc: "100M total monthly users", metric: "users", threshold: 100_000_000, reward: 8_000_000 },
+  { id: "paid_1m", label: "Subscription Empire", desc: "1M paying subscribers", metric: "paid", threshold: 1_000_000, reward: 12_000_000 },
+  { id: "mrr_500k", label: "Cash Machine", desc: "$500K/s total revenue", metric: "mrr", threshold: 500_000, reward: 40_000_000 },
+  { id: "version_20", label: "Perpetual Beta", desc: "Take a product to v20", metric: "version", threshold: 20, reward: 20_000_000 },
+  { id: "quad_lab", label: "Four-Product Lab", desc: "Run 4 products at once", metric: "live", threshold: 4, reward: 25_000_000 },
+  { id: "full_portfolio", label: "Full Portfolio", desc: "Run 5 products at once", metric: "live", threshold: 5, reward: 120_000_000 },
+  { id: "flipper_20", label: "Serial Unicorn", desc: "Sell 20 products", metric: "sold", threshold: 20, reward: 50_000_000 },
 ];
