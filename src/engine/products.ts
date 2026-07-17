@@ -5,14 +5,17 @@ import {
 import { balance } from "./balance/config";
 import type { GameState, ProductMods, ProductState, ProductsState, UpgradeState } from "./types";
 import { bonusProductSlots } from "./reputation";
+import { legacyBonusProductSlots } from "./legacyTree";
 import { derive } from "./derive";
 
 /** No employees hired → no product buffs. */
 export const NEUTRAL_MODS: ProductMods = { upgradeSpeed: 1, serveCost: 1, churn: 1, acq: 1, arpu: 1, heat: 1 };
 
-/** Concurrent product slots: the base plus any from Reputation perks (R5.6). */
+/** Concurrent product slots: the base plus any from Reputation perks (R5.6) and
+ *  the Legacy tree's Product Division unlock node. Both are player-only meta
+ *  unlocks, so the deploy-only balance sim always sees just the base cap. */
 export function maxActiveProducts(state: GameState): number {
-  return B.maxActive + bonusProductSlots(state);
+  return B.maxActive + bonusProductSlots(state) + legacyBonusProductSlots(state);
 }
 
 /**

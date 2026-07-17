@@ -10,6 +10,14 @@
  * sim) are unchanged until the PLAYER chooses to invest.
  */
 
+/** A legacy perk's effect. Either a flat lane bias (the original tree) OR an
+ *  UNLOCK that gates real content (a new product slot, …) — the "constellation"
+ *  direction from the 2026-07 audit. New unlock kinds slot in here without
+ *  touching the lane-bias fold. */
+export type LegacyEffect =
+  | { lane: "compute" | "data" | "money"; value: number }
+  | { unlock: "productSlot"; value: number };
+
 export interface LegacyPerkDef {
   id: string;
   name: string;
@@ -18,8 +26,7 @@ export interface LegacyPerkDef {
   cost: number;
   /** Optional prerequisite perk id. */
   requires?: string;
-  /** A flat lane bias (+value to that lane), permanent across runs. */
-  effect: { lane: "compute" | "data" | "money"; value: number };
+  effect: LegacyEffect;
 }
 
 export const legacyTree = {
@@ -43,5 +50,10 @@ export const legacyTree = {
     { id: "leg_compute3", name: "Compute Frontier", desc: "+50% more Compute.", cost: 120, requires: "leg_compute2", effect: { lane: "compute", value: 0.5 } },
     { id: "leg_data3", name: "Data Frontier", desc: "+50% more Data.", cost: 120, requires: "leg_data2", effect: { lane: "data", value: 0.5 } },
     { id: "leg_money3", name: "Revenue Frontier", desc: "+50% more Money.", cost: 120, requires: "leg_money2", effect: { lane: "money", value: 0.5 } },
+    // Unlock node — the first "constellation" reward that gates CONTENT, not a %:
+    // a fourth concurrent product line, gated behind Revenue Mastery (a mature
+    // commercial operation earns the right to run one more). Curve-safe: the sim
+    // never launches products, so a slot it can't use never shifts the tuned curve.
+    { id: "leg_slot", name: "Product Division", desc: "Unlock a +1 concurrent product slot, every run.", cost: 80, requires: "leg_money2", effect: { unlock: "productSlot", value: 1 } },
   ] satisfies LegacyPerkDef[],
 };

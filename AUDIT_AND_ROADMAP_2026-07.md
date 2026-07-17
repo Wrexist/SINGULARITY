@@ -81,7 +81,7 @@ curve-safety) ÷ effort**. Effort: S/M/L/XL. All are curve-safe by construction
 (the balance sim only buys research/racks and ships `deploy` — it never touches
 meta-currencies, funds challenges, launches products, or ascends).
 
-### #1 — Legacy Constellation *(deep Legacy Investments tree)* · M · low risk
+### #1 — Legacy Constellation *(deep Legacy Investments tree)* · M · low risk · **first tier + unlock node SHIPPED ✅**
 **Pitch:** Expand the Legacy tree into a multi-tier constellation — tiers 3–5 per
 lane, cross-lane synergy nodes, and (the key change) **unlock nodes** that gate
 real content: a 4th product slot, a new ship mode, offline-cap extension, entry to
@@ -249,13 +249,25 @@ identity in the sim (unit-tested: `reputationMods(fresh)` is byte-identical). Ve
 in-app: the picker renders 3 doctrines, a claim registers "Directives — Compute +30%",
 zero console errors.
 
-**More to grind toward — feature #1, first increment:** a third **"Frontier"** tier
-per Legacy lane — Compute / Data / Revenue Frontier, +50% each, cost 120 weights,
-gated on the tier-2 Mastery node. Fully committing a lane now costs 172 weights
-(12+40+120), a genuine long-horizon sink where the tree previously topped out early.
-Pure data on the existing generic spend/effect plumbing — no new save field, no
-migration, curve-safe by construction. Renders as 9 nodes in the Prestige panel
-(verified in-app), consistent styling, no accent bars, no emoji.
+**More to grind toward — feature #1, Legacy Constellation:**
+- A third **"Frontier"** tier per Legacy lane — Compute / Data / Revenue Frontier,
+  +50% each, cost 120 weights, gated on the tier-2 Mastery node. Fully committing a
+  lane now costs 172 weights (12+40+120), a genuine long-horizon sink where the tree
+  previously topped out early.
+- The first **unlock node** — **Product Division** (80 weights, gated behind Revenue
+  Mastery): unlocks a **+1 concurrent product slot**, the first Legacy reward that
+  gates *content* rather than a flat %. This required extending the legacy effect type
+  to a `lane | unlock` union (with `legacyTreeMods` guarded so unlock nodes can't leak
+  into the lane multipliers) and folding a new `legacyBonusProductSlots` into
+  `maxActiveProducts` — stacking cleanly with the Reputation `rep_slot` perk (base 3 →
+  up to 5). Ties the prestige tree to the product system, the cross-system resonance
+  the depth audit called for.
+
+Both are curve-safe by construction (Legacy Weights are a meta-currency the sim never
+earns/spends; the sim never launches products, so a 4th slot never shifts the tuned
+curve). No new save field, no migration (`legacyInvestments` already persisted; its
+known-id filter auto-includes the new nodes). Renders as 10 clean nodes in the Prestige
+panel (verified in-app, zero console errors).
 
 **Foundation insurance (Theme 3):**
 - Purity guardrail test now enforces the **`Math.random` / `performance.now` /

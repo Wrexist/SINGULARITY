@@ -71,6 +71,27 @@ describe("R5.4 — Legacy Investments tree", () => {
     expect(canBuyLegacyPerk(withWeights(100), "leg_compute3")).toBe(false);
   });
 
+  it("the Product Division unlock node gates on Revenue Mastery and grants a slot (no lane leak)", async () => {
+    const { maxActiveProducts } = await import("./products");
+    const { legacyBonusProductSlots } = await import("./legacyTree");
+    const base = createInitialState();
+    const baseSlots = maxActiveProducts(base);
+    const s = withWeights(200);
+    // Gated behind leg_money2 (Revenue Mastery).
+    expect(canBuyLegacyPerk(s, "leg_slot")).toBe(false);
+    const m1 = buyLegacyPerk(s, "leg_money1");
+    const m2 = buyLegacyPerk(m1, "leg_money2");
+    expect(canBuyLegacyPerk(m2, "leg_slot")).toBe(true);
+    const slotted = buyLegacyPerk(m2, "leg_slot");
+    expect(legacyBonusProductSlots(slotted)).toBe(1);
+    expect(maxActiveProducts(slotted)).toBe(baseSlots + 1);
+    // The unlock node must NOT bleed into the lane multipliers (guard against the
+    // old "any non-compute/data → money" fall-through).
+    const moneyOnly = buyLegacyPerk(buyLegacyPerk(withWeights(200), "leg_money1"), "leg_money2");
+    expect(legacyTreeMods(buyLegacyPerk(moneyOnly, "leg_slot")).moneyMult)
+      .toBeCloseTo(legacyTreeMods(moneyOnly).moneyMult, 6);
+  });
+
   it("persists across prestige and a save round-trip (and migrates from v13)", () => {
     let s = withWeights(50);
     s = buyLegacyPerk(s, "leg_money1");
