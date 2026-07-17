@@ -200,7 +200,7 @@ to go — "we trained on everything; now we curate."
   an existing panel (DataMarket/Codex), not re-add a new overlay; escalating costs
   need tuning against wildly build-dependent data income.
 
-### #9 — Doctrine Consequences *(aligned vs accel content forks)* · M · medium
+### #9 — Doctrine Consequences *(aligned vs accel content forks)* · M · medium · **SHIPPED ✅**
 **Pitch:** The doctrine fork stops being a lane-tilt skin: each side gets exclusive
 content — doomer-only alignment research + clean-heat perks vs accel-only
 shady-compute economy + a regulator-pressure minigame — plus charter-recommit
@@ -340,10 +340,23 @@ reconciliation like perks/endowment); a `ParadigmPanel` in the Research section.
 Curve-safe by construction: cost is Reputation and the sim never spends it, so paradigms
 stay empty and the fold is identity through the tuned run (unit-tested byte-for-byte).
 
-### Suggested build order from here
-1. **#9 Doctrine Consequences** — aligned vs accel exclusive content. *(M)*
-2. **#10 The Institute** — third prestige layer; #1/#5/#6 now give it plenty to unlock. *(XL)*
-3. Deepen the shipped systems — more Paradigm tiers, Trial varieties, Legacy synergy nodes.
+**More gameplay — feature #9 (Doctrine Consequences):** your STANCE becomes a build.
+Commit to Safety (doomer) or Acceleration (accel) via faction world-event choices and
+claim that side's exclusive permanent perks (Enterprise Trust / Clean Operation / The
+Long View vs Scale Is All You Need / Ship It / Frontier Supremacy); the other side stays
+visible-but-locked, a reason to replay committed the other way. Deliberately POSITIVE-SUM
+— both tracks are sidegrades, no punishing regulator minigame (the audit flagged that as
+off-tone). New `doctrine.ts` + `balance/doctrine.ts` folded into `derive`; new persisted
+`doctrines` (SAVE_VERSION 29→30 + migration + known-id filter); a `DoctrinePanel` in HQ.
+Curve-safe TWICE over: perks are claim-gated (player-only) AND require alignment past the
+commit threshold, and the sim never fires a faction event → it stays neutral → identity.
+
+### The one remaining roadmap feature
+**#10 The Institute** — a third prestige reset layer. #1/#5/#6 now give it plenty to
+unlock (paradigm access, product slots, ship modes). This is XL and a major structural
+change to the endgame (new reset semantics + onboarding) that warrants a deliberate,
+owner-scoped effort rather than a fast follow. Everything else on the ranked list has
+shipped.
 
 ### Shipped across this branch (running tally)
 Less noisy: `logEvent` + 9 confirmations & achievement/level-up/churn → log-only; nav
@@ -352,5 +365,6 @@ save stash, migration-ladder completeness test. More gameplay: Legacy **Frontier
 tier-3 + **Product Division** slot-unlock; **Endowment Directives**; deep
 **product-milestone** ladder; **Prestige Trials** (+ Solo Run condition & cross-lane
 tiers); **Grand Challenge forks** + **Megaprojects II**; **Flagship** brand; **Paradigm
-Research**. All verified — `tsc` clean, **608 tests**, balance sim unaffected (structural
-+ identity-tested), each driven in-app with zero console errors.
+Research**; **Doctrine Consequences**. All verified — `tsc` clean, **612 tests**, balance
+sim unaffected (structural + identity-tested), each driven in-app with zero console
+errors. 9 of the 10 ranked features shipped (only #10 The Institute remains).

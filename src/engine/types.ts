@@ -109,6 +109,9 @@ export interface GameState {
    *  Reputation (charged to reputation.spent). Empty until the deep endgame → identity
    *  for the sim. Permanent meta-progression (survives prestige + ascension). */
   paradigms: string[];
+  /** Doctrine Consequences (2026-07): claimed stance-exclusive perk ids. Claim-gated +
+   *  alignment-gated, so empty for the sim → identity. Permanent (survives prestige). */
+  doctrines: string[];
   /** Flagship (2026-07): the designated flagship product id (or null) and its cross-ship
    *  `tenure` (ships survived as flagship). Grants a bounded permanent revenue bonus.
    *  Curve-safe: the sim never launches products, so productId stays null / tenure 0. */

@@ -8,6 +8,7 @@ import { legacyAvailable, legacyTreeMods } from "./legacyTree";
 import { trialMods } from "./trials";
 import { flagshipMoneyMult } from "./flagship";
 import { paradigmMods } from "./paradigms";
+import { doctrineMods } from "./doctrine";
 import { ascensionMultiplier } from "./prestige";
 import { preprintMult } from "./preprints";
 import { challengeMods } from "./challenges";
@@ -298,6 +299,13 @@ export function derive(state: GameState): Derived {
   dataMult = dataMult.mul(para.dataMult);
   moneyMult = moneyMult.mul(para.moneyMult);
 
+  // Doctrine Consequences: permanent perks claimed by committing to a stance. All 1.0
+  // with none claimed, so identity through the tuned run (the sim stays neutral).
+  const doc = doctrineMods(state);
+  computeMult = computeMult.mul(doc.computeMult);
+  dataMult = dataMult.mul(doc.dataMult);
+  moneyMult = moneyMult.mul(doc.moneyMult);
+
   // Legacy Investments (R5.4): owned prestige-tree lane biases. All 1.0 with
   // nothing invested, so this is identity until the player spends weights.
   const lt = legacyTreeMods(state);
@@ -313,7 +321,7 @@ export function derive(state: GameState): Derived {
   // on a fresh run with no active events.
   const dataPerSec = dataPerSecFlat
     .mul(scraperDataMult)
-    .mul(legacyMult).mul(ascensionMult).mul(ppMult).mul(rep.dataMult).mul(ch.dataMult).mul(lt.dataMult).mul(tr.dataMult).mul(para.dataMult)
+    .mul(legacyMult).mul(ascensionMult).mul(ppMult).mul(rep.dataMult).mul(ch.dataMult).mul(lt.dataMult).mul(tr.dataMult).mul(para.dataMult).mul(doc.dataMult)
     .mul(balance.difficulty.productionMult); // global production dilation (see computePerSec)
 
   let computePerSec = computeFlat.mul(computeMult);

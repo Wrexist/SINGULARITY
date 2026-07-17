@@ -2954,6 +2954,29 @@ button.modchip.workable:active { transform: scale(0.94); }
   50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--money) 0%, transparent); }
 }
 
+/* ---------- Doctrine Consequences ---------- */
+.doctrine-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.doctrine-count { font-size: 12px; font-weight: 800; color: var(--ink-3); background: rgba(20, 22, 27, 0.05); border-radius: 999px; padding: 2px 10px; }
+.doctrine-note { font-size: 12px; color: var(--ink-3); margin: 0 0 8px; }
+.doctrine-tracks { display: flex; flex-direction: column; gap: 12px; }
+.doctrine-track-head { font-size: 12px; font-weight: 800; color: var(--ink-2, #4a4a55); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+.doctrine-active { color: var(--accent); font-weight: 800; margin-left: 6px; text-transform: none; letter-spacing: 0; }
+.doctrine-perk {
+  width: 100%; display: flex; align-items: center; gap: 10px; margin-bottom: 6px; text-align: left; cursor: pointer;
+  border: 1px solid var(--line, rgba(20, 22, 27, 0.08));
+  border-radius: 12px; padding: 10px 11px; background: var(--glass-strong, #fff);
+}
+.doctrine-perk:disabled { cursor: default; }
+.doctrine-perk:not(.owned):disabled { opacity: 0.62; }
+.doctrine-perk.owned { border-color: color-mix(in srgb, var(--money) 40%, transparent); background: color-mix(in srgb, var(--money) 7%, transparent); }
+.doctrine-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.doctrine-name { font-size: 13px; font-weight: 800; color: var(--ink); }
+.doctrine-desc { font-size: 12px; color: var(--ink-2, #4a4a55); }
+.doctrine-req { font-size: 11px; color: var(--ink-3); }
+.doctrine-claim { flex-shrink: 0; font-size: 12px; font-weight: 800; color: var(--accent); }
+.doctrine-perk.owned .doctrine-claim { color: var(--money); }
+.doctrine-perk:not(.owned):disabled .doctrine-claim { color: var(--ink-3); }
+
 /* ---------- Paradigm Research ---------- */
 .paradigms-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
 .paradigms-count { font-size: 12px; font-weight: 800; color: var(--ink-3); background: rgba(20, 22, 27, 0.05); border-radius: 999px; padding: 2px 10px; }

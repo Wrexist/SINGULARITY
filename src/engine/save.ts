@@ -7,6 +7,7 @@ import { legacyTree as LEGACY } from "./balance/legacyTree";
 import { reputation as REPUTATION } from "./balance/reputation";
 import { trials as TRIALS } from "./balance/trials";
 import { paradigms as PARADIGMS } from "./balance/paradigms";
+import { doctrine as DOCTRINE } from "./balance/doctrine";
 import { charters as CHARTERS } from "./balance/charters";
 import { balance } from "./balance/config";
 import { components as COMPONENTS, SLOTS_BY_TIER, type SlotClass } from "./balance/components";
@@ -35,6 +36,7 @@ const DIRECTIVE_IDS = new Set(REPUTATION.endowment.directives.defs.map((d) => d.
 const TRIAL_IDS = new Set(TRIALS.list.map((t) => t.id));
 const PARADIGM_IDS = new Set(PARADIGMS.list.map((p) => p.id));
 const PARADIGM_COST = new Map(PARADIGMS.list.map((p) => [p.id, p.cost]));
+const DOCTRINE_IDS = new Set(DOCTRINE.perks.map((p) => p.id));
 
 /** Keep only known ids, each at most once (order preserved). Closes the duplicate /
  *  unknown-id save-edit class for contracts / legacy investments / reputation perks. */
@@ -324,6 +326,8 @@ interface SavedShape {
   trialsDone: string[];
   /** Paradigm Research — owned node ids (Reputation cost reconciled into spent). v29. */
   paradigms: string[];
+  /** Doctrine Consequences — claimed stance-perk ids (known-id filtered). v30. */
+  doctrines: string[];
   /** Flagship: designated product id (or null) + cross-ship tenure. Migrated at v27. */
   flagship: { productId: string | null; tenure: number };
   contracts: { completed: string[] };
@@ -401,6 +405,7 @@ export function serialize(state: GameState): string {
     activeTrial: state.activeTrial,
     trialsDone: state.trialsDone,
     paradigms: state.paradigms,
+    doctrines: state.doctrines,
     flagship: state.flagship,
     contracts: state.contracts,
     charter: state.charter,
@@ -618,6 +623,7 @@ export function deserialize(json: string): GameState {
     reputation: sanitizeReputation(raw.reputation, repEndowment, paradigmOwed),
     repEndowment,
     paradigms,
+    doctrines: dedupeKnownIds(raw.doctrines, DOCTRINE_IDS),
     endowmentDirectives: sanitizeDirectives(raw.endowmentDirectives, repEndowment),
     // Prestige Trials: the active id must be a known Trial (else no active run), and
     // completed ids are filtered to known, deduped (the reward folds per unique id).
@@ -952,6 +958,10 @@ export function migrate(raw: any): SavedShape {
   if (s.version === 28) {
     // v28 → v29: Paradigm Research. Existing runs own none (sanitizer-defaulted).
     s = { ...s, version: 29, paradigms: s.paradigms ?? [] };
+  }
+  if (s.version === 29) {
+    // v29 → v30: Doctrine Consequences. Existing runs have claimed none.
+    s = { ...s, version: 30, doctrines: s.doctrines ?? [] };
   }
   return s as SavedShape;
 }

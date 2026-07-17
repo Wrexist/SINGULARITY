@@ -4,7 +4,7 @@ import { initialStats } from "./stats";
 import { freshComponents } from "./components";
 import type { GameState } from "./types";
 
-export const SAVE_VERSION = 29;
+export const SAVE_VERSION = 30;
 
 /** A fresh lab: empty closet, a trickle of free Compute, nothing owned. */
 export function createInitialState(): GameState {
@@ -39,6 +39,7 @@ export function createInitialState(): GameState {
     activeTrial: null,
     trialsDone: [],
     paradigms: [],
+    doctrines: [],
     flagship: { productId: null, tenure: 0 },
     contracts: { completed: [] },
     charter: null,

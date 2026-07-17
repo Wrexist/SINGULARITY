@@ -171,6 +171,8 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     endowmentDirectives: state.endowmentDirectives,
     // Paradigm Research nodes are permanent capability unlocks — they persist too.
     paradigms: state.paradigms,
+    // Doctrine perks claimed by committing to a stance are permanent progression.
+    doctrines: state.doctrines,
     // Prestige Trials: shipping ends the active constrained run. Bank its reward IF
     // its run condition (if any) held — a "solo" Trial needs an empty staff roster at
     // ship. Cleared either way (a failed condition just gives no reward, retry next

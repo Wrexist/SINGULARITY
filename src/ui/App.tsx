@@ -96,6 +96,8 @@ import { TrialsPanel } from "./TrialsPanel";
 import { trialsUnlocked } from "../engine/trials";
 import { ParadigmPanel } from "./ParadigmPanel";
 import { paradigmsUnlocked } from "../engine/paradigms";
+import { DoctrinePanel } from "./DoctrinePanel";
+import { doctrineUnlocked } from "../engine/doctrine";
 import { ChallengeComplete } from "./ChallengeComplete";
 import { objectivesUnlocked } from "../engine/objectives";
 import { ObjectivesPanel } from "./ObjectivesPanel";
@@ -117,7 +119,7 @@ export function App() {
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
     doClaimContract, doClaimSponsor, doBuyPreprint, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
-    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival, doFundChallenge, doChooseFork, doFundMegaproject, doClaimObjective, doToggleAutomation, doStartTrial, doAbandonTrial, doSetFlagship, doBuyParadigm } =
+    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival, doFundChallenge, doChooseFork, doFundMegaproject, doClaimObjective, doToggleAutomation, doStartTrial, doAbandonTrial, doSetFlagship, doBuyParadigm, doClaimDoctrine } =
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
@@ -908,6 +910,7 @@ export function App() {
                     onAbandon={() => { haptics.tap(); doAbandonTrial(); }}
                   />
                 )}
+                {doctrineUnlocked(game) && <DoctrinePanel game={game} onClaim={(id) => { haptics.celebrate(); sound.success(); doClaimDoctrine(id); }} />}
                 <StatsPanel game={game} derived={d} />
                 {game.prestige.ships > 0 && <CodexPanel game={game} />}
                 <EventLog log={log} />
