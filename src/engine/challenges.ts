@@ -151,7 +151,8 @@ export function chooseFork(state: GameState, id: string, forkId: string): GameSt
 
 /** Permanent per-lane multipliers from COMPLETED challenges (identity when none). Folded
  *  into derive like the Legacy/Ascension mults. legacyMult-kind rewards boost all lanes.
- *  A forked challenge contributes only its CHOSEN arm (nothing until the player picks). */
+ *  A forked challenge contributes only its CHOSEN arm (nothing until the player picks).
+ *  The repeatable Megaproject's bounded all-lane bonus rides along here too. */
 export function challengeMods(state: GameState): { compute: Big; data: Big; money: Big } {
   let compute = Big.ONE;
   let data = Big.ONE;
@@ -169,7 +170,110 @@ export function challengeMods(state: GameState): { compute: Big; data: Big; mone
       case "legacyMult": compute = compute.mul(m); data = data.mul(m); money = money.mul(m); break;
     }
   }
-  return { compute, data, money };
+  const mega = megaprojectMult(state); // all-lane, 1.0 at level 0 → identity
+  return { compute: compute.mul(mega), data: data.mul(mega), money: money.mul(mega) };
+}
+
+// ---------- Megaprojects II — the repeatable post-challenge loop ----------
+
+const M = C.megaproject;
+
+/** Opens once EVERY Grand Challenge is complete — the "there is no next" gets a next. */
+export function megaprojectUnlocked(state: GameState): boolean {
+  return M.enabled && C.list.every((c) => state.challenges.completed.includes(c.id));
+}
+
+/** Funding cost of the CURRENT megaproject cycle (escalates ×growth each level). */
+export function megaprojectCost(level: number): { compute: Big; data: Big; money: Big } {
+  const g = Math.pow(M.growth, Math.max(0, level));
+  return {
+    compute: Big.of(M.baseCost.compute).mul(g),
+    data: Big.of(M.baseCost.data).mul(g),
+    money: Big.of(M.baseCost.money).mul(g),
+  };
+}
+
+/** The bounded lifetime all-lane multiplier from completed megaproject cycles. A converging
+ *  geometric sum of baseMag·decay^i, so it's 1.0 at level 0 and can never run away. */
+export function megaprojectMult(state: GameState): Big {
+  if (!M.enabled) return Big.ONE;
+  const level = Math.max(0, state.megaprojects.level);
+  if (level === 0) return Big.ONE;
+  const sum = (M.baseMag * (1 - Math.pow(M.decay, level))) / (1 - M.decay);
+  return Big.of(1 + sum);
+}
+
+export interface MegaprojectView {
+  level: number;
+  funded: { compute: Big; data: Big; money: Big };
+  cost: { compute: Big; data: Big; money: Big };
+  done: { compute: boolean; data: boolean; money: boolean };
+  progress: number;
+  /** The all-lane bonus a player currently holds, as a percentage (for display). */
+  bonusPct: number;
+}
+
+export function megaprojectView(state: GameState): MegaprojectView {
+  const level = Math.max(0, state.megaprojects.level);
+  const f = state.megaprojects.funded;
+  const cost = megaprojectCost(level);
+  const frac = (a: Big, b: Big) => (b.gt(0) ? Math.max(0, Math.min(1, a.div(b).toNumber())) : 1);
+  return {
+    level,
+    funded: f,
+    cost,
+    done: { compute: f.compute.gte(cost.compute), data: f.data.gte(cost.data), money: f.money.gte(cost.money) },
+    progress: Math.min(frac(f.compute, cost.compute), frac(f.data, cost.data), frac(f.money, cost.money)),
+    bonusPct: (megaprojectMult(state).toNumber() - 1) * 100,
+  };
+}
+
+export function canFundMegaproject(state: GameState): boolean {
+  if (!megaprojectUnlocked(state)) return false;
+  const f = state.megaprojects.funded;
+  const cost = megaprojectCost(state.megaprojects.level);
+  const r = state.resources;
+  return (
+    (f.compute.lt(cost.compute) && r.compute.gt(0)) ||
+    (f.data.lt(cost.data) && r.data.gt(0)) ||
+    (f.money.lt(cost.money) && r.money.gt(0))
+  );
+}
+
+/** Contribute every affordable resource toward the current cycle; completing a cycle bumps
+ *  the level and resets funding for the (more expensive) next one. Pure. */
+export function fundMegaproject(state: GameState): { state: GameState; justCompleted: boolean } {
+  if (!megaprojectUnlocked(state)) return { state, justCompleted: false };
+  const cur = state.megaprojects.funded;
+  const cost = megaprojectCost(state.megaprojects.level);
+  const r = state.resources;
+  const give = {
+    compute: r.compute.min(cost.compute.sub(cur.compute).max(Big.ZERO)),
+    data: r.data.min(cost.data.sub(cur.data).max(Big.ZERO)),
+    money: r.money.min(cost.money.sub(cur.money).max(Big.ZERO)),
+  };
+  if (!(give.compute.gt(0) || give.data.gt(0) || give.money.gt(0))) return { state, justCompleted: false };
+  const next = {
+    compute: cur.compute.add(give.compute),
+    data: cur.data.add(give.data),
+    money: cur.money.add(give.money),
+  };
+  const complete = next.compute.gte(cost.compute) && next.data.gte(cost.data) && next.money.gte(cost.money);
+  return {
+    state: {
+      ...state,
+      resources: {
+        ...r,
+        compute: r.compute.sub(give.compute).max(Big.ZERO),
+        data: r.data.sub(give.data).max(Big.ZERO),
+        money: r.money.sub(give.money).max(Big.ZERO),
+      },
+      megaprojects: complete
+        ? { level: state.megaprojects.level + 1, funded: zeroFund() }
+        : { ...state.megaprojects, funded: next },
+    },
+    justCompleted: complete,
+  };
 }
 
 export { BY_ID as challengeById };

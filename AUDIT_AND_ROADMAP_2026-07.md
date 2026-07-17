@@ -99,7 +99,7 @@ nothing owned = identity multiplier, tuned curve untouched.
   makes the panel denser on iPhone widths.
 - **First increment shipped this pass ✅** — see Part 3.
 
-### #2 — Grand Challenge forks + Megaprojects II · M · low risk · **forks SHIPPED ✅**
+### #2 — Grand Challenge forks + Megaprojects II · M · low risk · **forks + Megaprojects SHIPPED ✅**
 **Pitch:** Each Grand Challenge completion presents a permanent either/or fork
 (e.g. fusion: "grid independence" compute engine vs "sell surplus power" money
 engine); after all 10, a repeatable **Megaproject** loop opens with escalating
@@ -317,12 +317,21 @@ money bonus without the products.ts→derive cycle); `advanceFlagship` runs in `
 tenure to the cap). A ★/☆ toggle in ProductDetail. Curve-safe: the sim never launches a
 product, so it never has a flagship — the fold is identity in the tuned run.
 
+**More to grind toward — feature #2 (Megaprojects II):** once **every** Grand Challenge
+is complete, a repeatable **Megaproject** ("The Next Big Thing") opens — escalating
+funding cost each cycle (×2.2) for a **diminishing but permanent** all-lane bonus. The
+lifetime bonus is a converging geometric sum (→ 1 + baseMag/(1−decay) ≈ +33%), so the
+deepest players always have somewhere to point production, and it can **never** run away.
+New engine functions in `challenges.ts` folded through `challengeMods`; new persisted
+`megaprojects` {level, funded} (SAVE_VERSION 27→28 + migration + a sanitizer that clamps
+level ≥ 0 and funding to the cycle cost); a Megaproject card in the panel. Curve-safe:
+the sim never completes even one challenge, so it never unlocks the loop (identity).
+
 ### Suggested build order from here
-1. **Megaprojects II** — a repeatable post-#2 loop so the challenge layer never empties. *(M)*
-2. **#5 Paradigm Research** — generational reveal tiers (slots under the Legacy unlock
+1. **#5 Paradigm Research** — generational reveal tiers (slots under the Legacy unlock
    plumbing already shipped). *(L)*
-3. **#9 Doctrine Consequences** — aligned vs accel exclusive content. *(M)*
-4. **#10 The Institute** — third prestige layer (now that #1/#6 give it things to unlock). *(XL)*
+2. **#9 Doctrine Consequences** — aligned vs accel exclusive content. *(M)*
+3. **#10 The Institute** — third prestige layer (now that #1/#6 give it things to unlock). *(XL)*
 
 ### Shipped across this branch (running tally)
 Less noisy: `logEvent` + 9 confirmations & achievement/level-up/churn → log-only; nav
@@ -330,6 +339,6 @@ Less noisy: `logEvent` + 9 confirmations & achievement/level-up/churn → log-on
 save stash, migration-ladder completeness test. More gameplay: Legacy **Frontier**
 tier-3 + **Product Division** slot-unlock; **Endowment Directives**; deep
 **product-milestone** ladder; **Prestige Trials** (+ Solo Run condition & cross-lane
-tiers); **Grand Challenge forks**; **Flagship** brand. All verified — `tsc` clean, **600
-tests**, balance sim unaffected (structural + identity-tested), each driven in-app with
-zero console errors.
+tiers); **Grand Challenge forks** + **Megaprojects II**; **Flagship** brand. All verified
+— `tsc` clean, **604 tests**, balance sim unaffected (structural + identity-tested), each
+driven in-app with zero console errors.

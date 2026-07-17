@@ -341,6 +341,8 @@ interface SavedShape {
     /** Chosen fork arm per completed forked challenge. Migrated at v26. */
     forks: Record<string, string>;
   };
+  /** Megaprojects II — cycles completed + current-cycle funding (Big → strings). v28. */
+  megaprojects: { level: number; funded: { compute: string; data: string; money: string } };
   /** Lab Objectives — claimed objective ids. Migrated at v22. */
   objectives: { completed: string[] };
   /** Automation — which autopilots are switched on. Migrated at v23. */
@@ -414,6 +416,14 @@ export function serialize(state: GameState): string {
       completed: state.challenges.completed,
       forks: state.challenges.forks,
     },
+    megaprojects: {
+      level: state.megaprojects.level,
+      funded: {
+        compute: state.megaprojects.funded.compute.toJSON(),
+        data: state.megaprojects.funded.data.toJSON(),
+        money: state.megaprojects.funded.money.toJSON(),
+      },
+    },
     objectives: state.objectives,
     automation: state.automation,
   };
@@ -457,6 +467,25 @@ function sanitizeChallenges(raw: unknown): ChallengeState {
     if (typeof chosen === "string" && def.forks.some((f) => f.id === chosen)) out.forks[def.id] = chosen;
   }
   return out;
+}
+
+/** Megaprojects: a non-negative integer level, and current-cycle funding clamped to the
+ *  level's cost (so a crafted save can't pre-bank a completion or over-fund). */
+function sanitizeMegaprojects(raw: unknown): GameState["megaprojects"] {
+  const r = (raw ?? {}) as { level?: unknown; funded?: { compute?: unknown; data?: unknown; money?: unknown } };
+  const level = Math.max(0, Math.floor(Number(r.level) || 0));
+  const M = CHALLENGES.megaproject;
+  const g = Math.pow(M.growth, level);
+  const cost = { compute: Big.of(M.baseCost.compute).mul(g), data: Big.of(M.baseCost.data).mul(g), money: Big.of(M.baseCost.money).mul(g) };
+  const f = r.funded ?? {};
+  return {
+    level,
+    funded: {
+      compute: safeBig(f.compute).min(cost.compute),
+      data: safeBig(f.data).min(cost.data),
+      money: safeBig(f.money).min(cost.money),
+    },
+  };
 }
 
 export function deserialize(json: string): GameState {
@@ -612,6 +641,7 @@ export function deserialize(json: string): GameState {
     // funding is clamped to each cost, and a challenge is only "completed" if it is
     // actually fully funded (a tampered `completed` without funding grants nothing).
     challenges: sanitizeChallenges(raw.challenges),
+    megaprojects: sanitizeMegaprojects(raw.megaprojects),
     // Lab Objectives: claimed ids only (rewards were applied at claim time, never re-derived
     // from state, so a tampered list just skips objectives — known-id/dedupe is enough).
     objectives: { completed: dedupeKnownIds((raw.objectives as { completed?: unknown } | undefined)?.completed, OBJECTIVE_IDS) },
@@ -902,6 +932,11 @@ export function migrate(raw: any): SavedShape {
   if (s.version === 26) {
     // v26 → v27: Flagship. Existing runs have none designated (sanitizer-defaulted).
     s = { ...s, version: 27, flagship: s.flagship ?? { productId: null, tenure: 0 } };
+  }
+  if (s.version === 27) {
+    // v27 → v28: Megaprojects II. Existing runs are at level 0 with nothing funded
+    // (the sanitizer defaults + clamps this anyway; this just stamps the version).
+    s = { ...s, version: 28, megaprojects: s.megaprojects ?? { level: 0, funded: { compute: "0", data: "0", money: "0" } } };
   }
   return s as SavedShape;
 }

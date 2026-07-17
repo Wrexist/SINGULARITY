@@ -3,6 +3,7 @@ import { createInitialState } from "./state";
 import {
   fundChallenge, challengeMods, challengesUnlocked, visibleChallenges, canFundChallenge, challengeView,
   chooseFork, pendingForkChallenge,
+  megaprojectUnlocked, megaprojectCost, megaprojectMult, fundMegaproject,
 } from "./challenges";
 import { challenges as C } from "./balance/challenges";
 import { balance } from "./balance/config";
@@ -118,5 +119,59 @@ describe("Grand Challenges", () => {
     expect(v.funded.compute.lte(v.cost.compute)).toBe(true);
     expect(v.funded.compute.eq(v.cost.compute)).toBe(true); // clamped exactly to cost
     expect(v.complete).toBe(true); // paid the full price → complete is honest
+  });
+});
+
+describe("Megaprojects II (repeatable post-challenge loop)", () => {
+  /** A deep-endgame state with EVERY challenge complete and huge banked resources. */
+  function allDone() {
+    const s = rich(60);
+    s.challenges = { funded: {}, completed: C.list.map((c) => c.id), forks: {} };
+    s.resources = { compute: Big.of(1e16), data: Big.of(1e16), money: Big.of(1e16) };
+    return s;
+  }
+
+  it("stays locked until EVERY challenge is complete; identity while locked (curve-safe)", () => {
+    expect(megaprojectUnlocked(createInitialState())).toBe(false);
+    expect(megaprojectMult(createInitialState()).eq(Big.ONE)).toBe(true);
+    const oneShort = rich(60);
+    oneShort.challenges = { funded: {}, completed: C.list.slice(0, -1).map((c) => c.id), forks: {} };
+    expect(megaprojectUnlocked(oneShort)).toBe(false);
+    expect(megaprojectUnlocked(allDone())).toBe(true);
+  });
+
+  it("funding a full cycle bumps the level, resets funding, and escalates the next cost", () => {
+    const s = allDone();
+    expect(s.megaprojects.level).toBe(0);
+    const c0 = megaprojectCost(0);
+    const { state, justCompleted } = fundMegaproject(s);
+    expect(justCompleted).toBe(true);
+    expect(state.megaprojects.level).toBe(1);
+    expect(state.megaprojects.funded.compute.eq(Big.ZERO)).toBe(true); // reset for next cycle
+    expect(megaprojectCost(1).compute.gt(c0.compute)).toBe(true); // next cycle costs more
+  });
+
+  it("the all-lane bonus is BOUNDED (converging geometric sum) and rides challengeMods", () => {
+    const s = allDone();
+    const lvl1 = fundMegaproject(s).state;
+    expect(megaprojectMult(lvl1).gt(Big.ONE)).toBe(true);
+    // challengeMods carries it into derive on every lane.
+    expect(challengeMods(lvl1).compute.gte(megaprojectMult(lvl1))).toBe(true);
+    // Even at an absurd level the bonus can't run away (bounded by baseMag/(1−decay)).
+    const capped = { ...s, megaprojects: { ...s.megaprojects, level: 100000 } };
+    expect(megaprojectMult(capped).lt(Big.of(2))).toBe(true); // 1 + 0.05/0.15 ≈ 1.33
+  });
+
+  it("persists across prestige and round-trips; a crafted save clamps level + funding", () => {
+    let s = allDone();
+    s.research = [balance.prestige.capabilityResearch];
+    s = fundMegaproject(s).state; // level 1
+    expect(prestige(s).megaprojects.level).toBe(1); // survives the ship
+    expect(deserialize(serialize(s)).megaprojects.level).toBe(1);
+    const crafted = JSON.parse(serialize(s));
+    crafted.megaprojects = { level: -5, funded: { compute: "1e99", data: "1e99", money: "1e99" } };
+    const fixed = deserialize(JSON.stringify(crafted));
+    expect(fixed.megaprojects.level).toBe(0); // negative clamped
+    expect(fixed.megaprojects.funded.compute.lte(megaprojectCost(0).compute)).toBe(true); // clamped to cost
   });
 });

@@ -2914,6 +2914,9 @@ button.modchip.workable:active { transform: scale(0.94); }
   padding: 7px; border-radius: 10px;
   background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
+/* Megaproject — the repeatable endgame loop. A full-card accent tint (no accent bar). */
+.mega-card { border-color: color-mix(in srgb, var(--accent) 35%, transparent); background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 7%, transparent), var(--glass-strong, #fff)); }
+.mega-level { font-size: 12px; font-weight: 800; color: var(--accent); }
 /* Fork picker — two either/or arms for a completed moonshot. Full-card buttons,
    no left-edge bar (house rule). */
 .challenge-fork { display: flex; gap: 8px; margin-top: 8px; }

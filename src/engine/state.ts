@@ -4,7 +4,7 @@ import { initialStats } from "./stats";
 import { freshComponents } from "./components";
 import type { GameState } from "./types";
 
-export const SAVE_VERSION = 27;
+export const SAVE_VERSION = 28;
 
 /** A fresh lab: empty closet, a trickle of free Compute, nothing owned. */
 export function createInitialState(): GameState {
@@ -59,6 +59,7 @@ export function createInitialState(): GameState {
     preprints: 0,
     // Grand Challenges — no funding yet; persists across prestige once started.
     challenges: { funded: {}, completed: [], forks: {} },
+    megaprojects: { level: 0, funded: { compute: Big.ZERO, data: Big.ZERO, money: Big.ZERO } },
     // Lab Objectives — none claimed yet; persists across prestige (onboarding-grind ladder).
     objectives: { completed: [] },
     // Automation — every autopilot off by default; unlocked by ship count, persists.

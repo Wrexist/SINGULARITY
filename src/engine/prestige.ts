@@ -183,6 +183,8 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     })(),
     // Grand Challenges are a career-spanning grind — funding + completions persist.
     challenges: state.challenges,
+    // Megaprojects II (the repeatable post-challenge loop) persist across ships too.
+    megaprojects: state.megaprojects,
     // Lab Objectives persist too (an onboarding-grind ladder consumed once across runs).
     objectives: state.objectives,
     // Automation toggles are a permanent QoL choice — they persist across the reset.

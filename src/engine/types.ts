@@ -165,6 +165,10 @@ export interface GameState {
    *  `funded` accumulates per-resource contributions; `completed` ids grant permanent
    *  rewards. Persists across prestige (a career-spanning grind). */
   challenges: ChallengeState;
+  /** Megaprojects II — the repeatable post-challenge loop. `level` = cycles completed
+   *  (drives the bounded all-lane bonus); `funded` = progress toward the current cycle.
+   *  Empty/0 until the deep endgame, so identity for the sim. Persists across prestige. */
+  megaprojects: { level: number; funded: { compute: Big; data: Big; money: Big } };
   /** Lab Objectives (IDEAS #B) — early/mid rotating tasks. Claimed ids (the board is the
    *  first few uncompleted). Persists across prestige (an onboarding-grind ladder). */
   objectives: { completed: string[] };

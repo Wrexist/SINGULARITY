@@ -1,5 +1,5 @@
 import type { GameState } from "../engine/types";
-import { visibleChallenges, challengeView, canFundChallenge, pendingForkChallenge } from "../engine/challenges";
+import { visibleChallenges, challengeView, canFundChallenge, pendingForkChallenge, megaprojectUnlocked, megaprojectView, canFundMegaproject } from "../engine/challenges";
 import { challenges as C } from "../engine/balance/challenges";
 import { fmt } from "./format";
 import { ComputeIcon, DataIcon, MoneyIcon, GiftIcon } from "./Icons";
@@ -9,6 +9,7 @@ interface Props {
   game: GameState;
   onFund: (id: string, at?: { x: number; y: number }) => void;
   onChooseFork: (id: string, forkId: string) => void;
+  onFundMegaproject: (at?: { x: number; y: number }) => void;
 }
 
 const RES_ICON = { compute: <ComputeIcon size={12} />, data: <DataIcon size={12} />, money: <MoneyIcon size={12} /> };
@@ -19,10 +20,13 @@ const RES_ICON = { compute: <ComputeIcon size={12} />, data: <DataIcon size={12}
  * completing one fires the tentpole "Challenge complete" moment (handled in App). Purely a
  * grind target: the whole board is hidden until the deep endgame, and the sim never funds.
  */
-export function GrandChallengesPanel({ game, onFund, onChooseFork }: Props) {
+export function GrandChallengesPanel({ game, onFund, onChooseFork, onFundMegaproject }: Props) {
   const list = visibleChallenges(game);
   if (list.length === 0) return null;
   const doneCount = game.challenges.completed.length;
+  const megaOpen = megaprojectUnlocked(game);
+  const mega = megaOpen ? megaprojectView(game) : null;
+  const canMega = megaOpen && canFundMegaproject(game);
 
   return (
     <section className="panel challenges">
@@ -105,6 +109,41 @@ export function GrandChallengesPanel({ game, onFund, onChooseFork }: Props) {
           );
         })}
       </div>
+
+      {/* Megaprojects II — the repeatable loop, once every challenge is done. Escalating
+          cost, a bounded diminishing all-lane bonus, so the endgame never runs dry. */}
+      {mega && (
+        <div className="challenge-card mega-card">
+          <div className="challenge-top">
+            <span className="challenge-icon" aria-hidden="true">{iconFor(C.megaproject.icon, 22)}</span>
+            <div className="challenge-titles">
+              <span className="challenge-name">{C.megaproject.name} <span className="mega-level">· cycle {mega.level + 1}</span></span>
+              <span className="challenge-blurb">{C.megaproject.blurb}</span>
+            </div>
+          </div>
+          <div className="challenge-bar">
+            <div className="challenge-fill" style={{ width: `${Math.round(mega.progress * 100)}%` }} />
+            <span className="challenge-bar-label">{Math.round(mega.progress * 100)}%</span>
+          </div>
+          <div className="challenge-res">
+            {([["compute", mega.funded.compute, mega.cost.compute, mega.done.compute] as const,
+               ["data", mega.funded.data, mega.cost.data, mega.done.data] as const,
+               ["money", mega.funded.money, mega.cost.money, mega.done.money] as const]).map(([key, funded, cost, done]) => (
+              <span key={key} className={`challenge-pledge ${done ? "done" : ""}`}>
+                <span className="challenge-pledge-ic">{RES_ICON[key]}</span>
+                {key === "money" ? "$" : ""}{fmt(funded)}<span className="challenge-pledge-sep">/</span>{key === "money" ? "$" : ""}{fmt(cost)}
+                {done && <span className="challenge-pledge-check">✓</span>}
+              </span>
+            ))}
+          </div>
+          <div className="challenge-foot">
+            <span className="challenge-reward"><GiftIcon size={13} /> +{mega.bonusPct.toFixed(1)}% to ALL output {mega.level > 0 ? "(held)" : "on first cycle"}</span>
+            <button className="btn challenge-fund" disabled={!canMega} onClick={(e) => onFundMegaproject({ x: e.clientX, y: e.clientY })}>
+              {canMega ? "Fund" : "Need output"}
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

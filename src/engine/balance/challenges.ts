@@ -161,4 +161,24 @@ export const challenges = {
       unlockShips: 52,
     },
   ] as GrandChallenge[],
+
+  /** Megaprojects II — the repeatable loop that opens once ALL Grand Challenges are
+   *  complete, so the aspirational layer never empties (the last challenge's lore jokes
+   *  that "there is no seventh challenge" — this is the seventh, and the eighth, …).
+   *  Each cycle costs ×growth more and pays a DIMINISHING permanent all-lane bonus; the
+   *  lifetime bonus is a converging geometric sum (→ 1 + baseMag/(1−decay)), so it's
+   *  permanently BOUNDED and can never trivialize the economy. Curve-safe: the sim never
+   *  funds it (it never even completes one challenge). */
+  megaproject: {
+    enabled: true,
+    name: "The Next Big Thing",
+    blurb: "The roadmap ended, so you wrote a new one. And another. And—",
+    icon: "infinity",
+    /** Level-0 funding cost, per resource; ×growth for each completed cycle. */
+    baseCost: { compute: 5e14, data: 3e14, money: 5e14 },
+    growth: 2.2,
+    /** Per-cycle bonus magnitude, decayed by decay^level. Lifetime bonus converges. */
+    baseMag: 0.05,
+    decay: 0.85,
+  },
 };
