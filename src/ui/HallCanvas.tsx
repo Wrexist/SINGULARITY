@@ -124,6 +124,12 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
     let prevParts = partsOwned(useGame.getState().game.components.owned);
     let deliveryStart = -1e9;
     const DELIVERY_MS = 1100;
+    // The skyline (a market-leaderboard sort + map) drifts slowly and only feeds a
+    // 5%-quantised static repaint, so rebuilding it every frame is wasted allocation +
+    // GC on mobile. Refresh it a few times a second instead; the quantised signature
+    // repaints no more often than that anyway. buildHallModel seeds a fresh one on rebuild.
+    let lastSkylineAt = -1e9;
+    const SKYLINE_REFRESH_MS = 400;
 
     // The model only changes when rack counts / run-active / era change — cache
     // it so we don't rebuild ~46 objects every animation frame (mobile GC).
@@ -195,10 +201,13 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       // Product buzz decays every tick — refresh the per-beam surge factor in place so a
       // launch/viral window is felt live (index-aligned to the model's beams).
       model.beamBuzz = game.products.active.map((p) => Math.max(0, Math.min(1, p.buzzSec / BUZZ_WINDOW_SEC)));
-      // The horizon race drifts continuously (rival pools scale with the
-      // frontier; your MAU grows). Refresh it cheaply; the static cache below
-      // only repaints when the COARSE signature actually moves.
-      model.skyline = buildSkyline(game);
+      // The horizon race drifts continuously (rival pools scale with the frontier; your
+      // MAU grows), but only feeds the coarse static repaint below — so refresh it a few
+      // times a second, not every frame, keeping the last-built towers in between.
+      if (timeMs - lastSkylineAt >= SKYLINE_REFRESH_MS) {
+        model.skyline = buildSkyline(game);
+        lastSkylineAt = timeMs;
+      }
       // A new part in the inventory → the crate dolly rolls in.
       const parts = partsOwned(game.components.owned);
       if (parts > prevParts) deliveryStart = timeMs;

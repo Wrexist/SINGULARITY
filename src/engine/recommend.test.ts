@@ -53,6 +53,19 @@ describe("recommendedUpgrade (best value, not cheapest)", () => {
     const rec = recommendedUpgrade(s);
     if (rec !== null) expect(canBuyUpgrade(s, rec)).toBe(true);
   });
+
+  it("stays sane at 1e308+ scale (no NaN-poisoned sort → garbage recommendation)", () => {
+    // Past ~1e308 the internal money-equiv rates overflow to Infinity; the marginal
+    // gain becomes Infinity−Infinity = NaN. The value guard must keep the result a
+    // real, buyable upgrade instead of defaulting to whichever candidate is first.
+    const s = richWith14ConsumerRacks();
+    s.resources.compute = Big.of("1e320");
+    s.resources.data = Big.of("1e320");
+    s.resources.money = Big.of("1e320");
+    const rec = recommendedUpgrade(s);
+    expect(rec).not.toBeNull();
+    expect(canBuyUpgrade(s, rec!)).toBe(true);
+  });
 });
 
 describe("bulk upgrade buying (×10 / Max)", () => {
