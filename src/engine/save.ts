@@ -549,6 +549,9 @@ export function deserialize(json: string): GameState {
   // reputation.spent below (same anti-cheat policy as perks + the endowment).
   const paradigms = dedupeKnownIds(raw.paradigms, PARADIGM_IDS);
   const paradigmOwed = paradigms.reduce((sum, id) => sum + (PARADIGM_COST.get(id) ?? 0), 0);
+  // Sanitize stats once: ascensions drives the Institute Grant budget (below) and
+  // totalShips caps the ship-log — both previously recomputed sanitizeStats redundantly.
+  const stats = sanitizeStats(raw.stats);
   const loadedProducts = isWellFormedProducts(raw.products) ? raw.products : fresh.products;
   // `sold` was added after v6 shipped, `drafts`/`upgrade` in v7; default them for
   // saves that predate each, and sanitize the untrusted nested shapes.
@@ -623,13 +626,17 @@ export function deserialize(json: string): GameState {
     computeFocus,
     products,
     employees: sanitizeEmployees(raw.employees),
-    stats: sanitizeStats(raw.stats),
+    stats,
     achievements,
     reputation: sanitizeReputation(raw.reputation, repEndowment, paradigmOwed),
     repEndowment,
     paradigms,
     doctrines: dedupeKnownIds(raw.doctrines, DOCTRINE_IDS),
-    institute: dedupeKnownIds(raw.institute, INSTITUTE_IDS),
+    // The Institute grants PERMANENT multipliers, so — like reputation/paradigms/
+    // challenges — its owned wings must reconcile against their earning source (Grants
+    // minted by ascensions), not just be known-id filtered. Otherwise a crafted save
+    // with every wing and 0 ascensions banks a free ×7 to all output.
+    institute: sanitizeInstitute(raw.institute, stats.ascensions),
     endowmentDirectives: sanitizeDirectives(raw.endowmentDirectives, repEndowment),
     // Prestige Trials: the active id must be a known Trial (else no active run), and
     // completed ids are filtered to known, deduped (the reward folds per unique id).
@@ -656,7 +663,7 @@ export function deserialize(json: string): GameState {
     rivalOps: sanitizeRivalOps(raw.rivalOps),
     // Legacy Wall records are display-only history, but still validated per-entry
     // (sanitizer policy: filter, don't wipe) and capped like prestige() caps them.
-    shipLog: sanitizeShipLog(raw.shipLog, sanitizeStats(raw.stats).totalShips),
+    shipLog: sanitizeShipLog(raw.shipLog, stats.totalShips),
     sponsor: sanitizeSponsor(raw.sponsor),
     // Preprints multiply into derive, so the count is clamped to the per-run cap.
     preprints: Math.min(balance.preprints.maxPerRun, safeCount(raw.preprints)),
@@ -816,6 +823,31 @@ function sanitizeReputation(r: unknown, endowmentLevel = 0, paradigmOwed = 0): {
     perks.reduce((sum, id) => sum + (REP_PERK_COST.get(id) ?? 0), 0) + endowmentOwed(endowmentLevel) + paradigmOwed;
   const loadedSpent = typeof o.spent === "number" && Number.isFinite(o.spent) && o.spent >= 0 ? o.spent : 0;
   return { spent: Math.max(loadedSpent, owedForOwned), perks };
+}
+
+/** The Institute is untrusted. Unlike reputation/paradigms — whose currency is a shared
+ *  pool reconciled via `spent` — Grants ONLY buy wings, so charging a spent counter would
+ *  do nothing; the wings themselves must be dropped if unaffordable. Keep only the subset
+ *  the player's ascension-minted Grants could actually have founded: walk the perks in
+ *  definition order (prereqs point backward), greedily spending a running Grant budget,
+ *  and drop any wing that's over-budget or has a dropped prerequisite. "Filter, don't
+ *  wipe": a legitimate owner keeps everything; a crafted all-wings/0-ascension save keeps
+ *  nothing. */
+function sanitizeInstitute(raw: unknown, ascensions: number): string[] {
+  const claimed = new Set(dedupeKnownIds(raw, INSTITUTE_IDS));
+  if (claimed.size === 0) return [];
+  let budget = Math.max(0, Math.floor(ascensions)) * INSTITUTE.grantsPerAscension;
+  const kept: string[] = [];
+  const keptSet = new Set<string>();
+  for (const p of INSTITUTE.perks) {
+    if (!claimed.has(p.id)) continue;
+    if (p.requires && !keptSet.has(p.requires)) continue; // prerequisite was dropped → drop this too
+    if (budget < p.cost) continue; // over the Grant budget → not legitimately foundable
+    budget -= p.cost;
+    kept.push(p.id);
+    keptSet.add(p.id);
+  }
+  return kept;
 }
 
 /**
