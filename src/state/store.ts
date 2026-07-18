@@ -686,12 +686,18 @@ export const useGame = create<GameStore>((set, get) => ({
       // read as noise over the fresh lab — drop the backlog with the run.
       pendingNotices = [];
       const game = prestige(s.game, mode);
+      // Guard the Big→number: at deep-endgame scale legacyWeights can exceed ~1e308,
+      // where toNumber() is Infinity and would submit garbage (JSON → null) telemetry.
+      const weightsNum = game.prestige.legacyWeights.toNumber();
       recordTelemetry({
         kind: "prestige",
         t: now(),
         gen: game.prestige.ships,
         playtimeSec: game.stats.playtimeSec,
-        weights: game.prestige.legacyWeights.toNumber(),
+        // MAX_VALUE (not MAX_SAFE_INTEGER) on overflow: keeps an overflowing weight
+        // ABOVE every finite value ever recorded, so the telemetry stays monotonic
+        // instead of cratering ~9e15 below the prior sample (CodeRabbit #34).
+        weights: Number.isFinite(weightsNum) ? weightsNum : Number.MAX_VALUE,
         era: currentEra(s.game), // the era reached in the run just shipped
       });
       // The fresh run starts with no upgrades/research and at era 0 — reset baselines

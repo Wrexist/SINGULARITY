@@ -167,7 +167,12 @@ export function App() {
   // (see engine/goals.ts). Only computed when the notice slot would actually
   // show it (slot priority is daily > nudge > goal) — no point scanning 50+
   // achievement metrics at 10Hz to produce a hidden result.
-  const goal = useMemo(() => (dailyOn || nudge ? null : nextGoal(game)), [game, dailyOn, nudge]);
+  // The opening FIRST STEPS coach owns the whole first-session screen. While it's up
+  // (first generation, before the loop closes), suppress the competing notice-slot
+  // strips and the satirical news ticker so a brand-new player sees ONE thing to do —
+  // then the world "comes alive" as a reward once they've learned the loop (2026-07).
+  const firstSteps = firstStepsVisible(game);
+  const goal = useMemo(() => (dailyOn || nudge || firstSteps ? null : nextGoal(game)), [game, dailyOn, nudge, firstSteps]);
   const reducedMotion = useSettings((s) => s.reducedMotion);
   const hallTheme = useSettings((s) => s.hallTheme);
   const music = useSettings((s) => s.music);
@@ -762,7 +767,7 @@ export function App() {
             vanishing must never shove the section tabs / hall / buttons below —
             the slot reserves the space, only its content swaps. */}
         <div className="notice-slot">
-          {dailyOn ? (
+          {firstSteps ? null : dailyOn ? (
             <button className="daily-bar" onClick={onClaimDaily} aria-label="Claim your daily boost">
               <span className="daily-ic"><GiftIcon size={18} /></span>
               <span className="daily-text"><b>Daily boost</b> — +{Math.round((balance.daily.factor - 1) * 100)}% for {Math.round(balance.daily.durationSec / 60)} min</span>
@@ -873,8 +878,8 @@ export function App() {
                     layout-invisible (same flat stage as before). */}
                 <div className="stage-left">
                   <HallCanvas onExpand={setPendingExpansion} />
-                  <NewsTicker />
-                  {firstStepsVisible(game) && <FirstSteps game={game} />}
+                  {!firstSteps && <NewsTicker />}
+                  {firstSteps && <FirstSteps game={game} />}
                   <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} onSetFocus={setComputeFocus} />
                 </div>
                 <div className="stage-right">

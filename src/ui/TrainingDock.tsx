@@ -30,6 +30,13 @@ export function TrainingDock({ game, derived, onStart, onClaim, onSetFocus }: Pr
 
   // Coach the very first run, then get out of the way (clean-to-play).
   const firstRun = game.lifetimeMoney.eq(0) && game.prestige.ships === 0;
+  // The mandatory ~4s cold-start before the first run can afford to fire used to read
+  // a static "Idle" — dead time. Instead charge the bar toward affordability so the wait
+  // FEELS like the meter filling. First-run only; later idles can afford instantly.
+  const charging = firstRun && !run.active && !run.readyToClaim && !canStart;
+  const chargeFrac = charging && derived.runComputeCost.gt(0)
+    ? Math.min(1, Math.max(0, game.resources.compute.div(derived.runComputeCost).toNumber()))
+    : 0;
   let hint: string | null = null;
   if (firstRun) {
     if (run.readyToClaim) hint = "Done! Claim your first Data + Money.";
@@ -47,10 +54,10 @@ export function TrainingDock({ game, derived, onStart, onClaim, onSetFocus }: Pr
         </span>
       </div>
 
-      <div className={`progress ${run.readyToClaim ? "ready" : run.active ? "active" : ""}`}>
-        <div className="progress-fill" style={{ width: `${run.readyToClaim ? 100 : pct}%` }} />
+      <div className={`progress ${run.readyToClaim ? "ready" : run.active ? "active" : charging ? "charging" : ""}`}>
+        <div className="progress-fill" style={{ width: `${run.readyToClaim ? 100 : run.active ? pct : charging ? chargeFrac * 100 : 0}%` }} />
         <span className="progress-label">
-          {run.readyToClaim ? "Complete" : run.active ? `${pct.toFixed(0)}%` : "Idle"}
+          {run.readyToClaim ? "Complete" : run.active ? `${pct.toFixed(0)}%` : charging ? "Charging…" : "Idle"}
         </span>
       </div>
 

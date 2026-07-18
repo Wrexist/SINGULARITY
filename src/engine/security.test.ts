@@ -5,6 +5,7 @@ import { tick } from "./tick";
 import { buyDataOffer, applyHeatEvent } from "./actions";
 import { releaseProduct } from "./products";
 import { earnedReputation } from "./reputation";
+import { instituteMods } from "./institute";
 import { legacyTreeMods } from "./legacyTree";
 import { charterConvictionMult } from "./prestige";
 import { balance } from "./balance/config";
@@ -177,6 +178,27 @@ describe("security round 2 — meta-progression collections (known ids, exactly 
     const s = load((r) => { r.reputation = { spent: 0, perks: ["rep_legend", "rep_legend", "ghost"] }; });
     expect(s.reputation.perks).toEqual(["rep_legend"]);
     expect(s.reputation.spent).toBeGreaterThanOrEqual(200); // can't own the capstone for free
+  });
+
+  it("Institute wings reconcile against ascension-minted Grants (no free ×7 via save edit)", () => {
+    const all = ["inst_compute", "inst_data", "inst_revenue", "inst_synthesis", "inst_singularity"];
+    // Every wing claimed with ZERO ascensions → 0 Grants → nothing legitimately foundable.
+    const cheat = loadMutated((r) => { r.institute = all; r.stats = { ...r.stats, ascensions: 0 }; });
+    expect(cheat.institute).toEqual([]);
+    const mods = instituteMods(cheat);
+    expect(mods.computeMult).toBe(1); // identity — no boost granted
+    expect(mods.dataMult).toBe(1);
+    expect(mods.moneyMult).toBe(1);
+
+    // A legitimate owner (9 ascensions = 9 Grants, the tree's full cost) keeps everything.
+    const legit = loadMutated((r) => { r.institute = all; r.stats = { ...r.stats, ascensions: 9 }; });
+    expect(legit.institute).toEqual(all);
+    expect(instituteMods(legit).moneyMult).toBeGreaterThan(1);
+
+    // Partial budget + a wing whose prerequisite is unaffordable: the entry wing (cost 1)
+    // is kept, the capstone (needs a dropped prereq AND is over budget) is dropped.
+    const partial = loadMutated((r) => { r.institute = ["inst_singularity", "inst_compute"]; r.stats = { ...r.stats, ascensions: 1 }; });
+    expect(partial.institute).toEqual(["inst_compute"]);
   });
 
   it("an unknown charter id can't grant the +15% conviction bonus", () => {

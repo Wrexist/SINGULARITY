@@ -96,7 +96,12 @@ export function recommendedUpgrade(state: GameState): string | null {
     };
     const gain = moneyEquivRate(after) - base;
     const cost = costMoneyEquiv(state, def);
-    const value = cost > 0 ? gain / cost : 0;
+    // Past ~1e308 a Big→number conversion inside these rates goes Infinity, and
+    // Infinity−Infinity / Infinity÷Infinity is NaN — which silently poisons the sort
+    // (every `value > best.value` is false, so the FIRST candidate wins by default).
+    // Treat any non-finite score as "no measurable gain" so the cheapest-anchor
+    // fallback kicks in instead of a garbage recommendation.
+    const value = cost > 0 && Number.isFinite(gain) && Number.isFinite(cost) ? gain / cost : 0;
     if (!best || value > best.value || (value === best.value && cost < best.cost)) {
       best = { id: def.id, value, cost };
     }
