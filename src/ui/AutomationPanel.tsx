@@ -6,6 +6,10 @@ import { LockIcon } from "./Icons";
 interface Props {
   game: GameState;
   onToggle: (id: string) => void;
+  /** Render WITHOUT the panel card + heading, for use inside a <Collapsible> (which
+   *  already supplies both). Otherwise this nests a panel inside a panel and shows
+   *  its heading twice. */
+  bare?: boolean;
 }
 
 /**
@@ -13,16 +17,12 @@ interface Props {
  * ship count, then flips on/off with a switch. Off by default (the player opts in), and the
  * balance sim never enables one, so the tuned curve is untouched.
  */
-export function AutomationPanel({ game, onToggle }: Props) {
+export function AutomationPanel({ game, onToggle, bare = false }: Props) {
   const list = automationList();
   const onCount = list.filter((d) => automationUnlocked(game, d.id) && game.automation[d.id]).length;
 
-  return (
-    <section className="panel automation">
-      <div className="automation-head">
-        <h2 className="panel-title" style={{ margin: 0 }}>Automation</h2>
-        {onCount > 0 && <span className="automation-count">{onCount} on</span>}
-      </div>
+  const body = (
+    <>
       {/* First-run scaffolding — drop it once an autopilot is running (noise sweep). */}
       {onCount === 0 && <p className="automation-intro">Let the lab run itself. Ship more models to unlock each autopilot, then switch it on.</p>}
       <div className="list">
@@ -47,6 +47,17 @@ export function AutomationPanel({ game, onToggle }: Props) {
           );
         })}
       </div>
+    </>
+  );
+
+  if (bare) return body;
+  return (
+    <section className="panel automation">
+      <div className="automation-head">
+        <h2 className="panel-title" style={{ margin: 0 }}>Automation</h2>
+        {onCount > 0 && <span className="automation-count">{onCount} on</span>}
+      </div>
+      {body}
     </section>
   );
 }

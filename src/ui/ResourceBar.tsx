@@ -48,7 +48,12 @@ function Resource({ label, cssVar, icon, value, rate, ratePrefix = "" }: Resourc
             </span>
           )}
         </div>
-        {rate && <div className="resource-rate">{ratePrefix}{fmtRate(rate)}</div>}
+        {/* The rate row is ALWAYS rendered, even when there's no rate to show. Compute
+            always has one but Data and Money don't, so a conditional row left the three
+            cards' contents sitting at different heights inside equal-height cards — the
+            app's most-looked-at row, visibly crooked for the whole early game.
+            An empty row reserves the space and keeps the three baselines aligned. */}
+        <div className="resource-rate">{rate ? `${ratePrefix}${fmtRate(rate)}` : " "}</div>
       </div>
     </div>
   );
@@ -75,7 +80,10 @@ export function ResourceBar({ compute, data, money, computeRate, dataRate, money
         rate={dataRate.gt(0) ? dataRate : undefined}
       />
       <Resource
-        label="$"
+        /* "Money", not "$" — the other two micro-labels are words, and a lone glyph in
+           the third slot made the trio read as unfinished. The green tint, the icon and
+           the "$/s" rate all still mark it as currency. */
+        label="Money"
         cssVar="--money"
         icon={<MoneyIcon />}
         value={money}

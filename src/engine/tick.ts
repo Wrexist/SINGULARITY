@@ -16,6 +16,29 @@ import type { Derived, GameState } from "./types";
 const MAX_ACTIVE_MODIFIERS = 48;
 
 /**
+ * Largest window applied in a single simulation step.
+ *
+ * Most of the sim is dt-invariant, so "offline is just a tick with a big elapsedMs"
+ * held for the lab loop. The PRODUCT business is not: `simulateProducts` advances the
+ * competitive frontier to its end-of-window value before pricing the window, and
+ * integrates MAU with a single forward-Euler step. Applied as one 8h tick those
+ * compound badly — measured, an 8h window paid a marketing-funded portfolio ~10% of
+ * the users and NEGATIVE money (the marketing budget was charged for the whole window
+ * while the revenue it bought was not earned). A player who closed the app came back
+ * poorer than one who left it open.
+ *
+ * Sub-stepping the window fixes it for every large-dt path at once — offline catch-up,
+ * an OS suspend/resume, and a frozen background tab — because they all funnel through
+ * tick(). 5 minutes converges to ~98% of a 1s-step reference for ~15ms of work on an
+ * 8h window (~45ms on a premium 24h one), paid once on resume.
+ *
+ * This does NOT move the tuned curve: the balance sim drives the engine in small live
+ * steps and never uses the offline path, so this brings reality INTO line with the
+ * curve the sim tunes against rather than shifting it. See offlineParity.test.ts.
+ */
+const MAX_STEP_MS = 300_000;
+
+/**
  * The deterministic heartbeat. Given a state and elapsed time, returns the next
  * state. The engine never reads the wall clock (CLAUDE.md hard rule) — time is
  * passed in, which makes offline progress "just a tick with a big elapsedMs".
@@ -28,6 +51,21 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   // simulation non-finite before the later delta guards run. The engine owns this
   // invariant now, so no caller can corrupt state with a bad dt.
   if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) return state;
+
+  // Sub-step a large catch-up window (see MAX_STEP_MS). Iterative rather than
+  // recursive so a premium 24h window can't approach the call-stack limit. Every
+  // inner call gets <= MAX_STEP_MS, so this can't re-enter itself.
+  if (elapsedMs > MAX_STEP_MS) {
+    let s = state;
+    let remaining = elapsedMs;
+    while (remaining > 0) {
+      const step = Math.min(MAX_STEP_MS, remaining);
+      s = tick(s, step);
+      remaining -= step;
+    }
+    return s;
+  }
+
   const seconds = elapsedMs / 1000;
 
   // Segment the window at the next modifier expiry. Otherwise a large frame

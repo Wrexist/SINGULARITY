@@ -91,9 +91,11 @@ export function StatsPanel({ game, derived }: Props) {
   const stance = stanceEffects(game);
   const charter = charterRow(game);
 
+  // NOTE: Compute/sec, Data/sec and Passive income are NOT repeated here — the
+  // ResourceBar carries all three permanently at the top of every screen, so a
+  // second copy in the reference panel was pure duplication (2026-08 noise sweep).
+  // The multipliers below are the value this panel adds: they exist nowhere else.
   const now: Row[] = [
-    { label: "Compute / sec", value: fmt(derived.computePerSec) },
-    { label: "Data / sec", value: fmt(derived.dataPerSec) },
     { label: "Compute multiplier", value: `×${fmt(derived.computeMult)}` },
     { label: "Data multiplier", value: `×${fmt(derived.dataMult)}` },
     { label: "$ multiplier", value: `×${fmt(derived.moneyMult)}` },
@@ -104,7 +106,6 @@ export function StatsPanel({ game, derived }: Props) {
     ...(game.repEndowment > 0 ? [{ label: "Endowment", value: `+${Math.round((endowmentMult(game) - 1) * 100)}% · L${game.repEndowment}` }] : []),
     { label: "Run duration", value: `${derived.runDurationSec.toFixed(1)}s` },
     { label: "Run payout", value: `${fmt(derived.runDataYield)} data · ${fmtMoney(derived.runMoneyYield)}` },
-    { label: "Passive income", value: `${fmtMoney(derived.passiveMoneyPerSec)}/s` },
     // (The "Faction stance" text row was dropped — the align-bar below already carries
     // the stance name; keep only the numeric tilt. 2026-07 noise sweep.)
     ...(stance ? [{ label: "Stance effects", value: stance }] : []),

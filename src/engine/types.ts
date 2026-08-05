@@ -115,6 +115,10 @@ export interface GameState {
   /** The Institute (2026-07): owned wing ids (third meta-layer, funded by ascension
    *  Grants). Empty for the sim → identity. Permanent (survives prestige + ascension). */
   institute: string[];
+  /** The Institute's infinite tail (2026-08): endowed Fellowship chairs. Unlocks only
+   *  once EVERY wing is founded, which the deploy-only sim never does (it earns Grants
+   *  but never spends them), so this stays 0 → fellowshipMult is identity. Permanent. */
+  instituteFellowships: number;
   /** Flagship (2026-07): the designated flagship product id (or null) and its cross-ship
    *  `tenure` (ships survived as flagship). Grants a bounded permanent revenue bonus.
    *  Curve-safe: the sim never launches products, so productId stays null / tenure 0. */

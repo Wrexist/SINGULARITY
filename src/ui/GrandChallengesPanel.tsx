@@ -10,6 +10,10 @@ interface Props {
   onFund: (id: string, at?: { x: number; y: number }) => void;
   onChooseFork: (id: string, forkId: string) => void;
   onFundMegaproject: (at?: { x: number; y: number }) => void;
+  /** Render WITHOUT the panel card + heading, for use inside a <Collapsible> (which
+   *  already supplies both). Otherwise this nests a panel inside a panel and shows
+   *  its heading twice. */
+  bare?: boolean;
 }
 
 const RES_ICON = { compute: <ComputeIcon size={12} />, data: <DataIcon size={12} />, money: <MoneyIcon size={12} /> };
@@ -20,7 +24,7 @@ const RES_ICON = { compute: <ComputeIcon size={12} />, data: <DataIcon size={12}
  * completing one fires the tentpole "Challenge complete" moment (handled in App). Purely a
  * grind target: the whole board is hidden until the deep endgame, and the sim never funds.
  */
-export function GrandChallengesPanel({ game, onFund, onChooseFork, onFundMegaproject }: Props) {
+export function GrandChallengesPanel({ game, onFund, onChooseFork, onFundMegaproject, bare = false }: Props) {
   const list = visibleChallenges(game);
   if (list.length === 0) return null;
   const doneCount = game.challenges.completed.length;
@@ -28,12 +32,8 @@ export function GrandChallengesPanel({ game, onFund, onChooseFork, onFundMegapro
   const mega = megaOpen ? megaprojectView(game) : null;
   const canMega = megaOpen && canFundMegaproject(game);
 
-  return (
-    <section className="panel challenges">
-      <div className="challenges-head">
-        <h2 className="panel-title" style={{ margin: 0 }}>Grand Challenges</h2>
-        <span className="challenges-count">{doneCount}/{C.list.length}</span>
-      </div>
+  const body = (
+    <>
       {/* First-run scaffolding — drop it once a challenge is complete (noise sweep). */}
       {doneCount === 0 && <p className="challenges-intro">Moonshots that reshape the lab forever. Pour your output in — the reward is permanent.</p>}
       <div className="list">
@@ -145,6 +145,17 @@ export function GrandChallengesPanel({ game, onFund, onChooseFork, onFundMegapro
           </div>
         </div>
       )}
+    </>
+  );
+
+  if (bare) return body;
+  return (
+    <section className="panel challenges">
+      <div className="challenges-head">
+        <h2 className="panel-title" style={{ margin: 0 }}>Grand Challenges</h2>
+        <span className="challenges-count">{doneCount}/{C.list.length}</span>
+      </div>
+      {body}
     </section>
   );
 }

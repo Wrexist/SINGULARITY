@@ -5,7 +5,7 @@ import { derive } from "../engine/derive";
 import { Big } from "../engine/math/Big";
 import { haptics } from "./haptics";
 import { sound } from "./sound";
-import { useSettings } from "./settings";
+import { useSettings, onOsReduceMotionChange, osReduceMotionNow } from "./settings";
 import { themeAccent } from "./hallThemes";
 import { dailyAvailable, markDailyClaimed } from "./daily";
 import { ResourceBar } from "./ResourceBar";
@@ -90,7 +90,8 @@ import { legacyAvailable } from "../engine/legacyTree";
 import { endowmentUnlocked } from "../engine/reputation";
 import { canBuyOfficePerk } from "../engine/actions";
 import { modelReadyNote, researchStartNote, soldNote, hireWelcome, fireSendoff } from "../engine/notices";
-import { challengesUnlocked, challengeById } from "../engine/challenges";
+import { challengesUnlocked, challengeById, visibleChallenges, pendingForkChallenge } from "../engine/challenges";
+import { contractBoard, sponsorView } from "../engine/contracts";
 import { GrandChallengesPanel } from "./GrandChallengesPanel";
 import { TrialsPanel, trialsDoneCount, trialsTotal } from "./TrialsPanel";
 import { trialsUnlocked } from "../engine/trials";
@@ -104,7 +105,7 @@ import { Collapsible } from "./Collapsible";
 import { ChallengeComplete } from "./ChallengeComplete";
 import { objectivesUnlocked } from "../engine/objectives";
 import { ObjectivesPanel } from "./ObjectivesPanel";
-import { automationUnlockedAny } from "../engine/automation";
+import { automationUnlockedAny, automationList, automationUnlocked, automationEnabled } from "../engine/automation";
 import { AutomationPanel } from "./AutomationPanel";
 import { currentEra } from "../engine/eras";
 import { recordTelemetry } from "../state/telemetry";
@@ -122,7 +123,7 @@ export function App() {
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
     doClaimContract, doClaimSponsor, doBuyPreprint, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
-    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival, doFundChallenge, doChooseFork, doFundMegaproject, doClaimObjective, doToggleAutomation, doStartTrial, doAbandonTrial, doSetFlagship, doBuyParadigm, doClaimDoctrine, doBuyInstitute } =
+    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival, doFundChallenge, doChooseFork, doFundMegaproject, doClaimObjective, doToggleAutomation, doStartTrial, doAbandonTrial, doSetFlagship, doBuyParadigm, doClaimDoctrine, doBuyInstitute, doEndowFellowship } =
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
@@ -147,6 +148,23 @@ export function App() {
     return counts;
   }, [advisor, claimWaiting]);
   const nudge = advisor[0] ?? null;
+
+  // Fold-badge counts for the HQ boards (Contracts / Automation / Grand Challenges).
+  // Computed once per tick alongside the advisor so a COLLAPSED board can still say
+  // "N ready" ambiently — the point of folding HQ is fewer open panels, not less signal.
+  const hqCounts = useMemo(() => {
+    const ready = contractBoard(game).filter((c) => c.ready).length + (sponsorView(game)?.ready ? 1 : 0);
+    const autos = automationList().filter((a) => automationUnlocked(game, a.id));
+    const seen = visibleChallenges(game);
+    return {
+      contractsReady: ready,
+      autoOn: autos.filter((a) => automationEnabled(game, a.id)).length,
+      autoTotal: autos.length,
+      challengesDone: seen.filter((c) => game.challenges.completed.includes(c.id)).length,
+      challengesSeen: seen.length,
+      forkPending: seen.some((c) => pendingForkChallenge(game, c.id)),
+    };
+  }, [game]);
 
   // Detect a ship (prestige) and fire the celebration moment + haptics.
   const prevShips = useRef(game.prestige.ships);
@@ -173,7 +191,14 @@ export function App() {
   // then the world "comes alive" as a reward once they've learned the loop (2026-07).
   const firstSteps = firstStepsVisible(game);
   const goal = useMemo(() => (dailyOn || nudge || firstSteps ? null : nextGoal(game)), [game, dailyOn, nudge, firstSteps]);
-  const reducedMotion = useSettings((s) => s.reducedMotion);
+  // Motion is reduced when EITHER the in-app toggle or the LIVE OS preference says so
+  // (CLAUDE.md hard rule). The OS half is tracked outside the store, so mirror it into
+  // React state and subscribe, otherwise flipping iOS Reduce Motion mid-session would
+  // leave the `.reduce-motion` class and FxCanvas stale until the next reload.
+  const reducedMotionSetting = useSettings((s) => s.reducedMotion);
+  const [osReduce, setOsReduce] = useState(osReduceMotionNow);
+  useEffect(() => onOsReduceMotionChange(setOsReduce), []);
+  const reducedMotion = reducedMotionSetting || osReduce;
   const hallTheme = useSettings((s) => s.hallTheme);
   const music = useSettings((s) => s.music);
   const onboarded = useSettings((s) => s.onboarded);
@@ -185,6 +210,15 @@ export function App() {
   const markAchievementsSeen = useSettings((s) => s.markAchievementsSeen);
   const [showShipExplainer, setShowShipExplainer] = useState(false);
 
+  // Sheets the PLAYER opened. World events fire on their own Poisson timer, entirely
+  // independent of what's on screen, and their backdrop sits above these — so one could
+  // land on top of an open Settings/Awards/confirm sheet, compounding two dimmed
+  // backdrops and burying whatever the player was doing. Every other moment below is a
+  // consequence of something the player just did; this is the only uninvited one, so
+  // it's the only one that waits. The store holds it in a single slot, so it simply
+  // shows once the sheet closes. (2026-08 — reproduced in a seeded smoke run.)
+  const sheetOpen = showSettings || showAchievements || !!pendingExpansion || confirmReset || !!pendingRetire;
+
   // The moment queue's head: exactly ONE full-screen moment renders at a time,
   // by priority. Dismissing the head lets the next pending one show.
   const moment = offline ? "offline"
@@ -192,7 +226,7 @@ export function App() {
     : eraMoment !== null ? "era"
     : challengeDoneId ? "challenge"
     : launch ? "launch"
-    : worldEvent ? "world"
+    : worldEvent && !sheetOpen ? "world"
     : null;
 
   const era = currentEra(game);
@@ -329,7 +363,8 @@ export function App() {
     { key: "research", fact: showResearch, when: true, text: "Research unlocked", tone: "good" },
     { key: "market", fact: showMarket, when: true, text: "Data Market unlocked", tone: "good" },
     { key: "prestige", fact: showPrestige, when: true, text: "The path to shipping is open", tone: "good" },
-    { key: "shipReady", fact: shipReady, when: true, text: "You can Ship the Model!", tone: "good" },
+    // (No "You can Ship the Model!" toast — the same state change already opens the
+    // one-time ship explainer sheet and lights the HQ dot. 2026-08 noise sweep.)
     { key: "align", fact: alignDir, when: "accel", text: "Your choices tilt the lab accelerationist — faster, hotter. See Lab Stats.", tone: "neutral" },
     { key: "align", fact: alignDir, when: "doomer", text: "Your choices tilt the lab doomer — safer, steadier. See Lab Stats.", tone: "neutral" },
     { key: "autoTrain", fact: d.autoTrain, when: true, text: "Auto-train online — runs restart themselves. Set your training intensity.", tone: "good" },
@@ -766,7 +801,7 @@ export function App() {
             strip (daily > advisor nudge > goal carrot). Strips appearing and
             vanishing must never shove the section tabs / hall / buttons below —
             the slot reserves the space, only its content swaps. */}
-        <div className="notice-slot">
+        <div className={`notice-slot${firstSteps ? " empty" : ""}`}>
           {firstSteps ? null : dailyOn ? (
             <button className="daily-bar" onClick={onClaimDaily} aria-label="Claim your daily boost">
               <span className="daily-ic"><GiftIcon size={18} /></span>
@@ -911,9 +946,25 @@ export function App() {
             {section === "hq" && (
               <>
                 {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} onBuyEndowment={() => { haptics.celebrate(); sound.purchase(); doBuyEndowment(); }} onPickDirective={(id) => { haptics.celebrate(); sound.purchase(); doPickDirective(id); }} onBuyLegacyPerk={(id) => { haptics.success(); sound.purchase(); doBuyLegacyPerk(id); }} />}
-                {showResearch && <ContractsPanel game={game} onClaim={onClaimContract} onClaimSponsor={() => { haptics.success(); sound.success(); doClaimSponsor(); }} />}
-                {automationUnlockedAny(game) && <AutomationPanel game={game} onToggle={onToggleAutomation} />}
-                {challengesUnlocked(game) && <GrandChallengesPanel game={game} onFund={onFundChallenge} onChooseFork={(id, forkId) => { haptics.celebrate(); sound.purchase(); doChooseFork(id, forkId); }} onFundMegaproject={(at) => { const done = doFundMegaproject(); if (done) { haptics.celebrate(); sound.success(); if (at) fxBurst(at.x, at.y, { count: 26, power: 1.4, colors: ["#a855f7", "#ffd60a", "#16b364"] }); } else { haptics.tap(); sound.tap(); } }} />}
+                {/* HQ used to stack TEN always-open panels in one scroll. Contracts,
+                    Automation and Grand Challenges now fold like Trials/Doctrine/the
+                    Institute already did, each carrying its own "needs you" count so a
+                    folded board still calls out ambiently. (2026-08 navigation sweep.) */}
+                {showResearch && (
+                  <Collapsible title="Contracts" defaultOpen={hqCounts.contractsReady > 0} badge={hqCounts.contractsReady > 0 ? `${hqCounts.contractsReady} ready` : undefined}>
+                    <ContractsPanel bare game={game} onClaim={onClaimContract} onClaimSponsor={() => { haptics.success(); sound.success(); doClaimSponsor(); }} />
+                  </Collapsible>
+                )}
+                {automationUnlockedAny(game) && (
+                  <Collapsible title="Automation" badge={`${hqCounts.autoOn}/${hqCounts.autoTotal} on`}>
+                    <AutomationPanel bare game={game} onToggle={onToggleAutomation} />
+                  </Collapsible>
+                )}
+                {challengesUnlocked(game) && (
+                  <Collapsible title="Grand Challenges" defaultOpen={hqCounts.forkPending} badge={hqCounts.forkPending ? "decision" : `${hqCounts.challengesDone}/${hqCounts.challengesSeen}`}>
+                    <GrandChallengesPanel bare game={game} onFund={onFundChallenge} onChooseFork={(id, forkId) => { haptics.celebrate(); sound.purchase(); doChooseFork(id, forkId); }} onFundMegaproject={(at) => { const done = doFundMegaproject(); if (done) { haptics.celebrate(); sound.success(); if (at) fxBurst(at.x, at.y, { count: 26, power: 1.4, colors: ["#a855f7", "#ffd60a", "#16b364"] }); } else { haptics.tap(); sound.tap(); } }} />
+                  </Collapsible>
+                )}
                 {trialsUnlocked(game) && (
                   <Collapsible title="Trials" defaultOpen={!!game.activeTrial} badge={game.activeTrial ? "running" : `${trialsDoneCount(game)}/${trialsTotal}`}>
                     <TrialsPanel
@@ -930,7 +981,11 @@ export function App() {
                 )}
                 {instituteUnlocked(game) && (
                   <Collapsible title="The Institute" defaultOpen={grantsAvailable(game) > 0} badge={grantsAvailable(game) > 0 ? `${grantsAvailable(game)} grants` : "founded"}>
-                    <InstitutePanel game={game} onBuy={(id) => { haptics.celebrate(); sound.purchase(); doBuyInstitute(id); }} />
+                    <InstitutePanel
+                      game={game}
+                      onBuy={(id) => { haptics.celebrate(); sound.purchase(); doBuyInstitute(id); }}
+                      onEndowFellowship={() => { haptics.celebrate(); sound.achievement(); doEndowFellowship(); }}
+                    />
                   </Collapsible>
                 )}
                 <StatsPanel game={game} derived={d} />

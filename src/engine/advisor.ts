@@ -1,6 +1,5 @@
 import { balance } from "./balance/config";
 import { productMetrics, productsUnlocked, canStartUpgrade, maxActiveProducts } from "./products";
-import { reputationBalance, canBuyReputationPerk, canBuyEndowment } from "./reputation";
 import { contractBoard, sponsorView } from "./contracts";
 import { canBuyResearch, researchStalled } from "./actions";
 import { canPrestige } from "./prestige";
@@ -158,17 +157,14 @@ export function advisorItems(state: GameState, precomputed?: Derived): AdvisorIt
     items.push({ tab: "lab", section: "hq", text: `Claim the "${sponsor.def.title}" sponsor — +${sponsor.def.rep} Rep`, priority: 76 });
   }
 
-  // Lab Reputation: a gentle nudge when a permanent perk is affordable (surfaces the
-  // meta-layer, which lives in the Prestige panel and is easy to miss).
-  if (reputationBalance.perks.some((p) => canBuyReputationPerk(state, p.id))) {
-    items.push({ tab: "lab", section: "hq", text: "You can afford a Lab Reputation perk", priority: 40 });
-  }
-
-  // Endgame: once the perk tree is owned, nudge the Endowment (the infinite Rep sink)
-  // when affordable — otherwise surplus Reputation piles up with no visible use.
-  if (canBuyEndowment(state)) {
-    items.push({ tab: "lab", section: "hq", text: "Endow a permanent boost — spend surplus Reputation", priority: 41 });
-  }
+  // NOTE (2026-08 noise sweep): "you can afford a Lab Reputation perk" and "you can
+  // afford an Endowment level" used to be advisory items here. Both are shop-stock
+  // notices, not waiting decisions — and because the Endowment is an INFINITE
+  // Reputation sink (reputation.ts), the second was true on essentially every mature
+  // save. Between them they kept the Lab nav badge and the HQ dot permanently lit,
+  // which taught players that badges mean nothing. The affordable perks are already
+  // legible in the panel that sells them (green/affordable styling); the advisor is
+  // reserved for things that are genuinely WAITING on the player.
 
   return items.sort((a, b) => b.priority - a.priority);
 }
