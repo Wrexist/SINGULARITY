@@ -79,6 +79,71 @@ const shade = (c: RGB, f: number): RGB => [clamp(c[0] * f, 0, 255), clamp(c[1] *
 const rgb = (c: RGB) => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
 const rgba = (c: RGB, a: number) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${clamp(a, 0, 1)})`;
 
+// --- Living hall: the day/night cycle -----------------------------------------
+// A slow ambient cycle driven by the RENDERER'S clock (the UI owns time; the
+// engine never sees it). Phase 0 = high noon, 0.5 = midnight. Pure helpers so
+// the cycle is testable and the paint stays a pure function of (model, clock).
+
+/** Full day/night cycle duration (~4 minutes of app-open time). */
+export const DAY_CYCLE_MS = 240_000;
+
+/** 0..1 position through the day cycle (wraps). Deterministic. */
+export function dayPhase(timeMs: number): number {
+  return ((((timeMs % DAY_CYCLE_MS) + DAY_CYCLE_MS) % DAY_CYCLE_MS) / DAY_CYCLE_MS);
+}
+
+/** How "night" a phase is: 0 in full daylight, 1 at deep night, smooth
+ *  plateaus at both ends so dawn/dusk are brief transitions, not half-states. */
+export function nightFactor(phase: number): number {
+  const raw = (1 - Math.cos(phase * Math.PI * 2)) / 2; // 0 noon → 1 midnight
+  const u = clamp((raw - 0.3) / 0.4, 0, 1);
+  return u * u * (3 - 2 * u); // smoothstep
+}
+
+export interface Star { x: number; y: number; r: number; a: number }
+
+/** Small deterministic string hash (same pattern as hallModel's incident placer). */
+function hashStr(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+/** A deterministic star field for the upper sky band (top 32% of the canvas).
+ *  Same (W, H, n, seed) → identical field, so the cached static layer can bake
+ *  it without churn. */
+export function starField(W: number, H: number, n: number, seed: number): Star[] {
+  const out: Star[] = [];
+  for (let i = 0; i < n; i++) {
+    out.push({
+      x: (hashStr(`${seed}x${i}`) % 10000) / 10000 * W,
+      y: (hashStr(`${seed}y${i}`) % 10000) / 10000 * H * 0.32,
+      r: 0.4 + (hashStr(`${seed}r${i}`) % 1000) / 1000 * 1.1,
+      a: 0.4 + (hashStr(`${seed}a${i}`) % 100) / 100 * 0.45,
+    });
+  }
+  return out;
+}
+
+/** Storm strobe: a brief double-pulse flash near t≡0 (mod period), dark the rest
+ *  of the cycle. Returns intensity 0..1. Deterministic — no RNG. */
+const LIGHTNING_PERIOD_MS = 9000;
+export function lightningFlash(t: number): number {
+  const p = ((t % LIGHTNING_PERIOD_MS) + LIGHTNING_PERIOD_MS) % LIGHTNING_PERIOD_MS;
+  if (p >= 300) return 0;
+  if (p < 70) return p / 70;                       // strike up
+  if (p < 110) return 1 - ((p - 70) / 40) * 0.7;   // flicker dip
+  if (p < 170) return 0.3 + ((p - 110) / 60) * 0.7; // second pulse
+  return 1 - (p - 170) / 130;                      // fade out by 300ms
+}
+
+/** Hex "#rrggbb" → RGB (for lerping the era sky palettes toward night). */
+function hexToRgb(hex: string): RGB {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+const NIGHT_SKY: RGB = [8, 11, 24];
+
 const tierBase = (tier: number): RGB => TIER_BASE[tier] ?? TIER_BASE[0]!;
 
 // Bare Metal grade flair — the fitted part's glow colour by grade
@@ -233,8 +298,15 @@ export function pointInPoly(x: number, y: number, poly: Pt[]): boolean {
  * rebuilding ~a dozen gradients and the whole floor grid 30–60×/sec (the main
  * source of the reported jank on mobile).
  */
-export function drawHallStatic(ctx: CanvasRenderingContext2D, model: HallModel, W: number, H: number): void {
-  const [bg0, bg1] = eraBg(model.era);
+export function drawHallStatic(ctx: CanvasRenderingContext2D, model: HallModel, W: number, H: number, phase = 0): void {
+  // Day/night: the era palette lerps toward deep night; the interior stays lit
+  // (it's a datacenter — the racks ARE the lighting), so only the sky changes.
+  const nf = nightFactor(phase);
+  const [bg0h, bg1h] = eraBg(model.era);
+  const mixNight = (hex: string): RGB =>
+    hexToRgb(hex).map((c, i) => c + (NIGHT_SKY[i]! - c) * nf * 0.72) as RGB;
+  const bg0 = rgb(mixNight(bg0h));
+  const bg1 = rgb(mixNight(bg1h));
   const sky = ctx.createLinearGradient(0, 0, 0, H);
   sky.addColorStop(0, bg0);
   sky.addColorStop(1, bg1);
@@ -243,22 +315,40 @@ export function drawHallStatic(ctx: CanvasRenderingContext2D, model: HallModel, 
 
   const L = computeLayout(model.cols, model.rows, model.gxMin, model.gyMin, W, H);
 
+  // Stars come out at night — drawn BEFORE the skyline so towers occlude them,
+  // and faded out toward the horizon so they never pop below the skyline base.
+  // An active storm keeps them off (clouds): incidents live on the model, and
+  // their signature is already in the static cache key, so this flips cleanly.
+  if (nf > 0.12 && model.incidents.length === 0) {
+    const horizonY = Math.max(H * 0.1, L.iso(L.gxMin, L.gyMin).y - H * 0.22 + 2);
+    for (const s of starField(W, H, Math.round(W / 9), model.era)) {
+      const fade = clamp((horizonY - s.y) / (H * 0.16), 0, 1);
+      const a = s.a * nf * fade;
+      if (a <= 0.02) continue;
+      ctx.fillStyle = `rgba(226,232,255,${a})`;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
   // Hero backlight — a soft, era-tinted bloom rising from behind the rack cluster, so
   // the floor of glowing hardware reads as lit-from-within depth instead of a flat
   // panel. Cheap (one gradient) and lives in the cached static layer → zero per-frame cost.
   {
     const fc = eraFloor(model.era);
     const cx = W / 2, cy = H * 0.44;
+    const dim = 1 - nf * 0.35; // the room's own glow reads stronger at night
     const bloom = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.6);
-    bloom.addColorStop(0, rgba(shade(fc, 2.3), 0.22));
-    bloom.addColorStop(0.55, rgba(shade(fc, 1.4), 0.09));
+    bloom.addColorStop(0, rgba(shade(fc, 2.3), 0.22 * dim));
+    bloom.addColorStop(0.55, rgba(shade(fc, 1.4), 0.09 * dim));
     bloom.addColorStop(1, rgba(fc, 0));
     ctx.fillStyle = bloom;
     ctx.fillRect(0, 0, W, H);
   }
 
   // IDEAS #4 — the race on the horizon, behind the room shell.
-  if (model.skyline.length > 0) drawSkyline(ctx, model.skyline, W, H, L);
+  if (model.skyline.length > 0) drawSkyline(ctx, model.skyline, W, H, L, nf);
   // Housings only — the spinning blades live in the dynamic layer (QW2) so the
   // fans actually turn while the room shell stays cached.
   drawRoom(ctx, L, model.era, H, model.coolingUnits);
@@ -286,7 +376,7 @@ export function drawHallStatic(ctx: CanvasRenderingContext2D, model: HallModel, 
  *  share of the leader. Your own tower (violet, beacon-tipped) rises among
  *  them; a press-blitzed rival's windows go dark for the run. Static — the
  *  cache key carries a coarse skyline signature. */
-function drawSkyline(ctx: CanvasRenderingContext2D, towers: SkylineTower[], W: number, H: number, L: Layout): void {
+function drawSkyline(ctx: CanvasRenderingContext2D, towers: SkylineTower[], W: number, H: number, L: Layout, nf = 0): void {
   const n = towers.length;
   // Rest the towers on the horizon: the top line of the back walls.
   const baseY = Math.max(H * 0.1, L.iso(L.gxMin, L.gyMin).y - H * 0.22 + 2);
@@ -298,10 +388,19 @@ function drawSkyline(ctx: CanvasRenderingContext2D, towers: SkylineTower[], W: n
     const w = W * 0.052;
     const h = Math.max(6, maxH * tw.h);
     const body: RGB = tw.you ? [110, 84, 190] : [52, 58, 84];
-    ctx.fillStyle = rgba(body, tw.dim ? 0.55 : 0.9);
+    ctx.fillStyle = rgba(body, (tw.dim ? 0.55 : 0.9) * (1 - nf * 0.25));
     ctx.fillRect(cx - w / 2, baseY - h, w, h);
     // Rooftop detail: a beacon for you, an antenna stub for rivals.
     if (tw.you) {
+      // The home beacon burns brighter at night — your lab never sleeps.
+      const glowR = 3 + nf * 4;
+      const glow = ctx.createRadialGradient(cx, baseY - h - 3, 0, cx, baseY - h - 3, glowR);
+      glow.addColorStop(0, `rgba(190,150,255,${0.7 + nf * 0.3})`);
+      glow.addColorStop(1, "rgba(190,150,255,0)");
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(cx, baseY - h - 3, glowR, 0, Math.PI * 2);
+      ctx.fill();
       ctx.fillStyle = "rgba(190,150,255,0.95)";
       ctx.beginPath();
       ctx.arc(cx, baseY - h - 3, 2.2, 0, Math.PI * 2);
@@ -311,9 +410,12 @@ function drawSkyline(ctx: CanvasRenderingContext2D, towers: SkylineTower[], W: n
       ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(cx, baseY - h); ctx.lineTo(cx, baseY - h - 4); ctx.stroke();
     }
-    // Lit windows — blitzed rivals go dark (the comms team is sweating).
+    // Lit windows — blitzed rivals go dark (the comms team is sweating), and
+    // everyone's windows dim at night as their humans go home.
     if (!tw.dim) {
-      ctx.fillStyle = tw.you ? "rgba(220,190,255,0.8)" : "rgba(150,190,255,0.55)";
+      ctx.fillStyle = tw.you
+        ? `rgba(220,190,255,${0.8 * (1 - nf * 0.45)})`
+        : `rgba(150,190,255,${0.55 * (1 - nf * 0.72)})`;
       const rows = Math.max(1, Math.floor(h / 7));
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < 2; c++) {
@@ -450,6 +552,14 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
   const L = computeLayout(model.cols, model.rows, model.gxMin, model.gyMin, W, H);
   const { iso, tileW, tileH, originY, gxMin, gyMin, gxMax, gyMax } = L;
 
+  // Incident weather — the sky outside answers a lab on fire: overcast always
+  // (even reduced-motion), rain streaks + a strobe only with motion on. Drawn
+  // first so everything indoors stays in front of it.
+  if (model.incidents.length > 0) {
+    const horizonY = Math.max(H * 0.1, iso(gxMin, gyMin).y - H * 0.22 + 2);
+    drawStorm(ctx, W, H, horizonY, o.timeMs, Math.min(1, model.incidents.length * 0.5), o.reducedMotion);
+  }
+
   // "Lively" = a manual run OR a live product business. Keeps the hall breathing
   // between runs once you've shipped something, instead of going dead.
   const lively = model.active || model.busy;
@@ -569,7 +679,12 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
   if (lively || !o.reducedMotion) {
     drawMotes(ctx, W, H, originY, o.timeMs, lively, model.total, o.reducedMotion, 1);
   }
-  if (o.burst > 0 && !o.reducedMotion) drawClaimBurst(ctx, W, H, originY, o.burst);
+  if (o.burst > 0 && !o.reducedMotion) {
+    drawClaimBurst(ctx, W, H, originY, o.burst);
+    // The claim's shockwave: an iso floor ring racing out from the hall's centre
+    // under the sparks (same 950ms envelope as the burst above).
+    drawShockwave(ctx, L, 1 - o.burst);
+  }
 
   // Expansion affordances on each side (drawn over the floor).
   drawMarkers(ctx, expansionMarkers(model, W, H), o.timeMs, o.reducedMotion);
@@ -1014,6 +1129,78 @@ function drawClaimBurst(ctx: CanvasRenderingContext2D, W: number, H: number, ori
   ctx.restore();
 }
 
+/** Living hall — claim shockwave: an expanding isometric ring on the floor,
+ *  racing out from the room's centre as the claimed run's reward lands.
+ *  `progress` 0→1 across the burst envelope; pure function of the clock. */
+function drawShockwave(ctx: CanvasRenderingContext2D, L: Layout, progress: number): void {
+  const c = L.iso((L.gxMin + L.gxMax) / 2, (L.gyMin + L.gyMax) / 2);
+  const r = easeOut(clamp(progress, 0, 1));
+  const rx = L.tileW * (1.6 + r * (L.gxMax - L.gxMin) * 0.72);
+  const ry = rx * 0.5; // iso foreshortening
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  // Leading edge…
+  ctx.strokeStyle = rgba([120, 220, 255], (1 - r) * 0.55);
+  ctx.lineWidth = 2 + (1 - r) * 2.5;
+  ctx.beginPath();
+  ctx.ellipse(c.x, c.y, rx, ry, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  // …and a trailing echo just behind it.
+  const r2 = Math.max(0, r - 0.16);
+  if (r2 > 0.02) {
+    const rx2 = L.tileW * (1.6 + r2 * (L.gxMax - L.gxMin) * 0.72);
+    ctx.strokeStyle = rgba([185, 135, 255], (1 - r) * 0.3);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.ellipse(c.x, c.y, rx2, rx2 * 0.5, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/** Living hall — incident weather. The sky band above the horizon answers a bad
+ *  event: an overcast wash always (state without motion), then rain streaks and
+ *  the deterministic lightning strobe only when motion is allowed. `intensity`
+ *  0..1 scales everything; drawn BEFORE any indoor content so the room stays dry. */
+function drawStorm(
+  ctx: CanvasRenderingContext2D, W: number, H: number, horizonY: number,
+  t: number, intensity: number, reducedMotion: boolean,
+): void {
+  ctx.save();
+  // Overcast: a flat grey wash over the sky band (reduced-motion-safe).
+  const over = ctx.createLinearGradient(0, 0, 0, horizonY);
+  over.addColorStop(0, rgba([96, 104, 124], 0.34 * intensity));
+  over.addColorStop(1, rgba([96, 104, 124], 0.12 * intensity));
+  ctx.fillStyle = over;
+  ctx.fillRect(0, 0, W, horizonY);
+  if (reducedMotion) { ctx.restore(); return; }
+  // Lightning: the deterministic strobe, brightened by storm intensity.
+  const flash = lightningFlash(t) * intensity;
+  if (flash > 0.01) {
+    ctx.fillStyle = rgba([235, 240, 255], 0.26 * flash);
+    ctx.fillRect(0, 0, W, horizonY);
+    ctx.fillStyle = rgba([235, 240, 255], 0.05 * flash); // a whisper of it indoors
+    ctx.fillRect(0, 0, W, H);
+  }
+  // Rain: slanted streaks falling through the sky band, density ∝ intensity.
+  const n = Math.round(46 * intensity);
+  ctx.strokeStyle = rgba([170, 195, 230], 0.32);
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const seed = ((i * 2654435761) % 1000) / 1000;
+    const speed = 900 + seed * 700;
+    const prog = ((t / speed) + seed * 7) % 1;
+    const x = seed * (W + 60) - 30 - prog * 18; // slants left as it falls
+    const y = prog * horizonY;
+    const len = 7 + seed * 6;
+    ctx.moveTo(x, y - len);
+    ctx.lineTo(x + len * 0.28, y);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
 /** Bright packets streaming along the front floor cable — the look of data
  *  moving through a running business. Cheap: a handful of dots along one segment. */
 function drawDataFlow(ctx: CanvasRenderingContext2D, L: Layout, t: number, active: boolean): void {
@@ -1309,10 +1496,17 @@ export interface AgentSpot {
 
 /** IDEAS #7 — deterministic per-frame agent positions. Product-assigned people
  *  cluster at the base of THEIR product's uplink beam; the rest roam the open
- *  front strip. Pure function of (model, layout, clock). */
+ *  front strip — unless something's on fire, in which case they drift toward it
+ *  (the room reacts to its own state). Pure function of (model, layout, clock). */
 export function agentSpots(model: HallModel, W: number, H: number, t: number, reducedMotion: boolean): AgentSpot[] {
   const L = computeLayout(model.cols, model.rows, model.gxMin, model.gyMin, W, H);
   const beamsN = model.beams.length;
+  // Incident rally points: the tile coords of each afflicted rack (draw order =
+  // hit order = the same list the renderer and hit-test use).
+  const order = model.incidents.length > 0 ? rackTileOrder(model) : [];
+  const rallies = model.incidents
+    .map((ic) => order[ic.rackIndex])
+    .filter((tile): tile is { gx: number; gy: number } => !!tile);
   const out: AgentSpot[] = [];
   for (let i = 0; i < model.agents.length; i++) {
     const a = model.agents[i]!;
@@ -1329,10 +1523,32 @@ export function agentSpots(model: HallModel, W: number, H: number, t: number, re
       // clear foreground rather than vanishing between the back racks.
       gx = L.gxMin + 0.4 + seed * (L.gxMax - L.gxMin - 0.8);
       gy = L.gyMax - 0.4 - seed2 * 1.3;
+      // An active incident pulls roamers toward the smoking rack — the team
+      // gathering around the problem, made visible. Bounded pull (~⅓ of the
+      // way, capped travel) so the floor never reshuffles wholesale.
+      if (rallies.length > 0) {
+        let best = rallies[0]!;
+        let bestD = Infinity;
+        for (const r of rallies) {
+          const d = Math.hypot(r.gx - gx, r.gy - gy);
+          if (d < bestD) { bestD = d; best = r; }
+        }
+        if (bestD > 0.01) {
+          const pull = Math.min(0.34, 2.2 / bestD); // cap travel at ~2.2 tiles
+          gx += (best.gx - gx) * pull;
+          gy += (best.gy - gy) * pull;
+        }
+      }
     }
     const drift = reducedMotion ? 0 : Math.sin(t / 1500 + i * 2.1) * 0.18;
     const p = L.iso(gx + drift, gy);
-    const bob = reducedMotion ? 0 : Math.sin(t / 380 + i) * 1.2;
+    // A ready-to-claim run is a payoff moment: staff bounce on their toes
+    // (sharper, non-negative hop) instead of idly swaying.
+    const bob = reducedMotion
+      ? 0
+      : model.readyToClaim
+        ? Math.abs(Math.sin(t / 190 + i * 1.3)) * 3
+        : Math.sin(t / 380 + i) * 1.2;
     out.push({ x: p.x, y: p.y, bob, s: Math.max(3.2, L.tileW * 0.1), index: i });
   }
   return out;
