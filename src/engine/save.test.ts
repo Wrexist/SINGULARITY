@@ -2,6 +2,10 @@ import { describe, it, expect } from "vitest";
 import { serialize, deserialize, migrate } from "./save";
 import { createInitialState, SAVE_VERSION } from "./state";
 import { Big } from "./math/Big";
+import { balance } from "./balance/config";
+
+/** Mirrors save.ts's PROD_CAPS.quality — the ceiling a crafted draft can't exceed. */
+const PRODUCT_QUALITY_CAP = 1e12;
 
 describe("save/load", () => {
   it("round-trips state losslessly", () => {
@@ -268,5 +272,52 @@ describe("save/load", () => {
     expect(state.modifiers).toEqual([]); // defaulted when missing
     expect(state.lifetimeMoney.eq(50)).toBe(true); // backfilled from money
     expect(state.run.active).toBe(false);
+  });
+
+  it("dedupes crafted duplicate product ids (keep first)", () => {
+    const s = createInitialState();
+    s.products.active = [
+      { id: "prod-1", name: "Nimbus", type: "general", version: 1, quality: 2, priceMult: 1, marketingPerSec: 0, mau: 10, paid: 2, buzzSec: 0, ageSec: 0, upgrade: null, features: [], enterprise: false, enterprisePrice: 1, channelMix: { ads: 1 } },
+      { id: "prod-1", name: "Evil Twin", type: "code", version: 9, quality: 9, priceMult: 1, marketingPerSec: 0, mau: 999, paid: 999, buzzSec: 0, ageSec: 0, upgrade: null, features: [], enterprise: false, enterprisePrice: 1, channelMix: { ads: 1 } },
+      { id: "prod-2", name: "Stratus", type: "code", version: 1, quality: 3, priceMult: 1, marketingPerSec: 0, mau: 5, paid: 1, buzzSec: 0, ageSec: 0, upgrade: null, features: [], enterprise: false, enterprisePrice: 1, channelMix: { ads: 1 } },
+    ];
+    const loaded = deserialize(serialize(s));
+    expect(loaded.products.active.map((p) => p.id)).toEqual(["prod-1", "prod-2"]);
+    expect(loaded.products.active[0]!.name).toBe("Nimbus"); // first wins
+  });
+
+  it("dedupes crafted duplicate employee ids and clamps level to maxLevel", () => {
+    const s = createInitialState();
+    s.employees = [
+      { id: "e1", name: "Ada", roleId: "staff_engineer", level: 2, trait: null, assignedProductId: null, training: null },
+      { id: "e1", name: "Impostor", roleId: "staff_ops", level: 1, trait: null, assignedProductId: null, training: null },
+      { id: "e2", name: "Bo", roleId: "staff_ops", level: 99, trait: null, assignedProductId: null, training: null }, // over max
+    ];
+    const loaded = deserialize(serialize(s));
+    expect(loaded.employees).toHaveLength(2);
+    expect(loaded.employees[0]!.name).toBe("Ada"); // first wins
+    expect(loaded.employees[1]!.level).toBe(balance.staff.maxLevel); // clamped, not 99
+  });
+
+  it("drops unknown employee roleIds; nulls unknown traits (filter, don't wipe)", () => {
+    const s = createInitialState();
+    s.employees = [
+      { id: "e1", name: "Ghost", roleId: "staff_wizard", level: 1, trait: null, assignedProductId: null, training: null }, // unknown role → dropped
+      { id: "e2", name: "Sage", roleId: "staff_researcher", level: 1, trait: "omniscient", assignedProductId: null, training: null }, // unknown trait → nulled
+      { id: "e3", name: "Real", roleId: "staff_researcher", level: 1, trait: "mentor", assignedProductId: null, training: null }, // fine
+    ];
+    const loaded = deserialize(serialize(s));
+    expect(loaded.employees).toHaveLength(2);
+    expect(loaded.employees[0]!.id).toBe("e2");
+    expect(loaded.employees[0]!.trait).toBeNull(); // trait stripped, person kept
+    expect(loaded.employees[1]!.id).toBe("e3");
+    expect(loaded.employees[1]!.trait).toBe("mentor");
+  });
+
+  it("clamps crafted draft quality to the product cap (no ∞-quality launch)", () => {
+    const s = createInitialState();
+    s.products.drafts = [{ id: "d1", quality: 1e300, ships: 1 }];
+    const loaded = deserialize(serialize(s));
+    expect(loaded.products.drafts[0]!.quality).toBeLessThanOrEqual(PRODUCT_QUALITY_CAP);
   });
 });

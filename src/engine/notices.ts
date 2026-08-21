@@ -50,6 +50,10 @@ const MODEL_READY = [
   "You've got a raw model to sell — launch it from the Products tab.",
   "Model ready to monetise — make it a product in Products.",
   "The flagship is trained. Commercialise it free in the Products tab.",
+  "Weights banked — the free draft is sitting in Products.",
+  "That checkpoint wants a product page. Products tab, free launch.",
+  "The run left you a deployable draft — Products has it queued.",
+  "One trained model, zero price tag: commercialise it in Products.",
 ];
 export function modelReadyNote(shipCount: number): string {
   return pick(MODEL_READY, `ready${shipCount}`);
@@ -63,6 +67,11 @@ export function researchStartNote(name: string, nextVersion: number): string {
     `v${nextVersion} is in the oven`,
     `chasing v${nextVersion}; checkpoints incoming`,
     `v${nextVersion} enters the lab`,
+    `v${nextVersion} begins — the eval suite stretches, nervously`,
+    `cooking v${nextVersion} on the good racks`,
+    `v${nextVersion}: now with ambition`,
+    `the loss curve and you, together again — v${nextVersion}`,
+    `v${nextVersion} queued; the data pipeline sighs`,
   ];
   return `${name} — ${pick(tails, `${name}~${nextVersion}`)}`;
 }
@@ -76,6 +85,9 @@ const SOLD_TAILS = [
   "sunset with a tasteful blog post",
   "the servers spin down at midnight",
   "added to the graveyard slide, fondly",
+  "its Discord already misses it",
+  "remembered in a retrospective nobody reads",
+  "the postmortem is one slide: 'growth'",
 ];
 export function soldNote(name: string, moneyStr: string): string {
   return `Sold ${name} for ${moneyStr} — ${pick(SOLD_TAILS, `sold:${name}`)}`;
@@ -89,6 +101,10 @@ const HIRE_TAILS = [
   "is onboarded; the laptop arrives eventually",
   "joins the lab and immediately has opinions",
   "accepts, negotiates one extra monitor, wins",
+  "cites your blog post in the interview; gets the job",
+  "brings a mechanical keyboard. Everyone hears it.",
+  "requests 'compute budget' in the first sentence",
+  "already redecorating the team channel emoji",
 ];
 export function hireWelcome(name: string, roleId: string): string {
   const role = roleDef(roleId)?.name ?? "specialist";
@@ -102,6 +118,11 @@ const FIRE_TAILS = [
   "the farewell doc already has 200 heart reactions",
   "garden leave starts now; the tan starts later",
   "exit interview scheduled, then quietly cancelled",
+  "the desk plant stays; it has seniority",
+  "their commit streak ends at 214 days",
+  "LinkedIn updates to 'open to work' within the hour",
+  "takes the good whiteboard markers, symbolically",
+  "the offboarding doc is one line: 'see you at their launch'",
 ];
 export function fireSendoff(name: string, roleId: string): string {
   const role = roleDef(roleId)?.name ?? "specialist";

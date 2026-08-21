@@ -5,6 +5,7 @@ import { derive } from "../engine/derive";
 import { Big } from "../engine/math/Big";
 import { haptics } from "./haptics";
 import { sound } from "./sound";
+import { dayPhase } from "../render/hallRenderer";
 import { useSettings } from "./settings";
 import { themeAccent } from "./hallThemes";
 import { dailyAvailable, markDailyClaimed } from "./daily";
@@ -152,7 +153,7 @@ export function App() {
   const prevShips = useRef(game.prestige.ships);
   const prevWeights = useRef<Big>(game.prestige.legacyWeights);
   const prevAscensions = useRef(game.stats.ascensions);
-  const [celebration, setCelebration] = useState<{ gained: Big; total: Big; report: ShipReport } | null>(null);
+  const [celebration, setCelebration] = useState<{ gained: Big; total: Big; report: ShipReport; ascended?: boolean } | null>(null);
   const [eraMoment, setEraMoment] = useState<number | null>(null);
   const [launch, setLaunch] = useState<{ type: ProductTypeId; name: string } | null>(null);
   const [pendingExpansion, setPendingExpansion] = useState<string | null>(null);
@@ -207,6 +208,18 @@ export function App() {
     document.addEventListener("visibilitychange", apply);
     return () => document.removeEventListener("visibilitychange", apply);
   }, [music, era]);
+
+  // Day/night shading for the music bed (the hall's cycle, heard): night sits a
+  // touch darker. Synced per render (10Hz) but quantised to 24 phase buckets so
+  // the smooth setTargetAtTime ramps are only re-aimed ~every 10s.
+  const daylightBucket = useRef(-1);
+  useEffect(() => {
+    const bucket = Math.round(dayPhase(Date.now()) * 24); // UI owns the wall clock
+    if (bucket !== daylightBucket.current) {
+      daylightBucket.current = bucket;
+      sound.setMusicDaylight(bucket / 24);
+    }
+  });
 
   // Re-validate the premium entitlement against StoreKit at launch (native only;
   // no-op on web). Keeps the localStorage cache from being the source of truth.
@@ -519,6 +532,24 @@ export function App() {
   // persistently, by the advisor chip (a tappable wayfinder → Products) and the Products
   // tab attention badge, with ambient churn quips for flavor. One alert channel, not four.)
 
+  // Incident "all clear": when the last active BAD modifier resolves (burns out or is
+  // worked to zero), a bright two-note resolve confirms it — the problem you were
+  // tapping actually ENDED. A prestige wipe isn't a win, so ships must be unchanged.
+  const prevBadIncidents = useRef<Set<string>>(new Set());
+  const incidentsSynced = useRef(false);
+  useEffect(() => {
+    if (!initialized) return;
+    const now = new Set(game.modifiers.filter((m) => m.tone === "bad" && m.remainingSec > 0).map((m) => m.id));
+    const before = prevBadIncidents.current;
+    if (incidentsSynced.current && before.size > 0 && now.size === 0 && game.prestige.ships === prevShips.current) {
+      sound.incidentCleared();
+      logEvent("All clear — the incident burned out.", "good");
+    }
+    prevBadIncidents.current = now;
+    incidentsSynced.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game.modifiers, initialized]);
+
   const syncedShips = useRef(false);
   useEffect(() => {
     // Guard against the empty→loaded hydration: a returning player with ships>0
@@ -547,7 +578,7 @@ export function App() {
         productsLive: game.products.active.length,
         rivalsBeaten: rivalsBeaten(game),
       };
-      setCelebration({ gained, total: game.prestige.legacyWeights, report });
+      setCelebration({ gained, total: game.prestige.legacyWeights, report, ascended: game.stats.ascensions > prevAscensions.current });
       haptics.celebrate();
       // Game Center: push the career totals (silent no-op without the plugin).
       void gameCenterSubmitScores(game);
@@ -913,7 +944,7 @@ export function App() {
                 {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} onBuyEndowment={() => { haptics.celebrate(); sound.purchase(); doBuyEndowment(); }} onPickDirective={(id) => { haptics.celebrate(); sound.purchase(); doPickDirective(id); }} onBuyLegacyPerk={(id) => { haptics.success(); sound.purchase(); doBuyLegacyPerk(id); }} />}
                 {showResearch && <ContractsPanel game={game} onClaim={onClaimContract} onClaimSponsor={() => { haptics.success(); sound.success(); doClaimSponsor(); }} />}
                 {automationUnlockedAny(game) && <AutomationPanel game={game} onToggle={onToggleAutomation} />}
-                {challengesUnlocked(game) && <GrandChallengesPanel game={game} onFund={onFundChallenge} onChooseFork={(id, forkId) => { haptics.celebrate(); sound.purchase(); doChooseFork(id, forkId); }} onFundMegaproject={(at) => { const done = doFundMegaproject(); if (done) { haptics.celebrate(); sound.success(); if (at) fxBurst(at.x, at.y, { count: 26, power: 1.4, colors: ["#a855f7", "#ffd60a", "#16b364"] }); } else { haptics.tap(); sound.tap(); } }} />}
+                {challengesUnlocked(game) && <GrandChallengesPanel game={game} onFund={onFundChallenge} onChooseFork={(id, forkId) => { haptics.celebrate(); sound.purchase(); doChooseFork(id, forkId); }} onFundMegaproject={(at) => { const done = doFundMegaproject(); if (done) { haptics.celebrate(); sound.megaproject(); if (at) fxBurst(at.x, at.y, { count: 26, power: 1.4, colors: ["#a855f7", "#ffd60a", "#16b364"] }); } else { haptics.tap(); sound.tap(); } }} />}
                 {trialsUnlocked(game) && (
                   <Collapsible title="Trials" defaultOpen={!!game.activeTrial} badge={game.activeTrial ? "running" : `${trialsDoneCount(game)}/${trialsTotal}`}>
                     <TrialsPanel
@@ -930,7 +961,7 @@ export function App() {
                 )}
                 {instituteUnlocked(game) && (
                   <Collapsible title="The Institute" defaultOpen={grantsAvailable(game) > 0} badge={grantsAvailable(game) > 0 ? `${grantsAvailable(game)} grants` : "founded"}>
-                    <InstitutePanel game={game} onBuy={(id) => { haptics.celebrate(); sound.purchase(); doBuyInstitute(id); }} />
+                    <InstitutePanel game={game} onBuy={(id) => { haptics.celebrate(); sound.institute(); doBuyInstitute(id); }} />
                   </Collapsible>
                 )}
                 <StatsPanel game={game} derived={d} />
@@ -1005,6 +1036,7 @@ export function App() {
           weightsGained={celebration.gained}
           totalWeights={celebration.total}
           report={celebration.report}
+          ascended={celebration.ascended === true}
           onDone={() => {
             setCelebration(null);
             // A fresh run starts at the hall — don't leave the Lab parked on HQ.

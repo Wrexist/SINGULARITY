@@ -115,7 +115,14 @@ export const iap = {
    * device without the player having to tap Restore. No-op on web/dev.
    */
   async refresh(): Promise<void> {
-    await ensureInit();
+    // Fire-and-forget at app launch: a StoreKit/network failure here must never
+    // surface as an unhandled rejection (the caller `void`s this) — log only.
+    // Buy/restore call ensureInit() themselves, so a later attempt still retries.
+    try {
+      await ensureInit();
+    } catch (e) {
+      console.warn("IAP init failed (will retry on next purchase/restore):", e);
+    }
   },
 
   /** Is the premium unlock owned? */

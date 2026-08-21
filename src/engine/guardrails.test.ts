@@ -66,4 +66,21 @@ describe("engine architecture guardrails", () => {
     });
     expect(offenders).toEqual([]);
   });
+
+  // The other half of the deterministic-engine invariant: the engine must not touch
+  // the PLATFORM either — storage, DOM, or network all live in the store/UI layer
+  // (the same boundary that keeps a future Steam/desktop port cheap). Call-shaped
+  // patterns so doc prose like "the offline window." can't false-positive.
+  it("never touches storage, DOM, or network inside the engine", () => {
+    const offenders = engineFiles().filter((f) => {
+      const code = src(f);
+      return (
+        /localStorage\s*[.[]/.test(code) ||
+        /\bwindow\s*\./.test(code) ||
+        /\bdocument\s*\./.test(code) ||
+        /\bfetch\s*\(/.test(code)
+      );
+    });
+    expect(offenders).toEqual([]);
+  });
 });

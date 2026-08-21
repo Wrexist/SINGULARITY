@@ -363,6 +363,12 @@ export function derive(state: GameState): Derived {
     autoClaim,
     autoTrain,
     runComputeCost,
+    // DELIBERATE double-apply of GLOBAL multipliers (see TASK.md flag + the
+    // "run-yield curve pin" tests in derive.test.ts): runComputeCost already
+    // carries legacy/ascension/etc. via computePerSec, and these yields fold
+    // dataMult/moneyMult AGAIN on top — so global mults reach yields SQUARED.
+    // The tuned curve is built on this; changing it = a full retune. (Pure lane
+    // EVENT modifiers apply exactly once — they only ride the mults.)
     runDataYield: runComputeCost.mul(balance.run.dataPerCompute).mul(dataMult),
     runMoneyYield: runComputeCost.mul(balance.run.moneyPerCompute).mul(moneyMult),
     legacyMult,
