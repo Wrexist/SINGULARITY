@@ -38,6 +38,10 @@ const TRIAL_IDS = new Set(TRIALS.list.map((t) => t.id));
 const PARADIGM_IDS = new Set(PARADIGMS.list.map((p) => p.id));
 const PARADIGM_COST = new Map(PARADIGMS.list.map((p) => [p.id, p.cost]));
 const DOCTRINE_IDS = new Set(DOCTRINE.perks.map((p) => p.id));
+// Staff identity is also known-id data: an unknown role renders raw and an unknown
+// trait (e.g. a crafted "mentor" on every person) would silently boost morale math.
+const ROLE_IDS = new Set(balance.staff.roles.map((r) => r.id));
+const TRAIT_IDS = new Set(balance.staff.traits.map((t) => t.id));
 const INSTITUTE_IDS = new Set(INSTITUTE.perks.map((p) => p.id));
 
 /** Keep only known ids, each at most once (order preserved). Closes the duplicate /
@@ -193,7 +197,10 @@ function sanitizeChannelMix(m: unknown): Record<string, number> {
   return Object.keys(out).length ? out : { ads: 1 };
 }
 
-/** Drafts are untrusted; keep only well-formed entries. */
+/** Drafts are untrusted; keep only well-formed entries. Quality is clamped to the
+ *  same product cap loaded products get — an unclamped draft launches into a live
+ *  product whose economics (mrr/serve) compute from quality, so a crafted 1e300
+ *  would brick that product at ∞/NaN forever (launchDraft bypasses PROD_CAPS). */
 function sanitizeDrafts(d: unknown): DraftModel[] {
   if (!Array.isArray(d)) return [];
   return d
@@ -204,7 +211,7 @@ function sanitizeDrafts(d: unknown): DraftModel[] {
         typeof x.quality === "number" && Number.isFinite(x.quality) && x.quality >= 0 &&
         typeof x.ships === "number" && Number.isFinite(x.ships),
     )
-    .map((x) => ({ id: x.id, quality: x.quality, ships: x.ships }));
+    .map((x) => ({ id: x.id, quality: Math.min(x.quality, PROD_CAPS.quality), ships: x.ships }));
 }
 
 /** Loaded products are untrusted; guard the container SHAPE here only. Entries
@@ -221,19 +228,30 @@ function isWellFormedProducts(p: unknown): p is ProductsState {
   );
 }
 
-/** Employees are untrusted; keep only well-formed people, sanitizing training. */
+/** Employees are untrusted; keep only well-formed people, sanitizing training.
+ *  Level clamps to the SAME max the runtime trainer enforces (levelEffectMult is
+ *  linear and uncapped, so a crafted 1e9 would mint a 1e9× staff multiplier);
+ *  roleId/trait must be KNOWN ids (an unknown role renders raw; an unknown trait
+ *  could smuggle morale effects past the balance data); ids dedupe keep-first so
+ *  fire/assign/train targeting and React keys stay well-defined. */
 function sanitizeEmployees(e: unknown): Employee[] {
   if (!Array.isArray(e)) return [];
-  return e
-    .filter((x): x is Employee =>
-      !!x && typeof x.id === "string" && typeof x.name === "string" && typeof x.roleId === "string" &&
-      typeof x.level === "number" && Number.isFinite(x.level) && x.level >= 1)
-    .map((x) => ({
+  const seen = new Set<string>();
+  const out: Employee[] = [];
+  for (const x of e) {
+    if (
+      !x || typeof x.id !== "string" || typeof x.name !== "string" ||
+      typeof x.roleId !== "string" || !ROLE_IDS.has(x.roleId) ||
+      typeof x.level !== "number" || !Number.isFinite(x.level) || x.level < 1
+    ) continue;
+    if (seen.has(x.id)) continue; // duplicate id → keep the first occurrence
+    seen.add(x.id);
+    out.push({
       id: x.id,
       name: x.name,
       roleId: x.roleId,
-      level: Math.max(1, Math.floor(x.level)),
-      trait: typeof x.trait === "string" ? x.trait : null,
+      level: Math.min(balance.staff.maxLevel, Math.max(1, Math.floor(x.level))),
+      trait: typeof x.trait === "string" && TRAIT_IDS.has(x.trait) ? x.trait : null,
       assignedProductId: typeof x.assignedProductId === "string" ? x.assignedProductId : null,
       training:
         x.training && typeof x.training.remainingSec === "number" && Number.isFinite(x.training.remainingSec) &&
@@ -241,7 +259,9 @@ function sanitizeEmployees(e: unknown): Employee[] {
         x.training.remainingSec > 0
           ? { remainingSec: x.training.remainingSec, totalSec: x.training.totalSec }
           : null,
-    }));
+    });
+  }
+  return out;
 }
 
 /** Lifetime stats are untrusted: coerce each field, default a zeroed stat block. */
@@ -557,7 +577,14 @@ export function deserialize(json: string): GameState {
   // saves that predate each, and sanitize the untrusted nested shapes.
   const products: ProductsState = {
     ...loadedProducts,
-    active: loadedProducts.active.filter(isWellFormedProduct).map((p) => {
+    // Per-entry filter + clamp, then DEDUPE by id (keep first): two products sharing
+    // an id would collide React keys and make the find()-based actions (retire /
+    // upgrade / flagship) hit only the first — same known-id-once policy as research.
+    active: (() => {
+      const seen = new Set<string>();
+      return loadedProducts.active
+        .filter(isWellFormedProduct)
+        .map((p) => {
       const o = p as ProductState;
       // Clamp every numeric to the SAME range the runtime setters enforce, so a
       // save-edited value can't bypass the in-game clamps (out-of-range price /
@@ -583,8 +610,10 @@ export function deserialize(json: string): GameState {
         // products that were already established, so treat them as fully mature
         // (a large value) rather than penalising a returning player's cash cows.
         ageSec: clampNum(o.ageSec, 0, PROD_CAPS.ageSec, 1e9),
-      };
-    }),
+        };
+      })
+        .filter((p) => (seen.has(p.id) ? false : (seen.add(p.id), true)));
+    })(),
     // Frontier must stay ≥ its start: a negative frontier pins every product's
     // competitiveness at 1 and zeroes staleness churn (a permanent buff exploit).
     frontier: clampNum(loadedProducts.frontier, PRODUCTS.frontierStart, PROD_CAPS.frontier, PRODUCTS.frontierStart),

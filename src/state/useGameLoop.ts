@@ -18,6 +18,12 @@ export function useGameLoop(tickHz = 10, saveEverySec = 5) {
     init();
 
     const tickMs = 1000 / tickHz;
+    // Error containment: an exception thrown inside a setInterval callback is NOT
+    // a render error, so the root ErrorBoundary never sees it — without this guard
+    // the loop would die silently (numbers freeze) while spamming console errors
+    // at 10Hz on a live build. Log once per session and keep ticking: if the throw
+    // was transient (a bad intermediate state), the next tick self-heals.
+    let tickErrorLogged = false;
     const loop = window.setInterval(() => {
       const t = performance.now();
       // Clamp a single live-tick delta to the offline cap. If the machine sleeps (or
@@ -29,7 +35,14 @@ export function useGameLoop(tickHz = 10, saveEverySec = 5) {
       const capMs = (isPremium() ? balance.offline.premiumMaxHours : balance.offline.maxHours) * 3_600_000;
       const elapsed = Math.min(t - last.current, capMs);
       last.current = t;
-      advance(elapsed);
+      try {
+        advance(elapsed);
+      } catch (e) {
+        if (!tickErrorLogged) {
+          console.error("Game tick failed — containing so the loop survives:", e);
+          tickErrorLogged = true;
+        }
+      }
     }, tickMs);
 
     const saver = window.setInterval(save, saveEverySec * 1000);

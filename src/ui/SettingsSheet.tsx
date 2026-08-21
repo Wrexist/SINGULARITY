@@ -139,6 +139,11 @@ export function SettingsSheet({ onClose }: Props) {
     try {
       const ok = await iap.purchasePremium();
       if (ok) { setPremiumState(true); hpt.celebrate(); snd.ship(); }
+      else setStatus("Purchase didn't complete — you haven't been charged.");
+    } catch {
+      // ensureInit rethrows on a StoreKit/network failure — say so instead of
+      // leaving the player staring at a spinner that just stops.
+      setStatus("Store unreachable — check your connection and try again.");
     } finally {
       setBusy(false);
     }
@@ -148,6 +153,9 @@ export function SettingsSheet({ onClose }: Props) {
     try {
       const ok = await iap.restore();
       setPremiumState(ok);
+      if (!ok) setStatus("No previous purchase found for this Apple ID.");
+    } catch {
+      setStatus("Store unreachable — check your connection and try again.");
     } finally {
       setBusy(false);
     }
