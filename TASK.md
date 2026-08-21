@@ -8,6 +8,87 @@ Phase 0–3 history retained below for context.
 
 ---
 
+## Delight batch (2026-08-21, from the parallel-audit wave) — uncommitted on `master-agentic-development`
+*Fun/content audit findings, all shipped. Renderer/UI/audio only — zero engine math
+touched (notices.ts pools are pure data; the sim never reads them).*
+- [x] **Ascension super-ceremony** — an AGI-ascension ship now gets its own tier
+      everywhere: dedicated headline ("The Singularity Files Its Own Press Release")
+      + subtitle branch in `headlines.ts` (unit-tested, outranks even #1 rank),
+      a gilded card (gold edge/glow/rocket via `.celebrate-card.ascended`), all-gold
+      confetti at double density (26→48). Reduced motion keeps the gold card, skips
+      confetti (as before).
+- [x] **Stinger trio** (`sound.ts`, ~15 lines each on the existing `tone()` recipe):
+      `megaproject()` rising-fifth run replaces the generic `success` on cycle
+      completion; `institute()` warm sustained chord replaces `purchase` for wing
+      founding; `incidentCleared()` bright two-note resolve fires when the LAST bad
+      modifier resolves (App watches the modifier set; prestige wipes don't count).
+- [x] **Thin-pool content top-up** — ship subtitles 6→14, MODEL_READY 6→10,
+      research-start tails 5→10, sold/hire/fire tails to 10 each. These are the
+      highest-frequency strings in the game; all were exhausted within a sitting.
+- [x] **Day/night music shading** — `setMusicDaylight(phase)` beside `setMusicEra`:
+      night eases the pad ~28% quieter with the filter closed ~35% and the chorus
+      detune flattened; dawn reopens it. Smooth `setTargetAtTime` ramps driven from
+      App at 24 phase buckets (~every 10s) using the renderer's day phase.
+- [x] Verified: `tsc` clean · **632 tests** (+1 ascension-tier test) · full suite green.
+
+---
+## Safety batch (2026-08-21, from a 4-way parallel audit) — uncommitted on `master-agentic-development`
+*Audit wave 1 of the owner's "audit everything, then improve" directive: UI/UX · code
+health · gameplay depth · fun/content agents ran in parallel; this is the code-health
+MUST-FIX list, all shipped. Sim untouched by construction (sanitizers are load-path
+only; the derive change is comment-only).*
+- [x] **IAP failure paths** — `iap.refresh()` no longer surfaces a StoreKit/network
+      init failure as an unhandled rejection at launch (log-only, later buy/restore
+      still retries); SettingsSheet buy/restore catch init throws and SAY SO
+      ("Store unreachable…", "Purchase didn't complete — you haven't been charged.",
+      "No previous purchase found") instead of a spinner that silently stops.
+- [x] **Game-loop error containment** — `advance()` in useGameLoop now runs under
+      try/catch (once-per-session log): an interval throw is invisible to the root
+      ErrorBoundary and previously meant a silently frozen game + 10Hz console spam.
+- [x] **Save sanitizer hardening** (crafted-save class): duplicate product ids dedupe
+      keep-first (colliding React keys / find()-targeting), duplicate employee ids
+      dedupe, employee `level` clamps to `balance.staff.maxLevel` (was ≥1 only — a
+      crafted 1e9 minted a ~1e9× staff multiplier via the uncapped linear level
+      effect), unknown roleIds drop / unknown traits null (filter-don't-wipe), and
+      draft `quality` clamps to PROD_CAPS.quality (launchDraft bypassed the clamp →
+      a crafted 1e300 launched a permanently ∞/NaN-bricked product).
+- [x] **Run-yield double-apply guardrails** — the DELIBERATE global-mult² behaviour
+      (legacy rides runComputeCost AND the yield mults) now has a comment at the
+      return site plus magnitude-pin tests: lane event modifiers apply exactly once;
+      global mults scale yields SQUARED. A future "cleanup" can't silently retune.
+- [x] **Purity guardrail extended** — engine scan now also rejects localStorage /
+      window / document / fetch (call-shaped patterns; doc prose can't trip it).
+- [x] Verified: `tsc` clean · **631 tests** (+7: 4 save-sanitizer, 2 yield pins,
+      1 platform-purity guardrail) · built app driven headless through load → ticks
+      → autosave → settings sheet with **zero console errors**.
+
+---
+## Living Hall pass (owner-directed 2026-08-21, "more graphics and fun") — uncommitted on `master-agentic-development`
+*Renderer-only aliveness wave: the hall now has a day/night cycle, incident weather,
+reactive staff, and a claim shockwave. Zero engine files touched → the tuned curve is
+untouched by construction (sim not re-run; nothing for it to see).*
+- [x] **Day/night cycle + stars** — a ~4-min ambient loop driven by the RENDER clock
+      (`dayPhase`/`nightFactor`, pure + unit-tested): era sky lerps toward deep night,
+      a deterministic star field fades in above the horizon (occluded correctly by the
+      skyline, hidden while a storm's clouds are up), rival tower windows dim at night
+      and the home beacon burns brighter. Static-layer repaints quantised to 48
+      phase buckets (~one per 5s worst-case); reduced motion freezes the sky at day.
+- [x] **Incident weather** — an active BAD modifier overcasts the sky band always
+      (state without motion), and with motion on adds slanted rain streaks plus a
+      deterministic double-strobe lightning flash (`lightningFlash`, unit-tested).
+      Weather is meaningful (tied to real state), never random noise.
+- [x] **Agents react** — roamers drift toward a smoking incident rack (bounded pull,
+      shared `agentSpots` so draw + hit-test stay in lockstep), and a ready-to-claim
+      lab makes staff bounce on their toes instead of idly swaying. Both unit-tested;
+      reduced motion keeps them still.
+- [x] **Claim shockwave** — an expanding iso floor ring races out from the room centre
+      under the existing claim sparks (same 950ms envelope).
+- [x] Verified: `tsc` clean · **624 tests** (+6) · built app driven headless
+      (day-storm + night captures via a one-off Playwright script, since deleted) with
+      **zero console errors**. three.js was considered and deliberately declined:
+      live-iOS perf/bundle risk vs. the established parametric Canvas style.
+
+---
 ## IDEAS.md audit → full implementation (owner-directed 2026-07-04, "do everything you recommend") — branch `claude/game-design-audit-incbe8`
 *The design/UX audit (IDEAS.md, same branch) was implemented in full overnight: 3 quick wins +
 copy sweep + all 10 feature ideas. Every step verified (tests / typecheck / build / browser
