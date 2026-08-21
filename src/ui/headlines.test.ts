@@ -31,6 +31,13 @@ describe("A3 — history-aware ship headlines", () => {
     expect(a).toBe(b);
     expect(typeof a).toBe("string");
   });
+
+  it("gives an ASCENSION its own tier, above every other standout", () => {
+    // Even a #1-ranked, era-5 ascension reads as THE ascension — the grandest
+    // beat in the game doesn't wear generation 2's clothes.
+    expect(shipHeadline({ ...base, ascended: true, rank: 1, peakCompute: Big.of(1e15), peakMrr: 1e9 })).toBe("The Singularity Files Its Own Press Release");
+    expect(shipSubtitle({ ...base, ascended: true })).toBe("History splits into before and after. You banked:");
+  });
 });
 
 describe("ship subtitle — reactive tentpole line", () => {

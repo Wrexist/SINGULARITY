@@ -1569,6 +1569,17 @@ button.modchip.workable:active { transform: scale(0.94); }
   box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.75);
   animation: rise-modal 0.5s var(--spring);
 }
+/* Ascension super-ceremony: the same card, gilded — a gold edge, a warm glow,
+   and a golden rocket. Full-card tint + glow (no accent bar), per the hard rules. */
+.celebrate-card.ascended {
+  border-color: rgba(255, 214, 10, 0.65);
+  box-shadow:
+    0 0 34px rgba(255, 214, 10, 0.22),
+    0 0 90px rgba(168, 85, 247, 0.18),
+    var(--shadow-lg),
+    inset 0 1px 0 rgba(255, 240, 190, 0.8);
+}
+.celebrate-card.ascended .celebrate-rocket { color: #ffd60a; }
 .celebrate-rocket {
   display: inline-flex;
   color: #fff;

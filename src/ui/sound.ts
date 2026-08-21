@@ -61,7 +61,7 @@ const ERA_PADS: EraPad[] = [
   { freqs: [87.31, 130.81, 174.61, 261.63, 349.23, 523.25], cutoff: 1100, gain: 0.05 }, // 5 Post-Singularity — F, +shimmer octave
 ];
 
-interface Ambient { oscs: OscillatorNode[]; master: GainNode; lfo: OscillatorNode; era: number; }
+interface Ambient { oscs: OscillatorNode[]; master: GainNode; lfo: OscillatorNode; filter: BiquadFilterNode; era: number; }
 let ambient: Ambient | null = null;
 let wantMusic = false;
 let unlockBound = false;
@@ -99,7 +99,7 @@ function startAmbient(): void {
   lfoGain.gain.value = 200;
   lfo.connect(lfoGain).connect(filter.frequency);
   lfo.start(t0);
-  ambient = { oscs, master, lfo, era: padEra };
+  ambient = { oscs, master, lfo, filter, era: padEra };
 }
 
 function stopAmbient(): void {
@@ -178,6 +178,27 @@ export const sound = {
     [392, 523.25, 659.25, 783.99, 1046.5, 1318.51].forEach((f, i) => tone(f, i * 0.08, 0.5, "sine", 0.055));
     [1046.5, 1318.51, 1567.98].forEach((f) => tone(f, 0.5, 0.6, "triangle", 0.04));
   },
+  /** Megaproject cycle complete — a rising fifth run: weightier than a buy,
+   *  deliberately smaller than a ship (it fires every few cycles late-game). */
+  megaproject: () => {
+    if (!on()) return;
+    [392, 587.33, 783.99].forEach((f, i) => tone(f, i * 0.07, 0.3, "sine", 0.055));
+    tone(1174.66, 0.21, 0.22, "triangle", 0.03);
+  },
+  /** Institute wing founded — a warm sustained chord with a slow bloom; the
+   *  "endowment gravitas" beat (this is the deepest meta-layer's purchase). */
+  institute: () => {
+    if (!on()) return;
+    [261.63, 329.63, 392, 523.25].forEach((f) => tone(f, 0, 0.7, "sine", 0.042));
+    tone(1046.5, 0.14, 0.5, "triangle", 0.03);
+  },
+  /** Incident resolved — a bright two-note resolve upward ("all clear"), the
+   *  payoff for working a smoking rack instead of just its warning blink. */
+  incidentCleared: () => {
+    if (!on()) return;
+    tone(587.33, 0, 0.09, "sine", 0.05);
+    tone(880, 0.08, 0.18, "sine", 0.05);
+  },
   /** Era transition — a warm, swelling major chord stinger under the Music toggle
    *  (the "music swells" tentpole moment from GDD §6). Distinct from SFX so it
    *  plays even if you've muted taps, as long as Music is on. */
@@ -200,5 +221,23 @@ export const sound = {
       stopAmbient();
       if (wantMusic) startAmbient();
     }
+  },
+  /** Day/night shading for the ambient bed (the hall's day/night cycle, heard):
+   *  night sits a touch darker — slightly quieter, filter closed down, the
+   *  voices pulled flat (no chorus sparkle) — and dawn eases it back open.
+   *  `phase` is the renderer's day phase (0 noon → 0.5 midnight). Smooth
+   *  setTargetAtTime ramps so a quantised caller can't zip the filter. */
+  setMusicDaylight: (phase: number) => {
+    const raw = (1 - Math.cos(phase * Math.PI * 2)) / 2; // 0 day → 1 night
+    const nf = Math.max(0, Math.min(1, (raw - 0.3) / 0.4));
+    const night = nf * nf * (3 - 2 * nf);
+    if (!ambient || !Number.isFinite(night)) return;
+    const c = getCtx();
+    if (!c) return;
+    const t = c.currentTime;
+    const pad = ERA_PADS[Math.max(0, Math.min(ERA_PADS.length - 1, padEra))]!;
+    ambient.master.gain.setTargetAtTime(pad.gain * (1 - night * 0.28), t, 0.8);
+    ambient.filter.frequency.setTargetAtTime(pad.cutoff * (1 - night * 0.35), t, 0.8);
+    ambient.oscs.forEach((o, i) => o.detune.setTargetAtTime((i - 1.5) * 4 * (1 - night), t, 0.8));
   },
 };
