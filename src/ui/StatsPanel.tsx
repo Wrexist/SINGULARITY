@@ -11,6 +11,8 @@ import { charterDef, charterMods } from "../engine/charter";
 import { balance } from "../engine/balance/config";
 import { ascensionMultiplier } from "../engine/prestige";
 import { totalMorale } from "../engine/derive";
+import { history } from "./history";
+import { Sparkline } from "./Sparkline";
 
 interface Props {
   game: GameState;
@@ -26,7 +28,7 @@ function alignmentLabel(a: number): string {
   return "Accelerationist";
 }
 
-type Row = { label: string; value: string; tone?: "compute" | "data" | "money" | "good" };
+type Row = { label: string; value: string; tone?: "compute" | "data" | "money" | "good"; spark?: number[] };
 
 /** Collapsible "Lab Stats" — surfaces the math (legibility is the feature, GDD).
  *  Two groups: NOW (current per-second rates + multipliers) and ALL-TIME (the
@@ -93,8 +95,8 @@ export function StatsPanel({ game, derived }: Props) {
   const charter = charterRow(game);
 
   const now: Row[] = [
-    { label: "Compute / sec", value: fmt(derived.computePerSec), tone: "compute" as const },
-    { label: "Data / sec", value: fmt(derived.dataPerSec), tone: "data" as const },
+    { label: "Compute / sec", value: fmt(derived.computePerSec), tone: "compute" as const, spark: history.compute },
+    { label: "Data / sec", value: fmt(derived.dataPerSec), tone: "data" as const, spark: history.data },
     { label: "Compute multiplier", value: `×${fmt(derived.computeMult)}` },
     { label: "Data multiplier", value: `×${fmt(derived.dataMult)}` },
     { label: "$ multiplier", value: `×${fmt(derived.moneyMult)}` },
@@ -105,7 +107,7 @@ export function StatsPanel({ game, derived }: Props) {
     ...(game.repEndowment > 0 ? [{ label: "Endowment", value: `+${Math.round((endowmentMult(game) - 1) * 100)}% · L${game.repEndowment}` }] : []),
     { label: "Run duration", value: `${derived.runDurationSec.toFixed(1)}s` },
     { label: "Run payout", value: `${fmt(derived.runDataYield)} data · ${fmtMoney(derived.runMoneyYield)}` },
-    { label: "Passive income", value: `${fmtMoney(derived.passiveMoneyPerSec)}/s`, tone: "money" as const },
+    { label: "Passive income", value: `${fmtMoney(derived.passiveMoneyPerSec)}/s`, tone: "money" as const, spark: history.money },
     // (The "Faction stance" text row was dropped — the align-bar below already carries
     // the stance name; keep only the numeric tilt. 2026-07 noise sweep.)
     ...(stance ? [{ label: "Stance effects", value: stance }] : []),
@@ -154,6 +156,9 @@ export function StatsPanel({ game, derived }: Props) {
         {now.map((r) => (
           <div key={r.label} className="stat-row">
             <span className="stat-label">{r.label}</span>
+            {r.spark && r.spark.length > 1 && (
+              <span className={`stat-spark${r.tone ? ` t-${r.tone}` : ""}`}><Sparkline values={r.spark} /></span>
+            )}
             <span className={`stat-value${r.tone ? ` t-${r.tone}` : ""}`}>{r.value}</span>
           </div>
         ))}
@@ -163,6 +168,9 @@ export function StatsPanel({ game, derived }: Props) {
         {allTime.map((r) => (
           <div key={r.label} className="stat-row">
             <span className="stat-label">{r.label}</span>
+            {r.spark && r.spark.length > 1 && (
+              <span className={`stat-spark${r.tone ? ` t-${r.tone}` : ""}`}><Sparkline values={r.spark} /></span>
+            )}
             <span className={`stat-value${r.tone ? ` t-${r.tone}` : ""}`}>{r.value}</span>
           </div>
         ))}

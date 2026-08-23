@@ -59,13 +59,20 @@ export function CharterPanel({ game, onSet, onLock }: Props) {
           const conviction = game.lastCharter === c.id;
           const streak = conviction ? Math.max(1, (game.charterStreak ?? 0) + 1) : 0;
           // The bonus THIS ship would earn: rung = streak − 2, capped on the ladder.
-          const convPct = streak >= 2
-            ? Math.round((balance.prestige.charterConvictionLadder[Math.min(balance.prestige.charterConvictionLadder.length - 1, streak - 2)]! - 1) * 100)
-            : null;
+          const ladder = balance.prestige.charterConvictionLadder;
+          const rung = streak >= 2 ? Math.min(ladder.length - 1, streak - 2) : -1;
+          const convPct = rung >= 0 ? Math.round((ladder[rung]! - 1) * 100) : null;
           return (
             <button key={c.id} className={`charter-card ${on ? "on" : ""}`} onClick={() => onSet(on ? null : c.id)}>
               <div className="charter-main">
-                <span className="charter-name">{c.name}{on && <span className="charter-pick"> ✓ adopted</span>}{conviction && <span className="charter-conviction"> ↻ +{convPct}%</span>}</span>
+                <span className="charter-name">{c.name}{on && <span className="charter-pick"> ✓ adopted</span>}{conviction && (
+                  <span className="charter-conviction">
+                    {" "}↻ +{convPct}%
+                    <span className="charter-streak-pips" title={`Conviction streak — rung ${rung + 1} of ${ladder.length}`} aria-hidden="true">
+                      {ladder.map((_, i) => <i key={i} className={i <= rung ? "on" : ""} />)}
+                    </span>
+                  </span>
+                )}</span>
                 <span className="charter-blurb">{c.blurb}</span>
                 <span className="charter-effects">{effectChips(c.id)}</span>
               </div>

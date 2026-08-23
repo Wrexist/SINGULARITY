@@ -48,6 +48,7 @@ import { isPremium } from "../state/premium";
 import { scheduleReturnReminder, cancelReturnReminder } from "./notifications";
 import { balance } from "../engine/balance/config";
 import { HallCanvas } from "./HallCanvas";
+import { sampleHistory, resetHistory, SAMPLE_MS } from "./history";
 import { NewsTicker } from "./NewsTicker";
 import { ExpandConfirm } from "./ExpandConfirm";
 import { ConfirmSheet } from "./ConfirmSheet";
@@ -187,6 +188,18 @@ export function App() {
   const achievementsSeen = useSettings((s) => s.achievementsSeen);
   const markAchievementsSeen = useSettings((s) => s.markAchievementsSeen);
   const [showShipExplainer, setShowShipExplainer] = useState(false);
+
+  // Rate-history sampler for the Lab Stats sparklines (session-only, UI-side).
+  // Reads this render's derive via a ref so the interval never re-arms.
+  const dRef = useRef(d);
+  dRef.current = d;
+  useEffect(() => {
+    const t = window.setInterval(
+      () => sampleHistory(dRef.current.computePerSec, dRef.current.dataPerSec, dRef.current.passiveMoneyPerSec),
+      SAMPLE_MS,
+    );
+    return () => window.clearInterval(t);
+  }, []);
 
   // "Booted" flips once the opening entrance has played; from then on, tab and
   // section swaps use the fast rise-nav settle instead of the full cinematic
@@ -590,6 +603,7 @@ export function App() {
         rivalsBeaten: rivalsBeaten(game),
       };
       const ascended = game.stats.ascensions > prevAscensions.current;
+      resetHistory(); // the new generation's sparklines start from its own floor
       setCelebration({ gained, total: game.prestige.legacyWeights, report, ascended });
       if (ascended) haptics.epic(); else haptics.celebrate();
       // Game Center: push the career totals (silent no-op without the plugin).
