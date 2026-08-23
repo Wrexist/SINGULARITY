@@ -25,9 +25,12 @@ export function ParadigmPanel({ game, onBuy }: Props) {
     <section className="panel paradigms">
       <div className="paradigms-head">
         <h2 className="panel-title" style={{ margin: 0 }}>Paradigm Research</h2>
-        <span className="paradigms-count">{doneCount}/{paradigmsBalance.list.length}</span>
+        <span className="paradigms-count">{doneCount}/{paradigmsBalance.list.length} · {Math.floor(avail)} rep</span>
       </div>
-      <p className="paradigms-note">Breakthroughs beyond the standard tree — bought with <b>{Math.floor(avail)}</b> Lab Reputation.</p>
+      {/* First-run scaffolding — the head chip carries the rep balance after that. */}
+      {doneCount === 0 && (
+        <p className="paradigms-note">Breakthroughs beyond the standard tree — bought with <b>{Math.floor(avail)}</b> Lab Reputation.</p>
+      )}
       <div className="list">
         {paradigmsBalance.list.map((p) => {
           const isOwned = owned.has(p.id);

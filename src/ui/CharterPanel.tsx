@@ -2,10 +2,6 @@ import { chartersBalance, charterDef, canSetCharter, chartersUnlocked } from "..
 import { balance } from "../engine/balance/config";
 import type { GameState } from "../engine/types";
 
-/** The conviction ladder (depth batch): consecutive same-charter ships earn
- *  ×1.15 → ×1.25 → ×1.40, capped. Rendered as "+15% → +25% → +40%". */
-const LADDER = balance.prestige.charterConvictionLadder.map((m) => `+${Math.round((m - 1) * 100)}%`).join(" → ");
-
 interface Props {
   game: GameState;
   onSet: (id: string | null) => void;
@@ -52,7 +48,11 @@ export function CharterPanel({ game, onSet, onLock }: Props) {
   return (
     <section className="panel">
       <h2 className="panel-title">Lab Charter</h2>
-      <p className="charter-intro">Tap a charter to adopt this run's focus (tap again to drop it). It locks when you buy research — or lock it in below.{game.lastCharter && <> Re-pick last run's charter for a conviction bonus that <b>escalates with the streak</b> ({LADDER}% Legacy).</>}</p>
+      {/* First-encounter scaffolding only (calm-down audit 2026-08): once the player
+          has run a charter, the cards + conviction pips carry the system wordlessly. */}
+      {game.lastCharter == null && (
+        <p className="charter-intro">Tap a charter to adopt this run's focus (tap again to drop it). It locks when you buy research — or lock it in below.</p>
+      )}
       <div className="list">
         {chartersBalance.list.map((c) => {
           const on = game.charter === c.id;

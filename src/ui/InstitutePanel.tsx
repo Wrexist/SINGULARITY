@@ -20,9 +20,13 @@ export function InstitutePanel({ game, onBuy }: Props) {
 
   return (
     <>
-      <p className="institute-note">
-        Ascensions mint <b>Grants</b> — you have <b>{grants}</b>. Found the Institute's wings: powerful, permanent, no reset.
-      </p>
+      {/* First-run scaffolding — once a wing is founded, the wings + the grants
+          badge on the Collapsible header carry the system. */}
+      {doneCount === 0 && (
+        <p className="institute-note">
+          Ascensions mint <b>Grants</b> — you have <b>{grants}</b>. Found the Institute's wings: powerful, permanent, no reset.
+        </p>
+      )}
       <div className="list">
         {instituteBalance.perks.map((p) => {
           const isOwned = owned.has(p.id);

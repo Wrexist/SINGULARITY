@@ -16,7 +16,7 @@ export type AnyEffect = { kind: string; perLevel?: number; factor?: number; perS
 
 type Meta = { tint: string; icon: ReactNode };
 
-const C = { compute: "#2f7bf6", data: "#9b51e0", money: "#16b364", speed: "#f97316", power: "#f5a623", floor: "#64748b", auto: "#7c5cff" };
+const C = { compute: "#2f7bf6", data: "#9b51e0", money: "#16b364", speed: "#f97316", power: "#f5a623", floor: "#64748b", auto: "var(--accent)" };
 
 /** Per effect-kind icon + tint. Covers upgrade and research kind names. */
 export function metaForKind(kind: string, sz = 19): Meta {
@@ -64,7 +64,7 @@ export function effectLabel(e: AnyEffect): string {
 export function EffectPill({ effect }: { effect: AnyEffect }) {
   const { tint } = metaForKind(effect.kind);
   return (
-    <span className="eff-pill" style={{ color: tint, background: `${tint}1a` }}>
+    <span className="eff-pill" style={{ color: tint, background: `color-mix(in srgb, ${tint} 10%, transparent)` }}>
       {effectLabel(effect)}
     </span>
   );
@@ -73,7 +73,7 @@ export function EffectPill({ effect }: { effect: AnyEffect }) {
 /** A tinted rounded-square icon chip. */
 function Chip({ meta, className }: { meta: Meta; className: string }) {
   return (
-    <span className={className} style={{ background: `${meta.tint}1f`, color: meta.tint }}>
+    <span className={className} style={{ background: `color-mix(in srgb, ${meta.tint} 12%, transparent)`, color: meta.tint }}>
       {meta.icon}
     </span>
   );
