@@ -6,6 +6,7 @@ import { Big } from "../engine/math/Big";
 import { haptics } from "./haptics";
 import { sound } from "./sound";
 import { dayPhase } from "../render/hallRenderer";
+import { stakePayout } from "../engine/market";
 import { useSettings } from "./settings";
 import { themeAccent } from "./hallThemes";
 import { dailyAvailable, markDailyClaimed } from "./daily";
@@ -119,7 +120,7 @@ export function App() {
   const notice = useGame((s) => s.notice);
   const worldEvent = useGame((s) => s.worldEvent);
   const candidates = useGame((s) => s.candidates);
-  const { doStartRun, doClaim, doBuyUpgrade, doBuyUpgradeBulk, doBuyOfficePerk, doBuyReputationPerk, doBuyEndowment, doPickDirective, doBuyLegacyPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
+  const { doStartRun, doClaim, doBuyUpgrade, doBuyUpgradeBulk, doBuyOfficePerk, doBuyReputationPerk, doBuyEndowment, doPickDirective, doRespecDirective, doPlaceStake, doBuyLegacyPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
     doClaimContract, doClaimSponsor, doBuyPreprint, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
@@ -867,6 +868,11 @@ export function App() {
               haptics.success(); sound.alert();
               logEvent(`Press blitz lands on ${name} — their comms team scrambles.`, "good");
             }}
+            onPlaceStake={(name) => {
+              doPlaceStake(name);
+              haptics.tap(); sound.tap();
+              logEvent(`Stake placed: outrank ${name} by your next ship for +${stakePayout(name)} Rep.`, "good");
+            }}
           />
         ) : tab === "employees" && showStaff ? (
           <EmployeesPanel
@@ -941,7 +947,7 @@ export function App() {
             )}
             {section === "hq" && (
               <>
-                {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} onBuyEndowment={() => { haptics.celebrate(); sound.purchase(); doBuyEndowment(); }} onPickDirective={(id) => { haptics.celebrate(); sound.purchase(); doPickDirective(id); }} onBuyLegacyPerk={(id) => { haptics.success(); sound.purchase(); doBuyLegacyPerk(id); }} />}
+                {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} onBuyEndowment={() => { haptics.celebrate(); sound.purchase(); doBuyEndowment(); }} onPickDirective={(id) => { haptics.celebrate(); sound.purchase(); doPickDirective(id); }}             onRespecDirective={(id) => { doRespecDirective(id); haptics.tap(); sound.tap(); }} onBuyLegacyPerk={(id) => { haptics.success(); sound.purchase(); doBuyLegacyPerk(id); }} />}
                 {showResearch && <ContractsPanel game={game} onClaim={onClaimContract} onClaimSponsor={() => { haptics.success(); sound.success(); doClaimSponsor(); }} />}
                 {automationUnlockedAny(game) && <AutomationPanel game={game} onToggle={onToggleAutomation} />}
                 {challengesUnlocked(game) && <GrandChallengesPanel game={game} onFund={onFundChallenge} onChooseFork={(id, forkId) => { haptics.celebrate(); sound.purchase(); doChooseFork(id, forkId); }} onFundMegaproject={(at) => { const done = doFundMegaproject(); if (done) { haptics.celebrate(); sound.megaproject(); if (at) fxBurst(at.x, at.y, { count: 26, power: 1.4, colors: ["#a855f7", "#ffd60a", "#16b364"] }); } else { haptics.tap(); sound.tap(); } }} />}

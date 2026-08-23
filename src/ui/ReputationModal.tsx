@@ -5,7 +5,7 @@ import type { GameState } from "../engine/types";
 import {
   reputationBalance, reputationAvailable, earnedReputation, canBuyReputationPerk,
   endowmentUnlocked, endowmentCost, canBuyEndowment, endowmentMult,
-  directivePicksAvailable, endowmentDirectiveMods,
+  directivePicksAvailable, endowmentDirectiveMods, canRespecDirective, directiveRespecCost,
 } from "../engine/reputation";
 import { LandmarkIcon } from "./Icons";
 
@@ -13,11 +13,14 @@ import { LandmarkIcon } from "./Icons";
  *  achievements + ascensions on permanent, run-spanning boosts. Honest goals,
  *  legible effects; survives every reset. Once the whole tree is owned, the
  *  endgame Endowment (below) is the infinite home for surplus Reputation. */
-export function ReputationModal({ game, onBuy, onBuyEndowment, onPickDirective, onClose }: {
+export function ReputationModal({ game, onBuy, onBuyEndowment, onPickDirective, onRespecDirective, onClose }: {
   game: GameState;
   onBuy: (id: string) => void;
   onBuyEndowment: () => void;
   onPickDirective: (id: string) => void;
+  /** Depth batch: refund one claimed directive (the pick is re-choosable) for an
+   *  escalating Reputation fee. */
+  onRespecDirective?: (id: string) => void;
   onClose: () => void;
 }) {
   const available = reputationAvailable(game);
@@ -110,10 +113,29 @@ export function ReputationModal({ game, onBuy, onBuyEndowment, onPickDirective, 
               if (dir.dataMult > 1) owned.push(`Data +${Math.round((dir.dataMult - 1) * 100)}%`);
               if (dir.moneyMult > 1) owned.push(`Revenue +${Math.round((dir.moneyMult - 1) * 100)}%`);
               const picks = directivePicksAvailable(game);
+              // Respec: distinct owned doctrines get a refund affordance (the freed
+              // pick is re-choosable above). Fee escalates per respec — a rebuild,
+              // not a re-roll. Hidden until the player actually owns directives.
+              const ownedIds = [...new Set(game.endowmentDirectives)];
+              const respecOpen = onRespecDirective && canRespecDirective(game);
               return (
                 <div className="rep-directives">
                   {owned.length > 0 && (
                     <div className="rep-directive-summary">Directives — {owned.join(" · ")}</div>
+                  )}
+                  {respecOpen && (
+                    <div className="rep-directive-respec">
+                      <span>Change of doctrine? Refund one (fee escalates):</span>
+                      {ownedIds.map((id) => {
+                        const def = reputationBalance.endowment.directives.defs.find((d) => d.id === id);
+                        if (!def) return null;
+                        return (
+                          <button key={id} className="link-btn respec-btn" onClick={() => onRespecDirective!(id)}>
+                            {def.name} ({directiveRespecCost(game)} pts)
+                          </button>
+                        );
+                      })}
+                    </div>
                   )}
                   {picks > 0 && (
                     <>

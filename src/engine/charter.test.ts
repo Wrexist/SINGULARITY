@@ -99,7 +99,30 @@ describe("R6.1 — Lab Charters", () => {
       expect(charterConvictionMult(readyToShip(null, null))).toBe(1);
       expect(charterConvictionMult(readyToShip("moonshot", null))).toBe(1);
       expect(charterConvictionMult(readyToShip("moonshot", "bootstrapped"))).toBe(1);
-      expect(charterConvictionMult(readyToShip("moonshot", "moonshot"))).toBe(balance.prestige.charterConvictionBonus);
+      expect(charterConvictionMult({ ...readyToShip("moonshot", "moonshot"), charterStreak: 1 })).toBe(balance.prestige.charterConvictionLadder[0]);
+    });
+
+    it("escalates with the consecutive-same-charter streak, capped on the ladder", () => {
+      const L = balance.prestige.charterConvictionLadder;
+      // streak 2 (this ship + 1 prior) → rung 0; streak 3 → rung 1; 4+ → capped.
+      expect(charterConvictionMult({ ...readyToShip("moonshot", "moonshot"), charterStreak: 2 })).toBe(L[1]);
+      expect(charterConvictionMult({ ...readyToShip("moonshot", "moonshot"), charterStreak: 3 })).toBe(L[2]);
+      expect(charterConvictionMult({ ...readyToShip("moonshot", "moonshot"), charterStreak: 99 })).toBe(L[L.length - 1]);
+      // A fresh pick resets the bonus entirely regardless of an old long streak.
+      expect(charterConvictionMult({ ...readyToShip("bootstrapped", "moonshot"), charterStreak: 99 })).toBe(1);
+    });
+
+    it("prestige advances and resets the streak correctly", () => {
+      // Same charter again → streak climbs (1 → 2).
+      const again = prestige({ ...readyToShip("moonshot", "moonshot"), charterStreak: 1 });
+      expect(again.charterStreak).toBe(2);
+      expect(again.lastCharter).toBe("moonshot");
+      // A different pick → streak restarts at 1 for the NEW charter's next run…
+      const switched = prestige({ ...readyToShip("cash_machine", "moonshot"), charterStreak: 3 });
+      expect(switched.lastCharter).toBe("cash_machine");
+      expect(switched.charterStreak).toBe(1);
+      // …and no charter at all → 0.
+      expect(prestige(readyToShip(null, null)).charterStreak).toBe(0);
     });
 
     it("multiplies banked Legacy when you double down on a charter", () => {

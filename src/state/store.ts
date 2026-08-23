@@ -50,7 +50,7 @@ import {
 } from "../engine/products";
 import { productMilestones as PRODUCT_MILESTONES, type ProductTypeId } from "../engine/balance/products";
 import { achievements as ACHIEVEMENT_DEFS } from "../engine/balance/achievements";
-import { buyReputationPerk, buyEndowment, pickEndowmentDirective } from "../engine/reputation";
+import { buyReputationPerk, buyEndowment, pickEndowmentDirective, respecDirective } from "../engine/reputation";
 import { startTrial, abandonTrial } from "../engine/trials";
 import { setFlagship } from "../engine/flagship";
 import { buyParadigm } from "../engine/paradigms";
@@ -63,7 +63,7 @@ import { automation as AUTOMATION } from "../engine/balance/automation";
 import { claimContract, rollSponsor, claimSponsor } from "../engine/contracts";
 import { buyPreprint } from "../engine/preprints";
 import { setCharter, lockCharter } from "../engine/charter";
-import { counterRival } from "../engine/market";
+import { counterRival, placeStake } from "../engine/market";
 import { negotiationDue, negotiationOffer, applyNegotiationChoice, NEGOTIATION_ID } from "../engine/negotiation";
 import { buyLegacyPerk } from "../engine/legacyTree";
 import { prestige, type ShipMode } from "../engine/prestige";
@@ -183,6 +183,8 @@ interface GameStore {
   /** Buy one endgame Reputation Endowment level (post-tree infinite sink). */
   doBuyEndowment: () => void;
   doPickDirective: (id: string) => void;
+  doRespecDirective: (id: string) => void;
+  doPlaceStake: (name: string) => void;
   doStartTrial: (id: string) => void;
   doAbandonTrial: () => void;
   doSetFlagship: (id: string | null) => void;
@@ -614,6 +616,8 @@ export const useGame = create<GameStore>((set, get) => ({
   doBuyReputationPerk: (id) => set((s) => ({ game: buyReputationPerk(s.game, id) })),
   doBuyEndowment: () => set((s) => ({ game: buyEndowment(s.game) })),
   doPickDirective: (id) => set((s) => ({ game: pickEndowmentDirective(s.game, id) })),
+  doRespecDirective: (id) => set((s) => ({ game: respecDirective(s.game, id) })),
+  doPlaceStake: (name) => set((s) => ({ game: placeStake(s.game, name) })),
   doStartTrial: (id) => set((s) => ({ game: startTrial(s.game, id) })),
   doAbandonTrial: () => set((s) => ({ game: abandonTrial(s.game) })),
   doSetFlagship: (id) => set((s) => ({ game: setFlagship(s.game, id) })),

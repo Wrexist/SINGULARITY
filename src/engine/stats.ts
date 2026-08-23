@@ -26,6 +26,7 @@ export function initialStats(): LifetimeStats {
     openSourceShips: 0,
     safetyShips: 0,
     bestRivalsBeaten: 0,
+    stakesRepEarned: 0,
   };
 }
 

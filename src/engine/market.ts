@@ -166,3 +166,61 @@ export function rivalsBeaten(state: GameState): number {
   if (!myBest) return 0;
   return board.filter((e) => !e.isYou && e.users < myBest.users).length;
 }
+
+// ---------- Frontier Race stakes (depth batch 2026-08) ----------
+// Wager Reputation on overtaking ONE named rival before your next ship. The
+// leaderboard is a pure sidecar, so a stake buys race TENSION — a win pays Lab
+// Reputation (meta-currency; nothing in derive reads it), a loss pays nothing.
+// One stake at a time, resolved at prestige (prestige.ts calls resolveStake).
+
+/** Reputation paid if this rival is outranked at the next ship (by weight tier). */
+export function stakePayout(rivalName: string): number {
+  const rival = M.rivals.find((r) => r.name === rivalName);
+  if (!rival) return 0;
+  for (const tier of M.stakes.repPerWeightTier) {
+    if (rival.weight >= tier.minWeight) return tier.rep;
+  }
+  return M.stakes.repFloor;
+}
+
+/** Can the player wager against this rival right now? Needs the feature on, a real
+ *  rival, no active stake, a live product (you can't race from the sidelines), and
+ *  a target that's actually AHEAD of you — you don't bet on beating someone already
+ *  behind (that's not a wager, that's a diary entry). */
+export function canPlaceStake(state: GameState, rivalName: string): boolean {
+  if (!M.stakes.enabled) return false;
+  if (state.rivalStake != null) return false; // one wager per run
+  if (!M.rivals.some((r) => r.name === rivalName)) return false;
+  if (state.products.active.length === 0) return false;
+  const board = marketLeaderboard(state);
+  const rival = board.find((e) => !e.isYou && e.name === rivalName);
+  const myBest = bestPlayerUsers(state);
+  if (!rival || rival.users <= myBest) return false;
+  return true;
+}
+
+/** Place the wager. Pure; no-op if not allowed. */
+export function placeStake(state: GameState, rivalName: string): GameState {
+  if (!canPlaceStake(state, rivalName)) return state;
+  return { ...state, rivalStake: rivalName };
+}
+
+/** The ship-time resolution of the active wager (pure — prestige folds this into
+ *  the fresh state): the stake clears either way, a win carries its Reputation
+ *  payout into stats.stakesRepEarned (which earnedReputation folds). */
+export interface StakeResolution {
+  rivalStake: string | null;
+  repWon: number;
+}
+
+export function resolveStakeOutcome(state: GameState): StakeResolution {
+  const name = state.rivalStake;
+  if (!name) return { rivalStake: null, repWon: 0 };
+  // Runs on the PRE-ship state inside prestige(), so "outranked them at ship" means
+  // their live board position right now.
+  const board = marketLeaderboard(state);
+  const rival = board.find((e) => !e.isYou && e.name === name);
+  const myBest = board.find((e) => e.isYou);
+  const won = !!(rival && myBest && myBest.users > rival.users);
+  return { rivalStake: null, repWon: won ? stakePayout(name) : 0 };
+}

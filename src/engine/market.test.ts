@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { marketLeaderboard, playerMarketRank, rivalReaction, counterRival, canCounterRival, counterCooldownRemaining } from "./market";
+import { marketLeaderboard, playerMarketRank, rivalReaction, counterRival, canCounterRival, counterCooldownRemaining, canPlaceStake, placeStake, stakePayout, resolveStakeOutcome } from "./market";
+import { earnedReputation } from "./reputation";
 import { serialize, deserialize } from "./save";
 import { prestige } from "./prestige";
 import { market as M } from "./balance/market";
@@ -128,5 +129,76 @@ describe("rival counterplay (press blitz)", () => {
     // Prestige reshuffles the board: strikes clear with the run.
     s.research = ["inference_api"];
     expect(prestige(s).rivalOps.strikes).toEqual({});
+  });
+});
+
+describe("frontier race stakes (depth batch)", () => {
+  it("pays out by rival weight tier, floor for the smallest", () => {
+    const weights = M.rivals.map((r) => r.weight);
+    const biggest = M.rivals[weights.indexOf(Math.max(...weights))]!.name;
+    const smallest = M.rivals[weights.indexOf(Math.min(...weights))]!.name;
+    expect(stakePayout(biggest)).toBe(M.stakes.repPerWeightTier[0]!.rep);
+    expect(stakePayout(smallest)).toBe(M.stakes.repFloor);
+    expect(stakePayout("Not A Rival")).toBe(0);
+  });
+
+  it("needs a live product, a known rival, no active stake, and a rival AHEAD of you", () => {
+    const underdog = shippedWithProduct(1000); // every rival is ahead
+    expect(canPlaceStake(underdog, M.rivals[0]!.name)).toBe(true);
+    // No product → can't race.
+    expect(canPlaceStake(createInitialState(), M.rivals[0]!.name)).toBe(false);
+    // Unknown rival.
+    expect(canPlaceStake(underdog, "Not A Rival")).toBe(false);
+    // One at a time.
+    const staked = placeStake(underdog, M.rivals[0]!.name);
+    expect(canPlaceStake(staked, M.rivals[1]!.name)).toBe(false);
+    // A rival already BEHIND you isn't a wager.
+    const giant = shippedWithProduct(500_000_000);
+    const beaten = marketLeaderboard(giant).find((e) => !e.isYou)!;
+    expect(canPlaceStake(giant, beaten.name)).toBe(false);
+  });
+
+  it("resolves at ship: a win banks Reputation by tier, a loss banks nothing; both clear", () => {
+    const underdog = shippedWithProduct(1000);
+    const target = marketLeaderboard(underdog).find((e) => !e.isYou && e.users > 1000)!.name;
+    const staked = placeStake(underdog, target);
+
+    // WIN: grow past the target before shipping.
+    const winner = { ...staked, products: { ...staked.products, active: staked.products.active.map((p) => ({ ...p, mau: p.mau * 1e4 })) } };
+    const res = resolveStakeOutcome(winner);
+    expect(res.repWon).toBe(stakePayout(target));
+    expect(res.rivalStake).toBeNull();
+
+    // LOSS: ship while still behind → nothing banked, stake still cleared.
+    const lost = resolveStakeOutcome(staked);
+    expect(lost.repWon).toBe(0);
+    expect(lost.rivalStake).toBeNull();
+
+    // No stake at all → pure identity.
+    expect(resolveStakeOutcome(underdog)).toEqual({ rivalStake: null, repWon: 0 });
+  });
+
+  it("a won stake feeds earnedReputation and survives prestige + save/load (sanitized)", () => {
+    const underdog = shippedWithProduct(1000);
+    const target = marketLeaderboard(underdog).find((e) => !e.isYou && e.users > 1000)!.name;
+    const staked = placeStake(underdog, target);
+    const winner = { ...staked, products: { ...staked.products, active: staked.products.active.map((p) => ({ ...p, mau: p.mau * 1e4 })) } };
+    const res = resolveStakeOutcome(winner);
+    const withRep = { ...winner, stats: { ...winner.stats, stakesRepEarned: winner.stats.stakesRepEarned + res.repWon } };
+    const before = earnedReputation(withRep);
+    expect(before).toBeGreaterThan(earnedReputation(winner));
+
+    // Prestige resolves it end-to-end: banks the payout exactly once, clears the stake…
+    const shippedState = { ...winner, research: ["inference_api"] as string[] };
+    const next = prestige(shippedState);
+    expect(next.stats.stakesRepEarned).toBe(res.repWon);
+    expect(next.rivalStake).toBeNull();
+
+    // …and the round-trip preserves it; crafted garbage stakes are dropped.
+    const back = deserialize(serialize(next));
+    expect(back.stats.stakesRepEarned).toBe(res.repWon);
+    const raw = JSON.parse(serialize(next));
+    raw.rivalStake = "FakeCo";
+    expect(deserialize(JSON.stringify(raw)).rivalStake).toBeNull();
   });
 });

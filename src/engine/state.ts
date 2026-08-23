@@ -4,7 +4,7 @@ import { initialStats } from "./stats";
 import { freshComponents } from "./components";
 import type { GameState } from "./types";
 
-export const SAVE_VERSION = 31;
+export const SAVE_VERSION = 32;
 
 /** A fresh lab: empty closet, a trickle of free Compute, nothing owned. */
 export function createInitialState(): GameState {
@@ -46,6 +46,12 @@ export function createInitialState(): GameState {
     charter: null,
     charterLocked: false,
     lastCharter: null,
+    // Charter conviction streak — no charter → 0 (identity through the tuned curve).
+    charterStreak: 0,
+    // Frontier Race stakes — nothing wagered until the player places one.
+    rivalStake: null,
+    // Endowment Directive respecs — none bought until directives exist.
+    endowmentRespecs: 0,
     legacyInvestments: [],
     // Rig Bay (C1): empty inventory, empty loadouts. Resets on prestige.
     components: freshComponents(),

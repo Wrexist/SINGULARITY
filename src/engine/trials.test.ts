@@ -1,8 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   trialsBalance, trialsUnlocked, canStartTrial, startTrial, abandonTrial, completeActiveTrial, trialMods,
-} from "./trials";
-import { derive } from "./derive";
+} from "./trials";import { derive } from "./derive";
 import { prestige } from "./prestige";
 import { serialize, deserialize } from "./save";
 import { createInitialState } from "./state";
@@ -88,6 +87,34 @@ describe("prestige trials", () => {
     // Ship with an EMPTY roster → banked.
     const banked = prestige({ ...shippable, activeTrial: "trial_solo", employees: [] });
     expect(banked.trialsDone).toContain("trial_solo");
+  });
+
+  it("Running Hot banks only when Heat ≥ 60 at ship (depth batch)", () => {
+    const shippable = { ...buildingRun(13), research: [CAPABILITY], lifetimeMoney: Big.of(1e6) };
+    const cool = prestige({ ...shippable, activeTrial: "trial_hot", heat: 59 });
+    expect(cool.trialsDone).not.toContain("trial_hot");
+    const hot = prestige({ ...shippable, activeTrial: "trial_hot", heat: 60 });
+    expect(hot.trialsDone).toContain("trial_hot");
+  });
+
+  it("Apolitician banks only while alignment stayed inside the faction band (depth batch)", () => {
+    const shippable = { ...buildingRun(15), research: [CAPABILITY], lifetimeMoney: Big.of(1e6) };
+    const committed = prestige({ ...shippable, activeTrial: "trial_neutral", alignment: -0.5 });
+    expect(committed.trialsDone).not.toContain("trial_neutral");
+    const neutral = prestige({ ...shippable, activeTrial: "trial_neutral", alignment: -0.39 });
+    expect(neutral.trialsDone).toContain("trial_neutral");
+    const accelSide = prestige({ ...shippable, activeTrial: "trial_neutral", alignment: 0.41 });
+    expect(accelSide.trialsDone).not.toContain("trial_neutral");
+  });
+
+  it("the new Trials are start-gated on their deeper unlocks and curve-safe when untouched", () => {
+    const hotDef = trialsBalance.list.find((t) => t.id === "trial_hot")!;
+    const neutralDef = trialsBalance.list.find((t) => t.id === "trial_neutral")!;
+    expect(hotDef.unlockShips).toBeGreaterThan(trialsBalance.list.find((t) => t.id === "trial_overclock")!.unlockShips);
+    expect(neutralDef.unlockShips).toBeGreaterThan(hotDef.unlockShips);
+    // Fresh run → neither can be started, and mods stay identity.
+    expect(canStartTrial(createInitialState(), "trial_hot")).toBe(false);
+    expect(trialMods(createInitialState())).toEqual({ computeMult: 1, dataMult: 1, moneyMult: 1 });
   });
 
   it("round-trips and sanitizes hostile saves (unknown active → null, unknown done dropped)", () => {
