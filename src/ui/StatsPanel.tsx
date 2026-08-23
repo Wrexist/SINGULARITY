@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ChevronIcon } from "./Icons";
 import type { Derived, GameState } from "../engine/types";
 import { fmt, fmtMoney, m$, numOf, fmtDur } from "./format";
 import { achievementDefs } from "../engine/achievements";
@@ -79,7 +80,7 @@ export function StatsPanel({ game, derived }: Props) {
   const toggle = (
     <button className="stats-toggle" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
       <span className="panel-title" style={{ margin: 0 }}>Lab Stats</span>
-      <span className="chevron">{open ? "▲" : "▼"}</span>
+      <span className="chevron"><ChevronIcon size={13} dir={open ? "up" : "down"} /></span>
     </button>
   );
   // Collapsed = a header only. Bail before building the row tables — this panel

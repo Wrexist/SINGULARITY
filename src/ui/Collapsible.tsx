@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { ChevronIcon } from "./Icons";
 
 /**
  * A collapsible panel wrapper — a compact header you tap to expand. Reuses the same
@@ -20,7 +21,7 @@ export function Collapsible({ title, badge, defaultOpen = false, children }: {
       <button className="collapsible-toggle" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         <span className="panel-title" style={{ margin: 0 }}>{title}</span>
         {badge != null && <span className="collapsible-badge">{badge}</span>}
-        <span className="chevron" aria-hidden="true">{open ? "▲" : "▼"}</span>
+        <span className="chevron" aria-hidden="true"><ChevronIcon size={13} dir={open ? "up" : "down"} /></span>
       </button>
       {open && <div className="collapsible-body">{children}</div>}
     </section>

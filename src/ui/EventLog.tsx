@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ChevronIcon } from "./Icons";
 import { ToneIcon, type ToastData } from "./Toast";
 
 /** "14:32"-style clock stamp for a log entry (locale-aware, no seconds). */
@@ -23,7 +24,7 @@ export function EventLog({ log }: { log: ToastData[] }) {
       <button className="stats-toggle" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         <span className="panel-title" style={{ margin: 0 }}>Recent activity</span>
         <span className="log-count">{log.length}</span>
-        <span className="chevron">{open ? "▲" : "▼"}</span>
+        <span className="chevron"><ChevronIcon size={13} dir={open ? "up" : "down"} /></span>
       </button>
       {open && (
         <div className="log-list">

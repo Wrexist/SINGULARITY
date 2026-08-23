@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useReducedMotion } from "./motion";
-import { burst as fxBurst } from "./fx";
+import { burst as fxBurst, FX_PALETTES } from "./fx";
 
 interface Props {
   name: string;
@@ -54,7 +54,7 @@ export function ProductLaunch({ name, typeName, onDone }: Props) {
   // "we just deployed something important" beat (fx.ts self-gates on reduce-motion).
   useEffect(() => {
     if (live && !reducedMotion) {
-      fxBurst(window.innerWidth / 2, window.innerHeight * 0.38, { count: 20, power: 1.2, colors: ["#ff5a3c", "#ffd60a", "#16b364"] });
+      fxBurst(window.innerWidth / 2, window.innerHeight * 0.38, { count: 20, power: 1.2, colors: [...FX_PALETTES.ship] });
     }
   }, [live, reducedMotion]);
   return (

@@ -13,7 +13,7 @@ import { ProductDetail, TYPE_GLYPH } from "./ProductDetail";
 import { EditableName } from "./EditableName";
 import { EasedNumber } from "./EasedNumber";
 import { EmptyState } from "./EmptyState";
-import { AtomIcon, LockIcon, SparkIcon, TrendDownIcon, TrophyIcon, BarsIcon, BoltIcon } from "./Icons";
+import { AtomIcon, LockIcon, SparkIcon, TrendDownIcon, TrophyIcon, BarsIcon, BoltIcon, ChevronIcon} from "./Icons";
 
 const FUN_NAMES = ["Nimbus", "Oracle", "Synthia", "Cortex", "Lumen", "Vertex", "Sage", "Atlas", "Echo", "Prism", "Nova", "Helix", "Quasar", "Mirage"];
 
@@ -211,7 +211,7 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
         <div className="prod-milestones">
           <button className="prod-ms-head" onClick={() => setMsOpen((o) => !o)} aria-expanded={msOpen}>
             <span className="prod-ms-title"><TrophyIcon size={15} /> Milestones</span> <span className="prod-ms-count">{ps.milestones.length}/{productMilestones.length}</span>
-            <span className="prod-ms-toggle">{msOpen ? "▾" : "▸"}</span>
+            <span className="prod-ms-toggle"><ChevronIcon size={13} dir={msOpen ? "down" : "right"} /></span>
           </button>
           {msOpen && (
             <div className="prod-ms-grid">
@@ -239,7 +239,7 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
         <button className="prod-ms-head" onClick={() => setMktOpen((o) => !o)} aria-expanded={mktOpen}>
           <span className="prod-ms-title"><BarsIcon size={15} /> Top AIs on the market</span>
           {myRank != null && <span className="prod-ms-count">you're #{myRank}</span>}
-          <span className="prod-ms-toggle">{mktOpen ? "▾" : "▸"}</span>
+          <span className="prod-ms-toggle"><ChevronIcon size={13} dir={mktOpen ? "down" : "right"} /></span>
         </button>
         {mktOpen && (
           <div className="market-list">

@@ -2122,7 +2122,13 @@ button.modchip.workable:active { transform: scale(0.94); }
   background: #fff; border: 1px solid rgba(17, 24, 39, 0.06); border-radius: 14px;
   padding: 13px 14px; box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05);
 }
-.contract-card.ready { border-color: rgba(22, 179, 100, 0.5); background: linear-gradient(100deg, rgba(22, 179, 100, 0.08), rgba(255, 255, 255, 0.6)); }
+.contract-card.ready {
+  border-color: rgba(22, 179, 100, 0.5);
+  background: linear-gradient(100deg, rgba(22, 179, 100, 0.08), rgba(255, 255, 255, 0.6));
+  /* A claimable reward breathes like an affordable Build card — the eye finds
+     the waiting Claim without a badge or a toast. */
+  animation: afford-breathe 2.6s ease-in-out infinite;
+}
 .contract-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
 .contract-title { font-weight: 800; font-size: 14px; color: var(--ink); }
 .contract-desc { font-size: 12px; color: var(--ink-2); }

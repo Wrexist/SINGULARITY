@@ -9,7 +9,7 @@ import { useGame, previewBackup, type BackupPreview } from "../state/store";
 import { fmtMoney } from "./format";
 import { themeStyle, skinSwatch } from "./hallThemes";
 import { themes, rackSkins, themeUnlocked, skinUnlocked, collectionProgress, skinProgress, unlockHint } from "../engine/cosmetics";
-import { PaletteIcon, DownloadIcon, LockIcon, CheckIcon, BarsIcon } from "./Icons";
+import { PaletteIcon, DownloadIcon, LockIcon, CheckIcon, BarsIcon, ChevronIcon} from "./Icons";
 import { ConfirmSheet } from "./ConfirmSheet";
 import { version as APP_VERSION } from "../../package.json";
 import { telemetryEnabled, setTelemetryEnabled, getTelemetryEvents, clearTelemetry } from "../state/telemetry";
@@ -301,7 +301,7 @@ export function SettingsSheet({ onClose }: Props) {
         <div className="set-backup">
           <button className="set-backup-head" onClick={() => setBackupOpen((o) => !o)} aria-expanded={backupOpen}>
             <span className="set-backup-title"><DownloadIcon size={16} /> Back up &amp; restore save</span>
-            <span className="set-backup-chev">{backupOpen ? "▾" : "▸"}</span>
+            <span className="set-backup-chev"><ChevronIcon size={13} dir={backupOpen ? "down" : "right"} /></span>
           </button>
           {backupOpen && (
             <div className="set-backup-body">
@@ -324,7 +324,7 @@ export function SettingsSheet({ onClose }: Props) {
         <div className="set-backup">
           <button className="set-backup-head" onClick={() => setDiagOpen((o) => !o)} aria-expanded={diagOpen}>
             <span className="set-backup-title"><BarsIcon size={14} /> Diagnostics (on-device)</span>
-            <span className="set-backup-chev">{diagOpen ? "▾" : "▸"}</span>
+            <span className="set-backup-chev"><ChevronIcon size={13} dir={diagOpen ? "down" : "right"} /></span>
           </button>
           {diagOpen && (
             <div className="set-backup-body">

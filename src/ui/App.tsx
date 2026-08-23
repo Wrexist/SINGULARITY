@@ -34,7 +34,7 @@ import { CharterPanel } from "./CharterPanel";
 import { CodexPanel } from "./CodexPanel";
 import { EventLog } from "./EventLog";
 import { FxCanvas } from "./FxCanvas";
-import { burst as fxBurst, floatText as fxFloat } from "./fx";
+import { burst as fxBurst, floatText as fxFloat, FX_PALETTES } from "./fx";
 import { ProductLaunch } from "./ProductLaunch";
 import { productsUnlocked, typeDef, retirePayout } from "../engine/products";
 import { advisorItems, type AdvisorTab, type LabSection } from "../engine/advisor";
@@ -514,14 +514,14 @@ export function App() {
           const onScreen = r && r.top >= 0 && r.bottom <= window.innerHeight && r.left >= 0 && r.right <= window.innerWidth;
           const cx = onScreen ? r!.left + r!.width / 2 : window.innerWidth / 2;
           const cy = onScreen ? r!.top + r!.height / 2 : window.innerHeight * 0.4;
-          fxBurst(cx, cy, { count: 22, power: 1.1, colors: ["#ff9f0a", "#ffd60a", "#9b51e0"] });
+          fxBurst(cx, cy, { count: 22, power: 1.1, colors: [...FX_PALETTES.achievement] });
         }
       }
       else {
         haptics.celebrate(); sound.success();
         // A milestone is a chase-ladder payoff — bloom gold from the screen centre.
         if (notice.kind === "milestone" && !reducedMotion) {
-          fxBurst(window.innerWidth / 2, window.innerHeight * 0.4, { count: 30, power: 1.6, colors: ["#ff9f0a", "#ffd60a", "#16b364"] });
+          fxBurst(window.innerWidth / 2, window.innerHeight * 0.4, { count: 30, power: 1.6, colors: [...FX_PALETTES.win] });
         }
         // A specialist levelling up gets a small gold star-pop near the Team tab.
         if (notice.kind === "levelup" && !reducedMotion) {
@@ -529,7 +529,7 @@ export function App() {
           const r = team?.getBoundingClientRect();
           const cx = r ? r.left + r.width / 2 : window.innerWidth / 2;
           const cy = r ? r.top + r.height / 2 : window.innerHeight * 0.5;
-          fxBurst(cx, cy, { count: 18, power: 1.1, colors: ["#ffd60a", "#ff9f0a", "#16b364"] });
+          fxBurst(cx, cy, { count: 18, power: 1.1, colors: [...FX_PALETTES.win] });
         }
       }
     }
@@ -604,7 +604,7 @@ export function App() {
       if (ascended) {
         sound.ascend();
         setFlash((k) => k + 1);
-        if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight / 2, { count: 48, power: 2.2, colors: ["#a855f7", "#ffd60a", "#ff9f0a", "#fff"] });
+        if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight / 2, { count: 48, power: 2.2, colors: [...FX_PALETTES.epic] });
       } else sound.ship();
     }
     prevShips.current = game.prestige.ships;
@@ -623,7 +623,7 @@ export function App() {
     const min = Math.round(balance.daily.durationSec / 60);
     const quip = DAILY_QUIPS[Math.floor(Date.now() / 86_400_000) % DAILY_QUIPS.length]!;
     logEvent(`${quip} · +${pct}% output for ${min} min`, "good");
-    if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.32, { count: 30, power: 1.5, colors: ["#7c5cff", "#ffd60a", "#16b364", "#2f7bf6"] });
+    if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.32, { count: 30, power: 1.5, colors: [...FX_PALETTES.brand] });
   };
   // Hardware buys float the rate you actually gained ("+120/s") at the tap point —
   // seeing the number go up IS the reward. Derived before/after the synchronous
@@ -709,7 +709,7 @@ export function App() {
     // real contract, not a generic "+Rep" ping. Stable per contract (hash the id).
     const quip = CONTRACT_DONE_QUIPS[[...id].reduce((a, c) => a + c.charCodeAt(0), 0) % CONTRACT_DONE_QUIPS.length]!;
     logEvent(`${quip}: "${title}" · +${rep} Lab Reputation`, "good");
-    if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.4, { count: 24, power: 1.3, colors: ["#ff9f0a", "#ffd60a", "#16b364"] });
+    if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.4, { count: 24, power: 1.3, colors: [...FX_PALETTES.win] });
   };
   const onFundChallenge = (id: string, at?: { x: number; y: number }) => {
     const completed = doFundChallenge(id);
@@ -718,7 +718,7 @@ export function App() {
       // plus a central bloom and the achievement chord. Earned once, ever, per challenge.
       haptics.celebrate(); sound.achievement();
       setChallengeDoneId(id);
-      if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.4, { count: 40, power: 1.8, colors: ["#7c5cff", "#ffd60a", "#16b364", "#2f7bf6", "#fff"] });
+      if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.4, { count: 40, power: 1.8, colors: [...FX_PALETTES.brand, "#fff"] });
     } else {
       // A contribution: light feedback + a floater at the tap so the resource drain reads
       // as progress in place (no toast — the bar animating is the confirmation).
@@ -733,7 +733,7 @@ export function App() {
     // in place (resources tick up for a windfall, a boost chip appears in the bar) — no
     // toast needed, keeping the frequent early/mid claims clean.
     haptics.celebrate(); sound.success();
-    if (at && !reducedMotion) fxBurst(at.x, at.y, { count: 16, power: 1.1, colors: ["#7c5cff", "#ffd60a", "#16b364"] });
+    if (at && !reducedMotion) fxBurst(at.x, at.y, { count: 16, power: 1.1, colors: [...FX_PALETTES.brand] });
   };
   const onResearch = (id: string) => {
     haptics.tap(); sound.purchase();
@@ -961,7 +961,7 @@ export function App() {
                 {showPrestige && <PrestigePanel game={game} onPrestige={doPrestige} onBuyReputationPerk={(id) => { haptics.success(); sound.purchase(); doBuyReputationPerk(id); }} onBuyEndowment={() => { haptics.celebrate(); sound.purchase(); doBuyEndowment(); }} onPickDirective={(id) => { haptics.celebrate(); sound.purchase(); doPickDirective(id); }}             onRespecDirective={(id) => { doRespecDirective(id); haptics.tap(); sound.tap(); }} onBuyLegacyPerk={(id) => { haptics.success(); sound.purchase(); doBuyLegacyPerk(id); }} />}
                 {showResearch && <ContractsPanel game={game} onClaim={onClaimContract} onClaimSponsor={() => { haptics.success(); sound.success(); doClaimSponsor(); }} />}
                 {automationUnlockedAny(game) && <AutomationPanel game={game} onToggle={onToggleAutomation} />}
-                {challengesUnlocked(game) && <GrandChallengesPanel game={game} onFund={onFundChallenge} onChooseFork={(id, forkId) => { haptics.celebrate(); sound.purchase(); doChooseFork(id, forkId); }} onFundMegaproject={(at) => { const done = doFundMegaproject(); if (done) { haptics.epic(); sound.megaproject(); if (at) fxBurst(at.x, at.y, { count: 26, power: 1.4, colors: ["#a855f7", "#ffd60a", "#16b364"] }); } else { haptics.tap(); sound.tap(); } }} />}
+                {challengesUnlocked(game) && <GrandChallengesPanel game={game} onFund={onFundChallenge} onChooseFork={(id, forkId) => { haptics.celebrate(); sound.purchase(); doChooseFork(id, forkId); }} onFundMegaproject={(at) => { const done = doFundMegaproject(); if (done) { haptics.epic(); sound.megaproject(); if (at) fxBurst(at.x, at.y, { count: 26, power: 1.4, colors: [...FX_PALETTES.epic] }); } else { haptics.tap(); sound.tap(); } }} />}
                 {trialsUnlocked(game) && (
                   <Collapsible title="Trials" defaultOpen={!!game.activeTrial} badge={game.activeTrial ? "running" : `${trialsDoneCount(game)}/${trialsTotal}`}>
                     <TrialsPanel

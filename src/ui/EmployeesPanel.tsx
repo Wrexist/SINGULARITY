@@ -13,7 +13,7 @@ import { Big } from "../engine/math/Big";
 import type { GameState, Derived, Employee } from "../engine/types";
 import type { Candidate } from "../state/store";
 import { fmtMoney, m$, fmtDur } from "./format";
-import { TeamIcon, BanknoteIcon, SmileIcon, BarsIcon, BuildingIcon, GradCapIcon, AtomIcon, RepeatIcon, BoxIcon } from "./Icons";
+import { TeamIcon, BanknoteIcon, SmileIcon, BarsIcon, BuildingIcon, GradCapIcon, AtomIcon, RepeatIcon, BoxIcon, ChevronIcon} from "./Icons";
 import { burst } from "./fx";
 
 interface Props {
@@ -306,7 +306,7 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
                 <div className="emp-perks">
                   <button className="emp-section-head emp-perks-head" onClick={() => setPerksOpen((o) => !o)}>
                     <span className="emp-perks-title"><BuildingIcon size={16} /> Office perks</span>
-                    <span className="emp-perks-meta">morale ×{morale.toFixed(2)} {perksOpen ? "▾" : "▸"}</span>
+                    <span className="emp-perks-meta">morale ×{morale.toFixed(2)} <ChevronIcon size={12} dir={perksOpen ? "down" : "right"} /></span>
                   </button>
                   {perksOpen && balance.office.perks.map((perk) => {
                     const owned = (game.upgrades[perk.id] ?? 0) > 0;
