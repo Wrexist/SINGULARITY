@@ -291,6 +291,7 @@ function sanitizeStats(s: unknown): LifetimeStats {
     openSourceShips: countf(o.openSourceShips),
     safetyShips: countf(o.safetyShips), // old saves → 0 (sanitizer-defaulted; no version bump needed)
     bestRivalsBeaten: countf(o.bestRivalsBeaten), // old saves → 0 (best-so-far starts low and only climbs)
+    stakesRepEarned: countf(o.stakesRepEarned), // old saves → 0 (Frontier Race stakes are opt-in)
   };
 }
 
@@ -358,6 +359,12 @@ interface SavedShape {
   charter: string | null;
   charterLocked: boolean;
   lastCharter: string | null;
+  /** Charter conviction streak (consecutive same-charter ships). v32. */
+  charterStreak: number;
+  /** Frontier Race stake: the rival name wagered against, or null. v32. */
+  rivalStake: string | null;
+  /** Endowment Directive respecs bought (drives the escalating fee). v32. */
+  endowmentRespecs: number;
   legacyInvestments: string[];
   components: ComponentsState;
   rivalOps: GameState["rivalOps"];
@@ -421,6 +428,7 @@ export function serialize(state: GameState): string {
       openSourceShips: state.stats.openSourceShips,
       safetyShips: state.stats.safetyShips,
       bestRivalsBeaten: state.stats.bestRivalsBeaten,
+      stakesRepEarned: state.stats.stakesRepEarned,
     },
     achievements: state.achievements,
     reputation: state.reputation,
@@ -436,6 +444,9 @@ export function serialize(state: GameState): string {
     charter: state.charter,
     charterLocked: state.charterLocked,
     lastCharter: state.lastCharter,
+    charterStreak: state.charterStreak,
+    rivalStake: state.rivalStake,
+    endowmentRespecs: state.endowmentRespecs,
     legacyInvestments: state.legacyInvestments,
     components: state.components,
     rivalOps: state.rivalOps,
@@ -685,6 +696,14 @@ export function deserialize(json: string): GameState {
     charter: typeof raw.charter === "string" && CHARTER_IDS.has(raw.charter) ? raw.charter : null,
     charterLocked: raw.charterLocked === true,
     lastCharter: typeof raw.lastCharter === "string" && CHARTER_IDS.has(raw.lastCharter) ? raw.lastCharter : null,
+    // Charter conviction streak: a bounded count (drives the ×1.15→×1.40 ladder).
+    // A crafted streak without a matching charter history just means a bigger bonus
+    // on the NEXT same-charter ship — bounded by the ladder cap, so harmless.
+    charterStreak: Math.max(0, Math.min(1000, safeCount(raw.charterStreak))),
+    // Frontier Race stake: only a KNOWN rival name survives; anything else → null.
+    rivalStake: typeof raw.rivalStake === "string" && RIVAL_NAMES.has(raw.rivalStake) ? raw.rivalStake : null,
+    // Endowment Directive respec count (drives the escalating fee): bounded count.
+    endowmentRespecs: Math.max(0, Math.min(10_000, safeCount(raw.endowmentRespecs))),
     // KNOWN legacy-perk ids, deduped — a dupe would apply the lane bias twice for free
     // (legacyTreeMods sums per entry and never checks prereqs on load).
     legacyInvestments: dedupeKnownIds(raw.legacyInvestments, LEGACY_IDS),
@@ -1033,6 +1052,12 @@ export function migrate(raw: any): SavedShape {
   if (s.version === 30) {
     // v30 → v31: The Institute. Existing runs have founded no wings.
     s = { ...s, version: 31, institute: s.institute ?? [] };
+  }
+  if (s.version === 31) {
+    // v31 → v32: Frontier Race stakes + charter conviction streak + Endowment
+    // Directive respecs. All default to their identity values (no stake, streak 0,
+    // no respecs), so every existing save loads exactly where it left off.
+    s = { ...s, version: 32, rivalStake: s.rivalStake ?? null, charterStreak: s.charterStreak ?? 0, endowmentRespecs: s.endowmentRespecs ?? 0 };
   }
   return s as SavedShape;
 }

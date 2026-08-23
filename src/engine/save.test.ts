@@ -320,4 +320,39 @@ describe("save/load", () => {
     const loaded = deserialize(serialize(s));
     expect(loaded.products.drafts[0]!.quality).toBeLessThanOrEqual(PRODUCT_QUALITY_CAP);
   });
+
+  it("round-trips and sanitizes the depth-batch fields (streak, stake, respecs)", () => {
+    const s = createInitialState();
+    s.charterStreak = 3;
+    s.rivalStake = "Cortex-5";
+    s.endowmentRespecs = 2;
+    s.stats.stakesRepEarned = 6;
+    const back = deserialize(serialize(s));
+    expect(back.charterStreak).toBe(3);
+    expect(back.rivalStake).toBe("Cortex-5");
+    expect(back.endowmentRespecs).toBe(2);
+    expect(back.stats.stakesRepEarned).toBe(6);
+    // Crafted values are clamped/known-id-filtered, not wiped.
+    const raw = JSON.parse(serialize(s));
+    raw.charterStreak = -7;
+    raw.rivalStake = "FakeCo";
+    raw.endowmentRespecs = 1e9;
+    raw.stats.stakesRepEarned = "nope";
+    const fixed = deserialize(JSON.stringify(raw));
+    expect(fixed.charterStreak).toBe(0);
+    expect(fixed.rivalStake).toBeNull();
+    expect(fixed.endowmentRespecs).toBe(10_000);
+    expect(fixed.stats.stakesRepEarned).toBe(0);
+    // A pre-depth-batch (v31) save migrates to identity values.
+    const old = JSON.parse(serialize(s));
+    delete old.charterStreak; delete old.rivalStake; delete old.endowmentRespecs;
+    delete (old.stats as Record<string, unknown>).stakesRepEarned; // v31 saves predate it
+    old.version = 31;
+    const migrated = deserialize(JSON.stringify(old));
+    expect(migrated.version).toBe(SAVE_VERSION);
+    expect(migrated.charterStreak).toBe(0);
+    expect(migrated.rivalStake).toBeNull();
+    expect(migrated.endowmentRespecs).toBe(0);
+    expect(migrated.stats.stakesRepEarned).toBe(0); // stats sanitizer default
+  });
 });

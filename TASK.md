@@ -8,6 +8,34 @@ Phase 0–3 history retained below for context.
 
 ---
 
+## Depth batch (2026-08-21, from the parallel-audit wave) — uncommitted on `master-agentic-development`
+*The gameplay-depth audit's top curve-safe proposals, shipped. Every new path is
+gated behind a player-only action the sim never takes (stake/respec/charter/trial),
+so the tuned curve is untouched — VERIFIED: `npm run sim` re-run byte-identical to
+the morning baseline (29m35s / Gen2 16m47s / Gen3 12m55s · market 32m20s · wall 38s ·
+same long-haul table + era arrivals). SAVE_VERSION 31→32 (+migration+sanitizers).*
+- [x] **Frontier Race stakes** — wager Lab Reputation on outranking ONE named rival
+      before your next ship (Products → leaderboard): win pays by rival weight tier
+      (+6/+4/+2 Rep), loss pays nothing, one wager per run, resolved at prestige via
+      pure `resolveStakeOutcome` → `stats.stakesRepEarned` → `earnedReputation`. The
+      race is finally winnable AND losable for something that matters.
+- [x] **Charter conviction ladder** — consecutive same-charter ships now escalate:
+      ×1.15 → ×1.25 → ×1.40 capped (`charterStreak` persisted; CharterPanel shows the
+      live rung). A push-your-luck identity layer on an existing free choice.
+- [x] **Endowment Directive respec** — refund one claimed doctrine for an escalating
+      Reputation fee (20 × 1.6^n); the freed pick is immediately re-choosable.
+      Fixes the audit's "stack one lane forever by tier 3" collapse. Respec row in
+      the ReputationModal's Directives block.
+- [x] **Trial variety** — two new condition Trials extend the arc past ship 11:
+      *Running Hot* (ship with Heat ≥ 60, unlock 13) and *Apolitician* (ship inside
+      the ±0.4 faction band, unlock 15). `trialConditionMet` is now the single source
+      for ALL conditions — prestige's inline solo-only check was replaced with it,
+      so future conditions can't drift from their ship-time evaluation.
+- [x] Verified: `tsc` clean · **645 tests** (+13) · built app driven headless through
+      the stake flow end-to-end ("Staked vs Cortex-5 … +6 Rep") with **zero console
+      errors** · balance sim byte-identical (above).
+
+---
 ## Delight batch (2026-08-21, from the parallel-audit wave) — uncommitted on `master-agentic-development`
 *Fun/content audit findings, all shipped. Renderer/UI/audio only — zero engine math
 touched (notices.ts pools are pure data; the sim never reads them).*
