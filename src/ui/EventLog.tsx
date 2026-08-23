@@ -28,13 +28,16 @@ export function EventLog({ log }: { log: ToastData[] }) {
       </button>
       {open && (
         <div className="log-list">
-          {log.map((e) => (
-            <div key={e.id} className={`log-row log-${e.tone}`}>
-              <span className="log-ic" aria-hidden="true"><ToneIcon tone={e.tone} /></span>
-              <span className="log-text">{e.text}</span>
-              {stamp(e.at) && <span className="log-time">{stamp(e.at)}</span>}
-            </div>
-          ))}
+          {log.map((e) => {
+            const t = stamp(e.at);
+            return (
+              <div key={e.id} className={`log-row log-${e.tone}`}>
+                <span className="log-ic" aria-hidden="true"><ToneIcon tone={e.tone} /></span>
+                <span className="log-text">{e.text}</span>
+                {t && <span className="log-time">{t}</span>}
+              </div>
+            );
+          })}
         </div>
       )}
     </section>

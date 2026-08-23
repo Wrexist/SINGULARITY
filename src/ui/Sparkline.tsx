@@ -14,7 +14,11 @@ export function Sparkline({ values, width = 56, height = 16 }: { values: number[
     if (v > max) max = v;
   }
   // A flat trace (steady rate) draws as a midline rather than collapsing.
-  const span = max - min < 1e-9 ? 1 : max - min;
+  let span = max - min;
+  if (span < 1e-9) {
+    min -= 0.5;
+    span = 1;
+  }
   const pad = 2;
   const n = values.length;
   const pts = values

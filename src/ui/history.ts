@@ -22,10 +22,13 @@ function push(arr: number[], v: number): void {
   if (arr.length > HISTORY_LEN) arr.shift();
 }
 
-/** Clamp a magnitude so a zero/dust rate draws as a floor line, not -∞. */
+/** Clamp a magnitude so a zero/dust rate draws as the floor line, not -∞ —
+ *  and so the floor sits BELOW every rate the game treats as real (≥0.001/s),
+ *  never above one. */
+const FLOOR = -3;
 function mag(b: Big): number {
   const v = b.log10();
-  return Number.isFinite(v) ? v : -1;
+  return Number.isFinite(v) ? Math.max(FLOOR, v) : FLOOR;
 }
 
 export function sampleHistory(computePerSec: Big, dataPerSec: Big, moneyPerSec: Big): void {

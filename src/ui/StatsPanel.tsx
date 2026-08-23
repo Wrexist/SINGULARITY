@@ -168,9 +168,6 @@ export function StatsPanel({ game, derived }: Props) {
         {allTime.map((r) => (
           <div key={r.label} className="stat-row">
             <span className="stat-label">{r.label}</span>
-            {r.spark && r.spark.length > 1 && (
-              <span className={`stat-spark${r.tone ? ` t-${r.tone}` : ""}`}><Sparkline values={r.spark} /></span>
-            )}
             <span className={`stat-value${r.tone ? ` t-${r.tone}` : ""}`}>{r.value}</span>
           </div>
         ))}

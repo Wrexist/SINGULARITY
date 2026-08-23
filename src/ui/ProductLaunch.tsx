@@ -46,10 +46,13 @@ export function ProductLaunch({ name, typeName, onDone }: Props) {
   // repeated mid-game launches never feel like a forced cinematic.
   const [live, setLive] = useState(reducedMotion);
   useEffect(() => {
-    if (reducedMotion) return;
+    if (live) return;
+    // Reduced motion flipping ON mid-sweep must still land on the live state —
+    // otherwise the modal would wait forever with no dismiss path.
+    if (reducedMotion) { setLive(true); return; }
     const t = window.setTimeout(() => setLive(true), 850);
     return () => window.clearTimeout(t);
-  }, [reducedMotion]);
+  }, [reducedMotion, live]);
   // The moment it flips live, a small ship-tinted bloom over the modal — the
   // "we just deployed something important" beat (fx.ts self-gates on reduce-motion).
   useEffect(() => {
