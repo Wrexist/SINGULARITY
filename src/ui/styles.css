@@ -2419,7 +2419,11 @@ button.modchip.workable:active { transform: scale(0.94); }
 .market-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
 .market-row { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 12px; background: #fff; border: 1px solid rgba(17, 24, 39, 0.05); }
 .market-row.you { border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: linear-gradient(100deg, color-mix(in srgb, var(--accent) 8%, transparent), #fff); }
-.market-rank { font-size: 14px; font-weight: 800; color: var(--ink-3); width: 20px; text-align: center; flex: 0 0 auto; }
+.market-rank { display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; color: var(--ink-3); width: 20px; text-align: center; flex: 0 0 auto; }
+/* Rank movement since the player's last visit to the board — the market moves. */
+.market-move { font-style: normal; font-size: 8px; line-height: 1; }
+.market-move.up { color: var(--money); }
+.market-move.down { color: var(--coral); }
 .market-row.you .market-rank { color: var(--accent); }
 .market-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .market-top { display: flex; justify-content: space-between; gap: 8px; }

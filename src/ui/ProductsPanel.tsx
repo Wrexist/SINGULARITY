@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { GameState, Derived } from "../engine/types";
 import { products as B, type ProductTypeId } from "../engine/balance/products";
 import { productMilestones } from "../engine/balance/products";
@@ -16,6 +16,11 @@ import { EmptyState } from "./EmptyState";
 import { AtomIcon, LockIcon, SparkIcon, TrendDownIcon, TrophyIcon, BarsIcon, BoltIcon, ChevronIcon} from "./Icons";
 
 const FUN_NAMES = ["Nimbus", "Oracle", "Synthia", "Cortex", "Lumen", "Vertex", "Sage", "Atlas", "Echo", "Prism", "Nova", "Helix", "Quasar", "Mirage"];
+
+// Session-only memory of each AI's market rank the last time the player LEFT
+// this tab — the board shows ▲/▼ movement "since you last looked", so the race
+// reads as a moving field, not a fixed table. UI-only; the engine knows nothing.
+const seenRanks = new Map<string, number>();
 
 interface Props {
   game: GameState;
@@ -56,6 +61,23 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
   const [mktOpen, setMktOpen] = useState(false);
   const ps = game.products;
   const board = useMemo(() => marketLeaderboard(game).slice(0, 8), [game.products.active, game.products.frontier, game.rivalOps]);
+  // Rank movement since the previous visit, frozen for THIS visit (arrows that
+  // jitter with the live sim would read as noise). Ranks write back on unmount.
+  const boardRef = useRef(board);
+  boardRef.current = board;
+  const movement = useRef<Map<string, number> | null>(null);
+  if (movement.current === null) {
+    const m = new Map<string, number>();
+    board.forEach((e, i) => {
+      const prev = seenRanks.get(e.name);
+      if (prev != null && prev !== i + 1) m.set(e.name, prev - (i + 1));
+    });
+    movement.current = m;
+  }
+  useEffect(() => () => {
+    seenRanks.clear();
+    boardRef.current.forEach((e: { name: string }, i: number) => seenRanks.set(e.name, i + 1));
+  }, []);
   const myRank = playerMarketRank(game);
   const frontier = ps.frontier;
   const maxSlots = maxActiveProducts(game);
@@ -268,7 +290,14 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
               const staked = game.rivalStake === e.name;
               return (
                 <div className={`market-row ${e.isYou ? "you" : ""}`} key={`${e.name}-${i}`}>
-                  <span className="market-rank">{i + 1}</span>
+                  <span className="market-rank">
+                    {i + 1}
+                    {(() => {
+                      const mv = movement.current?.get(e.name) ?? 0;
+                      if (mv === 0) return null;
+                      return <i className={`market-move ${mv > 0 ? "up" : "down"}`} title={`${mv > 0 ? "Up" : "Down"} ${Math.abs(mv)} since your last visit`}>{mv > 0 ? "▲" : "▼"}</i>;
+                    })()}
+                  </span>
                   <div className="market-main">
                     <div className="market-top">
                       <span className="market-name">{e.name}{strikes > 0 && <span className="market-struck" title="Press blitzes landed this run"><BoltIcon size={11} />×{strikes}</span>}{staked && <span className="market-staked">staked</span>}</span>
