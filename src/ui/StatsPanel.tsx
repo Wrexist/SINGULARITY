@@ -94,7 +94,14 @@ export function StatsPanel({ game, derived }: Props) {
   const stance = stanceEffects(game);
   const charter = charterRow(game);
 
+  // NOTE: Compute/sec, Data/sec and Passive income are NOT repeated here — the
+  // ResourceBar carries all three permanently at the top of every screen, so a
+  // second copy in the reference panel was pure duplication (2026-08 noise sweep).
+  // The multipliers below are the value this panel adds: they exist nowhere else.
   const now: Row[] = [
+    // These rate rows were dropped by the 2026-08 noise sweep as duplicating the
+    // ResourceBar — the sparklines resurrect them as TREND rows: the ~3-minute
+    // trace is information the bar doesn't carry.
     { label: "Compute / sec", value: fmt(derived.computePerSec), tone: "compute" as const, spark: history.compute },
     { label: "Data / sec", value: fmt(derived.dataPerSec), tone: "data" as const, spark: history.data },
     { label: "Compute multiplier", value: `×${fmt(derived.computeMult)}` },

@@ -162,7 +162,9 @@ svg { vertical-align: middle; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: calc(18px + env(safe-area-inset-top)) 4px 14px;
+  /* No horizontal padding — `.app` already owns the 16px gutter. Adding 4px here put
+     the brand on a different left edge from every card below it. (2026-08 gutter sweep.) */
+  padding: calc(18px + env(safe-area-inset-top)) 0 14px;
 }
 .brand {
   display: flex;
@@ -637,6 +639,13 @@ svg { vertical-align: middle; }
   0%, 100% { box-shadow: 0 0 14px -3px rgba(47, 123, 246, 0.4); }
   50% { box-shadow: 0 0 22px -1px rgba(47, 123, 246, 0.6); }
 }
+/* The "Charging…" cold-start state (TrainingDock) applied this class but nothing
+   defined it, so the first-run charge looked identical to an active run. A calmer,
+   dimmer fill reads as "not started yet" without adding another animation. */
+.progress.charging .progress-fill {
+  background: linear-gradient(90deg, rgba(47, 123, 246, 0.45), rgba(106, 168, 255, 0.45));
+  box-shadow: none;
+}
 .progress-label {
   position: absolute;
   inset: 0;
@@ -646,7 +655,12 @@ svg { vertical-align: middle; }
   font-size: 12px;
   font-weight: 700;
   color: #fff;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  /* The label is centred over the WHOLE track, but the track is a 6%-black (i.e.
+     near-white) surface — so at any fill under ~50% this was white-on-white at about
+     1.2:1. That is the Training Run readout, the most-looked-at control in the game.
+     A soft dark halo gives the glyphs their own local contrast, so the label stays
+     legible over the pale track AND over the saturated fill, at every percentage. */
+  text-shadow: 0 0 3px rgba(9, 12, 20, 0.55), 0 1px 2px rgba(9, 12, 20, 0.45);
   letter-spacing: 0.01em;
 }
 
@@ -1509,7 +1523,9 @@ svg { vertical-align: middle; }
    layout below. One row only — overflow scrolls sideways instead of wrapping. */
 .modbar {
   display: flex; flex-wrap: nowrap; align-items: center; gap: 6px;
-  height: 24px; padding: 0 18px; margin-top: -4px; margin-bottom: 4px;
+  /* Was `padding: 0 18px` on top of the app's 16px gutter — modifier chips sat at 34px
+     while every card sat at 16px. One gutter. */
+  height: 24px; padding: 0; margin-top: -4px; margin-bottom: 4px;
   overflow-x: auto; scrollbar-width: none;
 }
 .modbar::-webkit-scrollbar { display: none; }
@@ -1687,7 +1703,9 @@ button.modchip.workable:active { transform: scale(0.94); }
 
 /* ---------- First steps (interactive onboarding) ---------- */
 .firststeps {
-  margin: 10px 12px 0;
+  /* Was `margin: 10px 12px 0` — the first-session coach card was inset 12px from the
+     hall it sits directly under, on the very first screen a new player sees. */
+  margin: 10px 0 0;
   padding: 10px 12px;
   border-radius: 14px;
   background: var(--card, rgba(255, 255, 255, 0.7));
@@ -2096,6 +2114,11 @@ button.modchip.workable:active { transform: scale(0.94); }
    never shift the section tabs, the hall, or any button below. */
 .notice-slot { height: 44px; }
 .notice-slot > * { height: 100%; }
+/* While FIRST STEPS owns the screen the slot is suppressed by design (App.tsx), so
+   nothing can ever appear in it — reserving 44px + a 16px stage gap there only bought
+   dead space at the top of the very first screen a new player sees. The anti-shift
+   reservation still applies everywhere it can actually shift. */
+.notice-slot.empty { display: none; }
 
 /* Daily Boost banner — celebratory, never a countdown (honest re-engagement) */
 .daily-bar {
@@ -2327,7 +2350,20 @@ button.modchip.workable:active { transform: scale(0.94); }
   flex: 0 0 auto; white-space: nowrap; font-size: 12px; font-weight: 700; color: var(--ink-3);
   padding: 6px 12px; border-radius: 999px; background: rgba(17, 24, 39, 0.06);
 }
-.btn-sm { padding: 7px 14px; font-size: 13px; flex: 0 0 auto; white-space: nowrap; }
+/* `.btn` sets width:100%. Without resetting it here, three `.btn.btn-sm` siblings in a
+   flex row each want the FULL row width and `flex-shrink: 0` refuses to shrink them —
+   so the row overflowed and the Settings backup row silently clipped its third button
+   off the right edge (the sheet is overflow-x:hidden). `.prod-draft-btn` already
+   carried this exact fix as a one-off; it belongs on `.btn-sm` itself. */
+.btn-sm { width: auto; padding: 7px 14px; font-size: 13px; flex: 0 1 auto; white-space: nowrap; }
+
+/* The one hint/caption style. `.pd-pane-tip` was applied in three places (two in Team →
+   Projects, one at the top of the Lab Reputation modal) but never defined anywhere —
+   those paragraphs rendered at browser-default 16px with default margins, which was the
+   loudest "unfinished" tell in the app. Sharing one rule with the existing one-off hint
+   classes so a fourth variant doesn't get invented. */
+.pd-pane-tip,
+.hint { font-size: 12.5px; color: var(--ink-2); line-height: 1.45; margin: 2px 0 8px; }
 
 /* ---------- Product milestones (the chase ladder) ---------- */
 .prod-milestones { margin-top: 18px; }
@@ -2356,8 +2392,10 @@ button.modchip.workable:active { transform: scale(0.94); }
 
 /* ---------- Product detail screen ---------- */
 .prod-details { font-size: 12px; margin-left: auto; }
-/* Redesign — soft white cards on a light surface, #7c5cff purple accent,
-   segmented tabs with an underline indicator, icon chips, filled sliders. */
+/* Redesign — soft white cards on a light surface, themeable accent (--pd-purple now
+   derives from --accent, so picking a hall theme recolours this sheet too, instead of
+   leaving it violet against a recoloured app), segmented tabs with an underline
+   indicator, icon chips, filled sliders. */
 .pd-modal {
   --pd-purple: var(--accent);
   --pd-track: #e7e4f3;
@@ -3074,6 +3112,14 @@ button.modchip.workable:active { transform: scale(0.94); }
 /* ---------- The Institute (third meta-layer) ---------- */
 .institute-note { font-size: 12px; color: var(--ink-3); margin: 0 0 8px; }
 .institute-count { font-size: 11px; font-weight: 700; color: var(--ink-3); margin-top: 6px; text-align: right; }
+/* Fellowships — the Institute's infinite tail. Separated from the wing tree by a
+   hairline so "the tree is finished, this is what's next" reads at a glance. */
+.institute-fellows { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--glass-hairline); }
+.institute-fellows-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.institute-fellows-title { font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
+.institute-fellows-mult { font-size: 12px; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
+.institute-fellow-latest { font-size: 12px; color: var(--ink-2); margin-bottom: 8px; line-height: 1.4; }
+.institute-fellow-count { color: var(--ink-3); }
 .institute-wing {
   width: 100%; display: flex; align-items: center; gap: 10px; margin-bottom: 6px; text-align: left; cursor: pointer;
   border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);

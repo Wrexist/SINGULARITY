@@ -100,12 +100,18 @@ describe("advisor", () => {
     expect(advisorItems(createInitialState()).some((i) => i.text.toLowerCase().includes("contract"))).toBe(false);
   });
 
-  it("nudges to spend Lab Reputation when a perk is affordable", () => {
+  it("never nags about affordable shop stock (Reputation perks / Endowment)", () => {
+    // 2026-08 noise sweep: "you can afford a Lab Reputation perk" and "you can afford
+    // an Endowment level" used to be advisory items. Because the Endowment is an
+    // INFINITE Reputation sink, the second was true on essentially every mature save —
+    // so between them they kept the Lab nav badge and the HQ dot permanently lit, which
+    // teaches players that badges mean nothing. The advisor is now reserved for things
+    // genuinely WAITING on the player; affordable stock is legible in the panel that
+    // sells it. This test pins that: a rep-rich save must produce NO such item.
     const s = createInitialState();
     s.stats.totalShips = 100; // plenty of reputation earned, none spent
-    expect(advisorItems(s).some((i) => i.text.includes("Lab Reputation"))).toBe(true);
-    // …and not when there's nothing to spend.
-    expect(advisorItems(createInitialState()).some((i) => i.text.includes("Lab Reputation"))).toBe(false);
+    expect(advisorItems(s).some((i) => i.text.includes("Lab Reputation"))).toBe(false);
+    expect(advisorItems(s).some((i) => i.text.includes("Endow"))).toBe(false);
   });
 
   it("never points the banner at a tab the player can't open yet", () => {

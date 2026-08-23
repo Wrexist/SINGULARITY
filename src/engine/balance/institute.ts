@@ -41,4 +41,45 @@ export const institute = {
     // Capstone — the reason to keep ascending.
     { id: "inst_singularity", name: "The Singularity Institute", desc: "An institution that outlives any one lab. +80% to ALL output, forever.", cost: 4, requires: "inst_synthesis", effect: { kind: "globalMult", value: 0.8 } },
   ] satisfies InstitutePerkDef[],
+
+  /**
+   * FELLOWSHIPS (2026-08) — the Institute's infinite tail.
+   *
+   * The wing tree costs 9 Grants total and Grants arrive one per ascension, so the
+   * deepest layer in the game was fully exhausted nine ships after it opened — and it
+   * is the LAST panel a player ever unlocks, so the game ended on its flattest note.
+   * Once every wing is founded, Grants instead endow Fellowships: an escalating,
+   * repeatable chair with a small permanent all-lane boost and a named Fellow.
+   *
+   * Curve-safe by the same argument as the wings above, quoted verbatim: Grants come
+   * only from `stats.ascensions`, and the deploy-only sim never SPENDS them. The gate
+   * is stricter still — Fellowships require all 5 wings, which the sim never buys.
+   */
+  fellowships: {
+    enabled: true,
+    /** Grants for the first chair; each subsequent one costs ×growth more. */
+    baseCost: 2,
+    growth: 1.35,
+    /** Permanent all-lane boost per chair (additive: mult = 1 + n × perLevel). */
+    perLevel: 0.05,
+    /** Finite safety bound so a crafted save can't drive the cost sum to Infinity. */
+    maxLevel: 500,
+    /**
+     * Named chairs, in order. Deterministic: chair N is always the same person, so the
+     * Institute reads as an institution with a history rather than a counter. Cycles
+     * with a numbered suffix past the end of the list (see fellowName).
+     */
+    names: [
+      "The Turing Chair in Machine Cognition",
+      "The Lovelace Chair in Program Synthesis",
+      "The Shannon Chair in Information Theory",
+      "The Hopper Chair in Systems Engineering",
+      "The Noether Chair in Symmetry & Invariance",
+      "The Wiener Chair in Cybernetics",
+      "The McCarthy Chair in Symbolic Reasoning",
+      "The Hinton Chair in Representation Learning",
+      "The Ashby Chair in Requisite Variety",
+      "The Kolmogorov Chair in Complexity",
+    ],
+  },
 };

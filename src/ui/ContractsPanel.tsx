@@ -10,6 +10,10 @@ interface Props {
   onClaim: (id: string, rep: number, title: string) => void;
   /** IDEAS #9 — claim today's sponsor objective (post-ladder daily). */
   onClaimSponsor: () => void;
+  /** Render WITHOUT the panel card + title, for use inside a <Collapsible> (which
+   *  already supplies both). Without this the board nested a panel inside a panel
+   *  and showed its heading twice. */
+  bare?: boolean;
 }
 
 /**
@@ -18,15 +22,14 @@ interface Props {
  * contract shows a live progress bar and a Claim button once met. Reputation is
  * a meta-currency, so this never injects in-run cash (curve stays intact).
  */
-export function ContractsPanel({ game, onClaim, onClaimSponsor }: Props) {
+export function ContractsPanel({ game, onClaim, onClaimSponsor, bare = false }: Props) {
   const board = contractBoard(game);
   const allDone = board.length === 0;
   // Post-ladder: one date-seeded sponsor objective per local day (IDEAS #9).
   const sponsor = allDone ? sponsorView(game) : null;
 
-  return (
-    <section className="panel contracts">
-      <h2 className="panel-title">Contracts</h2>
+  const body = (
+    <>
       {allDone ? (
         sponsor ? (
           <div className="list">
@@ -85,6 +88,14 @@ export function ContractsPanel({ game, onClaim, onClaimSponsor }: Props) {
           ` · ${game.contracts.completed.filter((id) => id.startsWith("sponsor_")).length} sponsor deals`}
         {" "}· rewards <b>Lab Reputation</b>
       </p>
+    </>
+  );
+
+  if (bare) return body;
+  return (
+    <section className="panel contracts">
+      <h2 className="panel-title">Contracts</h2>
+      {body}
     </section>
   );
 }

@@ -66,6 +66,44 @@ function persist(s: Settings): void {
   }
 }
 
+/**
+ * Live OS-level `prefers-reduced-motion`, kept in sync for the whole session.
+ *
+ * `prefersReducedMotion()` above only SEEDS the default for a fresh install. Once the
+ * setting is persisted, a player who turns Reduce Motion on in iOS afterwards was
+ * still getting particle bursts, floaters and scale-punches, because the JS FX layers
+ * read the stored setting and never the media query. CLAUDE.md requires respecting the
+ * OS preference AND the in-app toggle, so motion is reduced when EITHER is on.
+ * (The CSS side already covered both via its global kill switch.)
+ */
+let osReduceMotion = prefersReducedMotion();
+const osReduceListeners = new Set<(v: boolean) => void>();
+try {
+  const mq = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+  mq?.addEventListener?.("change", (e) => {
+    osReduceMotion = e.matches;
+    for (const fn of osReduceListeners) fn(osReduceMotion);
+  });
+} catch {
+  /* ignore — a browser without matchMedia just keeps the seeded value */
+}
+
+/** Subscribe to OS reduce-motion changes. Returns an unsubscribe fn. */
+export function onOsReduceMotionChange(fn: (v: boolean) => void): () => void {
+  osReduceListeners.add(fn);
+  return () => osReduceListeners.delete(fn);
+}
+
+/** The single source of truth for "should motion be suppressed right now?". */
+export function motionReduced(): boolean {
+  return osReduceMotion || useSettings.getState().reducedMotion;
+}
+
+/** Current OS reduce-motion value (non-reactive read). */
+export function osReduceMotionNow(): boolean {
+  return osReduceMotion;
+}
+
 interface SettingsStore extends Settings {
   toggle: (key: "sound" | "music" | "haptics" | "hapticsLight" | "reducedMotion" | "scientificNotation") => void;
   setHallTheme: (id: string) => void;

@@ -150,11 +150,13 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
               <span className="prestige-timing-next">{Math.floor(pct * 100)}%</span>
             </div>
             <div className="prestige-timing-bar"><div className="prestige-timing-fill" style={{ width: `${pct * 100}%` }} /></div>
-            <p className="prestige-timing-note">
-              {pct >= 0.8
-                ? "You're close to your next weight — a little longer banks more."
-                : "Weights grow with lifetime earnings, but with diminishing returns. Big jump now, or hold for the next one."}
-            </p>
+            {/* Only the ACTIONABLE half of this note survives (2026-08 noise sweep):
+                "you're close, hold a moment" is advice the bar can't give on its own.
+                The generic "weights have diminishing returns" paragraph was a
+                restatement of the bar directly above it, shown on every single ship. */}
+            {pct >= 0.8 && (
+              <p className="prestige-timing-note">You're close to your next weight — a little longer banks more.</p>
+            )}
           </div>
         );
       })()}
