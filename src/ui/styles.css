@@ -300,6 +300,8 @@ svg { vertical-align: middle; }
 .rep-endow-lvl { font-size: 12px; font-weight: 700; color: var(--ink-3); white-space: nowrap; }
 .rep-directives { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
 .rep-directive-summary { font-size: 12px; font-weight: 750; color: var(--ink-3); }
+.rep-directive-respec { font-size: 11.5px; color: var(--ink-3); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.respec-btn { padding: 2px 0; }
 .rep-directive-prompt { font-size: 12px; font-weight: 800; color: #a855f7; }
 .rep-directive-choices { display: flex; flex-direction: column; gap: 6px; }
 .rep-directive-choice .card-name { font-weight: 800; }
@@ -1585,6 +1587,17 @@ button.modchip.workable:active { transform: scale(0.94); }
   box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.75);
   animation: rise-modal 0.5s var(--spring);
 }
+/* Ascension super-ceremony: the same card, gilded — a gold edge, a warm glow,
+   and a golden rocket. Full-card tint + glow (no accent bar), per the hard rules. */
+.celebrate-card.ascended {
+  border-color: rgba(255, 214, 10, 0.65);
+  box-shadow:
+    0 0 34px rgba(255, 214, 10, 0.22),
+    0 0 90px rgba(168, 85, 247, 0.18),
+    var(--shadow-lg),
+    inset 0 1px 0 rgba(255, 240, 190, 0.8);
+}
+.celebrate-card.ascended .celebrate-rocket { color: #ffd60a; }
 .celebrate-rocket {
   display: inline-flex;
   color: #fff;
@@ -2404,6 +2417,25 @@ button.modchip.workable:active { transform: scale(0.94); }
 .market-row.you .market-bar-fill { background: linear-gradient(90deg, var(--accent), #16b364); }
 .market-vendor { font-size: 11px; color: var(--ink-3); }
 .market-reaction { font-size: 10.5px; font-style: italic; color: var(--ink-3); opacity: 0.85; line-height: 1.3; }
+
+/* Frontier Race stakes (depth batch) — one honest status line + quiet affordances. */
+.market-stake-status {
+  font-size: 11.5px;
+  color: var(--ink-2);
+  background: color-mix(in srgb, var(--accent, #7c5cff) 8%, #fff);
+  border: 1px solid color-mix(in srgb, var(--accent, #7c5cff) 25%, transparent);
+  border-radius: 10px;
+  padding: 7px 10px;
+}
+.market-staked {
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent, #7c5cff);
+}
+.market-stake { align-self: flex-start; }
 
 /* ---------- Field Notes (Codex) ---------- */
 .codex-head { display: flex; align-items: center; gap: 8px; width: 100%; background: none; border: none; cursor: pointer; padding: 2px 0; }

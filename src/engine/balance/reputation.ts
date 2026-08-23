@@ -72,6 +72,12 @@ export const reputation = {
     directives: {
       /** One Directive pick per this many endowment levels. */
       interval: 10,
+      /** Directive RESPEC (depth batch 2026-08): refund one claimed directive (the
+       *  freed pick is re-choosable) for an escalating Reputation fee. Escalating so
+       *  respecs stay a deliberate rebuild, not a cheap re-roll. Curve-safe: only
+       *  reachable with owned directives, a state the sim never reaches. */
+      respecBaseCost: 20,
+      respecGrowth: 1.6,
       defs: [
         { id: "dir_compute", name: "Compute Doctrine", lane: "compute", value: 0.3, desc: "+30% Compute, permanently." },
         { id: "dir_data", name: "Research Doctrine", lane: "data", value: 0.3, desc: "+30% Data, permanently." },

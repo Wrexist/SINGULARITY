@@ -18,6 +18,9 @@ export interface HeadlineInput {
   alignment?: number;
   productsLive?: number;
   rivalsBeaten?: number;
+  /** An AGI ASCENSION (a ship in the Post-Singularity era): the grandest beat in
+   *  the game gets its own headline tier, above every other standout. */
+  ascended?: boolean;
 }
 
 // Fallback rotation when no standout achievement applies (keyed by generation so
@@ -52,6 +55,7 @@ const ROTATION = [
 
 /** Pick the most impressive headline this run earned; fall back to the rotation. */
 export function shipHeadline(r: HeadlineInput): string {
+  if (r.ascended) return "The Singularity Files Its Own Press Release";
   if (r.rank === 1) return "Market Leader — You're #1";
   if (r.peakCompute.gte(Big.of(1e12))) return "The Scaling Triumph";
   if (r.peakMrr >= 100_000) return "Cash-Flow Positive (Briefly)";
@@ -75,6 +79,7 @@ export function shipHeadline(r: HeadlineInput): string {
  *  with the "You banked:" lead-in so the weights block reads on from it. */
 export function shipSubtitle(r: HeadlineInput): string {
   const tail = " You banked:";
+  if (r.ascended) return "History splits into before and after." + tail;
   if (r.era != null && r.era >= 5) return "The singularity files its own press release." + tail;
   if (r.rank === 1) return "The board is already drafting a bigger fund." + tail;
   if (r.peakMrr >= 100_000) return "Finance is doing a quiet victory lap." + tail;
@@ -90,6 +95,14 @@ export function shipSubtitle(r: HeadlineInput): string {
     "The changelog is short; the mood is not.",
     "Marketing has already made the graphic.",
     "The group chat is all rocket emoji.",
+    "Legal asks that “AGI” stay in scare quotes.",
+    "The GPUs are still warm; HR is not.",
+    "Your cap table does a small confident lap.",
+    "A competitor announces theirs tomorrow, coincidentally.",
+    "The term “safe deployment” is used loosely.",
+    "Someone updates the wiki at 2am, triumphantly.",
+    "The office plant gets named after it.",
+    "Two VCs slide in; one claims they called it.",
   ];
   return generic[(r.gen - 1 + generic.length * 100) % generic.length]! + tail;
 }

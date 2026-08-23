@@ -28,12 +28,13 @@ interface Props {
   onBuyReputationPerk: (id: string) => void;
   onBuyEndowment: () => void;
   onPickDirective: (id: string) => void;
+  onRespecDirective?: (id: string) => void;
   onBuyLegacyPerk: (id: string) => void;
 }
 
 const legacyPerkName = (id?: string) => legacyTreeBalance.perks.find((p) => p.id === id)?.name ?? "a prerequisite";
 
-export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndowment, onPickDirective, onBuyLegacyPerk }: Props) {
+export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndowment, onPickDirective, onRespecDirective, onBuyLegacyPerk }: Props) {
   const [confirming, setConfirming] = useState(false);
   // A ship mode that discards the post-ship product draft gets an explicit
   // confirm (QW3) — the 4-word tag alone let players give the model away
@@ -231,7 +232,7 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
           />
         );
       })()}
-      {repOpen && <ReputationModal game={game} onBuy={onBuyReputationPerk} onBuyEndowment={onBuyEndowment} onPickDirective={onPickDirective} onClose={() => setRepOpen(false)} />}
+      {repOpen && <ReputationModal game={game} onBuy={onBuyReputationPerk} onBuyEndowment={onBuyEndowment} onPickDirective={onPickDirective} {...(onRespecDirective ? { onRespecDirective } : {})} onClose={() => setRepOpen(false)} />}
     </section>
   );
 }

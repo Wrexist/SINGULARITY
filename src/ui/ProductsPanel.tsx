@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { GameState, Derived } from "../engine/types";
 import { products as B, type ProductTypeId } from "../engine/balance/products";
 import { productMilestones } from "../engine/balance/products";
-import { marketLeaderboard, playerMarketRank, canCounterRival, counterCost, counterCooldownRemaining } from "../engine/market";
+import { marketLeaderboard, playerMarketRank, canCounterRival, counterCost, counterCooldownRemaining, stakePayout } from "../engine/market";
 import { market as MKT } from "../engine/balance/market";
 import {
   typeDef, productMetrics, canLaunchDraft, canStartUpgrade,
@@ -30,11 +30,13 @@ interface Props {
   onRetire: (id: string) => void;
   onSetFlagship: (id: string | null) => void;
   onCounterRival: (name: string) => void;
+  /** Frontier Race stake (depth batch): wager you'll outrank this rival by ship. */
+  onPlaceStake?: (name: string) => void;
 }
 
 /** Phase 3 — the Products tab: commercialise the models you ship, market them, set
  *  pricing, research new versions over time, and watch the dashboard. */
-export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onSetChannelMix, onBuyFeature, onRename, onRetire, onSetFlagship, onCounterRival }: Props) {
+export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onSetChannelMix, onBuyFeature, onRename, onRetire, onSetFlagship, onCounterRival, onPlaceStake }: Props) {
   // Which draft (by id) is currently showing the type-picker, if any.
   const [picking, setPicking] = useState<string | null>(null);
   // Which product's deep-management screen is open, if any. If that product
@@ -239,6 +241,13 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
         </button>
         {mktOpen && (
           <div className="market-list">
+            {/* Active stake status (Frontier Race, depth batch): one honest line so the
+                wager is legible every time the board is open. */}
+            {game.rivalStake && (
+              <div className="market-stake-status">
+                Staked vs {game.rivalStake} — outrank them by your next ship for <b>+{stakePayout(game.rivalStake)} Rep</b>.
+              </div>
+            )}
             {board.map((e, i) => {
               // Counterplay (IMPROVEMENTS #8): rivals AHEAD of you can be hit
               // with a press blitz — money for race position, nothing else.
@@ -249,12 +258,18 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
               const cooldown = Math.ceil(counterCooldownRemaining(game));
               const cost = targetable ? counterCost(game, e.name) : 0;
               const ready = targetable && canCounterRival(game, e.name);
+              // A stake target: ahead of you, no active wager yet (same "race not
+              // already won" rule as the blitz — you don't bet on beating someone
+              // you've already passed).
+              const stakeable = !e.isYou && onPlaceStake != null && game.rivalStake == null
+                && game.products.active.length > 0 && e.users > myBest;
+              const staked = game.rivalStake === e.name;
               return (
                 <div className={`market-row ${e.isYou ? "you" : ""}`} key={`${e.name}-${i}`}>
                   <span className="market-rank">{i + 1}</span>
                   <div className="market-main">
                     <div className="market-top">
-                      <span className="market-name">{e.name}{strikes > 0 && <span className="market-struck" title="Press blitzes landed this run"><BoltIcon size={11} />×{strikes}</span>}</span>
+                      <span className="market-name">{e.name}{strikes > 0 && <span className="market-struck" title="Press blitzes landed this run"><BoltIcon size={11} />×{strikes}</span>}{staked && <span className="market-staked">staked</span>}</span>
                       <span className="market-share">{(e.share * 100).toFixed(e.share < 0.01 ? 2 : 1)}%</span>
                     </div>
                     <div className="market-bar"><div className="market-bar-fill" style={{ width: `${Math.min(100, e.share * 100)}%` }} /></div>
@@ -268,6 +283,15 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
                         onClick={() => onCounterRival(e.name)}
                       >
                         <BoltIcon size={12} /> {cooldown > 0 ? `Press blitz — ready in ${cooldown}s` : `Press blitz — ${m$(cost)}`}
+                      </button>
+                    )}
+                    {stakeable && (
+                      <button
+                        className="btn btn-ghost btn-sm market-stake"
+                        title={`Wager you'll outrank ${e.name} by your next ship — win +${stakePayout(e.name)} Lab Reputation, lose nothing but the bragging rights.`}
+                        onClick={() => onPlaceStake!(e.name)}
+                      >
+                        Stake this race — win +{stakePayout(e.name)} Rep
                       </button>
                     )}
                   </div>

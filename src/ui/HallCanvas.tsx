@@ -5,7 +5,7 @@ import { haptics } from "./haptics";
 import { sound } from "./sound";
 import { floatText } from "./fx";
 import { buildHallModel, buildSkyline, heatCrateCount, POWER_IDS } from "../render/hallModel";
-import { drawHallStatic, drawHallDynamic, expansionMarkers, rackHitAreas, pointInPoly, agentSpots, chenSpot, type RackHit, type AgentSpot } from "../render/hallRenderer";
+import { drawHallStatic, drawHallDynamic, expansionMarkers, rackHitAreas, pointInPoly, agentSpots, chenSpot, dayPhase, type RackHit, type AgentSpot } from "../render/hallRenderer";
 import { currentEra, eraName } from "../engine/eras";
 import { hallRooms } from "../engine/hall";
 import { regulatorState } from "../engine/regulator";
@@ -223,14 +223,18 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
 
       // Repaint the cached static room only when its inputs change. The skyline
       // is quantised to 5% steps so its slow drift repaints rarely, not per tick.
+      // The day/night cycle joins it as a coarse bucket (48/day ≈ one repaint
+      // every ~5s worst-case); reduced motion freezes the sky at late morning.
+      const rmNow = useSettings.getState().reducedMotion;
+      const phase = rmNow ? 0.08 : dayPhase(timeMs);
       const skySig = model.skyline.map((t) => `${Math.round(t.h * 20)}${t.dim ? "d" : ""}${t.you ? "y" : ""}`).join(".");
-      const ssig = `${model.cols}|${model.rows}|${model.era}|${model.coolingUnits}|${cssW}|${cssH}|${dpr}|${model.charter?.id ?? ""}|${model.wall.map((w) => `${w.era}${w.asc ? "a" : ""}`).join(".")}|${skySig}`;
+      const ssig = `${model.cols}|${model.rows}|${model.era}|${model.coolingUnits}|${cssW}|${cssH}|${dpr}|${model.charter?.id ?? ""}|${model.wall.map((w) => `${w.era}${w.asc ? "a" : ""}`).join(".")}|${skySig}|${Math.round(phase * 48)}`;
       if (ssig !== staticSig) {
         staticSig = ssig;
         off.width = canvas.width;
         off.height = canvas.height;
         offCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        drawHallStatic(offCtx, model, cssW, cssH);
+        drawHallStatic(offCtx, model, cssW, cssH, phase);
       }
 
       // Blit the opaque room (fully overwrites the previous frame), then paint

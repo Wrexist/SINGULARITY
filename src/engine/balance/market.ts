@@ -47,6 +47,21 @@ export const market = {
      *  honestly in the UI as "the press cycle needs to reset". */
     cooldownSec: 240,
   },
+  /** Frontier Race stakes (depth batch 2026-08) — wager Reputation on overtaking a
+   *  specific rival before your next ship. CURVE-SAFE: placing is a player-only
+   *  action (the sim never stakes) and the payout is Lab Reputation (a meta-currency
+   *  that feeds nothing in derive), so a stake buys race TENSION, never production. */
+  stakes: {
+    enabled: true,
+    /** Reputation paid on a WON stake, by the rival's weight tier (bigger rival =
+     *  bolder claim = bigger payout). Losing pays nothing — that's the wager. */
+    repPerWeightTier: [
+      { minWeight: 25, rep: 6 },
+      { minWeight: 12, rep: 4 },
+    ],
+    /** Fallback payout for the smallest rivals (below every tier above). */
+    repFloor: 2,
+  },
   rivals: [
     { name: "Cortex-5", vendor: "ClosedAI", weight: 30, focus: "scaler", blurb: "Three-hour keynotes, one new feature, infinite confidence." },
     { name: "Claudius", vendor: "Anthropos", weight: 25, focus: "safety", blurb: "Ships a 90-page safety card and a model that's annoyingly good." },

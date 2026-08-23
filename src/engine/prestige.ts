@@ -6,8 +6,9 @@ import { carryEarnedComponents } from "./components";
 import { startingRacks } from "./reputation";
 import { hallCapacity } from "./hall";
 import { currentEra } from "./eras";
-import { trials as TRIALS_DATA } from "./balance/trials";
+import { trialConditionMet } from "./trials";
 import { advanceFlagship } from "./flagship";
+import { resolveStakeOutcome } from "./market";
 import type { DraftModel, GameState } from "./types";
 
 /**
@@ -25,12 +26,16 @@ export function canPrestige(state: GameState): boolean {
   return state.research.includes(balance.prestige.capabilityResearch);
 }
 
-/** Charter-conviction multiplier (B1): shipping with the SAME charter as the previous
- *  run rewards commitment. 1 when no charter / different / first runs. Pure. */
+/** Charter-conviction multiplier (B1, escalated in the depth batch): shipping with
+ *  the SAME charter as previous consecutive runs rewards commitment on a ladder —
+ *  ×1.15 → ×1.25 → ×1.40 capped. 1 when no charter / different / first runs.
+ *  The streak counts consecutive ships ENDING with this one that used this charter;
+ *  it's carried on state (persisted) and updated by prestige() at each ship. Pure. */
 export function charterConvictionMult(state: GameState): number {
-  return state.charter != null && state.charter === state.lastCharter
-    ? balance.prestige.charterConvictionBonus
-    : 1;
+  if (state.charter == null || state.charter !== state.lastCharter) return 1;
+  const ladder = balance.prestige.charterConvictionLadder;
+  const idx = Math.min(ladder.length - 1, Math.max(0, (state.charterStreak ?? 0) + 1 - 2));
+  return ladder[idx]!;
 }
 
 /** Legacy Weights a given ship mode would actually bank (base × mode mult × conviction). */
@@ -122,6 +127,11 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
       }))
     : fresh.modifiers;
 
+  // Frontier Race stakes (depth batch): resolve the active wager at ship — a win
+  // banks Reputation by the rival's weight, a loss pays nothing; either way it
+  // clears. The sim never stakes → repWon is 0 and this is identity.
+  const stake = resolveStakeOutcome(state);
+
   return {
     ...fresh,
     upgrades: freshUpgrades,
@@ -160,6 +170,9 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
       // community standing → Lab Reputation (B1). Neutral/accel ships don't count, and
       // the first ship is always neutral, so this is 0 through the tuned curve.
       safetyShips: state.stats.safetyShips + (state.alignment <= -balance.worldEvents.factionThreshold ? 1 : 0),
+      // Frontier Race stake payout (depth batch): a WON wager's Reputation lands here
+      // and earnedReputation folds it in. 0 unless the player staked and won.
+      stakesRepEarned: state.stats.stakesRepEarned + stake.repWon,
     },
     // Achievements are a permanent collection — they survive the reset.
     achievements: state.achievements,
@@ -176,16 +189,16 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     // The Institute's founded wings are the deepest permanent meta-progression.
     institute: state.institute,
     // Prestige Trials: shipping ends the active constrained run. Bank its reward IF
-    // its run condition (if any) held — a "solo" Trial needs an empty staff roster at
-    // ship. Cleared either way (a failed condition just gives no reward, retry next
-    // run). Inlined (data-only import) to keep prestige cycle-free.
+    // its run condition (if any) held — a "solo" Trial needs an empty roster, "hot"
+    // needs Heat ≥ 60, "neutral" needs an uncommitted alignment. Cleared either way
+    // (a failed condition just gives no reward, retry next run). trialConditionMet is
+    // the single source for every condition; inlined import keeps prestige cycle-free.
     activeTrial: null,
     trialsDone: (() => {
       const id = state.activeTrial;
       if (!id || state.trialsDone.includes(id)) return state.trialsDone;
-      const def = TRIALS_DATA.list.find((t) => t.id === id);
-      const conditionOk = !def?.condition || (def.condition === "solo" && state.employees.length === 0);
-      return conditionOk ? [...state.trialsDone, id] : state.trialsDone;
+      const banks = trialConditionMet(state);
+      return banks ? [...state.trialsDone, id] : state.trialsDone;
     })(),
     // Grand Challenges are a career-spanning grind — funding + completions persist.
     challenges: state.challenges,
@@ -200,8 +213,19 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     // Legacy Investments are permanent prestige-tree progress — they persist.
     legacyInvestments: state.legacyInvestments,
     // Remember the charter just shipped so picking it again next run earns the
-    // conviction bonus (B1). The fresh run's own charter resets to null (...fresh).
+    // conviction bonus (B1) — now ESCALATING with the consecutive-same-charter
+    // streak. The fresh run's own charter resets to null (...fresh).
     lastCharter: state.charter,
+    // The streak counts consecutive ships ending with THIS one that used this
+    // charter: same charter again → prev+1; a fresh pick → 1; none → 0. The sim
+    // never sets a charter, so this stays 0 through the tuned curve.
+    charterStreak: state.charter != null
+      ? (state.charter === state.lastCharter ? (state.charterStreak ?? 0) : 0) + 1
+      : 0,
+    // Frontier Race stakes (depth batch): the wager always clears at ship.
+    rivalStake: stake.rivalStake,
+    // Endowment Directive respecs are permanent meta-progression — persist.
+    endowmentRespecs: state.endowmentRespecs,
     // The regulator's suspicion is a LONG memory — it persists across the ship (B3).
     // A clean lab carries 0, so the tuned curve is untouched.
     suspicion: state.suspicion,

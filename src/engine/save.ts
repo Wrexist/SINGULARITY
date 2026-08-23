@@ -38,6 +38,10 @@ const TRIAL_IDS = new Set(TRIALS.list.map((t) => t.id));
 const PARADIGM_IDS = new Set(PARADIGMS.list.map((p) => p.id));
 const PARADIGM_COST = new Map(PARADIGMS.list.map((p) => [p.id, p.cost]));
 const DOCTRINE_IDS = new Set(DOCTRINE.perks.map((p) => p.id));
+// Staff identity is also known-id data: an unknown role renders raw and an unknown
+// trait (e.g. a crafted "mentor" on every person) would silently boost morale math.
+const ROLE_IDS = new Set(balance.staff.roles.map((r) => r.id));
+const TRAIT_IDS = new Set(balance.staff.traits.map((t) => t.id));
 const INSTITUTE_IDS = new Set(INSTITUTE.perks.map((p) => p.id));
 
 /** Keep only known ids, each at most once (order preserved). Closes the duplicate /
@@ -193,7 +197,6 @@ function sanitizeChannelMix(m: unknown): Record<string, number> {
   return Object.keys(out).length ? out : { ads: 1 };
 }
 
-/** Drafts are untrusted; keep only well-formed entries. */
 /**
  * Hard ceilings on how many entries a LOADED collection may contain.
  *
@@ -212,6 +215,10 @@ const MAX_SAVED_PRODUCTS = 64;
 const MAX_SAVED_EMPLOYEES = 512;
 const MAX_SAVED_IDS = 512;
 
+/** Drafts are untrusted; keep only well-formed entries. Quality is clamped to the
+ *  same product cap loaded products get — an unclamped draft launches into a live
+ *  product whose economics (mrr/serve) compute from quality, so a crafted 1e300
+ *  would brick that product at ∞/NaN forever (launchDraft bypasses PROD_CAPS). */
 function sanitizeDrafts(d: unknown): DraftModel[] {
   if (!Array.isArray(d)) return [];
   return d
@@ -223,7 +230,7 @@ function sanitizeDrafts(d: unknown): DraftModel[] {
         typeof x.quality === "number" && Number.isFinite(x.quality) && x.quality >= 0 &&
         typeof x.ships === "number" && Number.isFinite(x.ships),
     )
-    .map((x) => ({ id: x.id, quality: x.quality, ships: x.ships }));
+    .map((x) => ({ id: x.id, quality: Math.min(x.quality, PROD_CAPS.quality), ships: x.ships }));
 }
 
 /** Loaded products are untrusted; guard the container SHAPE here only. Entries
@@ -240,20 +247,33 @@ function isWellFormedProducts(p: unknown): p is ProductsState {
   );
 }
 
-/** Employees are untrusted; keep only well-formed people, sanitizing training. */
+/** Employees are untrusted; keep only well-formed people, sanitizing training.
+ *  Level clamps to the SAME max the runtime trainer enforces (levelEffectMult is
+ *  linear and uncapped, so a crafted 1e9 would mint a 1e9× staff multiplier);
+ *  roleId/trait must be KNOWN ids (an unknown role renders raw; an unknown trait
+ *  could smuggle morale effects past the balance data); ids dedupe keep-first so
+ *  fire/assign/train targeting and React keys stay well-defined. */
 function sanitizeEmployees(e: unknown): Employee[] {
   if (!Array.isArray(e)) return [];
-  return e
-    .slice(0, MAX_SAVED_EMPLOYEES)
-    .filter((x): x is Employee =>
-      !!x && typeof x.id === "string" && typeof x.name === "string" && typeof x.roleId === "string" &&
-      typeof x.level === "number" && Number.isFinite(x.level) && x.level >= 1)
-    .map((x) => ({
+  const seen = new Set<string>();
+  const out: Employee[] = [];
+  for (const x of e) {
+    // Bound the roster: entries are validated one-by-one below, but an unbounded
+    // COUNT of well-formed people is still linear per-tick cost (see MAX_SAVED_*).
+    if (out.length >= MAX_SAVED_EMPLOYEES) break;
+    if (
+      !x || typeof x.id !== "string" || typeof x.name !== "string" ||
+      typeof x.roleId !== "string" || !ROLE_IDS.has(x.roleId) ||
+      typeof x.level !== "number" || !Number.isFinite(x.level) || x.level < 1
+    ) continue;
+    if (seen.has(x.id)) continue; // duplicate id → keep the first occurrence
+    seen.add(x.id);
+    out.push({
       id: x.id,
       name: x.name,
       roleId: x.roleId,
-      level: Math.max(1, Math.floor(x.level)),
-      trait: typeof x.trait === "string" ? x.trait : null,
+      level: Math.min(balance.staff.maxLevel, Math.max(1, Math.floor(x.level))),
+      trait: typeof x.trait === "string" && TRAIT_IDS.has(x.trait) ? x.trait : null,
       assignedProductId: typeof x.assignedProductId === "string" ? x.assignedProductId : null,
       training:
         x.training && typeof x.training.remainingSec === "number" && Number.isFinite(x.training.remainingSec) &&
@@ -261,7 +281,9 @@ function sanitizeEmployees(e: unknown): Employee[] {
         x.training.remainingSec > 0
           ? { remainingSec: x.training.remainingSec, totalSec: x.training.totalSec }
           : null,
-    }));
+    });
+  }
+  return out;
 }
 
 /** Lifetime stats are untrusted: coerce each field, default a zeroed stat block. */
@@ -291,6 +313,7 @@ function sanitizeStats(s: unknown): LifetimeStats {
     openSourceShips: countf(o.openSourceShips),
     safetyShips: countf(o.safetyShips), // old saves → 0 (sanitizer-defaulted; no version bump needed)
     bestRivalsBeaten: countf(o.bestRivalsBeaten), // old saves → 0 (best-so-far starts low and only climbs)
+    stakesRepEarned: countf(o.stakesRepEarned), // old saves → 0 (Frontier Race stakes are opt-in)
   };
 }
 
@@ -360,6 +383,12 @@ interface SavedShape {
   charter: string | null;
   charterLocked: boolean;
   lastCharter: string | null;
+  /** Charter conviction streak (consecutive same-charter ships). v32. */
+  charterStreak: number;
+  /** Frontier Race stake: the rival name wagered against, or null. v32. */
+  rivalStake: string | null;
+  /** Endowment Directive respecs bought (drives the escalating fee). v32. */
+  endowmentRespecs: number;
   legacyInvestments: string[];
   components: ComponentsState;
   rivalOps: GameState["rivalOps"];
@@ -423,6 +452,7 @@ export function serialize(state: GameState): string {
       openSourceShips: state.stats.openSourceShips,
       safetyShips: state.stats.safetyShips,
       bestRivalsBeaten: state.stats.bestRivalsBeaten,
+      stakesRepEarned: state.stats.stakesRepEarned,
     },
     achievements: state.achievements,
     reputation: state.reputation,
@@ -439,6 +469,9 @@ export function serialize(state: GameState): string {
     charter: state.charter,
     charterLocked: state.charterLocked,
     lastCharter: state.lastCharter,
+    charterStreak: state.charterStreak,
+    rivalStake: state.rivalStake,
+    endowmentRespecs: state.endowmentRespecs,
     legacyInvestments: state.legacyInvestments,
     components: state.components,
     rivalOps: state.rivalOps,
@@ -587,7 +620,17 @@ export function deserialize(json: string): GameState {
   // saves that predate each, and sanitize the untrusted nested shapes.
   const products: ProductsState = {
     ...loadedProducts,
-    active: loadedProducts.active.slice(0, MAX_SAVED_PRODUCTS).filter(isWellFormedProduct).map((p) => {
+    // Per-entry filter + clamp, then DEDUPE by id (keep first): two products sharing
+    // an id would collide React keys and make the find()-based actions (retire /
+    // upgrade / flagship) hit only the first — same known-id-once policy as research.
+    active: (() => {
+      const seen = new Set<string>();
+      return loadedProducts.active
+        // Bound the portfolio before any per-entry work: an unbounded COUNT of
+        // well-formed products is a per-tick cost multiplier (see MAX_SAVED_*).
+        .slice(0, MAX_SAVED_PRODUCTS)
+        .filter(isWellFormedProduct)
+        .map((p) => {
       const o = p as ProductState;
       // Clamp every numeric to the SAME range the runtime setters enforce, so a
       // save-edited value can't bypass the in-game clamps (out-of-range price /
@@ -613,8 +656,10 @@ export function deserialize(json: string): GameState {
         // products that were already established, so treat them as fully mature
         // (a large value) rather than penalising a returning player's cash cows.
         ageSec: clampNum(o.ageSec, 0, PROD_CAPS.ageSec, 1e9),
-      };
-    }),
+        };
+      })
+        .filter((p) => (seen.has(p.id) ? false : (seen.add(p.id), true)));
+    })(),
     // Frontier must stay ≥ its start: a negative frontier pins every product's
     // competitiveness at 1 and zeroes staleness churn (a permanent buff exploit).
     frontier: clampNum(loadedProducts.frontier, PRODUCTS.frontierStart, PROD_CAPS.frontier, PRODUCTS.frontierStart),
@@ -687,6 +732,14 @@ export function deserialize(json: string): GameState {
     charter: typeof raw.charter === "string" && CHARTER_IDS.has(raw.charter) ? raw.charter : null,
     charterLocked: raw.charterLocked === true,
     lastCharter: typeof raw.lastCharter === "string" && CHARTER_IDS.has(raw.lastCharter) ? raw.lastCharter : null,
+    // Charter conviction streak: a bounded count (drives the ×1.15→×1.40 ladder).
+    // A crafted streak without a matching charter history just means a bigger bonus
+    // on the NEXT same-charter ship — bounded by the ladder cap, so harmless.
+    charterStreak: Math.max(0, Math.min(1000, safeCount(raw.charterStreak))),
+    // Frontier Race stake: only a KNOWN rival name survives; anything else → null.
+    rivalStake: typeof raw.rivalStake === "string" && RIVAL_NAMES.has(raw.rivalStake) ? raw.rivalStake : null,
+    // Endowment Directive respec count (drives the escalating fee): bounded count.
+    endowmentRespecs: Math.max(0, Math.min(10_000, safeCount(raw.endowmentRespecs))),
     // KNOWN legacy-perk ids, deduped — a dupe would apply the lane bias twice for free
     // (legacyTreeMods sums per entry and never checks prereqs on load).
     legacyInvestments: dedupeKnownIds(raw.legacyInvestments, LEGACY_IDS),
@@ -1075,9 +1128,20 @@ export function migrate(raw: any): SavedShape {
     s = { ...s, version: 31, institute: s.institute ?? [] };
   }
   if (s.version === 31) {
-    // v31 → v32: Institute Fellowships (the Institute's infinite tail). Existing runs
+    // v31 → v32: Frontier Race stakes + charter conviction streak + Endowment
+    // Directive respecs. All default to their identity values (no stake, streak 0,
+    // no respecs), so every existing save loads exactly where it left off.
+    s = { ...s, version: 32, rivalStake: s.rivalStake ?? null, charterStreak: s.charterStreak ?? 0, endowmentRespecs: s.endowmentRespecs ?? 0 };
+  }
+  if (s.version === 32) {
+    // v32 → v33: Institute Fellowships (the Institute's infinite tail). Existing runs
     // have endowed no chairs; the wings they own are untouched.
-    s = { ...s, version: 32, instituteFellowships: s.instituteFellowships ?? 0 };
+    //
+    // NOTE: this landed as v31 → v32 on its own branch, but main had already claimed
+    // v32 for the fields above. Renumbered on merge so the chain stays strictly
+    // sequential — collapsing the two would have skipped one set of fields entirely
+    // for every save that has already migrated past it.
+    s = { ...s, version: 33, instituteFellowships: s.instituteFellowships ?? 0 };
   }
   return s as SavedShape;
 }

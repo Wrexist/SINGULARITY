@@ -25,6 +25,7 @@ export function earnedReputation(state: GameState): number {
   pts += contractsReputation(state); // completed contracts grant Reputation
   pts += state.stats.openSourceShips * shipModes.open_source.reputationBonus; // open-source goodwill
   pts += state.stats.safetyShips * R.perSafetyShip; // safety-committed ships earn standing (B1)
+  pts += state.stats.stakesRepEarned; // Frontier Race stakes won (depth batch)
   return pts;
 }
 
@@ -133,6 +134,40 @@ export function canPickDirective(state: GameState, id: string): boolean {
 export function pickEndowmentDirective(state: GameState, id: string): GameState {
   if (!canPickDirective(state, id)) return state;
   return { ...state, endowmentDirectives: [...state.endowmentDirectives, id] };
+}
+
+// ---------- Directive respec (depth batch 2026-08) ----------
+
+/** Reputation fee to refund ONE claimed directive right now (escalates per respec,
+ *  so a rebuild stays deliberate rather than a cheap re-roll). */
+export function directiveRespecCost(state: GameState): number {
+  return Math.ceil(
+    E.directives.respecBaseCost * Math.pow(E.directives.respecGrowth, Math.max(0, state.endowmentRespecs)),
+  );
+}
+
+/** Can the player respec? Needs owned directives and the fee available. */
+export function canRespecDirective(state: GameState): boolean {
+  if (!E.enabled || state.endowmentDirectives.length === 0) return false;
+  return reputationAvailable(state) >= directiveRespecCost(state);
+}
+
+/** Refund one instance of the given directive (last matching pick): the freed tier
+ *  pick becomes choosable again (directivePicksAvailable rises), the fee is charged
+ *  via reputation.spent, and the respec count escalates the next fee. Pure; no-op if
+ *  not allowed or the id isn't among the picks. */
+export function respecDirective(state: GameState, id: string): GameState {
+  if (!canRespecDirective(state)) return state;
+  const idx = state.endowmentDirectives.lastIndexOf(id);
+  if (idx === -1) return state;
+  const directives = [...state.endowmentDirectives];
+  directives.splice(idx, 1);
+  return {
+    ...state,
+    endowmentDirectives: directives,
+    endowmentRespecs: state.endowmentRespecs + 1,
+    reputation: { ...state.reputation, spent: state.reputation.spent + directiveRespecCost(state) },
+  };
 }
 
 /** Owned directive lane biases as multipliers (all 1.0 with nothing chosen). Each

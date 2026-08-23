@@ -1580,8 +1580,12 @@ export const balance = {
     exponent: 0.5,
     /** Depth B1 — shipping with the SAME charter as the previous run multiplies the
      *  Legacy banked by this (conviction / double-down). 1 = off. Charters don't exist
-     *  at the first ship and the sim never sets one, so this is curve-safe. */
+     *  at the first ship and the sim never sets one, so this is curve-safe.
+     *  Depth batch 2026-08: conviction now ESCALATES with the streak of consecutive
+     *  same-charter ships (index = streak − 2, since a streak needs ≥2 to count):
+     *  ×1.15 → ×1.25 → ×1.40, capped at the last rung. */
     charterConvictionBonus: 1.15,
+    charterConvictionLadder: [1.15, 1.25, 1.4],
     /** Each Legacy Weight grants this much permanent global production. Halved in the
      *  2026-06-29 difficulty retune so the post-first-ship META-loop doesn't snowball
      *  into sub-minute generations — re-beating the game in minutes was the complaint. */

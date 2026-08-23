@@ -132,6 +132,18 @@ export interface GameState {
   /** Depth B1 — the charter of the PREVIOUS run (set at prestige), so shipping the
    *  same charter twice running grants a conviction bonus. Persists across prestige. */
   lastCharter: string | null;
+  /** Charter conviction STREAK (depth batch 2026-08): consecutive ships ending with
+   *  this one that used the SAME charter (0 = no charter / a fresh pick). Drives the
+   *  escalating conviction ladder (×1.15 → ×1.25 → ×1.40). Persists across prestige.
+   *  A sim/charter-less run stays 0 → identity. */
+  charterStreak: number;
+  /** Frontier Race stakes (depth batch 2026-08): the named rival you've wagered you'll
+   *  outrank by your NEXT ship, or null. One at a time; resolved at prestige for
+   *  Reputation (a meta-currency the sim never earns or spends) → curve-safe. */
+  rivalStake: string | null;
+  /** Endowment Directive respecs bought (depth batch 2026-08): drives the escalating
+   *  respec fee. Deep-endgame only (requires owned directives); persists across ships. */
+  endowmentRespecs: number;
   /** Explicit charter lock (owner UX fix): true once the player locks their pick
    *  (or buys research, which locks implicitly). Resets each prestige. */
   charterLocked: boolean;
@@ -256,6 +268,9 @@ export interface LifetimeStats {
   /** Best number of named rivals ever outranked (monotonic). Drives Codex unlocks so
    *  a collected entry can't re-lock when live rank slips (live rivalsBeaten can fall). */
   bestRivalsBeaten: number;
+  /** Frontier Race stakes (depth batch 2026-08): cumulative Reputation paid out by
+   *  WON stakes. Added into earnedReputation; the sim never places one → stays 0. */
+  stakesRepEarned: number;
 }
 
 /** An individual employee. roleId names a job (balance.staff.roles); the person's

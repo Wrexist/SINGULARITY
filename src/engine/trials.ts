@@ -1,4 +1,4 @@
-import { trials as T } from "./balance/trials";
+import { trials as T, CONDITION_THRESHOLDS } from "./balance/trials";
 import { balance } from "./balance/config";
 import type { GameState } from "./types";
 
@@ -56,13 +56,22 @@ export function abandonTrial(state: GameState): GameState {
 }
 
 /** Is the active Trial's run CONDITION (if any) currently satisfied? Handicap-only
- *  Trials have no condition and are always "met". "solo" = an empty staff roster. */
+ *  Trials have no condition and are always "met".
+ *  - "solo"    → an empty staff roster.
+ *  - "hot"     → regulatory Heat at/above the threshold (you shipped dangerously).
+ *  - "neutral" → alignment inside the faction band (you never picked a side). */
 export function trialConditionMet(state: GameState): boolean {
   const id = state.activeTrial;
   if (!id) return false;
   const d = BY_ID.get(id);
   if (!d || !d.condition) return true; // no condition → nothing to fail
   if (d.condition === "solo") return state.employees.length === 0;
+  if (d.condition === "hot") return state.heat >= CONDITION_THRESHOLDS.hot;
+  if (d.condition === "neutral") {
+    // Neutral means BELOW the commit threshold on BOTH sides — exactly the faction
+    // band, so the Trial ends the moment you'd flip a faction event pool open.
+    return Math.abs(state.alignment) < CONDITION_THRESHOLDS.neutralBand;
+  }
   return true;
 }
 

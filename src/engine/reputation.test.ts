@@ -3,6 +3,7 @@ import {
   earnedReputation, reputationAvailable, canBuyReputationPerk, buyReputationPerk, reputationMods, reputationBalance,
   endowmentUnlocked, endowmentCost, canBuyEndowment, buyEndowment,
   directiveTiersEarned, directivePicksAvailable, canPickDirective, pickEndowmentDirective, endowmentDirectiveMods,
+  directiveRespecCost, canRespecDirective, respecDirective,
 } from "./reputation";
 import { derive } from "./derive";
 import { prestige } from "./prestige";
@@ -234,5 +235,51 @@ describe("endowment directives (endgame lane doctrines)", () => {
     crafted.endowmentDirectives = ["dir_compute", "dir_money", "bogus_id"]; // claims 3
     const fixed = deserialize(JSON.stringify(crafted));
     expect(fixed.endowmentDirectives).toEqual(["dir_compute"]); // capped to 1 known id
+  });
+
+  describe("directive respec (depth batch)", () => {
+    it("charges an escalating fee and frees the pick for a re-choose", () => {
+      const D = reputationBalance.endowment.directives;
+      let s = atLevel(INTERVAL * 2); // two picks, both claimed below
+      s = pickEndowmentDirective(s, "dir_compute");
+      s = pickEndowmentDirective(s, "dir_money");
+
+      const cost1 = directiveRespecCost(s);
+      expect(cost1).toBe(D.respecBaseCost);
+      expect(canRespecDirective(s)).toBe(true); // fresh deep-endgame lab can afford one
+
+      const after1 = respecDirective(s, "dir_compute");
+      expect(after1.endowmentDirectives).toEqual(["dir_money"]); // refunded
+      expect(after1.endowmentRespecs).toBe(1);
+      expect(directivePicksAvailable(after1)).toBe(1); // freed for a re-choose
+      expect(after1.reputation.spent).toBe(cost1);
+
+      // The next respec is pricier (escalating).
+      expect(directiveRespecCost(after1)).toBeGreaterThan(cost1);
+    });
+
+    it("is gated: needs owned directives, affordability, and a matching id", () => {
+      const broke = atLevel(INTERVAL);
+      expect(canRespecDirective(broke)).toBe(false); // nothing owned to refund
+      const staked = pickEndowmentDirective(atLevel(INTERVAL), "dir_data");
+      const poor = { ...staked, reputation: { ...staked.reputation, spent: earnedReputation(staked) } }; // 0 available
+      expect(canRespecDirective(poor)).toBe(false);
+      // Affordable but unknown id → same-ref no-op.
+      expect(respecDirective(staked, "not_a_directive")).toBe(staked);
+    });
+
+    it("respec count persists across ships and round-trips (sanitized)", () => {
+      let s = atLevel(INTERVAL);
+      s = pickEndowmentDirective(s, "dir_compute");
+      s = respecDirective(s, "dir_compute");
+      s.research = [balance.prestige.capabilityResearch];
+      s.lifetimeMoney = Big.of(1e6);
+      expect(prestige(s).endowmentRespecs).toBe(1); // survives the ship
+      expect(deserialize(serialize(s)).endowmentRespecs).toBe(1);
+      // Crafted negative/absurd counts are clamped.
+      const raw = JSON.parse(serialize(s));
+      raw.endowmentRespecs = -5;
+      expect(deserialize(JSON.stringify(raw)).endowmentRespecs).toBe(0);
+    });
   });
 });
