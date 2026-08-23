@@ -144,11 +144,20 @@ export function StatsPanel({ game, derived }: Props) {
             <div className="align-center" />
             <div className="align-marker" style={{ left: `${((game.alignment + 1) / 2) * 100}%` }} />
           </div>
-          <div className="align-ends">
-            <span>Doomer</span>
-            <span className="align-now">{alignmentLabel(game.alignment)}</span>
-            <span>Accel</span>
-          </div>
+          {(() => {
+            // At a pole the stance label IS the pole label — highlight the end
+            // instead of printing "Doomer … Doomer" twice (red-team pass).
+            const label = alignmentLabel(game.alignment);
+            const atDoomer = label === "Doomer";
+            const atAccel = label === "Accelerationist";
+            return (
+              <div className="align-ends">
+                <span className={atDoomer ? "align-now" : undefined}>Doomer</span>
+                <span className="align-now">{atDoomer || atAccel ? "" : label}</span>
+                <span className={atAccel ? "align-now" : undefined}>Accel</span>
+              </div>
+            );
+          })()}
         </div>
       )}
       <div className="stats-subhead">Now</div>
