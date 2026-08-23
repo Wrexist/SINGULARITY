@@ -122,7 +122,7 @@ const UPGRADE_MAX = new Map(balance.upgrades.map((u) => [u.id, u.max] as const))
 function sanitizeUpgrades(u: unknown): Record<string, number> {
   if (!u || typeof u !== "object") return {};
   const out: Record<string, number> = {};
-  for (const [k, v] of Object.entries(u as Record<string, unknown>)) {
+  for (const [k, v] of Object.entries(u as Record<string, unknown>).slice(0, MAX_SAVED_IDS)) {
     if (k === "__proto__" || k === "constructor" || k === "prototype") continue;
     if (typeof v === "number" && Number.isFinite(v) && v > 0) {
       const max = UPGRADE_MAX.get(k);
@@ -197,6 +197,24 @@ function sanitizeChannelMix(m: unknown): Record<string, number> {
   return Object.keys(out).length ? out : { ads: 1 };
 }
 
+/**
+ * Hard ceilings on how many entries a LOADED collection may contain.
+ *
+ * Every entry is already validated one-by-one, but without a length cap a pasted save
+ * can still brick the install: per-tick cost is linear in portfolio/roster size, so a
+ * few thousand well-formed products push one tick past the tick interval, and the next
+ * autosave writes the bloat straight back — every future launch is dead on arrival and
+ * hard reset is the only escape. `modifiers` already had a cap for exactly this reason
+ * (MAX_ACTIVE_MODIFIERS / the 20-entry slice); these generalise it to the rest.
+ *
+ * All are far above any reachable legit value (portfolio caps out around 5 slots, a
+ * roster in the dozens, ~52 achievements, ~21 upgrade ids), so honest saves never
+ * notice — only crafted ones are truncated.
+ */
+const MAX_SAVED_PRODUCTS = 64;
+const MAX_SAVED_EMPLOYEES = 512;
+const MAX_SAVED_IDS = 512;
+
 /** Drafts are untrusted; keep only well-formed entries. Quality is clamped to the
  *  same product cap loaded products get — an unclamped draft launches into a live
  *  product whose economics (mrr/serve) compute from quality, so a crafted 1e300
@@ -204,6 +222,7 @@ function sanitizeChannelMix(m: unknown): Record<string, number> {
 function sanitizeDrafts(d: unknown): DraftModel[] {
   if (!Array.isArray(d)) return [];
   return d
+    .slice(0, PRODUCTS.maxDrafts)
     .filter(
       (x): x is DraftModel =>
         !!x &&
@@ -239,6 +258,9 @@ function sanitizeEmployees(e: unknown): Employee[] {
   const seen = new Set<string>();
   const out: Employee[] = [];
   for (const x of e) {
+    // Bound the roster: entries are validated one-by-one below, but an unbounded
+    // COUNT of well-formed people is still linear per-tick cost (see MAX_SAVED_*).
+    if (out.length >= MAX_SAVED_EMPLOYEES) break;
     if (
       !x || typeof x.id !== "string" || typeof x.name !== "string" ||
       typeof x.roleId !== "string" || !ROLE_IDS.has(x.roleId) ||
@@ -353,6 +375,8 @@ interface SavedShape {
   doctrines: string[];
   /** The Institute — owned wing ids (known-id filtered; Grants derive from ascensions). v31. */
   institute: string[];
+  /** Institute Fellowships — endowed chairs, reconciled against leftover Grants. v32. */
+  instituteFellowships: number;
   /** Flagship: designated product id (or null) + cross-ship tenure. Migrated at v27. */
   flagship: { productId: string | null; tenure: number };
   contracts: { completed: string[] };
@@ -439,6 +463,7 @@ export function serialize(state: GameState): string {
     paradigms: state.paradigms,
     doctrines: state.doctrines,
     institute: state.institute,
+    instituteFellowships: state.instituteFellowships,
     flagship: state.flagship,
     contracts: state.contracts,
     charter: state.charter,
@@ -569,7 +594,7 @@ export function deserialize(json: string): GameState {
   // Sanitize the trophy-source witnesses FIRST: components legitimacy (below)
   // is checked against these, so a crafted dupe can't smuggle a trophy in.
   const achievements = Array.isArray(raw.achievements)
-    ? raw.achievements.filter((a): a is string => typeof a === "string")
+    ? raw.achievements.filter((a): a is string => typeof a === "string").slice(0, MAX_SAVED_IDS)
     : [];
   const contracts = sanitizeContracts(raw.contracts);
   // Endgame Endowment level: a finite non-negative int, clamped to the safety bound so
@@ -583,6 +608,13 @@ export function deserialize(json: string): GameState {
   // Sanitize stats once: ascensions drives the Institute Grant budget (below) and
   // totalShips caps the ship-log — both previously recomputed sanitizeStats redundantly.
   const stats = sanitizeStats(raw.stats);
+  // Wings first, then chairs out of whatever Grant budget the wings left — both
+  // reconciled against ascensions, so a crafted save can't bank free permanent output.
+  const instituteWings = sanitizeInstitute(raw.institute, stats.ascensions);
+  const institute = {
+    wings: instituteWings.wings,
+    fellowships: sanitizeFellowships(raw.instituteFellowships, instituteWings.wings, instituteWings.budgetLeft),
+  };
   const loadedProducts = isWellFormedProducts(raw.products) ? raw.products : fresh.products;
   // `sold` was added after v6 shipped, `drafts`/`upgrade` in v7; default them for
   // saves that predate each, and sanitize the untrusted nested shapes.
@@ -594,6 +626,9 @@ export function deserialize(json: string): GameState {
     active: (() => {
       const seen = new Set<string>();
       return loadedProducts.active
+        // Bound the portfolio before any per-entry work: an unbounded COUNT of
+        // well-formed products is a per-tick cost multiplier (see MAX_SAVED_*).
+        .slice(0, MAX_SAVED_PRODUCTS)
         .filter(isWellFormedProduct)
         .map((p) => {
       const o = p as ProductState;
@@ -631,7 +666,7 @@ export function deserialize(json: string): GameState {
     drafts: sanitizeDrafts((loadedProducts as ProductsState).drafts),
     sold: typeof loadedProducts.sold === "number" && Number.isFinite(loadedProducts.sold) && loadedProducts.sold >= 0 ? Math.floor(loadedProducts.sold) : 0,
     milestones: Array.isArray((loadedProducts as ProductsState).milestones)
-      ? (loadedProducts as ProductsState).milestones.filter((m): m is string => typeof m === "string")
+      ? (loadedProducts as ProductsState).milestones.filter((m): m is string => typeof m === "string").slice(0, MAX_SAVED_IDS)
       : [],
   };
   return {
@@ -676,7 +711,8 @@ export function deserialize(json: string): GameState {
     // challenges — its owned wings must reconcile against their earning source (Grants
     // minted by ascensions), not just be known-id filtered. Otherwise a crafted save
     // with every wing and 0 ascensions banks a free ×7 to all output.
-    institute: sanitizeInstitute(raw.institute, stats.ascensions),
+    institute: institute.wings,
+    instituteFellowships: institute.fellowships,
     endowmentDirectives: sanitizeDirectives(raw.endowmentDirectives, repEndowment),
     // Prestige Trials: the active id must be a known Trial (else no active run), and
     // completed ids are filtered to known, deduped (the reward folds per unique id).
@@ -881,10 +917,10 @@ function sanitizeReputation(r: unknown, endowmentLevel = 0, paradigmOwed = 0): {
  *  and drop any wing that's over-budget or has a dropped prerequisite. "Filter, don't
  *  wipe": a legitimate owner keeps everything; a crafted all-wings/0-ascension save keeps
  *  nothing. */
-function sanitizeInstitute(raw: unknown, ascensions: number): string[] {
-  const claimed = new Set(dedupeKnownIds(raw, INSTITUTE_IDS));
-  if (claimed.size === 0) return [];
+function sanitizeInstitute(raw: unknown, ascensions: number): { wings: string[]; budgetLeft: number } {
   let budget = Math.max(0, Math.floor(ascensions)) * INSTITUTE.grantsPerAscension;
+  const claimed = new Set(dedupeKnownIds(raw, INSTITUTE_IDS));
+  if (claimed.size === 0) return { wings: [], budgetLeft: budget };
   const kept: string[] = [];
   const keptSet = new Set<string>();
   for (const p of INSTITUTE.perks) {
@@ -895,7 +931,31 @@ function sanitizeInstitute(raw: unknown, ascensions: number): string[] {
     kept.push(p.id);
     keptSet.add(p.id);
   }
-  return kept;
+  return { wings: kept, budgetLeft: budget };
+}
+
+/**
+ * Endowed Fellowship chairs, reconciled against the Grants actually left after the
+ * wings are paid for. Same anti-cheat policy as the perk tree / Endowment / wings: a
+ * crafted count is clamped to what the player's ascensions could legitimately fund,
+ * and chairs are unreachable at all until every wing is founded.
+ */
+function sanitizeFellowships(raw: unknown, wings: string[], budgetLeft: number): number {
+  const claimed = safeCount(raw);
+  if (claimed <= 0) return 0;
+  if (!INSTITUTE.fellowships.enabled) return 0;
+  // Gate: every wing founded. A save claiming chairs without the full tree is bogus.
+  if (!INSTITUTE.perks.every((p) => wings.includes(p.id))) return 0;
+  const { baseCost, growth, maxLevel } = INSTITUTE.fellowships;
+  let budget = budgetLeft;
+  let n = 0;
+  while (n < Math.min(claimed, maxLevel)) {
+    const cost = Math.ceil(baseCost * Math.pow(growth, n));
+    if (budget < cost) break;
+    budget -= cost;
+    n += 1;
+  }
+  return n;
 }
 
 /**
@@ -903,7 +963,21 @@ function sanitizeInstitute(raw: unknown, ascensions: number): string[] {
  * step here. v0 (pre-versioning) → v1 is the seed pattern.
  */
 export function migrate(raw: any): SavedShape {
-  let s = raw;
+  // The migration chain is a series of `if (s.version === N)` steps, so both of these
+  // had to be normalised BEFORE it runs:
+  //
+  // 1. A non-object top level. `JSON.parse("null")` is `null`, and reading `.version`
+  //    off it threw — and a throw is the ONE true wipe path in the app (the store
+  //    catches it, stashes the bytes and starts fresh). "Filter, don't wipe" means a
+  //    save this trivially malformed must degrade to an empty object, not a wipe.
+  // 2. A version that matches no branch — `null`, `"7"` (string), `3.5`, `-5`, `NaN`.
+  //    Those slipped through the entire chain untouched and were then stamped as
+  //    current on the next serialize, silently skipping every migration. A string
+  //    `"7"` in particular kept a key that v7→v8 exists to drop, forever.
+  let s: any = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+  if (!Number.isInteger(s.version) || s.version < 0) {
+    s = { ...s, version: Number.isInteger(Number(s.version)) && Number(s.version) >= 0 ? Number(s.version) : 0 };
+  }
   if (s.version === undefined || s.version === 0) {
     // v0 → v1: introduce the version field and lifetimeMoney if absent.
     s = { ...s, version: 1, lifetimeMoney: s.lifetimeMoney ?? s.resources?.money ?? "0" };
@@ -1058,6 +1132,16 @@ export function migrate(raw: any): SavedShape {
     // Directive respecs. All default to their identity values (no stake, streak 0,
     // no respecs), so every existing save loads exactly where it left off.
     s = { ...s, version: 32, rivalStake: s.rivalStake ?? null, charterStreak: s.charterStreak ?? 0, endowmentRespecs: s.endowmentRespecs ?? 0 };
+  }
+  if (s.version === 32) {
+    // v32 → v33: Institute Fellowships (the Institute's infinite tail). Existing runs
+    // have endowed no chairs; the wings they own are untouched.
+    //
+    // NOTE: this landed as v31 → v32 on its own branch, but main had already claimed
+    // v32 for the fields above. Renumbered on merge so the chain stays strictly
+    // sequential — collapsing the two would have skipped one set of fields entirely
+    // for every save that has already migrated past it.
+    s = { ...s, version: 33, instituteFellowships: s.instituteFellowships ?? 0 };
   }
   return s as SavedShape;
 }

@@ -6,7 +6,7 @@
  *
  * Parametric (dots + text), no image assets, one canvas, rAF sleeps when idle.
  */
-import { useSettings } from "./settings";
+import { motionReduced } from "./settings";
 
 export interface Particle {
   x: number; y: number; vx: number; vy: number;
@@ -26,7 +26,10 @@ const PALETTE = ["#ff385c", "#2f7bf6", "#9b51e0", "#16b364", "#ff9f0a"];
  *  pushing would leak a particle per tap for the whole session. Read the setting
  *  store directly (no per-emit DOM query; bursts fire at tap frequency). */
 function fxDisabled(): boolean {
-  return useSettings.getState().reducedMotion;
+  // ORs the in-app toggle with the LIVE OS `prefers-reduced-motion` (see settings.ts).
+  // Reading only the stored setting meant turning Reduce Motion on in iOS after install
+  // left every burst/floater/punch firing — a CLAUDE.md hard-rule violation.
+  return motionReduced();
 }
 
 /** Radial spray of particles at a screen point. */

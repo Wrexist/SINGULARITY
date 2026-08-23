@@ -31,11 +31,10 @@ export function Onboarding({ onDone }: Props) {
             </div>
           ))}
         </div>
-        <p className="onboard-foot">
-          <b>No manual required:</b> three glowing FIRST STEPS are waiting in the Lab —
-          do them and you know the whole loop. As the lab grows, new tabs appear and
-          badges flag anything that needs you.
-        </p>
+        {/* The old foot paragraph explained the FIRST STEPS checklist (which explains
+            itself, in place) and pre-taught tabs and badges the player hasn't seen yet.
+            Deleted in the 2026-08 noise sweep: the welcome screen's job is the three
+            resources and one loop, then get out of the way. */}
         <button className="btn btn-primary" onClick={onDone}>
           Take the first step →
         </button>

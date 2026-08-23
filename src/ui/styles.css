@@ -148,7 +148,9 @@ svg { vertical-align: middle; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: calc(18px + env(safe-area-inset-top)) 4px 14px;
+  /* No horizontal padding — `.app` already owns the 16px gutter. Adding 4px here put
+     the brand on a different left edge from every card below it. (2026-08 gutter sweep.) */
+  padding: calc(18px + env(safe-area-inset-top)) 0 14px;
 }
 .brand {
   display: flex;
@@ -605,6 +607,13 @@ svg { vertical-align: middle; }
   0%, 100% { box-shadow: 0 0 14px -3px rgba(47, 123, 246, 0.4); }
   50% { box-shadow: 0 0 22px -1px rgba(47, 123, 246, 0.6); }
 }
+/* The "Charging…" cold-start state (TrainingDock) applied this class but nothing
+   defined it, so the first-run charge looked identical to an active run. A calmer,
+   dimmer fill reads as "not started yet" without adding another animation. */
+.progress.charging .progress-fill {
+  background: linear-gradient(90deg, rgba(47, 123, 246, 0.45), rgba(106, 168, 255, 0.45));
+  box-shadow: none;
+}
 .progress-label {
   position: absolute;
   inset: 0;
@@ -614,7 +623,12 @@ svg { vertical-align: middle; }
   font-size: 12px;
   font-weight: 700;
   color: #fff;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  /* The label is centred over the WHOLE track, but the track is a 6%-black (i.e.
+     near-white) surface — so at any fill under ~50% this was white-on-white at about
+     1.2:1. That is the Training Run readout, the most-looked-at control in the game.
+     A soft dark halo gives the glyphs their own local contrast, so the label stays
+     legible over the pale track AND over the saturated fill, at every percentage. */
+  text-shadow: 0 0 3px rgba(9, 12, 20, 0.55), 0 1px 2px rgba(9, 12, 20, 0.45);
   letter-spacing: 0.01em;
 }
 
@@ -825,7 +839,7 @@ svg { vertical-align: middle; }
 .card-hero .card-name, .node-hero .node-name { font-size: 15.5px; }
 .node-hero:not(.affordable) {
   border-color: color-mix(in srgb, var(--data) 32%, var(--glass-edge));
-  background: linear-gradient(135deg, rgba(124, 92, 255, 0.08), var(--glass-strong));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, transparent), var(--glass-strong));
 }
 
 /* Upgrade category sections (Hardware / Boosts / Automation) */
@@ -1029,14 +1043,14 @@ svg { vertical-align: middle; }
           mask: radial-gradient(farthest-side, #0000 calc(100% - 4px), #000 calc(100% - 3.5px));
 }
 .icon-ring .node-ic, .icon-ring .card-ic { width: 42px; height: 42px; }
-/* "Ready to buy": a soft breathing halo on the completed ring — the call-to-action the
-   old pulsing bar used to carry, now on the ring itself. */
+/* "Ready to buy": a STATIC halo on the completed ring. This used to also breathe
+   (ring-ready, 1.9s infinite) on top of the card's own afford-breathe (2.6s infinite)
+   — two out-of-phase loops on the same element, times every affordable card on screen.
+   The halo alone carries the affordance; the card still breathes. (2026-08 noise sweep.) */
 .node.affordable .icon-ring::after, .card.affordable .icon-ring::after {
   content: ""; position: absolute; inset: 0; border-radius: 50%;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring-color, var(--accent)) 24%, transparent);
-  animation: ring-ready 1.9s ease-in-out infinite;
 }
-@keyframes ring-ready { 0%, 100% { opacity: 0.4; transform: scale(1); } 50% { opacity: 1; transform: scale(1.02); } }
 /* Hero focal card: a % badge tucked at the ring's foot, like a manufacturing progress
    dial. Only the recommended item shows it, so the lists themselves stay calm. */
 .icon-ring-pct {
@@ -1054,7 +1068,7 @@ svg { vertical-align: middle; }
 .card.maxed .icon-ring::before { display: none; }
 .node.locked { opacity: 0.5; cursor: not-allowed; }
 .node.excluded { opacity: 0.42; cursor: not-allowed; }
-.node-tag.excl { color: #7c5cff; font-weight: 800; }
+.node-tag.excl { color: var(--accent); font-weight: 800; }
 .node:active { transform: scale(0.97); }
 .node.available:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 .node.affordable {
@@ -1064,7 +1078,7 @@ svg { vertical-align: middle; }
 }
 @keyframes node-breathe {
   0%, 100% { box-shadow: 0 1px 3px rgba(16, 24, 40, 0.04); }
-  50% { box-shadow: 0 0 0 4px rgba(124, 92, 255, 0.13), 0 6px 16px -8px rgba(124, 92, 255, 0.5); }
+  50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 13%, transparent), 0 6px 16px -8px color-mix(in srgb, var(--accent) 50%, transparent); }
 }
 .node.owned {
   /* A node that just completed sweeps a green fill — research feels like progress. */
@@ -1242,12 +1256,12 @@ svg { vertical-align: middle; }
 }
 .prestige-blurb { font-size: 13px; color: var(--ink-2); margin: 0 0 14px; line-height: 1.45; }
 /* Ship-timing guidance: weights-now + progress to the next whole weight. */
-.prestige-timing { margin: 0 0 14px; padding: 12px 14px; border-radius: 14px; background: rgba(124, 92, 255, 0.06); border: 1px solid rgba(124, 92, 255, 0.14); }
+.prestige-timing { margin: 0 0 14px; padding: 12px 14px; border-radius: 14px; background: color-mix(in srgb, var(--accent) 6%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 14%, transparent); }
 .prestige-timing-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 13px; color: var(--ink); }
 .prestige-timing-row b { color: #5a43c8; }
 .prestige-timing-next { font-size: 11.5px; font-weight: 750; color: var(--ink-3); white-space: nowrap; }
-.prestige-timing-bar { height: 6px; border-radius: 999px; background: rgba(124, 92, 255, 0.14); margin: 8px 0 6px; overflow: hidden; }
-.prestige-timing-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #7c5cff, #9b51e0); transition: width 0.4s var(--ease-out); }
+.prestige-timing-bar { height: 6px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 14%, transparent); margin: 8px 0 6px; overflow: hidden; }
+.prestige-timing-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), #9b51e0); transition: width 0.4s var(--ease-out); }
 .prestige-timing-note { margin: 0; font-size: 11.5px; color: var(--ink-3); line-height: 1.4; }
 .prestige-stats {
   display: flex;
@@ -1456,7 +1470,9 @@ svg { vertical-align: middle; }
    layout below. One row only — overflow scrolls sideways instead of wrapping. */
 .modbar {
   display: flex; flex-wrap: nowrap; align-items: center; gap: 6px;
-  height: 24px; padding: 0 18px; margin-top: -4px; margin-bottom: 4px;
+  /* Was `padding: 0 18px` on top of the app's 16px gutter — modifier chips sat at 34px
+     while every card sat at 16px. One gutter. */
+  height: 24px; padding: 0; margin-top: -4px; margin-bottom: 4px;
   overflow-x: auto; scrollbar-width: none;
 }
 .modbar::-webkit-scrollbar { display: none; }
@@ -1634,7 +1650,9 @@ button.modchip.workable:active { transform: scale(0.94); }
 
 /* ---------- First steps (interactive onboarding) ---------- */
 .firststeps {
-  margin: 10px 12px 0;
+  /* Was `margin: 10px 12px 0` — the first-session coach card was inset 12px from the
+     hall it sits directly under, on the very first screen a new player sees. */
+  margin: 10px 0 0;
   padding: 10px 12px;
   border-radius: 14px;
   background: var(--card, rgba(255, 255, 255, 0.7));
@@ -2010,7 +2028,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 }
 /* apple-design §1 (Response): instant press feedback on the tappable wayfinder chip. */
 .advisor-chip:active { transform: scale(0.985); }
-.advisor-mark { color: var(--accent, #7c5cff); font-size: 11px; line-height: 1; }
+.advisor-mark { color: var(--accent); font-size: 11px; line-height: 1; }
 .advisor-text { flex: 1; min-width: 0; font-size: clamp(12px, 3.2vw, 13px); font-weight: 650; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .advisor-go { color: var(--ink-3); font-size: 16px; font-weight: 800; line-height: 1; }
 
@@ -2029,41 +2047,46 @@ button.modchip.workable:active { transform: scale(0.94); }
 .goal-strip:active { transform: scale(0.985); }
 .goal-fill {
   position: absolute; inset: 0 auto 0 0; pointer-events: none;
-  background: color-mix(in srgb, var(--accent, #7c5cff) 13%, transparent);
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
   transition: width 0.5s var(--ease-out);
 }
-.goal-ic { position: relative; display: inline-flex; color: var(--accent, #7c5cff); opacity: 0.85; }
+.goal-ic { position: relative; display: inline-flex; color: var(--accent); opacity: 0.85; }
 .goal-text {
   position: relative; flex: 1; min-width: 0;
   font-size: clamp(11.5px, 3vw, 12.5px); font-weight: 600; color: var(--ink-2);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .goal-text b { font-weight: 800; color: var(--ink); }
-.goal-pct { position: relative; font-size: 12px; font-weight: 800; color: var(--accent, #7c5cff); font-variant-numeric: tabular-nums; }
+.goal-pct { position: relative; font-size: 12px; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
 
 /* The notice slot — ONE fixed-height row that always exists, so the strips
    inside (daily boost / advisor nudge / goal carrot) swapping in and out can
    never shift the section tabs, the hall, or any button below. */
 .notice-slot { height: 44px; }
 .notice-slot > * { height: 100%; }
+/* While FIRST STEPS owns the screen the slot is suppressed by design (App.tsx), so
+   nothing can ever appear in it — reserving 44px + a 16px stage gap there only bought
+   dead space at the top of the very first screen a new player sees. The anti-shift
+   reservation still applies everywhere it can actually shift. */
+.notice-slot.empty { display: none; }
 
 /* Daily Boost banner — celebratory, never a countdown (honest re-engagement) */
 .daily-bar {
   display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
   padding: 0 13px; border-radius: 12px; cursor: pointer;
-  background: linear-gradient(100deg, rgba(124, 92, 255, 0.16), rgba(22, 179, 100, 0.12));
-  border: 1px solid rgba(124, 92, 255, 0.35);
+  background: linear-gradient(100deg, color-mix(in srgb, var(--accent) 16%, transparent), rgba(22, 179, 100, 0.12));
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
   box-shadow: var(--shadow-sm);
   animation: daily-glow 2.4s ease-in-out infinite;
 }
 @keyframes daily-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(124, 92, 255, 0); }
-  50% { box-shadow: 0 0 0 4px rgba(124, 92, 255, 0.14); }
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent); }
+  50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent); }
 }
-.daily-ic { display: inline-flex; align-items: center; color: #7c5cff; }
+.daily-ic { display: inline-flex; align-items: center; color: var(--accent); }
 .daily-text { flex: 1; min-width: 0; font-size: clamp(12px, 3.2vw, 13px); font-weight: 650; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .daily-text b { font-weight: 800; }
-.daily-go { font-size: 12.5px; font-weight: 800; color: #fff; background: #7c5cff; border-radius: 999px; padding: 4px 12px; white-space: nowrap; }
+.daily-go { font-size: 12.5px; font-weight: 800; color: #fff; background: var(--accent); border-radius: 999px; padding: 4px 12px; white-space: nowrap; }
 
 /* Buy-quantity selector (×1 / ×10 / Max) for the Hardware panel. */
 .buy-qty { display: flex; gap: 6px; margin: 2px 0 4px; }
@@ -2106,13 +2129,13 @@ button.modchip.workable:active { transform: scale(0.94); }
   background: #fff; border: 1px solid rgba(17, 24, 39, 0.07); border-radius: 14px;
   padding: 13px 14px; box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05);
 }
-.charter-card.on { border-color: rgba(124, 92, 255, 0.55); background: linear-gradient(100deg, rgba(124, 92, 255, 0.08), rgba(255, 255, 255, 0.6)); }
+.charter-card.on { border-color: color-mix(in srgb, var(--accent) 55%, transparent); background: linear-gradient(100deg, color-mix(in srgb, var(--accent) 8%, transparent), rgba(255, 255, 255, 0.6)); }
 .charter-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .charter-name { font-weight: 800; font-size: 14px; color: var(--ink); }
-.charter-pick { color: #7c5cff; }
+.charter-pick { color: var(--accent); }
 .charter-conviction { color: #16b364; font-size: 11.5px; font-weight: 800; }
 .charter-blurb { font-size: 12px; color: var(--ink-2); }
-.charter-effects { font-size: 11.5px; font-weight: 700; color: #7c5cff; }
+.charter-effects { font-size: 11.5px; font-weight: 700; color: var(--accent); }
 .charter-locked { font-size: 12.5px; color: var(--ink-2); }
 .charter-locked-note { color: var(--ink-3); }
 
@@ -2125,12 +2148,12 @@ button.modchip.workable:active { transform: scale(0.94); }
   background: #fff; border: 1px solid rgba(17, 24, 39, 0.07); border-radius: 12px; padding: 10px 12px;
 }
 .legacy-perk:disabled { cursor: default; opacity: 0.6; }
-.legacy-perk.owned { opacity: 1; border-color: rgba(124, 92, 255, 0.4); background: linear-gradient(100deg, rgba(124, 92, 255, 0.07), #fff); }
+.legacy-perk.owned { opacity: 1; border-color: color-mix(in srgb, var(--accent) 40%, transparent); background: linear-gradient(100deg, color-mix(in srgb, var(--accent) 7%, transparent), #fff); }
 .legacy-perk-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .legacy-perk-name { font-weight: 800; font-size: 13px; color: var(--ink); }
 .legacy-perk-desc { font-size: 11.5px; color: var(--ink-2); }
 .legacy-perk-req { font-size: 11px; color: var(--ink-3); }
-.legacy-perk-cost { font-size: 12px; font-weight: 800; color: #7c5cff; white-space: nowrap; }
+.legacy-perk-cost { font-size: 12px; font-weight: 800; color: var(--accent); white-space: nowrap; }
 
 /* ---------- Products (Phase 3) ---------- */
 .prod-card {
@@ -2161,7 +2184,7 @@ button.modchip.workable:active { transform: scale(0.94); }
   flex: 0 0 auto; width: 40px; height: 40px; border-radius: 12px;
   display: inline-flex; align-items: center; justify-content: center; font-size: 19px;
   background: linear-gradient(160deg, #8b6cff, #6a48f0);
-  box-shadow: 0 5px 13px -6px rgba(124, 92, 255, 0.6);
+  box-shadow: 0 5px 13px -6px color-mix(in srgb, var(--accent) 60%, transparent);
 }
 .prod-head-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .prod-head-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
@@ -2211,8 +2234,8 @@ button.modchip.workable:active { transform: scale(0.94); }
 .prod-manage {
   display: flex; flex-direction: column; align-items: center; gap: 1px;
   width: 100%; padding: 12px; margin-top: 2px; border-radius: 13px; cursor: pointer; border: none;
-  background: #7c5cff; color: #fff;
-  box-shadow: 0 8px 18px -9px rgba(124, 92, 255, 0.7);
+  background: var(--accent); color: #fff;
+  box-shadow: 0 8px 18px -9px color-mix(in srgb, var(--accent) 70%, transparent);
   transition: transform 0.15s var(--spring), filter 0.2s;
 }
 .prod-manage:hover { filter: brightness(1.05); }
@@ -2271,7 +2294,20 @@ button.modchip.workable:active { transform: scale(0.94); }
   flex: 0 0 auto; white-space: nowrap; font-size: 12px; font-weight: 700; color: var(--ink-3);
   padding: 6px 12px; border-radius: 999px; background: rgba(17, 24, 39, 0.06);
 }
-.btn-sm { padding: 7px 14px; font-size: 13px; flex: 0 0 auto; white-space: nowrap; }
+/* `.btn` sets width:100%. Without resetting it here, three `.btn.btn-sm` siblings in a
+   flex row each want the FULL row width and `flex-shrink: 0` refuses to shrink them —
+   so the row overflowed and the Settings backup row silently clipped its third button
+   off the right edge (the sheet is overflow-x:hidden). `.prod-draft-btn` already
+   carried this exact fix as a one-off; it belongs on `.btn-sm` itself. */
+.btn-sm { width: auto; padding: 7px 14px; font-size: 13px; flex: 0 1 auto; white-space: nowrap; }
+
+/* The one hint/caption style. `.pd-pane-tip` was applied in three places (two in Team →
+   Projects, one at the top of the Lab Reputation modal) but never defined anywhere —
+   those paragraphs rendered at browser-default 16px with default margins, which was the
+   loudest "unfinished" tell in the app. Sharing one rule with the existing one-off hint
+   classes so a fourth variant doesn't get invented. */
+.pd-pane-tip,
+.hint { font-size: 12.5px; color: var(--ink-2); line-height: 1.45; margin: 2px 0 8px; }
 
 /* ---------- Product milestones (the chase ladder) ---------- */
 .prod-milestones { margin-top: 18px; }
@@ -2300,10 +2336,12 @@ button.modchip.workable:active { transform: scale(0.94); }
 
 /* ---------- Product detail screen ---------- */
 .prod-details { font-size: 12px; margin-left: auto; }
-/* Redesign — soft white cards on a light surface, #7c5cff purple accent,
-   segmented tabs with an underline indicator, icon chips, filled sliders. */
+/* Redesign — soft white cards on a light surface, themeable accent (--pd-purple now
+   derives from --accent, so picking a hall theme recolours this sheet too, instead of
+   leaving it violet against a recoloured app), segmented tabs with an underline
+   indicator, icon chips, filled sliders. */
 .pd-modal {
-  --pd-purple: #7c5cff;
+  --pd-purple: var(--accent);
   --pd-track: #e7e4f3;
   max-width: 430px; width: 100%; text-align: left;
   padding: 16px 16px 20px;
@@ -2320,7 +2358,7 @@ button.modchip.workable:active { transform: scale(0.94); }
   flex: 0 0 auto; width: 46px; height: 46px; border-radius: 13px;
   display: inline-flex; align-items: center; justify-content: center; font-size: 22px;
   background: linear-gradient(160deg, #8b6cff, #6a48f0);
-  box-shadow: 0 6px 16px -6px rgba(124, 92, 255, 0.6);
+  box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--accent) 60%, transparent);
 }
 .pd-head-text { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .pd-title-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -2367,16 +2405,16 @@ button.modchip.workable:active { transform: scale(0.94); }
 .market-board { margin-top: 12px; }
 .market-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
 .market-row { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 12px; background: #fff; border: 1px solid rgba(17, 24, 39, 0.05); }
-.market-row.you { border-color: rgba(124, 92, 255, 0.45); background: linear-gradient(100deg, rgba(124, 92, 255, 0.08), #fff); }
+.market-row.you { border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: linear-gradient(100deg, color-mix(in srgb, var(--accent) 8%, transparent), #fff); }
 .market-rank { font-size: 14px; font-weight: 800; color: var(--ink-3); width: 20px; text-align: center; flex: 0 0 auto; }
-.market-row.you .market-rank { color: #7c5cff; }
+.market-row.you .market-rank { color: var(--accent); }
 .market-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .market-top { display: flex; justify-content: space-between; gap: 8px; }
 .market-name { font-size: 13.5px; font-weight: 800; color: var(--ink); }
-.market-share { font-size: 13px; font-weight: 800; color: #7c5cff; font-variant-numeric: tabular-nums; }
+.market-share { font-size: 13px; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
 .market-bar { height: 5px; border-radius: 999px; background: rgba(17, 24, 39, 0.07); overflow: hidden; }
-.market-bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #7c5cff, #2f7bf6); }
-.market-row.you .market-bar-fill { background: linear-gradient(90deg, #7c5cff, #16b364); }
+.market-bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), #2f7bf6); }
+.market-row.you .market-bar-fill { background: linear-gradient(90deg, var(--accent), #16b364); }
 .market-vendor { font-size: 11px; color: var(--ink-3); }
 .market-reaction { font-size: 10.5px; font-style: italic; color: var(--ink-3); opacity: 0.85; line-height: 1.3; }
 
@@ -2414,7 +2452,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 .lobby-btn {
   display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%;
   margin-top: 9px; padding: 9px 12px; border-radius: 11px; cursor: pointer;
-  background: rgba(124, 92, 255, 0.08); border: 1px solid rgba(124, 92, 255, 0.28);
+  background: color-mix(in srgb, var(--accent) 8%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
 }
 .lobby-btn:disabled { opacity: 0.5; cursor: default; }
 .lobby-text { font-size: 12.5px; font-weight: 700; color: var(--ink); }
@@ -2433,7 +2471,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 
 /* Intro / info card (icon chip + title + subtitle) */
 .pd-info-card { display: flex; align-items: flex-start; gap: 12px; background: #fff; border-radius: 16px; padding: 14px 15px; box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05); }
-.pd-info-ic { flex: 0 0 auto; width: 36px; height: 36px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; font-size: 17px; background: rgba(124, 92, 255, 0.12); }
+.pd-info-ic { flex: 0 0 auto; width: 36px; height: 36px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; font-size: 17px; background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .pd-info-title { font-size: 14px; font-weight: 800; color: #14161b; }
 .pd-info-sub { font-size: 12px; color: #69707f; line-height: 1.4; margin-top: 2px; }
 
@@ -2449,7 +2487,7 @@ button.modchip.workable:active { transform: scale(0.94); }
   display: flex; flex-direction: column; align-items: center; gap: 2px;
   width: 100%; padding: 13px; border: none; border-radius: 14px; cursor: pointer;
   background: var(--pd-purple); color: #fff; font-size: 15px; font-weight: 800;
-  box-shadow: 0 8px 20px -8px rgba(124, 92, 255, 0.7); transition: transform 0.12s, filter 0.15s;
+  box-shadow: 0 8px 20px -8px color-mix(in srgb, var(--accent) 70%, transparent); transition: transform 0.12s, filter 0.15s;
 }
 .pd-primary:hover:not(:disabled) { filter: brightness(1.05); }
 .pd-primary:active:not(:disabled) { transform: scale(0.985); }
@@ -2458,7 +2496,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 
 /* Crew chips */
 .pd-crew { display: flex; flex-wrap: wrap; gap: 6px; }
-.pd-crew-chip { font-size: 12px; font-weight: 650; padding: 5px 10px; border-radius: 999px; background: rgba(124, 92, 255, 0.1); color: #5a43c8; }
+.pd-crew-chip { font-size: 12px; font-weight: 650; padding: 5px 10px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 10%, transparent); color: #5a43c8; }
 
 /* Sell (subtle destructive) */
 .pd-sell { width: 100%; padding: 11px; border-radius: 13px; border: none; cursor: pointer; background: transparent; color: var(--coral); font-size: 13px; font-weight: 700; transition: background 0.15s; }
@@ -2484,13 +2522,13 @@ button.modchip.workable:active { transform: scale(0.94); }
 
 /* Slider — purple fill supplied inline via a gradient background */
 .pd-slider { -webkit-appearance: none; appearance: none; width: 100%; height: 7px; border-radius: 99px; margin-top: 12px; background: var(--pd-track); cursor: pointer; }
-.pd-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #fff; border: none; box-shadow: 0 1px 4px rgba(16, 24, 40, 0.3), 0 0 0 1px rgba(124, 92, 255, 0.2); cursor: pointer; }
+.pd-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #fff; border: none; box-shadow: 0 1px 4px rgba(16, 24, 40, 0.3), 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent); cursor: pointer; }
 .pd-slider::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #fff; border: none; box-shadow: 0 1px 4px rgba(16, 24, 40, 0.3); cursor: pointer; }
 
 /* Channel split — section head + suggest pill */
 .pd-section-head { display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 800; color: #2b2f38; margin: 4px 2px 0; }
-.pd-suggest { font-size: 12px; font-weight: 700; color: var(--pd-purple); cursor: pointer; background: rgba(124, 92, 255, 0.1); border: none; border-radius: 999px; padding: 5px 11px; transition: background 0.15s; }
-.pd-suggest:hover { background: rgba(124, 92, 255, 0.18); }
+.pd-suggest { font-size: 12px; font-weight: 700; color: var(--pd-purple); cursor: pointer; background: color-mix(in srgb, var(--accent) 10%, transparent); border: none; border-radius: 999px; padding: 5px 11px; transition: background 0.15s; }
+.pd-suggest:hover { background: color-mix(in srgb, var(--accent) 18%, transparent); }
 
 /* Channel card */
 .pd-channel-card { display: block; background: #fff; border-radius: 16px; padding: 13px 15px; box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05); cursor: pointer; }
@@ -2503,7 +2541,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 
 /* Total allocation footer */
 .pd-total-card { display: flex; align-items: center; gap: 12px; background: #fff; border-radius: 16px; padding: 13px 15px; box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05); }
-.pd-total-ic { flex: 0 0 auto; width: 36px; height: 36px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; font-size: 17px; background: rgba(124, 92, 255, 0.12); }
+.pd-total-ic { flex: 0 0 auto; width: 36px; height: 36px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; font-size: 17px; background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .pd-total-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .pd-total-label { font-size: 14px; font-weight: 750; color: #14161b; }
 .pd-total-sub { font-size: 12px; color: #8b909c; }
@@ -2655,7 +2693,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 .emp-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
 .emp-kpi { display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 14px; padding: 11px 12px; box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05); }
 .emp-kpi-ic { flex: 0 0 auto; width: 34px; height: 34px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; }
-.emp-kpi-ic.people { background: rgba(124, 92, 255, 0.12); color: #7c5cff; }
+.emp-kpi-ic.people { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
 .emp-kpi-ic.pay { background: rgba(22, 179, 100, 0.12); color: #16b364; }
 .emp-kpi-ic.mood { background: rgba(249, 115, 22, 0.12); color: #f97316; }
 .emp-kpi-ic.rev { background: rgba(47, 123, 246, 0.12); color: #2f7bf6; }
@@ -2672,7 +2710,7 @@ button.modchip.workable:active { transform: scale(0.94); }
   font-size: 13.5px; font-weight: 750; color: var(--ink-2); transition: background 0.15s, color 0.15s, box-shadow 0.15s;
 }
 .emp-seg-btn.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(16, 24, 40, 0.1); }
-.emp-seg-badge { font-size: 10.5px; font-weight: 800; color: #fff; background: #7c5cff; border-radius: 999px; padding: 1px 6px; min-width: 16px; }
+.emp-seg-badge { font-size: 10.5px; font-weight: 800; color: #fff; background: var(--accent); border-radius: 999px; padding: 1px 6px; min-width: 16px; }
 
 /* Avatars + level pips */
 .emp-av { flex: 0 0 auto; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; letter-spacing: -0.02em; }
@@ -2681,13 +2719,13 @@ button.modchip.workable:active { transform: scale(0.94); }
 .emp-star.on { color: #f5b40a; }
 
 .emp-section-head { display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 800; color: #2b2f38; margin: 4px 2px 2px; }
-.emp-recruit { font-size: 12.5px; font-weight: 750; color: #fff; background: #7c5cff; border: none; border-radius: 999px; padding: 6px 13px; cursor: pointer; transition: filter 0.15s; }
+.emp-recruit { font-size: 12.5px; font-weight: 750; color: #fff; background: var(--accent); border: none; border-radius: 999px; padding: 6px 13px; cursor: pointer; transition: filter 0.15s; }
 .emp-recruit:hover { filter: brightness(1.06); }
 
 /* Person card (roster · available · candidate) */
 .emp-person-wrap { display: flex; flex-direction: column; }
 .emp-person { display: flex; align-items: center; gap: 11px; background: #fff; border-radius: 14px; padding: 11px 13px; box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05); cursor: pointer; transition: box-shadow 0.15s, border-color 0.15s; border: 1px solid transparent; }
-.emp-person.sel { border-color: #7c5cff; box-shadow: 0 0 0 2px rgba(124, 92, 255, 0.18); }
+.emp-person.sel { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent); }
 .emp-person.rare { border-color: rgba(245, 180, 10, 0.55); background: linear-gradient(100deg, rgba(245, 180, 10, 0.08), #fff 60%); }
 .emp-rare-badge { font-size: 10px; font-weight: 800; letter-spacing: 0.02em; color: #b8860b; background: rgba(245, 180, 10, 0.16); border-radius: 999px; padding: 2px 7px; }
 .emp-person-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -2695,7 +2733,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 .emp-person-name { font-size: 14px; font-weight: 750; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .emp-person-tags { display: flex; flex-wrap: wrap; gap: 5px; }
 .emp-tag { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: #f0f0f5; color: var(--ink-2); }
-.emp-tag.role { background: rgba(124, 92, 255, 0.1); color: #5a43c8; }
+.emp-tag.role { background: color-mix(in srgb, var(--accent) 10%, transparent); color: #5a43c8; }
 .emp-tag.muted { color: var(--money); background: rgba(22, 179, 100, 0.1); }
 .emp-tag.train { background: rgba(47, 123, 246, 0.1); color: #2f7bf6; }
 .emp-tag.train, .emp-act-train, .emp-inline-ic { display: inline-flex; align-items: center; gap: 4px; }
@@ -2709,7 +2747,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 .emp-act-train { font-size: 12px; font-weight: 700; color: #2f7bf6; padding: 7px 4px; }
 .emp-hire-btn { flex: 0 0 auto; font-size: 13px; font-weight: 800; color: #fff; background: var(--money); border: none; border-radius: 11px; padding: 8px 13px; cursor: pointer; font-variant-numeric: tabular-nums; }
 .emp-hire-btn:disabled { background: #cfd2da; cursor: not-allowed; }
-.emp-assign-btn { flex: 0 0 auto; font-size: 12.5px; font-weight: 750; color: #7c5cff; background: rgba(124, 92, 255, 0.1); border: none; border-radius: 10px; padding: 7px 13px; cursor: pointer; }
+.emp-assign-btn { flex: 0 0 auto; font-size: 12.5px; font-weight: 750; color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); border: none; border-radius: 10px; padding: 7px 13px; cursor: pointer; }
 
 /* Office perks (folded into People) */
 .emp-perks { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
@@ -2725,10 +2763,10 @@ button.modchip.workable:active { transform: scale(0.94); }
 .emp-perk-cost { flex: 0 0 auto; font-size: 13px; font-weight: 800; color: var(--money); white-space: nowrap; }
 
 /* Projects pane */
-.emp-place-hint { font-size: 12.5px; font-weight: 650; color: var(--ink); background: rgba(124, 92, 255, 0.1); border: 1px solid rgba(124, 92, 255, 0.25); border-radius: 12px; padding: 9px 12px; line-height: 1.4; }
+.emp-place-hint { font-size: 12.5px; font-weight: 650; color: var(--ink); background: color-mix(in srgb, var(--accent) 10%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent); border-radius: 12px; padding: 9px 12px; line-height: 1.4; }
 .emp-proj { background: #fff; border-radius: 16px; padding: 14px 15px; box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05); display: flex; flex-direction: column; gap: 9px; border: 1.5px solid transparent; transition: border-color 0.15s, transform 0.12s; }
-.emp-proj.targetable { border-color: rgba(124, 92, 255, 0.4); border-style: dashed; cursor: pointer; }
-.emp-proj.targetable:hover { border-color: #7c5cff; transform: translateY(-1px); }
+.emp-proj.targetable { border-color: color-mix(in srgb, var(--accent) 40%, transparent); border-style: dashed; cursor: pointer; }
+.emp-proj.targetable:hover { border-color: var(--accent); transform: translateY(-1px); }
 .emp-proj-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .emp-proj-id { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .emp-proj-name { font-size: 15px; font-weight: 800; color: var(--ink); letter-spacing: -0.01em; }
@@ -2746,11 +2784,11 @@ button.modchip.workable:active { transform: scale(0.94); }
 .emp-crew-av:hover { transform: scale(1.08); }
 .emp-crew-av.synergy { box-shadow: 0 0 0 2px #f5a623, 0 0 8px rgba(245, 166, 35, 0.6); border-radius: 50%; }
 .emp-crew-star { position: absolute; top: -4px; right: -4px; font-size: 11px; color: #f5a623; text-shadow: 0 1px 2px rgba(0,0,0,0.4); }
-.emp-role-chip { font-size: 10.5px; font-weight: 750; color: #5a43c8; background: rgba(124, 92, 255, 0.1); border-radius: 999px; padding: 3px 9px; }
+.emp-role-chip { font-size: 10.5px; font-weight: 750; color: #5a43c8; background: color-mix(in srgb, var(--accent) 10%, transparent); border-radius: 999px; padding: 3px 9px; }
 /* Segment synergy — a warm gold accent so "matched assignment" reads instantly. */
 .emp-tag.synergy { color: #b26a00; background: rgba(245, 166, 35, 0.16); }
 .emp-proj-synergy { flex: 0 0 auto; font-size: 10.5px; font-weight: 850; padding: 3px 9px; border-radius: 999px; color: #b26a00; background: rgba(245, 166, 35, 0.18); }
-.emp-proj.dragover { border-color: #7c5cff; border-style: solid; background: rgba(124, 92, 255, 0.05); transform: translateY(-1px); }
+.emp-proj.dragover { border-color: var(--accent); border-style: solid; background: color-mix(in srgb, var(--accent) 5%, transparent); transform: translateY(-1px); }
 
 /* Available-list role filter + drag grip */
 .emp-filter {
@@ -2763,7 +2801,7 @@ button.modchip.workable:active { transform: scale(0.94); }
   background-repeat: no-repeat; background-position: right 9px center;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
-.emp-filter:focus { outline: none; border-color: color-mix(in srgb, var(--data) 50%, transparent); box-shadow: 0 0 0 3px rgba(124, 92, 255, 0.12); }
+.emp-filter:focus { outline: none; border-color: color-mix(in srgb, var(--data) 50%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent); }
 .emp-avail-right { display: flex; align-items: center; gap: 8px; }
 .emp-grip { font-size: 16px; color: var(--ink-3); cursor: grab; touch-action: none; padding: 0 2px; user-select: none; line-height: 1; }
 .emp-grip:active { cursor: grabbing; }
@@ -2772,7 +2810,7 @@ button.modchip.workable:active { transform: scale(0.94); }
   /* Picked-up feel: bigger, tilted, with a deep shadow + a soft halo. */
   transform: translate(-50%, -50%) scale(1.18) rotate(-6deg);
   border-radius: 50%;
-  box-shadow: 0 16px 30px -10px rgba(16, 24, 40, 0.5), 0 0 0 4px rgba(124, 92, 255, 0.18);
+  box-shadow: 0 16px 30px -10px rgba(16, 24, 40, 0.5), 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent);
   animation: drag-grab 0.16s var(--ease-out);
 }
 @keyframes drag-grab {
@@ -2829,7 +2867,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 .rig-slot.filled.grade-enterprise { border-color: rgba(47, 123, 246, 0.45); }
 .rig-slot.filled.grade-prototype { border-color: rgba(155, 81, 224, 0.5); background: linear-gradient(100deg, rgba(155, 81, 224, 0.06), #fff 45%); }
 .rig-slot-ic { display: inline-flex; color: var(--ink-3); flex: none; }
-.rig-slot.filled .rig-slot-ic { color: var(--accent, #7c5cff); }
+.rig-slot.filled .rig-slot-ic { color: var(--accent); }
 .rig-slot-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .rig-slot-label { font-size: 13px; font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rig-slot .rig-slot-sub { font-size: 11.5px; color: var(--ink-3); }
@@ -2980,7 +3018,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 /* The "Grand Challenge complete" moment reuses the era-modal treatment. */
 .challenge-complete-icon {
   line-height: 1; margin: 6px 0 2px; color: var(--accent);
-  filter: drop-shadow(0 6px 20px rgba(124, 92, 255, 0.45));
+  filter: drop-shadow(0 6px 20px color-mix(in srgb, var(--accent) 45%, transparent));
   animation: challenge-pop 0.5s var(--ease-out) backwards;
 }
 @keyframes challenge-pop { from { opacity: 0; transform: scale(0.4) rotate(-12deg); } }
@@ -3020,6 +3058,14 @@ button.modchip.workable:active { transform: scale(0.94); }
 /* ---------- The Institute (third meta-layer) ---------- */
 .institute-note { font-size: 12px; color: var(--ink-3); margin: 0 0 8px; }
 .institute-count { font-size: 11px; font-weight: 700; color: var(--ink-3); margin-top: 6px; text-align: right; }
+/* Fellowships — the Institute's infinite tail. Separated from the wing tree by a
+   hairline so "the tree is finished, this is what's next" reads at a glance. */
+.institute-fellows { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--glass-hairline); }
+.institute-fellows-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.institute-fellows-title { font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
+.institute-fellows-mult { font-size: 12px; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
+.institute-fellow-latest { font-size: 12px; color: var(--ink-2); margin-bottom: 8px; line-height: 1.4; }
+.institute-fellow-count { color: var(--ink-3); }
 .institute-wing {
   width: 100%; display: flex; align-items: center; gap: 10px; margin-bottom: 6px; text-align: left; cursor: pointer;
   border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
