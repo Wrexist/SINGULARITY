@@ -1,5 +1,5 @@
 import { eraName, eraBlurb } from "../engine/eras";
-import { useSettings } from "./settings";
+import { useReducedMotion } from "./motion";
 
 interface Props {
   era: number;
@@ -19,7 +19,7 @@ const COLORS = ["#7c5cff", "#2f7bf6", "#16b364", "#ffd60a", "#ff385c"];
  */
 export function EraTransition({ era, blurbSeed = 0, onDone }: Props) {
   const agi = era >= 5; // Post-Singularity — the capstone tentpole.
-  const reducedMotion = useSettings((s) => s.reducedMotion);
+  const reducedMotion = useReducedMotion();
   return (
     <div className={`modal-backdrop era-backdrop${agi ? " era-agi" : ""}`} onClick={onDone}>
       {!reducedMotion && <div className="confetti era-confetti" aria-hidden="true">

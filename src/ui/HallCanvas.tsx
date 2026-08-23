@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useGame } from "../state/store";
 import { useSettings } from "./settings";
+import { reduceMotionNow } from "./motion";
 import { haptics } from "./haptics";
 import { sound } from "./sound";
 import { floatText } from "./fx";
@@ -225,7 +226,7 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       // is quantised to 5% steps so its slow drift repaints rarely, not per tick.
       // The day/night cycle joins it as a coarse bucket (48/day ≈ one repaint
       // every ~5s worst-case); reduced motion freezes the sky at late morning.
-      const rmNow = useSettings.getState().reducedMotion;
+      const rmNow = reduceMotionNow();
       const phase = rmNow ? 0.08 : dayPhase(timeMs);
       const skySig = model.skyline.map((t) => `${Math.round(t.h * 20)}${t.dim ? "d" : ""}${t.you ? "y" : ""}`).join(".");
       const ssig = `${model.cols}|${model.rows}|${model.era}|${model.coolingUnits}|${cssW}|${cssH}|${dpr}|${model.charter?.id ?? ""}|${model.wall.map((w) => `${w.era}${w.asc ? "a" : ""}`).join(".")}|${skySig}|${Math.round(phase * 48)}`;
@@ -244,7 +245,7 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       drawHallDynamic(ctx, model, {
         width: cssW, height: cssH, timeMs,
-        reducedMotion: useSettings.getState().reducedMotion,
+        reducedMotion: reduceMotionNow(),
         spawnFrom, spawnT, burst, dpr,
         rackSkin: useSettings.getState().rackSkin,
         delivery,
@@ -258,7 +259,7 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       // Keep the rack hit-areas current so a tap maps to the rack on screen (R2.1).
       rackHitsRef.current = rackHitAreas(model, cssW, cssH);
       // ...and the people (they move — the hit-test follows this frame's spots).
-      const rm = useSettings.getState().reducedMotion;
+      const rm = reduceMotionNow();
       agentSpotsRef.current = model.agents.length > 0 ? agentSpots(model, cssW, cssH, timeMs, rm) : [];
       chenSpotRef.current = chenSpot(model, cssW, cssH, timeMs, rm);
       raf = requestAnimationFrame(frame);

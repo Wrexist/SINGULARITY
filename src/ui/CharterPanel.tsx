@@ -2,10 +2,6 @@ import { chartersBalance, charterDef, canSetCharter, chartersUnlocked } from "..
 import { balance } from "../engine/balance/config";
 import type { GameState } from "../engine/types";
 
-/** The conviction ladder (depth batch): consecutive same-charter ships earn
- *  ×1.15 → ×1.25 → ×1.40, capped. Rendered as "+15% → +25% → +40%". */
-const LADDER = balance.prestige.charterConvictionLadder.map((m) => `+${Math.round((m - 1) * 100)}%`).join(" → ");
-
 interface Props {
   game: GameState;
   onSet: (id: string | null) => void;
@@ -52,20 +48,31 @@ export function CharterPanel({ game, onSet, onLock }: Props) {
   return (
     <section className="panel">
       <h2 className="panel-title">Lab Charter</h2>
-      <p className="charter-intro">Tap a charter to adopt this run's focus (tap again to drop it). It locks when you buy research — or lock it in below.{game.lastCharter && <> Re-pick last run's charter for a conviction bonus that <b>escalates with the streak</b> ({LADDER}% Legacy).</>}</p>
+      {/* First-encounter scaffolding only (calm-down audit 2026-08): once the player
+          has run a charter, the cards + conviction pips carry the system wordlessly. */}
+      {game.lastCharter == null && (
+        <p className="charter-intro">Tap a charter to adopt this run's focus (tap again to drop it). It locks when you buy research — or lock it in below.</p>
+      )}
       <div className="list">
         {chartersBalance.list.map((c) => {
           const on = game.charter === c.id;
           const conviction = game.lastCharter === c.id;
           const streak = conviction ? Math.max(1, (game.charterStreak ?? 0) + 1) : 0;
           // The bonus THIS ship would earn: rung = streak − 2, capped on the ladder.
-          const convPct = streak >= 2
-            ? Math.round((balance.prestige.charterConvictionLadder[Math.min(balance.prestige.charterConvictionLadder.length - 1, streak - 2)]! - 1) * 100)
-            : null;
+          const ladder = balance.prestige.charterConvictionLadder;
+          const rung = streak >= 2 ? Math.min(ladder.length - 1, streak - 2) : -1;
+          const convPct = rung >= 0 ? Math.round((ladder[rung]! - 1) * 100) : null;
           return (
             <button key={c.id} className={`charter-card ${on ? "on" : ""}`} onClick={() => onSet(on ? null : c.id)}>
               <div className="charter-main">
-                <span className="charter-name">{c.name}{on && <span className="charter-pick"> ✓ adopted</span>}{conviction && <span className="charter-conviction"> ↻ +{convPct}%</span>}</span>
+                <span className="charter-name">{c.name}{on && <span className="charter-pick"> ✓ adopted</span>}{conviction && (
+                  <span className="charter-conviction">
+                    {" "}↻ +{convPct}%
+                    <span className="charter-streak-pips" title={`Conviction streak — rung ${rung + 1} of ${ladder.length}`} aria-hidden="true">
+                      {ladder.map((_, i) => <i key={i} className={i <= rung ? "on" : ""} />)}
+                    </span>
+                  </span>
+                )}</span>
                 <span className="charter-blurb">{c.blurb}</span>
                 <span className="charter-effects">{effectChips(c.id)}</span>
               </div>

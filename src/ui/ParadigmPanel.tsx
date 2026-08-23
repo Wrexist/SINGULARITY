@@ -25,16 +25,19 @@ export function ParadigmPanel({ game, onBuy }: Props) {
     <section className="panel paradigms">
       <div className="paradigms-head">
         <h2 className="panel-title" style={{ margin: 0 }}>Paradigm Research</h2>
-        <span className="paradigms-count">{doneCount}/{paradigmsBalance.list.length}</span>
+        <span className="paradigms-count">{doneCount}/{paradigmsBalance.list.length} · {Math.floor(avail)} rep</span>
       </div>
-      <p className="paradigms-note">Breakthroughs beyond the standard tree — bought with <b>{Math.floor(avail)}</b> Lab Reputation.</p>
+      {/* First-run scaffolding — the head chip carries the rep balance after that. */}
+      {doneCount === 0 && (
+        <p className="paradigms-note">Breakthroughs beyond the standard tree — bought with <b>{Math.floor(avail)}</b> Lab Reputation.</p>
+      )}
       <div className="list">
         {paradigmsBalance.list.map((p) => {
           const isOwned = owned.has(p.id);
           const can = canBuyParadigm(game, p.id);
           const lockedByReq = !!p.requires && !owned.has(p.requires);
           return (
-            <button key={p.id} className={`paradigm-node ${isOwned ? "owned" : ""}`} disabled={isOwned || !can} onClick={() => onBuy(p.id)}>
+            <button key={p.id} className={`paradigm-node meta-item ${isOwned ? "owned" : can ? "affordable" : lockedByReq ? "locked" : ""}`} disabled={isOwned || !can} onClick={() => onBuy(p.id)}>
               <div className="paradigm-main">
                 <span className="paradigm-name">{p.name}{isOwned ? " ✓" : ""}</span>
                 <span className="paradigm-desc">{p.desc}</span>

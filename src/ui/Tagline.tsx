@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSettings } from "./settings";
+import { useReducedMotion } from "./motion";
 
 // The satirical voice (design spine §5) — pure flavor, zero gameplay effect.
 const TAGLINES = [
@@ -95,7 +95,7 @@ function shuffledOrder(): number[] {
 }
 
 export function Tagline() {
-  const reduced = useSettings((s) => s.reducedMotion);
+  const reduced = useReducedMotion();
   const [order] = useState(shuffledOrder);
   const [n, setN] = useState(0);
   const i = order[n % order.length]!;

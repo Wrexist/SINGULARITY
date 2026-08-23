@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useGame } from "../state/store";
-import { useSettings } from "./settings";
+import { useReducedMotion } from "./motion";
 import { buildNews } from "../engine/news";
 import { currentEra } from "../engine/eras";
 import { playerMarketRank } from "../engine/market";
@@ -22,7 +22,7 @@ function shuffled<T>(arr: T[]): T[] {
 }
 
 export function NewsTicker() {
-  const reduced = useSettings((s) => s.reducedMotion);
+  const reduced = useReducedMotion();
   // Coarse signature: era · ships · faction lean · market rank. The ticker only
   // reshuffles (and re-renders) when one of these changes — never on the 10Hz trickle.
   const sig = useGame((s) => {

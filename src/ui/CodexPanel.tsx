@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { codexEntries, codexUnlockedCount, codexBalance, codexBody, codexUnlockHint } from "../engine/codex";
-import { BookIcon, LockIcon } from "./Icons";
+import { BookIcon, LockIcon, ChevronIcon} from "./Icons";
 import type { GameState } from "../engine/types";
 
 interface Props {
@@ -25,7 +25,7 @@ export function CodexPanel({ game }: Props) {
       <button className="codex-head" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         <span className="codex-title"><BookIcon size={15} /> Field Notes</span>
         <span className="codex-count">{got}/{total}</span>
-        <span className="codex-toggle">{open ? "▾" : "▸"}</span>
+        <span className="codex-toggle"><ChevronIcon size={13} dir={open ? "down" : "right"} /></span>
       </button>
       {open && (
         <div className="codex-list">

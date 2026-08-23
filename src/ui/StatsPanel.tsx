@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ChevronIcon } from "./Icons";
 import type { Derived, GameState } from "../engine/types";
 import { fmt, fmtMoney, m$, numOf, fmtDur } from "./format";
 import { achievementDefs } from "../engine/achievements";
@@ -10,6 +11,8 @@ import { charterDef, charterMods } from "../engine/charter";
 import { balance } from "../engine/balance/config";
 import { ascensionMultiplier } from "../engine/prestige";
 import { totalMorale } from "../engine/derive";
+import { history } from "./history";
+import { Sparkline } from "./Sparkline";
 
 interface Props {
   game: GameState;
@@ -25,7 +28,7 @@ function alignmentLabel(a: number): string {
   return "Accelerationist";
 }
 
-type Row = { label: string; value: string };
+type Row = { label: string; value: string; tone?: "compute" | "data" | "money" | "good"; spark?: number[] };
 
 /** Collapsible "Lab Stats" — surfaces the math (legibility is the feature, GDD).
  *  Two groups: NOW (current per-second rates + multipliers) and ALL-TIME (the
@@ -79,7 +82,7 @@ export function StatsPanel({ game, derived }: Props) {
   const toggle = (
     <button className="stats-toggle" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
       <span className="panel-title" style={{ margin: 0 }}>Lab Stats</span>
-      <span className="chevron">{open ? "▲" : "▼"}</span>
+      <span className="chevron"><ChevronIcon size={13} dir={open ? "up" : "down"} /></span>
     </button>
   );
   // Collapsed = a header only. Bail before building the row tables — this panel
@@ -96,16 +99,22 @@ export function StatsPanel({ game, derived }: Props) {
   // second copy in the reference panel was pure duplication (2026-08 noise sweep).
   // The multipliers below are the value this panel adds: they exist nowhere else.
   const now: Row[] = [
+    // These rate rows were dropped by the 2026-08 noise sweep as duplicating the
+    // ResourceBar — the sparklines resurrect them as TREND rows: the ~3-minute
+    // trace is information the bar doesn't carry.
+    { label: "Compute / sec", value: fmt(derived.computePerSec), tone: "compute" as const, spark: history.compute },
+    { label: "Data / sec", value: fmt(derived.dataPerSec), tone: "data" as const, spark: history.data },
     { label: "Compute multiplier", value: `×${fmt(derived.computeMult)}` },
     { label: "Data multiplier", value: `×${fmt(derived.dataMult)}` },
     { label: "$ multiplier", value: `×${fmt(derived.moneyMult)}` },
-    { label: "Legacy boost", value: `×${fmt(derived.legacyMult)}` },
+    { label: "Legacy boost", value: `×${fmt(derived.legacyMult)}`, tone: "good" as const },
     // Endgame boosts that were previously invisible — surface them the moment they're
     // non-identity so the "small compounding boosts" actually read as working.
     ...(game.preprints > 0 ? [{ label: "Preprints", value: `×${preprintMult(game).toNumber().toFixed(2)} · ${game.preprints} paper${game.preprints === 1 ? "" : "s"}` }] : []),
     ...(game.repEndowment > 0 ? [{ label: "Endowment", value: `+${Math.round((endowmentMult(game) - 1) * 100)}% · L${game.repEndowment}` }] : []),
     { label: "Run duration", value: `${derived.runDurationSec.toFixed(1)}s` },
     { label: "Run payout", value: `${fmt(derived.runDataYield)} data · ${fmtMoney(derived.runMoneyYield)}` },
+    { label: "Passive income", value: `${fmtMoney(derived.passiveMoneyPerSec)}/s`, tone: "money" as const, spark: history.money },
     // (The "Faction stance" text row was dropped — the align-bar below already carries
     // the stance name; keep only the numeric tilt. 2026-07 noise sweep.)
     ...(stance ? [{ label: "Stance effects", value: stance }] : []),
@@ -116,9 +125,9 @@ export function StatsPanel({ game, derived }: Props) {
   ];
 
   const allTime: Row[] = [
-    { label: "Total earned", value: fmtMoney(s.totalMoney) },
+    { label: "Total earned", value: fmtMoney(s.totalMoney), tone: "money" as const },
     { label: "Peak Compute / sec", value: fmt(s.peakComputePerSec) },
-    { label: "Peak revenue / sec", value: m$(s.peakMrr) },
+    { label: "Peak revenue / sec", value: m$(s.peakMrr), tone: "money" as const },
     { label: "Peak users", value: numOf(s.peakMau) },
     { label: "Models shipped", value: String(s.totalShips) },
     { label: "Legacy Weights", value: fmt(game.prestige.legacyWeights) },
@@ -142,11 +151,20 @@ export function StatsPanel({ game, derived }: Props) {
             <div className="align-center" />
             <div className="align-marker" style={{ left: `${((game.alignment + 1) / 2) * 100}%` }} />
           </div>
-          <div className="align-ends">
-            <span>Doomer</span>
-            <span className="align-now">{alignmentLabel(game.alignment)}</span>
-            <span>Accel</span>
-          </div>
+          {(() => {
+            // At a pole the stance label IS the pole label — highlight the end
+            // instead of printing "Doomer … Doomer" twice (red-team pass).
+            const label = alignmentLabel(game.alignment);
+            const atDoomer = label === "Doomer";
+            const atAccel = label === "Accelerationist";
+            return (
+              <div className="align-ends">
+                <span className={atDoomer ? "align-now" : undefined}>Doomer</span>
+                <span className="align-now">{atDoomer || atAccel ? "" : label}</span>
+                <span className={atAccel ? "align-now" : undefined}>Accel</span>
+              </div>
+            );
+          })()}
         </div>
       )}
       <div className="stats-subhead">Now</div>
@@ -154,7 +172,10 @@ export function StatsPanel({ game, derived }: Props) {
         {now.map((r) => (
           <div key={r.label} className="stat-row">
             <span className="stat-label">{r.label}</span>
-            <span className="stat-value">{r.value}</span>
+            {r.spark && r.spark.length > 1 && (
+              <span className={`stat-spark${r.tone ? ` t-${r.tone}` : ""}`}><Sparkline values={r.spark} /></span>
+            )}
+            <span className={`stat-value${r.tone ? ` t-${r.tone}` : ""}`}>{r.value}</span>
           </div>
         ))}
       </div>
@@ -163,7 +184,7 @@ export function StatsPanel({ game, derived }: Props) {
         {allTime.map((r) => (
           <div key={r.label} className="stat-row">
             <span className="stat-label">{r.label}</span>
-            <span className="stat-value">{r.value}</span>
+            <span className={`stat-value${r.tone ? ` t-${r.tone}` : ""}`}>{r.value}</span>
           </div>
         ))}
       </div>

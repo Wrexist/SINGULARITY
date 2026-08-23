@@ -7,7 +7,8 @@ import { haptics } from "./haptics";
 import { sound } from "./sound";
 import { dayPhase } from "../render/hallRenderer";
 import { stakePayout } from "../engine/market";
-import { useSettings, onOsReduceMotionChange, osReduceMotionNow } from "./settings";
+import { useSettings } from "./settings";
+import { useReducedMotion } from "./motion";
 import { themeAccent } from "./hallThemes";
 import { dailyAvailable, markDailyClaimed } from "./daily";
 import { ResourceBar } from "./ResourceBar";
@@ -33,7 +34,7 @@ import { CharterPanel } from "./CharterPanel";
 import { CodexPanel } from "./CodexPanel";
 import { EventLog } from "./EventLog";
 import { FxCanvas } from "./FxCanvas";
-import { burst as fxBurst, floatText as fxFloat } from "./fx";
+import { burst as fxBurst, floatText as fxFloat, FX_PALETTES } from "./fx";
 import { ProductLaunch } from "./ProductLaunch";
 import { productsUnlocked, typeDef, retirePayout } from "../engine/products";
 import { advisorItems, type AdvisorTab, type LabSection } from "../engine/advisor";
@@ -47,6 +48,7 @@ import { isPremium } from "../state/premium";
 import { scheduleReturnReminder, cancelReturnReminder } from "./notifications";
 import { balance } from "../engine/balance/config";
 import { HallCanvas } from "./HallCanvas";
+import { sampleHistory, resetHistory, SAMPLE_MS } from "./history";
 import { NewsTicker } from "./NewsTicker";
 import { ExpandConfirm } from "./ExpandConfirm";
 import { ConfirmSheet } from "./ConfirmSheet";
@@ -193,14 +195,9 @@ export function App() {
   // then the world "comes alive" as a reward once they've learned the loop (2026-07).
   const firstSteps = firstStepsVisible(game);
   const goal = useMemo(() => (dailyOn || nudge || firstSteps ? null : nextGoal(game)), [game, dailyOn, nudge, firstSteps]);
-  // Motion is reduced when EITHER the in-app toggle or the LIVE OS preference says so
-  // (CLAUDE.md hard rule). The OS half is tracked outside the store, so mirror it into
-  // React state and subscribe, otherwise flipping iOS Reduce Motion mid-session would
-  // leave the `.reduce-motion` class and FxCanvas stale until the next reload.
-  const reducedMotionSetting = useSettings((s) => s.reducedMotion);
-  const [osReduce, setOsReduce] = useState(osReduceMotionNow);
-  useEffect(() => onOsReduceMotionChange(setOsReduce), []);
-  const reducedMotion = reducedMotionSetting || osReduce;
+  // Motion is reduced when EITHER the in-app toggle or the LIVE OS preference
+  // says so (CLAUDE.md hard rule) — useReducedMotion subscribes to both.
+  const reducedMotion = useReducedMotion();
   const hallTheme = useSettings((s) => s.hallTheme);
   const music = useSettings((s) => s.music);
   const onboarded = useSettings((s) => s.onboarded);
@@ -211,6 +208,27 @@ export function App() {
   const achievementsSeen = useSettings((s) => s.achievementsSeen);
   const markAchievementsSeen = useSettings((s) => s.markAchievementsSeen);
   const [showShipExplainer, setShowShipExplainer] = useState(false);
+
+  // Rate-history sampler for the Lab Stats sparklines (session-only, UI-side).
+  // Reads this render's derive via a ref so the interval never re-arms.
+  const dRef = useRef(d);
+  dRef.current = d;
+  useEffect(() => {
+    const t = window.setInterval(
+      () => sampleHistory(dRef.current.computePerSec, dRef.current.dataPerSec, dRef.current.passiveMoneyPerSec),
+      SAMPLE_MS,
+    );
+    return () => window.clearInterval(t);
+  }, []);
+
+  // "Booted" flips once the opening entrance has played; from then on, tab and
+  // section swaps use the fast rise-nav settle instead of the full cinematic
+  // stagger (see styles.css .app-booted).
+  const [booted, setBooted] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => setBooted(true), 950);
+    return () => window.clearTimeout(t);
+  }, []);
 
   // Sheets the PLAYER opened. World events fire on their own Poisson timer, entirely
   // independent of what's on screen, and their backdrop sits above these — so one could
@@ -352,7 +370,7 @@ export function App() {
     toastId.current += 1;
     const id = toastId.current;
     setToasts((ts) => [...ts, { id, text, tone }].slice(-MAX_TOASTS));
-    setLog((l) => [{ id, text, tone }, ...l].slice(0, MAX_LOG));
+    setLog((l) => [{ id, text, tone, at: Date.now() }, ...l].slice(0, MAX_LOG));
   }, []);
   // Log-only sibling of pushToast: records an event to the "Recent activity" log
   // WITHOUT a transient popup. Routine confirmations of the player's own tap (a
@@ -362,7 +380,7 @@ export function App() {
   // lost; the player can review it there. (De-noising audit, 2026-07.)
   const logEvent = useCallback((text: string, tone: ToastData["tone"] = "neutral") => {
     toastId.current += 1;
-    setLog((l) => [{ id: toastId.current, text, tone }, ...l].slice(0, MAX_LOG));
+    setLog((l) => [{ id: toastId.current, text, tone, at: Date.now() }, ...l].slice(0, MAX_LOG));
   }, []);
   const dropToast = useCallback((id: number) => setToasts((ts) => ts.filter((t) => t.id !== id)), []);
 
@@ -457,7 +475,7 @@ export function App() {
     if (era > seenEra.current) {
       setEraMoment(era);
       sound.era();
-      if (game.prestige.ships === eraShips.current) haptics.celebrate();
+      if (game.prestige.ships === eraShips.current) haptics.epic();
     }
     eraShips.current = game.prestige.ships;
     seenEra.current = era;
@@ -539,14 +557,14 @@ export function App() {
           const onScreen = r && r.top >= 0 && r.bottom <= window.innerHeight && r.left >= 0 && r.right <= window.innerWidth;
           const cx = onScreen ? r!.left + r!.width / 2 : window.innerWidth / 2;
           const cy = onScreen ? r!.top + r!.height / 2 : window.innerHeight * 0.4;
-          fxBurst(cx, cy, { count: 22, power: 1.1, colors: ["#ff9f0a", "#ffd60a", "#9b51e0"] });
+          fxBurst(cx, cy, { count: 22, power: 1.1, colors: [...FX_PALETTES.achievement] });
         }
       }
       else {
         haptics.celebrate(); sound.success();
         // A milestone is a chase-ladder payoff — bloom gold from the screen centre.
         if (notice.kind === "milestone" && !reducedMotion) {
-          fxBurst(window.innerWidth / 2, window.innerHeight * 0.4, { count: 30, power: 1.6, colors: ["#ff9f0a", "#ffd60a", "#16b364"] });
+          fxBurst(window.innerWidth / 2, window.innerHeight * 0.4, { count: 30, power: 1.6, colors: [...FX_PALETTES.win] });
         }
         // A specialist levelling up gets a small gold star-pop near the Team tab.
         if (notice.kind === "levelup" && !reducedMotion) {
@@ -554,7 +572,7 @@ export function App() {
           const r = team?.getBoundingClientRect();
           const cx = r ? r.left + r.width / 2 : window.innerWidth / 2;
           const cy = r ? r.top + r.height / 2 : window.innerHeight * 0.5;
-          fxBurst(cx, cy, { count: 18, power: 1.1, colors: ["#ffd60a", "#ff9f0a", "#16b364"] });
+          fxBurst(cx, cy, { count: 18, power: 1.1, colors: [...FX_PALETTES.win] });
         }
       }
     }
@@ -614,8 +632,10 @@ export function App() {
         productsLive: game.products.active.length,
         rivalsBeaten: rivalsBeaten(game),
       };
-      setCelebration({ gained, total: game.prestige.legacyWeights, report, ascended: game.stats.ascensions > prevAscensions.current });
-      haptics.celebrate();
+      const ascended = game.stats.ascensions > prevAscensions.current;
+      resetHistory(); // the new generation's sparklines start from its own floor
+      setCelebration({ gained, total: game.prestige.legacyWeights, report, ascended });
+      if (ascended) haptics.epic(); else haptics.celebrate();
       // Game Center: push the career totals (silent no-op without the plugin).
       void gameCenterSubmitScores(game);
       // The flagship you just shipped is waiting as a free-to-launch product —
@@ -625,10 +645,10 @@ export function App() {
       }
       // An AGI ascension (a ship in the Post-Singularity era) gets the grander beat:
       // the ascend fanfare + a gold screen flash + a big central particle bloom.
-      if (game.stats.ascensions > prevAscensions.current) {
+      if (ascended) {
         sound.ascend();
         setFlash((k) => k + 1);
-        if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight / 2, { count: 48, power: 2.2, colors: ["#a855f7", "#ffd60a", "#ff9f0a", "#fff"] });
+        if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight / 2, { count: 48, power: 2.2, colors: [...FX_PALETTES.epic] });
       } else sound.ship();
     }
     prevShips.current = game.prestige.ships;
@@ -647,7 +667,7 @@ export function App() {
     const min = Math.round(balance.daily.durationSec / 60);
     const quip = DAILY_QUIPS[Math.floor(Date.now() / 86_400_000) % DAILY_QUIPS.length]!;
     logEvent(`${quip} · +${pct}% output for ${min} min`, "good");
-    if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.32, { count: 30, power: 1.5, colors: ["#7c5cff", "#ffd60a", "#16b364", "#2f7bf6"] });
+    if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.32, { count: 30, power: 1.5, colors: [...FX_PALETTES.brand] });
   };
   // Hardware buys float the rate you actually gained ("+120/s") at the tap point —
   // seeing the number go up IS the reward. Derived before/after the synchronous
@@ -733,7 +753,7 @@ export function App() {
     // real contract, not a generic "+Rep" ping. Stable per contract (hash the id).
     const quip = CONTRACT_DONE_QUIPS[[...id].reduce((a, c) => a + c.charCodeAt(0), 0) % CONTRACT_DONE_QUIPS.length]!;
     logEvent(`${quip}: "${title}" · +${rep} Lab Reputation`, "good");
-    if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.4, { count: 24, power: 1.3, colors: ["#ff9f0a", "#ffd60a", "#16b364"] });
+    if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.4, { count: 24, power: 1.3, colors: [...FX_PALETTES.win] });
   };
   const onFundChallenge = (id: string, at?: { x: number; y: number }) => {
     const completed = doFundChallenge(id);
@@ -742,7 +762,7 @@ export function App() {
       // plus a central bloom and the achievement chord. Earned once, ever, per challenge.
       haptics.celebrate(); sound.achievement();
       setChallengeDoneId(id);
-      if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.4, { count: 40, power: 1.8, colors: ["#7c5cff", "#ffd60a", "#16b364", "#2f7bf6", "#fff"] });
+      if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.4, { count: 40, power: 1.8, colors: [...FX_PALETTES.brand, "#fff"] });
     } else {
       // A contribution: light feedback + a floater at the tap so the resource drain reads
       // as progress in place (no toast — the bar animating is the confirmation).
@@ -757,7 +777,7 @@ export function App() {
     // in place (resources tick up for a windfall, a boost chip appears in the bar) — no
     // toast needed, keeping the frequent early/mid claims clean.
     haptics.celebrate(); sound.success();
-    if (at && !reducedMotion) fxBurst(at.x, at.y, { count: 16, power: 1.1, colors: ["#7c5cff", "#ffd60a", "#16b364"] });
+    if (at && !reducedMotion) fxBurst(at.x, at.y, { count: 16, power: 1.1, colors: [...FX_PALETTES.brand] });
   };
   const onResearch = (id: string) => {
     haptics.tap(); sound.purchase();
@@ -791,7 +811,7 @@ export function App() {
   };
 
   return (
-    <div className={`app${reducedMotion ? " reduce-motion" : ""}${tab === "lab" && section === "build" ? " app-split" : ""}`}>
+    <div className={`app${reducedMotion ? " reduce-motion" : ""}${booted ? " app-booted" : ""}${tab === "lab" && section === "build" ? " app-split" : ""}`}>
       <div className="aurora" aria-hidden="true">
         <span className="blob blob-a" />
         <span className="blob blob-b" />
@@ -999,7 +1019,7 @@ export function App() {
                 )}
                 {challengesUnlocked(game) && (
                   <Collapsible title="Grand Challenges" defaultOpen={hqCounts.forkPending} badge={hqCounts.forkPending ? "decision" : `${hqCounts.challengesDone}/${hqCounts.challengesSeen}`}>
-                    <GrandChallengesPanel bare game={game} onFund={onFundChallenge} onChooseFork={(id, forkId) => { haptics.celebrate(); sound.purchase(); doChooseFork(id, forkId); }} onFundMegaproject={(at) => { const done = doFundMegaproject(); if (done) { haptics.celebrate(); sound.megaproject(); if (at) fxBurst(at.x, at.y, { count: 26, power: 1.4, colors: ["#a855f7", "#ffd60a", "#16b364"] }); } else { haptics.tap(); sound.tap(); } }} />
+                    <GrandChallengesPanel bare game={game} onFund={onFundChallenge} onChooseFork={(id, forkId) => { haptics.celebrate(); sound.purchase(); doChooseFork(id, forkId); }} onFundMegaproject={(at) => { const done = doFundMegaproject(); if (done) { haptics.epic(); sound.megaproject(); if (at) fxBurst(at.x, at.y, { count: 26, power: 1.4, colors: [...FX_PALETTES.epic] }); } else { haptics.tap(); sound.tap(); } }} />
                   </Collapsible>
                 )}
                 {trialsUnlocked(game) && (

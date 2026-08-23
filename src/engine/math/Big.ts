@@ -98,6 +98,14 @@ export class Big {
     return this.d.toNumber();
   }
 
+  /** Base-10 magnitude as a native number — finite at ANY scale (unlike
+   *  toNumber, which overflows to Infinity past ~1e308). -Infinity at zero.
+   *  UI-only convenience (sparkline normalization); the engine never calls it. */
+  log10(): number {
+    const m = Math.abs(this.d.mantissa);
+    return m > 0 ? this.d.exponent + Math.log10(m) : -Infinity;
+  }
+
   /** Serialization form — round-trips through Big.of(). */
   toJSON(): string {
     return this.d.toString();

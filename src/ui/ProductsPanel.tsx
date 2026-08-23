@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { GameState, Derived } from "../engine/types";
 import { products as B, type ProductTypeId } from "../engine/balance/products";
 import { productMilestones } from "../engine/balance/products";
@@ -11,9 +11,16 @@ import {
 import { m$, numOf as num, fmtDur } from "./format";
 import { ProductDetail, TYPE_GLYPH } from "./ProductDetail";
 import { EditableName } from "./EditableName";
-import { AtomIcon, LockIcon, SparkIcon, TrendDownIcon, TrophyIcon, BarsIcon, BoltIcon } from "./Icons";
+import { EasedNumber } from "./EasedNumber";
+import { EmptyState } from "./EmptyState";
+import { AtomIcon, LockIcon, SparkIcon, TrendDownIcon, TrophyIcon, BarsIcon, BoltIcon, ChevronIcon} from "./Icons";
 
 const FUN_NAMES = ["Nimbus", "Oracle", "Synthia", "Cortex", "Lumen", "Vertex", "Sage", "Atlas", "Echo", "Prism", "Nova", "Helix", "Quasar", "Mirage"];
+
+// Session-only memory of each AI's market rank the last time the player LEFT
+// this tab — the board shows ▲/▼ movement "since you last looked", so the race
+// reads as a moving field, not a fixed table. UI-only; the engine knows nothing.
+const seenRanks = new Map<string, number>();
 
 interface Props {
   game: GameState;
@@ -54,6 +61,23 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
   const [mktOpen, setMktOpen] = useState(false);
   const ps = game.products;
   const board = useMemo(() => marketLeaderboard(game).slice(0, 8), [game.products.active, game.products.frontier, game.rivalOps]);
+  // Rank movement since the previous visit, frozen for THIS visit (arrows that
+  // jitter with the live sim would read as noise). Ranks write back on unmount.
+  const boardRef = useRef(board);
+  boardRef.current = board;
+  const movement = useRef<Map<string, number> | null>(null);
+  if (movement.current === null) {
+    const m = new Map<string, number>();
+    board.forEach((e, i) => {
+      const prev = seenRanks.get(e.name);
+      if (prev != null && prev !== i + 1) m.set(e.name, prev - (i + 1));
+    });
+    movement.current = m;
+  }
+  useEffect(() => () => {
+    seenRanks.clear();
+    boardRef.current.forEach((e: { name: string }, i: number) => seenRanks.set(e.name, i + 1));
+  }, []);
   const myRank = playerMarketRank(game);
   const frontier = ps.frontier;
   const maxSlots = maxActiveProducts(game);
@@ -138,7 +162,7 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
       )}
 
       {ps.active.length === 0 && ps.drafts.length === 0 && (
-        <p className="market-warn">Ship a model in the Lab to get a raw model you can turn into a product.</p>
+        <EmptyState icon={<BoltIcon size={20} />} text="No products in development." hint="Ship a model in the Lab to get a raw model you can turn into a product." />
       )}
 
       <div className="list">
@@ -157,19 +181,19 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
                     <EditableName className="prod-name" value={p.name} onCommit={(n) => onRename(p.id, n)} />
                     <span className="prod-mrr">
                       {me.mrr > 0 && <span className="prod-live" title="Earning now" />}
-                      {m$(me.mrr)}/s
+                      <EasedNumber value={me.mrr} format={m$} />/s
                     </span>
                   </div>
                   <div className="prod-sub">
                     <span className="prod-badge">{t.name}</span>
                     <span className="prod-ver">v{p.version}</span>
-                    <span className={`prod-profit ${me.margin >= 0 ? "pos" : "neg"}`}>{me.margin >= 0 ? "+" : ""}{m$(me.margin)}/s profit</span>
+                    <span className={`prod-profit ${me.margin >= 0 ? "pos" : "neg"}`}><EasedNumber value={me.margin} format={(n) => `${n >= 0 ? "+" : ""}${m$(n)}`} />/s profit</span>
                   </div>
                 </div>
               </div>
               <div className="prod-stats">
-                <div className="prod-stat"><b>{num(me.paid)}</b><span>paying</span></div>
-                <div className="prod-stat"><b>{num(me.mau)}</b><span>users</span></div>
+                <div className="prod-stat"><b><EasedNumber value={me.paid} format={num} /></b><span>paying</span></div>
+                <div className="prod-stat"><b><EasedNumber value={me.mau} format={num} /></b><span>users</span></div>
               </div>
 
               <div className="prod-quality">
@@ -209,7 +233,7 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
         <div className="prod-milestones">
           <button className="prod-ms-head" onClick={() => setMsOpen((o) => !o)} aria-expanded={msOpen}>
             <span className="prod-ms-title"><TrophyIcon size={15} /> Milestones</span> <span className="prod-ms-count">{ps.milestones.length}/{productMilestones.length}</span>
-            <span className="prod-ms-toggle">{msOpen ? "▾" : "▸"}</span>
+            <span className="prod-ms-toggle"><ChevronIcon size={13} dir={msOpen ? "down" : "right"} /></span>
           </button>
           {msOpen && (
             <div className="prod-ms-grid">
@@ -237,7 +261,7 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
         <button className="prod-ms-head" onClick={() => setMktOpen((o) => !o)} aria-expanded={mktOpen}>
           <span className="prod-ms-title"><BarsIcon size={15} /> Top AIs on the market</span>
           {myRank != null && <span className="prod-ms-count">you're #{myRank}</span>}
-          <span className="prod-ms-toggle">{mktOpen ? "▾" : "▸"}</span>
+          <span className="prod-ms-toggle"><ChevronIcon size={13} dir={mktOpen ? "down" : "right"} /></span>
         </button>
         {mktOpen && (
           <div className="market-list">
@@ -266,7 +290,14 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
               const staked = game.rivalStake === e.name;
               return (
                 <div className={`market-row ${e.isYou ? "you" : ""}`} key={`${e.name}-${i}`}>
-                  <span className="market-rank">{i + 1}</span>
+                  <span className="market-rank">
+                    {i + 1}
+                    {(() => {
+                      const mv = movement.current?.get(e.name) ?? 0;
+                      if (mv === 0) return null;
+                      return <i className={`market-move ${mv > 0 ? "up" : "down"}`} title={`${mv > 0 ? "Up" : "Down"} ${Math.abs(mv)} since your last visit`}>{mv > 0 ? "▲" : "▼"}</i>;
+                    })()}
+                  </span>
                   <div className="market-main">
                     <div className="market-top">
                       <span className="market-name">{e.name}{strikes > 0 && <span className="market-struck" title="Press blitzes landed this run"><BoltIcon size={11} />×{strikes}</span>}{staked && <span className="market-staked">staked</span>}</span>

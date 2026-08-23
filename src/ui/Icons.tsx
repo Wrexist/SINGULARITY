@@ -213,6 +213,16 @@ export function BookIcon({ size = 18 }: IconProps) {
 }
 
 /** Check / active. */
+/** Disclosure chevron — one glyph for every expander (was a mix of text marks). */
+export function ChevronIcon({ size = 18, dir = "down" }: IconProps & { dir?: "down" | "up" | "right" }) {
+  const rot = dir === "up" ? 180 : dir === "right" ? -90 : 0;
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={rot ? { transform: `rotate(${rot}deg)` } : undefined}>
+      <path d="M6 9.5 12 15.5 18 9.5" />
+    </svg>
+  );
+}
+
 export function CheckIcon({ size = 18 }: IconProps) {
   return (
     <Icon size={size}>

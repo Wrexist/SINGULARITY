@@ -1,4 +1,6 @@
 import { contractBoard, contractsBalance, sponsorView } from "../engine/contracts";
+import { EmptyState } from "./EmptyState";
+import { TargetIcon } from "./Icons";
 import { fmt } from "./format";
 import { Big } from "../engine/math/Big";
 import type { GameState } from "../engine/types";
@@ -50,7 +52,7 @@ export function ContractsPanel({ game, onClaim, onClaimSponsor, bare = false }: 
             <p className="contracts-empty">Daily sponsor objective — a new one calls tomorrow.</p>
           </div>
         ) : (
-          <p className="contracts-empty">All contracts cleared. Sponsors are circling — check back tomorrow.</p>
+          <EmptyState icon={<TargetIcon size={20} />} text="All contracts cleared." hint="Sponsors are circling — a new objective calls tomorrow." />
         )
       ) : (
         <div className="list">

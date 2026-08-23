@@ -1,5 +1,16 @@
 import { useState } from "react";
-import type { ToastData } from "./Toast";
+import { ChevronIcon } from "./Icons";
+import { ToneIcon, type ToastData } from "./Toast";
+
+/** "14:32"-style clock stamp for a log entry (locale-aware, no seconds). */
+function stamp(at?: number): string | null {
+  if (!at) return null;
+  try {
+    return new Date(at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return null;
+  }
+}
 
 /** Collapsible "Recent activity" — a session log of everything that toasted
  *  (events, unlocks, milestones, achievements, ops). Toasts fade fast; this lets a
@@ -13,16 +24,20 @@ export function EventLog({ log }: { log: ToastData[] }) {
       <button className="stats-toggle" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         <span className="panel-title" style={{ margin: 0 }}>Recent activity</span>
         <span className="log-count">{log.length}</span>
-        <span className="chevron">{open ? "▲" : "▼"}</span>
+        <span className="chevron"><ChevronIcon size={13} dir={open ? "up" : "down"} /></span>
       </button>
       {open && (
         <div className="log-list">
-          {log.map((e) => (
-            <div key={e.id} className={`log-row log-${e.tone}`}>
-              <span className="log-dot" aria-hidden="true" />
-              <span className="log-text">{e.text}</span>
-            </div>
-          ))}
+          {log.map((e) => {
+            const t = stamp(e.at);
+            return (
+              <div key={e.id} className={`log-row log-${e.tone}`}>
+                <span className="log-ic" aria-hidden="true"><ToneIcon tone={e.tone} /></span>
+                <span className="log-text">{e.text}</span>
+                {t && <span className="log-time">{t}</span>}
+              </div>
+            );
+          })}
         </div>
       )}
     </section>

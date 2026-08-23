@@ -34,7 +34,7 @@ export function DoctrinePanel({ game, onClaim }: Props) {
         const can = canClaimDoctrine(game, p.id);
         const lockedByReq = !!p.requires && !owned.has(p.requires);
         return (
-          <button key={p.id} className={`doctrine-perk ${isOwned ? "owned" : ""}`} disabled={isOwned || !can} onClick={() => onClaim(p.id)}>
+          <button key={p.id} className={`doctrine-perk meta-item ${isOwned ? "owned" : can ? "affordable" : lockedByReq ? "locked" : ""}`} disabled={isOwned || !can} onClick={() => onClaim(p.id)}>
             <div className="doctrine-main">
               <span className="doctrine-name">{p.name}{isOwned ? " ✓" : ""}</span>
               <span className="doctrine-desc">{p.desc}</span>

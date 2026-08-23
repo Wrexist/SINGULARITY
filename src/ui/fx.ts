@@ -22,6 +22,18 @@ let wakers: Array<() => void> = [];
 
 const PALETTE = ["#ff385c", "#2f7bf6", "#9b51e0", "#16b364", "#ff9f0a"];
 
+/** Semantic burst palettes — one place, so celebration colors never drift
+ *  between call sites. Pick by MEANING (see motion hierarchy): win = frequent
+ *  claims/milestones, achievement = trophy beats, brand = daily/challenge
+ *  tentpoles, epic = the rarest tier (ascension/megaproject), ship = launches. */
+export const FX_PALETTES = {
+  win: ["#ff9f0a", "#ffd60a", "#16b364"],
+  achievement: ["#ff9f0a", "#ffd60a", "#9b51e0"],
+  brand: ["#7c5cff", "#ffd60a", "#16b364", "#2f7bf6"],
+  epic: ["#a855f7", "#ffd60a", "#ff9f0a", "#fff"],
+  ship: ["#ff5a3c", "#ffd60a", "#16b364"],
+} as const;
+
 /** With reduced motion the FxCanvas never mounts, so nothing drains these arrays —
  *  pushing would leak a particle per tap for the whole session. Read the setting
  *  store directly (no per-emit DOM query; bursts fire at tap frequency). */

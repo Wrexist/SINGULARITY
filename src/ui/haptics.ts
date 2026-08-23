@@ -39,7 +39,7 @@ function vibrate(pattern: number | number[]): void {
 
 /** Native path: semantic taps via the Taptic Engine. Light mode steps every
  *  impact down one style so the rhythm survives at a softer intensity. */
-function native(kind: "tap" | "success" | "celebrate" | "warn"): void {
+function native(kind: "tap" | "success" | "celebrate" | "epic" | "warn"): void {
   try {
     const s = useSettings.getState();
     if (!s.haptics) return;
@@ -56,6 +56,13 @@ function native(kind: "tap" | "success" | "celebrate" | "warn"): void {
         fire(Haptics.notification({ type: NotificationType.Success }));
         if (!light) setTimeout(() => fire(Haptics.impact({ style: ImpactStyle.Heavy })), 90);
         break;
+      case "epic":
+        // The rarest tier (ascension / era crossing / megaproject): a rising
+        // three-beat chord so the hand feels the difference from a mere win.
+        fire(Haptics.notification({ type: NotificationType.Success }));
+        setTimeout(() => fire(Haptics.impact({ style: light ? ImpactStyle.Medium : ImpactStyle.Heavy })), 110);
+        if (!light) setTimeout(() => fire(Haptics.impact({ style: ImpactStyle.Heavy })), 260);
+        break;
       case "warn":
         fire(Haptics.notification({ type: light ? NotificationType.Warning : NotificationType.Error }));
         break;
@@ -65,7 +72,7 @@ function native(kind: "tap" | "success" | "celebrate" | "warn"): void {
   }
 }
 
-const emit = (kind: "tap" | "success" | "celebrate" | "warn", pattern: number | number[]): void => {
+const emit = (kind: "tap" | "success" | "celebrate" | "epic" | "warn", pattern: number | number[]): void => {
   if (isNative()) native(kind);
   else vibrate(pattern);
 };
@@ -77,6 +84,8 @@ export const haptics = {
   success: () => emit("success", [10, 30, 14]),
   /** Big moment (Ship the Model). */
   celebrate: () => emit("celebrate", [16, 40, 24, 40, 40]),
+  /** The rarest tier — AGI ascension, era crossings, megaprojects. */
+  epic: () => emit("epic", [20, 50, 30, 50, 50, 60, 70]),
   /** Something went wrong (a raid, a fine) — a heavier, blunter buzz. */
   warn: () => emit("warn", [40, 30, 40]),
 };

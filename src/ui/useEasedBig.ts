@@ -1,10 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Big } from "../engine/math/Big";
-import { useSettings } from "./settings";
-
-const osReducedMotion =
-  typeof window !== "undefined" &&
-  window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+import { useReducedMotion } from "./motion";
 
 /**
  * Eases a displayed Big toward its target so resource counters roll up smoothly
@@ -15,7 +11,7 @@ const osReducedMotion =
  * Honors prefers-reduced-motion by tracking the target exactly.
  */
 export function useEasedBig(target: Big, smoothing = 0.16): Big {
-  const reduced = useSettings((s) => s.reducedMotion) || osReducedMotion;
+  const reduced = useReducedMotion();
   const targetRef = useRef(target);
   targetRef.current = target;
   const displayRef = useRef(target);
