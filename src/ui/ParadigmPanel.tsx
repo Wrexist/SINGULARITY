@@ -34,7 +34,7 @@ export function ParadigmPanel({ game, onBuy }: Props) {
           const can = canBuyParadigm(game, p.id);
           const lockedByReq = !!p.requires && !owned.has(p.requires);
           return (
-            <button key={p.id} className={`paradigm-node ${isOwned ? "owned" : ""}`} disabled={isOwned || !can} onClick={() => onBuy(p.id)}>
+            <button key={p.id} className={`paradigm-node meta-item ${isOwned ? "owned" : can ? "affordable" : lockedByReq ? "locked" : ""}`} disabled={isOwned || !can} onClick={() => onBuy(p.id)}>
               <div className="paradigm-main">
                 <span className="paradigm-name">{p.name}{isOwned ? " ✓" : ""}</span>
                 <span className="paradigm-desc">{p.desc}</span>

@@ -1,5 +1,15 @@
 import { useState } from "react";
-import type { ToastData } from "./Toast";
+import { ToneIcon, type ToastData } from "./Toast";
+
+/** "14:32"-style clock stamp for a log entry (locale-aware, no seconds). */
+function stamp(at?: number): string | null {
+  if (!at) return null;
+  try {
+    return new Date(at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return null;
+  }
+}
 
 /** Collapsible "Recent activity" — a session log of everything that toasted
  *  (events, unlocks, milestones, achievements, ops). Toasts fade fast; this lets a
@@ -19,8 +29,9 @@ export function EventLog({ log }: { log: ToastData[] }) {
         <div className="log-list">
           {log.map((e) => (
             <div key={e.id} className={`log-row log-${e.tone}`}>
-              <span className="log-dot" aria-hidden="true" />
+              <span className="log-ic" aria-hidden="true"><ToneIcon tone={e.tone} /></span>
               <span className="log-text">{e.text}</span>
+              {stamp(e.at) && <span className="log-time">{stamp(e.at)}</span>}
             </div>
           ))}
         </div>

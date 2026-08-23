@@ -6,9 +6,11 @@ export interface ToastData {
   text: string;
   /** Visual weight: plain unlock vs. a regulatory event. */
   tone?: "neutral" | "bad" | "good";
+  /** Wall-clock ms when the event fired — shown as a timestamp in the activity log. */
+  at?: number;
 }
 
-function ToneIcon({ tone }: { tone: ToastData["tone"] }) {
+export function ToneIcon({ tone }: { tone: ToastData["tone"] }) {
   if (tone === "good") return <CheckCircleIcon size={17} />;
   if (tone === "bad") return <AlertTriangleIcon size={17} />;
   return <InfoIcon size={17} />;

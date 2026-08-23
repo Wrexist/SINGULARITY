@@ -11,6 +11,8 @@ import {
 import { m$, numOf as num, fmtDur } from "./format";
 import { ProductDetail, TYPE_GLYPH } from "./ProductDetail";
 import { EditableName } from "./EditableName";
+import { EasedNumber } from "./EasedNumber";
+import { EmptyState } from "./EmptyState";
 import { AtomIcon, LockIcon, SparkIcon, TrendDownIcon, TrophyIcon, BarsIcon, BoltIcon } from "./Icons";
 
 const FUN_NAMES = ["Nimbus", "Oracle", "Synthia", "Cortex", "Lumen", "Vertex", "Sage", "Atlas", "Echo", "Prism", "Nova", "Helix", "Quasar", "Mirage"];
@@ -138,7 +140,7 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
       )}
 
       {ps.active.length === 0 && ps.drafts.length === 0 && (
-        <p className="market-warn">Ship a model in the Lab to get a raw model you can turn into a product.</p>
+        <EmptyState icon={<BoltIcon size={20} />} text="No products in development." hint="Ship a model in the Lab to get a raw model you can turn into a product." />
       )}
 
       <div className="list">
@@ -157,19 +159,19 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
                     <EditableName className="prod-name" value={p.name} onCommit={(n) => onRename(p.id, n)} />
                     <span className="prod-mrr">
                       {me.mrr > 0 && <span className="prod-live" title="Earning now" />}
-                      {m$(me.mrr)}/s
+                      <EasedNumber value={me.mrr} format={m$} />/s
                     </span>
                   </div>
                   <div className="prod-sub">
                     <span className="prod-badge">{t.name}</span>
                     <span className="prod-ver">v{p.version}</span>
-                    <span className={`prod-profit ${me.margin >= 0 ? "pos" : "neg"}`}>{me.margin >= 0 ? "+" : ""}{m$(me.margin)}/s profit</span>
+                    <span className={`prod-profit ${me.margin >= 0 ? "pos" : "neg"}`}><EasedNumber value={me.margin} format={(n) => `${n >= 0 ? "+" : ""}${m$(n)}`} />/s profit</span>
                   </div>
                 </div>
               </div>
               <div className="prod-stats">
-                <div className="prod-stat"><b>{num(me.paid)}</b><span>paying</span></div>
-                <div className="prod-stat"><b>{num(me.mau)}</b><span>users</span></div>
+                <div className="prod-stat"><b><EasedNumber value={me.paid} format={num} /></b><span>paying</span></div>
+                <div className="prod-stat"><b><EasedNumber value={me.mau} format={num} /></b><span>users</span></div>
               </div>
 
               <div className="prod-quality">

@@ -1,3 +1,7 @@
+import { useEffect, useState } from "react";
+import { useReducedMotion } from "./motion";
+import { burst as fxBurst } from "./fx";
+
 interface Props {
   name: string;
   typeName: string;
@@ -34,20 +38,45 @@ const BLURBS = [
 ];
 
 export function ProductLaunch({ name, typeName, onDone }: Props) {
+  const reducedMotion = useReducedMotion();
   // Stable per-mount pick without engine-forbidden randomness: hash the name.
   const blurb = BLURBS[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % BLURBS.length]!;
+  // A fast two-beat sequence — Deploying… (a sweep) → LIVE (the press release).
+  // Reduced motion skips straight to the live state. Kept under a second so the
+  // repeated mid-game launches never feel like a forced cinematic.
+  const [live, setLive] = useState(reducedMotion);
+  useEffect(() => {
+    if (reducedMotion) return;
+    const t = window.setTimeout(() => setLive(true), 850);
+    return () => window.clearTimeout(t);
+  }, [reducedMotion]);
+  // The moment it flips live, a small ship-tinted bloom over the modal — the
+  // "we just deployed something important" beat (fx.ts self-gates on reduce-motion).
+  useEffect(() => {
+    if (live && !reducedMotion) {
+      fxBurst(window.innerWidth / 2, window.innerHeight * 0.38, { count: 20, power: 1.2, colors: ["#ff5a3c", "#ffd60a", "#16b364"] });
+    }
+  }, [live, reducedMotion]);
   return (
-    <div className="modal-backdrop era-backdrop" onClick={onDone}>
-      <div className="modal era-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="era-kicker">PRODUCT LAUNCH</div>
+    <div className="modal-backdrop era-backdrop launch-moment" onClick={live ? onDone : undefined}>
+      <div className="modal era-modal launch-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="era-kicker launch-kicker">{live ? "PRODUCT LAUNCH" : "DEPLOYING"}</div>
         <h2 className="era-title">{name}</h2>
-        <div className="era-press">
-          <span className="era-press-tag">{typeName.toUpperCase()}</span>
-          <p><b>{name}</b> {blurb}</p>
-        </div>
-        <button className="btn btn-primary" onClick={onDone}>
-          Ship it
-        </button>
+        {live ? (
+          <>
+            <div className="era-press">
+              <span className="era-press-tag">{typeName.toUpperCase()}</span>
+              <p><b>{name}</b> {blurb}</p>
+            </div>
+            <button className="btn btn-primary" onClick={onDone}>
+              Ship it
+            </button>
+          </>
+        ) : (
+          <div className="launch-sweep" role="progressbar" aria-label="Deploying">
+            <div className="launch-sweep-fill" />
+          </div>
+        )}
       </div>
     </div>
   );

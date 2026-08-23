@@ -29,7 +29,7 @@ export function InstitutePanel({ game, onBuy }: Props) {
           const can = canBuyInstitute(game, p.id);
           const lockedByReq = !!p.requires && !owned.has(p.requires);
           return (
-            <button key={p.id} className={`institute-wing ${isOwned ? "owned" : ""}`} disabled={isOwned || !can} onClick={() => onBuy(p.id)}>
+            <button key={p.id} className={`institute-wing meta-item ${isOwned ? "owned" : can ? "affordable" : lockedByReq ? "locked" : ""}`} disabled={isOwned || !can} onClick={() => onBuy(p.id)}>
               <div className="institute-main">
                 <span className="institute-name">{p.name}{isOwned ? " ✓" : ""}</span>
                 <span className="institute-desc">{p.desc}</span>

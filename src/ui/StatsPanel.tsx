@@ -25,7 +25,7 @@ function alignmentLabel(a: number): string {
   return "Accelerationist";
 }
 
-type Row = { label: string; value: string };
+type Row = { label: string; value: string; tone?: "compute" | "data" | "money" | "good" };
 
 /** Collapsible "Lab Stats" — surfaces the math (legibility is the feature, GDD).
  *  Two groups: NOW (current per-second rates + multipliers) and ALL-TIME (the
@@ -92,19 +92,19 @@ export function StatsPanel({ game, derived }: Props) {
   const charter = charterRow(game);
 
   const now: Row[] = [
-    { label: "Compute / sec", value: fmt(derived.computePerSec) },
-    { label: "Data / sec", value: fmt(derived.dataPerSec) },
+    { label: "Compute / sec", value: fmt(derived.computePerSec), tone: "compute" as const },
+    { label: "Data / sec", value: fmt(derived.dataPerSec), tone: "data" as const },
     { label: "Compute multiplier", value: `×${fmt(derived.computeMult)}` },
     { label: "Data multiplier", value: `×${fmt(derived.dataMult)}` },
     { label: "$ multiplier", value: `×${fmt(derived.moneyMult)}` },
-    { label: "Legacy boost", value: `×${fmt(derived.legacyMult)}` },
+    { label: "Legacy boost", value: `×${fmt(derived.legacyMult)}`, tone: "good" as const },
     // Endgame boosts that were previously invisible — surface them the moment they're
     // non-identity so the "small compounding boosts" actually read as working.
     ...(game.preprints > 0 ? [{ label: "Preprints", value: `×${preprintMult(game).toNumber().toFixed(2)} · ${game.preprints} paper${game.preprints === 1 ? "" : "s"}` }] : []),
     ...(game.repEndowment > 0 ? [{ label: "Endowment", value: `+${Math.round((endowmentMult(game) - 1) * 100)}% · L${game.repEndowment}` }] : []),
     { label: "Run duration", value: `${derived.runDurationSec.toFixed(1)}s` },
     { label: "Run payout", value: `${fmt(derived.runDataYield)} data · ${fmtMoney(derived.runMoneyYield)}` },
-    { label: "Passive income", value: `${fmtMoney(derived.passiveMoneyPerSec)}/s` },
+    { label: "Passive income", value: `${fmtMoney(derived.passiveMoneyPerSec)}/s`, tone: "money" as const },
     // (The "Faction stance" text row was dropped — the align-bar below already carries
     // the stance name; keep only the numeric tilt. 2026-07 noise sweep.)
     ...(stance ? [{ label: "Stance effects", value: stance }] : []),
@@ -115,9 +115,9 @@ export function StatsPanel({ game, derived }: Props) {
   ];
 
   const allTime: Row[] = [
-    { label: "Total earned", value: fmtMoney(s.totalMoney) },
+    { label: "Total earned", value: fmtMoney(s.totalMoney), tone: "money" as const },
     { label: "Peak Compute / sec", value: fmt(s.peakComputePerSec) },
-    { label: "Peak revenue / sec", value: m$(s.peakMrr) },
+    { label: "Peak revenue / sec", value: m$(s.peakMrr), tone: "money" as const },
     { label: "Peak users", value: numOf(s.peakMau) },
     { label: "Models shipped", value: String(s.totalShips) },
     { label: "Legacy Weights", value: fmt(game.prestige.legacyWeights) },
@@ -153,7 +153,7 @@ export function StatsPanel({ game, derived }: Props) {
         {now.map((r) => (
           <div key={r.label} className="stat-row">
             <span className="stat-label">{r.label}</span>
-            <span className="stat-value">{r.value}</span>
+            <span className={`stat-value${r.tone ? ` t-${r.tone}` : ""}`}>{r.value}</span>
           </div>
         ))}
       </div>
@@ -162,7 +162,7 @@ export function StatsPanel({ game, derived }: Props) {
         {allTime.map((r) => (
           <div key={r.label} className="stat-row">
             <span className="stat-label">{r.label}</span>
-            <span className="stat-value">{r.value}</span>
+            <span className={`stat-value${r.tone ? ` t-${r.tone}` : ""}`}>{r.value}</span>
           </div>
         ))}
       </div>

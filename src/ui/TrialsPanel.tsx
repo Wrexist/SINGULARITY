@@ -60,7 +60,7 @@ export function TrialsPanel({ game, onStart, onAbandon }: Props) {
           const locked = game.prestige.ships < t.unlockShips;
           const canStart = canStartTrial(game, t.id);
           return (
-            <div key={t.id} className={`trial-card ${isDone ? "trial-done" : ""}`}>
+            <div key={t.id} className={`trial-card meta-item ${isDone ? "trial-done" : canStart ? "affordable" : locked ? "locked" : ""}`}>
               <div className="trial-main">
                 <span className="trial-name">{t.name}{isDone ? " ✓" : ""}</span>
                 <span className="trial-desc">{t.desc}</span>

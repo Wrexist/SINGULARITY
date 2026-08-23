@@ -1,5 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Portal } from "./Portal";
+import { EmptyState } from "./EmptyState";
 import { balance } from "../engine/balance/config";
 import { canBuyOfficePerk } from "../engine/actions";
 import { officeMorale, totalMorale } from "../engine/derive";
@@ -12,7 +13,7 @@ import { Big } from "../engine/math/Big";
 import type { GameState, Derived, Employee } from "../engine/types";
 import type { Candidate } from "../state/store";
 import { fmtMoney, m$, fmtDur } from "./format";
-import { TeamIcon, BanknoteIcon, SmileIcon, BarsIcon, BuildingIcon, GradCapIcon, AtomIcon, RepeatIcon } from "./Icons";
+import { TeamIcon, BanknoteIcon, SmileIcon, BarsIcon, BuildingIcon, GradCapIcon, AtomIcon, RepeatIcon, BoxIcon } from "./Icons";
 import { burst } from "./fx";
 
 interface Props {
@@ -274,7 +275,7 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
                 <span>Your team · {team.length}</span>
                 <button className="emp-recruit" onClick={onRecruit}>+ Recruit</button>
               </div>
-              {team.length === 0 && <p className="market-warn">No employees yet — tap <b>Recruit</b> to hire your first specialist.</p>}
+              {team.length === 0 && <EmptyState icon={<TeamIcon size={20} />} text="The lab floor is quiet — no specialists yet." hint={<>Tap <b>+ Recruit</b> to hire your first specialist.</>} />}
               {team.map((e) => {
                 const trainable = canTrain(game, e.id);
                 const maxed = e.level >= MAX_LEVEL;
@@ -344,7 +345,7 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
               Placing <b>{selected.name.split(" ")[0]}</b> — tap a project below, or <button className="link-btn" onClick={() => place(null)}>send to Lab</button> · <button className="link-btn" onClick={() => setSelectedId(null)}>cancel</button>
             </div>
           )}
-          {projects.length === 0 && <p className="market-warn">No products yet — launch one in the <b>Products</b> tab to staff a team.</p>}
+          {projects.length === 0 && <EmptyState icon={<BoxIcon size={20} />} text="No products in development." hint={<>Launch one in the <b>Products</b> tab to staff a team.</>} />}
 
           {projects.map(({ p, me, crew }) => {
             const t = typeDef(p.type);
