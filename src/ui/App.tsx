@@ -119,7 +119,7 @@ export function App() {
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
     doClaimContract, doClaimSponsor, doBuyPreprint, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
-    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival, doFundChallenge, doChooseFork, doFundMegaproject, doClaimObjective, doToggleAutomation, doStartTrial, doAbandonTrial, doSetFlagship, doBuyParadigm, doClaimDoctrine, doBuyInstitute, doEndowFellowship } =
+    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival, doFundChallenge, doChooseFork, doFundMegaproject, doClaimObjective, doToggleAutomation, doStartTrial, doAbandonTrial, doSetFlagship, doBuyParadigm, doClaimDoctrine, doBuyInstitute, doEndowFellowship, doPickMandate } =
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
@@ -910,6 +910,11 @@ export function App() {
             onFundChallenge={onFundChallenge}
             onChooseFork={(id, forkId) => { haptics.celebrate(); sound.purchase(); doChooseFork(id, forkId); }}
             onFundMegaproject={(at) => { const done = doFundMegaproject(); if (done) { haptics.epic(); sound.megaproject(); if (at) fxBurst(at.x, at.y, { count: 26, power: 1.4, colors: [...FX_PALETTES.epic] }); } else { haptics.tap(); sound.tap(); } }}
+            onPickMandate={(id) => {
+              // Writing a permanent mandate is a commitment beat, not a purchase —
+              // the Institute chord, and the reward reads in place on the card.
+              haptics.celebrate(); sound.institute(); doPickMandate(id);
+            }}
             onStartTrial={(id) => { haptics.success(); sound.tap(); doStartTrial(id); }}
             onAbandonTrial={() => { haptics.tap(); doAbandonTrial(); }}
             onClaimDoctrine={(id) => { haptics.celebrate(); sound.success(); doClaimDoctrine(id); }}

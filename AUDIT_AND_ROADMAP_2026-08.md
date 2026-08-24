@@ -231,7 +231,7 @@ Fellowships: escalating cost, a small permanent all-lane boost each, and a named
 - **Cons.** Another "number goes up" sink rather than a new verb; competes with the
   Endowment for the same late-game attention; needs a `SAVE_VERSION` bump.
 
-**2. Megaproject Charters** — *cost: M*
+**2. Megaproject Charters** — *cost: M* ✅ **implemented (visual-polish pass, 2026-08), shipped as Megaproject MANDATES** — renamed to avoid colliding with the existing Lab Charter system. The bounded multiplier is unchanged; each completed cycle now mints one permanent pick (lane +12% / all +5%), stacking, so cycle 30 is worth what cycle 5 was. Save v34 + migration; curve-safety re-proved with a byte-identical `npm run sim`.
 
 The endgame is arithmetically dead. `megaprojectMult` sums a geometric series with
 `baseMag 0.05, decay 0.85`, converging to **1 + 0.05/0.15 = ×1.333** — while each cycle

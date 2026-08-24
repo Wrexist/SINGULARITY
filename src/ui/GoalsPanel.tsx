@@ -31,6 +31,7 @@ interface Props {
   onFundChallenge: (id: string, at?: { x: number; y: number }) => void;
   onChooseFork: (id: string, forkId: string) => void;
   onFundMegaproject: (at?: { x: number; y: number }) => void;
+  onPickMandate: (id: string) => void;
   onStartTrial: (id: string) => void;
   onAbandonTrial: () => void;
   onClaimDoctrine: (id: string) => void;
@@ -55,7 +56,7 @@ interface Props {
 export function GoalsPanel({
   game, section, onSection, showContracts,
   onClaimObjective, onClaimContract, onClaimSponsor,
-  onFundChallenge, onChooseFork, onFundMegaproject,
+  onFundChallenge, onChooseFork, onFundMegaproject, onPickMandate,
   onStartTrial, onAbandonTrial, onClaimDoctrine,
 }: Props) {
   const counts = useMemo(() => goalsCounts(game), [game]);
@@ -117,7 +118,7 @@ export function GoalsPanel({
           )}
           {challengesUnlocked(game) && (
             <Collapsible title="Grand Challenges" defaultOpen={counts.forkPending} badge={counts.forkPending ? "decision" : `${counts.challengesDone}/${counts.challengesSeen}`}>
-              <GrandChallengesPanel bare game={game} onFund={onFundChallenge} onChooseFork={onChooseFork} onFundMegaproject={onFundMegaproject} />
+              <GrandChallengesPanel bare game={game} onFund={onFundChallenge} onChooseFork={onChooseFork} onFundMegaproject={onFundMegaproject} onPickMandate={onPickMandate} />
             </Collapsible>
           )}
           {trialsUnlocked(game) && (

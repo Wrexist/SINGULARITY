@@ -3416,6 +3416,39 @@ button.modchip.workable:active { transform: scale(0.94); }
 .goals-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
 .goals-head .collapsible-badge { margin-left: auto; }
 
+/* Megaproject MANDATES — the permanent pick each completed cycle mints. Presented
+   like the Grand Challenge fork picker (the player already knows that language for
+   "choose one, forever"), with a quiet held-summary line when there is nothing to
+   pick. No animation: a standing choice is a state, not an event. */
+.mandate-pick {
+  margin-top: 10px; padding-top: 10px;
+  border-top: 1px dashed color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.mandate-pick-head {
+  display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px;
+  font-size: var(--fs-md); font-weight: 800; color: var(--accent);
+}
+.mandate-pick-sub { font-size: var(--fs-xs); font-weight: 600; color: var(--ink-3); }
+.mandate-arms { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mandate-arm {
+  display: flex; flex-direction: column; gap: 3px; text-align: left; cursor: pointer;
+  padding: var(--pad-row); border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--accent) 8%, #fff);
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+  transition: transform var(--dur-tap) var(--ease-out), border-color var(--dur-fast);
+}
+.mandate-arm:hover { border-color: var(--accent); }
+.mandate-arm:active { transform: scale(0.97); }
+.mandate-arm-name { font-size: var(--fs-md); font-weight: 800; color: var(--ink); }
+.mandate-arm-desc { font-size: var(--fs-xs); color: var(--ink-2); line-height: 1.35; }
+.mandate-held {
+  display: flex; align-items: baseline; gap: 8px; margin-top: 9px; padding-top: 9px;
+  border-top: 1px solid var(--glass-hairline);
+  font-size: var(--fs-xs);
+}
+.mandate-held-label { font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-3); }
+.mandate-held-mult { margin-left: auto; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
+
 /* ---------- Intentional empty states ---------- */
 .empty-state {
   display: flex; align-items: center; gap: 12px;

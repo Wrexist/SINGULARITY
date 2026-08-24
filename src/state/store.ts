@@ -56,7 +56,7 @@ import { setFlagship } from "../engine/flagship";
 import { buyParadigm } from "../engine/paradigms";
 import { claimDoctrine } from "../engine/doctrine";
 import { buyInstitute, endowFellowship } from "../engine/institute";
-import { fundChallenge, chooseFork, fundMegaproject } from "../engine/challenges";
+import { fundChallenge, chooseFork, fundMegaproject, pickMandate } from "../engine/challenges";
 import { claimObjective } from "../engine/objectives";
 import { applyAutomation, automationUnlockedAny, automationEnabled, toggleAutomation } from "../engine/automation";
 import { automation as AUTOMATION } from "../engine/balance/automation";
@@ -199,6 +199,8 @@ interface GameStore {
   doFundChallenge: (id: string) => boolean;
   doChooseFork: (id: string, forkId: string) => void;
   doFundMegaproject: () => boolean;
+  /** Take one Megaproject Mandate — the permanent pick a completed cycle mints. */
+  doPickMandate: (id: string) => void;
   /** Claim a met Lab Objective, steering its boost to the chosen lane (default = headline). */
   doClaimObjective: (id: string, target?: "computeMult" | "dataMult" | "moneyMult") => void;
   /** Flip an Automation autopilot on/off (no-op if still locked). */
@@ -673,6 +675,7 @@ export const useGame = create<GameStore>((set, get) => ({
     });
     return justCompleted;
   },
+  doPickMandate: (id) => set((s) => ({ game: pickMandate(s.game, id) })),
   doClaimObjective: (id, target) => set((s) => ({ game: claimObjective(s.game, id, target) })),
   doToggleAutomation: (id) => set((s) => ({ game: toggleAutomation(s.game, id) })),
   setComputeFocus: (v) =>

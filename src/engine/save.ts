@@ -31,6 +31,8 @@ const OBJECTIVE_IDS = new Set(OBJECTIVES.pool.map((o) => o.id));
 const LEGACY_IDS = new Set(LEGACY.perks.map((p) => p.id));
 const REP_PERK_COST = new Map(REPUTATION.perks.map((p) => [p.id, p.cost]));
 const CHARTER_IDS = new Set(CHARTERS.list.map((c) => c.id));
+/** Megaproject MANDATE ids (distinct from the Lab CHARTER ids above). */
+const MEGA_MANDATE_IDS = new Set(CHALLENGES.megaproject.mandates.defs.map((d) => d.id));
 const RIVAL_NAMES = new Set(MARKET.rivals.map((r) => r.name));
 const RESEARCH_IDS = new Set(balance.research.map((r) => r.id));
 const DIRECTIVE_IDS = new Set(REPUTATION.endowment.directives.defs.map((d) => d.id));
@@ -406,7 +408,7 @@ interface SavedShape {
     forks: Record<string, string>;
   };
   /** Megaprojects II — cycles completed + current-cycle funding (Big → strings). v28. */
-  megaprojects: { level: number; funded: { compute: string; data: string; money: string } };
+  megaprojects: { level: number; funded: { compute: string; data: string; money: string }; mandates?: string[] };
   /** Lab Objectives — claimed objective ids. Migrated at v22. */
   objectives: { completed: string[] };
   /** Automation — which autopilots are switched on. Migrated at v23. */
@@ -489,6 +491,7 @@ export function serialize(state: GameState): string {
       forks: state.challenges.forks,
     },
     megaprojects: {
+      mandates: [...state.megaprojects.mandates],
       level: state.megaprojects.level,
       funded: {
         compute: state.megaprojects.funded.compute.toJSON(),
@@ -550,6 +553,12 @@ function sanitizeMegaprojects(raw: unknown): GameState["megaprojects"] {
   const g = Math.pow(M.growth, level);
   const cost = { compute: Big.of(M.baseCost.compute).mul(g), data: Big.of(M.baseCost.data).mul(g), money: Big.of(M.baseCost.money).mul(g) };
   const f = r.funded ?? {};
+  // Charters: known ids only, and never more picks than completed cycles minted —
+  // a crafted save must not be able to stack rewards it never earned.
+  const rawMandates = Array.isArray((r as { mandates?: unknown }).mandates) ? ((r as { mandates: unknown[] }).mandates) : [];
+  const mandates = rawMandates
+    .filter((c): c is string => typeof c === "string" && MEGA_MANDATE_IDS.has(c))
+    .slice(0, level);
   return {
     level,
     funded: {
@@ -557,6 +566,7 @@ function sanitizeMegaprojects(raw: unknown): GameState["megaprojects"] {
       data: safeBig(f.data).min(cost.data),
       money: safeBig(f.money).min(cost.money),
     },
+    mandates,
   };
 }
 
@@ -1142,6 +1152,20 @@ export function migrate(raw: any): SavedShape {
     // sequential — collapsing the two would have skipped one set of fields entirely
     // for every save that has already migrated past it.
     s = { ...s, version: 33, instituteFellowships: s.instituteFellowships ?? 0 };
+  }
+  if (s.version === 33) {
+    // v33 → v34: Megaproject Mandates. Every completed cycle mints one permanent
+    // pick; a returning save keeps its level (and so is handed the picks its past
+    // cycles earned, unspent) and simply starts with none taken. The bounded
+    // megaproject bonus is untouched, so nobody's held multiplier moves.
+    const mega = (s.megaprojects ?? { level: 0, funded: { compute: "0", data: "0", money: "0" } }) as {
+      level?: unknown; funded?: unknown; mandates?: unknown;
+    };
+    s = {
+      ...s,
+      version: 34,
+      megaprojects: { ...mega, mandates: Array.isArray(mega.mandates) ? mega.mandates : [] },
+    };
   }
   return s as SavedShape;
 }
