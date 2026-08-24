@@ -41,6 +41,82 @@ export interface OfflineSummary {
 }
 
 /**
+ * Describe a simulated window as a "while you were away" summary — PURE, and
+ * derived entirely from the two states either side of it. It performs no tick
+ * of its own, which is what lets the live-loop resume path reuse it: on iOS the
+ * normal return is suspend → resume, where the game loop (not `applyOffline`)
+ * already ticks the away window, clamped to the very same cap. Re-ticking there
+ * to build a recap would pay the window twice; diffing the states the loop
+ * already produced cannot. (2026-08 audit §1.5.)
+ *
+ * `elapsedMs` is the REAL time away, `appliedMs` the part actually simulated —
+ * so `capped` falls out of the two.
+ */
+export function summarizeWindow(
+  before: GameState,
+  after: GameState,
+  elapsedMs: number,
+  appliedMs: number,
+): OfflineSummary {
+  // Coerce a non-finite elapsed (corrupt TIME_KEY / clock weirdness) so the
+  // summary never reports NaN.
+  const elapsed = Number.isFinite(elapsedMs) ? elapsedMs : 0;
+  const applied = Number.isFinite(appliedMs) ? Math.max(0, appliedMs) : 0;
+  const hadAchievements = new Set(before.achievements);
+  const hadMilestones = new Set(before.products.milestones);
+  const wasUpgrading = new Map(before.products.active.map((p) => [p.id, !!p.upgrade]));
+  const wasTraining = new Map(before.employees.map((e) => [e.id, !!e.training]));
+  return {
+    elapsedMs: elapsed,
+    appliedMs: applied,
+    capped: elapsed > applied,
+    gained: {
+      compute: after.resources.compute.sub(before.resources.compute).max(0),
+      data: after.resources.data.sub(before.resources.data).max(0),
+      money: after.resources.money.sub(before.resources.money).max(0),
+    },
+    achievementsUnlocked: after.achievements.filter((id) => !hadAchievements.has(id)),
+    reputationEarned: Math.max(0, earnedReputation(after) - earnedReputation(before)),
+    story: {
+      milestones: after.products.milestones.filter((id) => !hadMilestones.has(id)),
+      upgradesFinished: after.products.active
+        .filter((p) => wasUpgrading.get(p.id) && !p.upgrade)
+        .map((p) => ({ name: p.name, version: p.version })),
+      leveledUp: after.employees
+        .filter((e) => wasTraining.get(e.id) && !e.training)
+        .map((e) => ({ name: e.name, level: e.level })),
+      rankBefore: playerMarketRank(before),
+      rankAfter: playerMarketRank(after),
+      eraBefore: currentEra(before),
+      eraAfter: currentEra(after),
+    },
+  };
+}
+
+/**
+ * Is this window worth taking over the screen for? The recap is a designed
+ * reward beat, not a receipt: a momentary app-switch, or a window in which a
+ * brand-new lab produced nothing at all, must never interrupt with an empty
+ * "while you were away". Requires both real time away AND something to report.
+ */
+export function recapWorthShowing(summary: OfflineSummary): boolean {
+  if (summary.appliedMs < balance.offline.recapMinMs) return false;
+  const { gained, story } = summary;
+  return (
+    gained.compute.gt(0) ||
+    gained.data.gt(0) ||
+    gained.money.gt(0) ||
+    summary.achievementsUnlocked.length > 0 ||
+    summary.reputationEarned > 0 ||
+    story.milestones.length > 0 ||
+    story.upgradesFinished.length > 0 ||
+    story.leveledUp.length > 0 ||
+    story.eraAfter !== story.eraBefore ||
+    story.rankAfter !== story.rankBefore
+  );
+}
+
+/**
  * Apply offline progress on load. Offline is "just a tick with a big elapsedMs"
  * (LEARNINGS) — clamp the window so returning is a reward, not an exploit, and
  * return a summary the "while you were away" screen renders as a designed beat.
@@ -58,44 +134,6 @@ export function applyOffline(
   // summary never reports NaN and the catch-up tick is simply skipped.
   const elapsed = Number.isFinite(elapsedMs) ? elapsedMs : 0;
   const appliedMs = Math.max(0, Math.min(elapsed, capMs));
-  const before = state.resources;
-  const hadAchievements = new Set(state.achievements);
-  const repBefore = earnedReputation(state);
-  // Story witnesses (cheap: ids/flags only, snapshotted before the big tick).
-  const hadMilestones = new Set(state.products.milestones);
-  const wasUpgrading = new Map(state.products.active.map((p) => [p.id, !!p.upgrade]));
-  const wasTraining = new Map(state.employees.map((e) => [e.id, !!e.training]));
-  const rankBefore = playerMarketRank(state);
-  const eraBefore = currentEra(state);
   const next = tick(state, appliedMs);
-  return {
-    state: next,
-    summary: {
-      // Report the coerced elapsed, and judge `capped` from it too — a non-finite
-      // raw value applied 0ms, and must not read as "capped at the max, gained ~0".
-      elapsedMs: elapsed,
-      appliedMs,
-      capped: elapsed > capMs,
-      gained: {
-        compute: next.resources.compute.sub(before.compute).max(0),
-        data: next.resources.data.sub(before.data).max(0),
-        money: next.resources.money.sub(before.money).max(0),
-      },
-      achievementsUnlocked: next.achievements.filter((id) => !hadAchievements.has(id)),
-      reputationEarned: Math.max(0, earnedReputation(next) - repBefore),
-      story: {
-        milestones: next.products.milestones.filter((id) => !hadMilestones.has(id)),
-        upgradesFinished: next.products.active
-          .filter((p) => wasUpgrading.get(p.id) && !p.upgrade)
-          .map((p) => ({ name: p.name, version: p.version })),
-        leveledUp: next.employees
-          .filter((e) => wasTraining.get(e.id) && !e.training)
-          .map((e) => ({ name: e.name, level: e.level })),
-        rankBefore,
-        rankAfter: playerMarketRank(next),
-        eraBefore,
-        eraAfter: currentEra(next),
-      },
-    },
-  };
+  return { state: next, summary: summarizeWindow(state, next, elapsed, appliedMs) };
 }

@@ -110,7 +110,12 @@ export function derive(state: GameState): Derived {
         break;
       }
       case "computeMult":
-        computeMult = computeMult.mul(Math.pow(1 + def.effect.perLevel, level));
+        // Big.pow, NOT Math.pow: a float pow overflows to Infinity past ~1e308,
+        // and break_infinity absorbs a non-finite operand to ZERO rather than
+        // throwing — so an uncapped multiplicative upgrade would silently kill
+        // the whole economy and then persist that to the save. Every computeMult
+        // upgrade is capped today, so this is insurance, not a live fix.
+        computeMult = computeMult.mul(Big.of(1 + def.effect.perLevel).pow(level));
         break;
       case "dataMult":
         dataMult = dataMult.mul(1 + def.effect.perLevel * level);

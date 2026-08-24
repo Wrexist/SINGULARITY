@@ -1658,6 +1658,10 @@ export const balance = {
     maxHours: 8,
     /** Premium QoL perk: a longer offline cap (GDD-sanctioned, not pay-for-power). */
     premiumMaxHours: 24,
+    /** How much time away earns the "while you were away" recap. It is a reward
+     *  beat, not a receipt — a glance at another app and back should return you
+     *  straight to the lab, so this sits at minutes rather than the old 1s. */
+    recapMinMs: 3 * 60 * 1000,
   },
 
   /** Daily Boost — an HONEST once-a-day return reward (GDD §6: no fake-urgency

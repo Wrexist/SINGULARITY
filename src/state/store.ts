@@ -67,7 +67,7 @@ import { counterRival, placeStake } from "../engine/market";
 import { negotiationDue, negotiationOffer, applyNegotiationChoice, NEGOTIATION_ID } from "../engine/negotiation";
 import { buyLegacyPerk } from "../engine/legacyTree";
 import { prestige, type ShipMode } from "../engine/prestige";
-import { applyOffline, type OfflineSummary } from "../engine/offline";
+import { applyOffline, summarizeWindow, recapWorthShowing, type OfflineSummary } from "../engine/offline";
 import { serialize, deserialize } from "../engine/save";
 import { isPremium } from "./premium";
 import { balance } from "../engine/balance/config";
@@ -138,7 +138,10 @@ interface GameStore {
   init: () => void;
   dismissWorldEvent: () => void;
   chooseWorldEvent: (choiceIndex: number) => void;
-  advance: (elapsedMs: number) => void;
+  /** Advance the sim by an already-cap-clamped window. `rawElapsedMs` is the
+   *  UNCLAMPED real time it represents — pass it when resuming from a suspend so
+   *  the recap can say the window was capped. */
+  advance: (elapsedMs: number, rawElapsedMs?: number) => void;
   save: () => void;
   dismissOffline: () => void;
   // player actions
@@ -343,8 +346,10 @@ export const useGame = create<GameStore>((set, get) => ({
           const capHours = isPremium() ? balance.offline.premiumMaxHours : balance.offline.maxHours;
           const result = applyOffline(game, elapsed, capHours);
           game = result.state;
-          // Only surface the WIWA screen if something meaningful accrued.
-          if (result.summary.appliedMs > 1000) offline = result.summary;
+          // Only surface the WIWA screen if the window earned it — real time away
+          // AND something to report. Shares one predicate with the resume path so
+          // cold launch and resume can never disagree about what deserves the screen.
+          if (recapWorthShowing(result.summary)) offline = result.summary;
         }
       }
     } catch (err) {
@@ -372,7 +377,7 @@ export const useGame = create<GameStore>((set, get) => ({
     recordTelemetry({ kind: "session", t: now() });
   },
 
-  advance: (elapsedMs) =>
+  advance: (elapsedMs, rawElapsedMs) =>
     set((s) => {
       // Snapshot which products are mid-upgrade so we can celebrate completions
       // (the engine finishes them inside tick; we surface the moment to the UI).
@@ -381,6 +386,24 @@ export const useGame = create<GameStore>((set, get) => ({
       let game = tick(s.game, elapsedMs);
       const secs = elapsedMs / 1000;
       const patch: Partial<GameStore> = { game };
+
+      // "While you were away", on the RESUME path. On iOS the app is suspended and
+      // resumed far more often than it is killed and cold-launched, and `init()` —
+      // the only other caller of the offline machinery — runs once per mount. So a
+      // returning player used to be credited for the window (the loop hands us one
+      // big, cap-clamped delta) while the whole welcome-back payload was skipped.
+      //
+      // This does NOT re-tick: the summary is a pure diff of the states either side
+      // of the tick above, so the window can never be paid twice. (2026-08 §1.5.)
+      const bigWindow = elapsedMs >= balance.offline.recapMinMs;
+      let recapFired = false;
+      if (bigWindow && !s.offline) {
+        const summary = summarizeWindow(s.game, game, rawElapsedMs ?? elapsedMs, elapsedMs);
+        if (recapWorthShowing(summary)) {
+          patch.offline = summary;
+          recapFired = true;
+        }
+      }
 
       // Collect every notice this tick earned (priority order: milestone >
       // version-ship > level-up > achievements), emit the first, queue the rest —
@@ -453,7 +476,12 @@ export const useGame = create<GameStore>((set, get) => ({
       // One queue, oldest first — a notice earned this tick never jumps ahead of
       // one still waiting from a previous tick. Cap the backlog so an extreme
       // offline catch-up can't toast for minutes.
-      if (earned.length > 0) pendingNotices = [...pendingNotices, ...earned].slice(0, 6);
+      // A fired recap SUPERSEDES the notice backlog: every achievement, milestone,
+      // version ship and level-up this catch-up tick produced is already a line in
+      // the "while you were away" screen, so queuing them as toasts too would tell
+      // the same story twice — once behind a modal the player can't read past.
+      if (recapFired) pendingNotices = [];
+      else if (earned.length > 0) pendingNotices = [...pendingNotices, ...earned].slice(0, 6);
       // Drain at most one per NOTICE_GATE_MS of real time (not one per 100ms tick), so a
       // same-tick burst / catch-up backlog surfaces as readable, staggered toasts; and hold
       // while a heat event claimed this tick. The gate idles at 0, so a single notice after
