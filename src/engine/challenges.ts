@@ -304,7 +304,10 @@ export function mandateDefs() {
 /** One pick per COMPLETED cycle, minus the ones already spent. Never negative, so a
  *  save whose picks somehow outnumber its level simply offers none. */
 export function mandatePicksAvailable(state: GameState): number {
-  if (!M.enabled) return 0;
+  // Unlock-gated as well as level-gated. The save sanitizer already refuses a
+  // level that the challenges do not justify, but a modifier must assert its own
+  // precondition rather than trusting a check made somewhere else.
+  if (!M.enabled || !megaprojectUnlocked(state)) return 0;
   return Math.max(0, Math.max(0, state.megaprojects.level) - state.megaprojects.mandates.length);
 }
 
@@ -330,7 +333,9 @@ export function mandateMods(state: GameState): { compute: Big; data: Big; money:
   let compute = Big.ONE;
   let data = Big.ONE;
   let money = Big.ONE;
-  if (!M.enabled) return { compute, data, money };
+  // Identity until the loop that mints mandates is genuinely open — see
+  // mandatePicksAvailable.
+  if (!M.enabled || !megaprojectUnlocked(state)) return { compute, data, money };
   for (const id of state.megaprojects.mandates) {
     const def = MANDATE_BY_ID.get(id);
     if (!def) continue;

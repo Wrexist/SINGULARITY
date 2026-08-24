@@ -340,6 +340,8 @@ export function App() {
   }, []);
   // Telemetry (R8.1): count a tab switch when the player navigates to a *different*
   // tab. On-device only; no-op when opted out (see src/state/telemetry.ts).
+  // Stable identity so GoalsPanel's effect doesn't re-fire every render.
+  const onCollectionSeen = useCallback(() => markAchievementsSeen(game.achievements.length), [markAchievementsSeen, game.achievements.length]);
   const goTab = useCallback((next: "lab" | "products" | "employees" | "goals") => {
     setTab((cur) => {
       if (cur !== next) recordTelemetry({ kind: "tab", t: Date.now(), tab: next });
@@ -921,6 +923,7 @@ export function App() {
             onStartTrial={(id) => { haptics.success(); sound.tap(); doStartTrial(id); }}
             onAbandonTrial={() => { haptics.tap(); doAbandonTrial(); }}
             onClaimDoctrine={(id) => { haptics.celebrate(); sound.success(); doClaimDoctrine(id); }}
+            onCollectionSeen={onCollectionSeen}
           />
         ) : tab === "products" && showProducts ? (
           <ProductsPanel
@@ -1088,7 +1091,7 @@ export function App() {
             {attention.employees > 0 && <span className="botnav-badge">{attention.employees}</span>}
           </button>
         )}
-        <button className={`botnav-item ${tab === "goals" ? "on" : ""}`} aria-current={tab === "goals" ? "page" : undefined} onClick={() => { haptics.tap(); markAchievementsSeen(game.achievements.length); goTab("goals"); }}>
+        <button className={`botnav-item ${tab === "goals" ? "on" : ""}`} aria-current={tab === "goals" ? "page" : undefined} onClick={() => { haptics.tap(); goTab("goals"); }}>
           <span className="botnav-ic"><TargetIcon size={23} /></span><span className="botnav-lbl">Goals</span>
           {/* One honest badge for every goal system at once: what is WAITING to be
               claimed. Newly-unlocked achievements still count while unseen, so the

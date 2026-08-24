@@ -29,9 +29,16 @@ const fundedChallenges = () => {
  * cycle 5 was — and the pour becomes a decision rather than a bar.
  */
 describe("Megaproject Mandates", () => {
+  // A level is only ever reached by completing a cycle, which requires every Grand
+  // Challenge — so a fixture with a level must carry them, or it models a state no
+  // player can occupy (and which the loader now rejects).
   const atLevel = (level: number, mandates: string[] = []) => {
     const s = createInitialState();
-    return { ...s, megaprojects: { ...s.megaprojects, level, mandates } };
+    return {
+      ...s,
+      challenges: { ...s.challenges, completed: C.list.map((c) => c.id) },
+      megaprojects: { ...s.megaprojects, level, mandates },
+    };
   };
 
   it("mints exactly one pick per completed cycle", () => {
@@ -80,12 +87,18 @@ describe("Megaproject Mandates", () => {
   });
 
   it("rides into derive through challengeMods, alongside the bounded bonus", () => {
-    const s = pickMandate(atLevel(1), "mand_compute");
+    // Isolate the mandate's contribution as a RATIO: the fixture also holds the
+    // completed challenges' own permanent rewards, so an absolute expectation would
+    // be asserting those too.
+    const base = atLevel(1);
+    const withMandate = pickMandate(base, "mand_compute");
     const def = mandateDefs().find((d) => d.id === "mand_compute")!;
-    const expected = megaprojectMult(s).toNumber() * (1 + def.value);
-    expect(challengeMods(s).compute.toNumber()).toBeCloseTo(expected, 9);
-    // …and the other lanes still carry the bounded bonus alone.
-    expect(challengeMods(s).data.toNumber()).toBeCloseTo(megaprojectMult(s).toNumber(), 9);
+    const ratio = challengeMods(withMandate).compute.div(challengeMods(base).compute).toNumber();
+    expect(ratio).toBeCloseTo(1 + def.value, 9);
+    // …and it touches only its own lane.
+    expect(challengeMods(withMandate).data.toNumber()).toBeCloseTo(challengeMods(base).data.toNumber(), 9);
+    // The bounded megaproject bonus is in there too, on every lane.
+    expect(challengeMods(base).data.gte(megaprojectMult(base))).toBe(true);
   });
 
   it("leaves the bounded megaproject bonus exactly as it was", () => {

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import type { GameState } from "../engine/types";
 import { Collapsible } from "./Collapsible";
 import { ObjectivesPanel } from "./ObjectivesPanel";
@@ -35,6 +35,9 @@ interface Props {
   onStartTrial: (id: string) => void;
   onAbandonTrial: () => void;
   onClaimDoctrine: (id: string) => void;
+  /** Fired when the Collection horizon is actually on screen — that, and not
+   *  opening GOALS at all, is the moment new achievements have been seen. */
+  onCollectionSeen: () => void;
 }
 
 /**
@@ -57,7 +60,7 @@ export function GoalsPanel({
   game, section, onSection, showContracts,
   onClaimObjective, onClaimContract, onClaimSponsor,
   onFundChallenge, onChooseFork, onFundMegaproject, onPickMandate,
-  onStartTrial, onAbandonTrial, onClaimDoctrine,
+  onStartTrial, onAbandonTrial, onClaimDoctrine, onCollectionSeen,
 }: Props) {
   const counts = useMemo(() => goalsCounts(game), [game]);
 
@@ -68,6 +71,15 @@ export function GoalsPanel({
   // (reveal depth in waves — the same rule the Lab's sections follow).
   const sectioned = objectivesUnlocked(game) || showContracts || hasLong;
   const active: GoalsSection = sectioned ? section : "collection";
+
+  // Clearing the "new achievements" badge on the nav tap marked them seen for a
+  // player who came for a contract and never opened Collection — the badge lied
+  // about what they had looked at. Covers the early-game case too, where
+  // Collection is the only section there is.
+  const achCount = game.achievements.length;
+  useEffect(() => {
+    if (active === "collection") onCollectionSeen();
+  }, [active, achCount, onCollectionSeen]);
 
   return (
     <>

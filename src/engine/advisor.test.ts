@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { advisorItems, nextAction, attentionCounts } from "./advisor";
 import { releaseProduct, productsUnlocked } from "./products";
 import { createInitialState } from "./state";
+import { sponsorView } from "./contracts";
 import { balance } from "./balance/config";
 import { Big } from "./math/Big";
 
@@ -109,8 +110,21 @@ describe("advisor", () => {
     // carry a stale Lab section that would deep-link into an empty pane.
     const s = createInitialState();
     s.stats.peakComputePerSec = Big.of(1e6);
-    const goalItems = advisorItems(s).filter((i) => /contract|sponsor/i.test(i.text));
-    expect(goalItems.length).toBeGreaterThan(0);
+    // A READY sponsor, explicitly: createInitialState leaves `sponsor` null, so
+    // without this the test passes on contract items alone and never exercises the
+    // sponsor route it claims to cover.
+    s.sponsor = { dayKey: 1, title: "Test Sponsor", desc: "Reach 1 Compute/sec", metric: "peakComputePerSec", target: 1, rep: 6 };
+    const sponsor = sponsorView(s);
+    expect(sponsor?.ready).toBe(true);
+
+    const items = advisorItems(s);
+    const sponsorItem = items.find((i) => i.text.includes("Test Sponsor"));
+    expect(sponsorItem).toBeDefined();
+    expect(sponsorItem!.tab).toBe("goals");
+    expect(sponsorItem!.section).toBeUndefined();
+
+    const goalItems = items.filter((i) => /contract|sponsor/i.test(i.text));
+    expect(goalItems.length).toBeGreaterThan(1); // a contract AND the sponsor
     for (const it of goalItems) {
       expect(it.tab).toBe("goals");
       expect(it.section).toBeUndefined();
