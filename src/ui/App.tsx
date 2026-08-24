@@ -47,6 +47,7 @@ import { iap } from "./iap";
 import { isPremium } from "../state/premium";
 import { scheduleReturnReminder, cancelReturnReminder } from "./notifications";
 import { balance } from "../engine/balance/config";
+import { ALL_RESEARCH } from "../engine/researchTree";
 import { HallCanvas } from "./HallCanvas";
 import { sampleHistory, resetHistory, SAMPLE_MS } from "./history";
 import { NewsTicker } from "./NewsTicker";
@@ -785,7 +786,9 @@ export function App() {
       // Skip the flavor toast on the VERY FIRST research: that same tap already fires the
       // "Data Market / path to shipping unlocked" transition toasts, and a third on top
       // read as a burst for a brand-new player. Later breakthroughs keep their flavor.
-      const def = balance.research.find((r) => r.id === id);
+      // ALL_RESEARCH, not balance.research: an epoch breakthrough must name itself
+      // in the log like any other, rather than falling through silently.
+      const def = ALL_RESEARCH.find((r) => r.id === id);
       if (def && useGame.getState().game.research.length > 1) logEvent(`Breakthrough: ${def.name} — ${def.desc}`, "good");
     }
   };

@@ -3449,6 +3449,17 @@ button.modchip.workable:active { transform: scale(0.94); }
 .mandate-held-label { font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-3); }
 .mandate-held-mult { margin-left: auto; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
 
+/* An EPOCH branch — research that exists only because a Paradigm is owned. Tinted
+   and hairlined so a veteran can see at a glance that this part of the tree is new,
+   without it shouting over the base categories. */
+.research-epoch {
+  border: 1px solid color-mix(in srgb, var(--data) 28%, transparent);
+  border-radius: var(--radius-sm);
+  padding: 10px 10px 4px;
+  background: color-mix(in srgb, var(--data) 5%, transparent);
+}
+.research-epoch .research-cat-name { color: var(--data); }
+
 /* ---------- Intentional empty states ---------- */
 .empty-state {
   display: flex; align-items: center; gap: 12px;

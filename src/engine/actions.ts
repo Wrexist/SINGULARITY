@@ -9,6 +9,7 @@ import {
   type WorldEventEffect,
 } from "./balance/config";
 import { derive, computeBankCeiling } from "./derive";
+import { ALL_RESEARCH, researchTree, epochUnlocked } from "./researchTree";
 import { alignmentHeatMult } from "./alignment";
 import { suspicionEventMult, regulatorIsNamed, regulatorState, clampSuspicion } from "./regulator";
 import { autoResearchEnabled, researchCostMult } from "./reputation";
@@ -27,8 +28,10 @@ const clampHeat = (h: number) => Math.max(0, Math.min(balance.heat.max, h));
 const UPGRADE_BY_ID: Record<string, UpgradeDef> = Object.fromEntries(
   balance.upgrades.map((u) => [u.id, u]),
 );
+// Lookup covers BASE + every epoch node (by id). Availability is what gates an
+// epoch — see researchAvailable — so a def existing here grants nothing.
 const RESEARCH_BY_ID: Record<string, ResearchDef> = Object.fromEntries(
-  balance.research.map((r) => [r.id, r]),
+  ALL_RESEARCH.map((r) => [r.id, r]),
 );
 const OFFER_BY_ID: Record<string, DataOffer> = Object.fromEntries(
   balance.dataMarket.map((o) => [o.id, o]),
@@ -199,11 +202,15 @@ export function buyOfficePerk(state: GameState, id: string): GameState {
 export function researchAvailable(state: GameState, id: string): boolean {
   const def = RESEARCH_BY_ID[id];
   if (!def) return false;
+  // An Epoch node does not exist until its Paradigm is owned. This is the gate the
+  // whole feature's curve safety rests on: the sim never spends Reputation, so it
+  // owns no paradigms and no epoch node is ever available to it.
+  if (!epochUnlocked(state, id)) return false;
   if (state.research.includes(id)) return false;
   if (!def.requires.every((req) => state.research.includes(req))) return false;
   // Mutually-exclusive: locked once a sibling in the same group is owned (R-depth).
   if (def.exclusiveGroup) {
-    const siblingOwned = balance.research.some(
+    const siblingOwned = researchTree(state).some(
       (r) => r.id !== id && r.exclusiveGroup === def.exclusiveGroup && state.research.includes(r.id),
     );
     if (siblingOwned) return false;
@@ -215,7 +222,7 @@ export function researchAvailable(state: GameState, id: string): boolean {
 export function researchLockedOut(state: GameState, id: string): boolean {
   const def = RESEARCH_BY_ID[id];
   if (!def?.exclusiveGroup || state.research.includes(id)) return false;
-  return balance.research.some(
+  return researchTree(state).some(
     (r) => r.id !== id && r.exclusiveGroup === def.exclusiveGroup && state.research.includes(r.id),
   );
 }
@@ -251,7 +258,7 @@ export function canBuyResearch(state: GameState, id: string): boolean {
 export function researchStalled(state: GameState, d: Derived): boolean {
   const ceiling = computeBankCeiling(state, d);
   if (ceiling === null) return false; // unbounded bank (auto-train off / focus 0) → never stalled
-  const avail = balance.research.filter((def) => researchAvailable(state, def.id));
+  const avail = researchTree(state).filter((def) => researchAvailable(state, def.id));
   if (avail.length === 0) return false; // tree done / next wave locked on prereqs → not a stall
   let anyWalled = false;
   for (const def of avail) {
@@ -275,7 +282,7 @@ export function applyAutoResearch(state: GameState): GameState {
   let s = state;
   let guard = 0;
   while (guard++ < 500) {
-    const node = balance.research
+    const node = researchTree(s)
       .filter((r) => canBuyResearch(s, r.id))
       .sort((a, b) => a.cost.compute + a.cost.data - (b.cost.compute + b.cost.data))[0];
     if (!node) break;

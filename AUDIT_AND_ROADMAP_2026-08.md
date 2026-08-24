@@ -245,7 +245,7 @@ pick** (Compute / Data / Revenue / a free Endowment level / a second charter slo
 - **Cons.** Only reachable after all 9 Grand Challenges (~ship 52), so it helps very few
   players; needs new persisted state and a migration.
 
-**3. Research Epochs** — *cost: L*
+**3. Research Epochs** — *cost: L* ✅ **implemented (visual-polish pass, 2026-08).** Epoch nodes live in their OWN array (`balance/researchEpochs.ts`), never in `balance.research` — the sim iterates that array, so the separation is structural rather than a gate someone could later loosen. Gated on paradigm ownership only (never ships/era). Three branches: Neuromorphic, Synthetic, Recursive (the last with a mutually-exclusive fork). `npm run sim` byte-identical; the base-only scans (Preprints unlock, achievement threshold, prestige meter, the sim) documented and pinned in `engine/researchTree.ts`.
 
 The deepest structural gap: prestige clears research, so **every generation replays the
 identical 21-node script in the identical order**. Add `requiresParadigm` to research

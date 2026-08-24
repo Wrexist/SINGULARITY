@@ -13,6 +13,7 @@ import { instituteMods } from "./institute";
 import { ascensionMultiplier } from "./prestige";
 import { preprintMult } from "./preprints";
 import { challengeMods } from "./challenges";
+import { ALL_RESEARCH } from "./researchTree";
 import { powerStats } from "./power";
 import { rackTier } from "./hall";
 import { tierComputeMult, loadoutDataPerSec } from "./components";
@@ -150,8 +151,10 @@ export function derive(state: GameState): Derived {
   const interconnectData = loadoutDataPerSec(state);
   if (interconnectData > 0) dataPerSecFlat = dataPerSecFlat.add(interconnectData);
 
-  // Research (one-time nodes)
-  for (const def of balance.research) {
+  // Research (one-time nodes). Scans base + EPOCH nodes: an epoch id can only be in
+  // state.research if the player owned its paradigm and bought it, so this is identity
+  // for anyone who hasn't — and the sim owns no paradigms.
+  for (const def of ALL_RESEARCH) {
     if (!state.research.includes(def.id)) continue;
     switch (def.effect.kind) {
       case "computeMult":

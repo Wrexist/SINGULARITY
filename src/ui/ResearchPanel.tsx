@@ -1,4 +1,5 @@
-import { balance } from "../engine/balance/config";
+import { balance, type ResearchDef } from "../engine/balance/config";
+import { researchTree, unlockedEpochs, isEpochNode } from "../engine/researchTree";
 import { canBuyResearch, researchAvailable, researchLockedOut, researchCost } from "../engine/actions";
 import { computeBankCeiling } from "../engine/derive";
 import { canBuyPreprint, preprintCost, preprintTitle } from "../engine/preprints";
@@ -22,12 +23,18 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint }: Prop
   const isOwned = (id: string) => game.research.includes(id);
   // Reveal in waves (GDD): show owned/available nodes and the NEXT wave (locked
   // nodes whose prerequisites are owned or already available) — not the whole tree.
-  const visible = balance.research.filter((def) => {
+  // researchTree() = the base tree PLUS any epoch branch whose Paradigm is owned.
+  // Base-only scans (the preprints capstone below, the achievement threshold, the
+  // sim) deliberately keep using balance.research — see engine/researchTree.ts.
+  const visible = researchTree(game).filter((def) => {
     if (isOwned(def.id) || researchAvailable(game, def.id)) return true;
     return def.requires.every((r) => isOwned(r) || researchAvailable(game, r));
   });
 
-  type Def = (typeof balance.research)[number];
+  // The declared interface, not balance.research's narrower inferred union: the
+  // tree now also carries epoch nodes, which are typed as ResearchDef.
+  type Def = ResearchDef;
+  const epochBranches = unlockedEpochs(game);
   // Compute the auto-train bank ceiling once: any node costing more Compute than this is
   // unreachable at the current intensity, so a "~2m" ETA would be a lie (see derive.ts).
   const ceiling = computeBankCeiling(game, derived);
@@ -127,9 +134,12 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint }: Prop
   };
 
   const rest = visible.filter((d) => d.id !== hero?.id);
-  // Group the remaining nodes under themed category headers so the growing tree
-  // reads as structured waves instead of a flat wall (legibility subsystem).
-  const groups = groupByCategory(rest, (d) => d.id);
+  // Group the BASE nodes under themed category headers so the growing tree reads as
+  // structured waves instead of a flat wall (legibility subsystem). Epoch nodes have
+  // no category — groupByCategory would drop them — and they want their own heading
+  // anyway: a branch that was not there last generation should look like one.
+  const groups = groupByCategory(rest.filter((d) => !isEpochNode(d.id)), (d) => d.id);
+  const visibleIds = new Set(rest.map((d) => d.id));
 
   // Capstone: every node owned or exclusive-locked-out. Maxing the core
   // progression system deserves a beat, not a silent wall of "done" tags.
@@ -216,6 +226,26 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint }: Prop
           </div>
         </div>
       ))}
+
+      {/* EPOCHS — research that only exists because a Paradigm is owned. Prestige
+          clears research, so the base tree is the same 21 nodes every generation;
+          these are the branches a veteran has not climbed before. Labelled as their
+          own thing so the reward for buying a Paradigm is legible in the panel. */}
+      {epochBranches.map(({ epoch, nodes }) => {
+        const shown = nodes.filter((d) => visibleIds.has(d.id));
+        if (shown.length === 0) return null;
+        return (
+          <div className="research-cat research-epoch" key={epoch}>
+            <div className="research-cat-head">
+              <span className="research-cat-name">{epoch} epoch</span>
+              <span className="research-cat-count">{nodes.filter((d) => isOwned(d.id)).length}/{nodes.length}</span>
+            </div>
+            <div className="research-track">
+              {shown.map((def) => renderNode(def))}
+            </div>
+          </div>
+        );
+      })}
     </section>
   );
 }

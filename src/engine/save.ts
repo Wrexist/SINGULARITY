@@ -11,6 +11,7 @@ import { doctrine as DOCTRINE } from "./balance/doctrine";
 import { institute as INSTITUTE } from "./balance/institute";
 import { charters as CHARTERS } from "./balance/charters";
 import { balance } from "./balance/config";
+import { ALL_RESEARCH } from "./researchTree";
 import { components as COMPONENTS, SLOTS_BY_TIER, type SlotClass } from "./balance/components";
 import { market as MARKET } from "./balance/market";
 import { challenges as CHALLENGES } from "./balance/challenges";
@@ -34,7 +35,9 @@ const CHARTER_IDS = new Set(CHARTERS.list.map((c) => c.id));
 /** Megaproject MANDATE ids (distinct from the Lab CHARTER ids above). */
 const MEGA_MANDATE_IDS = new Set(CHALLENGES.megaproject.mandates.defs.map((d) => d.id));
 const RIVAL_NAMES = new Set(MARKET.rivals.map((r) => r.name));
-const RESEARCH_IDS = new Set(balance.research.map((r) => r.id));
+// Base AND epoch ids: an owned epoch node must survive a save round-trip, or the
+// player silently loses research they paid for.
+const RESEARCH_IDS = new Set(ALL_RESEARCH.map((r) => r.id));
 const DIRECTIVE_IDS = new Set(REPUTATION.endowment.directives.defs.map((d) => d.id));
 const TRIAL_IDS = new Set(TRIALS.list.map((t) => t.id));
 const PARADIGM_IDS = new Set(PARADIGMS.list.map((p) => p.id));
