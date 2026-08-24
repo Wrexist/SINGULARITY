@@ -180,5 +180,32 @@ export const challenges = {
     /** Per-cycle bonus magnitude, decayed by decay^level. Lifetime bonus converges. */
     baseMag: 0.05,
     decay: 0.85,
+    /**
+     * MANDATES — what keeps the repeatable loop worth repeating (2026-08 depth pass).
+     *
+     * The bounded bonus above converges to 1 + baseMag/(1−decay) = ×1.333, while each
+     * cycle costs ×growth more than the last. Measured: level 20 → 30 costs 2656× more
+     * PER CYCLE and pays a total of +1.04 percentage points. The endgame's one infinite
+     * loop was arithmetically dead — the player poured exponentially escalating output
+     * into the fourth decimal place.
+     *
+     * The bounded multiplier stays exactly as it was (nobody's held bonus changes).
+     * On top of it, every completed cycle now mints ONE permanent Mandate, so
+     * cycle 30 is worth as much as cycle 5 and the pour becomes a decision — specialise
+     * a lane hard, or take the broad synthesis. Picks are a multiset: repeat a lane to
+     * stack it.
+     *
+     * Curve-safe by the same proof as the rest of this file: the balance sim never
+     * funds a challenge, so it never completes one, so `megaprojects.level` is 0 and
+     * no mandate can ever be earned or applied in the tuned economy.
+     */
+    mandates: {
+      defs: [
+        { id: "mand_compute", name: "Compute Mandate", lane: "compute", value: 0.12, desc: "+12% Compute, permanently." },
+        { id: "mand_data", name: "Data Mandate", lane: "data", value: 0.12, desc: "+12% Data, permanently." },
+        { id: "mand_money", name: "Revenue Mandate", lane: "money", value: 0.12, desc: "+12% Money, permanently." },
+        { id: "mand_all", name: "Synthesis Mandate", lane: "all", value: 0.05, desc: "+5% to ALL output, permanently." },
+      ] as { id: string; name: string; lane: "compute" | "data" | "money" | "all"; value: number; desc: string }[],
+    },
   },
 };

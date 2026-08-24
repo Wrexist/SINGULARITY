@@ -1,19 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { GameState, Derived } from "../engine/types";
 import { products as B, type ProductTypeId } from "../engine/balance/products";
-import { productMilestones } from "../engine/balance/products";
 import { marketLeaderboard, playerMarketRank, canCounterRival, counterCost, counterCooldownRemaining, stakePayout } from "../engine/market";
 import { market as MKT } from "../engine/balance/market";
 import {
   typeDef, productMetrics, canLaunchDraft, canStartUpgrade,
-  upgradeProgress, milestoneValue, maxActiveProducts,
+  upgradeProgress, maxActiveProducts,
 } from "../engine/products";
 import { m$, numOf as num, fmtDur } from "./format";
 import { ProductDetail, TYPE_GLYPH } from "./ProductDetail";
 import { EditableName } from "./EditableName";
 import { EasedNumber } from "./EasedNumber";
 import { EmptyState } from "./EmptyState";
-import { AtomIcon, LockIcon, SparkIcon, TrendDownIcon, TrophyIcon, BarsIcon, BoltIcon, ChevronIcon} from "./Icons";
+import { AtomIcon, LockIcon, SparkIcon, TrendDownIcon, BarsIcon, BoltIcon, ChevronIcon} from "./Icons";
 
 const FUN_NAMES = ["Nimbus", "Oracle", "Synthia", "Cortex", "Lumen", "Vertex", "Sage", "Atlas", "Echo", "Prism", "Nova", "Helix", "Quasar", "Mirage"];
 
@@ -55,7 +54,6 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
   useEffect(() => {
     if (detailGone) setDetailId(null);
   }, [detailGone]);
-  const [msOpen, setMsOpen] = useState(false);
   // Collapsed by default (like Milestones) — the leaderboard is reference, not a
   // control, and open-by-default it pushed a tall block under every product card.
   const [mktOpen, setMktOpen] = useState(false);
@@ -228,34 +226,6 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
           );
         })}
       </div>
-
-      {ps.active.length + ps.milestones.length > 0 && (
-        <div className="prod-milestones">
-          <button className="prod-ms-head" onClick={() => setMsOpen((o) => !o)} aria-expanded={msOpen}>
-            <span className="prod-ms-title"><TrophyIcon size={15} /> Milestones</span> <span className="prod-ms-count">{ps.milestones.length}/{productMilestones.length}</span>
-            <span className="prod-ms-toggle"><ChevronIcon size={13} dir={msOpen ? "down" : "right"} /></span>
-          </button>
-          {msOpen && (
-            <div className="prod-ms-grid">
-              {productMilestones.map((mDef) => {
-                const done = ps.milestones.includes(mDef.id);
-                const val = milestoneValue(game, mDef.metric);
-                const pct = Math.max(0, Math.min(1, val / mDef.threshold));
-                return (
-                  <div className={`prod-ms ${done ? "done" : ""}`} key={mDef.id} title={mDef.desc}>
-                    <div className="prod-ms-top">
-                      <span className="prod-ms-name">{done ? "✓ " : ""}{mDef.label}</span>
-                      <span className="prod-ms-reward">+{m$(mDef.reward)}</span>
-                    </div>
-                    <div className="prod-ms-desc">{mDef.desc}</div>
-                    {!done && <div className="prod-bar prod-ms-bar"><div className="prod-bar-fill" style={{ width: `${pct * 100}%`, background: "var(--data)" }} /></div>}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
 
       <div className="market-board">
         <button className="prod-ms-head" onClick={() => setMktOpen((o) => !o)} aria-expanded={mktOpen}>

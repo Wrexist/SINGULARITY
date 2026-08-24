@@ -1658,6 +1658,17 @@ export const balance = {
     maxHours: 8,
     /** Premium QoL perk: a longer offline cap (GDD-sanctioned, not pay-for-power). */
     premiumMaxHours: 24,
+    /** How much time away earns the "while you were away" recap on COLD LAUNCH.
+     *  It is a reward beat, not a receipt — reopening the app after a moment
+     *  should return you straight to the lab, so this sits at minutes, not 1s. */
+    recapMinMs: 3 * 60 * 1000,
+    /** The same beat on RESUME asks for much more time away, because the two
+     *  cost different things. On cold launch the recap IS the session opener and
+     *  interrupts nothing. On resume the player was mid-session, so a full-screen
+     *  modal preempts whatever they were doing — and a phone switches apps many
+     *  times an hour. Below this the window is simply credited, silently, exactly
+     *  as it always was. Interrupt size follows window size. */
+    resumeRecapMinMs: 20 * 60 * 1000,
   },
 
   /** Daily Boost — an HONEST once-a-day return reward (GDD §6: no fake-urgency

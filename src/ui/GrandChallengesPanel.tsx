@@ -1,5 +1,5 @@
 import type { GameState } from "../engine/types";
-import { visibleChallenges, challengeView, canFundChallenge, pendingForkChallenge, megaprojectUnlocked, megaprojectView, canFundMegaproject } from "../engine/challenges";
+import { visibleChallenges, challengeView, canFundChallenge, pendingForkChallenge, megaprojectUnlocked, megaprojectView, canFundMegaproject, mandateDefs, mandatePicksAvailable, mandateMods } from "../engine/challenges";
 import { challenges as C } from "../engine/balance/challenges";
 import { fmt } from "./format";
 import { ComputeIcon, DataIcon, MoneyIcon, GiftIcon } from "./Icons";
@@ -10,6 +10,8 @@ interface Props {
   onFund: (id: string, at?: { x: number; y: number }) => void;
   onChooseFork: (id: string, forkId: string) => void;
   onFundMegaproject: (at?: { x: number; y: number }) => void;
+  /** Take one Megaproject Mandate (the permanent pick a completed cycle mints). */
+  onPickMandate: (id: string) => void;
   /** Render WITHOUT the panel card + heading, for use inside a <Collapsible> (which
    *  already supplies both). Otherwise this nests a panel inside a panel and shows
    *  its heading twice. */
@@ -24,13 +26,19 @@ const RES_ICON = { compute: <ComputeIcon size={12} />, data: <DataIcon size={12}
  * completing one fires the tentpole "Challenge complete" moment (handled in App). Purely a
  * grind target: the whole board is hidden until the deep endgame, and the sim never funds.
  */
-export function GrandChallengesPanel({ game, onFund, onChooseFork, onFundMegaproject, bare = false }: Props) {
+export function GrandChallengesPanel({ game, onFund, onChooseFork, onFundMegaproject, onPickMandate, bare = false }: Props) {
   const list = visibleChallenges(game);
   if (list.length === 0) return null;
   const doneCount = game.challenges.completed.length;
   const megaOpen = megaprojectUnlocked(game);
   const mega = megaOpen ? megaprojectView(game) : null;
   const canMega = megaOpen && canFundMegaproject(game);
+  // Mandates: unspent picks, and a compact readout of what the held ones add up to.
+  const picks = mandatePicksAvailable(game);
+  const mandateHeld = game.megaprojects.mandates.length;
+  const mm = mandateMods(game);
+  const asPct = (b: { toNumber: () => number }) => Math.round((b.toNumber() - 1) * 100);
+  const mandateSummary = `+${asPct(mm.compute)}% C · +${asPct(mm.data)}% D · +${asPct(mm.money)}% $`;
 
   const body = (
     <>
@@ -143,6 +151,33 @@ export function GrandChallengesPanel({ game, onFund, onChooseFork, onFundMegapro
               {canMega ? "Fund" : "Need output"}
             </button>
           </div>
+
+          {/* MANDATES — what makes cycle 30 worth as much as cycle 5. The bounded
+              bonus above converges to +33%, so on its own the loop was asking for
+              exponentially more output in exchange for the fourth decimal place.
+              Each completed cycle mints one permanent pick; picks stack. */}
+          {mandateHeld > 0 && picks === 0 && (
+            <div className="mandate-held">
+              <span className="mandate-held-label">Mandates held</span>
+              <span className="mandate-held-mult">{mandateSummary}</span>
+            </div>
+          )}
+          {picks > 0 && (
+            <div className="mandate-pick">
+              <div className="mandate-pick-head">
+                {picks === 1 ? "A mandate is yours to write" : `${picks} mandates are yours to write`}
+                <span className="mandate-pick-sub">Permanent. Pick the same one twice to stack it.</span>
+              </div>
+              <div className="mandate-arms" role="group" aria-label="Choose a permanent mandate">
+                {mandateDefs().map((d) => (
+                  <button key={d.id} className="mandate-arm" onClick={() => onPickMandate(d.id)}>
+                    <span className="mandate-arm-name">{d.name}</span>
+                    <span className="mandate-arm-desc">{d.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </>

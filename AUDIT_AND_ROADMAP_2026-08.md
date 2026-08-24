@@ -168,14 +168,26 @@ risky change to a live app and deserves its own pass.
    upgrade, `Math.pow(1.08, 1e7)` → `Infinity` → `Big.mul(Infinity)` → **silently 0**,
    and the whole economy dies and persists that way. `break_infinity` absorbs
    non-finite input to zero rather than throwing, so the failure is silent.
-3. **The GOALS destination** (§3).
-4. **Design-token pass**: 24 font sizes → 8, 25 radii → 4, 70 shadows → 4, one card
-   component. Largest single contributor to "it doesn't feel designed".
-5. **Feedback proportionality**: the loudest particle burst in normal play is *buying
-   racks with Max selected* (40 @ 1.7), which out-juices an achievement (22 @ 1.1).
-   Completing research and hiring a person both play the rack chime.
-6. **`sound.era()` is muted unless Music is on** — a player with Music off but Sound on
-   gets the game's first tentpole moment in silence.
+3. ~~**The GOALS destination**~~ ✅ **done (visual-polish pass, 2026-08).** All seven
+   goal systems now live in one destination grouped by horizon (Now / Long game /
+   Collection); the boards moved rather than being copied, so HQ is down to
+   Automation + the Institute, Build loses Objectives, and the Awards modal is
+   gone. One scan (`src/ui/goalsCount.ts`) feeds the nav badge, the horizon dots
+   and the fold counts, and counts only what is genuinely claimable — pinned by
+   `src/ui/goalsCount.test.ts`. Advisor wayfinding moved with the boards.
+4. ~~**Design-token pass**~~ ✅ **done (visual-polish pass, 2026-08).** Type scale is
+   8 tokens (`--fs-micro`…`--fs-2xl`) + four display one-offs; radii are
+   `--radius/-sm/-xs/-2xs` + pill/circle; neutral shadows are `--shadow-xs/sm/md/lg`
+   + `--shadow-knob` (colored glows stay semantic); hairlines share one base hue
+   (16,24,40); the row-card family uses three padding tokens
+   (`--pad-row/-card/-card-lg`). The "one card component" refactor remains open —
+   it's a TSX structural change, not a token sweep.
+5. ~~**Feedback proportionality**~~ ✅ **done (same pass).** Routine buys cap at
+   26 @ 1.35 (flavor-tier milestone buys 32 @ 1.5), below the achievement burst
+   (now 28 @ 1.45). Research plays a discovery arpeggio (`sound.research`), a hire
+   plays a warm welcome (`sound.hire`) — neither reuses the rack purchase chime.
+6. ~~**`sound.era()` muted unless Music is on**~~ ✅ **done (same pass).** The era
+   stinger plays when either Sound or Music is enabled.
 
 ---
 
@@ -219,7 +231,7 @@ Fellowships: escalating cost, a small permanent all-lane boost each, and a named
 - **Cons.** Another "number goes up" sink rather than a new verb; competes with the
   Endowment for the same late-game attention; needs a `SAVE_VERSION` bump.
 
-**2. Megaproject Charters** — *cost: M*
+**2. Megaproject Charters** — *cost: M* ✅ **implemented (visual-polish pass, 2026-08), shipped as Megaproject MANDATES** — renamed to avoid colliding with the existing Lab Charter system. The bounded multiplier is unchanged; each completed cycle now mints one permanent pick (lane +12% / all +5%), stacking, so cycle 30 is worth what cycle 5 was. Save v34 + migration; curve-safety re-proved with a byte-identical `npm run sim`.
 
 The endgame is arithmetically dead. `megaprojectMult` sums a geometric series with
 `baseMag 0.05, decay 0.85`, converging to **1 + 0.05/0.15 = ×1.333** — while each cycle
@@ -233,7 +245,7 @@ pick** (Compute / Data / Revenue / a free Endowment level / a second charter slo
 - **Cons.** Only reachable after all 9 Grand Challenges (~ship 52), so it helps very few
   players; needs new persisted state and a migration.
 
-**3. Research Epochs** — *cost: L*
+**3. Research Epochs** — *cost: L* ✅ **implemented (visual-polish pass, 2026-08).** Epoch nodes live in their OWN array (`balance/researchEpochs.ts`), never in `balance.research` — the sim iterates that array, so the separation is structural rather than a gate someone could later loosen. Gated on paradigm ownership only (never ships/era). Three branches: Neuromorphic, Synthetic, Recursive (the last with a mutually-exclusive fork). `npm run sim` byte-identical; the base-only scans (Preprints unlock, achievement threshold, prestige meter, the sim) documented and pinned in `engine/researchTree.ts`.
 
 The deepest structural gap: prestige clears research, so **every generation replays the
 identical 21-node script in the identical order**. Add `requiresParadigm` to research

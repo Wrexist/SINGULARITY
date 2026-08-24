@@ -49,6 +49,30 @@ describe("run-yield curve pin (DELIBERATE global-mult double-apply — do not 'f
     expect(d.runMoneyYield.toNumber()).toBeCloseTo(expected, 4);
   });
 
+  // Regression guard for the silent-economy-death class (2026-08 audit, Part 4 §2):
+  // Math.pow overflows to Infinity past ~1e308, and break_infinity absorbs a
+  // non-finite operand to ZERO instead of throwing — so an uncapped multiplicative
+  // upgrade used to turn the entire economy off and persist that to the save.
+  // derive() is pure and must survive a hostile/extreme level, capped or not.
+  it("an extreme computeMult level stays finite and positive (never collapses to 0)", () => {
+    const s = createInitialState();
+    s.upgrades = { rack_basic: 30, rack_server: 10, overclock: 10_000 };
+    const d = derive(s);
+    expect(d.computeMult.gt(0)).toBe(true);
+    expect(d.computePerSec.gt(0)).toBe(true);
+    // Math.pow(1.08, 10000) is Infinity; Big.pow carries it as a real magnitude.
+    expect(Math.pow(1.08, 10_000)).toBe(Infinity);
+    expect(d.computeMult.gt(Big.of(1e308))).toBe(true);
+  });
+
+  it("computeMult still compounds per level at ordinary levels", () => {
+    const s = createInitialState();
+    s.upgrades = { rack_basic: 30, rack_server: 10, overclock: 10 };
+    const d = derive(s);
+    const base = derive({ ...s, upgrades: { rack_basic: 30, rack_server: 10 } });
+    expect(d.computeMult.div(base.computeMult).toNumber()).toBeCloseTo(Math.pow(1.08, 10), 6);
+  });
+
   it("global mults scale yields SQUARED (legacy rides cost AND yield)", () => {
     const s = createInitialState();
     s.upgrades = { rack_basic: 30, rack_server: 10 };

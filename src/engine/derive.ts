@@ -13,6 +13,7 @@ import { instituteMods } from "./institute";
 import { ascensionMultiplier } from "./prestige";
 import { preprintMult } from "./preprints";
 import { challengeMods } from "./challenges";
+import { ALL_RESEARCH } from "./researchTree";
 import { powerStats } from "./power";
 import { rackTier } from "./hall";
 import { tierComputeMult, loadoutDataPerSec } from "./components";
@@ -110,7 +111,12 @@ export function derive(state: GameState): Derived {
         break;
       }
       case "computeMult":
-        computeMult = computeMult.mul(Math.pow(1 + def.effect.perLevel, level));
+        // Big.pow, NOT Math.pow: a float pow overflows to Infinity past ~1e308,
+        // and break_infinity absorbs a non-finite operand to ZERO rather than
+        // throwing — so an uncapped multiplicative upgrade would silently kill
+        // the whole economy and then persist that to the save. Every computeMult
+        // upgrade is capped today, so this is insurance, not a live fix.
+        computeMult = computeMult.mul(Big.of(1 + def.effect.perLevel).pow(level));
         break;
       case "dataMult":
         dataMult = dataMult.mul(1 + def.effect.perLevel * level);
@@ -145,8 +151,10 @@ export function derive(state: GameState): Derived {
   const interconnectData = loadoutDataPerSec(state);
   if (interconnectData > 0) dataPerSecFlat = dataPerSecFlat.add(interconnectData);
 
-  // Research (one-time nodes)
-  for (const def of balance.research) {
+  // Research (one-time nodes). Scans base + EPOCH nodes: an epoch id can only be in
+  // state.research if the player owned its paradigm and bought it, so this is identity
+  // for anyone who hasn't — and the sim owns no paradigms.
+  for (const def of ALL_RESEARCH) {
     if (!state.research.includes(def.id)) continue;
     switch (def.effect.kind) {
       case "computeMult":

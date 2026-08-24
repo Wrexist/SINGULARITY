@@ -33,10 +33,14 @@ export function useGameLoop(tickHz = 10, saveEverySec = 5) {
       // enforces. A normal tick is ~100ms, so this only ever bites a long suspend, and
       // it's never more generous than simply closing the tab would have been.
       const capMs = (isPremium() ? balance.offline.premiumMaxHours : balance.offline.maxHours) * 3_600_000;
-      const elapsed = Math.min(t - last.current, capMs);
+      const raw = t - last.current;
+      const elapsed = Math.min(raw, capMs);
       last.current = t;
       try {
-        advance(elapsed);
+        // Pass the raw (unclamped) window too: when this tick IS a resume from a
+        // long suspend, the store turns it into the "while you were away" recap,
+        // and the recap needs the real time away to say it was capped.
+        advance(elapsed, raw);
       } catch (e) {
         if (!tickErrorLogged) {
           console.error("Game tick failed — containing so the loop survives:", e);

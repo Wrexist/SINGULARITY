@@ -36,8 +36,14 @@ export function InstitutePanel({ game, onBuy, onEndowFellowship }: Props) {
           const isOwned = owned.has(p.id);
           const can = canBuyInstitute(game, p.id);
           const lockedByReq = !!p.requires && !owned.has(p.requires);
+          // Grants come one per ascension, so "1 of the 3 this wing wants" is a
+          // genuinely useful thing to see at a glance rather than compute.
+          const pct = !isOwned && !can && !lockedByReq && p.cost > 0
+            ? Math.max(0, Math.min(1, grants / p.cost))
+            : 0;
           return (
             <button key={p.id} className={`institute-wing meta-item ${isOwned ? "owned" : can ? "affordable" : lockedByReq ? "locked" : ""}`} disabled={isOwned || !can} onClick={() => onBuy(p.id)}>
+              {pct > 0 && <span className="meta-progress" style={{ width: `${pct * 100}%` }} aria-hidden="true" />}
               <div className="institute-main">
                 <span className="institute-name">{p.name}{isOwned ? " ✓" : ""}</span>
                 <span className="institute-desc">{p.desc}</span>

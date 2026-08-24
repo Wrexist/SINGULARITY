@@ -18,7 +18,9 @@ const FIRST_RESEARCH = balance.research[0]?.id ?? "";
  * a product quietly bleeding money. Deterministic; no React, no clock.
  */
 
-export type AdvisorTab = "lab" | "products" | "employees";
+/** A destination that can resolve an advisory item. "goals" is the GOALS tab,
+ *  which now owns every claimable goal board (contracts, sponsors, objectives). */
+export type AdvisorTab = "lab" | "products" | "employees" | "goals";
 
 /** The Lab tab's sub-sections (Build / Research / HQ). Lab-tab items carry the
  *  section that resolves them so a nudge can land the player on the right pane. */
@@ -143,8 +145,7 @@ export function advisorItems(state: GameState, precomputed?: Derived): AdvisorIt
   const readyContract = contractBoard(state).find((c) => c.ready);
   if (readyContract) {
     items.push({
-      tab: "lab",
-      section: "hq",
+      tab: "goals",
       text: `Claim the "${readyContract.def.title}" contract — +${readyContract.def.rep} Rep`,
       priority: 78,
     });
@@ -154,7 +155,7 @@ export function advisorItems(state: GameState, precomputed?: Derived): AdvisorIt
   // endgame's day-to-day nudge; previously never surfaced by the advisor).
   const sponsor = sponsorView(state);
   if (sponsor?.ready) {
-    items.push({ tab: "lab", section: "hq", text: `Claim the "${sponsor.def.title}" sponsor — +${sponsor.def.rep} Rep`, priority: 76 });
+    items.push({ tab: "goals", text: `Claim the "${sponsor.def.title}" sponsor — +${sponsor.def.rep} Rep`, priority: 76 });
   }
 
   // NOTE (2026-08 noise sweep): "you can afford a Lab Reputation perk" and "you can
@@ -176,7 +177,7 @@ export function nextAction(state: GameState): AdvisorItem | null {
 
 /** How many advisory items resolve on each tab — drives the small tab badges. */
 export function attentionCounts(state: GameState): Record<AdvisorTab, number> {
-  const counts: Record<AdvisorTab, number> = { lab: 0, products: 0, employees: 0 };
+  const counts: Record<AdvisorTab, number> = { lab: 0, products: 0, employees: 0, goals: 0 };
   for (const it of advisorItems(state)) counts[it.tab] += 1;
   return counts;
 }

@@ -95,9 +95,26 @@ describe("advisor", () => {
   it("nudges to claim a contract once one is ready on the board", () => {
     const s = createInitialState();
     s.stats.peakComputePerSec = Big.of(1e6); // satisfies the early compute contracts
-    expect(advisorItems(s).some((i) => i.tab === "lab" && i.text.toLowerCase().includes("contract"))).toBe(true);
+    // Routes to GOALS, which owns the contract board since the 2026-08
+    // consolidation — a nudge that lands the player on a tab the board no longer
+    // lives on is worse than no nudge at all.
+    expect(advisorItems(s).some((i) => i.tab === "goals" && i.text.toLowerCase().includes("contract"))).toBe(true);
     // …and stays quiet when nothing is ready.
     expect(advisorItems(createInitialState()).some((i) => i.text.toLowerCase().includes("contract"))).toBe(false);
+  });
+
+  it("routes every goal-board nudge to GOALS, never to a Lab section", () => {
+    // The boards moved; the wayfinding must move with them. Any advisory item
+    // mentioning a contract or sponsor must resolve on the GOALS tab, and must not
+    // carry a stale Lab section that would deep-link into an empty pane.
+    const s = createInitialState();
+    s.stats.peakComputePerSec = Big.of(1e6);
+    const goalItems = advisorItems(s).filter((i) => /contract|sponsor/i.test(i.text));
+    expect(goalItems.length).toBeGreaterThan(0);
+    for (const it of goalItems) {
+      expect(it.tab).toBe("goals");
+      expect(it.section).toBeUndefined();
+    }
   });
 
   it("never nags about affordable shop stock (Reputation perks / Endowment)", () => {

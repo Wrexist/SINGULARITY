@@ -194,7 +194,9 @@ export interface GameState {
   /** Megaprojects II — the repeatable post-challenge loop. `level` = cycles completed
    *  (drives the bounded all-lane bonus); `funded` = progress toward the current cycle.
    *  Empty/0 until the deep endgame, so identity for the sim. Persists across prestige. */
-  megaprojects: { level: number; funded: { compute: Big; data: Big; money: Big } };
+  /** Megaprojects II — the repeatable post-challenge loop. `mandates` is the MULTISET
+   *  of permanent picks taken, one minted per completed cycle (see balance/challenges). */
+  megaprojects: { level: number; funded: { compute: Big; data: Big; money: Big }; mandates: string[] };
   /** Lab Objectives (IDEAS #B) — early/mid rotating tasks. Claimed ids (the board is the
    *  first few uncompleted). Persists across prestige (an onboarding-grind ladder). */
   objectives: { completed: string[] };

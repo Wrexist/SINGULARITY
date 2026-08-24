@@ -171,7 +171,12 @@ export function challengeMods(state: GameState): { compute: Big; data: Big; mone
     }
   }
   const mega = megaprojectMult(state); // all-lane, 1.0 at level 0 → identity
-  return { compute: compute.mul(mega), data: data.mul(mega), money: money.mul(mega) };
+  const ch = mandateMods(state); // per-lane, identity until a mandate is taken
+  return {
+    compute: compute.mul(mega).mul(ch.compute),
+    data: data.mul(mega).mul(ch.data),
+    money: money.mul(mega).mul(ch.money),
+  };
 }
 
 // ---------- Megaprojects II — the repeatable post-challenge loop ----------
@@ -269,11 +274,75 @@ export function fundMegaproject(state: GameState): { state: GameState; justCompl
         money: r.money.sub(give.money).max(Big.ZERO),
       },
       megaprojects: complete
-        ? { level: state.megaprojects.level + 1, funded: zeroFund() }
+        // A completed cycle bumps the level (which mints a Mandate) and resets
+        // funding for the costlier next one. Mandates already taken are kept.
+        ? { ...state.megaprojects, level: state.megaprojects.level + 1, funded: zeroFund() }
         : { ...state.megaprojects, funded: next },
     },
     justCompleted: complete,
   };
+}
+
+
+// ---------- Megaproject Mandates — the permanent pick each cycle mints ----------
+//
+// See balance/challenges.ts for WHY: the bounded megaproject bonus converges to
+// ×1.333 while cost grows ×2.2 per cycle, so past ~15 cycles the player was buying
+// the fourth decimal place. The bounded bonus is unchanged; mandates sit on top so
+// that every future cycle is worth the same as the first.
+
+const MANDATE_DEFS = M.mandates.defs;
+const MANDATE_BY_ID = new Map(MANDATE_DEFS.map((d) => [d.id, d]));
+/** Valid mandate ids — exported for the save sanitizer. */
+export const MANDATE_IDS = new Set(MANDATE_DEFS.map((d) => d.id));
+
+/** The mandates a player can choose between. */
+export function mandateDefs() {
+  return MANDATE_DEFS;
+}
+
+/** One pick per COMPLETED cycle, minus the ones already spent. Never negative, so a
+ *  save whose picks somehow outnumber its level simply offers none. */
+export function mandatePicksAvailable(state: GameState): number {
+  if (!M.enabled) return 0;
+  return Math.max(0, Math.max(0, state.megaprojects.level) - state.megaprojects.mandates.length);
+}
+
+/** Can this mandate be taken right now? */
+export function canPickMandate(state: GameState, id: string): boolean {
+  if (!MANDATE_BY_ID.has(id)) return false;
+  return mandatePicksAvailable(state) > 0;
+}
+
+/** Take one Mandate. Pure; a no-op without an unspent pick or on an unknown id.
+ *  Mandates are a MULTISET — repeat a lane to stack it. */
+export function pickMandate(state: GameState, id: string): GameState {
+  if (!canPickMandate(state, id)) return state;
+  return {
+    ...state,
+    megaprojects: { ...state.megaprojects, mandates: [...state.megaprojects.mandates, id] },
+  };
+}
+
+/** Permanent per-lane multipliers from taken mandates (identity when none). Folded
+ *  into challengeMods, so derive picks them up with the rest of the challenge rewards. */
+export function mandateMods(state: GameState): { compute: Big; data: Big; money: Big } {
+  let compute = Big.ONE;
+  let data = Big.ONE;
+  let money = Big.ONE;
+  if (!M.enabled) return { compute, data, money };
+  for (const id of state.megaprojects.mandates) {
+    const def = MANDATE_BY_ID.get(id);
+    if (!def) continue;
+    const m = 1 + def.value;
+    switch (def.lane) {
+      case "compute": compute = compute.mul(m); break;
+      case "data": data = data.mul(m); break;
+      case "money": money = money.mul(m); break;
+      case "all": compute = compute.mul(m); data = data.mul(m); money = money.mul(m); break;
+    }
+  }
+  return { compute, data, money };
 }
 
 export { BY_ID as challengeById };
