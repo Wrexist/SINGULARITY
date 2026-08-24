@@ -28,8 +28,8 @@ import { gameCenterSubmitScores, gameCenterUnlock } from "./gameCenter";
 import { DataMarketPanel } from "./DataMarketPanel";
 import { EmployeesPanel } from "./EmployeesPanel";
 import { ProductsPanel } from "./ProductsPanel";
-import { AchievementsModal } from "./AchievementsModal";
-import { ContractsPanel } from "./ContractsPanel";
+import { GoalsPanel, type GoalsSection } from "./GoalsPanel";
+import { goalsCounts } from "./goalsCount";
 import { CharterPanel } from "./CharterPanel";
 import { CodexPanel } from "./CodexPanel";
 import { EventLog } from "./EventLog";
@@ -40,7 +40,7 @@ import { productsUnlocked, typeDef, retirePayout } from "../engine/products";
 import { advisorItems, type AdvisorTab, type LabSection } from "../engine/advisor";
 import { nextGoal } from "../engine/goals";
 import { marketLeaderboard, playerMarketRank, rivalsBeaten } from "../engine/market";
-import { FlaskIcon, BoxIcon, TeamIcon, TrophyIcon, GearIcon, GiftIcon, TargetIcon } from "./Icons";
+import { FlaskIcon, BoxIcon, TeamIcon, GearIcon, GiftIcon, TargetIcon } from "./Icons";
 import { fmt, fmtMoney } from "./format";
 import type { ProductTypeId } from "../engine/balance/products";
 import { iap } from "./iap";
@@ -94,21 +94,13 @@ import { legacyAvailable } from "../engine/legacyTree";
 import { endowmentUnlocked } from "../engine/reputation";
 import { canBuyOfficePerk } from "../engine/actions";
 import { modelReadyNote, researchStartNote, soldNote, hireWelcome, fireSendoff } from "../engine/notices";
-import { challengesUnlocked, challengeById, visibleChallenges, pendingForkChallenge } from "../engine/challenges";
-import { contractBoard, sponsorView } from "../engine/contracts";
-import { GrandChallengesPanel } from "./GrandChallengesPanel";
-import { TrialsPanel, trialsDoneCount, trialsTotal } from "./TrialsPanel";
-import { trialsUnlocked } from "../engine/trials";
+import { challengeById } from "../engine/challenges";
 import { ParadigmPanel } from "./ParadigmPanel";
 import { paradigmsUnlocked } from "../engine/paradigms";
-import { DoctrinePanel, doctrineDoneCount, doctrineTotal } from "./DoctrinePanel";
-import { doctrineUnlocked } from "../engine/doctrine";
 import { InstitutePanel } from "./InstitutePanel";
 import { instituteUnlocked, grantsAvailable } from "../engine/institute";
 import { Collapsible } from "./Collapsible";
 import { ChallengeComplete } from "./ChallengeComplete";
-import { objectivesUnlocked } from "../engine/objectives";
-import { ObjectivesPanel } from "./ObjectivesPanel";
 import { automationUnlockedAny, automationList, automationUnlocked, automationEnabled } from "../engine/automation";
 import { AutomationPanel } from "./AutomationPanel";
 import { currentEra } from "../engine/eras";
@@ -140,7 +132,7 @@ export function App() {
   const advisor = useMemo(() => advisorItems(game, d), [game, d]);
   const claimWaiting = game.run.readyToClaim;
   const attention = useMemo(() => {
-    const counts: Record<AdvisorTab, number> = { lab: 0, products: 0, employees: 0 };
+    const counts: Record<AdvisorTab, number> = { lab: 0, products: 0, employees: 0, goals: 0 };
     for (const it of advisor) counts[it.tab] += 1;
     if (claimWaiting) counts.lab += 1;
     return counts;
@@ -153,22 +145,20 @@ export function App() {
   }, [advisor, claimWaiting]);
   const nudge = advisor[0] ?? null;
 
-  // Fold-badge counts for the HQ boards (Contracts / Automation / Grand Challenges).
-  // Computed once per tick alongside the advisor so a COLLAPSED board can still say
-  // "N ready" ambiently — the point of folding HQ is fewer open panels, not less signal.
+  // Automation is the only board still folded into HQ (a settings surface, not a
+  // goal ladder), so its badge is all that is left here. The contract / challenge
+  // tallies moved into GOALS, which counts them once for its own badges.
   const hqCounts = useMemo(() => {
-    const ready = contractBoard(game).filter((c) => c.ready).length + (sponsorView(game)?.ready ? 1 : 0);
     const autos = automationList().filter((a) => automationUnlocked(game, a.id));
-    const seen = visibleChallenges(game);
     return {
-      contractsReady: ready,
       autoOn: autos.filter((a) => automationEnabled(game, a.id)).length,
       autoTotal: autos.length,
-      challengesDone: seen.filter((c) => game.challenges.completed.includes(c.id)).length,
-      challengesSeen: seen.length,
-      forkPending: seen.some((c) => pendingForkChallenge(game, c.id)),
     };
   }, [game]);
+
+  // One scan behind every GOALS badge: the nav count, the horizon dots and the
+  // fold counts all read the same numbers, so they cannot disagree.
+  const goalsCount = useMemo(() => goalsCounts(game), [game]);
 
   // Detect a ship (prestige) and fire the celebration moment + haptics.
   const prevShips = useRef(game.prestige.ships);
@@ -181,7 +171,6 @@ export function App() {
   const [pendingRetire, setPendingRetire] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [showAchievements, setShowAchievements] = useState(false);
   const [challengeDoneId, setChallengeDoneId] = useState<string | null>(null); // Grand Challenge just completed → moment
   const [flash, setFlash] = useState(0); // AGI ascension screen flash (key replays the anim)
   const [dailyOn, setDailyOn] = useState(() => dailyAvailable());
@@ -237,7 +226,7 @@ export function App() {
   // consequence of something the player just did; this is the only uninvited one, so
   // it's the only one that waits. The store holds it in a single slot, so it simply
   // shows once the sheet closes. (2026-08 — reproduced in a seeded smoke run.)
-  const sheetOpen = showSettings || showAchievements || !!pendingExpansion || confirmReset || !!pendingRetire;
+  const sheetOpen = showSettings || !!pendingExpansion || confirmReset || !!pendingRetire;
 
   // The moment queue's head: exactly ONE full-screen moment renders at a time,
   // by priority. Dismissing the head lets the next pending one show.
@@ -331,7 +320,9 @@ export function App() {
   const showMarket = game.research.length > 0;
   const showStaff = balance.staff.enabled && game.research.length >= balance.staff.revealAtResearch;
   const showProducts = productsUnlocked(game);
-  const [tab, setTab] = useState<"lab" | "products" | "employees">("lab");
+  const [tab, setTab] = useState<"lab" | "products" | "employees" | "goals">("lab");
+  // GOALS remembers which horizon you were reading, like the Lab remembers its section.
+  const [goalsSection, setGoalsSection] = useState<GoalsSection>("now");
   // The Lab's sub-sections (Build / Research / HQ) — the anti-noise structure.
   // Before Research unlocks there's nothing to section, so the switcher stays
   // hidden and the Lab renders the Build core alone (reveal depth in waves, GDD).
@@ -348,7 +339,7 @@ export function App() {
   }, []);
   // Telemetry (R8.1): count a tab switch when the player navigates to a *different*
   // tab. On-device only; no-op when opted out (see src/state/telemetry.ts).
-  const goTab = useCallback((next: "lab" | "products" | "employees") => {
+  const goTab = useCallback((next: "lab" | "products" | "employees" | "goals") => {
     setTab((cur) => {
       if (cur !== next) recordTelemetry({ kind: "tab", t: Date.now(), tab: next });
       return next;
@@ -893,8 +884,7 @@ export function App() {
               title={goal.desc}
               onClick={() => {
                 haptics.tap();
-                if (goal.kind === "achievement") setShowAchievements(true);
-                else if (goal.kind === "milestone") goTab("products");
+                if (goal.kind === "achievement" || goal.kind === "milestone") { setGoalsSection("collection"); goTab("goals"); }
                 else {
                   goTab("lab");
                   if (labSectioned) goSection(goal.kind === "era" && era === 0 ? "research" : "hq");
@@ -908,7 +898,23 @@ export function App() {
             </button>
           ) : null}
         </div>
-        {tab === "products" && showProducts ? (
+        {tab === "goals" ? (
+          <GoalsPanel
+            game={game}
+            section={goalsSection}
+            onSection={(next) => { haptics.tap(); if (next !== goalsSection) window.scrollTo(0, 0); setGoalsSection(next); }}
+            showContracts={showResearch}
+            onClaimObjective={onClaimObjective}
+            onClaimContract={onClaimContract}
+            onClaimSponsor={() => { haptics.success(); sound.success(); doClaimSponsor(); }}
+            onFundChallenge={onFundChallenge}
+            onChooseFork={(id, forkId) => { haptics.celebrate(); sound.purchase(); doChooseFork(id, forkId); }}
+            onFundMegaproject={(at) => { const done = doFundMegaproject(); if (done) { haptics.epic(); sound.megaproject(); if (at) fxBurst(at.x, at.y, { count: 26, power: 1.4, colors: [...FX_PALETTES.epic] }); } else { haptics.tap(); sound.tap(); } }}
+            onStartTrial={(id) => { haptics.success(); sound.tap(); doStartTrial(id); }}
+            onAbandonTrial={() => { haptics.tap(); doAbandonTrial(); }}
+            onClaimDoctrine={(id) => { haptics.celebrate(); sound.success(); doClaimDoctrine(id); }}
+          />
+        ) : tab === "products" && showProducts ? (
           <ProductsPanel
             game={game}
             derived={d}
@@ -980,7 +986,6 @@ export function App() {
                   <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} onSetFocus={setComputeFocus} />
                 </div>
                 <div className="stage-right">
-                  {objectivesUnlocked(game) && <ObjectivesPanel game={game} onClaim={onClaimObjective} />}
                   <CharterPanel
                     game={game}
                     onSet={(id) => { haptics.tap(); sound.tap(); doSetCharter(id); }}
@@ -1012,33 +1017,9 @@ export function App() {
                     Automation and Grand Challenges now fold like Trials/Doctrine/the
                     Institute already did, each carrying its own "needs you" count so a
                     folded board still calls out ambiently. (2026-08 navigation sweep.) */}
-                {showResearch && (
-                  <Collapsible title="Contracts" defaultOpen={hqCounts.contractsReady > 0} badge={hqCounts.contractsReady > 0 ? `${hqCounts.contractsReady} ready` : undefined}>
-                    <ContractsPanel bare game={game} onClaim={onClaimContract} onClaimSponsor={() => { haptics.success(); sound.success(); doClaimSponsor(); }} />
-                  </Collapsible>
-                )}
                 {automationUnlockedAny(game) && (
                   <Collapsible title="Automation" badge={`${hqCounts.autoOn}/${hqCounts.autoTotal} on`}>
                     <AutomationPanel bare game={game} onToggle={onToggleAutomation} />
-                  </Collapsible>
-                )}
-                {challengesUnlocked(game) && (
-                  <Collapsible title="Grand Challenges" defaultOpen={hqCounts.forkPending} badge={hqCounts.forkPending ? "decision" : `${hqCounts.challengesDone}/${hqCounts.challengesSeen}`}>
-                    <GrandChallengesPanel bare game={game} onFund={onFundChallenge} onChooseFork={(id, forkId) => { haptics.celebrate(); sound.purchase(); doChooseFork(id, forkId); }} onFundMegaproject={(at) => { const done = doFundMegaproject(); if (done) { haptics.epic(); sound.megaproject(); if (at) fxBurst(at.x, at.y, { count: 26, power: 1.4, colors: [...FX_PALETTES.epic] }); } else { haptics.tap(); sound.tap(); } }} />
-                  </Collapsible>
-                )}
-                {trialsUnlocked(game) && (
-                  <Collapsible title="Trials" defaultOpen={!!game.activeTrial} badge={game.activeTrial ? "running" : `${trialsDoneCount(game)}/${trialsTotal}`}>
-                    <TrialsPanel
-                      game={game}
-                      onStart={(id) => { haptics.success(); sound.tap(); doStartTrial(id); }}
-                      onAbandon={() => { haptics.tap(); doAbandonTrial(); }}
-                    />
-                  </Collapsible>
-                )}
-                {doctrineUnlocked(game) && (
-                  <Collapsible title="Doctrine" badge={`${doctrineDoneCount(game)}/${doctrineTotal}`}>
-                    <DoctrinePanel game={game} onClaim={(id) => { haptics.celebrate(); sound.success(); doClaimDoctrine(id); }} />
                   </Collapsible>
                 )}
                 {instituteUnlocked(game) && (
@@ -1099,12 +1080,15 @@ export function App() {
             {attention.employees > 0 && <span className="botnav-badge">{attention.employees}</span>}
           </button>
         )}
-        <button className="botnav-item" onClick={() => { haptics.tap(); markAchievementsSeen(game.achievements.length); setShowAchievements(true); }} aria-label="Achievements">
-          <span className="botnav-ic"><TrophyIcon size={23} /></span><span className="botnav-lbl">Awards</span>
-          {/* Badge = NEW unlocks since the modal was last opened, matching the
-              other badges' "needs you" semantics (a lifetime total here just
-              trained players to ignore badges everywhere). */}
-          {game.achievements.length > achievementsSeen && <span className="botnav-badge alt">{game.achievements.length - achievementsSeen}</span>}
+        <button className={`botnav-item ${tab === "goals" ? "on" : ""}`} aria-current={tab === "goals" ? "page" : undefined} onClick={() => { haptics.tap(); markAchievementsSeen(game.achievements.length); goTab("goals"); }}>
+          <span className="botnav-ic"><TargetIcon size={23} /></span><span className="botnav-lbl">Goals</span>
+          {/* One honest badge for every goal system at once: what is WAITING to be
+              claimed. Newly-unlocked achievements still count while unseen, so the
+              old Awards signal isn't lost — it just no longer has its own door. */}
+          {(() => {
+            const n = goalsCount.claimable + Math.max(0, game.achievements.length - achievementsSeen);
+            return n > 0 ? <span className="botnav-badge">{n}</span> : null;
+          })()}
         </button>
         <button className="botnav-item" onClick={() => { haptics.tap(); setShowSettings(true); }} aria-label="Settings">
           <span className="botnav-ic"><GearIcon size={22} /></span><span className="botnav-lbl">More</span>
@@ -1134,7 +1118,6 @@ export function App() {
         />
       )}
       {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} />}
-      {showAchievements && <AchievementsModal game={game} onClose={() => setShowAchievements(false)} />}
       {moment === "challenge" && challengeDoneId && challengeById.get(challengeDoneId) && (
         <ChallengeComplete challenge={challengeById.get(challengeDoneId)!} onDone={() => setChallengeDoneId(null)} />
       )}

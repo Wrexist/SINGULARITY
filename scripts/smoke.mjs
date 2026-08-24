@@ -129,7 +129,7 @@ try {
   await page.screenshot({ path: join(OUT, "02-loop.png") });
 
   // Visit every bottom-nav destination and every Lab section.
-  const navLabels = ["Lab", "Products", "Team", "Awards", "More"];
+  const navLabels = ["Lab", "Products", "Team", "Goals", "More"];
   for (const lbl of navLabels) {
     const b = page.locator(`.botnav-item:has-text("${lbl}")`).first();
     if (await b.count().then((c) => c > 0).catch(() => false)) {
@@ -141,6 +141,32 @@ try {
       if (await close.count().then((c) => c > 0).catch(() => false)) {
         await close.click({ timeout: 1000 }).catch(() => {});
         await sleep(300);
+      }
+    }
+  }
+
+  // GOALS owns every goal board since the 2026-08 consolidation — walk its
+  // horizons and expand each folded board, or the smoke covers none of them.
+  const goalsBtn = page.locator('.botnav-item:has-text("Goals")').first();
+  if (await goalsBtn.count().then((c) => c > 0).catch(() => false)) {
+    await goalsBtn.click({ timeout: 1500 }).catch(() => {});
+    await sleep(500);
+    for (const h of ["Now", "Long game", "Collection"]) {
+      const t = page.locator(`.labnav .tab:has-text("${h}")`).first();
+      if (await t.count().then((c) => c > 0).catch(() => false)) {
+        await t.click({ timeout: 1500 }).catch(() => {});
+        await sleep(500);
+        const folds = page.locator(".collapsible-toggle");
+        const fn = await folds.count().catch(() => 0);
+        for (let i = 0; i < fn; i++) {
+          const el = folds.nth(i);
+          if ((await el.getAttribute("aria-expanded").catch(() => null)) === "false") {
+            await el.click({ timeout: 1200 }).catch(() => {});
+            await sleep(150);
+          }
+        }
+        await sleep(400);
+        await page.screenshot({ path: join(OUT, `goals-${h.replace(/\s+/g, "").toLowerCase()}.png`), fullPage: true });
       }
     }
   }

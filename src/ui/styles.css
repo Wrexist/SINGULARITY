@@ -274,19 +274,16 @@ svg { vertical-align: middle; }
 
 /* ---------- Achievements ---------- */
 /* Flex column so ONLY the grid scrolls (was nested scrollers fighting on iOS). */
-.ach-modal { max-width: 440px; display: flex; flex-direction: column; overflow: hidden; }
-.ach-modal .pd-head, .ach-modal .ach-progress-track, .ach-modal .ach-cats { flex: 0 0 auto; }
 .ach-title { font-size: var(--fs-xl); font-weight: 800; margin: 0; display: inline-flex; align-items: center; gap: 8px; }
 .ach-title svg { color: var(--data); }
 .ach-count { font-size: var(--fs-sm); color: var(--ink-2); font-weight: 650; margin-top: 2px; }
 .ach-progress-track { height: 6px; border-radius: 3px; background: var(--glass-strong); overflow: hidden; margin: 10px 0 4px; }
 .ach-progress-fill { height: 100%; background: linear-gradient(90deg, var(--data), var(--money)); transition: width var(--dur-slow) var(--ease-out); }
 .ach-cats { flex-wrap: wrap; }
-.ach-grid {
-  display: flex; flex-direction: column; gap: 8px; padding-right: 2px;
-  flex: 1 1 auto; min-height: 0; /* the single scroll area inside the flex-column modal */
-  overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
-}
+/* The board scrolls WITH the page now that it lives in GOALS → Collection
+   rather than inside a fixed-height modal; an inner scroller in a page context
+   traps the gesture and hides rows below the fold. */
+.ach-grid { display: flex; flex-direction: column; gap: 8px; }
 .ach-card {
   display: flex; align-items: center; gap: 11px; padding: 10px 12px;
   border-radius: var(--radius-sm); background: var(--glass-strong);
@@ -3412,6 +3409,12 @@ button.modchip.workable:active { transform: scale(0.94); }
   border-color: rgba(16, 24, 40, 0.16);
   opacity: 0.55;
 }
+
+/* GOALS — the one destination for "what should I do next?". Its section header
+   matches the folded boards beside it (title + count on one row), so an open
+   board and a folded one read as the same kind of thing. */
+.goals-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.goals-head .collapsible-badge { margin-left: auto; }
 
 /* ---------- Intentional empty states ---------- */
 .empty-state {
