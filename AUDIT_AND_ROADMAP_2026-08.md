@@ -169,13 +169,19 @@ risky change to a live app and deserves its own pass.
    and the whole economy dies and persists that way. `break_infinity` absorbs
    non-finite input to zero rather than throwing, so the failure is silent.
 3. **The GOALS destination** (§3).
-4. **Design-token pass**: 24 font sizes → 8, 25 radii → 4, 70 shadows → 4, one card
-   component. Largest single contributor to "it doesn't feel designed".
-5. **Feedback proportionality**: the loudest particle burst in normal play is *buying
-   racks with Max selected* (40 @ 1.7), which out-juices an achievement (22 @ 1.1).
-   Completing research and hiring a person both play the rack chime.
-6. **`sound.era()` is muted unless Music is on** — a player with Music off but Sound on
-   gets the game's first tentpole moment in silence.
+4. ~~**Design-token pass**~~ ✅ **done (visual-polish pass, 2026-08).** Type scale is
+   8 tokens (`--fs-micro`…`--fs-2xl`) + four display one-offs; radii are
+   `--radius/-sm/-xs/-2xs` + pill/circle; neutral shadows are `--shadow-xs/sm/md/lg`
+   + `--shadow-knob` (colored glows stay semantic); hairlines share one base hue
+   (16,24,40); the row-card family uses three padding tokens
+   (`--pad-row/-card/-card-lg`). The "one card component" refactor remains open —
+   it's a TSX structural change, not a token sweep.
+5. ~~**Feedback proportionality**~~ ✅ **done (same pass).** Routine buys cap at
+   26 @ 1.35 (flavor-tier milestone buys 32 @ 1.5), below the achievement burst
+   (now 28 @ 1.45). Research plays a discovery arpeggio (`sound.research`), a hire
+   plays a warm welcome (`sound.hire`) — neither reuses the rack purchase chime.
+6. ~~**`sound.era()` muted unless Music is on**~~ ✅ **done (same pass).** The era
+   stinger plays when either Sound or Music is enabled.
 
 ---
 
