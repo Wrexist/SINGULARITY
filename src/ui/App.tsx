@@ -557,7 +557,9 @@ export function App() {
           const onScreen = r && r.top >= 0 && r.bottom <= window.innerHeight && r.left >= 0 && r.right <= window.innerWidth;
           const cx = onScreen ? r!.left + r!.width / 2 : window.innerWidth / 2;
           const cy = onScreen ? r!.top + r!.height / 2 : window.innerHeight * 0.4;
-          fxBurst(cx, cy, { count: 22, power: 1.1, colors: [...FX_PALETTES.achievement] });
+          // Sits ABOVE the loudest routine buy (26 @ 1.35, UpgradePanel) — an
+          // achievement must out-juice shopping (Part 4 §5 proportionality).
+          fxBurst(cx, cy, { count: 28, power: 1.45, colors: [...FX_PALETTES.achievement] });
         }
       }
       else {
@@ -698,7 +700,9 @@ export function App() {
     // Only celebrate a hire that actually happened — a stale tap on an unaffordable
     // candidate must not buzz + play the purchase chime for a phantom signing.
     if (!doHireCandidate(i)) { haptics.warn(); return; }
-    haptics.celebrate(); sound.purchase();
+    // A person joining gets a warm welcome tone, not the hardware purchase chime
+    // (feedback proportionality — 2026-08 audit, Part 4 §5).
+    haptics.celebrate(); sound.hire();
     if (c) logEvent(hireWelcome(c.name, c.roleId), "good");
   };
   const onTrain = (id: string) => { haptics.tap(); sound.tap(); doTrainEmployee(id); };
@@ -780,7 +784,8 @@ export function App() {
     if (at && !reducedMotion) fxBurst(at.x, at.y, { count: 16, power: 1.1, colors: [...FX_PALETTES.brand] });
   };
   const onResearch = (id: string) => {
-    haptics.tap(); sound.purchase();
+    // A breakthrough sounds like a discovery, not a rack purchase (Part 4 §5).
+    haptics.tap(); sound.research();
     const had = game.research.includes(id);
     doResearch(id);
     // Surface the node's satirical flavor as a breakthrough toast — completing research

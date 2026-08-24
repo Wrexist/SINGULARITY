@@ -166,6 +166,21 @@ export const sound = {
     tone(311.13, 0, 0.16, "sawtooth", 0.05);
     tone(207.65, 0.12, 0.24, "square", 0.045);
   },
+  /** Research breakthrough — an upward "discovery" arpeggio with a soft sparkle
+   *  tail. Distinct from the purchase chime (research is a discovery, not a
+   *  transaction) and deliberately smaller than the achievement ta-da. */
+  research: () => {
+    if (!on()) return;
+    [440, 659.25, 987.77].forEach((f, i) => tone(f, i * 0.06, 0.14, "sine", 0.05));
+    tone(1318.51, 0.2, 0.16, "triangle", 0.03);
+  },
+  /** A new hire joins — a warm, low welcome interval (person, not hardware). */
+  hire: () => {
+    if (!on()) return;
+    tone(261.63, 0, 0.22, "triangle", 0.05);
+    tone(392, 0.09, 0.26, "sine", 0.05);
+    tone(523.25, 0.18, 0.2, "sine", 0.035);
+  },
   /** Achievement unlock — a bright, sparkly major triad "ta-da" (distinct from a buy). */
   achievement: () => {
     if (!on()) return;
@@ -199,11 +214,12 @@ export const sound = {
     tone(587.33, 0, 0.09, "sine", 0.05);
     tone(880, 0.08, 0.18, "sine", 0.05);
   },
-  /** Era transition — a warm, swelling major chord stinger under the Music toggle
-   *  (the "music swells" tentpole moment from GDD §6). Distinct from SFX so it
-   *  plays even if you've muted taps, as long as Music is on. */
+  /** Era transition — a warm, swelling major chord stinger (the "music swells"
+   *  tentpole moment from GDD §6). Plays when EITHER toggle is on: it belongs
+   *  to the music layer, but a Sound-on/Music-off player must not get the
+   *  game's first tentpole moment in silence (2026-08 audit, Part 4 §6). */
   era: () => {
-    if (!musicOn()) return;
+    if (!on() && !musicOn()) return;
     // Low swell → bright triad bloom.
     tone(130.81, 0, 1.1, "sine", 0.05);
     tone(196, 0.05, 1.0, "sine", 0.045);

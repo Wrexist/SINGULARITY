@@ -140,8 +140,11 @@ export function UpgradePanel({ game, derived, onBuy }: Props) {
           // own flavor line updates to the newly-earned text (wordless reward).
           const milestone = crossedFlavorTier(def.id, owned, owned + units);
           const color = buyColorFor(def.id, def.cost.resource);
-          const count = Math.min(40, Math.round((isHero ? 16 : 12) + escal * 5 + (milestone ? 12 : 0)));
-          const power = Math.min(1.7, (isHero ? 1.1 : 0.9) + escal * 0.12 + (milestone ? 0.35 : 0));
+          // Proportionality caps (2026-08 audit, Part 4 §5): a routine buy — even a
+          // Max batch — stays BELOW an achievement (28 @ 1.45); only a flavor-tier
+          // milestone may edge past it. Buying racks is shopping, not winning.
+          const count = Math.min(milestone ? 32 : 26, Math.round((isHero ? 16 : 12) + escal * 5 + (milestone ? 12 : 0)));
+          const power = Math.min(milestone ? 1.5 : 1.35, (isHero ? 1.1 : 0.9) + escal * 0.12 + (milestone ? 0.35 : 0));
           burst(r.right - 22, r.top + r.height / 2, { count, power, colors: milestone ? [color, "#ffd60a"] : [color] });
           punch(e.currentTarget);
           if (milestone) floatText(r.left + r.width / 2, r.top + 2, "✦", "#ffd60a", 22);
