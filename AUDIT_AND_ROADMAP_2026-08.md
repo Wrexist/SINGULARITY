@@ -168,7 +168,13 @@ risky change to a live app and deserves its own pass.
    upgrade, `Math.pow(1.08, 1e7)` → `Infinity` → `Big.mul(Infinity)` → **silently 0**,
    and the whole economy dies and persists that way. `break_infinity` absorbs
    non-finite input to zero rather than throwing, so the failure is silent.
-3. **The GOALS destination** (§3).
+3. ~~**The GOALS destination**~~ ✅ **done (visual-polish pass, 2026-08).** All seven
+   goal systems now live in one destination grouped by horizon (Now / Long game /
+   Collection); the boards moved rather than being copied, so HQ is down to
+   Automation + the Institute, Build loses Objectives, and the Awards modal is
+   gone. One scan (`src/ui/goalsCount.ts`) feeds the nav badge, the horizon dots
+   and the fold counts, and counts only what is genuinely claimable — pinned by
+   `src/ui/goalsCount.test.ts`. Advisor wayfinding moved with the boards.
 4. ~~**Design-token pass**~~ ✅ **done (visual-polish pass, 2026-08).** Type scale is
    8 tokens (`--fs-micro`…`--fs-2xl`) + four display one-offs; radii are
    `--radius/-sm/-xs/-2xs` + pill/circle; neutral shadows are `--shadow-xs/sm/md/lg`
