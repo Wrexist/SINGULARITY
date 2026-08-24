@@ -48,7 +48,10 @@ export function OfflineModal({ summary, onClose }: Props) {
   const rows = [
     { label: "Compute", cssVar: "--compute", value: gained.compute, prefix: "" },
     { label: "Data", cssVar: "--data", value: gained.data, prefix: "" },
-    { label: "$", cssVar: "--money", value: gained.money, prefix: "$" },
+    // "Money", not a bare "$": a lone glyph beside two worded siblings reads as
+    // unfinished — the same fix the ResourceBar took in the 2026-08 audit. The
+    // value keeps its $ prefix, so nothing is lost.
+    { label: "Money", cssVar: "--money", value: gained.money, prefix: "$" },
   ];
 
   // Phase 3 — meta progress that landed while away (achievements + reputation).
