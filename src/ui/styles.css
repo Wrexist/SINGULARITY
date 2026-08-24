@@ -3460,6 +3460,13 @@ button.modchip.workable:active { transform: scale(0.94); }
 }
 .research-epoch .research-cat-name { color: var(--data); }
 
+/* The research branch a Paradigm opens, named on its card. Tinted to match the
+   epoch section in the Research panel so the two read as the same thing. */
+.paradigm-epoch {
+  font-size: var(--fs-xs); font-weight: 700;
+  color: var(--data);
+}
+
 /* ---------- Intentional empty states ---------- */
 .empty-state {
   display: flex; align-items: center; gap: 12px;

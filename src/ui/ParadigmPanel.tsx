@@ -1,6 +1,7 @@
 import type { GameState } from "../engine/types";
 import { paradigmsBalance, paradigmsUnlocked, canBuyParadigm } from "../engine/paradigms";
 import { reputationAvailable } from "../engine/reputation";
+import { epochsForParadigm } from "../engine/researchTree";
 
 interface Props {
   game: GameState;
@@ -36,6 +37,9 @@ export function ParadigmPanel({ game, onBuy }: Props) {
           const isOwned = owned.has(p.id);
           const can = canBuyParadigm(game, p.id);
           const lockedByReq = !!p.requires && !owned.has(p.requires);
+          // The research branches this paradigm opens — the reason it is a key and
+          // not just a percentage. Named here, at the point of the decision.
+          const epochs = epochsForParadigm(p.id);
           // How close this one is, for a row that is merely unaffordable (an
           // actionable row says so with .affordable; a gated one has nothing to
           // fill toward). Same question the Build/Research rings answer.
@@ -48,6 +52,11 @@ export function ParadigmPanel({ game, onBuy }: Props) {
               <div className="paradigm-main">
                 <span className="paradigm-name">{p.name}{isOwned ? " ✓" : ""}</span>
                 <span className="paradigm-desc">{p.desc}</span>
+                {epochs.map((e) => (
+                  <span className="paradigm-epoch" key={e.epoch}>
+                    {isOwned ? "Opened" : "Opens"} the {e.epoch} epoch — {e.nodes} new research {e.nodes === 1 ? "node" : "nodes"}
+                  </span>
+                ))}
                 {lockedByReq && <span className="paradigm-req">needs {nameOf(p.requires)}</span>}
               </div>
               <span className="paradigm-cost">{isOwned ? "owned" : `${p.cost} rep`}</span>

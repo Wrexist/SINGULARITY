@@ -59,6 +59,25 @@ export function researchTree(state: GameState): ResearchDef[] {
   return unlocked.length === 0 ? (balance.research as ResearchDef[]) : [...balance.research, ...unlocked];
 }
 
+/**
+ * The epoch branches a given paradigm opens, for the Paradigm panel.
+ *
+ * Without this the connection is invisible at the moment it matters: a player
+ * reads "+45% Compute, forever", buys it, and only discovers the new research
+ * branch by chance later. Naming it on the card is what makes a Paradigm read as
+ * a key rather than a percentage.
+ */
+export function epochsForParadigm(paradigmId: string): { epoch: string; nodes: number }[] {
+  const out: { epoch: string; nodes: number }[] = [];
+  for (const def of researchEpochs) {
+    if (def.requiresParadigm !== paradigmId) continue;
+    const found = out.find((g) => g.epoch === def.epoch);
+    if (found) found.nodes += 1;
+    else out.push({ epoch: def.epoch, nodes: 1 });
+  }
+  return out;
+}
+
 /** The epoch branches this state has unlocked, grouped for the Research panel. */
 export function unlockedEpochs(state: GameState): { epoch: string; nodes: EpochResearchDef[] }[] {
   const out: { epoch: string; nodes: EpochResearchDef[] }[] = [];
