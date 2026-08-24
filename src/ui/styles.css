@@ -2083,7 +2083,11 @@ button.modchip.workable:active { transform: scale(0.94); }
 .tab-dot.ship { background: linear-gradient(135deg, #f5b40a, #ff8c42); color: #1a1205; }
 /* Ambient ship-ready cue on the HQ sub-tab — a pulsing golden dot, NO word (matches the
    bottom-nav decision to prefer the pulse over the "Ship" text badge). 2026-07 noise sweep. */
-.tab-dot.ship-pulse {
+/* The gold "a ship is waiting" dot on the HQ segment. It does NOT pulse: the
+   ring animation was removed deliberately in the 2026-08 calm-down wave, and
+   the gold-vs-accent colour carries the state on its own. Named for what it is
+   so nobody "restores" the missing animation and undoes that call. */
+.tab-dot.ship-ready {
   min-width: 9px; width: 9px; height: 9px; padding: 0; border-radius: 50%;
   background: linear-gradient(135deg, #f5b40a, #ff8c42);
 }
@@ -2867,7 +2871,10 @@ button.modchip.workable:active { transform: scale(0.94); }
 .emp-proj-badge.mid { color: #f97316; background: rgba(249, 115, 22, 0.12); }
 .emp-proj-badge.low { color: var(--coral); background: rgba(255, 56, 92, 0.12); }
 .emp-proj-bar { height: 7px; border-radius: 999px; background: #ededf3; overflow: hidden; }
-.emp-proj-fill { height: 100%; border-radius: 999px; }
+/* Eases like every other progress fill in the app (contract / objective /
+   challenge / achievement bars all do). This one snapped from the day it
+   landed — the odd one out, not a calm-down decision. */
+.emp-proj-fill { height: 100%; border-radius: 999px; transition: width var(--dur-slow) var(--ease-out); }
 .emp-proj-meta { display: flex; align-items: center; justify-content: space-between; font-size: var(--fs-sm); font-weight: 650; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .emp-proj-crew { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-height: 30px; }
 .emp-proj-empty { font-size: var(--fs-xs); color: var(--ink-3); }
@@ -3368,6 +3375,36 @@ button.modchip.workable:active { transform: scale(0.94); }
 @keyframes meta-breathe {
   0%, 100% { box-shadow: var(--shadow-xs); }
   50% { box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--accent) 50%, transparent); }
+}
+/* "How close am I?" on a meta row. Every Build and Research card answers this
+   with a filling ring around its icon; the meta lists (Paradigms, Institute,
+   Reputation perks) showed a bare price instead, so a player could only find out
+   by doing arithmetic. This is the same answer in the shape these rows have:
+   a quiet accent fill across the row, exactly the goal-strip's technique.
+
+   Deliberately STATIC — a width, not an animation — so it adds no motion to a
+   list and needs no reduced-motion special case. Only ever rendered on a row
+   that is visible, unowned and not yet affordable: an actionable row already
+   says so with .affordable, and a prerequisite-locked one has nothing to fill
+   toward. */
+   Reputation perks join in via .rep-card, which is a `.card` (already
+   position:relative + overflow:hidden) rather than a .meta-item — it takes the
+   fill WITHOUT the meta state classes, so it gains no breathe animation. */
+.meta-item { position: relative; overflow: hidden; }
+.meta-item > *:not(.meta-progress),
+.rep-card > *:not(.meta-progress) { position: relative; }
+.meta-progress {
+  position: absolute; inset: 0 auto 0 0; pointer-events: none; z-index: 0;
+  /* The leading edge feathers out rather than stopping dead: a hard vertical
+     line down a list of rows reads as "this row is two-tone", while a soft one
+     reads as "filled up to here". */
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--accent) 12%, transparent) 0%,
+    color-mix(in srgb, var(--accent) 12%, transparent) calc(100% - 14px),
+    color-mix(in srgb, var(--accent) 0%, transparent) 100%
+  );
+  transition: width var(--dur-slow) var(--ease-out);
 }
 .meta-item.locked,
 .meta-item.locked:disabled {

@@ -36,8 +36,15 @@ export function ParadigmPanel({ game, onBuy }: Props) {
           const isOwned = owned.has(p.id);
           const can = canBuyParadigm(game, p.id);
           const lockedByReq = !!p.requires && !owned.has(p.requires);
+          // How close this one is, for a row that is merely unaffordable (an
+          // actionable row says so with .affordable; a gated one has nothing to
+          // fill toward). Same question the Build/Research rings answer.
+          const pct = !isOwned && !can && !lockedByReq && p.cost > 0
+            ? Math.max(0, Math.min(1, avail / p.cost))
+            : 0;
           return (
             <button key={p.id} className={`paradigm-node meta-item ${isOwned ? "owned" : can ? "affordable" : lockedByReq ? "locked" : ""}`} disabled={isOwned || !can} onClick={() => onBuy(p.id)}>
+              {pct > 0 && <span className="meta-progress" style={{ width: `${pct * 100}%` }} aria-hidden="true" />}
               <div className="paradigm-main">
                 <span className="paradigm-name">{p.name}{isOwned ? " ✓" : ""}</span>
                 <span className="paradigm-desc">{p.desc}</span>

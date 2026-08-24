@@ -961,7 +961,7 @@ export function App() {
                 </button>
                 <button className={`tab ${section === "hq" ? "on" : ""}`} aria-current={section === "hq" ? "true" : undefined} onClick={() => { haptics.tap(); goSection("hq"); }}>
                   HQ{shipReady && section !== "hq"
-                    ? <span className="tab-dot ship-pulse" role="status" aria-label="Ship ready" />
+                    ? <span className="tab-dot ship-ready" role="status" aria-label="Ship ready" />
                     : labAttention.hq > 0 && <span className="tab-dot">{labAttention.hq}</span>}
                 </button>
               </nav>

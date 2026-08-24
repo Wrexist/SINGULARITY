@@ -53,6 +53,13 @@ export function ReputationModal({ game, onBuy, onBuyEndowment, onPickDirective, 
             const afford = canBuyReputationPerk(game, perk.id);
             const lockedByReq = perk.requires && !owned.has(perk.requires);
             const reqName = perk.requires ? reputationBalance.perks.find((p) => p.id === perk.requires)?.name : null;
+            // Progress toward affording, the same question the Build and Research
+            // cards answer with a filling ring. Only on a row that is merely
+            // unaffordable — an actionable one already reads as actionable, and a
+            // prerequisite-gated one has nothing to fill toward.
+            const pct = !got && !afford && !lockedByReq && perk.cost > 0
+              ? Math.max(0, Math.min(1, available / perk.cost))
+              : 0;
             return (
               <button
                 key={perk.id}
@@ -65,6 +72,7 @@ export function ReputationModal({ game, onBuy, onBuyEndowment, onPickDirective, 
                   onBuy(perk.id);
                 }}
               >
+                {pct > 0 && <span className="meta-progress" style={{ width: `${pct * 100}%` }} aria-hidden="true" />}
                 <div className="card-main">
                   <span className="card-name">{got ? "✓ " : ""}{perk.name}</span>
                   <span className="card-desc">{perk.desc}</span>
