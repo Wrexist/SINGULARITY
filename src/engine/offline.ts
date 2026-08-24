@@ -95,12 +95,18 @@ export function summarizeWindow(
 
 /**
  * Is this window worth taking over the screen for? The recap is a designed
- * reward beat, not a receipt: a momentary app-switch, or a window in which a
- * brand-new lab produced nothing at all, must never interrupt with an empty
- * "while you were away". Requires both real time away AND something to report.
+ * reward beat, not a receipt: a momentary app-switch, or a window in which
+ * nothing actually happened, must never interrupt with an empty "while you were
+ * away". Requires both enough real time away AND something to report.
+ *
+ * `minMs` is the time bar, and it differs by return path — see
+ * `balance.offline.recapMinMs` (cold launch) vs `resumeRecapMinMs` (resume).
  */
-export function recapWorthShowing(summary: OfflineSummary): boolean {
-  if (summary.appliedMs < balance.offline.recapMinMs) return false;
+export function recapWorthShowing(
+  summary: OfflineSummary,
+  minMs: number = balance.offline.recapMinMs,
+): boolean {
+  if (summary.appliedMs < minMs) return false;
   const { gained, story } = summary;
   return (
     gained.compute.gt(0) ||

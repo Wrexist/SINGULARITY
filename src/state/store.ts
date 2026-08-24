@@ -395,11 +395,11 @@ export const useGame = create<GameStore>((set, get) => ({
       //
       // This does NOT re-tick: the summary is a pure diff of the states either side
       // of the tick above, so the window can never be paid twice. (2026-08 §1.5.)
-      const bigWindow = elapsedMs >= balance.offline.recapMinMs;
+      const bigWindow = elapsedMs >= balance.offline.resumeRecapMinMs;
       let recapFired = false;
       if (bigWindow && !s.offline) {
         const summary = summarizeWindow(s.game, game, rawElapsedMs ?? elapsedMs, elapsedMs);
-        if (recapWorthShowing(summary)) {
+        if (recapWorthShowing(summary, balance.offline.resumeRecapMinMs)) {
           patch.offline = summary;
           recapFired = true;
         }

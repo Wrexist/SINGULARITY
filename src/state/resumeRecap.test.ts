@@ -71,6 +71,25 @@ describe("resume recap — store wiring", () => {
     expect(useGame.getState().offline).toBeNull();
   });
 
+  // Interrupt size follows window size. A phone switches apps many times an hour,
+  // and on resume the player was mid-session — so the bar for taking the screen is
+  // much higher than on cold launch, where the recap interrupts nothing at all.
+  it("holds its peace for a short mid-session absence that WOULD open a cold launch", () => {
+    const shortAway = balance.offline.recapMinMs + 60_000; // past the cold-launch bar
+    expect(shortAway).toBeLessThan(balance.offline.resumeRecapMinMs);
+    useGame.getState().advance(shortAway, shortAway);
+    expect(useGame.getState().offline).toBeNull();
+  });
+
+  it("credits a below-the-bar window in full even though it stays silent", () => {
+    const shortAway = balance.offline.recapMinMs + 60_000;
+    const expected = tick(producingLab(), shortAway);
+    useGame.getState().advance(shortAway, shortAway);
+    const { game, offline } = useGame.getState();
+    expect(offline).toBeNull(); // no interruption...
+    expect(game.resources.compute.toNumber()).toBeCloseTo(expected.resources.compute.toNumber(), 6); // ...but paid
+  });
+
   it("never replaces a recap already on screen", () => {
     const away = 45 * 60 * 1000;
     useGame.getState().advance(away, away);
