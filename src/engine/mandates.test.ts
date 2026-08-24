@@ -11,6 +11,14 @@ import { Big } from "./math/Big";
 
 const M = C.megaproject;
 
+/** Raw challenge funding that the sanitizer reads as "all nine complete" — the
+ *  precondition for a megaproject level to be legitimate. */
+const fundedChallenges = () => {
+  const huge = "1" + "0".repeat(30);
+  return { funded: Object.fromEntries(C.list.map((c) => [c.id, { compute: huge, data: huge, money: huge }])), completed: [], forks: {} };
+};
+
+
 /**
  * Megaproject Mandates (2026-08 depth pass).
  *
@@ -104,7 +112,9 @@ describe("Megaproject Mandates — persistence", () => {
   it("round-trips through save/load", () => {
     const s0 = createInitialState();
     const s = { ...s0, megaprojects: { ...s0.megaprojects, level: 3, mandates: ["mand_compute", "mand_all"] } };
-    const back = deserialize(serialize(s));
+    const raw = JSON.parse(serialize(s));
+    raw.challenges = fundedChallenges(); // a level is only legitimate once these are done
+    const back = deserialize(JSON.stringify(raw));
     expect(back.megaprojects.mandates).toEqual(["mand_compute", "mand_all"]);
     expect(back.megaprojects.level).toBe(3);
   });
@@ -112,6 +122,7 @@ describe("Megaproject Mandates — persistence", () => {
   it("a save from before mandates existed loads with none taken", () => {
     const s0 = createInitialState();
     const raw = JSON.parse(serialize({ ...s0, megaprojects: { ...s0.megaprojects, level: 4 } }));
+    raw.challenges = fundedChallenges();
     delete raw.megaprojects.mandates;
     raw.version = 33; // the version that shipped before this field
     const back = deserialize(JSON.stringify(raw));
@@ -123,6 +134,7 @@ describe("Megaproject Mandates — persistence", () => {
   it("filters hostile mandates: unknown ids, and more picks than cycles", () => {
     const s0 = createInitialState();
     const raw = JSON.parse(serialize({ ...s0, megaprojects: { ...s0.megaprojects, level: 1 } }));
+    raw.challenges = fundedChallenges();
     raw.megaprojects.mandates = ["mand_compute", "mand_compute", "mand_compute", "not_a_mandate", 7, null];
     const back = deserialize(JSON.stringify(raw));
     // Known ids only, and never more than the level minted.
@@ -150,5 +162,47 @@ describe("Megaproject Mandates — curve safety", () => {
     expect(mods.compute.toNumber()).toBe(1);
     expect(mods.data.toNumber()).toBe(1);
     expect(mods.money.toNumber()).toBe(1);
+  });
+});
+
+/**
+ * Hostile-save hardening (CodeRabbit review on PR #40, confirmed against the code).
+ * A level is only ever earned by completing a cycle, which requires every Grand
+ * Challenge to be complete — and each level mints a permanent Mandate pick.
+ */
+describe("Megaproject Mandates — hostile save hardening", () => {
+  const rawSaveWith = (mega: Record<string, unknown>, completed = false) => {
+    const s0 = createInitialState();
+    const raw = JSON.parse(serialize(s0));
+    raw.megaprojects = mega;
+    if (completed) raw.challenges = fundedChallenges();
+    return raw;
+  };
+
+  it("refuses a level on a save that has completed no Grand Challenge", () => {
+    const back = deserialize(JSON.stringify(rawSaveWith({ level: 999, funded: { compute: "0", data: "0", money: "0" }, mandates: [] })));
+    expect(back.megaprojects.level).toBe(0);
+    expect(mandatePicksAvailable(back)).toBe(0); // no free picks minted
+  });
+
+  it("keeps a level that the completed challenges justify", () => {
+    const back = deserialize(JSON.stringify(rawSaveWith({ level: 3, funded: { compute: "0", data: "0", money: "0" }, mandates: [] }, true)));
+    expect(back.megaprojects.level).toBe(3);
+    expect(mandatePicksAvailable(back)).toBe(3);
+  });
+
+  it("bounds an oversized mandate list, which derive walks every tick", () => {
+    const flood = Array.from({ length: 200_000 }, () => "mand_compute");
+    const back = deserialize(JSON.stringify(rawSaveWith({ level: 999999, funded: { compute: "0", data: "0", money: "0" }, mandates: flood }, true)));
+    expect(back.megaprojects.mandates.length).toBeLessThanOrEqual(512);
+    expect(back.megaprojects.level).toBeLessThanOrEqual(512);
+    // And the multiplier it yields stays a finite, computable number.
+    expect(Number.isFinite(mandateMods(back).compute.toNumber())).toBe(true);
+  });
+
+  it("still loads a legitimate deep save unchanged", () => {
+    const back = deserialize(JSON.stringify(rawSaveWith({ level: 12, funded: { compute: "0", data: "0", money: "0" }, mandates: ["mand_compute", "mand_all"] }, true)));
+    expect(back.megaprojects.level).toBe(12);
+    expect(back.megaprojects.mandates).toEqual(["mand_compute", "mand_all"]);
   });
 });

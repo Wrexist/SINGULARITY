@@ -133,6 +133,9 @@ describe("Research Epochs — the base-only scans stay base-only", () => {
   it("still filters research ids that exist nowhere", () => {
     const s0 = rich();
     const raw = JSON.parse(serialize(s0));
+    // The paradigm makes the epoch node legitimately held; without it the loader
+    // now drops it too (see the hostile-save block below).
+    raw.paradigms = ["para_synthetic"];
     raw.research = ["epoch_self_curation", "not_a_node"];
     const back = deserialize(JSON.stringify(raw));
     expect(back.research).toEqual(["epoch_self_curation"]);
@@ -156,5 +159,46 @@ describe("Research Epochs — the base-only scans stay base-only", () => {
         expect(researchEpochs.find((x) => x.id === req)!.requiresParadigm).toBe(e.requiresParadigm);
       }
     }
+  });
+});
+
+/**
+ * Hostile-save hardening (CodeRabbit review on PR #40, confirmed against the code).
+ *
+ * The gap: buying an epoch node checks paradigm ownership, and no legitimate save
+ * can hold an unbacked one (paradigms persist, research clears on prestige). But
+ * derive only asks whether the id is PRESENT, so a crafted save could hold
+ * "epoch_dendritic" with no paradigm and collect ×1.9 Compute for free. "Saves are
+ * hostile input: filter, don't wipe" — the filter belongs at the load boundary.
+ */
+describe("Research Epochs — a crafted save cannot smuggle in an unbacked epoch node", () => {
+  it("drops epoch research whose paradigm is not owned", () => {
+    const s0 = rich();
+    const raw = JSON.parse(serialize(s0));
+    raw.paradigms = [];
+    raw.research = ["backprop", "epoch_spiking_kernels", "epoch_dendritic"];
+    const back = deserialize(JSON.stringify(raw));
+    expect(back.research).toContain("backprop"); // base nodes are untouched
+    expect(back.research).not.toContain("epoch_spiking_kernels");
+    expect(back.research).not.toContain("epoch_dendritic");
+  });
+
+  it("keeps only the branches whose paradigm the save actually owns", () => {
+    const s0 = rich();
+    const raw = JSON.parse(serialize(s0));
+    raw.paradigms = ["para_neuromorphic"]; // Neuromorphic only
+    raw.research = ["epoch_spiking_kernels", "epoch_self_curation"];
+    const back = deserialize(JSON.stringify(raw));
+    expect(back.research).toEqual(["epoch_spiking_kernels"]);
+  });
+
+  it("gives no free multiplier to a save that tried", () => {
+    const s0 = rich();
+    const raw = JSON.parse(serialize(s0));
+    raw.paradigms = [];
+    raw.research = ["epoch_dendritic"]; // ×1.9 Compute, if it were honoured
+    const cheated = deserialize(JSON.stringify(raw));
+    const honest = deserialize(JSON.stringify({ ...raw, research: [] }));
+    expect(derive(cheated).computePerSec.toString()).toBe(derive(honest).computePerSec.toString());
   });
 });
