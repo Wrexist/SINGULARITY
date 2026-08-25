@@ -139,7 +139,7 @@ export function GoalsPanel({
             </Collapsible>
           )}
           {doctrineUnlocked(game) && (
-            <Collapsible title="Doctrine" defaultOpen={counts.doctrineClaimable > 0} badge={counts.doctrineClaimable > 0 ? `${counts.doctrineClaimable} to claim` : `${doctrineDoneCount(game)}/${doctrineTotal}`}>
+            <Collapsible title="Doctrine" defaultOpen={counts.doctrineClaimable > 0} badge={counts.doctrineClaimable > 0 ? `${counts.doctrineClaimable} to claim` : `${doctrineDoneCount(game)}/${doctrineTotal(game)}`}>
               <DoctrinePanel game={game} onClaim={onClaimDoctrine} />
             </Collapsible>
           )}
