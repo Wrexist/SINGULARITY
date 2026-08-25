@@ -115,6 +115,13 @@ export interface GameState {
   /** The Institute (2026-07): owned wing ids (third meta-layer, funded by ascension
    *  Grants). Empty for the sim → identity. Permanent (survives prestige + ascension). */
   institute: string[];
+  /** Facility Wings (2026-08): additional FLOORS founded past the point where the
+   *  block's lease runs out. Each multiplies total rack capacity by one more floor;
+   *  the renderer draws one wing at a time so a frame never exceeds the draw cap.
+   *  Funded with Lab Reputation, which the deploy-only sim earns but never spends,
+   *  so this stays 0 for it → hallCapacity is byte-identical to the pre-wings value.
+   *  Permanent (survives prestige AND ascension) — the building is the building. */
+  facilityWings: number;
   /** The Institute's infinite tail (2026-08): endowed Fellowship chairs. Unlocks only
    *  once EVERY wing is founded, which the deploy-only sim never does (it earns Grants
    *  but never spends them), so this stays 0 → fellowshipMult is identity. Permanent. */

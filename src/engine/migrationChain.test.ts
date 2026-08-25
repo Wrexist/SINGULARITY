@@ -12,6 +12,12 @@ import { SAVE_VERSION, createInitialState } from "./state";
  *
  * These pin the two properties that make that impossible to reintroduce: the chain must
  * END at SAVE_VERSION, and every intermediate version must reach it.
+ *
+ * This is the ONE place SAVE_VERSION is pinned. Feature test files used to carry
+ * their own `expect(SAVE_VERSION).toBe(34)` literals, which broke on every unrelated
+ * bump while catching nothing this file misses: bumping SAVE_VERSION without adding
+ * the matching `if (s.version === N)` step fails the second test below, because the
+ * old version no longer reaches the new one.
  */
 describe("migration chain", () => {
   it("ends exactly at SAVE_VERSION", () => {

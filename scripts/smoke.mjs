@@ -118,17 +118,23 @@ try {
     await sleep(1200);
   }
 
-  // Dismiss whatever opening overlay is up (onboarding / moments), a few times.
-  for (let i = 0; i < 8; i++) {
-    const btn = page.locator(
-      'button:has-text("Take the first step"), button:has-text("Got it"), button:has-text("Continue"), ' +
-      'button:has-text("Begin"), button:has-text("Onward"), button:has-text("Nice"), button:has-text("Close"), button:has-text("Skip")'
-    ).first();
-    if (await btn.count().then((c) => c > 0).catch(() => false)) {
-      await btn.click({ timeout: 1500 }).catch(() => {});
-      await sleep(400);
-    } else break;
-  }
+  // Dismiss whatever overlay is up (onboarding / moments / a world event that fired
+  // mid-run). Extracted because a seeded run keeps ticking while the walk proceeds, so
+  // a modal can appear at ANY point and swallow the next click — which is exactly how
+  // the wing walk started failing intermittently once the strict assertions landed.
+  const dismissOverlays = async () => {
+    for (let i = 0; i < 8; i++) {
+      const btn = page.locator(
+        'button:has-text("Take the first step"), button:has-text("Got it"), button:has-text("Continue"), ' +
+        'button:has-text("Begin"), button:has-text("Onward"), button:has-text("Nice"), button:has-text("Close"), button:has-text("Skip")'
+      ).first();
+      if (await btn.count().then((c) => c > 0).catch(() => false)) {
+        await btn.click({ timeout: 1500 }).catch(() => {});
+        await sleep(400);
+      } else break;
+    }
+  };
+  await dismissOverlays();
 
   await page.screenshot({ path: join(OUT, "01-open.png") });
 
@@ -208,6 +214,7 @@ try {
       // shipLog, a Trial ladder mid-climb, and a perk on BOTH doctrine sides, which
       // is what makes each of these renderable at all.
       if (seeded && h === "Collection") {
+        await dismissOverlays();
         const gens = await page.locator(".archive-row").count();
         if (gens === 0) throw new Error("SMOKE: The Archive rendered no generations on a save with a shipLog");
         // The seed's two oldest entries are pre-v35 and recorded nothing; the board
@@ -247,6 +254,37 @@ try {
       }
       await sleep(500);
       await page.screenshot({ path: join(OUT, `lab-${sec.toLowerCase()}-expanded.png`), fullPage: true });
+
+      // Facility Wings live on Build. Only asserted on the seeded run — the seed
+      // (scripts/make-seed-save.ts) founds two wings and spills racks past the first
+      // floor, which is what makes the switcher and the multi-floor layout exist.
+      if (seeded && sec === "Build") {
+        await dismissOverlays();
+        const wingTabs = page.locator(".hall-wing");
+        const n = await wingTabs.count();
+        if (n < 2) throw new Error(`SMOKE: the hall wing switcher showed ${n} wings on a save with wings founded`);
+        // Walk every floor: each must repaint (the model is cached on a signature that
+        // has to include the viewed wing, or switching floors would change nothing).
+        for (let w = 0; w < n; w++) {
+          await wingTabs.nth(w).click({ timeout: 1500 });
+          await sleep(400);
+          const on = await page.locator(".hall-wing.on").innerText();
+          if (!on) throw new Error(`SMOKE: wing ${w} did not become the current floor`);
+          // Shoot EVERY floor, not just the one the walk happens to end on — a full
+          // wing and an empty one are different renders, and only shooting the last
+          // proves nothing about the first.
+          await page.screenshot({ path: join(OUT, `hall-wing-${w}.png`) });
+        }
+        // The found-a-wing action must be offered on a save whose block is leased
+        // out — that is the whole point of the feature, and a silently missing card
+        // would leave the lab at its old hard ceiling with no way past it.
+        const found = page.locator(".wing-found");
+        if (!(await found.count())) throw new Error("SMOKE: the found-a-wing action is missing on a maxed-out floor");
+        const foundText = (await found.first().innerText()).replace(/\n/g, " ");
+        await found.first().scrollIntoViewIfNeeded();
+        await page.screenshot({ path: join(OUT, "wing-found.png") });
+        console.log(`  Wings: switcher walked ${n} floors; offer reads "${foundText}"`);
+      }
     }
   }
 

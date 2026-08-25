@@ -5,6 +5,10 @@ import { products as PRODUCTS } from "./balance/products";
 import { contracts as CONTRACTS } from "./balance/contracts";
 import { legacyTree as LEGACY } from "./balance/legacyTree";
 import { reputation as REPUTATION } from "./balance/reputation";
+// Imported rather than re-derived: `endowmentOwed` below already duplicates its
+// formula, and a second divergent copy of a COST curve is how a crafted save gets
+// charged the wrong amount.
+import { wingCostSum } from "./reputation";
 import { trials as TRIALS } from "./balance/trials";
 import { paradigms as PARADIGMS } from "./balance/paradigms";
 import { doctrine as DOCTRINE } from "./balance/doctrine";
@@ -384,6 +388,7 @@ interface SavedShape {
   institute: string[];
   /** Institute Fellowships — endowed chairs, reconciled against leftover Grants. v32. */
   instituteFellowships: number;
+  facilityWings: number;
   /** Flagship: designated product id (or null) + cross-ship tenure. Migrated at v27. */
   flagship: { productId: string | null; tenure: number };
   contracts: { completed: string[] };
@@ -471,6 +476,7 @@ export function serialize(state: GameState): string {
     doctrines: state.doctrines,
     institute: state.institute,
     instituteFellowships: state.instituteFellowships,
+    facilityWings: state.facilityWings,
     flagship: state.flagship,
     contracts: state.contracts,
     charter: state.charter,
@@ -636,6 +642,12 @@ export function deserialize(json: string): GameState {
   // unlock the loop were actually completed.
   const sanitizedChallenges = sanitizeChallenges(raw.challenges);
   const paradigmOwed = paradigms.reduce((sum, id) => sum + (PARADIGM_COST.get(id) ?? 0), 0);
+  // Facility Wings: bounded, and their Reputation cost reconciled into reputation.spent
+  // below — same anti-cheat policy as perks / the Endowment / Paradigm Research, so a
+  // crafted save cannot found a tower of free floors. Note a wing multiplies rack
+  // CAPACITY, so an unbounded value would also let a crafted save demand an unbounded
+  // draw from the renderer.
+  const facilityWings = Math.min(REPUTATION.wings.maxWings, safeCount(raw.facilityWings));
   // Sanitize stats once: ascensions drives the Institute Grant budget (below) and
   // totalShips caps the ship-log — both previously recomputed sanitizeStats redundantly.
   const stats = sanitizeStats(raw.stats);
@@ -742,7 +754,7 @@ export function deserialize(json: string): GameState {
     employees: sanitizeEmployees(raw.employees),
     stats,
     achievements,
-    reputation: sanitizeReputation(raw.reputation, repEndowment, paradigmOwed),
+    reputation: sanitizeReputation(raw.reputation, repEndowment, paradigmOwed + wingCostSum(facilityWings)),
     repEndowment,
     paradigms,
     doctrines: dedupeKnownIds(raw.doctrines, DOCTRINE_IDS),
@@ -752,6 +764,7 @@ export function deserialize(json: string): GameState {
     // with every wing and 0 ascensions banks a free ×7 to all output.
     institute: institute.wings,
     instituteFellowships: institute.fellowships,
+    facilityWings,
     endowmentDirectives: sanitizeDirectives(raw.endowmentDirectives, repEndowment),
     // Prestige Trials: the active id must be a known Trial (else no active run), and
     // completed ids are filtered to known, deduped (the reward folds per unique id).
@@ -1255,6 +1268,12 @@ export function migrate(raw: any): SavedShape {
     // generations with an em dash per missing field and starts recording in full
     // from the next ship. Nothing else in the save moves.
     s = { ...s, version: 35, shipLog: Array.isArray(s.shipLog) ? s.shipLog : [] };
+  }
+  if (s.version === 35) {
+    // v35 → v36: Facility Wings. Every existing save has founded none, so its hall
+    // capacity is exactly what it was — hallCapacity multiplies by wings+1, and
+    // wings is 0 here. The Reputation already spent is untouched.
+    s = { ...s, version: 36, facilityWings: s.facilityWings ?? 0 };
   }
   return s as SavedShape;
 }

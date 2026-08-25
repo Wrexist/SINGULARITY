@@ -693,7 +693,19 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
     ctx.fillStyle = "rgba(255,255,255,0.5)";
     ctx.font = "600 13px -apple-system, system-ui, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("Your empty server closet. Buy a rack to fill it.", W / 2, H - 14);
+    // A newly founded WING is not "your empty server closet" — that copy is about a
+    // first session, and reading it on wing C of a planet-scale lab is absurd. An
+    // empty wing is empty because the racks haven't reached it yet.
+    // The wing switcher is an HTML overlay pinned to the canvas's bottom-left, so
+    // lift this line clear of it once a second wing exists — otherwise the two
+    // occupy the same strip and neither is readable.
+    ctx.fillText(
+      model.wing > 0
+        ? "This wing is standing empty. Buy racks to fill it."
+        : "Your empty server closet. Buy a rack to fill it.",
+      W / 2,
+      H - (model.wings > 1 ? 52 : 14),
+    );
   }
 }
 

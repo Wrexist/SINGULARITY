@@ -1200,6 +1200,71 @@ svg { vertical-align: middle; }
 .hall-era { font-size: var(--fs-sm); font-weight: 750; color: #fff; letter-spacing: -0.01em; }
 .hall-count { font-size: var(--fs-xs); font-weight: 650; color: rgba(255, 255, 255, 0.65); }
 
+/* Facility Wings — the floor switcher, mirroring the hall tag's glass chip so it
+   reads as part of the room's chrome rather than app furniture laid over it. Only
+   rendered once a second wing exists. */
+.hall-wings {
+  position: absolute;
+  /* Bottom-left, not top-right: at three wings the switcher met the era tag in the
+     middle of a 390px screen and clipped it, and the collision only gets worse the
+     more floors you found. The bottom edge is the one strip of the canvas nothing
+     else occupies. */
+  bottom: 12px;
+  left: 12px;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(10, 14, 28, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  z-index: 2;
+  max-width: calc(100% - 24px);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.hall-wings::-webkit-scrollbar { display: none; }
+.hall-wing {
+  flex-shrink: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  border: none; background: transparent; border-radius: 999px;
+  padding: 4px 10px; cursor: pointer;
+  font-size: var(--fs-xs); font-weight: 700; color: rgba(255, 255, 255, 0.6);
+  transition: background 160ms ease, color 160ms ease;
+}
+@media (prefers-reduced-motion: reduce) { .hall-wing { transition: none; } }
+.hall-wing.on { background: rgba(255, 255, 255, 0.16); color: #fff; }
+.hall-wing-fill {
+  font-size: var(--fs-micro); font-weight: 700; font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.5);
+}
+.hall-wing.on .hall-wing-fill { color: rgba(255, 255, 255, 0.75); }
+
+/* Found a wing — the action that appears when the block is leased out. A full-card
+   tint when affordable (never a left-edge bar); flat and quiet when it isn't. */
+.wing-found {
+  width: 100%; display: flex; align-items: center; gap: 10px; text-align: left;
+  border: 1px solid var(--line, rgba(16, 24, 40, 0.08));
+  border-radius: var(--radius-sm); padding: 10px 11px; margin: 0 0 10px;
+  background: var(--glass-strong, #fff); cursor: pointer;
+}
+.wing-found:disabled { cursor: default; opacity: 0.62; }
+.wing-found.affordable {
+  border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 9%, transparent), var(--glass-strong, #fff));
+}
+.wing-found-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.wing-found-name { font-size: var(--fs-md); font-weight: 800; color: var(--ink); }
+.wing-found-desc { font-size: var(--fs-sm); color: var(--ink-2, #4a4a55); }
+.wing-found-cost {
+  flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+  font-size: var(--fs-sm); font-weight: 800; color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.wing-found:disabled .wing-found-cost { color: var(--ink-3); }
+.wing-found-short { font-size: var(--fs-micro); font-weight: 700; color: var(--ink-3); }
+
 /* AI Industry Newswire — an ambient satirical ticker under the hall (feel-alive). */
 .news-ticker {
   display: flex; align-items: center; gap: 10px;

@@ -195,6 +195,10 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     doctrines: state.doctrines,
     // The Institute's founded wings are the deepest permanent meta-progression.
     institute: state.institute,
+    // Facility Wings are a BUILDING, not a run: the floors you founded (and the
+    // Reputation you spent founding them, carried in `reputation` above) survive the
+    // reset. Racks reset like every other upgrade; the rooms that housed them don't.
+    facilityWings: state.facilityWings,
     // Prestige Trials: shipping ends the active constrained run. Bank its reward IF
     // its run condition (if any) held — a "solo" Trial needs an empty roster, "hot"
     // needs Heat ≥ 60, "neutral" needs an uncommitted alignment. Cleared either way

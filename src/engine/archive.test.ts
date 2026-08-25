@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { prestige } from "./prestige";
 import { serialize, deserialize } from "./save";
-import { createInitialState, SAVE_VERSION } from "./state";
+import { createInitialState } from "./state";
 import { derive } from "./derive";
 import { tick } from "./tick";
 import { balance } from "./balance/config";
@@ -119,9 +119,6 @@ describe("The Archive", () => {
     }
   });
 
-  it("is on the current save version", () => {
-    expect(SAVE_VERSION).toBe(35);
-  });
 });
 
 describe("The Archive — hostile saves", () => {

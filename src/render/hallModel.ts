@@ -10,7 +10,7 @@ import type { SlotClass } from "../engine/balance/components";
 import { regulatorState, regulatorIsNamed } from "../engine/regulator";
 import { marketLeaderboard } from "../engine/market";
 import { charters } from "../engine/balance/charters";
-import { RACK_IDS, hallDims, hallCapacity, hallRoomSplit, type Dir } from "../engine/hall";
+import { RACK_IDS, hallDims, hallCapacity, wingCapacity, hallWings, hallRoomSplit, type Dir } from "../engine/hall";
 
 export { hallDims, hallExpansion, type Dir } from "../engine/hall";
 
@@ -61,6 +61,10 @@ export interface SideMarker {
 
 export interface HallModel {
   racks: HallRack[];
+  /** Which wing (floor) this view is of, and how many the facility has. 0 / 1 until
+   *  the player founds one, so every existing save reads exactly as before. */
+  wing: number;
+  wings: number;
   /** Floor dimensions (grow with expansions). */
   cols: number;
   rows: number;
@@ -225,8 +229,22 @@ function sideMarkers(game: GameState): SideMarker[] {
   });
 }
 
-export function buildHallModel(game: GameState): HallModel {
+/**
+ * Build the view for ONE wing of the facility.
+ *
+ * `wing` indexes the floor being looked at (0 = the original hall). Total rack
+ * capacity is `wingCapacity × wings`, but a frame only ever draws one wing's worth,
+ * so founding wings raises the ceiling without ever raising the per-frame box count
+ * past `balance.hall.maxDrawnRacks`. That is what keeps the manifestation rule intact
+ * at any scale: every owned rack is one visible box, in its wing.
+ */
+export function buildHallModel(game: GameState, wing = 0): HallModel {
   const { cols, rows, gxMin, gyMin } = hallDims(game);
+  const perWing = wingCapacity(game);
+  const wings = hallWings(game);
+  // Clamp rather than trust: a stale wing index (the player founded a wing, then a
+  // sanitized load reduced the count) must show a real floor, not an empty one.
+  const wingIndex = Math.max(0, Math.min(wings - 1, Math.floor(wing)));
   const capacity = hallCapacity(game);
   const era = currentEra(game);
 
@@ -302,13 +320,19 @@ export function buildHallModel(game: GameState): HallModel {
     }
   }
 
-  const racks: HallRack[] = [];
+  // Lay every drawable rack out in tier order, then take THIS wing's window. Wings
+  // fill in order, so wing 0 is full before wing 1 holds anything — which is what
+  // makes "found a wing, then buy racks into it" read correctly in the room.
+  const allSlots: number[] = [];
   let remaining = capacity;
   for (let tier = 0; tier < drawCounts.length && remaining > 0; tier++) {
     const draw = Math.min(drawCounts[tier]!, remaining);
-    for (let i = 0; i < draw; i++) racks.push({ tier, density });
+    for (let i = 0; i < draw; i++) allSlots.push(tier);
     remaining -= draw;
   }
+  const racks: HallRack[] = allSlots
+    .slice(wingIndex * perWing, (wingIndex + 1) * perWing)
+    .map((tier) => ({ tier, density }));
 
   return {
     racks,
@@ -323,7 +347,10 @@ export function buildHallModel(game: GameState): HallModel {
     readyToClaim: game.run.readyToClaim,
     progress: game.run.progress,
     era,
+    /** Boxes drawn in THIS wing — what the spawn animation and the mote density read. */
     total: racks.length,
+    wing: wingIndex,
+    wings,
     coolingUnits,
     overclock,
     autoBot,

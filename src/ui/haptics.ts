@@ -29,9 +29,15 @@ function vibrate(pattern: number | number[]): void {
     // touch — for players who find celebrate-tier buzzes strong.
     const scale = (ms: number) => (s.hapticsLight ? Math.max(4, Math.round(ms * 0.5)) : ms);
     const scaled = Array.isArray(pattern) ? pattern.map(scale) : scale(pattern);
-    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
-      navigator.vibrate(scaled);
-    }
+    if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function") return;
+    // Chromium REFUSES navigator.vibrate until the frame has been tapped, and logs a
+    // console error when you call it anyway — it does not throw, so the catch below
+    // never saw it. Any haptic fired before the player's first tap (an autoplaying
+    // celebration, a timer, a state change on load) therefore wrote an error to the
+    // console for nothing, since the buzz was never going to happen. Skip it instead.
+    const ua = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
+    if (ua && !ua.hasBeenActive) return;
+    navigator.vibrate(scaled);
   } catch {
     /* never let feedback break the game */
   }
