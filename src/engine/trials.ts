@@ -1,4 +1,4 @@
-import { trials as T, CONDITION_THRESHOLDS } from "./balance/trials";
+import { trials as T, CONDITION_THRESHOLDS, type TrialDef } from "./balance/trials";
 import { balance } from "./balance/config";
 import type { GameState } from "./types";
 
@@ -31,6 +31,31 @@ export function trialDefs() {
   return T.list;
 }
 
+/**
+ * The one Trial a ladder is CURRENTLY offering: its lowest un-banked rung, or null
+ * once the whole ladder is banked. Rungs are ordinary Trials, so listing all of them
+ * would put three cards on screen for one chase — two of them permanently unreachable
+ * until the rung below is banked. The panel shows this instead.
+ */
+export function ladderRung(state: GameState, ladder: string): TrialDef | null {
+  for (const d of T.list) {
+    if (d.ladder !== ladder) continue;
+    if (!state.trialsDone.includes(d.id)) return d;
+  }
+  return null;
+}
+
+/** Ladder ids in display order (each base Trial opens one). */
+export function trialLadders(): string[] {
+  return T.list.filter((d) => d.rung === 1).map((d) => d.id);
+}
+
+/** How many rungs a ladder has, and how many are banked — for the card's rung marker. */
+export function ladderProgress(state: GameState, ladder: string): { done: number; total: number } {
+  const rungs = T.list.filter((d) => d.ladder === ladder);
+  return { done: rungs.filter((d) => state.trialsDone.includes(d.id)).length, total: rungs.length };
+}
+
 /** Can the player START this Trial right now? The key rule (anti-cheese): you may
  *  only commit BEFORE the run is shippable, so the handicap is endured for a full
  *  generation rather than switched on the instant before a ship. */
@@ -39,6 +64,7 @@ export function canStartTrial(state: GameState, id: string): boolean {
   if (!d || !T.enabled) return false;
   if (state.activeTrial) return false; // one at a time
   if (state.trialsDone.includes(id)) return false; // one-time reward
+  if (d.requires && !state.trialsDone.includes(d.requires)) return false; // climb the ladder in order
   if (state.prestige.ships < d.unlockShips) return false;
   if (isShippable(state)) return false; // must commit early, on a fresh/building run
   return true;
