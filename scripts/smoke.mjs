@@ -221,7 +221,17 @@ try {
         // must show an em dash for those rather than inventing a zero.
         const dashes = await page.locator(".archive-stats dd").filter({ hasText: "\u2014" }).count();
         if (dashes === 0) throw new Error("SMOKE: The Archive showed no em dash for the seed's unrecorded generations");
-        console.log(`  Archive: ${gens} generations, ${dashes} unrecorded fields as an em dash`);
+        // The career arc: the seed's two oldest entries are pre-v35, so the trace must
+        // cover the RECORDED tail only and never span that gap.
+        const arc = page.locator(".archive-arc");
+        if (!(await arc.count())) throw new Error("SMOKE: the Archive career arc did not render on a 24-generation save");
+        const span = (await arc.locator(".archive-arc-foot span").last().innerText()).trim();
+        // Case-insensitive: the foot label is uppercased in CSS, so innerText reports
+        // "GEN 3 → 24" while the markup says "Gen 3 → 24".
+        if (!/^gen 3 → 24$/i.test(span)) throw new Error(`SMOKE: career arc spans "${span}", expected the recorded tail Gen 3 → 24`);
+        await arc.scrollIntoViewIfNeeded();
+        await page.screenshot({ path: join(OUT, "archive-arc.png") });
+        console.log(`  Archive: ${gens} generations, ${dashes} unrecorded fields as an em dash, arc spans ${span}`);
       }
       if (seeded && h === "Long game") {
         const rungs = await page.locator(".trial-rungs").count();

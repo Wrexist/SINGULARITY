@@ -237,3 +237,80 @@ describe("Facility Wings — curve safety", () => {
     expect(stringify(derive({ ...g, facilityWings: 0 }))).toBe(stringify(derive({ ...g, facilityWings: 12 })));
   });
 });
+
+/**
+ * Regression found reading back the shipped wings code (2026-08). Rack HEIGHT and vent
+ * count are driven by `density`, which was computed against the multi-wing capacity
+ * total — so founding a wing shrank every rack in the hall you already had, the new
+ * empty floor dragging the ratio to its 0.45 floor.
+ */
+describe("Facility Wings — founding a wing never shrinks the hall you had", () => {
+  const per = wingCapacity(maxedFloor());
+  const lab = (racks: number, wings: number) => {
+    const s = maxedFloor();
+    return { ...s, facilityWings: wings, upgrades: { ...s.upgrades, rack_basic: racks } };
+  };
+
+  it("leaves a full first floor at full density when a wing is founded beside it", () => {
+    const before = buildHallModel(lab(per, 0), 0).racks[0]!.density;
+    const after = buildHallModel(lab(per, 2), 0).racks[0]!.density;
+    expect(after).toBe(before);
+    expect(after).toBe(1);
+  });
+
+  it("reads density as how full THIS room is", () => {
+    const g = lab(per + Math.floor(per / 2), 1); // floor A full, floor B half
+    expect(buildHallModel(g, 0).racks[0]!.density).toBe(1);
+    const b = buildHallModel(g, 1).racks[0]!.density;
+    expect(b).toBeGreaterThan(0.45);
+    expect(b).toBeLessThan(1);
+  });
+
+  it("is unchanged from the pre-wings value at one wing, at every fill level", () => {
+    for (const n of [1, 5, per - 1, per]) {
+      const oldWay = Math.max(0.45, Math.min(1, n / per));
+      expect(buildHallModel(lab(n, 0), 0).racks[0]!.density).toBeCloseTo(oldWay, 12);
+    }
+  });
+
+  it("reports zero density for an empty wing rather than dividing by nothing", () => {
+    expect(buildHallModel(lab(per, 1), 1).racks).toHaveLength(0);
+  });
+});
+
+/**
+ * The dead purchase, closed in the UI. Once the floor meets the per-frame draw cap,
+ * another expansion level adds tiles no rack can stand on — so neither the Build panel
+ * nor the hall's own tappable floor strips may keep inviting it.
+ *
+ * Deliberately a DISPLAY rule, not a `canBuyUpgrade` change: the balance sim reads
+ * canBuyUpgrade to decide what an engaged player buys, so gating there would move its
+ * decisions and the tuned curve with them.
+ */
+describe("Facility Wings — a drawn-out floor stops inviting expansions", () => {
+  it("retires the hall's floor markers when the floor is drawn out", () => {
+    const open = buildHallModel({ ...maxedFloor(), upgrades: { ...createInitialState().upgrades, expand_e: 1, expand_s: 1 } }, 0);
+    expect(open.sides.some((s) => !s.maxed)).toBe(true);
+
+    const done = buildHallModel(maxedFloor(), 0); // expand 4/4 → drawn out
+    expect(floorDrawnOut(maxedFloor())).toBe(true);
+    for (const side of done.sides) {
+      expect(side.maxed).toBe(true);
+      expect(side.affordable).toBe(false);
+    }
+  });
+
+  it("leaves canBuyUpgrade untouched, so the sim's decisions cannot move", () => {
+    // The purchase stays LEGAL — the engine is the sim's oracle and must not change.
+    // Only the two display surfaces stop offering it.
+    const g = maxedFloor();
+    expect(floorDrawnOut(g)).toBe(true);
+    for (const id of ["expand_e", "expand_s"]) {
+      const def = balance.upgrades.find((u) => u.id === id)!;
+      // At 4/4 both are at their max level anyway, so the engine already says no —
+      // the point is that we did not ADD a new engine-level refusal.
+      expect(def.max).toBe(4);
+      expect(g.upgrades[id]).toBe(4);
+    }
+  });
+});

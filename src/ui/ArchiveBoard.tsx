@@ -6,6 +6,7 @@ import { trialsBalance } from "../engine/trials";
 import { eraName } from "../engine/eras";
 import { EmptyState } from "./EmptyState";
 import { BookIcon, SparkIcon } from "./Icons";
+import { Sparkline } from "./Sparkline";
 import { fmt, fmtDur } from "./format";
 import { Big } from "../engine/math/Big";
 
@@ -66,12 +67,44 @@ export function archiveRows(game: GameState): Row[] {
   const log = game.shipLog;
   return log.map((entry, i) => {
     const prev = i > 0 ? log[i - 1] : undefined;
+    // Differencing against zero at index 0 is only right when that entry really IS
+    // the first generation. The log is capped, so past `shipLogCap` ships the oldest
+    // RETAINED entry is generation 41-odd — and treating its playtime stamp as an
+    // elapsed time would report the player's entire career as the length of one run.
+    // Without the generation below it there is no honest answer, so say so.
+    const fromZero = i === 0 && entry.gen === 1;
+    const havePrev = prev?.atSec !== undefined;
     const durationSec =
-      entry.atSec !== undefined && (i === 0 || prev?.atSec !== undefined)
+      entry.atSec !== undefined && (fromZero || havePrev)
         ? Math.max(0, entry.atSec - (prev?.atSec ?? 0))
         : null;
     return { entry, label: entry.gen ?? null, durationSec };
   });
+}
+
+/**
+ * The career arc — the one thing forty rows of numbers cannot tell you: whether you
+ * are actually getting better. Legacy banked per generation, oldest to newest.
+ *
+ * Reads `legacyMag` directly, which is already a base-10 log — so the trace stays
+ * legible across the twenty-odd orders of magnitude a long career spans, where a
+ * linear plot of the same data would be a flat line and then a cliff. (That the
+ * stored form happens to be exactly the right form to plot is the payoff for storing
+ * magnitudes rather than Bigs.)
+ *
+ * Only the CONTIGUOUS RECORDED TAIL is plotted. Generations shipped before save v35
+ * recorded nothing, and drawing a line across that gap would invent a slope between
+ * two points that were never measured together.
+ */
+export function careerArc(game: GameState): { mags: number[]; from: number; to: number } | null {
+  const log = game.shipLog;
+  let start = log.length;
+  while (start > 0 && log[start - 1]!.legacyMag !== undefined) start--;
+  const tail = log.slice(start);
+  if (tail.length < 2) return null;
+  const from = tail[0]!.gen, to = tail[tail.length - 1]!.gen;
+  if (from === undefined || to === undefined) return null;
+  return { mags: tail.map((e) => e.legacyMag!), from, to };
 }
 
 export function ArchiveBoard({ game }: { game: GameState }) {
@@ -89,8 +122,21 @@ export function ArchiveBoard({ game }: { game: GameState }) {
     );
   }
 
+  const arc = careerArc(game);
+
   return (
     <div className="archive">
+      {arc && (
+        <div className="archive-arc">
+          <div className="archive-arc-line">
+            <Sparkline values={arc.mags} width={240} height={34} />
+          </div>
+          <div className="archive-arc-foot">
+            <span>Legacy banked</span>
+            <span>Gen {arc.from} → {arc.to}</span>
+          </div>
+        </div>
+      )}
       {rows.map((row, i) => {
         const e = row.entry;
         return (

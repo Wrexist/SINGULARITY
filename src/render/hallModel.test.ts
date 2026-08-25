@@ -3,6 +3,7 @@ import { buildHallModel, hallDims } from "./hallModel";
 import { createInitialState } from "../engine/state";
 import { balance } from "../engine/balance/config";
 import { Big } from "../engine/math/Big";
+import type { GameState } from "../engine/types";
 
 describe("hall view-model", () => {
   it("an empty lab has no racks and reads as era 0", () => {
@@ -250,5 +251,34 @@ describe("hall view-model", () => {
     const m = buildHallModel(personal);
     expect(m.regulator).not.toBeNull();
     expect(m.regulator!.name.length).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * The Legacy Wall carries each generation's banked Legacy (2026-08), so the trophy
+ * cores can scale with it and the wall shows the SHAPE of a career instead of eight
+ * identical prizes. Pre-Archive entries recorded no magnitude and must stay absent —
+ * the renderer draws those at a neutral middle rather than as the smallest, since
+ * "smallest" would be a claim about a generation nothing measured.
+ */
+describe("Legacy Wall — generation magnitudes", () => {
+  const withLog = (log: GameState["shipLog"]) => ({ ...createInitialState(), shipLog: log });
+
+  it("carries the magnitude when it was recorded", () => {
+    const wall = buildHallModel(withLog([{ mode: "deploy", era: 2, asc: true, gen: 9, legacyMag: 4.25 }])).wall;
+    expect(wall).toEqual([{ era: 2, asc: true, mag: 4.25 }]);
+  });
+
+  it("omits it entirely for a pre-Archive entry rather than writing a zero", () => {
+    const wall = buildHallModel(withLog([{ mode: "deploy", era: 1, asc: false }])).wall;
+    expect(wall).toHaveLength(1);
+    expect("mag" in wall[0]!).toBe(false);
+  });
+
+  it("shows the latest eight generations, newest last", () => {
+    const log = Array.from({ length: 12 }, (_, i) => ({ mode: "deploy", era: 3, asc: false, gen: i + 1, legacyMag: i }));
+    const wall = buildHallModel(withLog(log)).wall;
+    expect(wall).toHaveLength(8);
+    expect(wall.map((w) => w.mag)).toEqual([4, 5, 6, 7, 8, 9, 10, 11]);
   });
 });

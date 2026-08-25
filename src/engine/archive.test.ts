@@ -5,7 +5,7 @@ import { createInitialState } from "./state";
 import { derive } from "./derive";
 import { tick } from "./tick";
 import { balance } from "./balance/config";
-import { archiveRows } from "../ui/ArchiveBoard";
+import { archiveRows, careerArc } from "../ui/ArchiveBoard";
 import { Big } from "./math/Big";
 import type { GameState } from "./types";
 
@@ -195,5 +195,97 @@ describe("The Archive — curve safety", () => {
     expect(ta.resources.compute.toString()).toBe(tb.resources.compute.toString());
     expect(ta.resources.data.toString()).toBe(tb.resources.data.toString());
     expect(ta.resources.money.toString()).toBe(tb.resources.money.toString());
+  });
+});
+
+/**
+ * Regressions found reading back the shipped Archive code (2026-08).
+ */
+describe("The Archive — capped-log honesty", () => {
+  it("does not report a whole career as one generation's length once the log rolls", () => {
+    // A log that has already rolled past the cap: the oldest RETAINED entry is
+    // generation 41, four hours into the career. Differencing its stamp against zero
+    // would print "4h" as the length of that single run.
+    const s0 = createInitialState();
+    const log = Array.from({ length: 5 }, (_, i) => ({
+      mode: "deploy", era: 3, asc: false, gen: 41 + i, atSec: 14_400 + i * 600,
+    }));
+    const rows = archiveRows({ ...s0, shipLog: log });
+    expect(rows[0]!.durationSec).toBeNull();      // no generation below it to measure from
+    expect(rows[1]!.durationSec).toBe(600);       // the rest still difference normally
+    expect(rows[4]!.durationSec).toBe(600);
+  });
+
+  it("still measures the true first generation from zero", () => {
+    const s0 = createInitialState();
+    const log = [{ mode: "deploy", era: 0, asc: false, gen: 1, atSec: 900 }];
+    expect(archiveRows({ ...s0, shipLog: log })[0]!.durationSec).toBe(900);
+  });
+
+  it("survives a full career without ever inventing a duration", () => {
+    // Ship well past the cap and check no row claims more time than the whole run.
+    let s = shippable();
+    for (let i = 0; i < balance.prestige.shipLogCap + 10; i++) {
+      const shipped = prestige(s);
+      // Keep prestige's own stat updates (totalShips, totalLegacy) and add the next
+      // generation's play time on top — rebuilding stats from the PRE-ship state would
+      // quietly discard them and model a career no player has.
+      s = { ...shipped, research: [CAPABILITY], lifetimeMoney: Big.of(1e9),
+            stats: { ...shipped.stats, playtimeSec: shipped.stats.playtimeSec + 600 } };
+    }
+    expect(s.stats.totalShips).toBe(balance.prestige.shipLogCap + 10);
+    const rows = archiveRows(s);
+    expect(rows).toHaveLength(balance.prestige.shipLogCap);
+    expect(rows[0]!.durationSec).toBeNull(); // the log rolled, so the oldest is unknowable
+    for (const r of rows.slice(1)) {
+      expect(r.durationSec).not.toBeNull();
+      expect(r.durationSec!).toBeLessThanOrEqual(s.stats.playtimeSec);
+    }
+  });
+});
+
+/**
+ * The career arc — the trace above the rows. Plots `legacyMag` (already a base-10 log)
+ * for the CONTIGUOUS RECORDED TAIL only, so it never draws a slope between two points
+ * that were never measured together.
+ */
+describe("The Archive — career arc", () => {
+  const withLog = (log: GameState["shipLog"]) => ({ ...createInitialState(), shipLog: log });
+  const rec = (gen: number, mag: number) => ({ mode: "deploy", era: 2, asc: false, gen, legacyMag: mag });
+
+  it("needs two recorded generations before it draws anything", () => {
+    expect(careerArc(withLog([]))).toBeNull();
+    expect(careerArc(withLog([rec(1, 1)]))).toBeNull();
+    expect(careerArc(withLog([rec(1, 1), rec(2, 2)]))).not.toBeNull();
+  });
+
+  it("plots the recorded tail, oldest first", () => {
+    const arc = careerArc(withLog([rec(3, 1.5), rec(4, 2.5), rec(5, 3.5)]))!;
+    expect(arc.mags).toEqual([1.5, 2.5, 3.5]);
+    expect(arc.from).toBe(3);
+    expect(arc.to).toBe(5);
+  });
+
+  it("never spans a pre-v35 gap — those generations were never measured", () => {
+    const arc = careerArc(withLog([
+      { mode: "deploy", era: 1, asc: false },        // pre-v35: recorded nothing
+      { mode: "sell", era: 1, asc: false },          // pre-v35
+      rec(3, 2), rec(4, 3),
+    ]))!;
+    expect(arc.mags).toEqual([2, 3]);
+    expect(arc.from).toBe(3);
+  });
+
+  it("draws nothing when only pre-v35 entries exist", () => {
+    expect(careerArc(withLog([
+      { mode: "deploy", era: 1, asc: false },
+      { mode: "sell", era: 2, asc: true },
+    ]))).toBeNull();
+  });
+
+  it("stays finite across the magnitudes a real career spans", () => {
+    const arc = careerArc(withLog(Array.from({ length: 40 }, (_, i) => rec(i + 1, i * 8))))!;
+    expect(arc.mags).toHaveLength(40);
+    for (const m of arc.mags) expect(Number.isFinite(m)).toBe(true);
   });
 });
