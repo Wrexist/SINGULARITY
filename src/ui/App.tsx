@@ -116,7 +116,7 @@ export function App() {
   const notice = useGame((s) => s.notice);
   const worldEvent = useGame((s) => s.worldEvent);
   const candidates = useGame((s) => s.candidates);
-  const { doStartRun, doClaim, doBuyUpgrade, doBuyUpgradeBulk, doBuyOfficePerk, doBuyReputationPerk, doBuyEndowment, doPickDirective, doRespecDirective, doPlaceStake, doBuyLegacyPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
+  const { doStartRun, doClaim, doBuyUpgrade, doBuyUpgradeBulk, doBuyOfficePerk, doBuyReputationPerk, doBuyEndowment, doFoundWing, doPickDirective, doRespecDirective, doPlaceStake, doBuyLegacyPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
     doClaimContract, doClaimSponsor, doBuyPreprint, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
@@ -1002,7 +1002,7 @@ export function App() {
                     onSet={(id) => { haptics.tap(); sound.tap(); doSetCharter(id); }}
                     onLock={() => { haptics.success(); sound.purchase(); doLockCharter(); }}
                   />
-                  <UpgradePanel game={game} derived={d} onBuy={onBuy} />
+                  <UpgradePanel game={game} derived={d} onBuy={onBuy} onFoundWing={() => { haptics.celebrate(); sound.purchase(); doFoundWing(); }} />
                   {componentsUnlocked(game) && (
                     <RigBayPanel
                       game={game}

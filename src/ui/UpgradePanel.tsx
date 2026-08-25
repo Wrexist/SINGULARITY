@@ -3,7 +3,8 @@ import { balance } from "../engine/balance/config";
 import { upgradeCost, canBuyUpgrade, planBulkUpgrade } from "../engine/actions";
 import { recommendedUpgrade } from "../engine/recommend";
 import { upgradeFlavor, crossedFlavorTier } from "../engine/flavor";
-import { hallCapacity, totalRacks, isRackId, evictableRackFor } from "../engine/hall";
+import { hallCapacity, wingCapacity, hallWings, floorDrawnOut, totalRacks, isRackId, evictableRackFor } from "../engine/hall";
+import { wingCost, canFoundWing, reputationAvailable } from "../engine/reputation";
 import { powerStats } from "../engine/power";
 import { productMetrics } from "../engine/products";
 import { Big } from "../engine/math/Big";
@@ -24,7 +25,13 @@ interface Props {
   game: GameState;
   derived: Derived;
   onBuy: (id: string, count?: number, at?: { x: number; y: number }) => void;
+  /** Found a Facility Wing (a whole new floor, funded with Lab Reputation). */
+  onFoundWing: () => void;
 }
+
+/** Wings are lettered, matching the hall's switcher — "Wing B" reads like a place in
+ *  a building where "Wing 2" reads like an index. */
+const WING_LETTER = (i: number) => (i < 26 ? `Wing ${String.fromCharCode(65 + i)}` : `Wing ${i + 1}`);
 
 /** Buy-quantity for the panel: one, ten, or as many as affordable. */
 type BuyQty = 1 | 10 | "max";
@@ -56,7 +63,7 @@ function PowerMeter({ draw, cap, factor, throttled }: { draw: number; cap: numbe
   );
 }
 
-export function UpgradePanel({ game, derived, onBuy }: Props) {
+export function UpgradePanel({ game, derived, onBuy, onFoundWing }: Props) {
   // Buy quantity: ×1 / ×10 / Max. Batches purchases so late-game players aren't
   // tapping the same rack dozens of times (a core idle QoL the panel was missing).
   const [qty, setQty] = useState<BuyQty>(1);
@@ -69,6 +76,17 @@ export function UpgradePanel({ game, derived, onBuy }: Props) {
   const floorFull = racks >= capacity;
   const showExpansions = racks >= balance.hall.expansionRevealRacks;
   const isExpansion = (k: string) => k === "floorCols" || k === "floorRows";
+  // Facility Wings: once the floor meets the renderer's per-frame draw cap, another
+  // expansion level buys tiles that can hold no rack — so the panel stops offering
+  // expansions and offers the wing instead. That dead purchase used to be live: the
+  // last level of each expansion cost tens of thousands and added ~10 slots between
+  // them, or none at all.
+  const drawnOut = floorDrawnOut(game);
+  const wingRep = wingCost(game);
+  const canWing = canFoundWing(game);
+  const repLeft = reputationAvailable(game);
+  const wings = hallWings(game);
+  const perWing = wingCapacity(game);
 
   // Power soft-cap (Phase 2): reveal the meter + power upgrades once the lab
   // actually draws power, so the first session stays clean.
@@ -191,8 +209,31 @@ export function UpgradePanel({ game, derived, onBuy }: Props) {
       <h2 className="panel-title">Hardware &amp; Upgrades</h2>
       <p className={`floor-meter${floorFull ? " full" : ""}`}>
         Floor space: <b>{racks}/{capacity} racks</b>
-        {floorFull && <span> — full. Expand the hall to fit more.</span>}
+        {wings > 1 && <span> across {wings} wings</span>}
+        {floorFull && <span> — full. {drawnOut ? "The block is leased out; found a wing." : "Expand the hall to fit more."}</span>}
       </p>
+      {/* Found a wing. Appears only once the floor is genuinely drawn out, so it is
+          never a shortcut past the hall you were meant to fill first. Funded with Lab
+          Reputation — you have leased every bay the block has, so the next floor comes
+          out of the lab's standing. */}
+      {drawnOut && (
+        <button
+          className={`wing-found ${canWing ? "affordable" : ""}`}
+          disabled={!canWing}
+          onClick={() => { onFoundWing(); }}
+        >
+          <span className="wing-found-main">
+            <span className="wing-found-name">Found {WING_LETTER(wings)}</span>
+            <span className="wing-found-desc">
+              A whole new floor — {perWing} more rack slots, and the hall you know stays as it is.
+            </span>
+          </span>
+          <span className="wing-found-cost">
+            {wingRep} REP
+            {!canWing && repLeft < wingRep && <span className="wing-found-short">{wingRep - repLeft} short</span>}
+          </span>
+        </button>
+      )}
       {showPower && (
         <PowerMeter draw={power.drawKw} cap={power.capacityKw} factor={power.thermalFactor} throttled={power.throttled} />
       )}

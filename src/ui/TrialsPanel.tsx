@@ -1,5 +1,5 @@
 import type { GameState } from "../engine/types";
-import { trialsBalance, canStartTrial, trialConditionMet } from "../engine/trials";
+import { trialsBalance, canStartTrial, trialConditionMet, ladderRung, trialLadders, ladderProgress } from "../engine/trials";
 import { canPrestige } from "../engine/prestige";
 
 interface Props {
@@ -54,15 +54,23 @@ export function TrialsPanel({ game, onStart, onAbandon }: Props) {
       })()}
 
       <div className="list">
-        {trialsBalance.list.map((t) => {
+        {trialLadders().map((ladder) => {
+          // One card per LADDER, showing the rung it is currently offering. A fully
+          // banked ladder falls back to its last rung so the ✓ stays on the wall.
+          const rungs = trialsBalance.list.filter((d) => d.ladder === ladder);
+          const t = ladderRung(game, ladder) ?? rungs[rungs.length - 1]!;
+          const prog = ladderProgress(game, ladder);
           if (game.activeTrial === t.id) return null; // shown above
           const isDone = done.has(t.id);
           const locked = game.prestige.ships < t.unlockShips;
           const canStart = canStartTrial(game, t.id);
           return (
-            <div key={t.id} className={`trial-card meta-item ${isDone ? "trial-done" : canStart ? "affordable" : locked ? "locked" : ""}`}>
+            <div key={ladder} className={`trial-card meta-item ${isDone ? "trial-done" : canStart ? "affordable" : locked ? "locked" : ""}`}>
               <div className="trial-main">
-                <span className="trial-name">{t.name}{isDone ? " ✓" : ""}</span>
+                <span className="trial-name">
+                  {t.name}{isDone ? " ✓" : ""}
+                  {prog.total > 1 && <span className="trial-rungs">{prog.done}/{prog.total}</span>}
+                </span>
                 <span className="trial-desc">{t.desc}</span>
                 {locked && <span className="trial-req">Unlocks at {t.unlockShips} ships</span>}
                 {!locked && !isDone && !canStart && !game.activeTrial && shippable && (
@@ -85,7 +93,9 @@ export function TrialsPanel({ game, onStart, onAbandon }: Props) {
   );
 }
 
-/** Trials completed / total — for the Collapsible badge. */
+/** Trials completed / total — for the Collapsible badge. Counts RUNGS, not ladders:
+ *  the badge tracks how much of the whole constrained-run chase is banked, and a
+ *  ladder half-climbed is genuinely half-banked. */
 export function trialsDoneCount(game: GameState): number {
   return trialsBalance.list.filter((t) => game.trialsDone.includes(t.id)).length;
 }

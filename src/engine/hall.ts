@@ -36,22 +36,67 @@ export function hallDims(game: GameState): { cols: number; rows: number; gxMin: 
   };
 }
 
-/**
- * How many rack slots the current floor holds. Capped by `maxDrawnRacks` so the
- * renderer never has to draw more boxes than that (perf) — which also keeps the
- * manifestation rule honest: every owned rack is one visible box.
- */
-export function hallCapacity(game: GameState): number {
+/** Tiles the multi-room view gives up to walkways (the renderer skips them), so
+ *  capacity == the drawable tile count and every owned rack manifests. */
+function reservedWalkways(game: GameState): number {
   const { cols, rows } = hallDims(game);
-  // The multi-room view reserves the split column/row as walkways (the renderer
-  // skips those tiles). Subtract them so capacity == the drawable tile count and
-  // every owned rack manifests (no silently-undrawn tail racks).
   const { splitGx, splitGy } = hallRoomSplit(game);
-  const reserved =
+  return (
     (splitGx !== null ? rows : 0) +
     (splitGy !== null ? cols : 0) -
-    (splitGx !== null && splitGy !== null ? 1 : 0); // shared corner counted once
-  return Math.min(cols * rows - reserved, balance.hall.maxDrawnRacks);
+    (splitGx !== null && splitGy !== null ? 1 : 0) // shared corner counted once
+  );
+}
+
+/**
+ * FACILITY WINGS (2026-08).
+ *
+ * The lease runs out. `wingCapacity` is clamped by `maxDrawnRacks`, and the floor
+ * hits that clamp at expansion 3/3 — so the last level of each expansion bought
+ * escalating money for almost nothing, and past 120 racks the lab could not grow
+ * again, ever. The whole "your rented closet becomes a planet-scale cluster"
+ * promise stopped at one room.
+ *
+ * A wing is a WHOLE additional floor, funded with Lab Reputation rather than money:
+ * you have leased everything the block has, so the next room is founded on the lab's
+ * standing instead. The renderer draws ONE wing at a time, so total capacity grows
+ * without a single frame ever drawing more boxes than the cap allows — the
+ * manifestation rule survives intact: every owned rack is one visible box, in its
+ * wing.
+ *
+ * Curve-safe by the established meta-currency argument: the deploy-only sim earns
+ * Reputation but never spends it (the same reason Paradigm Research and the Endowment
+ * are safe), so `facilityWings` stays 0 for it and `hallCapacity` is byte-identical
+ * to the pre-wings value.
+ */
+
+/** Floors the facility has. Always ≥ 1 — the original hall is wing 1. */
+export function hallWings(game: GameState): number {
+  return 1 + Math.max(0, game.facilityWings ?? 0);
+}
+
+/**
+ * How many rack slots ONE floor holds. Capped by `maxDrawnRacks` so the renderer
+ * never has to draw more boxes than that in a frame (perf) — which also keeps the
+ * manifestation rule honest: every owned rack is one visible box.
+ */
+export function wingCapacity(game: GameState): number {
+  const { cols, rows } = hallDims(game);
+  return Math.min(cols * rows - reservedWalkways(game), balance.hall.maxDrawnRacks);
+}
+
+/** Total rack slots across every wing. Identical to `wingCapacity` until the first
+ *  wing is founded, so every existing save and the sim are unaffected. */
+export function hallCapacity(game: GameState): number {
+  return wingCapacity(game) * hallWings(game);
+}
+
+/** True when the CURRENT floor's geometry already meets the per-frame draw cap, so
+ *  another expansion level would add tiles that can hold no rack. Buying into that is
+ *  a dead purchase; the Build panel stops offering it and points at a wing instead. */
+export function floorDrawnOut(game: GameState): boolean {
+  const { cols, rows } = hallDims(game);
+  return cols * rows - reservedWalkways(game) >= balance.hall.maxDrawnRacks;
 }
 
 export function isRackId(id: string): boolean {

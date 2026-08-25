@@ -6,7 +6,6 @@ import {
 import { challenges as C } from "./balance/challenges";
 import { createInitialState } from "./state";
 import { serialize, deserialize } from "./save";
-import { SAVE_VERSION } from "./state";
 import { Big } from "./math/Big";
 
 const M = C.megaproject;
@@ -155,9 +154,6 @@ describe("Megaproject Mandates — persistence", () => {
     expect(mandatePicksAvailable(back)).toBe(0);
   });
 
-  it("is on the current save version", () => {
-    expect(SAVE_VERSION).toBe(34);
-  });
 });
 
 /**

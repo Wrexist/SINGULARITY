@@ -50,7 +50,7 @@ import {
 } from "../engine/products";
 import { productMilestones as PRODUCT_MILESTONES, type ProductTypeId } from "../engine/balance/products";
 import { achievements as ACHIEVEMENT_DEFS } from "../engine/balance/achievements";
-import { buyReputationPerk, buyEndowment, pickEndowmentDirective, respecDirective } from "../engine/reputation";
+import { buyReputationPerk, buyEndowment, pickEndowmentDirective, respecDirective, foundWing } from "../engine/reputation";
 import { startTrial, abandonTrial } from "../engine/trials";
 import { setFlagship } from "../engine/flagship";
 import { buyParadigm } from "../engine/paradigms";
@@ -185,6 +185,8 @@ interface GameStore {
   doBuyReputationPerk: (id: string) => void;
   /** Buy one endgame Reputation Endowment level (post-tree infinite sink). */
   doBuyEndowment: () => void;
+  /** Found a Facility Wing — a whole new floor, charged to Lab Reputation. */
+  doFoundWing: () => void;
   doPickDirective: (id: string) => void;
   doRespecDirective: (id: string) => void;
   doPlaceStake: (name: string) => void;
@@ -646,6 +648,7 @@ export const useGame = create<GameStore>((set, get) => ({
   doBuyOfficePerk: (id) => set((s) => ({ game: buyOfficePerk(s.game, id) })),
   doBuyReputationPerk: (id) => set((s) => ({ game: buyReputationPerk(s.game, id) })),
   doBuyEndowment: () => set((s) => ({ game: buyEndowment(s.game) })),
+  doFoundWing: () => set((s) => ({ game: foundWing(s.game) })),
   doPickDirective: (id) => set((s) => ({ game: pickEndowmentDirective(s.game, id) })),
   doRespecDirective: (id) => set((s) => ({ game: respecDirective(s.game, id) })),
   doPlaceStake: (name) => set((s) => ({ game: placeStake(s.game, name) })),

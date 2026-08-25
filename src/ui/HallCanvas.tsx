@@ -8,12 +8,17 @@ import { floatText } from "./fx";
 import { buildHallModel, buildSkyline, heatCrateCount, POWER_IDS } from "../render/hallModel";
 import { drawHallStatic, drawHallDynamic, expansionMarkers, rackHitAreas, pointInPoly, agentSpots, chenSpot, dayPhase, type RackHit, type AgentSpot } from "../render/hallRenderer";
 import { currentEra, eraName } from "../engine/eras";
-import { hallRooms } from "../engine/hall";
+import { hallRooms, hallWings, wingCapacity } from "../engine/hall";
 import { regulatorState } from "../engine/regulator";
 import { balance } from "../engine/balance/config";
 import { products as PRODUCTS_BAL } from "../engine/balance/products";
 import { rackInfo } from "../engine/rackInfo";
 import { themeFilter } from "./hallThemes";
+
+/** Wings are named, not numbered: "Wing B" reads like a place in a building, where
+ *  "Wing 2" reads like an index. Past Z it falls back to a number, which no real save
+ *  will ever reach (maxWings is 24). */
+const WING_NAME = (i: number) => (i < 26 ? `Wing ${String.fromCharCode(65 + i)}` : `Wing ${i + 1}`);
 
 /** Product launch/viral buzz window (s) — normalises buzzSec to a 0..1 beam-surge factor. */
 const BUZZ_WINDOW_SEC = PRODUCTS_BAL.buzzDurationSec;
@@ -49,6 +54,20 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
   );
   const era = useGame((s) => currentEra(s.game));
   const rooms = useGame((s) => hallRooms(s.game));
+  // Facility Wings: which floor is on screen. Deliberately UI state, not game state —
+  // where you are standing is not part of the save.
+  const wings = useGame((s) => hallWings(s.game));
+  const perWing = useGame((s) => wingCapacity(s.game));
+  const [wing, setWing] = useState(0);
+  // A wing can vanish under you only via a sanitized load; snap back rather than
+  // render an index the model would have to clamp every frame.
+  useEffect(() => {
+    if (wing > wings - 1) setWing(0);
+  }, [wing, wings]);
+  // The rAF loop reads the store directly and never re-renders, so the viewed wing
+  // has to reach it through a ref.
+  const wingRef = useRef(0);
+  wingRef.current = Math.min(wing, wings - 1);
   const hallTheme = useSettings((s) => s.hallTheme);
   // Live info for the tapped rack tier (re-subscribes on the count so the card
   // updates if you buy more while it's open). Null tier → no card.
@@ -135,7 +154,7 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
     // The model only changes when rack counts / run-active / era change — cache
     // it so we don't rebuild ~46 objects every animation frame (mobile GC).
     let modelSig = "";
-    let model = buildHallModel(useGame.getState().game);
+    let model = buildHallModel(useGame.getState().game, wingRef.current);
     // Bare Metal: the model's rig-bay view only changes when the loadout array
     // is replaced (equip / clear / prestige) — track the ref and force a model
     // rebuild instead of scanning the loadout per frame.
@@ -186,12 +205,12 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       // pulses, monetize → golden beam glint) MUST be in the signature, else buying
       // them rebuilds nothing and the lab looks unchanged (2026-07: they were modeled
       // but omitted here, so a common buy like Overclock felt inert).
-      const sig = `${u.rack_basic ?? 0}|${u.rack_server ?? 0}|${u.rack_tpu ?? 0}|${u.expand_n ?? 0}|${u.expand_s ?? 0}|${u.expand_e ?? 0}|${u.expand_w ?? 0}|${u.overclock ?? 0}|${u.auto_train ?? 0}|${u.data_pipeline ?? 0}|${u.batching ?? 0}|${u.monetize ?? 0}|${powerSig}|${game.run.active ? 1 : 0}|${game.products.active.length}|${currentEra(game)}|${regulatorState(game).index}|${game.charter ?? ""}|${game.shipLog.length}|${incSig}`;
+      const sig = `${u.rack_basic ?? 0}|${u.rack_server ?? 0}|${u.rack_tpu ?? 0}|${u.expand_n ?? 0}|${u.expand_s ?? 0}|${u.expand_e ?? 0}|${u.expand_w ?? 0}|${u.overclock ?? 0}|${u.auto_train ?? 0}|${u.data_pipeline ?? 0}|${u.batching ?? 0}|${u.monetize ?? 0}|${powerSig}|${game.run.active ? 1 : 0}|${game.products.active.length}|${currentEra(game)}|${regulatorState(game).index}|${game.charter ?? ""}|${game.shipLog.length}|${wingRef.current}|${game.facilityWings}|${incSig}`;
       if (sig !== modelSig || game.components.loadout !== rigLoadout || game.employees !== agentRoster) {
         modelSig = sig;
         rigLoadout = game.components.loadout;
         agentRoster = game.employees;
-        model = buildHallModel(game);
+        model = buildHallModel(game, wingRef.current);
       }
       // Money isn't in the signature (it changes every tick), so refresh the
       // expansion markers' affordability cheaply here so they light up live.
@@ -400,6 +419,26 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
           {rooms > 1 && ` · ${rooms} rooms`}
         </span>
       </div>
+      {/* Wing switcher — only once a second floor exists. A single wing is just "the
+          hall", and a control that never has a second option is noise. */}
+      {wings > 1 && (
+        <nav className="hall-wings" aria-label="Facility wings">
+          {Array.from({ length: wings }, (_, i) => {
+            const filled = Math.max(0, Math.min(perWing, rackCount - i * perWing));
+            return (
+              <button
+                key={i}
+                className={`hall-wing ${i === Math.min(wing, wings - 1) ? "on" : ""}`}
+                aria-current={i === Math.min(wing, wings - 1) ? "true" : undefined}
+                onClick={() => { setWing(i); haptics.tap(); }}
+              >
+                {WING_NAME(i)}
+                <span className="hall-wing-fill">{filled}/{perWing}</span>
+              </button>
+            );
+          })}
+        </nav>
+      )}
       {agentInfo && (
         <div className="rack-card" aria-hidden="true" onClick={() => setSelectedAgent(null)}>
           <div className="rack-card-head">

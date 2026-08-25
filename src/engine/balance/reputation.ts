@@ -42,6 +42,33 @@ export const reputation = {
   /** Floor for stacked research-cost discounts (research can get cheap, never free). */
   researchDiscountFloor: 0.25,
 
+  /**
+   * FACILITY WINGS (2026-08). The hall's money-bought expansions run out — the floor
+   * meets the renderer's per-frame draw cap at expansion 3/3 — and past that the lab
+   * could never grow again. A wing is a whole additional FLOOR, founded with Lab
+   * Reputation instead of money: you have leased every bay the block has, so the next
+   * room comes out of the lab's standing.
+   *
+   * Priced as a real endgame decision against the Endowment (the other infinite
+   * Reputation sink): a wing costs more than an early Endowment level and escalates
+   * harder, because it multiplies rack capacity outright rather than adding a couple
+   * of percent. Gated on the floor being genuinely drawn out, so it can never be the
+   * cheap first thing a player buys.
+   *
+   * Curve-safe by the same argument as the Endowment and Paradigm Research: the
+   * deploy-only sim earns Reputation and never spends it, so no wing is ever founded
+   * and hallCapacity is byte-identical to its pre-wings value.
+   */
+  wings: {
+    enabled: true,
+    /** Reputation cost of the first wing; each subsequent wing costs ×growth more. */
+    baseCost: 120,
+    growth: 1.55,
+    /** Finite safety bound, so a crafted save cannot drive the cost sum or the
+     *  capacity multiplier to Infinity. Far past any legitimate reach. */
+    maxWings: 24,
+  },
+
   /** Endgame Reputation Endowment (post-AGI depth). Once the ENTIRE finite perk tree
    *  is owned, Reputation would otherwise dead-end — the currency keeps accruing (and
    *  the daily sponsor pays it) with nothing to buy. The Endowment is the infinite home:

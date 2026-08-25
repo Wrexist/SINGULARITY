@@ -2,6 +2,7 @@ import { achievements as ACH_DEFS, achievementRep } from "./balance/achievements
 import { reputation as R } from "./balance/reputation";
 import { contractsReputation } from "./contracts";
 import { balance } from "./balance/config";
+import { floorDrawnOut } from "./hall";
 import type { GameState } from "./types";
 
 const shipModes = balance.prestige.shipModes;
@@ -263,4 +264,53 @@ export function bonusProductSlots(state: GameState): number {
     if (p.effect.kind === "productSlot" && state.reputation.perks.includes(p.id)) n += p.effect.value;
   }
   return n;
+}
+
+/**
+ * FACILITY WINGS — a whole additional floor, funded with Lab Reputation.
+ *
+ * Lives here rather than in hall.ts because the cost and the spend are Reputation
+ * mechanics, and hall.ts is imported by prestige(); routing the spend through this
+ * module keeps hall.ts free of the reputation ledger. See balance/reputation.ts
+ * `wings` for the design + the curve-safety argument.
+ */
+
+/** Reputation the NEXT wing costs. Escalates per wing already founded. */
+export function wingCost(state: GameState): number {
+  const W = R.wings;
+  return Math.ceil(W.baseCost * Math.pow(W.growth, Math.max(0, state.facilityWings)));
+}
+
+/** Total Reputation sunk into wings up to `n` — so a crafted `facilityWings` can be
+ *  charged for honestly by the sanitizer instead of arriving free. */
+export function wingCostSum(n: number): number {
+  const W = R.wings;
+  let sum = 0;
+  for (let i = 0; i < Math.max(0, Math.min(W.maxWings, n)); i++) {
+    sum += Math.ceil(W.baseCost * Math.pow(W.growth, i));
+  }
+  return sum;
+}
+
+/**
+ * Can a wing be founded right now? Three gates, and the FIRST is the important one:
+ * the current floor must already be drawn out (every buyable expansion tile in use),
+ * so a wing is never the cheap shortcut past the hall you were meant to fill.
+ */
+export function canFoundWing(state: GameState): boolean {
+  const W = R.wings;
+  if (!W.enabled) return false;
+  if (state.facilityWings >= W.maxWings) return false;
+  if (!floorDrawnOut(state)) return false;
+  return reputationAvailable(state) >= wingCost(state);
+}
+
+/** Found a wing (permanent). Pure; no-op if not currently allowed. */
+export function foundWing(state: GameState): GameState {
+  if (!canFoundWing(state)) return state;
+  return {
+    ...state,
+    facilityWings: state.facilityWings + 1,
+    reputation: { ...state.reputation, spent: state.reputation.spent + wingCost(state) },
+  };
 }

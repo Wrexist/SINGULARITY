@@ -66,6 +66,11 @@
      row card · card-lg = roomy feature cards (product sheets, projects). */
   --pad-row: 11px 13px;
   --pad-card: 13px 14px;
+  /* The compact card padding used by every list-row card (goal boards, trials,
+     doctrine, automation, the Archive). A token, not a repeated literal, because it
+     was written out as `10px 11px` / `10px 12px` in eight places and had already
+     drifted by a pixel between them. */
+  --pad-card-sm: 10px 11px;
   --pad-card-lg: 14px 15px;
 
   /* Radii — four steps + pill/circle. radius = panels & sheets, sm = feature
@@ -284,10 +289,67 @@ svg { vertical-align: middle; }
    rather than inside a fixed-height modal; an inner scroller in a page context
    traps the gesture and hides rows below the fold. */
 .ach-grid { display: flex; flex-direction: column; gap: 8px; }
+
+/* ── ONE CARD SURFACE ───────────────────────────────────────────────────────
+   Eight panels had each written out the same four declarations (hairline, radius,
+   padding, glass background) and then each written out the same EMPHASIS recipe on
+   top — with values that had quietly drifted apart: tints at 6/7/8/9%, hairlines at
+   35/38/40/42/45%, one of them a flat fill instead of the gradient. Nothing was
+   wrong on any single screen; put two of them side by side and the lab looked like
+   two different apps.
+
+   Both recipes now live here, once. A card class supplies only what makes it that
+   card — its layout, its transitions, its own quirks.
+
+   The emphasis recipe is also where the house rule is ENCODED rather than merely
+   remembered: emphasis is a full-card tint plus a warmed hairline. There is no
+   left-edge accent bar to reach for, because the only shared way to emphasise a
+   card does not have one. Point `--tint` at the colour that means something on that
+   card (money-green for earned/on, accent for active/ascended) and the whole card
+   carries it. */
+.ach-card,
+.challenge-card,
+.doctrine-perk,
+.trial-card,
+.objective-card,
+.automation-row,
+.archive-row,
+.wing-found {
+  border: 1px solid var(--line, rgba(16, 24, 40, 0.08));
+  border-radius: var(--radius-sm);
+  padding: var(--pad-card-sm);
+  background: var(--glass-strong, #fff);
+}
+/* Emphasis. One fill strength, one hairline strength, for every card in the app. */
+.challenge-card.complete,
+.doctrine-perk.owned,
+.trial-card.trial-on,
+.objective-card.ready,
+.automation-row.on,
+.archive-row.ascended,
+.wing-found.affordable,
+.mega-card {
+  border-color: color-mix(in srgb, var(--tint, var(--accent)) 42%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--tint, var(--accent)) 8%, transparent),
+    var(--glass-strong, #fff)
+  );
+}
+/* Cards whose emphasis means "earned / switched on" tint money-green; the rest fall
+   through to the accent. */
+.challenge-card.complete,
+.doctrine-perk.owned,
+.objective-card.ready,
+.automation-row.on {
+  --tint: var(--money);
+}
+
 .ach-card {
-  display: flex; align-items: center; gap: 11px; padding: 10px 12px;
-  border-radius: var(--radius-sm); background: var(--glass-strong);
-  border: 1px solid var(--glass-hairline); opacity: 0.72;
+  display: flex; align-items: center; gap: 11px; opacity: 0.72;
+  /* The achievement wall keeps its own hairline: it sits on the dark collection
+     board, where the shared --line would vanish. */
+  border-color: var(--glass-hairline);
 }
 .ach-card.got { opacity: 1; border-color: color-mix(in srgb, var(--money) 35%, var(--glass-hairline)); }
 .ach-badge {
@@ -1199,6 +1261,66 @@ svg { vertical-align: middle; }
 }
 .hall-era { font-size: var(--fs-sm); font-weight: 750; color: #fff; letter-spacing: -0.01em; }
 .hall-count { font-size: var(--fs-xs); font-weight: 650; color: rgba(255, 255, 255, 0.65); }
+
+/* Facility Wings — the floor switcher, mirroring the hall tag's glass chip so it
+   reads as part of the room's chrome rather than app furniture laid over it. Only
+   rendered once a second wing exists. */
+.hall-wings {
+  position: absolute;
+  /* Bottom-left, not top-right: at three wings the switcher met the era tag in the
+     middle of a 390px screen and clipped it, and the collision only gets worse the
+     more floors you found. The bottom edge is the one strip of the canvas nothing
+     else occupies. */
+  bottom: 12px;
+  left: 12px;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(10, 14, 28, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  z-index: 2;
+  max-width: calc(100% - 24px);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.hall-wings::-webkit-scrollbar { display: none; }
+.hall-wing {
+  flex-shrink: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  border: none; background: transparent; border-radius: 999px;
+  padding: 4px 10px; cursor: pointer;
+  font-size: var(--fs-xs); font-weight: 700; color: rgba(255, 255, 255, 0.6);
+  transition: background 160ms ease, color 160ms ease;
+}
+@media (prefers-reduced-motion: reduce) { .hall-wing { transition: none; } }
+.hall-wing.on { background: rgba(255, 255, 255, 0.16); color: #fff; }
+.hall-wing-fill {
+  font-size: var(--fs-micro); font-weight: 700; font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.5);
+}
+.hall-wing.on .hall-wing-fill { color: rgba(255, 255, 255, 0.75); }
+
+/* Found a wing — the action that appears when the block is leased out. A full-card
+   tint when affordable (never a left-edge bar); flat and quiet when it isn't. */
+.wing-found {
+  width: 100%; display: flex; align-items: center; gap: 10px; text-align: left;
+  margin: 0 0 10px; cursor: pointer;
+}
+.wing-found:disabled { cursor: default; opacity: 0.62; }
+/* .wing-found.affordable's tint comes from the shared emphasis recipe above. */
+.wing-found-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.wing-found-name { font-size: var(--fs-md); font-weight: 800; color: var(--ink); }
+.wing-found-desc { font-size: var(--fs-sm); color: var(--ink-2, #4a4a55); }
+.wing-found-cost {
+  flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+  font-size: var(--fs-sm); font-weight: 800; color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.wing-found:disabled .wing-found-cost { color: var(--ink-3); }
+.wing-found-short { font-size: var(--fs-micro); font-weight: 700; color: var(--ink-3); }
 
 /* AI Industry Newswire — an ambient satirical ticker under the hall (feel-alive). */
 .news-ticker {
@@ -3029,14 +3151,9 @@ button.modchip.workable:active { transform: scale(0.94); }
 }
 .challenges-intro { font-size: var(--fs-sm); line-height: 1.45; color: var(--ink-3); margin: 2px 0 10px; }
 .challenge-card {
-  border: 1px solid var(--line, rgba(16, 24, 40, 0.08));
-  border-radius: var(--radius-sm); padding: var(--pad-card); background: var(--glass-strong, #fff);
+  padding: var(--pad-card); /* a moonshot is a block, not a row — it keeps the roomier pad */
   display: flex; flex-direction: column; gap: 9px;
   transition: border-color var(--dur), background var(--dur), box-shadow var(--dur);
-}
-.challenge-card.complete {
-  border-color: color-mix(in srgb, var(--money) 45%, transparent);
-  background: linear-gradient(180deg, rgba(22, 179, 100, 0.08), var(--glass-strong, #fff));
 }
 .challenge-top { display: flex; align-items: flex-start; gap: 10px; }
 .challenge-icon { flex-shrink: 0; color: var(--accent); }
@@ -3094,7 +3211,7 @@ button.modchip.workable:active { transform: scale(0.94); }
   background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 /* Megaproject — the repeatable endgame loop. A full-card accent tint (no accent bar). */
-.mega-card { border-color: color-mix(in srgb, var(--accent) 35%, transparent); background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 7%, transparent), var(--glass-strong, #fff)); }
+/* .mega-card's tint comes from the shared emphasis recipe above. */
 .mega-level { font-size: var(--fs-sm); font-weight: 800; color: var(--accent); }
 /* Fork picker — two either/or arms for a completed moonshot. Full-card buttons,
    no left-edge bar (house rule). */
@@ -3177,16 +3294,23 @@ button.modchip.workable:active { transform: scale(0.94); }
 .trials-count { font-size: var(--fs-sm); font-weight: 800; color: var(--ink-3); background: rgba(16, 24, 40, 0.05); border-radius: 999px; padding: 2px 10px; }
 .doctrine-note { font-size: var(--fs-sm); color: var(--ink-3); margin: 0 0 8px; }
 .doctrine-tracks { display: flex; flex-direction: column; gap: 12px; }
+/* The Schism track: a soft full-card tint marks it as the third thing, not a third
+   side. No left-edge bar (house rule) — the tint and the hairline carry it. */
+.doctrine-schism {
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 6%, transparent), transparent);
+  padding: 10px;
+}
+.doctrine-schism .doctrine-track-head { color: var(--accent); }
 .doctrine-track-head { font-size: var(--fs-sm); font-weight: 800; color: var(--ink-2, #4a4a55); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
 .doctrine-active { color: var(--accent); font-weight: 800; margin-left: 6px; text-transform: none; letter-spacing: 0; }
 .doctrine-perk {
   width: 100%; display: flex; align-items: center; gap: 10px; margin-bottom: 6px; text-align: left; cursor: pointer;
-  border: 1px solid var(--line, rgba(16, 24, 40, 0.08));
-  border-radius: var(--radius-sm); padding: 10px 11px; background: var(--glass-strong, #fff);
 }
 .doctrine-perk:disabled { cursor: default; }
 .doctrine-perk:not(.owned):disabled { opacity: 0.62; }
-.doctrine-perk.owned { border-color: color-mix(in srgb, var(--money) 40%, transparent); background: color-mix(in srgb, var(--money) 7%, transparent); }
+/* .doctrine-perk.owned's tint comes from the shared emphasis recipe above. */
 .doctrine-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .doctrine-name { font-size: var(--fs-md); font-weight: 800; color: var(--ink); }
 .doctrine-desc { font-size: var(--fs-sm); color: var(--ink-2, #4a4a55); }
@@ -3218,14 +3342,18 @@ button.modchip.workable:active { transform: scale(0.94); }
 .trials-note { font-size: var(--fs-sm); color: var(--ink-3); margin: 0 0 8px; }
 .trial-card {
   display: flex; align-items: center; gap: 10px; margin-bottom: 6px;
-  border: 1px solid var(--line, rgba(16, 24, 40, 0.08));
-  border-radius: var(--radius-sm); padding: 10px 11px; background: var(--glass-strong, #fff);
 }
-/* Active Trial: a full-card tint + border (NOT a left-edge bar — house rule). */
-.trial-card.trial-on { border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 8%, transparent), var(--glass-strong, #fff)); }
 .trial-card.trial-done { opacity: 0.78; }
 .trial-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.trial-name { font-size: var(--fs-md); font-weight: 800; color: var(--ink); }
+.trial-name { font-size: var(--fs-md); font-weight: 800; color: var(--ink); display: flex; align-items: center; gap: 7px; }
+/* Ladder rung marker — how much of one chase is banked, in the quietest form that
+   still reads at a glance. A tag, not a badge: it must not compete with the "banked"
+   state or the Attempt button for the eye. */
+.trial-rungs {
+  flex-shrink: 0; font-size: var(--fs-micro); font-weight: 800; letter-spacing: 0.04em;
+  color: var(--ink-3); background: rgba(16, 24, 40, 0.06);
+  border-radius: 999px; padding: 2px 6px; font-variant-numeric: tabular-nums;
+}
 .trial-desc { font-size: var(--fs-sm); color: var(--ink-2, #4a4a55); }
 .trial-status { font-size: var(--fs-xs); font-weight: 700; color: var(--accent); }
 .trial-req { font-size: var(--fs-xs); color: var(--ink-3); }
@@ -3241,11 +3369,8 @@ button.modchip.workable:active { transform: scale(0.94); }
 .trial-owned { flex-shrink: 0; font-size: var(--fs-sm); font-weight: 800; color: var(--money); }
 .objective-card {
   display: flex; align-items: center; gap: 10px;
-  border: 1px solid var(--line, rgba(16, 24, 40, 0.08));
-  border-radius: var(--radius-sm); padding: 10px 11px; background: var(--glass-strong, #fff);
   transition: border-color var(--dur), background var(--dur);
 }
-.objective-card.ready { border-color: color-mix(in srgb, var(--money) 45%, transparent); background: linear-gradient(180deg, rgba(22, 179, 100, 0.06), var(--glass-strong, #fff)); }
 .objective-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
 .objective-desc { font-size: var(--fs-md); font-weight: 700; color: var(--ink); }
 .objective-bar { position: relative; height: 7px; border-radius: 5px; overflow: hidden; background: color-mix(in srgb, var(--accent) 8%, #e9e6f5); }
@@ -3310,10 +3435,8 @@ button.modchip.workable:active { transform: scale(0.94); }
 .automation-intro { font-size: var(--fs-sm); line-height: 1.45; color: var(--ink-3); margin: 2px 0 10px; }
 .automation-row {
   display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
-  border: 1px solid var(--line, rgba(16, 24, 40, 0.08)); border-radius: var(--radius-sm); padding: 10px 12px;
-  background: var(--glass-strong, #fff); transition: border-color var(--dur), background var(--dur), opacity var(--dur);
+  transition: border-color var(--dur), background var(--dur), opacity var(--dur);
 }
-.automation-row.on { border-color: color-mix(in srgb, var(--money) 45%, transparent); background: linear-gradient(180deg, rgba(22, 179, 100, 0.06), var(--glass-strong, #fff)); }
 .automation-row.locked { opacity: 0.6; cursor: not-allowed; }
 .automation-row:not(:disabled):active { transform: scale(0.99); }
 .automation-ic { flex-shrink: 0; color: var(--ink); display: inline-flex; align-items: center; justify-content: center; }
@@ -3512,3 +3635,40 @@ button.modchip.workable:active { transform: scale(0.94); }
 .stat-spark.t-compute { color: var(--compute); }
 .stat-spark.t-data { color: var(--data); }
 .stat-spark.t-money { color: var(--money); }
+
+/* ── THE ARCHIVE ────────────────────────────────────────────────────────────
+   One card per shipped generation, newest first. Read-only history: no claim,
+   no affordance, nothing to tap — so the treatment is deliberately quieter than
+   any actionable card on the same screen. Emphasis for an ascended generation is
+   a full-card tint and border, never a left-edge bar (house rule). */
+.archive { display: flex; flex-direction: column; gap: 8px; }
+.archive-row {
+  display: flex; flex-direction: column; gap: 7px;
+}
+.archive-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.archive-gen { font-size: var(--fs-md); font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+.archive-era { font-size: var(--fs-xs); font-weight: 700; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.04em; }
+.archive-asc {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 4px;
+  font-size: var(--fs-micro); font-weight: 800; letter-spacing: 0.04em;
+  color: var(--accent); text-transform: uppercase;
+}
+.archive-mode { font-size: var(--fs-sm); color: var(--ink-2, #4a4a55); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.archive-tag {
+  font-size: var(--fs-micro); font-weight: 800; color: var(--ink-3);
+  background: rgba(16, 24, 40, 0.06); border-radius: 999px; padding: 2px 7px;
+}
+.archive-tag.archive-trial { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+/* Six small facts, two or three to a line depending on width. A definition list
+   because that is what it is — the label/value pairing carries to screen readers
+   without any extra markup. */
+.archive-stats {
+  margin: 0; display: grid; gap: 6px 12px;
+  grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+}
+.archive-stats > div { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.archive-stats dt { font-size: var(--fs-micro); color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.04em; }
+.archive-stats dd {
+  margin: 0; font-size: var(--fs-sm); font-weight: 700; color: var(--ink);
+  font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}

@@ -5,6 +5,10 @@ import { products as PRODUCTS } from "./balance/products";
 import { contracts as CONTRACTS } from "./balance/contracts";
 import { legacyTree as LEGACY } from "./balance/legacyTree";
 import { reputation as REPUTATION } from "./balance/reputation";
+// Imported rather than re-derived: `endowmentOwed` below already duplicates its
+// formula, and a second divergent copy of a COST curve is how a crafted save gets
+// charged the wrong amount.
+import { wingCostSum } from "./reputation";
 import { trials as TRIALS } from "./balance/trials";
 import { paradigms as PARADIGMS } from "./balance/paradigms";
 import { doctrine as DOCTRINE } from "./balance/doctrine";
@@ -19,7 +23,7 @@ import { objectives as OBJECTIVES } from "./balance/objectives";
 import { automation as AUTOMATION } from "./balance/automation";
 import { freshComponents } from "./components";
 import type { ChallengeState } from "./types";
-import type { ActiveModifier, ComponentsState, DraftModel, Employee, GameState, LifetimeStats, ModifierTarget, ProductsState, ProductState, UpgradeState } from "./types";
+import type { ActiveModifier, ComponentsState, DraftModel, Employee, GameState, LifetimeStats, ModifierTarget, ProductsState, ProductState, ShipLogEntry, UpgradeState } from "./types";
 
 const MODIFIER_TARGETS: ModifierTarget[] = ["computeMult", "dataMult", "moneyMult"];
 const PRODUCT_TYPE_IDS = PRODUCTS.types.map((t) => t.id);
@@ -384,6 +388,7 @@ interface SavedShape {
   institute: string[];
   /** Institute Fellowships — endowed chairs, reconciled against leftover Grants. v32. */
   instituteFellowships: number;
+  facilityWings: number;
   /** Flagship: designated product id (or null) + cross-ship tenure. Migrated at v27. */
   flagship: { productId: string | null; tenure: number };
   contracts: { completed: string[] };
@@ -471,6 +476,7 @@ export function serialize(state: GameState): string {
     doctrines: state.doctrines,
     institute: state.institute,
     instituteFellowships: state.instituteFellowships,
+    facilityWings: state.facilityWings,
     flagship: state.flagship,
     contracts: state.contracts,
     charter: state.charter,
@@ -636,6 +642,12 @@ export function deserialize(json: string): GameState {
   // unlock the loop were actually completed.
   const sanitizedChallenges = sanitizeChallenges(raw.challenges);
   const paradigmOwed = paradigms.reduce((sum, id) => sum + (PARADIGM_COST.get(id) ?? 0), 0);
+  // Facility Wings: bounded, and their Reputation cost reconciled into reputation.spent
+  // below — same anti-cheat policy as perks / the Endowment / Paradigm Research, so a
+  // crafted save cannot found a tower of free floors. Note a wing multiplies rack
+  // CAPACITY, so an unbounded value would also let a crafted save demand an unbounded
+  // draw from the renderer.
+  const facilityWings = Math.min(REPUTATION.wings.maxWings, safeCount(raw.facilityWings));
   // Sanitize stats once: ascensions drives the Institute Grant budget (below) and
   // totalShips caps the ship-log — both previously recomputed sanitizeStats redundantly.
   const stats = sanitizeStats(raw.stats);
@@ -742,7 +754,7 @@ export function deserialize(json: string): GameState {
     employees: sanitizeEmployees(raw.employees),
     stats,
     achievements,
-    reputation: sanitizeReputation(raw.reputation, repEndowment, paradigmOwed),
+    reputation: sanitizeReputation(raw.reputation, repEndowment, paradigmOwed + wingCostSum(facilityWings)),
     repEndowment,
     paradigms,
     doctrines: dedupeKnownIds(raw.doctrines, DOCTRINE_IDS),
@@ -752,6 +764,7 @@ export function deserialize(json: string): GameState {
     // with every wing and 0 ascensions banks a free ×7 to all output.
     institute: institute.wings,
     instituteFellowships: institute.fellowships,
+    facilityWings,
     endowmentDirectives: sanitizeDirectives(raw.endowmentDirectives, repEndowment),
     // Prestige Trials: the active id must be a known Trial (else no active run), and
     // completed ids are filtered to known, deduped (the reward folds per unique id).
@@ -809,18 +822,66 @@ export function deserialize(json: string): GameState {
   };
 }
 
+/** Optional non-negative integer field on an Archive entry: kept only when it is a
+ *  real finite number, clamped to a sane ceiling so a crafted save cannot render a
+ *  generation claiming two billion staff. Absent stays absent — the Archive shows an
+ *  em dash for what a pre-v35 entry genuinely never recorded, rather than a zero that
+ *  reads as a fact. */
+function archiveCount(v: unknown, max: number): number | undefined {
+  if (typeof v !== "number" || !Number.isFinite(v)) return undefined;
+  return Math.max(0, Math.min(max, Math.floor(v)));
+}
+
+/** Optional magnitude (base-10 log) field: finite and bounded well past any reachable
+ *  value, so 10^mag can never be rendered as Infinity. */
+function archiveMag(v: unknown): number | undefined {
+  if (typeof v !== "number" || !Number.isFinite(v)) return undefined;
+  return Math.max(0, Math.min(3000, v));
+}
+
+/** Optional id-ish string: bounded length, and null/absent both collapse to undefined
+ *  so the Archive's "not recorded" and "none" render the same way they mean. */
+function archiveId(v: unknown): string | undefined {
+  return typeof v === "string" && v.length > 0 && v.length <= 64 ? v : undefined;
+}
+
 /** Legacy Wall records: per-entry validation (mode must be a known ship mode,
  *  era a small int), capped at the balance limit AND at the lifetime ship count —
- *  a crafted save can't display a wall of ascensions it never earned. */
+ *  a crafted save can't display a wall of ascensions it never earned. The Archive
+ *  fields (save v35) are all optional and independently sanitized: an entry with a
+ *  hostile or missing one still loads, minus that field. */
 function sanitizeShipLog(raw: unknown, totalShips: number): GameState["shipLog"] {
   if (!Array.isArray(raw)) return [];
   const MODES = new Set(Object.keys(balance.prestige.shipModes));
   return raw
-    .filter((e): e is { mode: string; era: number; asc: boolean } =>
+    .filter((e): e is Record<string, unknown> =>
       !!e && typeof e === "object" &&
       typeof (e as { mode?: unknown }).mode === "string" && MODES.has((e as { mode: string }).mode) &&
       typeof (e as { era?: unknown }).era === "number" && Number.isFinite((e as { era: number }).era))
-    .map((e) => ({ mode: e.mode, era: Math.max(0, Math.min(5, Math.floor(e.era))), asc: e.asc === true }))
+    .map((e) => {
+      // Optional Archive fields are OMITTED when absent or hostile, never set to
+      // undefined: the project runs exactOptionalPropertyTypes, and "the key isn't
+      // there" is also what a pre-v35 entry honestly is.
+      const opt: Partial<ShipLogEntry> = {};
+      const put = <K extends keyof ShipLogEntry>(k: K, v: ShipLogEntry[K] | undefined) => {
+        if (v !== undefined) opt[k] = v;
+      };
+      put("gen", archiveCount(e.gen, MAX_SAVED_IDS));
+      put("legacyMag", archiveMag(e.legacyMag));
+      put("peakComputeMag", archiveMag(e.peakComputeMag));
+      put("research", archiveCount(e.research, MAX_SAVED_IDS));
+      put("products", archiveCount(e.products, MAX_SAVED_IDS));
+      put("staff", archiveCount(e.staff, MAX_SAVED_IDS));
+      put("charter", archiveId(e.charter));
+      put("trial", archiveId(e.trial));
+      put("atSec", archiveCount(e.atSec, 1e12));
+      return {
+        mode: e.mode as string,
+        era: Math.max(0, Math.min(5, Math.floor(e.era as number))),
+        asc: e.asc === true,
+        ...opt,
+      };
+    })
     .slice(-Math.min(balance.prestige.shipLogCap, Math.max(0, totalShips)));
 }
 
@@ -1195,6 +1256,24 @@ export function migrate(raw: any): SavedShape {
       version: 34,
       megaprojects: { ...mega, mandates: Array.isArray(mega.mandates) ? mega.mandates : [] },
     };
+  }
+  if (s.version === 34) {
+    // v34 → v35: The Archive. Each shipLog entry gains an optional record of what
+    // that generation WAS (Legacy banked, peak Compute, research/products/staff at
+    // the ship, the charter flown, the Trial banked, the playtime stamp).
+    //
+    // Existing entries are carried through UNCHANGED — deliberately. The data was
+    // never recorded, so there is nothing to migrate; back-filling would mean
+    // inventing a history the player never played. The Archive renders those
+    // generations with an em dash per missing field and starts recording in full
+    // from the next ship. Nothing else in the save moves.
+    s = { ...s, version: 35, shipLog: Array.isArray(s.shipLog) ? s.shipLog : [] };
+  }
+  if (s.version === 35) {
+    // v35 → v36: Facility Wings. Every existing save has founded none, so its hall
+    // capacity is exactly what it was — hallCapacity multiplies by wings+1, and
+    // wings is 0 here. The Reputation already spent is untouched.
+    s = { ...s, version: 36, facilityWings: s.facilityWings ?? 0 };
   }
   return s as SavedShape;
 }

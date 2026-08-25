@@ -1,4 +1,4 @@
-import { doctrine as D, type DoctrinePerkDef, type DoctrineSide } from "./balance/doctrine";
+import { doctrine as D, COMMITTABLE_SIDES, type DoctrinePerkDef, type DoctrineSide } from "./balance/doctrine";
 import type { GameState } from "./types";
 
 /**
@@ -19,25 +19,62 @@ export function doctrineUnlocked(state: GameState): boolean {
   return D.enabled && state.prestige.ships >= D.revealAtShips;
 }
 
-/** Which side the player has committed to THIS run (null at neutral). The sim, which
- *  never fires a faction event, is always neutral → always null. */
+/** Which side the player has committed to THIS run (null at neutral). Never returns
+ *  "schism" — that track is qualified for, not chosen. The sim, which never fires a
+ *  faction event, is always neutral → always null. */
 export function committedSide(state: GameState): DoctrineSide | null {
   if (state.alignment <= -D.threshold) return "doomer";
   if (state.alignment >= D.threshold) return "accel";
   return null;
 }
 
+/** How many perks are held on each side a player can commit to. Schism perks don't
+ *  count toward their own prerequisite — only the two real doctrines do. */
+export function perksPerSide(state: GameState): Record<"doomer" | "accel", number> {
+  const out = { doomer: 0, accel: 0 };
+  for (const id of state.doctrines) {
+    const def = BY_ID.get(id);
+    if (def && (def.side === "doomer" || def.side === "accel")) out[def.side]++;
+  }
+  return out;
+}
+
+/** The weakest of the two sides' perk counts — the number a Schism rung's `minPerSide`
+ *  is measured against, so holding six on one side and none on the other qualifies for
+ *  nothing. */
+export function schismDepth(state: GameState): number {
+  const per = perksPerSide(state);
+  return Math.min(...COMMITTABLE_SIDES.map((s) => per[s]));
+}
+
+/** Is the Schism track visible at all? Once you hold a perk on both sides — before
+ *  that it is not "locked content", it simply is not part of your story yet. */
+export function schismRevealed(state: GameState): boolean {
+  return doctrineUnlocked(state) && schismDepth(state) >= 1;
+}
+
 export function doctrinePerks() {
   return D.perks;
 }
 
-/** Can the player claim this perk now? (revealed, unowned, prereq met, and currently
- *  committed to the perk's side). */
+/**
+ * Can the player claim this perk now? Revealed, unowned, prereq met — plus the side
+ * rule, which differs by track:
+ *  - A side perk needs you COMMITTED to that side right now.
+ *  - A Schism perk needs the opposite: you must be UNCOMMITTED (the synthesis is
+ *    claimed from the center), and hold at least `minPerSide` perks on each of the two
+ *    real sides — which, since alignment resets to neutral on every ship, can only be
+ *    assembled across generations.
+ */
 export function canClaimDoctrine(state: GameState, id: string): boolean {
   if (!doctrineUnlocked(state)) return false;
   const def = BY_ID.get(id);
   if (!def || state.doctrines.includes(id)) return false;
   if (def.requires && !state.doctrines.includes(def.requires)) return false;
+  if (def.side === "schism") {
+    if (committedSide(state) !== null) return false;
+    return schismDepth(state) >= (def.minPerSide ?? 1);
+  }
   return committedSide(state) === def.side;
 }
 
@@ -55,7 +92,8 @@ export function doctrineMods(state: GameState): { computeMult: number; dataMult:
     const def = BY_ID.get(id);
     if (!def) continue;
     const m = 1 + def.effect.value;
-    if (def.effect.kind === "computeMult") computeMult *= m;
+    if (def.effect.kind === "allMult") { computeMult *= m; dataMult *= m; moneyMult *= m; }
+    else if (def.effect.kind === "computeMult") computeMult *= m;
     else if (def.effect.kind === "dataMult") dataMult *= m;
     else moneyMult *= m;
   }
