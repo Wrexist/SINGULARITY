@@ -6,12 +6,17 @@
 // Exits non-zero on any console error / pageerror / failed request.
 import { spawn, execSync } from "node:child_process";
 import { existsSync, readdirSync, mkdirSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { chromium } from "playwright";
 
 const REPO = "/home/user/SINGULARITY";
-const OUT = "/tmp/claude-0/-home-user-SINGULARITY/e2df7c69-1a09-5203-a0d2-94793b1bb67f/scratchpad/shots";
+// Screenshots and the seed fixture live under the OS temp dir by default. This used
+// to be a hardcoded path into one particular agent session's scratchpad, which meant
+// the seeded run silently verified against whatever stale seed.json happened to still
+// be sitting there — a fixture nothing regenerated and nothing checked the age of.
+const OUT = process.env.SMOKE_OUT || join(tmpdir(), "singularity-smoke", "shots");
 const port = 4319;
 const seeded = process.argv.includes("--seeded");
 
@@ -53,10 +58,19 @@ try {
     // the late-game panels actually render — a fresh save stops at FIRST STEPS and never
     // reaches HQ, which is where most panel work lands.
     //
+    // REGENERATED on every seeded run, never reused: a fixture that outlives the code
+    // it exercises is a fixture that quietly stops testing it. The generator is the
+    // real engine, so the seed is always at the current SAVE_VERSION with the current
+    // field shapes.
+    //
     // This MUST run as an init script, before any app code executes. Seeding after load
     // and reloading does not work: useGameLoop registers save() on `beforeunload`, so the
     // reload writes the fresh in-memory game straight over the seeded key.
     const seedPath = process.env.SEED_SAVE || join(OUT, "..", "seed.json");
+    if (!process.env.SEED_SAVE) {
+      mkdirSync(join(OUT, ".."), { recursive: true });
+      execSync(`npx vite-node scripts/make-seed-save.ts > ${JSON.stringify(seedPath)}`, { cwd: REPO, stdio: ["ignore", "ignore", "inherit"], shell: "/bin/bash" });
+    }
     const save = readFileSync(seedPath, "utf8");
     await ctx.addInitScript(
       ({ save: s, now }) => {
@@ -188,6 +202,27 @@ try {
       }
       await sleep(400);
       await page.screenshot({ path: join(OUT, `goals-${h.replace(/\s+/g, "").toLowerCase()}.png`), fullPage: true });
+
+      // The 2026-08 depth panels, asserted where they live. Only on the seeded run:
+      // the seed save (scripts/make-seed-save.ts) is built to carry a career in the
+      // shipLog, a Trial ladder mid-climb, and a perk on BOTH doctrine sides, which
+      // is what makes each of these renderable at all.
+      if (seeded && h === "Collection") {
+        const gens = await page.locator(".archive-row").count();
+        if (gens === 0) throw new Error("SMOKE: The Archive rendered no generations on a save with a shipLog");
+        // The seed's two oldest entries are pre-v35 and recorded nothing; the board
+        // must show an em dash for those rather than inventing a zero.
+        const dashes = await page.locator(".archive-stats dd").filter({ hasText: "\u2014" }).count();
+        if (dashes === 0) throw new Error("SMOKE: The Archive showed no em dash for the seed's unrecorded generations");
+        console.log(`  Archive: ${gens} generations, ${dashes} unrecorded fields as an em dash`);
+      }
+      if (seeded && h === "Long game") {
+        const rungs = await page.locator(".trial-rungs").count();
+        if (rungs === 0) throw new Error("SMOKE: no Trial ladder rung markers rendered");
+        const schism = await page.locator(".doctrine-schism .doctrine-perk").count();
+        if (schism === 0) throw new Error("SMOKE: the Doctrine Schism track did not reveal on a save holding perks on both sides");
+        console.log(`  Depth: ${rungs} Trial ladders, Schism track with ${schism} rungs`);
+      }
     }
   } else {
     console.log("  (fresh save: GOALS has no horizon switcher yet — expected)");

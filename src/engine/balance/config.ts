@@ -1572,7 +1572,10 @@ export const balance = {
     capabilityResearch: "inference_api",
     /** IDEAS #6 — how many shipped-generation records the Legacy Wall keeps
      *  (a hundred-generation save stays tiny; the hall shows the latest few). */
-    shipLogCap: 24,
+    // Raised 24 -> 60 for The Archive (2026-08). The hall's trophy plinths only ever
+    // read the last 8, so this is purely how deep the Archive's history runs. 60
+    // entries of small scalars is a few KB — well inside the save budget.
+    shipLogCap: 60,
     /** legacyWeightsGained = max(1, floor((lifetimeMoney / scale) ^ exponent)).
      *  scale raised 1e4→1e5 (2026-06-29 retune) so a much longer run banks fewer
      *  weights → a gentler per-ship boost → the meta-loop stays a real journey. */

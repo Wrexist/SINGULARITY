@@ -229,6 +229,38 @@ export interface ShipLogEntry {
   mode: string;
   era: number;
   asc: boolean;
+  /**
+   * The Archive (2026-08). Everything below is what that generation actually WAS,
+   * recorded by prestige() at the ship. All of it is OPTIONAL, and deliberately so:
+   * entries written before save v35 genuinely did not record it, and the Archive
+   * shows an em dash rather than inventing a number for a generation it never saw.
+   *
+   * Magnitudes (base-10 logs, the same convention the Stats sparklines use) instead
+   * of Big: the log is finite and JSON-native at any endgame scale, so a
+   * hundred-generation Archive adds no Big plumbing to the save path and cannot
+   * overflow. Display recovers the value as 10^mag.
+   */
+  /** Ship number this entry records (1-based). */
+  gen?: number;
+  /** log10 of the Legacy Weights this ship banked. */
+  legacyMag?: number;
+  /** log10 of the run's peak Compute/sec (generation-scoped, not the career peak). */
+  peakComputeMag?: number;
+  /** Research nodes owned at the ship. */
+  research?: number;
+  /** Live products at the ship. */
+  products?: number;
+  /** Roster size at the ship. */
+  staff?: number;
+  /** Charter flown this generation. Absent means none was flown, or (on a pre-v35
+   *  entry) that it was never recorded — the Archive renders both as an em dash,
+   *  which is exactly what each of them means to the reader. */
+  charter?: string;
+  /** Trial BANKED by this ship (its condition held). Absent if none. */
+  trial?: string;
+  /** stats.playtimeSec at the ship — the Archive derives each generation's length by
+   *  differencing consecutive entries, so no new run clock is needed. */
+  atSec?: number;
 }
 
 /**

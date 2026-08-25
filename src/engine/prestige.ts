@@ -18,6 +18,13 @@ import type { DraftModel, GameState } from "./types";
  * tuned against the sim, never hand-guessed.
  */
 
+/** Base-10 magnitude of a Big for the Archive's bounded, JSON-native record. A zero
+ *  or non-finite value reads as 0 rather than -Infinity, which JSON cannot carry. */
+function magOf(b: Big): number {
+  const v = b.log10();
+  return Number.isFinite(v) ? v : 0;
+}
+
 /** The flavored ways to ship (GDD §4). `deploy` is the balanced default. */
 export type ShipMode = keyof typeof balance.prestige.shipModes;
 
@@ -235,7 +242,32 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     lastShipReport: { peakCompute: state.runPeakCompute, peakMrr: state.runPeakMrr },
     // The Legacy Wall (IDEAS #6) remembers how this generation shipped: the hall
     // renders these as trophy plinths, so the reset visibly ADDS to the room.
-    shipLog: [...state.shipLog, { mode, era: currentEra(state), asc: isAscension }].slice(-balance.prestige.shipLogCap),
+    // The Archive: what this generation actually WAS, recorded at the ship. Reads
+    // only state that already exists (run-scoped peaks, roster/portfolio sizes, the
+    // charter flown, the Trial that banked), so it adds no new bookkeeping to tick.
+    // Magnitudes rather than Bigs — see ShipLogEntry.
+    shipLog: [...state.shipLog, {
+      mode,
+      era: currentEra(state),
+      asc: isAscension,
+      gen: ships,
+      legacyMag: magOf(gained),
+      peakComputeMag: magOf(state.runPeakCompute),
+      research: state.research.length,
+      products: state.products.active.length,
+      staff: state.employees.length,
+      // Optional fields are OMITTED rather than set to undefined (the project runs
+      // exactOptionalPropertyTypes), which also keeps a hundred-generation Archive
+      // out of the save as empty keys.
+      ...(state.charter ? { charter: state.charter } : {}),
+      // The Trial this ship BANKED — the same condition check the trialsDone fold
+      // below uses, so the Archive can never credit a generation with a Trial that
+      // failed its condition.
+      ...(state.activeTrial && !state.trialsDone.includes(state.activeTrial) && trialConditionMet(state)
+        ? { trial: state.activeTrial }
+        : {}),
+      atSec: Math.max(0, Math.floor(state.stats.playtimeSec)),
+    }].slice(-balance.prestige.shipLogCap),
     // Today's sponsor objective (IDEAS #9) tracks lifetime stats, so it survives
     // the reset like the contracts board it extends.
     sponsor: state.sponsor,

@@ -156,7 +156,7 @@ describe("Megaproject Mandates — persistence", () => {
   });
 
   it("is on the current save version", () => {
-    expect(SAVE_VERSION).toBe(34);
+    expect(SAVE_VERSION).toBe(35);
   });
 });
 

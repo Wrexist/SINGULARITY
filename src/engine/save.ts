@@ -19,7 +19,7 @@ import { objectives as OBJECTIVES } from "./balance/objectives";
 import { automation as AUTOMATION } from "./balance/automation";
 import { freshComponents } from "./components";
 import type { ChallengeState } from "./types";
-import type { ActiveModifier, ComponentsState, DraftModel, Employee, GameState, LifetimeStats, ModifierTarget, ProductsState, ProductState, UpgradeState } from "./types";
+import type { ActiveModifier, ComponentsState, DraftModel, Employee, GameState, LifetimeStats, ModifierTarget, ProductsState, ProductState, ShipLogEntry, UpgradeState } from "./types";
 
 const MODIFIER_TARGETS: ModifierTarget[] = ["computeMult", "dataMult", "moneyMult"];
 const PRODUCT_TYPE_IDS = PRODUCTS.types.map((t) => t.id);
@@ -809,18 +809,66 @@ export function deserialize(json: string): GameState {
   };
 }
 
+/** Optional non-negative integer field on an Archive entry: kept only when it is a
+ *  real finite number, clamped to a sane ceiling so a crafted save cannot render a
+ *  generation claiming two billion staff. Absent stays absent — the Archive shows an
+ *  em dash for what a pre-v35 entry genuinely never recorded, rather than a zero that
+ *  reads as a fact. */
+function archiveCount(v: unknown, max: number): number | undefined {
+  if (typeof v !== "number" || !Number.isFinite(v)) return undefined;
+  return Math.max(0, Math.min(max, Math.floor(v)));
+}
+
+/** Optional magnitude (base-10 log) field: finite and bounded well past any reachable
+ *  value, so 10^mag can never be rendered as Infinity. */
+function archiveMag(v: unknown): number | undefined {
+  if (typeof v !== "number" || !Number.isFinite(v)) return undefined;
+  return Math.max(0, Math.min(3000, v));
+}
+
+/** Optional id-ish string: bounded length, and null/absent both collapse to undefined
+ *  so the Archive's "not recorded" and "none" render the same way they mean. */
+function archiveId(v: unknown): string | undefined {
+  return typeof v === "string" && v.length > 0 && v.length <= 64 ? v : undefined;
+}
+
 /** Legacy Wall records: per-entry validation (mode must be a known ship mode,
  *  era a small int), capped at the balance limit AND at the lifetime ship count —
- *  a crafted save can't display a wall of ascensions it never earned. */
+ *  a crafted save can't display a wall of ascensions it never earned. The Archive
+ *  fields (save v35) are all optional and independently sanitized: an entry with a
+ *  hostile or missing one still loads, minus that field. */
 function sanitizeShipLog(raw: unknown, totalShips: number): GameState["shipLog"] {
   if (!Array.isArray(raw)) return [];
   const MODES = new Set(Object.keys(balance.prestige.shipModes));
   return raw
-    .filter((e): e is { mode: string; era: number; asc: boolean } =>
+    .filter((e): e is Record<string, unknown> =>
       !!e && typeof e === "object" &&
       typeof (e as { mode?: unknown }).mode === "string" && MODES.has((e as { mode: string }).mode) &&
       typeof (e as { era?: unknown }).era === "number" && Number.isFinite((e as { era: number }).era))
-    .map((e) => ({ mode: e.mode, era: Math.max(0, Math.min(5, Math.floor(e.era))), asc: e.asc === true }))
+    .map((e) => {
+      // Optional Archive fields are OMITTED when absent or hostile, never set to
+      // undefined: the project runs exactOptionalPropertyTypes, and "the key isn't
+      // there" is also what a pre-v35 entry honestly is.
+      const opt: Partial<ShipLogEntry> = {};
+      const put = <K extends keyof ShipLogEntry>(k: K, v: ShipLogEntry[K] | undefined) => {
+        if (v !== undefined) opt[k] = v;
+      };
+      put("gen", archiveCount(e.gen, MAX_SAVED_IDS));
+      put("legacyMag", archiveMag(e.legacyMag));
+      put("peakComputeMag", archiveMag(e.peakComputeMag));
+      put("research", archiveCount(e.research, MAX_SAVED_IDS));
+      put("products", archiveCount(e.products, MAX_SAVED_IDS));
+      put("staff", archiveCount(e.staff, MAX_SAVED_IDS));
+      put("charter", archiveId(e.charter));
+      put("trial", archiveId(e.trial));
+      put("atSec", archiveCount(e.atSec, 1e12));
+      return {
+        mode: e.mode as string,
+        era: Math.max(0, Math.min(5, Math.floor(e.era as number))),
+        asc: e.asc === true,
+        ...opt,
+      };
+    })
     .slice(-Math.min(balance.prestige.shipLogCap, Math.max(0, totalShips)));
 }
 
@@ -1195,6 +1243,18 @@ export function migrate(raw: any): SavedShape {
       version: 34,
       megaprojects: { ...mega, mandates: Array.isArray(mega.mandates) ? mega.mandates : [] },
     };
+  }
+  if (s.version === 34) {
+    // v34 → v35: The Archive. Each shipLog entry gains an optional record of what
+    // that generation WAS (Legacy banked, peak Compute, research/products/staff at
+    // the ship, the charter flown, the Trial banked, the playtime stamp).
+    //
+    // Existing entries are carried through UNCHANGED — deliberately. The data was
+    // never recorded, so there is nothing to migrate; back-filling would mean
+    // inventing a history the player never played. The Archive renders those
+    // generations with an em dash per missing field and starts recording in full
+    // from the next ship. Nothing else in the save moves.
+    s = { ...s, version: 35, shipLog: Array.isArray(s.shipLog) ? s.shipLog : [] };
   }
   return s as SavedShape;
 }

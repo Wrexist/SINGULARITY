@@ -8,6 +8,7 @@ import { TrialsPanel, trialsDoneCount, trialsTotal } from "./TrialsPanel";
 import { DoctrinePanel, doctrineDoneCount, doctrineTotal } from "./DoctrinePanel";
 import { AchievementsBoard } from "./AchievementsBoard";
 import { MilestonesBoard } from "./MilestonesBoard";
+import { ArchiveBoard, archiveCount } from "./ArchiveBoard";
 import { EmptyState } from "./EmptyState";
 import { objectivesUnlocked } from "../engine/objectives";
 import { challengesUnlocked } from "../engine/challenges";
@@ -51,7 +52,7 @@ interface Props {
  *
  *   Now        — things waiting on you today, and claimable.
  *   Long game  — the chases that span generations.
- *   Collection — what you have already earned.
+ *   Collection — what you have already earned, and the career behind it.
  *
  * Each board keeps its own interaction logic untouched; what changes is that there
  * is one door instead of seven.
@@ -154,6 +155,13 @@ export function GoalsPanel({
           {showMilestones && (
             <Collapsible title="Product Milestones" badge={`${counts.ms.earned}/${counts.ms.total}`}>
               <MilestonesBoard game={game} />
+            </Collapsible>
+          )}
+          {/* The Archive — every generation you have shipped, as it was. Appears
+              once there is a career to look back on, i.e. from the first ship. */}
+          {game.shipLog.length > 0 && (
+            <Collapsible title="The Archive" badge={`${archiveCount(game)} gens`}>
+              <ArchiveBoard game={game} />
             </Collapsible>
           )}
           <section className="panel">

@@ -3529,3 +3529,48 @@ button.modchip.workable:active { transform: scale(0.94); }
 .stat-spark.t-compute { color: var(--compute); }
 .stat-spark.t-data { color: var(--data); }
 .stat-spark.t-money { color: var(--money); }
+
+/* ── THE ARCHIVE ────────────────────────────────────────────────────────────
+   One card per shipped generation, newest first. Read-only history: no claim,
+   no affordance, nothing to tap — so the treatment is deliberately quieter than
+   any actionable card on the same screen. Emphasis for an ascended generation is
+   a full-card tint and border, never a left-edge bar (house rule). */
+.archive { display: flex; flex-direction: column; gap: 8px; }
+.archive-row {
+  border: 1px solid var(--line, rgba(16, 24, 40, 0.08));
+  border-radius: var(--radius-sm);
+  padding: 10px 11px;
+  background: var(--glass-strong, #fff);
+  display: flex; flex-direction: column; gap: 7px;
+}
+.archive-row.ascended {
+  border-color: color-mix(in srgb, var(--accent) 38%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 7%, transparent), var(--glass-strong, #fff));
+}
+.archive-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.archive-gen { font-size: var(--fs-md); font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+.archive-era { font-size: var(--fs-xs); font-weight: 700; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.04em; }
+.archive-asc {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 4px;
+  font-size: var(--fs-micro); font-weight: 800; letter-spacing: 0.04em;
+  color: var(--accent); text-transform: uppercase;
+}
+.archive-mode { font-size: var(--fs-sm); color: var(--ink-2, #4a4a55); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.archive-tag {
+  font-size: var(--fs-micro); font-weight: 800; color: var(--ink-3);
+  background: rgba(16, 24, 40, 0.06); border-radius: 999px; padding: 2px 7px;
+}
+.archive-tag.archive-trial { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+/* Six small facts, two or three to a line depending on width. A definition list
+   because that is what it is — the label/value pairing carries to screen readers
+   without any extra markup. */
+.archive-stats {
+  margin: 0; display: grid; gap: 6px 12px;
+  grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+}
+.archive-stats > div { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.archive-stats dt { font-size: var(--fs-micro); color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.04em; }
+.archive-stats dd {
+  margin: 0; font-size: var(--fs-sm); font-weight: 700; color: var(--ink);
+  font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
