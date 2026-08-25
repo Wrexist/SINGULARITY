@@ -11,7 +11,7 @@ import { doctrine as DOCTRINE } from "./balance/doctrine";
 import { institute as INSTITUTE } from "./balance/institute";
 import { charters as CHARTERS } from "./balance/charters";
 import { balance } from "./balance/config";
-import { ALL_RESEARCH } from "./researchTree";
+import { ALL_RESEARCH, epochNode } from "./researchTree";
 import { components as COMPONENTS, SLOTS_BY_TIER, type SlotClass } from "./balance/components";
 import { market as MARKET } from "./balance/market";
 import { challenges as CHALLENGES } from "./balance/challenges";
@@ -219,6 +219,8 @@ function sanitizeChannelMix(m: unknown): Record<string, number> {
 const MAX_SAVED_PRODUCTS = 64;
 const MAX_SAVED_EMPLOYEES = 512;
 const MAX_SAVED_IDS = 512;
+/** Ceiling on megaproject cycles — see sanitizeMegaprojects. */
+const MAX_MEGA_LEVEL = 512;
 
 /** Drafts are untrusted; keep only well-formed entries. Quality is clamped to the
  *  same product cap loaded products get — an unclamped draft launches into a live
@@ -549,16 +551,29 @@ function sanitizeChallenges(raw: unknown): ChallengeState {
 
 /** Megaprojects: a non-negative integer level, and current-cycle funding clamped to the
  *  level's cost (so a crafted save can't pre-bank a completion or over-fund). */
-function sanitizeMegaprojects(raw: unknown): GameState["megaprojects"] {
+function sanitizeMegaprojects(raw: unknown, completedChallenges: string[]): GameState["megaprojects"] {
   const r = (raw ?? {}) as { level?: unknown; funded?: { compute?: unknown; data?: unknown; money?: unknown } };
-  const level = Math.max(0, Math.floor(Number(r.level) || 0));
+  // A cycle can only be completed once every Grand Challenge is (fundMegaproject
+  // checks megaprojectUnlocked), so a level on a save that has completed none was
+  // never earned — and each level mints a permanent Mandate pick. Drop it.
+  const unlocked = CHALLENGES.list.every((c) => completedChallenges.includes(c.id));
+  // Generous ceiling, far above any reachable value, for the same reason the other
+  // MAX_SAVED_* caps exist: `level` drives Math.pow (which overflows to Infinity and
+  // then poisons the cost clamp) and the number of unspent Mandate picks.
+  const rawLevel = Math.max(0, Math.floor(Number(r.level) || 0));
+  const level = unlocked ? Math.min(rawLevel, MAX_MEGA_LEVEL) : 0;
   const M = CHALLENGES.megaproject;
   const g = Math.pow(M.growth, level);
   const cost = { compute: Big.of(M.baseCost.compute).mul(g), data: Big.of(M.baseCost.data).mul(g), money: Big.of(M.baseCost.money).mul(g) };
   const f = r.funded ?? {};
   // Charters: known ids only, and never more picks than completed cycles minted —
   // a crafted save must not be able to stack rewards it never earned.
-  const rawMandates = Array.isArray((r as { mandates?: unknown }).mandates) ? ((r as { mandates: unknown[] }).mandates) : [];
+  // Bound the array BEFORE filtering it: mandateMods walks this list on every
+  // derive() (10Hz), so an oversized pasted save would cost real frames — the same
+  // "a crafted save bricks the install" class the 2026-08 save-limits pass fixed.
+  const rawMandates = Array.isArray((r as { mandates?: unknown }).mandates)
+    ? ((r as { mandates: unknown[] }).mandates).slice(0, MAX_SAVED_IDS)
+    : [];
   const mandates = rawMandates
     .filter((c): c is string => typeof c === "string" && MEGA_MANDATE_IDS.has(c))
     .slice(0, level);
@@ -617,6 +632,9 @@ export function deserialize(json: string): GameState {
   // Paradigm Research: keep only known node ids; their Reputation cost is reconciled into
   // reputation.spent below (same anti-cheat policy as perks + the endowment).
   const paradigms = dedupeKnownIds(raw.paradigms, PARADIGM_IDS);
+  // Hoisted: the megaproject sanitizer needs to know whether the challenges that
+  // unlock the loop were actually completed.
+  const sanitizedChallenges = sanitizeChallenges(raw.challenges);
   const paradigmOwed = paradigms.reduce((sum, id) => sum + (PARADIGM_COST.get(id) ?? 0), 0);
   // Sanitize stats once: ascensions drives the Institute Grant budget (below) and
   // totalShips caps the ship-log — both previously recomputed sanitizeStats redundantly.
@@ -693,7 +711,15 @@ export function deserialize(json: string): GameState {
     // research: known node ids, each at most once. A dup (e.g. ["backprop","backprop"])
     // would inflate state.research.length, which tick() accrues into peakResearchCount
     // and any reward derived from it — so dedupe + known-id filter like contracts/perks.
-    research: dedupeKnownIds(raw.research, RESEARCH_IDS),
+    // research: known node ids, each at most once — and an EPOCH node additionally
+    // requires its paradigm to be owned. Buying one already checks that
+    // (researchAvailable), so no legitimate save can hold an unbacked epoch node;
+    // a CRAFTED one could, and would collect the multiplier for free, because
+    // derive only asks whether the id is present. Saves are hostile input.
+    research: dedupeKnownIds(raw.research, RESEARCH_IDS).filter((id) => {
+      const ep = epochNode(id);
+      return !ep || paradigms.includes(ep.requiresParadigm);
+    }),
     run: {
       active: (raw.run as GameState["run"] | undefined)?.active === true,
       progress: clampNum((raw.run as GameState["run"] | undefined)?.progress, 0, 1, 0),
@@ -767,8 +793,8 @@ export function deserialize(json: string): GameState {
     // Grand Challenge rewards are permanent multipliers, so anti-cheat like reputation:
     // funding is clamped to each cost, and a challenge is only "completed" if it is
     // actually fully funded (a tampered `completed` without funding grants nothing).
-    challenges: sanitizeChallenges(raw.challenges),
-    megaprojects: sanitizeMegaprojects(raw.megaprojects),
+    challenges: sanitizedChallenges,
+    megaprojects: sanitizeMegaprojects(raw.megaprojects, sanitizedChallenges.completed),
     // Lab Objectives: claimed ids only (rewards were applied at claim time, never re-derived
     // from state, so a tampered list just skips objectives — known-id/dedupe is enough).
     objectives: { completed: dedupeKnownIds((raw.objectives as { completed?: unknown } | undefined)?.completed, OBJECTIVE_IDS) },

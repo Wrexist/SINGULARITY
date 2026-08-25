@@ -146,29 +146,51 @@ try {
   }
 
   // GOALS owns every goal board since the 2026-08 consolidation — walk its
-  // horizons and expand each folded board, or the smoke covers none of them.
+  // horizons and expand each folded board. This section deliberately does NOT
+  // swallow failures: a missing Goals destination or a missing horizon is exactly
+  // the regression this smoke exists to catch, and a silent catch here would let
+  // the run pass while covering none of it.
+  // The nav sweep above finishes on More, which opens the Settings sheet — its
+  // backdrop covers the nav bar. Close it before asserting on GOALS, or the strict
+  // click below fails on an overlay rather than on a real regression.
+  for (let i = 0; i < 3; i++) {
+    const backdrop = page.locator(".sheet-backdrop, .modal-backdrop");
+    if ((await backdrop.count()) === 0) break;
+    await backdrop.first().click({ position: { x: 5, y: 5 } }).catch(() => {});
+    await sleep(350);
+  }
+  if ((await page.locator(".sheet-backdrop, .modal-backdrop").count()) > 0) {
+    throw new Error("SMOKE: an overlay stayed open and would hide the rest of the run");
+  }
+
   const goalsBtn = page.locator('.botnav-item:has-text("Goals")').first();
-  if (await goalsBtn.count().then((c) => c > 0).catch(() => false)) {
-    await goalsBtn.click({ timeout: 1500 }).catch(() => {});
-    await sleep(500);
+  if ((await goalsBtn.count()) === 0) throw new Error("SMOKE: the Goals nav destination is missing");
+  await goalsBtn.click({ timeout: 2000 });
+  await sleep(600);
+  // A brand-new save has no horizon switcher at all (Collection is the only thing
+  // that exists yet) — that is by design. But once the switcher appears, every
+  // horizon must be present and clickable.
+  const horizonCount = await page.locator(".labnav .tab").count();
+  if (horizonCount > 0) {
     for (const h of ["Now", "Long game", "Collection"]) {
       const t = page.locator(`.labnav .tab:has-text("${h}")`).first();
-      if (await t.count().then((c) => c > 0).catch(() => false)) {
-        await t.click({ timeout: 1500 }).catch(() => {});
-        await sleep(500);
-        const folds = page.locator(".collapsible-toggle");
-        const fn = await folds.count().catch(() => 0);
-        for (let i = 0; i < fn; i++) {
-          const el = folds.nth(i);
-          if ((await el.getAttribute("aria-expanded").catch(() => null)) === "false") {
-            await el.click({ timeout: 1200 }).catch(() => {});
-            await sleep(150);
-          }
+      if ((await t.count()) === 0) throw new Error(`SMOKE: GOALS horizon "${h}" is missing`);
+      await t.click({ timeout: 2000 });
+      await sleep(500);
+      const folds = page.locator(".collapsible-toggle");
+      const fn = await folds.count();
+      for (let i = 0; i < fn; i++) {
+        const el = folds.nth(i);
+        if ((await el.getAttribute("aria-expanded")) === "false") {
+          await el.click({ timeout: 1500 });
+          await sleep(150);
         }
-        await sleep(400);
-        await page.screenshot({ path: join(OUT, `goals-${h.replace(/\s+/g, "").toLowerCase()}.png`), fullPage: true });
       }
+      await sleep(400);
+      await page.screenshot({ path: join(OUT, `goals-${h.replace(/\s+/g, "").toLowerCase()}.png`), fullPage: true });
     }
+  } else {
+    console.log("  (fresh save: GOALS has no horizon switcher yet — expected)");
   }
 
   const labBtn = page.locator('.botnav-item:has-text("Lab")').first();

@@ -126,7 +126,18 @@ describe("Megaprojects II (repeatable post-challenge loop)", () => {
   /** A deep-endgame state with EVERY challenge complete and huge banked resources. */
   function allDone() {
     const s = rich(60);
-    s.challenges = { funded: {}, completed: C.list.map((c) => c.id), forks: {} };
+    // Funded at full cost, not just flagged complete: fundChallenge always records
+    // the funding when it marks a challenge done, and the save sanitizer DERIVES
+    // `completed` from that funding (so a crafted save cannot claim a moonshot it
+    // never paid for). A fixture with `funded: {}` is a state no real save can
+    // reach, and it silently loses its completions on a round-trip.
+    s.challenges = {
+      funded: Object.fromEntries(C.list.map((c) => [c.id, {
+        compute: Big.of(c.cost.compute), data: Big.of(c.cost.data), money: Big.of(c.cost.money),
+      }])),
+      completed: C.list.map((c) => c.id),
+      forks: {},
+    };
     s.resources = { compute: Big.of(1e16), data: Big.of(1e16), money: Big.of(1e16) };
     return s;
   }
