@@ -10,7 +10,7 @@ import type { SlotClass } from "../engine/balance/components";
 import { regulatorState, regulatorIsNamed } from "../engine/regulator";
 import { marketLeaderboard } from "../engine/market";
 import { charters } from "../engine/balance/charters";
-import { RACK_IDS, hallDims, hallCapacity, wingCapacity, hallWings, hallRoomSplit, type Dir } from "../engine/hall";
+import { RACK_IDS, hallDims, hallCapacity, wingCapacity, hallWings, hallRoomSplit, floorDrawnOut, type Dir } from "../engine/hall";
 
 export { hallDims, hallExpansion, type Dir } from "../engine/hall";
 
@@ -133,8 +133,11 @@ export interface HallModel {
   /** IDEAS #4 — rival datacenters on the horizon, tallest = market leader.
    *  Empty pre-first-ship (the market doesn't know you exist yet). */
   skyline: SkylineTower[];
-  /** IDEAS #6 — the Legacy Wall: latest shipped generations as trophy plinths. */
-  wall: { era: number; asc: boolean }[];
+  /** IDEAS #6 — the Legacy Wall: latest shipped generations as trophy plinths. `mag`
+   *  is that generation's banked Legacy as a base-10 log (undefined on entries shipped
+   *  before the Archive recorded it), which scales the trophy's core so the wall shows
+   *  the SHAPE of a career rather than eight identical prizes. */
+  wall: { era: number; asc: boolean; mag?: number }[];
   /** IDEAS #5 — incident theater: each BAD timed modifier manifests on a
    *  deterministic rack (smoke + warn blink). Tapping it once "works the
    *  problem" (bounded time-shave); worked incidents keep smoking, smaller. */
@@ -216,6 +219,11 @@ function rigViews(game: GameState): RigSlotView[][] | null {
 }
 
 function sideMarkers(game: GameState): SideMarker[] {
+  // A floor at the per-frame draw cap reads as MAXED here, which is what the renderer
+  // checks before drawing (and pulsing) a tappable expansion strip. Without this the
+  // room itself keeps inviting a purchase that adds tiles no rack can stand on — the
+  // Build panel stops offering it, and the floor has to agree.
+  const drawnOut = floorDrawnOut(game);
   return SIDE_DEFS.map(({ dir, id }) => {
     const def = upgById(id);
     const lvl = game.upgrades[id] ?? 0;
@@ -223,8 +231,8 @@ function sideMarkers(game: GameState): SideMarker[] {
       dir,
       id,
       cost: upgradeCost(def, lvl).toNumber(),
-      maxed: lvl >= def.max,
-      affordable: canBuyUpgrade(game, id),
+      maxed: drawnOut || lvl >= def.max,
+      affordable: !drawnOut && canBuyUpgrade(game, id),
     };
   });
 }
@@ -299,7 +307,6 @@ export function buildHallModel(game: GameState, wing = 0): HallModel {
   const owned = RACK_IDS.map((id) => game.upgrades[id] ?? 0);
   const totalOwned = owned[0]! + owned[1]! + owned[2]!;
   const fits = totalOwned <= capacity;
-  const density = totalOwned > 0 ? Math.max(0.45, Math.min(1, totalOwned / Math.max(1, capacity))) : 0;
 
   // Per-tier draw counts. When oversubscribed we downsample proportionally, but
   // flooring each tier independently can leave the floor under-filled (e.g.
@@ -330,9 +337,13 @@ export function buildHallModel(game: GameState, wing = 0): HallModel {
     for (let i = 0; i < draw; i++) allSlots.push(tier);
     remaining -= draw;
   }
-  const racks: HallRack[] = allSlots
-    .slice(wingIndex * perWing, (wingIndex + 1) * perWing)
-    .map((tier) => ({ tier, density }));
+  const slice = allSlots.slice(wingIndex * perWing, (wingIndex + 1) * perWing);
+  // Density (which drives rack HEIGHT and vent count) is how full THIS ROOM is, not
+  // how full the whole facility is. Dividing by the multi-wing total made founding a
+  // wing shrink every rack in the lab you already had — the new empty floor dragging
+  // the ratio to its 0.45 floor. Identical to the pre-wings value at one wing.
+  const density = slice.length > 0 ? Math.max(0.45, Math.min(1, slice.length / Math.max(1, perWing))) : 0;
+  const racks: HallRack[] = slice.map((tier) => ({ tier, density }));
 
   return {
     racks,
@@ -370,7 +381,7 @@ export function buildHallModel(game: GameState, wing = 0): HallModel {
       return def ? { id: def.id, name: def.name } : null;
     })(),
     skyline: buildSkyline(game),
-    wall: game.shipLog.slice(-8).map((e) => ({ era: e.era, asc: e.asc })),
+    wall: game.shipLog.slice(-8).map((e) => ({ era: e.era, asc: e.asc, ...(e.legacyMag !== undefined ? { mag: e.legacyMag } : {}) })),
     incidents:
       racks.length > 0
         ? game.modifiers

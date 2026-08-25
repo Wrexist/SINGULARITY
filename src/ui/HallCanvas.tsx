@@ -248,7 +248,7 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       const rmNow = reduceMotionNow();
       const phase = rmNow ? 0.08 : dayPhase(timeMs);
       const skySig = model.skyline.map((t) => `${Math.round(t.h * 20)}${t.dim ? "d" : ""}${t.you ? "y" : ""}`).join(".");
-      const ssig = `${model.cols}|${model.rows}|${model.era}|${model.coolingUnits}|${cssW}|${cssH}|${dpr}|${model.charter?.id ?? ""}|${model.wall.map((w) => `${w.era}${w.asc ? "a" : ""}`).join(".")}|${skySig}|${Math.round(phase * 48)}`;
+      const ssig = `${model.cols}|${model.rows}|${model.era}|${model.coolingUnits}|${cssW}|${cssH}|${dpr}|${model.charter?.id ?? ""}|${model.wall.map((w) => `${w.era}${w.asc ? "a" : ""}${w.mag === undefined ? "" : Math.round(w.mag * 4)}`).join(".")}|${skySig}|${Math.round(phase * 48)}`;
       if (ssig !== staticSig) {
         staticSig = ssig;
         off.width = canvas.width;

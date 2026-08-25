@@ -103,6 +103,16 @@ export function UpgradePanel({ game, derived, onBuy, onFoundWing }: Props) {
   const defs = balance.upgrades
     .filter((def) => def.market !== "darkweb")
     .filter((def) => showExpansions || !isExpansion(def.effect.kind))
+    // Once the floor meets the renderer's per-frame draw cap, another expansion level
+    // adds tiles no rack can stand on — tens of thousands for nothing. Stop OFFERING
+    // it; the wing card below is what the player actually wants from here.
+    //
+    // Deliberately a display filter and not a `canBuyUpgrade` change: the balance sim
+    // reads canBuyUpgrade to decide what an engaged player buys, so gating there would
+    // move its decisions and the tuned curve with them. The purchase stays legal —
+    // levels already owned stay owned, and a save carrying one still loads — it is
+    // just no longer put in front of you.
+    .filter((def) => !drawnOut || !isExpansion(def.effect.kind))
     .filter((def) => showPower || def.effect.kind !== "powerCapacity");
   // Recommended next buy: the best-VALUE upgrade you can afford (most marginal
   // benefit per cost), NOT merely the cheapest — so it never points you at a

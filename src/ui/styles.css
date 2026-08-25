@@ -3642,6 +3642,24 @@ button.modchip.workable:active { transform: scale(0.94); }
    any actionable card on the same screen. Emphasis for an ascended generation is
    a full-card tint and border, never a left-edge bar (house rule). */
 .archive { display: flex; flex-direction: column; gap: 8px; }
+/* The career arc — one wordless answer to "am I getting better?" above the rows.
+   Recessive on purpose: it is context for the list, not a chart to study. The
+   sparkline stretches, so it reads the same on a phone and a tablet. */
+.archive-arc {
+  border: 1px solid var(--line, rgba(16, 24, 40, 0.08));
+  border-radius: var(--radius-sm);
+  padding: var(--pad-card-sm);
+  background: var(--glass-strong, #fff);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.archive-arc-line { color: var(--accent); display: flex; }
+.archive-arc-line .sparkline { width: 100%; height: 34px; }
+.archive-arc-foot {
+  display: flex; justify-content: space-between; gap: 8px;
+  font-size: var(--fs-micro); color: var(--ink-3);
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.archive-arc-foot span:last-child { font-variant-numeric: tabular-nums; }
 .archive-row {
   display: flex; flex-direction: column; gap: 7px;
 }

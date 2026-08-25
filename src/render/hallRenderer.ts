@@ -472,12 +472,29 @@ function drawCharterBanner(ctx: CanvasRenderingContext2D, L: Layout, H: number, 
 /** IDEAS #6 — the Legacy Wall: each shipped generation stands as a small plinth
  *  with a glowing model-core, era-tinted (ascension gens get a gold ring). The
  *  reset visibly ADDS to the room — prestige leaves a permanent trace. */
-function drawLegacyWall(ctx: CanvasRenderingContext2D, L: Layout, H: number, wall: { era: number; asc: boolean }[]): void {
+function drawLegacyWall(ctx: CanvasRenderingContext2D, L: Layout, H: number, wall: { era: number; asc: boolean; mag?: number }[]): void {
   const { iso, gxMin, gyMin, gyMax } = L;
   const wallH = H * 0.22;
+  // Trophy cores scale with the generation's banked Legacy, RELATIVE to the biggest
+  // on the wall — so a run that leapt ahead of the ones beside it reads as a bigger
+  // prize, and the wall becomes the shape of a career instead of eight identical
+  // ones. Relative rather than absolute because Legacy spans twenty orders of
+  // magnitude across a career; against a fixed scale every recent trophy would peg.
+  // Generations shipped before the Archive recorded a magnitude sit at the neutral
+  // middle rather than being drawn as the smallest — that would be a claim about
+  // them, and nothing was measured.
+  const mags = wall.map((w) => w.mag).filter((m): m is number => m !== undefined);
+  const magMax = mags.length ? Math.max(...mags) : 0;
+  const magMin = mags.length ? Math.min(...mags) : 0;
+  const magSpan = magMax - magMin;
+  const coreScale = (mag: number | undefined): number => {
+    if (mag === undefined || magSpan < 1e-9) return 0.9;
+    return 0.72 + 0.43 * ((mag - magMin) / magSpan);
+  };
   ctx.save();
   for (let i = 0; i < wall.length; i++) {
     const e = wall[i]!;
+    const core = coreScale(e.mag);
     // Mounted UP on the back-left wall, anchored from the FRONT (left-corner)
     // end so the newest trophies sit in the clear lower-left stretch — the top
     // corner end is covered by the hall-tag overlay on phones (QA finding).
@@ -494,18 +511,19 @@ function drawLegacyWall(ctx: CanvasRenderingContext2D, L: Layout, H: number, wal
     ctx.fillRect(p.x - s * 0.42, p.y - s * 0.55, s * 0.84, s * 0.2);
     // The model-core hologram above the plinth.
     const cy = p.y - s * 1.2;
-    const glow = ctx.createRadialGradient(p.x, cy, 0, p.x, cy, s * 0.95);
+    const r = s * 0.95 * core;
+    const glow = ctx.createRadialGradient(p.x, cy, 0, p.x, cy, r);
     glow.addColorStop(0, rgba(shade(eraCol, 2.6), 0.95));
     glow.addColorStop(1, rgba(eraCol, 0));
     ctx.fillStyle = glow;
     ctx.beginPath();
-    ctx.arc(p.x, cy, s * 0.95, 0, Math.PI * 2);
+    ctx.arc(p.x, cy, r, 0, Math.PI * 2);
     ctx.fill();
     if (e.asc) {
       ctx.strokeStyle = "rgba(255,214,10,0.9)";
       ctx.lineWidth = Math.max(1, s * 0.14);
       ctx.beginPath();
-      ctx.arc(p.x, cy, s * 0.55, 0, Math.PI * 2);
+      ctx.arc(p.x, cy, s * 0.55 * core, 0, Math.PI * 2);
       ctx.stroke();
     }
   }
