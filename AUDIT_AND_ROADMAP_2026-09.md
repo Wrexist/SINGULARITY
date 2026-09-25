@@ -269,6 +269,40 @@ sim is still byte-identical. The ones players will feel:
   - A ladder's next Trial rung can be queued while the current one runs.
   - A deep-endgame daily sponsor no longer rolls "∞ / ∞".
 
+**Round 4** switched method. Agents played the built app in a browser for a new player's
+first generation, generations 3–8, and a deep endgame. They also checked
+number formatting at the extremes, and built a guard-parity table that checks about
+60 controls across 16 panels against the store actions they fire; the table is now a
+permanent test. The round landed 28 fixes plus 3 of mine. The suite is at 1333 tests
+and the sim is still identical. Highlights:
+
+- **Overlapping Objective boosts multiplied.** A claim burst inflated Legacy Weights
+  about 8000×. Boosts on a lane now refresh: the stronger factor and the longer time.
+- **Claimed Daily and Objective boosts carry through a Ship** instead of being wiped.
+- **On a device, Premium could be granted by the web stub.** If StoreKit's bridge landed
+  after launch, Buy took the web path and Restore never asked StoreKit. The app now
+  waits for the bridge and never caches a failure.
+- **Uninvited UI waits for a sheet or moment to close.** This covers the first-Ship
+  explainer, unlock lines and toasts.
+- **The advisor's contract chip opens the fold it points into.**
+- **Ships stop announcing a model** they gave away or can't launch.
+- **Numbers read true.**
+  - A small stance tilt reads its real percent.
+  - Multipliers show two decimals.
+  - Counters never round up onto their target.
+  - Deep Mandate summaries stay short.
+  - Lab Stats Data/sec matches the bar.
+- **Recruits offer only roles that can act yet.** Product-team roles appear only after
+  the first Ship.
+
+Also for the owner:
+- **Legacy and timed boosts.** A timed boost taken while you linger at a ship-ready lab
+  still lifts that Ship's Legacy about 100×. That comes from the end-of-run economy
+  compounding, and fixing it means pricing Legacy on boost-free income or capping
+  run-over-run gain. Both change what every live player earns.
+- **Endowment Directives.** An earned Directive pick has no signal outside the
+  Reputation sheet.
+
 Also left for the owner:
 - Megaproject cycles now end at 512. Raising that to about 890 is a balance call.
 - A Reasoning Engine priced under about 0.53× Pro loses money even with marketing
