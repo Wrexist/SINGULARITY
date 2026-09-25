@@ -197,7 +197,8 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   }
 
   // Regulatory Heat cools passively when you're not buying shady data.
-  let heat = Math.max(0, state.heat - balance.heat.coolPerSec * seconds);
+  const cooled = state.heat - balance.heat.coolPerSec * seconds;
+  let heat = Math.max(0, cooled);
 
   // Phase 3 — released products earn Money (subs − serving − marketing) and may
   // add Heat. Money-based, so they keep running across a prestige reset. We run
@@ -213,7 +214,12 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     const heatDelta = Number.isFinite(sim.heatDelta) ? sim.heatDelta : 0;
     money = money.add(moneyDelta).max(Big.ZERO);
     if (moneyDelta > 0) lifetimeMoney = lifetimeMoney.add(moneyDelta);
-    heat = Math.max(0, Math.min(balance.heat.max, heat + heatDelta));
+    // Products heat the lab WHILE it cools, so the two net out over the window before
+    // the zero floor applies. Flooring the cooling first threw it away against zero and
+    // left a long window (a resume, each offline step) at heatPerSec × window: a Domain
+    // portfolio that live play keeps at 0 came back from 3 minutes away at ~11 Heat,
+    // and the resume's audit roll fined it at up to 50% odds.
+    heat = Math.max(0, Math.min(balance.heat.max, (heatDelta > 0 ? cooled : heat) + heatDelta));
   }
 
   // Staff payroll (Phase 2): an ongoing Money drain, paid out of this tick's EARNINGS
