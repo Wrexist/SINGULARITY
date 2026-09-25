@@ -348,11 +348,13 @@ export function derive(state: GameState): Derived {
   // must be applied to it directly: Legacy, ascension, reputation-data, the charter /
   // legacy-tree data perks, AND any active world-event data buff (`scraperDataMult`)
   // — that last one was previously missed, so a data-event lifted run-data but not the
-  // passive lane. Computed here, after every data multiplier is known. Identity (1.0)
-  // on a fresh run with no active events.
+  // passive lane. The same was true of Grand Challenge / Megaproject / Mandate rewards
+  // (`chMods.data`: "+30% to ALL output, forever", "+12% Data, permanently"), which
+  // reached run Data only. Computed here, after every data multiplier is known.
+  // Identity (1.0) on a fresh run with no active events or completed challenges.
   const dataPerSec = dataPerSecFlat
     .mul(scraperDataMult)
-    .mul(legacyMult).mul(ascensionMult).mul(ppMult).mul(rep.dataMult).mul(ch.dataMult).mul(lt.dataMult).mul(tr.dataMult).mul(para.dataMult).mul(doc.dataMult).mul(inst.dataMult)
+    .mul(legacyMult).mul(ascensionMult).mul(ppMult).mul(chMods.data).mul(rep.dataMult).mul(ch.dataMult).mul(lt.dataMult).mul(tr.dataMult).mul(para.dataMult).mul(doc.dataMult).mul(inst.dataMult)
     .mul(balance.difficulty.productionMult); // global production dilation (see computePerSec)
 
   let computePerSec = computeFlat.mul(computeMult);
