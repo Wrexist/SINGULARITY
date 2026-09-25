@@ -151,6 +151,8 @@ export function equipComponent(state: GameState, tier: number, slot: SlotClass, 
   const current = state.components.loadout[tier]?.[slot];
   if (id === (current ?? null)) return state;
   if (id !== null) {
+    // A tier with no racks can't hold a part (see releaseEmptyTierParts).
+    if ((state.upgrades[RACK_IDS[tier]!] ?? 0) <= 0) return state;
     const def = BY_ID.get(id);
     if (!def || def.class !== slot) return state;
     // A copy already slotted elsewhere can't be slotted twice. (Re-slotting the
@@ -164,6 +166,25 @@ export function equipComponent(state: GameState, tier: number, slot: SlotClass, 
     else next[slot] = id;
     return next;
   });
+  return { ...state, components: { ...state.components, loadout } };
+}
+
+/**
+ * Return every part fitted to a rack tier that no longer has a rack back to the
+ * inventory (the copies stay owned; they just stop counting as slotted). A tier with
+ * no racks is not shown in the Rig Bay, so a part left in it could not be removed,
+ * re-fitted or fused, and it adds nothing. Same-ref no-op when nothing is stranded.
+ */
+export function releaseEmptyTierParts(state: GameState): GameState {
+  let loadout: ComponentsState["loadout"] | null = null;
+  for (let tier = 0; tier < RACK_IDS.length; tier++) {
+    if ((state.upgrades[RACK_IDS[tier]!] ?? 0) > 0) continue;
+    const slots = state.components.loadout[tier];
+    if (!slots || !Object.values(slots).some(Boolean)) continue;
+    loadout = loadout ?? state.components.loadout.slice();
+    loadout[tier] = {};
+  }
+  if (!loadout) return state;
   return { ...state, components: { ...state.components, loadout } };
 }
 

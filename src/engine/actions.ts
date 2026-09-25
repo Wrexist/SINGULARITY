@@ -16,6 +16,7 @@ import { autoResearchEnabled, researchCostMult } from "./reputation";
 import { charterRule } from "./charter";
 import { isRackId, floorFull, evictableRackFor } from "./hall";
 import { typeDef } from "./products";
+import { releaseEmptyTierParts } from "./components";
 import type { ActiveModifier, Derived, GameState } from "./types";
 
 const clampHeat = (h: number) => Math.max(0, Math.min(balance.heat.max, h));
@@ -126,11 +127,13 @@ export function buyUpgrade(state: GameState, id: string): GameState {
   const upgrades = { ...state.upgrades, [id]: owned + 1 };
   // Full floor + a higher-tier rack → upgrade in place: evict the lowest
   // lower-tier rack to free its slot (canBuyUpgrade guaranteed one exists).
+  let emptiedTier = false;
   if (isRackId(id) && floorFull(state)) {
     const evict = evictableRackFor(state, id)!;
     upgrades[evict] = (upgrades[evict] ?? 0) - 1;
+    emptiedTier = upgrades[evict] <= 0;
   }
-  return {
+  const next: GameState = {
     ...state,
     resources: {
       ...state.resources,
@@ -140,6 +143,9 @@ export function buyUpgrade(state: GameState, id: string): GameState {
     heat,
     suspicion,
   };
+  // That eviction took a tier's LAST rack: the Rig Bay stops showing the tier, so
+  // its fitted parts go back to the inventory rather than being stranded there.
+  return emptiedTier ? releaseEmptyTierParts(next) : next;
 }
 
 /**

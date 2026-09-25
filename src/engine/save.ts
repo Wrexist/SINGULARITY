@@ -22,6 +22,7 @@ import { challenges as CHALLENGES } from "./balance/challenges";
 import { objectives as OBJECTIVES } from "./balance/objectives";
 import { automation as AUTOMATION } from "./balance/automation";
 import { freshComponents } from "./components";
+import { RACK_IDS } from "./hall";
 import { laneMet } from "./challenges";
 import type { ChallengeState } from "./types";
 import type { ActiveModifier, ComponentsState, DraftModel, Employee, GameState, LifetimeStats, ModifierTarget, ProductsState, ProductState, ShipLogEntry, UpgradeState } from "./types";
@@ -729,6 +730,9 @@ export function deserialize(json: string): GameState {
       ? (loadedProducts as ProductsState).milestones.filter((m): m is string => typeof m === "string").slice(0, MAX_SAVED_IDS)
       : [],
   };
+  // Hoisted: the Rig Bay sanitizer needs the rack counts (a tier with no racks
+  // can't hold a fitted part).
+  const upgrades = sanitizeUpgrades(raw.upgrades);
   return {
     version: SAVE_VERSION,
     resources: {
@@ -736,7 +740,7 @@ export function deserialize(json: string): GameState {
       data: safeBig(res.data),
       money: safeBig(res.money),
     },
-    upgrades: sanitizeUpgrades(raw.upgrades),
+    upgrades,
     // research: known node ids, each at most once. A dup (e.g. ["backprop","backprop"])
     // would inflate state.research.length, which tick() accrues into peakResearchCount
     // and any reward derived from it — so dedupe + known-id filter like contracts/perks.
@@ -808,7 +812,7 @@ export function deserialize(json: string): GameState {
     // KNOWN legacy-perk ids, deduped — a dupe would apply the lane bias twice for free
     // (legacyTreeMods sums per entry and never checks prereqs on load).
     legacyInvestments: dedupeKnownIds(raw.legacyInvestments, LEGACY_IDS),
-    components: sanitizeComponents(raw.components, contracts.completed, achievements),
+    components: sanitizeComponents(raw.components, contracts.completed, achievements, upgrades),
     rivalOps: sanitizeRivalOps(raw.rivalOps),
     // Legacy Wall records are display-only history, but still validated per-entry
     // (sanitizer policy: filter, don't wipe) and capped like prestige() caps them.
@@ -964,9 +968,12 @@ function sanitizeSponsor(s: unknown): GameState["sponsor"] {
 /** Rig Bay components are untrusted: keep KNOWN ids with sane integer counts, and
  *  a loadout whose every slot holds a class-matching, actually-owned id — equips
  *  beyond the owned copy count are dropped (a crafted save can't run one GPU in
- *  three tiers), per-entry like every other sanitizer here. */
+ *  three tiers), per-entry like every other sanitizer here. A part fitted to a tier
+ *  with no racks is unslotted too (the copy stays owned): an in-place rack upgrade
+ *  that replaced a tier's last rack used to strand it there, where the Rig Bay
+ *  (which only shows tiers with racks) could never reach it again. */
 const COMPONENT_BY_ID = new Map(COMPONENTS.catalog.map((d) => [d.id, d]));
-function sanitizeComponents(c: unknown, completedContracts: string[], achievements: string[]): ComponentsState {
+function sanitizeComponents(c: unknown, completedContracts: string[], achievements: string[], upgrades: Record<string, number>): ComponentsState {
   const out = freshComponents();
   const o = c as Partial<ComponentsState> | null;
   if (!o || typeof o !== "object") return out;
@@ -986,6 +993,7 @@ function sanitizeComponents(c: unknown, completedContracts: string[], achievemen
   if (Array.isArray(o.loadout)) {
     const used: Record<string, number> = {};
     for (let tier = 0; tier < SLOTS_BY_TIER.length; tier++) {
+      if ((upgrades[RACK_IDS[tier]!] ?? 0) <= 0) continue; // no racks → nothing to fit
       const slots = (o.loadout[tier] ?? {}) as Partial<Record<SlotClass, unknown>>;
       for (const slot of SLOTS_BY_TIER[tier]!) {
         const id = slots[slot];
