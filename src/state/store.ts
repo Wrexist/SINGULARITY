@@ -281,6 +281,32 @@ function seedProductKey(game: GameState): void {
   }
 }
 
+/**
+ * Decode a pasted backup, or null when the text doesn't hold one: a base64 backup
+ * (what exportSave writes) first, then a raw JSON save. It must decode to a save
+ * OBJECT — one carrying `version` (every save since v1) or `resources` (the
+ * pre-versioning shape). deserialize() degrades ANY parseable JSON to a fresh lab,
+ * which is right for a corrupt autosave (filter, don't wipe) but wrong for a restore:
+ * a pasted number or "null" used to preview as a valid backup of a brand-new game,
+ * and one tap on Restore replaced the player's progress with it.
+ */
+function decodeBackup(blob: string): GameState | null {
+  const raw = blob.trim();
+  if (!raw) return null;
+  const candidates: string[] = [];
+  try { candidates.push(decodeURIComponent(escape(atob(raw)))); } catch { /* not base64 */ }
+  candidates.push(raw);
+  for (const json of candidates) {
+    try {
+      const parsed: unknown = JSON.parse(json);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) continue;
+      if (!("version" in parsed) && !("resources" in parsed)) continue;
+      return deserialize(json); // migrates + sanitizes
+    } catch { /* try the next candidate */ }
+  }
+  return null;
+}
+
 /** The game as it should be WRITTEN anywhere (autosave or exported backup): the
  *  player's own training intensity, never the temporary "save for this" one. Both a
  *  relaunch and an import start with no pin, so nothing would ever restore it. */
@@ -878,28 +904,22 @@ export const useGame = create<GameStore>((set, get) => ({
   importSave: (blob: string) => {
     // Imported game = different world; drop any queued notices about the old one.
     pendingNotices = [];
-    const raw = blob.trim();
-    if (!raw) return false;
-    // Accept either a base64 backup (preferred) or a raw JSON save.
-    const candidates: string[] = [];
-    try { candidates.push(decodeURIComponent(escape(atob(raw)))); } catch { /* not base64 */ }
-    candidates.push(raw);
-    for (const json of candidates) {
-      try {
-        let game = deserialize(json); // throws on bad shape; migrates + sanitizes
-        // Mirror init()'s post-load normalization so an imported save matches the
-        // runtime shape (legacy role-counts → people; ID counters seeded so new
-        // products/hires don't collide with existing prod-N / emp-N ids).
-        game = migrateStaffCounts(game);
-        seedProductKey(game);
-        seedEmpKey(game);
-        set({ game, offline: null, event: null, notice: null, worldEvent: null, claimBurst: 0, candidates: null, savingFor: null });
-        localStorage.setItem(SAVE_KEY, serialize(game));
-        localStorage.setItem(TIME_KEY, String(now()));
-        return true;
-      } catch { /* try the next candidate */ }
+    const decoded = decodeBackup(blob);
+    if (!decoded) return false;
+    try {
+      // Mirror init()'s post-load normalization so an imported save matches the
+      // runtime shape (legacy role-counts → people; ID counters seeded so new
+      // products/hires don't collide with existing prod-N / emp-N ids).
+      const game = migrateStaffCounts(decoded);
+      seedProductKey(game);
+      seedEmpKey(game);
+      set({ game, offline: null, event: null, notice: null, worldEvent: null, claimBurst: 0, candidates: null, savingFor: null });
+      localStorage.setItem(SAVE_KEY, serialize(game));
+      localStorage.setItem(TIME_KEY, String(now()));
+      return true;
+    } catch {
+      return false;
     }
-    return false;
   },
 }));
 
@@ -916,24 +936,15 @@ export interface BackupPreview {
 /** Decode + sanitize a backup without applying it. Same decode ladder as
  *  importSave (base64 first, then raw JSON); null = not a valid backup. */
 export function previewBackup(blob: string): BackupPreview | null {
-  const raw = blob.trim();
-  if (!raw) return null;
-  const candidates: string[] = [];
-  try { candidates.push(decodeURIComponent(escape(atob(raw)))); } catch { /* not base64 */ }
-  candidates.push(raw);
-  for (const json of candidates) {
-    try {
-      const g = deserialize(json);
-      return {
-        ships: g.prestige.ships,
-        era: currentEra(g),
-        money: g.resources.money,
-        playtimeSec: g.stats.playtimeSec,
-        achievements: g.achievements.length,
-      };
-    } catch { /* try the next candidate */ }
-  }
-  return null;
+  const g = decodeBackup(blob);
+  if (!g) return null;
+  return {
+    ships: g.prestige.ships,
+    era: currentEra(g),
+    money: g.resources.money,
+    playtimeSec: g.stats.playtimeSec,
+    achievements: g.achievements.length,
+  };
 }
 
 // Debug/test handle (used by the screenshot harness; harmless in prod).
