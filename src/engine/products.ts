@@ -365,7 +365,9 @@ export function maybeProductEvent(
     mau,
     // Bound paid by the CAPPED mau (not the uncapped growth) so paid ≤ mau always holds.
     paid: Math.max(0, Math.min(p.paid * (ev.paidMult ?? 1), mau)),
-    buzzSec: ev.buzz ? B.buzzDurationSec : p.buzzSec,
+    // Arm the standard wave, but never cut a longer one short (an industry-hype wave on
+    // a trendy type runs up to 1.5× as long) — the same max the hype event itself uses.
+    buzzSec: ev.buzz ? Math.max(p.buzzSec, B.buzzDurationSec) : p.buzzSec,
   };
   // Clamp like every other Heat write — [0, max] both bounds — so an event at near-max
   // Heat can't push it over the ceiling, and a (future) cooling event can't drive it
@@ -496,7 +498,7 @@ export function pushVersion(state: GameState, id: string): GameState {
   const c = versionCostFor(state, p.version);
   const active = state.products.active.map((x) =>
     x.id === id
-      ? { ...x, version: x.version + 1, quality: state.products.frontier, buzzSec: B.buzzDurationSec }
+      ? { ...x, version: x.version + 1, quality: state.products.frontier, buzzSec: Math.max(x.buzzSec, B.buzzDurationSec) }
       : x,
   );
   return {
@@ -681,7 +683,7 @@ export function advanceUpgrades(
         ...p,
         version: u.targetVersion,
         quality: Math.max(p.quality, ps.frontier),
-        buzzSec: B.buzzDurationSec,
+        buzzSec: Math.max(p.buzzSec, B.buzzDurationSec), // keep a longer hype wave running
         upgrade: null,
       };
     }
