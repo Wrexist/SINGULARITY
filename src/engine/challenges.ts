@@ -230,8 +230,15 @@ export function megaprojectMult(state: GameState): Big {
   return Big.of(1 + sum);
 }
 
+/** Every cycle the loop allows is complete (level == maxLevel): nothing left to fund. */
+export function megaprojectMaxed(state: GameState): boolean {
+  return state.megaprojects.level >= M.maxLevel;
+}
+
 export interface MegaprojectView {
   level: number;
+  /** The final cycle is complete — the card shows a finished state, not a Fund button. */
+  maxed: boolean;
   funded: { compute: Big; data: Big; money: Big };
   cost: { compute: Big; data: Big; money: Big };
   done: { compute: boolean; data: boolean; money: boolean };
@@ -247,6 +254,7 @@ export function megaprojectView(state: GameState): MegaprojectView {
   const frac = (a: Big, b: Big) => (b.gt(0) ? Math.max(0, Math.min(1, a.div(b).toNumber())) : 1);
   return {
     level,
+    maxed: megaprojectMaxed(state),
     funded: f,
     cost,
     done: { compute: laneMet(f.compute, cost.compute), data: laneMet(f.data, cost.data), money: laneMet(f.money, cost.money) },
@@ -256,14 +264,16 @@ export function megaprojectView(state: GameState): MegaprojectView {
 }
 
 export function canFundMegaproject(state: GameState): boolean {
-  if (!megaprojectUnlocked(state)) return false;
+  if (!megaprojectUnlocked(state) || megaprojectMaxed(state)) return false;
   return canContribute(state.megaprojects.funded, megaprojectCost(state.megaprojects.level), state.resources);
 }
 
 /** Contribute every affordable resource toward the current cycle; completing a cycle bumps
  *  the level and resets funding for the (more expensive) next one. Pure. */
 export function fundMegaproject(state: GameState): { state: GameState; justCompleted: boolean } {
-  if (!megaprojectUnlocked(state)) return { state, justCompleted: false };
+  // Past the last cycle nothing can complete, so take nothing (the loader clamps the
+  // level to the same maxLevel — a cycle minted past it would vanish on reload).
+  if (!megaprojectUnlocked(state) || megaprojectMaxed(state)) return { state, justCompleted: false };
   const cur = state.megaprojects.funded;
   const cost = megaprojectCost(state.megaprojects.level);
   const r = state.resources;

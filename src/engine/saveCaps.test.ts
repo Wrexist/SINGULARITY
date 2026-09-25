@@ -2,6 +2,9 @@ import { describe, it, expect } from "vitest";
 import { createInitialState } from "./state";
 import { serialize, deserialize } from "./save";
 import { tick } from "./tick";
+import { canFundMegaproject, fundMegaproject, megaprojectView, pickMandate } from "./challenges";
+import { challenges as C } from "./balance/challenges";
+import { Big } from "./math/Big";
 import type { ActiveModifier, GameState } from "./types";
 
 /**
@@ -36,5 +39,49 @@ describe("active modifiers: the loader keeps what tick() keeps", () => {
     const loaded = new Set(roundTrip(s).modifiers.map((m) => m.id));
     expect(loaded.size).toBe(ticked.size);
     expect([...loaded].every((id) => ticked.has(id))).toBe(true);
+  });
+});
+
+describe("megaproject level: the runtime stops where the loader does", () => {
+  const MAX = C.megaproject.maxLevel;
+  const rich = Big.of("1e300");
+  /** Every Grand Challenge funded to cost (the sanitizer recomputes completion from
+   *  funding), at `level` completed cycles with every mandate taken, rich enough to
+   *  complete any cycle in one tap. */
+  const atLevel = (level: number): GameState => {
+    const s = createInitialState();
+    const funded = Object.fromEntries(C.list.map((c) => [c.id, {
+      compute: Big.of(c.cost.compute), data: Big.of(c.cost.data), money: Big.of(c.cost.money),
+    }]));
+    return {
+      ...s,
+      resources: { compute: rich, data: rich, money: rich },
+      challenges: { ...s.challenges, funded, completed: C.list.map((c) => c.id) },
+      megaprojects: { ...s.megaprojects, level, mandates: Array.from({ length: level }, () => "mand_compute") },
+    };
+  };
+
+  it("the cap is a real ceiling: no cycle can be funded past it", () => {
+    const below = atLevel(MAX - 1);
+    expect(canFundMegaproject(below)).toBe(true);
+    const done = fundMegaproject(below);
+    expect(done.justCompleted).toBe(true);
+    expect(done.state.megaprojects.level).toBe(MAX);
+
+    expect(megaprojectView(below).maxed).toBe(false);
+
+    const top = pickMandate(done.state, "mand_data");
+    expect(megaprojectView(top).maxed).toBe(true); // the card shows a finished state
+    expect(canFundMegaproject(top)).toBe(false);
+    const again = fundMegaproject(top);
+    expect(again.state).toBe(top); // no level, and no resources taken toward a cycle that can't complete
+    expect(again.justCompleted).toBe(false);
+  });
+
+  it("a lab at the ceiling reloads with every cycle and mandate intact", () => {
+    const top = pickMandate(fundMegaproject(atLevel(MAX - 1)).state, "mand_data");
+    const back = roundTrip(top);
+    expect(back.megaprojects.level).toBe(MAX);
+    expect(back.megaprojects.mandates).toEqual(top.megaprojects.mandates);
   });
 });

@@ -122,19 +122,20 @@ export function GrandChallengesPanel({ game, onFund, onChooseFork, onFundMegapro
       {/* Megaprojects II — the repeatable loop, once every challenge is done. Escalating
           cost, a bounded diminishing all-lane bonus, so the endgame never runs dry. */}
       {mega && (
-        <div className="challenge-card mega-card">
+        <div className={`challenge-card mega-card${mega.maxed ? " complete" : ""}`}>
           <div className="challenge-top">
             <span className="challenge-icon" aria-hidden="true">{iconFor(C.megaproject.icon, 22)}</span>
             <div className="challenge-titles">
-              <span className="challenge-name">{C.megaproject.name} <span className="mega-level">· cycle {mega.level + 1}</span></span>
+              {/* Once the final cycle is done there is no "next" cycle to number. */}
+              <span className="challenge-name">{C.megaproject.name} <span className="mega-level">· cycle {mega.maxed ? mega.level : mega.level + 1}</span></span>
               <span className="challenge-blurb">{C.megaproject.blurb}</span>
             </div>
           </div>
           <div className="challenge-bar">
-            <div className="challenge-fill" style={{ width: `${Math.round(mega.progress * 100)}%` }} />
-            <span className={`challenge-bar-label${mega.progress < 0.5 ? " on-track" : ""}`}>{Math.round(mega.progress * 100)}%</span>
+            <div className="challenge-fill" style={{ width: `${mega.maxed ? 100 : Math.round(mega.progress * 100)}%` }} />
+            <span className={`challenge-bar-label${!mega.maxed && mega.progress < 0.5 ? " on-track" : ""}`}>{mega.maxed ? "Complete ✓" : `${Math.round(mega.progress * 100)}%`}</span>
           </div>
-          <div className="challenge-res">
+          {!mega.maxed && <div className="challenge-res">
             {([["compute", mega.funded.compute, mega.cost.compute, mega.done.compute] as const,
                ["data", mega.funded.data, mega.cost.data, mega.done.data] as const,
                ["money", mega.funded.money, mega.cost.money, mega.done.money] as const]).map(([key, funded, cost, done]) => (
@@ -144,12 +145,16 @@ export function GrandChallengesPanel({ game, onFund, onChooseFork, onFundMegapro
                 {done && <span className="challenge-pledge-check">✓</span>}
               </span>
             ))}
-          </div>
+          </div>}
           <div className="challenge-foot">
             <span className="challenge-reward"><GiftIcon size={13} /> +{mega.bonusPct.toFixed(1)}% to ALL output {mega.level > 0 ? "(held)" : "on first cycle"}</span>
-            <button className="btn challenge-fund" disabled={!canMega} onClick={(e) => onFundMegaproject({ x: e.clientX, y: e.clientY })}>
-              {canMega ? "Fund" : "Need output"}
-            </button>
+            {mega.maxed ? (
+              <span className="challenge-active">Active</span>
+            ) : (
+              <button className="btn challenge-fund" disabled={!canMega} onClick={(e) => onFundMegaproject({ x: e.clientX, y: e.clientY })}>
+                {canMega ? "Fund" : "Need output"}
+              </button>
+            )}
           </div>
 
           {/* MANDATES — what makes cycle 30 worth as much as cycle 5. The bounded

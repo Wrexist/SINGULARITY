@@ -177,6 +177,10 @@ export const challenges = {
     /** Level-0 funding cost, per resource; ×growth for each completed cycle. */
     baseCost: { compute: 5e14, data: 3e14, money: 5e14 },
     growth: 2.2,
+    /** Last cycle that can be completed. The save loader clamps a loaded level to this
+     *  same value (it bounds the Math.pow in the cost and the Mandate list derive walks),
+     *  so funding stops here instead of minting cycles a reload would delete. */
+    maxLevel: 512,
     /** Per-cycle bonus magnitude, decayed by decay^level. Lifetime bonus converges. */
     baseMag: 0.05,
     decay: 0.85,

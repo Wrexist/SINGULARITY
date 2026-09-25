@@ -226,8 +226,9 @@ function sanitizeChannelMix(m: unknown): Record<string, number> {
 const MAX_SAVED_PRODUCTS = 64;
 const MAX_SAVED_EMPLOYEES = 512;
 const MAX_SAVED_IDS = 512;
-/** Ceiling on megaproject cycles — see sanitizeMegaprojects. */
-const MAX_MEGA_LEVEL = 512;
+/** Ceiling on megaproject cycles — see sanitizeMegaprojects. The SAME value the runtime
+ *  stops funding at (canFundMegaproject), so a reload never deletes an earned cycle. */
+const MAX_MEGA_LEVEL = CHALLENGES.megaproject.maxLevel;
 
 /** Drafts are untrusted; keep only well-formed entries. Quality is clamped to the
  *  same product cap loaded products get — an unclamped draft launches into a live
@@ -566,9 +567,10 @@ function sanitizeMegaprojects(raw: unknown, completedChallenges: string[]): Game
   // checks megaprojectUnlocked), so a level on a save that has completed none was
   // never earned — and each level mints a permanent Mandate pick. Drop it.
   const unlocked = CHALLENGES.list.every((c) => completedChallenges.includes(c.id));
-  // Generous ceiling, far above any reachable value, for the same reason the other
-  // MAX_SAVED_* caps exist: `level` drives Math.pow (which overflows to Infinity and
-  // then poisons the cost clamp) and the number of unspent Mandate picks.
+  // Bounded for the same reason the other MAX_SAVED_* caps exist: `level` drives
+  // Math.pow (which overflows to Infinity and then poisons the cost clamp) and the
+  // number of unspent Mandate picks. Deep play DOES reach it, so the runtime enforces
+  // the same maxLevel (fundMegaproject) — this clamp only ever trims a crafted save.
   const rawLevel = Math.max(0, Math.floor(Number(r.level) || 0));
   const level = unlocked ? Math.min(rawLevel, MAX_MEGA_LEVEL) : 0;
   const M = CHALLENGES.megaproject;
@@ -580,8 +582,9 @@ function sanitizeMegaprojects(raw: unknown, completedChallenges: string[]): Game
   // Bound the array BEFORE filtering it: mandateMods walks this list on every
   // derive() (10Hz), so an oversized pasted save would cost real frames — the same
   // "a crafted save bricks the install" class the 2026-08 save-limits pass fixed.
+  // Bounded by the level cap: mandates never outnumber completed cycles.
   const rawMandates = Array.isArray((r as { mandates?: unknown }).mandates)
-    ? ((r as { mandates: unknown[] }).mandates).slice(0, MAX_SAVED_IDS)
+    ? ((r as { mandates: unknown[] }).mandates).slice(0, MAX_MEGA_LEVEL)
     : [];
   const mandates = rawMandates
     .filter((c): c is string => typeof c === "string" && MEGA_MANDATE_IDS.has(c))
