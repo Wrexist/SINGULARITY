@@ -204,11 +204,48 @@ fixes that change what live players see:
   - A second away-window folds into an open recap.
   - The achievements badge re-anchors after a reset or import.
 
+**Round 2** ran on the fixed code. Six area agents each had to prove a bug with a
+failing test before fixing it, in an isolated worktree. They landed 29 fixes and 2
+test suites, and the suite grew to 1111 tests. The sim stayed byte-identical.
+Highlights:
+
+- **Trials are queue-only** (save v39, `queuedTrial`). A Trial could start any time
+  before the run was shippable. A player could play a whole run unconstrained, stop
+  one node short, Attempt, buy that node and bank the reward after zero seconds of
+  the handicap. Even starting at zero research let a player bank a Legacy-on
+  stockpile first. Now you only queue ("Next run" → "Queued ✓"), and the Ship
+  starts the Trial on the untouched fresh lab. That also covers Research Director
+  owners, who could never start one before.
+- **The stance holds.**
+  - Buying the Director mid-run no longer reopens a closed charter/stance window.
+  - Research bought by hand closes the window even inside the Director's grace.
+  - A declared stance survives float drift at the 0.4 line.
+  - The card shows the lab's real tilt.
+  - A bare Safety declaration no longer pays the +3-Rep safety-ship bonus.
+- **Offline and resume.**
+  - Offline and long windows keep compute-bound run income.
+  - "Save for this" survives an app switch and a buff lapsing mid-window.
+  - The cold launch writes the caught-up save before it stamps lastSeen.
+- **Hostile saves.** These can no longer freeze launch or wipe products:
+  - a flood of unknown feature ids;
+  - `__proto__` product ids;
+  - an unreadable frontier;
+  - zero or negative buff factors.
+  Restore accepts only a real save. The round-trip fuzzer walks 30–55 real
+  generations, and fixtures from 11 shipped save versions (v11 to v37) load cleanly.
+- **Hall and shell.**
+  - Rack taps hit the box you see.
+  - The Generation Report describes the run that was shipped.
+  - An AGI ascension gets its own headline.
+  - The recap waits for an open sheet.
+
 Also left for the owner:
 - Megaproject cycles now end at 512. Raising that to about 890 is a balance call.
 - A Reasoning Engine priced under about 0.53× Pro loses money even with marketing
   at 0.
 - Staff lane multipliers still grow steeply with very large trained crews.
+- The first-ship explainer can open over an open sheet. It is visible and
+  dismissable, and gating it needs a latch, because its own Portal counts as a sheet.
 
 Deferred, owner's call:
 - **Ship-mode rebalance.** Hard's product penalty is wiped out by the next version push,
