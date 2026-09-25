@@ -418,7 +418,10 @@ export const useGame = create<GameStore>((set, get) => ({
       // "Save for this" across a big window (a resume from suspend): the eased
       // intensity must not govern hours of catch-up. Tick only until the bank covers
       // the pinned node, buy it and put the slider back, then run the rest normally;
-      // if the window can't get there, let go of the pin first.
+      // if it can never get there (no Compute production), let go of the pin first.
+      // A window that simply ends before the bank arrives keeps the pin, exactly as
+      // the app left open would: letting go there cancelled the save on every short
+      // app switch and spent what it had banked on full-size runs.
       let start = s.game;
       let remainingMs = elapsedMs;
       let pinDone = false;
@@ -431,13 +434,15 @@ export const useGame = create<GameStore>((set, get) => ({
           const cps = derive(start).computePerSec;
           needMs = short.lte(0) ? 0 : cps.gt(0) ? short.div(cps).toNumber() * 1000 + 250 : Infinity;
         }
-        if (Number.isFinite(needMs) && needMs < elapsedMs) {
-          start = tick(start, needMs);
-          remainingMs -= needMs;
-          if (canBuyResearch(start, pin.id)) start = buyResearchByHand(start, pin.id);
+        if (!Number.isFinite(needMs) || needMs < elapsedMs) {
+          if (Number.isFinite(needMs)) {
+            start = tick(start, needMs);
+            remainingMs -= needMs;
+            if (canBuyResearch(start, pin.id)) start = buyResearchByHand(start, pin.id);
+          }
+          start = { ...start, computeFocus: pin.prevFocus };
+          pinDone = true;
         }
-        start = { ...start, computeFocus: pin.prevFocus };
-        pinDone = true;
       }
       let game = tick(start, remainingMs);
       const secs = elapsedMs / 1000;
