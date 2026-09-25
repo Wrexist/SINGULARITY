@@ -6,10 +6,14 @@ import { advisorItems } from "./advisor";
 import { balance } from "./balance/config";
 import { Big } from "./math/Big";
 
-/** A state with auto-train owned (so the Compute bank has a ceiling) at a given focus. */
+/** A state with auto-train owned (so the Compute bank has a ceiling) at a given focus.
+ *  A maxed Batch Scheduler makes its runs COMPUTE-bound (a ~2.4s run refills less than
+ *  the next one costs) — the regime where the ceiling binds. With longer runs the bank
+ *  climbs past it on its own; bankCeiling.test.ts covers that case. */
 function autoTrainingAt(focus: number) {
   const s = createInitialState();
   s.upgrades["auto_train"] = 1; // enables the autoTrain effect in derive
+  s.upgrades["batching"] = 12;
   s.computeFocus = focus;
   return s;
 }

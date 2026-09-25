@@ -1,6 +1,6 @@
 import type { Derived, GameState } from "../engine/types";
 import { fmt, fmtMoney } from "./format";
-import { trainingIntensity, runYieldAt } from "../engine/derive";
+import { trainingIntensity, runYieldAt, computeBankCeiling } from "../engine/derive";
 import { useEffect, useRef } from "react";
 import { burst, floatText } from "./fx";
 import { RepeatIcon } from "./Icons";
@@ -50,10 +50,13 @@ export function TrainingDock({ game, derived, onStart, onClaim, onSetFocus }: Pr
   // auto-train exists (before that the player paces runs by hand).
   const focus = game.computeFocus;
   const runSizePct = Math.round(trainingIntensity(focus) * 100);
+  // "banks up to" only while a ceiling really binds: once runs last longer than their
+  // Compute takes to produce, the bank climbs past it on its own (see derive.ts).
+  const ceiling = computeBankCeiling(game, derived);
   const focusLabel =
     focus === 0
       ? `Holding — light ${runSizePct}% runs, Compute banks freely`
-      : `${Math.round(focus * 100)}% · ${runSizePct}%-size runs · banks up to ${fmt(derived.runComputeCost.div(focus))}`;
+      : `${Math.round(focus * 100)}% · ${runSizePct}%-size runs${ceiling ? ` · banks up to ${fmt(ceiling)}` : ""}`;
 
   // Coach the very first run, then get out of the way (clean-to-play).
   const firstRun = game.lifetimeMoney.eq(0) && game.prestige.ships === 0;

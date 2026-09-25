@@ -435,24 +435,54 @@ export function runYieldAt(state: GameState, d: Derived, focus: number | undefin
 /**
  * The ceiling the Compute bank floats to while auto-train is running. A fresh run
  * fires — draining `runComputeCost` — the instant Compute reaches `runComputeCost /
- * focus` (see tick.ts's `autoTrainReady`), so under auto-train the bank can never
- * climb past that point. Anything costing more is unreachable by waiting: the player
- * must ease training intensity (a lower focus raises the ceiling) or grow Compute
- * production. Returns null when the bank is unbounded — auto-train off, or focus 0,
- * which halts training so Compute accrues freely. Pure; the honest input to the
- * research/upgrade ETAs (a raw `cost / computePerSec` estimate silently lies here,
- * promising a countdown for a node the drained bank will never reach).
+ * focus` (see tick.ts's `autoTrainReady`). While runs are COMPUTE-bound (a run's own
+ * duration refills less than the next one costs) every refill is drained again, so
+ * the bank can never climb past that point: anything costing more is unreachable by
+ * waiting, and the player must ease training intensity (a lower focus raises the
+ * ceiling) or grow Compute production.
+ *
+ * Returns null when the bank is unbounded: auto-train off, focus 0 (training halts,
+ * so Compute accrues freely), or DURATION-bound runs. Once a run lasts longer than
+ * the Compute it costs takes to produce (the base 5s run against a 2s cost), each
+ * cycle banks the surplus and the bank climbs without limit, just slower than
+ * production (see computeBankEtaSecs). Pure; the honest input to research walls.
  */
 export function computeBankCeiling(state: GameState, d: Derived): Big | null {
   if (!d.autoTrain || !Number.isFinite(state.computeFocus) || state.computeFocus <= 0) return null;
+  if (d.computePerSec.mul(d.runDurationSec).gt(d.runComputeCost)) return null;
   return d.runComputeCost.div(state.computeFocus);
 }
 
 /**
+ * Seconds for the Compute bank to climb from `have` to `target` under the current
+ * training settings, or null when waiting never gets there (compute-bound runs hold it
+ * under computeBankCeiling). Below the level where auto-train fires the next run
+ * (runCost / focus) nothing drains it, so it climbs at full production; above it,
+ * duration-bound runs fire back to back and it climbs only by the surplus
+ * (production − runCost / runDuration). A raw `cost / computePerSec` ignores that
+ * drain and promised countdowns up to many times too short. Pure; display only.
+ */
+export function computeBankEtaSecs(state: GameState, d: Derived, have: Big, target: Big): number | null {
+  if (have.gte(target)) return 0;
+  const cps = d.computePerSec;
+  if (cps.lte(0)) return null;
+  if (!d.autoTrain || !Number.isFinite(state.computeFocus) || state.computeFocus <= 0) {
+    return target.sub(have).div(cps).toNumber();
+  }
+  const firesAt = d.runComputeCost.div(state.computeFocus);
+  if (target.lte(firesAt)) return target.sub(have).div(cps).toNumber();
+  const surplus = cps.sub(d.runComputeCost.div(d.runDurationSec));
+  if (surplus.lte(0)) return null;
+  const toFire = firesAt.gt(have) ? firesAt.sub(have).div(cps).toNumber() : 0;
+  return toFire + target.sub(have.max(firesAt)).div(surplus).toNumber();
+}
+
+/**
  * "Save for this": the highest training intensity (in the slider's 5% steps, never
- * above the current one) whose auto-train bank ceiling clears `computeCost` with a
- * little headroom — i.e. how far to ease the slider so a Compute-walled node becomes
- * reachable by waiting. 0 (training held, bank unbounded) when no running intensity
+ * above the current one) whose auto-train firing level (runCost / focus — below it no
+ * run fires, so the bank climbs at full production) clears `computeCost` with a
+ * little headroom — i.e. how far to ease the slider so a Compute-walled node is
+ * reached at full speed. 0 (training held, bank unbounded) when no running intensity
  * gets there. Returns the current focus when it already clears. Pure.
  */
 export function focusToBank(state: GameState, d: Derived, computeCost: Big): number {

@@ -14,12 +14,16 @@ export function effRate(d: Derived, resource: "compute" | "data" | "money"): Big
   return d.passiveMoneyPerSec.add(perRun(d.runMoneyYield));
 }
 
+/** A seconds-to-afford figure worth showing: finite, positive and under ~99 days; else null. */
+export function shownEta(secs: number | null): number | null {
+  if (secs === null || !Number.isFinite(secs) || secs <= 0 || secs > 3600 * 24 * 99) return null;
+  return secs;
+}
+
 /** Seconds-to-afford for one resource, or null when affordable / unknowable / too far. */
 export function etaSecs(cost: Big, have: Big, rate: Big): number | null {
   if (have.gte(cost) || rate.lte(Big.ZERO)) return null;
-  const secs = cost.sub(have).div(rate).toNumber();
-  if (!Number.isFinite(secs) || secs <= 0 || secs > 3600 * 24 * 99) return null;
-  return secs;
+  return shownEta(cost.sub(have).div(rate).toNumber());
 }
 
 /** "~3m" time-to-afford, or null. */

@@ -267,7 +267,7 @@ export function canBuyResearch(state: GameState, id: string): boolean {
  */
 export function researchStalled(state: GameState, d: Derived): boolean {
   const ceiling = computeBankCeiling(state, d);
-  if (ceiling === null) return false; // unbounded bank (auto-train off / focus 0) → never stalled
+  if (ceiling === null) return false; // unbounded bank (auto-train off / focus 0 / duration-bound runs) → never stalled
   const avail = researchTree(state).filter((def) => researchAvailable(state, def.id));
   if (avail.length === 0) return false; // tree done / next wave locked on prereqs → not a stall
   let anyWalled = false;

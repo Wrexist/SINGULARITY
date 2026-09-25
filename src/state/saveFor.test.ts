@@ -21,7 +21,9 @@ function walledLab(): GameState {
   const s = createInitialState();
   const prereqs = ["backprop", "curated_data", "mixed_precision", "data_aug", "distributed", "caching", "distillation"];
   s.research = prereqs;
-  s.upgrades = { rack_basic: 20, auto_claim: 1, auto_train: 1 };
+  // A maxed Batch Scheduler on top of caching + distillation makes the runs
+  // compute-bound, so the full-intensity bank ceiling genuinely binds.
+  s.upgrades = { rack_basic: 20, auto_claim: 1, auto_train: 1, batching: 12 };
   s.computeFocus = 1;
   s.resources = { compute: Big.ZERO, data: Big.of(1e12), money: Big.of(1e9) };
   return s;

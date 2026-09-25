@@ -2,11 +2,11 @@ import { useRef, useState } from "react";
 import { balance, type ResearchDef } from "../engine/balance/config";
 import { researchTree, unlockedEpochs, isEpochNode } from "../engine/researchTree";
 import { canBuyResearch, researchAvailable, researchLockedOut, researchCost } from "../engine/actions";
-import { computeBankCeiling } from "../engine/derive";
+import { computeBankCeiling, computeBankEtaSecs } from "../engine/derive";
 import { canBuyPreprint, preprintCost, preprintTitle } from "../engine/preprints";
 import { Big } from "../engine/math/Big";
 import type { Derived, GameState } from "../engine/types";
-import { fmt, fmtDur, etaSecs, effRate } from "./format";
+import { fmt, fmtDur, etaSecs, effRate, shownEta } from "./format";
 import { burst, punch } from "./fx";
 import { CheckIcon, ChevronIcon, LockIcon } from "./Icons";
 import { ResearchRingIcon, EffectPill } from "./effectVisual";
@@ -79,7 +79,8 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint, saving
     const c = researchCost(game, def); // discounted by Research Fellowship if owned
     if (def.cost.compute > 0 && computeWalled(c.compute)) return null; // unreachable until intensity eases
     const legs = [
-      def.cost.compute > 0 ? etaSecs(c.compute, game.resources.compute, effRate(derived, "compute")) : null,
+      // The bank's real climb: auto-train drains it above the level where runs fire.
+      def.cost.compute > 0 ? shownEta(computeBankEtaSecs(game, derived, game.resources.compute, c.compute)) : null,
       def.cost.data > 0 ? etaSecs(c.data, game.resources.data, effRate(derived, "data")) : null,
     ].filter((x): x is number => x !== null);
     return legs.length > 0 ? Math.max(...legs) : null;
@@ -245,7 +246,7 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint, saving
         );
         const eta = !canBuy && !preprintWalled
           ? Math.max(
-              etaSecs(c.compute, game.resources.compute, effRate(derived, "compute")) ?? 0,
+              shownEta(computeBankEtaSecs(game, derived, game.resources.compute, c.compute)) ?? 0,
               etaSecs(c.data, game.resources.data, effRate(derived, "data")) ?? 0,
             )
           : null;
