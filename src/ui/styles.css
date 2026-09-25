@@ -692,6 +692,11 @@ svg { vertical-align: middle; }
   box-shadow: inset 0 1px 2px rgba(16, 24, 40, 0.08);
 }
 .progress.small { height: 24px; margin-bottom: 12px; }
+.progress-auto {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  display: inline-flex; color: var(--ink-3); opacity: 0.8; pointer-events: none;
+}
+.progress.ready .progress-auto { color: rgba(255, 255, 255, 0.85); }
 .progress.slim { height: 8px; margin-bottom: 14px; }
 .ship-gate-label {
   display: flex; justify-content: space-between; align-items: baseline; gap: 10px;

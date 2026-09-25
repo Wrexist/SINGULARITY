@@ -1,7 +1,11 @@
 import type { Derived, GameState } from "../engine/types";
 import { fmt, fmtMoney } from "./format";
 import { trainingIntensity } from "../engine/derive";
+import { useEffect, useRef } from "react";
 import { burst, floatText } from "./fx";
+import { RepeatIcon } from "./Icons";
+import { haptics } from "./haptics";
+import { sound } from "./sound";
 
 interface Props {
   game: GameState;
@@ -15,6 +19,22 @@ interface Props {
 export function TrainingDock({ game, derived, onStart, onClaim, onSetFocus }: Props) {
   const { run } = game;
   const canStart = !run.active && !run.readyToClaim && game.resources.compute.gte(derived.runComputeCost);
+
+  // The automation hand-off. After dozens of hand claims, the moment runs start
+  // claiming themselves is the idle genre's first big payoff, and it used to pass
+  // as a plain purchase. Mark it once, in place: a burst from the bar that will
+  // now finish on its own. Only on the live transition (never on load), and fx
+  // self-suppress under reduced motion.
+  const dockRef = useRef<HTMLDivElement>(null);
+  const hadAutoClaim = useRef(derived.autoClaim);
+  useEffect(() => {
+    if (derived.autoClaim && !hadAutoClaim.current && dockRef.current) {
+      const r = dockRef.current.querySelector(".progress")?.getBoundingClientRect();
+      if (r) burst(r.left + r.width / 2, r.top + r.height / 2, { count: 26, power: 1.3, colors: ["#2f7bf6", "#9b51e0", "#16b364"] });
+      haptics.success(); sound.success();
+    }
+    hadAutoClaim.current = derived.autoClaim;
+  }, [derived.autoClaim]);
   const pct = Math.min(100, run.progress * 100);
 
   // Training intensity: scales the RUN SIZE (a light run sips Compute and pays
@@ -47,7 +67,7 @@ export function TrainingDock({ game, derived, onStart, onClaim, onSetFocus }: Pr
   }
 
   return (
-    <div className="dock">
+    <div className="dock" ref={dockRef}>
       <div className="dock-head">
         <span className="dock-title">Training Run</span>
         <span className="dock-sub">
@@ -60,6 +80,8 @@ export function TrainingDock({ game, derived, onStart, onClaim, onSetFocus }: Pr
         <span className={`progress-label${fillPct < 50 ? " on-track" : ""}`}>
           {run.readyToClaim ? "Complete" : run.active ? `${pct.toFixed(0)}%` : charging ? "Charging…" : "Idle"}
         </span>
+        {/* Wordless: this bar pays out by itself now. */}
+        {derived.autoClaim && <span className="progress-auto" aria-label="Claims automatically"><RepeatIcon size={13} /></span>}
       </div>
 
       {run.readyToClaim ? (
