@@ -19,3 +19,6 @@ build/
 
 # Local screenshot captures (dev verification only)
 screenshots/
+
+# Agent worktrees (local only)
+.claude/worktrees/
