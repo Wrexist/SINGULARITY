@@ -227,9 +227,12 @@ function sideMarkers(game: GameState): SideMarker[] {
   // An empty closet doesn't need a "$7.0K" price tag painted on its floor. The strips
   // appear once the room is at least half full (or already grown), which is the moment
   // floor space becomes a real question — before that they were two unaffordable prices
-  // on the very first screen a new player sees.
+  // on the very first screen a new player sees. "The room" is ONE floor: measured
+  // against the whole facility, a lab with Wings (they survive a ship; the expansions
+  // don't) lost the strips until half of every floor was full — wing A packed solid and
+  // the room still not offering to grow. Identical to the facility total at one wing.
   const grown = SIDE_DEFS.some(({ id }) => (game.upgrades[id] ?? 0) > 0);
-  if (!grown && totalRacks(game) * 2 < hallCapacity(game)) return [];
+  if (!grown && totalRacks(game) * 2 < wingCapacity(game)) return [];
   return SIDE_DEFS.map(({ dir, id }) => {
     const def = upgById(id);
     const lvl = game.upgrades[id] ?? 0;
