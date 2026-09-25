@@ -437,6 +437,10 @@ const CHARTER_COLORS: Record<string, RGB> = {
   cash_machine: [110, 220, 140],
   mad_science: [255, 120, 160],
   frugal_genius: [120, 210, 220],
+  // Charter-draft rule-changers (2026-09): deeper, "different rules" tones.
+  research_sprint: [96, 132, 240],
+  product_company: [236, 150, 70],
+  true_believers: [200, 110, 230],
 };
 
 /** IDEAS #8 — the run's charter as a hanging banner on the back-right wall:
