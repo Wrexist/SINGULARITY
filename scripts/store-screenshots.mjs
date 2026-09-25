@@ -91,7 +91,9 @@ export const SCENES = [
     focus: [{ sel: ".confirm-modal" }, { sel: "canvas.hall-canvas", pre: true }],
   },
   {
-    name: "03-research", seed: RICH, nav: "scroll:Distributed Training", tag: "PROGRESSION SPINE", pin: "RESEARCH",
+    // Research lives in the Lab's Research section since the Lab split, and finished
+    // categories fold away — so open the section and aim at the hero, which always renders.
+    name: "03-research", seed: RICH, nav: "scroll:Recommended next", section: "Research", tag: "PROGRESSION SPINE", pin: "RESEARCH",
     head: "Climb the <em>tree</em>", sub: "An absurd AI research tree across every era",
     glow: "#a86bff", accent: "#c9a4ff",
     focus: [{ sel: ".node-hero" }, { sel: ".node", nth: 4 }, { sel: ".node", nth: 1 }],
@@ -358,7 +360,7 @@ export async function captureScene(browser, scene, port) {
     if (t) await app.mouse.click(t.x, t.y);
     await sleep(400);
   } else if (scene.nav?.startsWith("scroll:")) {
-    // The Data Market lives in the Lab's Research section since the Lab split.
+    // Research and the Data Market live in the Lab's Research section since the Lab split.
     if (scene.section) await app.locator(`.labnav .tab:has-text("${scene.section}")`).first().click({ timeout: 2000 }).catch(() => {});
     await sleep(300);
     await app.getByText(scene.nav.slice(7)).first().scrollIntoViewIfNeeded({ timeout: 3000 }).catch(() => {});
