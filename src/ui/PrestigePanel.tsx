@@ -3,6 +3,7 @@ import { canPrestige, legacyWeightsGain, legacyWeightsForMode, ascensionMultipli
 import { legacyMultiplier } from "../engine/derive";
 import { currentEra } from "../engine/eras";
 import { reputationAvailable, nextRecordProgress } from "../engine/reputation";
+import { legacyUnplugged } from "../engine/trials";
 import { legacyTreeBalance, legacyAvailable, canBuyLegacyPerk } from "../engine/legacyTree";
 import { maxActiveProducts, productsUnlocked } from "../engine/products";
 import { balance } from "../engine/balance/config";
@@ -82,7 +83,7 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
       <div className="prestige-stats">
         {/* The multiplier derive() actually applies: diminishing in weights, and only
             the uninvested ones count. This used to show the linear 1 + 1.8% × weights. */}
-        <span>Held weights: <b>{fmt(have)}</b> (×{fmtMult(legacyMultiplier(legacyAvailable(game)))})</span>
+        <span>Held weights: <b>{fmt(have)}</b> (×{fmtMult(legacyMultiplier(legacyAvailable(game)))}{legacyUnplugged(game) ? " · unplugged this run" : ""})</span>
         <span>Models shipped: <b>{game.prestige.ships}</b></span>
       </div>
 

@@ -5,6 +5,7 @@ import {
 import { balance } from "./balance/config";
 import type { GameState, ProductMods, ProductState, ProductsState, UpgradeState } from "./types";
 import { bonusProductSlots } from "./reputation";
+import { trialBonusProductSlots } from "./trials";
 import { legacyBonusProductSlots } from "./legacyTree";
 import { derive } from "./derive";
 
@@ -15,7 +16,7 @@ export const NEUTRAL_MODS: ProductMods = { upgradeSpeed: 1, serveCost: 1, churn:
  *  the Legacy tree's Product Division unlock node. Both are player-only meta
  *  unlocks, so the deploy-only balance sim always sees just the base cap. */
 export function maxActiveProducts(state: GameState): number {
-  return B.maxActive + bonusProductSlots(state) + legacyBonusProductSlots(state);
+  return B.maxActive + bonusProductSlots(state) + legacyBonusProductSlots(state) + trialBonusProductSlots(state);
 }
 
 /**

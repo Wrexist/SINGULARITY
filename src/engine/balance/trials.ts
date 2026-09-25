@@ -38,9 +38,16 @@ export interface TrialDef {
   handicap?: { lane: "compute" | "data" | "money"; factor: number };
   /** A run condition that must hold at ship time to bank the reward. Optional. */
   condition?: TrialCondition;
+  /** Switch a permanent boost OFF for the run (Unplugged). "legacy" = the Legacy
+   *  Weights multiplier and the Legacy Investment lanes read ×1 until you ship. */
+  unplug?: "legacy";
   /** Permanent lane bonus banked on completion (additive: mult = 1 + value). May be a
-   *  DIFFERENT lane than the handicap — mastering scarcity in one lane can pay another. */
-  reward: { lane: "compute" | "data" | "money"; value: number };
+   *  DIFFERENT lane than the handicap — mastering scarcity in one lane can pay another.
+   *  Optional: an Unplugged rung pays in `bonus` instead. */
+  reward?: { lane: "compute" | "data" | "money"; value: number };
+  /** Non-lane rewards (Unplugged): extra concurrent product slots, or Lab Reputation.
+   *  Both are read from `trialsDone`, so they need no save field of their own. */
+  bonus?: { productSlots?: number; rep?: number };
   /** The ladder this Trial belongs to — always the base Trial's id, so rung I's
    *  ladder is itself. Every Trial is on a ladder; most ladders are one rung long. */
   ladder: string;
@@ -118,18 +125,45 @@ const LADDERS: Record<string, { unlockShips: number; factor: number; value: numb
 
 const LANE_WORD: Record<string, string> = { compute: "Compute", data: "Data", money: "Money" };
 
+/**
+ * Unplugged (2026-09 generations audit). Past ship ~10 the Legacy multiplier runs
+ * away (×1e3 and up on live saves), so a generation lasts seconds. The research forks,
+ * the Rig Bay, the Stance window and preprints all flash past before you can touch
+ * them. An Unplugged Trial switches Legacy off for one generation, which turns any save
+ * back into a real 10–30 minute run, played with everything else you've earned.
+ *
+ * It pays in things a lane +% can't buy: a product slot, then Lab Reputation. Both
+ * are read from `trialsDone`. Curve-safe for the same reason as every Trial: the sim
+ * never opts in.
+ */
+const UNPLUGGED: TrialDef[] = [
+  {
+    id: "trial_unplugged", name: "Unplugged",
+    desc: "Run a whole generation with your Legacy boost switched off — then bank +1 product slot, permanently.",
+    unlockShips: 10, unplug: "legacy", bonus: { productSlots: 1 },
+    ladder: "trial_unplugged", rung: 1,
+  },
+  {
+    id: "trial_unplugged_r2", name: "Unplugged II",
+    desc: "Legacy off again, and 50% Compute on top — then bank +30 Lab Reputation.",
+    unlockShips: 20, unplug: "legacy", handicap: { lane: "compute", factor: 0.5 }, bonus: { rep: 30 },
+    ladder: "trial_unplugged", rung: 2, requires: "trial_unplugged",
+  },
+];
+
 /** Build a ladder rung from its base Trial. Copy is DERIVED from the numbers so the
  *  card can never claim a handicap or a reward the engine doesn't apply. */
 function rungOf(base: TrialDef, spec: { unlockShips: number; factor: number; value: number }, rung: number): TrialDef {
   const lane = base.handicap!.lane;
+  const rewardLane = base.reward!.lane; // every laddered base Trial pays in a lane
   const left = Math.round(spec.factor * 100);
   return {
     id: `${base.id}_r${rung}`,
     name: `${base.name} ${RUNG_NUMERAL[rung]}`,
-    desc: `Run a whole generation on ${left}% ${LANE_WORD[lane]} — then bank +${Math.round(spec.value * 100)}% ${LANE_WORD[base.reward.lane]}, permanently.`,
+    desc: `Run a whole generation on ${left}% ${LANE_WORD[lane]} — then bank +${Math.round(spec.value * 100)}% ${LANE_WORD[rewardLane]}, permanently.`,
     unlockShips: spec.unlockShips,
     handicap: { lane, factor: spec.factor },
-    reward: { lane: base.reward.lane, value: spec.value },
+    reward: { lane: rewardLane, value: spec.value },
     ladder: base.id,
     rung,
     requires: rung === 2 ? base.id : `${base.id}_r${rung - 1}`,
@@ -146,6 +180,7 @@ function buildTrials(): TrialDef[] {
     const specs = LADDERS[base.id] ?? [];
     specs.forEach((spec, i) => out.push(rungOf(base, spec, i + 2)));
   }
+  out.push(...UNPLUGGED);
   return out;
 }
 

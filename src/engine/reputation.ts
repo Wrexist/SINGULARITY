@@ -3,6 +3,7 @@ import { reputation as R } from "./balance/reputation";
 import { contractsReputation } from "./contracts";
 import { balance } from "./balance/config";
 import { floorDrawnOut } from "./hall";
+import { trialBonusRep } from "./trials";
 import type { GameState } from "./types";
 
 const shipModes = balance.prestige.shipModes;
@@ -28,6 +29,7 @@ export function earnedReputation(state: GameState): number {
   pts += state.stats.safetyShips * R.perSafetyShip; // safety-committed ships earn standing (B1)
   pts += state.stats.stakesRepEarned; // Frontier Race stakes won (depth batch)
   pts += recordsCount(state) * R.records.perMagnitude; // personal Compute records (2026-09)
+  pts += trialBonusRep(state); // Unplugged II and any other Rep-paying Trial
   return pts;
 }
 

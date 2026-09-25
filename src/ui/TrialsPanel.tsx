@@ -1,5 +1,5 @@
 import type { GameState } from "../engine/types";
-import { trialsBalance, canStartTrial, trialConditionMet, ladderRung, trialLadders, ladderProgress } from "../engine/trials";
+import { trialsBalance, canStartTrial, trialConditionMet, ladderRung, trialLadders, ladderProgress, trialRewardLabel } from "../engine/trials";
 import { canPrestige } from "../engine/prestige";
 
 interface Props {
@@ -7,8 +7,6 @@ interface Props {
   onStart: (id: string) => void;
   onAbandon: () => void;
 }
-
-const LANE_LABEL: Record<string, string> = { compute: "Compute", data: "Data", money: "Money" };
 
 /**
  * Prestige Trials — opt-in "constrained training runs". You commit to a Trial early
@@ -45,7 +43,7 @@ export function TrialsPanel({ game, onStart, onAbandon }: Props) {
                 </span>
               )}
               <span className="trial-status">
-                Ship the Model {active.condition && !condMet ? "with the condition met " : ""}to bank +{Math.round(active.reward.value * 100)}% {LANE_LABEL[active.reward.lane]}.
+                Ship the Model {active.condition && !condMet ? "with the condition met " : ""}to bank {trialRewardLabel(active)}.
               </span>
             </div>
             <button className="trial-abandon" onClick={onAbandon}>Abandon</button>

@@ -5,7 +5,7 @@ import { reputationMods } from "./reputation";
 import { alignmentProductionMods, alignmentProductMods } from "./alignment";
 import { charterMods } from "./charter";
 import { legacyAvailable, legacyTreeMods } from "./legacyTree";
-import { trialMods } from "./trials";
+import { trialMods, legacyUnplugged } from "./trials";
 import { flagshipMoneyMult } from "./flagship";
 import { paradigmMods } from "./paradigms";
 import { doctrineMods } from "./doctrine";
@@ -242,7 +242,9 @@ export function derive(state: GameState): Derived {
   // doesn't collapse to sub-minute ships. R5.4: weights INVESTED in the legacy tree
   // are removed from this pool (legacyAvailable) — the focus-vs-breadth trade-off.
   // With nothing invested, available === total, so the curve is unchanged.
-  const legacyMult = legacyMultiplier(legacyAvailable(state));
+  // An Unplugged Trial switches Legacy off for the run (×1); the sim never opts in.
+  const unplugged = legacyUnplugged(state);
+  const legacyMult = unplugged ? Big.ONE : legacyMultiplier(legacyAvailable(state));
   computeMult = computeMult.mul(legacyMult);
   dataMult = dataMult.mul(legacyMult);
   moneyMult = moneyMult.mul(legacyMult);
@@ -334,7 +336,7 @@ export function derive(state: GameState): Derived {
 
   // Legacy Investments (R5.4): owned prestige-tree lane biases. All 1.0 with
   // nothing invested, so this is identity until the player spends weights.
-  const lt = legacyTreeMods(state);
+  const lt = unplugged ? { computeMult: 1, dataMult: 1, moneyMult: 1 } : legacyTreeMods(state);
   computeMult = computeMult.mul(lt.computeMult);
   dataMult = dataMult.mul(lt.dataMult);
   moneyMult = moneyMult.mul(lt.moneyMult);

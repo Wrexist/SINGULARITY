@@ -129,7 +129,44 @@ export function trialMods(state: GameState): { computeMult: number; dataMult: nu
   // Permanent rewards from completed Trials.
   for (const id of state.trialsDone) {
     const d = BY_ID.get(id);
-    if (d) apply(d.reward.lane, 1 + d.reward.value);
+    if (d?.reward) apply(d.reward.lane, 1 + d.reward.value);
   }
   return { computeMult, dataMult, moneyMult };
+}
+
+/** Is Legacy switched off for this run (an Unplugged Trial is active)? derive reads
+ *  the Legacy multiplier and the Legacy Investment lanes as ×1 while it is. */
+export function legacyUnplugged(state: GameState): boolean {
+  if (!T.enabled || !state.activeTrial) return false;
+  return BY_ID.get(state.activeTrial)?.unplug === "legacy";
+}
+
+/** Sum a non-lane bonus over every banked Trial. */
+function bankedBonus(state: GameState, key: "productSlots" | "rep"): number {
+  if (!T.enabled) return 0;
+  let n = 0;
+  for (const id of state.trialsDone) n += BY_ID.get(id)?.bonus?.[key] ?? 0;
+  return n;
+}
+
+/** Extra concurrent product slots banked from Trials (Unplugged I). */
+export function trialBonusProductSlots(state: GameState): number {
+  return bankedBonus(state, "productSlots");
+}
+
+/** Lab Reputation banked from Trials (Unplugged II); folded into earnedReputation. */
+export function trialBonusRep(state: GameState): number {
+  return bankedBonus(state, "rep");
+}
+
+const LANE_WORD: Record<string, string> = { compute: "Compute", data: "Data", money: "Money" };
+
+/** What banking this Trial pays, as the short phrase the panel shows after "bank". */
+export function trialRewardLabel(d: TrialDef): string {
+  const parts: string[] = [];
+  if (d.reward) parts.push(`+${Math.round(d.reward.value * 100)}% ${LANE_WORD[d.reward.lane]}`);
+  const slots = d.bonus?.productSlots ?? 0;
+  if (slots > 0) parts.push(`+${slots} product slot${slots === 1 ? "" : "s"}`);
+  if (d.bonus?.rep) parts.push(`+${d.bonus.rep} Lab Reputation`);
+  return parts.join(" and ");
 }
