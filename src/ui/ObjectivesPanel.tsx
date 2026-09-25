@@ -66,7 +66,8 @@ export function ObjectivesPanel({ game, onClaim }: Props) {
                 ))}
               </div>
             ) : (
-              <button className="objective-claim" disabled>{Math.round(progress * 100)}%</button>
+              // Floored: a rounded 99.5% read "100%" on a button that can't be claimed yet.
+              <button className="objective-claim" disabled>{Math.floor(progress * 100)}%</button>
             )}
           </div>
         ))}
