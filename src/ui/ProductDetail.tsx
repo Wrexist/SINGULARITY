@@ -62,7 +62,7 @@ interface Props {
   onBuyFeature: (id: string, featureId: string) => void;
   onRename: (id: string, name: string) => void;
   onRetire: (id: string) => void;
-  onSetFlagship: (id: string | null) => void;
+  onSetFlagship: (id: string) => void;
 }
 
 function featureEffect(lane: FeatureLane, factor: number): string {
@@ -190,15 +190,15 @@ export function ProductDetail({ game, productId, mods, onClose, onStartUpgrade, 
             {B.flagship.enabled && (() => {
               const isFlagship = game.flagship.productId === p.id;
               const pct = Math.round((flagshipMoneyMult(game) - 1) * 100);
-              return (
-                <button
-                  className={`pd-flagship ${isFlagship ? "on" : ""}`}
-                  onClick={() => onSetFlagship(isFlagship ? null : p.id)}
-                >
-                  {isFlagship
-                    ? `★ Flagship · +${pct}% revenue — grows each ship you keep it`
-                    : "☆ Make this your flagship"}
-                </button>
+              // The flagship's own line is a status, not a switch. Un-designating gains
+              // nothing and threw the tenure away (up to +30% revenue, built over ten
+              // ships) with one tap on a line that reads like a badge. Moving the flag
+              // is offered on the other products' sheets, and App confirms that move
+              // whenever it would reset a built-up brand.
+              return isFlagship ? (
+                <p className="pd-flagship on">{`★ Flagship · +${pct}% revenue — grows each ship you keep it`}</p>
+              ) : (
+                <button className="pd-flagship" onClick={() => onSetFlagship(p.id)}>☆ Make this your flagship</button>
               );
             })()}
             {/* onRetire asks for confirmation upstream; the sheet stays open on

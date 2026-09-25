@@ -2866,6 +2866,8 @@ button.modchip.workable:active { transform: scale(0.94); }
   background: color-mix(in srgb, var(--accent) 12%, transparent);
   color: var(--accent); font-weight: 800;
 }
+/* The flagship's own line is a status (not a tap target): same card, centred, inert. */
+p.pd-flagship { cursor: default; text-align: center; margin-top: 0; }
 
 /* Pricing — enterprise toggle + iOS-style switch */
 .pd-toggle-row { display: flex; align-items: center; justify-content: space-between; cursor: pointer; }

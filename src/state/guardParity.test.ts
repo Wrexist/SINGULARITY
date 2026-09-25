@@ -683,9 +683,11 @@ function controls(g: GameState, candidates: Candidate[] | null): Control[] {
           quote: (b, a) => dropped("version", "compute", B(vc.compute * PRODUCTS.upgrade.upfrontFrac))(b, a) ?? dropped("version", "data", B(vc.data * PRODUCTS.upgrade.upfrontFrac))(b, a),
         });
       }
-      if (PRODUCTS.flagship.enabled) {
-        const isFlagship = g.flagship.productId === p.id;
-        c.push({ name: `Product ${p.id}: flagship toggle`, enabled: true, act: () => S().doSetFlagship(isFlagship ? null : p.id) });
+      // The flagship's own line is a status; every other product offers the move
+      // (App confirms it first when it would reset a built-up brand).
+      if (PRODUCTS.flagship.enabled && g.flagship.productId !== p.id) {
+        c.push({ name: `Product ${p.id}: make flagship`, enabled: true, act: () => S().doSetFlagship(p.id),
+          quote: (_b, a) => (a.flagship.productId === p.id && a.flagship.tenure === 0 ? null : `flag did not move to ${p.id}`) });
       }
       const payout = retirePayout(g, p.id);
       c.push({ name: `Product ${p.id}: sell`, enabled: true, act: () => S().doRetireProduct(p.id),
@@ -788,7 +790,7 @@ describe("guard parity — every control against the store action it fires", () 
       /^Dock: Claim/, /^Dock: intensity/, /^Rig: .*\(equip\)/, /^Rig: remove/, /^Research: .*\(save for this\)/, /^Charter: adopt/,
       /^Charter: drop/, /^Charter: Lock in/, /^Ship: deploy/, /^Ship: hard/, /^Ship: splash/, /^Rep: Endow/, /^Rep: respec/,
       /^Rep: directive/, /^Institute: endow fellowship/, /^Automation: /, /^Objective: /, /^Challenge: fork /, /^Mandate: /,
-      /^Trial: abandon/, /^Rival: stake /, /^Product .*: (flagship|sell|price|enterprise|marketing|channel|rename)/,
+      /^Trial: abandon/, /^Rival: stake /, /^Product .*: (make flagship|sell|price|enterprise|marketing|channel|rename)/,
       /^Team: Recruit/, /^Team: fire /, /^Team: assign /, /^Team: bench /,
     ];
     if (!live(/^Rig: .*\(buy\)/) || !grey(/^Rig: .*\(poor\)/)) throw new Error("Rig Bay buy never both live and poor");

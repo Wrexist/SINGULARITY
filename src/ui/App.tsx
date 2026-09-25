@@ -41,6 +41,7 @@ import { burst as fxBurst, floatText as fxFloat, FX_PALETTES } from "./fx";
 import { ProductLaunch } from "./ProductLaunch";
 import { draftLaunchable, shipLeftModelToLaunch } from "./shipLanding";
 import { productsUnlocked, typeDef, retirePayout } from "../engine/products";
+import { flagshipBrandLost } from "../engine/flagship";
 import { advisorItems, type AdvisorTab, type LabSection } from "../engine/advisor";
 import { labReveal } from "../engine/reveal";
 import { nextGoal } from "../engine/goals";
@@ -183,6 +184,7 @@ export function App() {
   const [launch, setLaunch] = useState<{ type: ProductTypeId; name: string } | null>(null);
   const [pendingExpansion, setPendingExpansion] = useState<string | null>(null);
   const [pendingRetire, setPendingRetire] = useState<string | null>(null);
+  const [pendingFlagship, setPendingFlagship] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const portalOpen = usePortalOpen();
@@ -243,7 +245,7 @@ export function App() {
   // consequence of something the player just did; this is the only uninvited one, so
   // it's the only one that waits. The store holds it in a single slot, so it simply
   // shows once the sheet closes. (2026-08 — reproduced in a seeded smoke run.)
-  const sheetOpen = showSettings || !!pendingExpansion || confirmReset || !!pendingRetire || portalOpen;
+  const sheetOpen = showSettings || !!pendingExpansion || confirmReset || !!pendingRetire || !!pendingFlagship || portalOpen;
 
   // The moment queue's head: exactly ONE full-screen moment renders at a time,
   // by priority. Dismissing the head lets the next pending one show.
@@ -812,6 +814,22 @@ export function App() {
   // — native panel, and it froze the game loop while open). Cancelling leaves the
   // product-management sheet exactly as it was.
   const onRetireProductFx = (id: string) => setPendingRetire(id);
+  // Moving the flag resets the brand to zero: a built-up one (up to +30% revenue, earned
+  // over ten ships) is gone for good, so that move asks first. A first flag, or a move
+  // off a brand with no tenure yet, happens on the tap.
+  const onSetFlagship = (id: string) => {
+    if (flagshipBrandLost(game, id)) { setPendingFlagship(id); return; }
+    haptics.tap(); sound.tap(); doSetFlagship(id);
+  };
+  const flagshipTarget = pendingFlagship ? game.products.active.find((x) => x.id === pendingFlagship) ?? null : null;
+  const flagshipLoss = flagshipTarget ? flagshipBrandLost(game, flagshipTarget.id) : null;
+  const flagshipFrom = flagshipLoss ? game.products.active.find((x) => x.id === flagshipLoss.productId) ?? null : null;
+  // Nothing left to ask about (the target was sold, the brand already moved): drop the
+  // question rather than leave an empty sheet holding the moment queue.
+  const flagshipAsk = !!flagshipTarget && !!flagshipLoss && !!flagshipFrom;
+  useEffect(() => {
+    if (pendingFlagship && !flagshipAsk) setPendingFlagship(null);
+  }, [pendingFlagship, flagshipAsk]);
   const retireTarget = pendingRetire ? game.products.active.find((x) => x.id === pendingRetire) ?? null : null;
   const confirmRetire = () => {
     const id = pendingRetire;
@@ -1025,7 +1043,7 @@ export function App() {
             onBuyFeature={doBuyFeature}
             onRename={doRenameProduct}
             onRetire={onRetireProductFx}
-            onSetFlagship={(id) => { haptics.tap(); sound.tap(); doSetFlagship(id); }}
+            onSetFlagship={onSetFlagship}
             onCounterRival={(name) => {
               if (!doCounterRival(name)) return;
               haptics.success(); sound.alert();
@@ -1236,15 +1254,30 @@ export function App() {
           onDecline={() => setPendingExpansion(null)}
         />
       )}
-      {retireTarget && (
+      {retireTarget && (() => {
+        // Selling the flagship ends its brand too (retireProduct clears it): say so.
+        const brand = game.flagship.productId === retireTarget.id ? flagshipBrandLost(game, null) : null;
+        return (
         <ConfirmSheet
           kicker="SELL PRODUCT"
           title={`Sell ${retireTarget.name}?`}
-          body={`Take the ${fmtMoney(Big.of(Math.round(retirePayout(game, retireTarget.id))))} buyout. This is permanent — the product and its users are gone.`}
+          body={`Take the ${fmtMoney(Big.of(Math.round(retirePayout(game, retireTarget.id))))} buyout. This is permanent — the product and its users are gone${brand ? `, and so is its flagship brand (+${brand.pct}% revenue)` : ""}.`}
           confirmLabel="Sell it"
           danger
           onConfirm={confirmRetire}
           onCancel={() => setPendingRetire(null)}
+        />
+        );
+      })()}
+      {flagshipAsk && (
+        <ConfirmSheet
+          kicker="FLAGSHIP"
+          title={`Make ${flagshipTarget!.name} your flagship?`}
+          body={`${flagshipFrom!.name}'s brand — +${flagshipLoss!.pct}% revenue, built over ${flagshipLoss!.tenure} ship${flagshipLoss!.tenure === 1 ? "" : "s"} — is lost. ${flagshipTarget!.name} starts its own from zero.`}
+          confirmLabel="Move the flag"
+          danger
+          onConfirm={() => { const id = flagshipTarget!.id; setPendingFlagship(null); haptics.tap(); sound.tap(); doSetFlagship(id); }}
+          onCancel={() => setPendingFlagship(null)}
         />
       )}
       {confirmReset && (

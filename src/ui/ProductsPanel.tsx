@@ -34,7 +34,7 @@ interface Props {
   onBuyFeature: (id: string, featureId: string) => void;
   onRename: (id: string, name: string) => void;
   onRetire: (id: string) => void;
-  onSetFlagship: (id: string | null) => void;
+  onSetFlagship: (id: string) => void;
   onCounterRival: (name: string) => void;
   /** Frontier Race stake (depth batch): wager you'll outrank this rival by ship. */
   onPlaceStake?: (name: string) => void;
