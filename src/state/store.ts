@@ -58,7 +58,7 @@ import { buyReputationPerk, buyEndowment, pickEndowmentDirective, respecDirectiv
 import { startTrial, abandonTrial } from "../engine/trials";
 import { setFlagship } from "../engine/flagship";
 import { buyParadigm } from "../engine/paradigms";
-import { claimDoctrine } from "../engine/doctrine";
+import { claimDoctrine, declareStance, type Stance } from "../engine/doctrine";
 import { buyInstitute, endowFellowship } from "../engine/institute";
 import { fundChallenge, chooseFork, fundMegaproject, pickMandate } from "../engine/challenges";
 import { claimObjective } from "../engine/objectives";
@@ -173,6 +173,8 @@ interface GameStore {
   doSetCharter: (id: string | null) => void;
   /** Lock the current charter pick for this run (owner UX fix). */
   doLockCharter: () => void;
+  /** Declare this run's stance (Safety / center / Acceleration) — start of run only. */
+  doDeclareStance: (stance: Stance) => void;
   doCounterRival: (name: string) => boolean;
   doBuyLegacyPerk: (id: string) => void;
   /** Open recruiting (rolls 3 candidates) / re-roll / close. */
@@ -679,6 +681,7 @@ export const useGame = create<GameStore>((set, get) => ({
   doBuyPreprint: () => set((s) => ({ game: buyPreprint(s.game) })),
   doSetCharter: (id) => set((s) => ({ game: setCharter(s.game, id) })),
   doLockCharter: () => set((s) => ({ game: lockCharter(s.game) })),
+  doDeclareStance: (stance) => set((s) => ({ game: declareStance(s.game, stance) })),
   // Returns whether the blitz actually landed (same-ref no-op when the guard
   // fails between render and tap), so the UI only celebrates real strikes.
   doCounterRival: (name: string) => {

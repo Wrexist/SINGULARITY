@@ -96,6 +96,7 @@ import { regulatorIsNamed, regulatorState } from "../engine/regulator";
 import { canPrestige, nextRunMultiplier } from "../engine/prestige";
 import { FIRST_SHIP_WORTH_IT } from "../engine/derive";
 import { chartersUnlocked } from "../engine/charter";
+import { doctrineUnlocked } from "../engine/doctrine";
 import { preprintsUnlocked } from "../engine/preprints";
 import { legacyAvailable } from "../engine/legacyTree";
 import { endowmentUnlocked } from "../engine/reputation";
@@ -127,7 +128,7 @@ export function App() {
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
     doClaimContract, doClaimSponsor, doBuyPreprint, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
-    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival, doFundChallenge, doChooseFork, doFundMegaproject, doClaimObjective, doToggleAutomation, doStartTrial, doAbandonTrial, doSetFlagship, doBuyParadigm, doClaimDoctrine, doBuyInstitute, doEndowFellowship, doPickMandate } =
+    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doDeclareStance, doCounterRival, doFundChallenge, doChooseFork, doFundMegaproject, doClaimObjective, doToggleAutomation, doStartTrial, doAbandonTrial, doSetFlagship, doBuyParadigm, doClaimDoctrine, doBuyInstitute, doEndowFellowship, doPickMandate } =
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
@@ -421,7 +422,9 @@ export function App() {
   // and no way to add a toast but forget its hydration baseline (which would
   // re-toast returning players). The faction row keys on the tilt DIRECTION
   // (doomer/accel), so a lab that later flips sides is told about the flip too.
-  const alignDir = game.alignment === 0 ? "" : game.alignment > 0 ? "accel" : "doomer";
+  // From the Doctrine reveal on, the player DECLARES a stance in the Lab Charter —
+  // telling them their choices "tilt" the lab every run would narrate their own tap.
+  const alignDir = game.alignment === 0 || doctrineUnlocked(game) ? "" : game.alignment > 0 ? "accel" : "doomer";
   const transitionToasts: { key: string; fact: string | boolean; when: string | boolean; text: string; tone: ToastData["tone"] }[] = [
     { key: "research", fact: showResearch, when: true, text: "Research unlocked", tone: "good" },
     { key: "market", fact: showMarket, when: true, text: "Data Market unlocked", tone: "good" },
@@ -1075,6 +1078,7 @@ export function App() {
                     game={game}
                     onSet={(id) => { haptics.tap(); sound.tap(); doSetCharter(id); }}
                     onLock={() => { haptics.success(); sound.purchase(); doLockCharter(); }}
+                    onStance={(st) => { haptics.tap(); sound.tap(); doDeclareStance(st); }}
                   />
                   <UpgradePanel game={game} derived={d} onBuy={onBuy} onFoundWing={() => { haptics.celebrate(); sound.purchase(); doFoundWing(); }} />
                   {componentsUnlocked(game) && (

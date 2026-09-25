@@ -1,4 +1,4 @@
-import { doctrine as D, COMMITTABLE_SIDES, type DoctrinePerkDef, type DoctrineSide } from "./balance/doctrine";
+import { doctrine as D, COMMITTABLE_SIDES, type DoctrinePerkDef } from "./balance/doctrine";
 import type { GameState } from "./types";
 
 /**
@@ -22,7 +22,7 @@ export function doctrineUnlocked(state: GameState): boolean {
 /** Which side the player has committed to THIS run (null at neutral). Never returns
  *  "schism" — that track is qualified for, not chosen. The sim, which never fires a
  *  faction event, is always neutral → always null. */
-export function committedSide(state: GameState): DoctrineSide | null {
+export function committedSide(state: GameState): Stance {
   if (state.alignment <= -D.threshold) return "doomer";
   if (state.alignment >= D.threshold) return "accel";
   return null;
@@ -53,13 +53,46 @@ export function schismRevealed(state: GameState): boolean {
   return doctrineUnlocked(state) && schismDepth(state) >= 1;
 }
 
+/**
+ * Declare a Stance (2026-09 generations audit). Alignment only moved on faction
+ * world-event choices, ±0.3 each against a 0.4 threshold — two same-side decisions
+ * inside ONE run, when late-game runs last seconds and alignment resets on every
+ * ship. The whole Doctrine track sat unreachable behind that. Now, from the reveal
+ * on, you can simply say where the lab stands: at the start of a run (the same
+ * window the Lab Charter uses), set alignment to exactly the commit threshold on
+ * either side, or back to the center. World-event choices still move it from there.
+ *
+ * The window closes when the charter does — first research, or "Lock in" — and
+ * claims wait for that close (see canClaimDoctrine), so one run can never be
+ * declared Safety, claimed, re-declared Acceleration and claimed again. Curve-safe:
+ * the sim never declares, so it stays at alignment 0 with every stance effect off.
+ */
+export type Stance = "doomer" | "accel" | null;
+
+/** Is the stance still open for this run? Revealed, and the run not yet committed
+ *  to a path — the Lab Charter's own window, so both start-of-run picks share one
+ *  close. */
+export function stanceOpen(state: GameState): boolean {
+  return doctrineUnlocked(state) && state.research.length === 0 && !state.charterLocked;
+}
+
+/** Declare this run's stance: exactly the commit threshold on that side, or the
+ *  center. Pure; a no-op outside the open window or on an unknown side. */
+export function declareStance(state: GameState, stance: Stance): GameState {
+  if (!stanceOpen(state)) return state;
+  if (stance !== null && stance !== "doomer" && stance !== "accel") return state;
+  const alignment = stance === "doomer" ? -D.threshold : stance === "accel" ? D.threshold : 0;
+  if (alignment === state.alignment) return state;
+  return { ...state, alignment };
+}
+
 export function doctrinePerks() {
   return D.perks;
 }
 
 /**
- * Can the player claim this perk now? Revealed, unowned, prereq met — plus the side
- * rule, which differs by track:
+ * Can the player claim this perk now? Revealed, stance locked for this run, unowned,
+ * prereq met — plus the side rule, which differs by track:
  *  - A side perk needs you COMMITTED to that side right now.
  *  - A Schism perk needs the opposite: you must be UNCOMMITTED (the synthesis is
  *    claimed from the center), and hold at least `minPerSide` perks on each of the two
@@ -68,6 +101,9 @@ export function doctrinePerks() {
  */
 export function canClaimDoctrine(state: GameState, id: string): boolean {
   if (!doctrineUnlocked(state)) return false;
+  // Claims wait for the stance to lock (first research / Lock in) — otherwise a
+  // fresh run could be declared one way, claimed, flipped and claimed again.
+  if (stanceOpen(state)) return false;
   const def = BY_ID.get(id);
   if (!def || state.doctrines.includes(id)) return false;
   if (def.requires && !state.doctrines.includes(def.requires)) return false;

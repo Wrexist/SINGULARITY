@@ -1,5 +1,5 @@
 import type { GameState } from "../engine/types";
-import { doctrineBalance, committedSide, canClaimDoctrine, schismRevealed, schismDepth } from "../engine/doctrine";
+import { doctrineBalance, committedSide, canClaimDoctrine, schismRevealed, schismDepth, stanceOpen } from "../engine/doctrine";
 import type { DoctrineSide } from "../engine/balance/doctrine";
 
 interface Props {
@@ -9,16 +9,20 @@ interface Props {
 
 const SIDE_LABEL: Record<DoctrineSide, string> = { doomer: "Safety", accel: "Acceleration", schism: "Schism" };
 const SIDE_HINT: Record<DoctrineSide, string> = {
-  doomer: "Commit to Safety (steer world events doomer) to claim.",
-  accel: "Commit to Acceleration (steer world events accel) to claim.",
+  doomer: "Declare Safety in the Lab Charter at the start of a run to claim.",
+  accel: "Declare Acceleration in the Lab Charter at the start of a run to claim.",
   // The Schism's own hint is per-perk (it depends on how deep both sides run), so
   // this generic one only covers the alignment half of its gate.
-  schism: "Claimed from the center — commit to neither side this run.",
+  schism: "Claimed from the center — declare neither side this run.",
 };
+/** Shown on your declared side while the run's stance is still open — claims wait
+ *  for it to lock, so a run can't be declared, claimed, flipped and claimed again. */
+const LOCK_HINT = "Claim once your first research locks your stance in.";
 
 /**
- * Doctrine Consequences — your STANCE as a build. Commit to Safety or Acceleration
- * (via faction world-event choices) and claim that side's exclusive permanent perks.
+ * Doctrine Consequences — your STANCE as a build. Declare Safety or Acceleration at
+ * the start of a run (or drift there on world-event choices) and claim that side's
+ * exclusive permanent perks.
  * The other side stays visible but locked — a reason to replay committed the other way.
  * Hidden until factions matter; curve-safe (see engine/doctrine.ts).
  */
@@ -28,6 +32,16 @@ export function DoctrinePanel({ game, onClaim }: Props) {
   const side = committedSide(game);
 
   const depth = schismDepth(game);
+  const open = stanceOpen(game);
+
+  // How to reach a track, said ONCE under its head rather than on every perk: on
+  // your side (or at the center, for the Schism) the only thing left is the lock;
+  // anywhere else, where to declare. Nothing once the track is fully held.
+  const trackHint = (s: DoctrineSide): string | null => {
+    if (doctrineBalance.perks.every((p) => p.side !== s || owned.has(p.id))) return null;
+    const here = s === "schism" ? side === null : side === s;
+    return here ? (open ? LOCK_HINT : null) : SIDE_HINT[s];
+  };
 
   const track = (s: DoctrineSide) => (
     <div className={`doctrine-track ${s === "schism" ? "doctrine-schism" : ""}`} key={s}>
@@ -36,6 +50,7 @@ export function DoctrinePanel({ game, onClaim }: Props) {
         {side === s && <span className="doctrine-active">· your stance</span>}
         {s === "schism" && side === null && <span className="doctrine-active">· uncommitted</span>}
       </div>
+      {trackHint(s) && <p className="doctrine-track-hint">{trackHint(s)}</p>}
       {doctrineBalance.perks.filter((p) => p.side === s).map((p) => {
         const isOwned = owned.has(p.id);
         const can = canClaimDoctrine(game, p.id);
@@ -52,7 +67,7 @@ export function DoctrinePanel({ game, onClaim }: Props) {
               {!isOwned && !lockedByReq && !can && shortOfDepth && (
                 <span className="doctrine-req">Hold {p.minPerSide} perks on each side — you have {depth}.</span>
               )}
-              {!isOwned && !lockedByReq && !can && !shortOfDepth && side !== s && <span className="doctrine-req">{SIDE_HINT[s]}</span>}
+
             </div>
             <span className="doctrine-claim">{isOwned ? "held" : can ? "Claim" : "—"}</span>
           </button>
@@ -66,7 +81,7 @@ export function DoctrinePanel({ game, onClaim }: Props) {
       {/* First-run scaffolding — hide once the player has claimed a doctrine perk. */}
       {game.doctrines.length === 0 && (
         <p className="doctrine-note">
-          Your stance is a build. Commit to a side to claim its perks — the other stays locked, to draw you back another run.
+          Your stance is a build. Declare a side in the Lab Charter to claim its perks — the other stays locked, to draw you back another run.
         </p>
       )}
       <div className="doctrine-tracks">

@@ -1,12 +1,17 @@
 import { chartersBalance, charterDef, canSetCharter, chartersUnlocked } from "../engine/charter";
+import { doctrineBalance, doctrineUnlocked, stanceOpen, committedSide, schismRevealed, type Stance } from "../engine/doctrine";
+import { alignmentProductionMods, alignmentHeatMult } from "../engine/alignment";
 import { balance } from "../engine/balance/config";
 import type { GameState } from "../engine/types";
+import { ShieldIcon, ScalesIcon, RocketIcon } from "./Icons";
 
 interface Props {
   game: GameState;
   onSet: (id: string | null) => void;
   /** Explicitly lock the current pick for this run (owner UX fix). */
   onLock: () => void;
+  /** Declare this run's stance (from the Doctrine reveal on). */
+  onStance: (stance: Stance) => void;
 }
 
 const pct = (x: number | undefined) => (x ? `${x >= 0 ? "+" : ""}${Math.round(x * 100)}%` : null);
@@ -22,12 +27,80 @@ function effectChips(id: string) {
   return parts.join(" · ");
 }
 
+const STANCES: { id: Stance; label: string; Icon: typeof ShieldIcon }[] = [
+  { id: "doomer", label: "Safety", Icon: ShieldIcon },
+  { id: null, label: "Center", Icon: ScalesIcon },
+  { id: "accel", label: "Acceleration", Icon: RocketIcon },
+];
+
+/** "+6% $ · −4% compute · −20% heat" for a stance, read from the same engine
+ *  helpers derive uses — so the line can never disagree with the effect. */
+function stanceEffects(game: GameState, stance: Stance): string {
+  if (stance === null) return "No tilt";
+  const a = stance === "doomer" ? -doctrineBalance.threshold : doctrineBalance.threshold;
+  const probe = { ...game, alignment: a };
+  const m = alignmentProductionMods(probe);
+  const heat = alignmentHeatMult(probe);
+  const lanes = [pct(m.moneyMult - 1) && `${pct(m.moneyMult - 1)} $`, pct(m.computeMult - 1) && `${pct(m.computeMult - 1)} compute`];
+  if (stance === "accel") lanes.reverse(); // lead with the side's upside
+  return [...lanes, pct(heat - 1) && `${pct(heat - 1)} heat`].filter(Boolean).join(" · ");
+}
+
+/**
+ * Declare a Stance (2026-09) — where the lab stands this run. Opens the matching
+ * Doctrine perks; locks with the charter. Rendered only once Doctrine is revealed.
+ */
+function StanceRow({ game, onStance }: { game: GameState; onStance: (s: Stance) => void }) {
+  const open = stanceOpen(game);
+  const side = committedSide(game);
+  const current = STANCES.find((s) => s.id === side) ?? STANCES[1]!;
+  if (!open) {
+    const { Icon } = current;
+    return (
+      <p className="stance-locked">
+        <span className={`stance-chip ${current.id ?? "center"}`}><Icon size={14} /> {current.label}</span>
+        {current.id !== null && <span className="stance-locked-fx"> · {stanceEffects(game, current.id)}</span>}
+      </p>
+    );
+  }
+  const hint =
+    side === "doomer" ? "Opens the Safety doctrine." :
+    side === "accel" ? "Opens the Acceleration doctrine." :
+    schismRevealed(game) ? "The Schism is claimed from here." : null;
+  return (
+    <div className="stance">
+      <div className="stance-head">Stance</div>
+      <div className="stance-opts" role="radiogroup" aria-label="Stance this run">
+        {STANCES.map(({ id, label, Icon }) => {
+          const on = side === id;
+          return (
+            <button
+              key={label}
+              role="radio"
+              aria-checked={on}
+              className={`stance-opt ${id ?? "center"} ${on ? "on" : ""}`}
+              onClick={() => { if (!on) onStance(id); }}
+            >
+              <Icon size={16} />
+              <span>{label}</span>
+            </button>
+          );
+        })}
+      </div>
+      <p className="stance-fx">
+        {stanceEffects(game, side)}
+        {hint && <span className="stance-hint"> · {hint}</span>}
+      </p>
+    </div>
+  );
+}
+
 /**
  * Lab Charter picker (R6.1). At the start of a fresh run (post-first-ship) you
  * pick a charter that tilts this run's triangle — so generations play differently.
  * Once you commit to a research path it locks in (just shows the active charter).
  */
-export function CharterPanel({ game, onSet, onLock }: Props) {
+export function CharterPanel({ game, onSet, onLock, onStance }: Props) {
   if (!chartersUnlocked(game)) return null;
   const editable = canSetCharter(game);
   const active = charterDef(game.charter);
@@ -41,6 +114,7 @@ export function CharterPanel({ game, onSet, onLock }: Props) {
           {active ? <><b>{active.name}</b> ✓ — {effectChips(active.id)}</> : <>No charter this run.</>}
           <span className="charter-locked-note"> · locked until next ship</span>
         </p>
+        {doctrineUnlocked(game) && <StanceRow game={game} onStance={onStance} />}
       </section>
     );
   }
@@ -80,6 +154,7 @@ export function CharterPanel({ game, onSet, onLock }: Props) {
           );
         })}
       </div>
+      {doctrineUnlocked(game) && <StanceRow game={game} onStance={onStance} />}
       {/* The explicit commit (owner: "no way to lock it in?"). Research still
           locks implicitly; this lets a decided player close the decision. */}
       {active && (

@@ -1,8 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
   doctrineBalance, doctrineUnlocked, committedSide, canClaimDoctrine, claimDoctrine, doctrineMods,
-  doctrinePerks, perksPerSide, schismDepth, schismRevealed,
+  doctrinePerks, perksPerSide, schismDepth, schismRevealed, stanceOpen, declareStance,
 } from "./doctrine";
+import { setCharter, lockCharter, chartersBalance } from "./charter";
+import { buyResearch, canBuyResearch } from "./actions";
+import { researchTree } from "./researchTree";
 import { derive } from "./derive";
 import { prestige } from "./prestige";
 import { serialize, deserialize } from "./save";
@@ -14,11 +17,16 @@ const REVEAL = doctrineBalance.revealAtShips;
 const THRESH = doctrineBalance.threshold;
 const TRUST = doctrineBalance.perks.find((p) => p.id === "doc_trust")!;
 
-/** A revealed lab committed to a side (alignment past the threshold). */
+/** A run already under way (one research bought) — the stance window has closed,
+ *  which is when claims open. */
+const UNDER_WAY = [balance.prestige.capabilityResearch];
+
+/** A revealed lab committed to a side (alignment past the threshold), mid-run. */
 function committed(side: "doomer" | "accel", ships = REVEAL) {
   const s = createInitialState();
   s.prestige.ships = ships;
   s.alignment = side === "doomer" ? -THRESH : THRESH;
+  s.research = [...UNDER_WAY];
   return s;
 }
 
@@ -83,7 +91,7 @@ describe("Doctrine Schisms", () => {
   /** A veteran at a given alignment holding `held` perks. */
   const at = (alignment: number, held: string[] = []) => {
     const s = createInitialState();
-    return { ...s, alignment, prestige: { ...s.prestige, ships: 20 }, doctrines: held };
+    return { ...s, alignment, prestige: { ...s.prestige, ships: 20 }, doctrines: held, research: [...UNDER_WAY] };
   };
   const ONE_EACH = ["doc_trust", "doc_scale"];
   const TWO_EACH = ["doc_trust", "doc_clean", "doc_scale", "doc_ship"];
@@ -175,8 +183,87 @@ describe("Doctrine Schisms", () => {
     expect(committedSide(sim)).toBeNull();
     expect(schismDepth(sim)).toBe(0);
     expect(schismRevealed(sim)).toBe(false);
-    const deep = { ...sim, prestige: { ...sim.prestige, ships: 999 } };
+    const deep = { ...sim, prestige: { ...sim.prestige, ships: 999 }, research: [...UNDER_WAY] };
     for (const p of SCHISMS) expect(canClaimDoctrine(deep, p.id)).toBe(false);
     expect(doctrineMods(sim)).toEqual({ computeMult: 1, dataMult: 1, moneyMult: 1 });
+  });
+});
+
+describe("Declare a Stance", () => {
+  /** A revealed lab at the very start of a run. */
+  const fresh = (ships = REVEAL) => {
+    const s = createInitialState();
+    s.prestige.ships = ships;
+    return s;
+  };
+
+  it("is closed before the reveal and a no-op there (the sim never gets a stance)", () => {
+    const early = fresh(REVEAL - 1);
+    expect(stanceOpen(early)).toBe(false);
+    expect(declareStance(early, "accel")).toBe(early);
+    expect(declareStance(createInitialState(), "doomer").alignment).toBe(0);
+  });
+
+  it("sets alignment to exactly the commit threshold, or back to the center", () => {
+    const s = fresh();
+    expect(stanceOpen(s)).toBe(true);
+    expect(declareStance(s, "doomer").alignment).toBe(-THRESH);
+    expect(declareStance(s, "accel").alignment).toBe(THRESH);
+    expect(committedSide(declareStance(s, "doomer"))).toBe("doomer");
+    expect(committedSide(declareStance(s, "accel"))).toBe("accel");
+    const back = declareStance(declareStance(s, "accel"), null);
+    expect(back.alignment).toBe(0);
+    expect(committedSide(back)).toBeNull();
+    expect(declareStance(s, null)).toBe(s); // already centered → same ref
+  });
+
+  it("rejects an unknown side from hostile callers", () => {
+    const s = fresh();
+    expect(declareStance(s, "schism" as never)).toBe(s);
+    expect(declareStance(s, "sideways" as never)).toBe(s);
+  });
+
+  it("locks with the charter: first research, or Lock in", () => {
+    const s = declareStance(fresh(), "accel");
+    const rich = { ...s, resources: { ...s.resources, compute: Big.of(1e12), data: Big.of(1e12) } };
+    const first = researchTree(rich).find((r) => canBuyResearch(rich, r.id))!;
+    const researched = buyResearch(rich, first.id);
+    expect(researched.research.length).toBe(1);
+    expect(stanceOpen(researched)).toBe(false);
+    expect(declareStance(researched, "doomer")).toBe(researched);
+    const locked = lockCharter(setCharter(s, chartersBalance.list[0]!.id));
+    expect(locked.charterLocked).toBe(true);
+    expect(stanceOpen(locked)).toBe(false);
+    expect(declareStance(locked, null)).toBe(locked);
+    expect(locked.alignment).toBe(THRESH); // the declared stance survives the lock
+  });
+
+  it("holds claims until the stance locks, so one run can't claim both sides", () => {
+    let s = declareStance(fresh(), "doomer");
+    expect(canClaimDoctrine(s, "doc_trust")).toBe(false); // still open
+    s = declareStance(s, "accel");
+    expect(canClaimDoctrine(s, "doc_scale")).toBe(false);
+    // Lock it in: now the declared side (and only that side) is claimable.
+    s = { ...s, research: [...UNDER_WAY] };
+    expect(canClaimDoctrine(s, "doc_scale")).toBe(true);
+    expect(canClaimDoctrine(s, "doc_trust")).toBe(false);
+    s = claimDoctrine(s, "doc_scale");
+    expect(declareStance(s, "doomer")).toBe(s); // can't flip to claim the other side
+  });
+
+  it("resets to the center on ship, with the window open again", () => {
+    const s = committed("accel");
+    s.lifetimeMoney = Big.of(1e30);
+    const shipped = prestige(s);
+    expect(shipped.prestige.ships).toBe(s.prestige.ships + 1);
+    expect(shipped.alignment).toBe(0);
+    expect(stanceOpen(shipped)).toBe(true);
+  });
+
+  it("round-trips through a save", () => {
+    const s = declareStance(fresh(), "doomer");
+    const back = deserialize(serialize(s));
+    expect(back.alignment).toBe(-THRESH);
+    expect(committedSide(back)).toBe("doomer");
   });
 });
