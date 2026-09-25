@@ -1,5 +1,28 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+import type { FunctionComponent, ReactNode } from "react";
+
+// Sheets render in place: a server render has no document.body to portal into.
+vi.mock("../ui/Portal", () => ({ Portal: ({ children }: { children: ReactNode }) => children }));
+
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { useGame, type Candidate } from "./store";
+import { UpgradePanel } from "../ui/UpgradePanel";
+import { ResearchPanel } from "../ui/ResearchPanel";
+import { DataMarketPanel } from "../ui/DataMarketPanel";
+import { CharterPanel } from "../ui/CharterPanel";
+import { TrialsPanel } from "../ui/TrialsPanel";
+import { DoctrinePanel } from "../ui/DoctrinePanel";
+import { ContractsPanel } from "../ui/ContractsPanel";
+import { ObjectivesPanel } from "../ui/ObjectivesPanel";
+import { GrandChallengesPanel } from "../ui/GrandChallengesPanel";
+import { AutomationPanel } from "../ui/AutomationPanel";
+import { InstitutePanel } from "../ui/InstitutePanel";
+import { ParadigmPanel } from "../ui/ParadigmPanel";
+import { EmployeesPanel } from "../ui/EmployeesPanel";
+import { ReputationModal } from "../ui/ReputationModal";
+import { PrestigePanel } from "../ui/PrestigePanel";
+import { TrainingDock } from "../ui/TrainingDock";
 import { Big } from "../engine/math/Big";
 import { createInitialState } from "../engine/state";
 import { balance } from "../engine/balance/config";
@@ -17,7 +40,7 @@ import {
 import { contractBoard, sponsorView } from "../engine/contracts";
 import { canBuyPreprint, preprintCost, treeComplete } from "../engine/preprints";
 import { canSetCharter, chartersUnlocked, charterHand, chartersBalance, setCharter } from "../engine/charter";
-import { doctrineUnlocked, stanceOpen, committedSide, canClaimDoctrine, doctrinePerks, declareStance, type Stance } from "../engine/doctrine";
+import { doctrineUnlocked, stanceOpen, committedSide, canClaimDoctrine, doctrinePerks, declareStance, schismRevealed, type Stance } from "../engine/doctrine";
 import { marketLeaderboard, canCounterRival, counterCost, canPlaceStake } from "../engine/market";
 import { market as MKT } from "../engine/balance/market";
 import { legacyTreeBalance, canBuyLegacyPerk, legacyAvailable, buyLegacyPerk } from "../engine/legacyTree";
@@ -27,7 +50,7 @@ import {
   canFoundWing, wingCost, directivePicksAvailable, canRespecDirective, directiveRespecCost, buyReputationPerk,
   buyEndowment, pickEndowmentDirective,
 } from "../engine/reputation";
-import { trialsBalance, canQueueTrial, ladderRung, trialLadders, queueTrial } from "../engine/trials";
+import { trialsBalance, canQueueTrial, ladderRung, trialLadders, queueTrial, trialsUnlocked } from "../engine/trials";
 import { products as PRODUCTS, productFeatures } from "../engine/balance/products";
 import { paradigmsBalance, paradigmsUnlocked, canBuyParadigm, buyParadigm } from "../engine/paradigms";
 import { instituteBalance, instituteUnlocked, canBuyInstitute, fellowshipsUnlocked, canEndowFellowship, grantsAvailable, fellowshipCost, buyInstitute } from "../engine/institute";
@@ -66,6 +89,10 @@ import type { GameState } from "../engine/types";
  *    own condition instead of calling it;
  *  - what the control QUOTES is what happens: the price on a buy button is the amount
  *    charged, a payout label is the amount paid.
+ *
+ * The mirrors are checked in turn against the real components: each panel is
+ * rendered for every lab and its live / greyed buttons must be exactly the ones the
+ * table says, so the table cannot drift from what the player sees.
  *
  * A mismatch here is a button that lies. Fix it where the two disagree.
  */
@@ -646,7 +673,8 @@ function controls(g: GameState, candidates: Candidate[] | null): Control[] {
   }
   // ---- GOALS: DoctrinePanel.tsx ----
   if (doctrineUnlocked(g)) {
-    for (const p of doctrinePerks()) {
+    // The Schism track is drawn only once a perk is held on both sides.
+    for (const p of doctrinePerks().filter((x) => x.side !== "schism" || schismRevealed(g))) {
       const isOwned = g.doctrines.includes(p.id);
       c.push({ name: `Doctrine: ${p.id}`, enabled: !isOwned && canClaimDoctrine(g, p.id), act: () => S().doClaimDoctrine(p.id) });
     }
@@ -799,6 +827,90 @@ describe("guard parity — every control against the store action it fires", () 
       ...liveOnly.filter((re) => !live(re)).map((re) => `${re} never live`),
     ];
     expect(missing).toEqual([]);
+  });
+
+  it("the mirrors match the rendered components, lab by lab", () => {
+    const noop = () => {};
+    /** Buttons whose class matches, split by live / greyed (disabled or aria-disabled). */
+    const buttons = (html: string, cls: RegExp) => {
+      let on = 0, off = 0;
+      for (const m of html.matchAll(/<button([^>]*)>/g)) {
+        const attrs = m[1]!;
+        if (!cls.test(/class="([^"]*)"/.exec(attrs)?.[1] ?? "")) continue;
+        if (/ disabled=""/.test(attrs) || /aria-disabled="true"/.test(attrs)) off++; else on++;
+      }
+      return { on, off };
+    };
+    const problems: string[] = [];
+    for (const lab of all) {
+      const g = lab.game;
+      const d = derive(g);
+      const reveal = labReveal(g);
+      const list = controls(g, lab.candidates ?? null);
+      const table = (re: RegExp) => {
+        const hit = list.filter((x) => re.test(x.name));
+        return { on: hit.filter((x) => x.enabled).length, off: hit.filter((x) => !x.enabled).length };
+      };
+      const same = (what: string, html: string, cls: RegExp, re: RegExp, greyedToo = true) => {
+        const r = buttons(html, cls);
+        const t = table(re);
+        if (r.on !== t.on || (greyedToo && r.off !== t.off)) problems.push(`${lab.name} · ${what}: rendered ${r.on} live / ${r.off} greyed, table ${t.on} / ${t.off}`);
+      };
+      const html = <P extends object>(el: (props: P) => ReactNode, props: P) => renderToStaticMarkup(createElement(el as FunctionComponent<P>, props));
+
+      same("dock", html(TrainingDock, { game: g, derived: d, onStart: noop, onClaim: noop, onSetFocus: noop }), /^btn btn-(primary|claim)/, /^Dock: (Start|Claim)/);
+      const up = html(UpgradePanel, { game: g, derived: d, onBuy: noop, onFoundWing: noop });
+      // Maxed upgrades fold into a pill row (not buttons); the table greys them.
+      same("hardware", up, /^card /, /^Build ×1: /, false);
+      same("wing", up, /wing-found/, /^Build: Found a wing/);
+      if (reveal.research) {
+        // Finished categories fold (owned and not-chosen nodes hidden): compare the live ones.
+        same("research", html(ResearchPanel, { game: g, derived: d, onResearch: noop, onBuyPreprint: noop, savingFor: null, onSaveFor: noop }), /^node /, /^Research: /, false);
+      }
+      if (reveal.market) {
+        const dm = html(DataMarketPanel, { game: g, onBuyData: noop, onBuyTool: noop, onLobby: noop });
+        same("market", dm, /^card /, /^Market( tool)?: (?!Lobby)/);
+        same("lobby", dm, /lobby-btn/, /^Market: Lobby/);
+      }
+      const ch = html(CharterPanel, { game: g, onSet: noop, onLock: noop, onStance: noop });
+      same("charters", ch, /charter-card/, /^Charter: (adopt|drop)/);
+      same("lock in", ch, /charter-lock-btn/, /^Charter: Lock in/);
+      // Stance radios carry no disabled attribute: the click guard skips the one that's on.
+      const stanceLive = [...ch.matchAll(/role="radio" aria-checked="false"/g)].length;
+      if (stanceLive !== table(/^Stance: /).on) problems.push(`${lab.name} · stance: ${stanceLive} live radios, table ${table(/^Stance: /).on}`);
+      if (trialsUnlocked(g)) {
+        const tp = html(TrialsPanel, { game: g, onStart: noop, onAbandon: noop });
+        same("trials", tp, /trial-attempt/, /^Trial: next run/);
+        same("abandon", tp, /trial-abandon/, /^Trial: abandon/);
+      }
+      if (doctrineUnlocked(g)) same("doctrine", html(DoctrinePanel, { game: g, onClaim: noop }), /doctrine-perk/, /^Doctrine: /);
+      same("contracts", html(ContractsPanel, { game: g, onClaim: noop, onClaimSponsor: noop }), /contract-claim/, /^Contract: /);
+      if (objectivesUnlocked(g)) same("objectives", html(ObjectivesPanel, { game: g, onClaim: noop }), /objective-lane/, /^Objective: /);
+      if (challengesUnlocked(g)) {
+        const gc = html(GrandChallengesPanel, { game: g, onFund: noop, onChooseFork: noop, onFundMegaproject: noop, onPickMandate: noop });
+        same("fund", gc, /challenge-fund/, /^(Challenge: fund|Megaproject: fund)/);
+        same("forks", gc, /challenge-fork-arm/, /^Challenge: fork/);
+        same("mandates", gc, /mandate-arm/, /^Mandate: /);
+      }
+      if (automationUnlockedAny(g)) same("automation", html(AutomationPanel, { game: g, onToggle: noop }), /automation-row/, /^Automation: /);
+      if (instituteUnlocked(g)) same("institute", html(InstitutePanel, { game: g, onBuy: noop, onEndowFellowship: noop }), /institute-wing/, /^Institute: /);
+      same("paradigms", html(ParadigmPanel, { game: g, onBuy: noop }), /paradigm-node/, /^Paradigm: /);
+      if (reveal.staff) {
+        const ep = html(EmployeesPanel, { game: g, derived: d, candidates: lab.candidates ?? null, onRecruit: noop, onRefresh: noop, onCloseRecruit: noop, onHireCandidate: noop, onTrain: noop, onAssign: noop, onFire: noop, onBuyPerk: noop });
+        same("hire", ep, /emp-hire-btn/, /^Team: hire /);
+        same("recruit", ep, /emp-recruit/, /^Team: Recruit/);
+      }
+      if (reveal.prestige) {
+        const rm = html(ReputationModal, { game: g, onBuy: noop, onBuyEndowment: noop, onPickDirective: noop, onRespecDirective: noop, onClose: noop });
+        same("rep perks", rm, /^card rep-card (?!affordable rep-directive-choice)/, /^(Rep perk: |Rep: Endow)/);
+        same("directives", rm, /rep-directive-choice/, /^Rep: directive/);
+        same("respec", rm, /respec-btn/, /^Rep: respec/);
+        const pp = html(PrestigePanel, { game: g, onPrestige: noop, onBuyReputationPerk: noop, onBuyEndowment: noop, onPickDirective: noop, onRespecDirective: noop, onBuyLegacyPerk: noop });
+        // The Legacy fold opens by itself only while something in it is buyable.
+        if (/legacy-tree open/.test(pp)) same("legacy", pp, /legacy-perk/, /^Legacy: /);
+      }
+    }
+    expect(problems).toEqual([]);
   });
 
   for (const lab of all) {
