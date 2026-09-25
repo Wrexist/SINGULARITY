@@ -493,13 +493,21 @@ export function App() {
   // Effect dep: a compact signature of all facts, so the effect runs exactly when
   // one of them changes (not on every 10Hz render).
   const factSignature = transitionToasts.map((t) => `${t.key}=${t.fact}`).join("|");
+  // Toasts sit under every modal and sheet backdrop, and a line lives ~4s. The first
+  // Ship flips the Charter and Legacy Investments facts inside its own celebration, so
+  // their one-time lines played out unread behind it and were spent for the session.
+  // Hold the lines (the facts are re-read, not lost) until the stage is clear. The
+  // render that lands a Ship counts as busy too: its celebration is only set by the
+  // ship effect below, after this one has run.
+  const stageBusy = moment !== null || sheetOpen || game.prestige.ships > prevShips.current;
   useEffect(() => {
     // Wait for the save to hydrate, then sync the "seen" baseline once so we
     // don't toast facts the player already had on a returning load.
     if (!initialized) return;
+    if (stageBusy && toastMemory.current.synced) return;
     for (const t of stepTransitionToasts(transitionToasts, toastMemory.current)) pushToast(t.text, t.tone);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialized, factSignature]);
+  }, [initialized, factSignature, stageBusy]);
 
   // First-ever ship-ready: queue the one-time explainer (settings-persisted).
   // Only for a first-generation lab — veterans already know what shipping does.
