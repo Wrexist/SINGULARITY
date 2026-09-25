@@ -97,7 +97,11 @@ export function advisorItems(state: GameState, precomputed?: Derived): AdvisorIt
     // Affordable first research outranks the idle "start a run" nudge, so it
     // actually surfaces when it becomes the meaningful next step (nextAction
     // returns only the single highest-priority item).
-    const canBuyFirstResearch = state.research.length === 0 && FIRST_RESEARCH && canBuyResearch(state, FIRST_RESEARCH);
+    // Only once the Research section is drawn (it opens with the first Data): a new
+    // player who banks the first node's Compute before claiming a run would otherwise
+    // get a chip that lands on the Build view (r3 bug hunt).
+    const canBuyFirstResearch = state.research.length === 0 && FIRST_RESEARCH && canBuyResearch(state, FIRST_RESEARCH)
+      && labReveal(state).research;
     if (canBuyFirstResearch) {
       items.push({ tab: "lab", section: "research", text: "Research your first capability", priority: 70 });
     } else if (!derived.autoTrain && !state.run.active && !state.run.readyToClaim) {

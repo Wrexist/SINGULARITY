@@ -1283,7 +1283,7 @@ export function App() {
         <ConfirmSheet
           kicker="SHIP THE MODEL"
           title="Your first Ship is ready"
-          body="Shipping resets this run — Compute, Data, $, racks, parts and research — and banks Legacy Weights: a permanent boost to every future run. Your team, products, trophies, achievements and Reputation all stay. Shipping is how you grow."
+          body="Shipping resets this run — Compute, Data, $, racks, parts, office perks and research — and banks Legacy Weights: a permanent boost to every future run. Your team, products, trophies, achievements and Reputation all stay. Shipping is how you grow."
           confirmLabel="Got it"
           hideCancel
           onConfirm={() => { markShipExplained(); setShowShipExplainer(false); }}
