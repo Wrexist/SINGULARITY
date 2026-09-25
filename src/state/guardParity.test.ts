@@ -12,7 +12,7 @@ import {
 import { floorDrawnOut, totalRacks, RACK_IDS } from "../engine/hall";
 import { powerStats } from "../engine/power";
 import {
-  componentsUnlocked, visibleCatalog, canBuyComponent, freeCopies, canFuse, SLOTS_BY_TIER, buyComponent, equipComponent,
+  componentsUnlocked, visibleCatalog, canBuyComponent, componentOnSale, freeCopies, canFuse, SLOTS_BY_TIER, buyComponent, equipComponent,
 } from "../engine/components";
 import { contractBoard, sponsorView } from "../engine/contracts";
 import { canBuyPreprint, preprintCost, treeComplete } from "../engine/preprints";
@@ -414,10 +414,11 @@ function controls(g: GameState, candidates: Candidate[] | null): Control[] {
           const isCurrent = current === def.id;
           const hasFree = freeCopies(g, def.id) > 0;
           const affordable = canBuyComponent(g, def.id);
-          const action = isCurrent ? "equipped" : hasFree ? "equip" : affordable ? "buy" : "poor";
+          const inUse = !hasFree && (g.components.owned[def.id] ?? 0) > 0 && !componentOnSale(g, def.id);
+          const action = isCurrent ? "equipped" : hasFree ? "equip" : affordable ? "buy" : inUse ? "inUse" : "poor";
           c.push({
             name: `Rig: t${tier} ${slot} ← ${def.id} (${action})`,
-            enabled: action !== "equipped" && action !== "poor",
+            enabled: action === "equip" || action === "buy",
             act: () => { if (action === "buy") S().doBuyComponent(def.id); S().doEquipComponent(tier, slot, def.id); },
             quote: (b, a) => {
               if (a.components.loadout[tier]?.[slot] !== def.id) return `tapping ${def.id} left t${tier} ${slot} = ${a.components.loadout[tier]?.[slot]}`;

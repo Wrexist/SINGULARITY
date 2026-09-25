@@ -107,15 +107,23 @@ export function equippedCount(state: GameState, id: string): number {
   return n;
 }
 
-export function canBuyComponent(state: GameState, id: string): boolean {
+/** Is another copy of this part on sale right now, money aside? Not for a trophy (earned,
+ *  never sold), a part the fleet hasn't revealed yet (one made early by fusion is owned
+ *  but not yet stocked), or a stack at the copy cap. The slot picker reads it to tell a
+ *  part it can't sell you from one you just can't afford. */
+export function componentOnSale(state: GameState, id: string): boolean {
   const def = BY_ID.get(id);
   if (!def || !componentsUnlocked(state)) return false;
   if (def.earnedBy) return false; // trophies are earned, never sold
   if (totalRacks(state) < def.revealAtRacks) return false;
   // The save-load clamp caps owned at maxCopies — enforce the same cap here so
   // a copy (and its price) bought past the cap can't silently vanish on reload.
-  if ((state.components.owned[id] ?? 0) >= C.maxCopies) return false;
-  return state.resources.money.gte(def.cost);
+  return (state.components.owned[id] ?? 0) < C.maxCopies;
+}
+
+export function canBuyComponent(state: GameState, id: string): boolean {
+  const def = BY_ID.get(id);
+  return !!def && componentOnSale(state, id) && state.resources.money.gte(def.cost);
 }
 
 // ---------- Fusion (C3) ----------

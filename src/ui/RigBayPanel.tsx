@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { Portal } from "./Portal";
 import { Big } from "../engine/math/Big";
 import {
-  componentsBalance, SLOTS_BY_TIER, componentDef, visibleCatalog, canBuyComponent, equippedCount,
+  componentsBalance, SLOTS_BY_TIER, componentDef, visibleCatalog, canBuyComponent, componentOnSale, equippedCount,
   earnedDefs, earnedSourceComplete, canFuse, freeCopies, tierSetMatched, trophyEarnHint,
 } from "../engine/components";
 import type { SlotClass, ComponentDef, ComponentGrade } from "../engine/balance/components";
@@ -98,13 +98,17 @@ export function RigBayPanel({ game, onBuy, onEquip, onFuse }: Props) {
           const isCurrent = current === def.id;
           const hasFree = freeCopies(game, def.id) > 0;
           const affordable = canBuyComponent(game, def.id);
-          const action = isCurrent ? "equipped" : hasFree ? "equip" : affordable ? "buy" : "poor";
+          // Every copy you own is fitted elsewhere and no other is for sale (a trophy, a
+          // part fused ahead of its catalog reveal): it is in use, not a price you are
+          // short of — it used to read "$0" / "$70K" greyed out.
+          const allFitted = !hasFree && owned > 0 && !componentOnSale(game, def.id);
+          const action = isCurrent ? "equipped" : hasFree ? "equip" : affordable ? "buy" : allFitted ? "inUse" : "poor";
           const fusable = canFuse(game, def.id);
           return (
             <div key={def.id} className="rig-row">
               <button
                 className={`rig-option grade-${def.grade} ${isCurrent ? "current" : ""}`}
-                disabled={action === "equipped" || action === "poor"}
+                disabled={action === "equipped" || action === "poor" || action === "inUse"}
                 onClick={() => {
                   if (action === "buy") onBuy(def.id);
                   onEquip(tier, slot, def.id);
@@ -120,7 +124,7 @@ export function RigBayPanel({ game, onBuy, onEquip, onFuse }: Props) {
                   {owned > 0 && <span className="rig-option-owned">{owned} owned · {inUse} slotted</span>}
                 </div>
                 <span className="rig-option-go">
-                  {action === "equipped" ? "✓ fitted" : action === "equip" ? "Fit it" : fmtMoney(Big.of(def.cost))}
+                  {action === "equipped" ? "✓ fitted" : action === "equip" ? "Fit it" : action === "inUse" ? "In use" : fmtMoney(Big.of(def.cost))}
                 </span>
               </button>
               {fusable && def.fusesInto && (
