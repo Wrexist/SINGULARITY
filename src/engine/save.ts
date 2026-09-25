@@ -24,6 +24,7 @@ import { automation as AUTOMATION } from "./balance/automation";
 import { freshComponents } from "./components";
 import { RACK_IDS } from "./hall";
 import { laneMet } from "./challenges";
+import { shiftAlignment } from "./alignment";
 import { capActiveModifiers } from "./tick";
 import type { ChallengeState } from "./types";
 import type { ActiveModifier, ComponentsState, DraftModel, Employee, GameState, LifetimeStats, ModifierTarget, ProductsState, ProductState, ShipLogEntry, UpgradeState } from "./types";
@@ -670,9 +671,11 @@ export function deserialize(json: string): GameState {
   const modifiers = Array.isArray(raw.modifiers)
     ? capActiveModifiers(lastPerId(raw.modifiers.filter(isWellFormedModifier)))
     : fresh.modifiers;
+  // Clamped and snapped like every runtime shift (shiftAlignment), so a save that
+  // already drifted to 0.39999999999999997 gets its declared stance back on load.
   const alignment =
     typeof raw.alignment === "number" && Number.isFinite(raw.alignment)
-      ? Math.max(-1, Math.min(1, raw.alignment))
+      ? shiftAlignment(raw.alignment, 0)
       : fresh.alignment;
   const computeFocus =
     typeof raw.computeFocus === "number" && Number.isFinite(raw.computeFocus)

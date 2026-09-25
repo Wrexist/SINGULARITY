@@ -10,7 +10,7 @@ import {
 } from "./balance/config";
 import { derive, computeBankReach, runYieldAt } from "./derive";
 import { ALL_RESEARCH, researchTree, epochUnlocked } from "./researchTree";
-import { alignmentHeatMult } from "./alignment";
+import { alignmentHeatMult, shiftAlignment } from "./alignment";
 import { suspicionEventMult, regulatorIsNamed, regulatorState, clampSuspicion } from "./regulator";
 import { autoResearchEnabled, researchCostMult } from "./reputation";
 import { charterRule, startWindowOpen, chartersUnlocked } from "./charter";
@@ -761,7 +761,7 @@ export function applyWorldEventChoice(
   const next = applyEffect(state, choice.effect, def.id);
   // True Believers (rule charter) doubles how far a choice moves you; ×1 otherwise.
   const shift = choice.alignment * (charterRule(state).factionShift ?? 1);
-  const alignment = Math.max(-1, Math.min(1, state.alignment + shift));
+  const alignment = shiftAlignment(state.alignment, shift);
   return {
     state: { ...next, alignment, stats: { ...next.stats, worldEventsResolved: next.stats.worldEventsResolved + 1 } },
     event: { ...base, summary: effectSummary(choice.effect) },

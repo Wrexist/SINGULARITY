@@ -10,6 +10,19 @@ import type { GameState } from "./types";
  * untouched. Data lives in `balance.alignment`.
  */
 
+/**
+ * Move alignment by `delta`, clamped to [−1, 1] and snapped to a millionth. Every
+ * shift is a two-decimal number and every stance line (the ±0.4 commit threshold) is
+ * one too, but in binary floating point 0.4 + 0.3 − 0.3 is 0.39999999999999997: a lab
+ * that declared a side and then took two opposite picks of the same size — a net move
+ * of zero — fell off its stance. The snap keeps the sum exact at the precision the
+ * game actually uses. The one write path for event and regulator choices.
+ */
+export function shiftAlignment(current: number, delta: number): number {
+  const next = Math.round((current + delta) * 1e6) / 1e6;
+  return Math.max(-1, Math.min(1, next));
+}
+
 /** Lane multipliers from the current stance. Both 1.0 at neutral. */
 export function alignmentProductionMods(state: GameState): { computeMult: number; moneyMult: number } {
   const cfg = balance.alignment;

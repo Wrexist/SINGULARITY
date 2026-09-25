@@ -1,6 +1,7 @@
 import { balance } from "./balance/config";
 import { Big } from "./math/Big";
 import { clampSuspicion } from "./regulator";
+import { shiftAlignment } from "./alignment";
 import type { WorldEventResult } from "./actions";
 import type { ActiveModifier, GameState } from "./types";
 
@@ -101,7 +102,7 @@ export function applyNegotiationChoice(state: GameState, choiceIndex: number): G
       resources: { ...state.resources, money: state.resources.money.mul(Math.max(0, 1 + N.lobby.moneyPct)).max(Big.ZERO) },
       suspicion: clampSuspicion(state.suspicion + N.lobby.suspicion),
       heat: Math.max(0, Math.min(100, state.heat + N.lobby.heat)),
-      alignment: Math.max(-1, Math.min(1, state.alignment + N.lobby.alignment)),
+      alignment: shiftAlignment(state.alignment, N.lobby.alignment),
       modifiers: mods([], `${R.name}: quietly appeased`),
       stats: { ...state.stats, worldEventsResolved: state.stats.worldEventsResolved + 1 },
     };
@@ -120,7 +121,7 @@ export function applyNegotiationChoice(state: GameState, choiceIndex: number): G
       ...state,
       suspicion: clampSuspicion(state.suspicion + N.defy.suspicion),
       heat: Math.max(0, Math.min(100, state.heat + N.defy.heat)),
-      alignment: Math.max(-1, Math.min(1, state.alignment + N.defy.alignment)),
+      alignment: shiftAlignment(state.alignment, N.defy.alignment),
       modifiers: mods([buff], `${R.name} prepares the paperwork`),
       stats: { ...state.stats, worldEventsResolved: state.stats.worldEventsResolved + 1 },
     };
