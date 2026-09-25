@@ -10,6 +10,9 @@ export interface StatusChip {
   tone: "good" | "bad" | "neutral";
 }
 
+/** A per-lane family's ids end in the lane they boost (`daily_computeMult`). */
+const LANE_SUFFIX = /_(computeMult|dataMult|moneyMult)$/;
+
 /** Live chips for active world-event modifiers (counting down) plus any persistent
  *  status chips — a light always-visible status ticker. The row is ALWAYS rendered
  *  at a fixed height (chips scroll horizontally, never wrap) so chips appearing or
@@ -26,12 +29,14 @@ export function ModifierBar({
   onWork?: (id: string) => void;
   workShaveSec?: number;
 }) {
-  // Display-dedupe by label+tone: a boost applied per-resource (e.g. the daily's
-  // three ×1.5 mults) is ONE chip to the player, not three identical ones.
+  // Display-dedupe a per-lane family: a boost applied per-resource (the daily's three
+  // ×1.5 mults `daily_<lane>`, open-source momentum `momentum_<lane>`) is ONE chip to
+  // the player, not three identical ones. Only a family merges — two different events
+  // that share a label ("Compute ×1.5" twice) both apply, so both show.
   const chips: ActiveModifier[] = [];
   const seen = new Map<string, number>(); // dedupe key → index into chips
   for (const m of modifiers) {
-    const key = `${m.label}|${m.tone}`;
+    const key = `${m.id.replace(LANE_SUFFIX, "")}|${m.label}|${m.tone}`;
     const at = seen.get(key);
     if (at === undefined) { seen.set(key, chips.length); chips.push(m); }
     else if (m.remainingSec > chips[at]!.remainingSec) chips[at] = m;
