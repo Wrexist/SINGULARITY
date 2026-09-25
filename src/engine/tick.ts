@@ -1,7 +1,7 @@
 import { Big } from "./math/Big";
 import { balance } from "./balance/config";
 import { derive, runYieldAt, runsPerSec } from "./derive";
-import { simulateProducts, advanceUpgrades, applyMilestones, productMetrics } from "./products";
+import { simulateProducts, advanceUpgrades, applyMilestones, productMetrics, settledMrr } from "./products";
 import { advanceTraining, payrollPaid } from "./employees";
 import { accrueStats } from "./stats";
 import { applyAchievements } from "./achievements";
@@ -276,7 +276,7 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   // Generation-scoped peaks (reset by prestige) for the Generation Report: this run's
   // high-water Compute/sec and total product revenue/sec, NOT the all-time career peaks.
   let curMrr = 0;
-  for (const p of products.active) curMrr += productMetrics(p, products.frontier, d.productModsById[p.id]).mrr;
+  for (const p of products.active) curMrr += settledMrr(p, products.frontier, d.productModsById[p.id]);
   const runPeakCompute = state.runPeakCompute.max(d.computePerSec);
   const runPeakMrr = Math.max(state.runPeakMrr, curMrr);
 

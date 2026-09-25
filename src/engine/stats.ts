@@ -1,5 +1,5 @@
 import { Big } from "./math/Big";
-import { productMetrics } from "./products";
+import { productMetrics, settledMrr } from "./products";
 import type { LifetimeStats, ProductsState, ProductMods } from "./types";
 
 /**
@@ -47,7 +47,9 @@ export function accrueStats(
     // Mods-aware so peakMrr tracks the player's REAL (staff/faction-buffed) revenue —
     // the same number the product cards now show. Empty map ⇒ neutral (curve-safe).
     const m = productMetrics(p, products.frontier, modsById[p.id]);
-    mrr += m.mrr;
+    // Revenue ladders read the SETTLED figure, so a one-frame dial flick can't clear a
+    // rung the product can't hold (see settledMrr). MAU has no dial lever.
+    mrr += settledMrr(p, products.frontier, modsById[p.id]);
     mau += m.mau;
   }
   return {

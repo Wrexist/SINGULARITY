@@ -372,7 +372,7 @@ export function milestoneValue(state: GameState, metric: MilestoneDef["metric"],
     // The bare figure left a lab billing $1.5K/s short of the "$1K/s" rung.
     case "mrr": {
       const mods = modsById ?? derive(state).productModsById;
-      return ps.active.reduce((s, p) => s + productMetrics(p, ps.frontier, mods[p.id]).mrr, 0);
+      return ps.active.reduce((s, p) => s + settledMrr(p, ps.frontier, mods[p.id]), 0);
     }
     case "version": return ps.active.reduce((m, p) => Math.max(m, p.version), 0);
     case "qf": return ps.active.reduce((m, p) => Math.max(m, productMetrics(p, ps.frontier).qf), 0);
@@ -883,6 +883,17 @@ function settledPaid(p: ProductState, frontier: number, mods: ProductMods): numb
   const k = B.convSpeed + churn;
   const pStar = k > 0 ? (B.convSpeed * targetPaid) / k : targetPaid;
   return Math.max(0, Math.min(p.paid, pStar));
+}
+
+/** Revenue per second at the product's SETTLED paid count (settledPaid) — what its
+ *  current dials can actually hold. The revenue ladders (peakMrr → contracts,
+ *  objectives, achievements; the $/s product milestones) are measured on this, not the
+ *  instantaneous figure: a one-frame flick of the price/Enterprise dials used to clear
+ *  rungs ~1.7× above anything the product could sustain, then flick back (r3 bug hunt).
+ *  A settled or growing product reads exactly its live revenue. */
+export function settledMrr(p: ProductState, frontier: number, mods: ProductMods = NEUTRAL_MODS): number {
+  const m = productMetrics({ ...p, paid: settledPaid(p, frontier, mods) }, frontier, mods).mrr;
+  return Number.isFinite(m) ? m : 0;
 }
 
 /** The marketing budget a product can carry into a fresh run: unchanged if its campaign
