@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { canPrestige, legacyWeightsGain, legacyWeightsForMode, ascensionMultiplier, shipPath, nextRunMultiplier, type ShipMode } from "../engine/prestige";
+import { canPrestige, legacyWeightsGain, legacyWeightsForMode, ascensionMultiplier, shipPath, nextRunMultiplier, shipWouldAscend, type ShipMode } from "../engine/prestige";
 import { legacyMultiplier } from "../engine/derive";
 import { currentEra } from "../engine/eras";
 import { reputationAvailable, nextRecordProgress } from "../engine/reputation";
@@ -58,14 +58,18 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
   const progress = path.total > 0 ? Math.min(100, (path.done / path.total) * 100) : 100;
 
   // AGI ascension (Post-Singularity era): a ship here past the Legacy floor is an
-  // ascension — a permanent compounding boost. Mirror prestige()'s gate.
+  // ascension — a permanent compounding boost. Judged per ship mode with prestige()'s
+  // own gate (shipWouldAscend: mode multiplier × conviction), because near the floor
+  // the modes disagree — Sell can fall short where Open-source clears it. The header
+  // only promises an ascension every way to ship delivers; when they split, each
+  // mode that ascends says so on its own button.
   const ascensions = game.stats.ascensions;
   const ascBoost = balance.eras.agi.bonusPerAscension;
   const inAgiEra = currentEra(game) >= 5;
-  const willAscend =
-    ready &&
-    game.prestige.ships + 1 >= balance.eras.agiAtShips &&
-    game.stats.totalLegacy.add(gain).gte(Big.of(balance.eras.agi.legacyThreshold));
+  const shipModes = Object.values(balance.prestige.shipModes).filter((m) => game.prestige.ships >= m.unlockShips);
+  const ascendingModes = new Set(shipModes.filter((m) => shipWouldAscend(game, m.id as ShipMode)).map((m) => m.id));
+  const willAscend = ascendingModes.size > 0 && ascendingModes.size === shipModes.length;
+  const mayAscend = ascendingModes.size > 0 && !willAscend;
 
   return (
     <section className="panel prestige">
@@ -95,6 +99,7 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
             <div className="agi-sub">
               {ascensions} ascension{ascensions === 1 ? "" : "s"} · permanent ×{ascensionMultiplier(game).toFixed(2)} to all output
               {willAscend && <> · <b>next ship ascends (+{Math.round(ascBoost * 100)}%)</b></>}
+              {mayAscend && <> · <b>next ship can ascend (+{Math.round(ascBoost * 100)}%)</b></>}
             </div>
           </div>
         </div>
@@ -175,7 +180,7 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
               legacy + Rep + momentum right now. */}
           {(() => {
             const slotsFull = productsUnlocked(game) && game.products.active.length >= maxActiveProducts(game);
-            return Object.values(balance.prestige.shipModes).filter((m) => game.prestige.ships >= m.unlockShips).map((m) => {
+            return shipModes.map((m) => {
             const banked = legacyWeightsForMode(game, m.id as ShipMode);
             const kickstart = m.moneyKickstartPerShip * (game.prestige.ships + 1);
             return (
@@ -202,6 +207,7 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
                     {kickstart > 0 && <span className="ship-tag good">+ ${kickstart} cash</span>}
                     {m.reputationBonus > 0 && <span className="ship-tag good">+ {m.reputationBonus} Reputation</span>}
                     {m.momentum && <span className="ship-tag good">+ momentum boost next run</span>}
+                    {mayAscend && ascendingModes.has(m.id) && <span className="ship-tag good">✦ Ascends (+{Math.round(ascBoost * 100)}%)</span>}
                   </div>
                 </div>
               </button>
@@ -218,6 +224,7 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
           `+${fmt(legacyWeightsForMode(game, pendingMode))} Legacy weights`,
           m.reputationBonus > 0 ? `+${m.reputationBonus} Reputation` : "",
           m.momentum ? "a momentum boost next run" : "",
+          ascendingModes.has(m.id) ? `an AGI ascension (+${Math.round(ascBoost * 100)}%)` : "",
         ].filter(Boolean).join(", ");
         return (
           <ConfirmSheet

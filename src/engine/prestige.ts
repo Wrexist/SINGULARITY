@@ -87,6 +87,23 @@ export function legacyWeightsForMode(state: GameState, mode: ShipMode): Big {
     .max(1);
 }
 
+/** The AGI-ascension gate: a ship counts as one if it lands in the Post-Singularity
+ *  era (by ship count) AND lifetime Legacy — including what THIS ship banks — clears
+ *  the floor. prestige() and the Ship panel both read it, so they can't disagree. */
+function ascendsWith(state: GameState, gained: Big): boolean {
+  return (
+    state.prestige.ships + 1 >= balance.eras.agiAtShips &&
+    state.stats.totalLegacy.add(gained).gte(Big.of(balance.eras.agi.legacyThreshold))
+  );
+}
+
+/** Would shipping now in `mode` be an AGI ascension? Judged on what that mode really
+ *  banks (mode multiplier × charter conviction — legacyWeightsForMode), not the base
+ *  gain: near the floor, Sell can fall short where Open-source or Hard clear it. */
+export function shipWouldAscend(state: GameState, mode: ShipMode): boolean {
+  return canPrestige(state) && ascendsWith(state, legacyWeightsForMode(state, mode));
+}
+
 /** The permanent AGI-ascension output multiplier (1 = none). Single source of truth
  *  for derive's lane boost AND the UI displays, so they can never diverge. */
 export function ascensionMultiplier(state: GameState): number {
@@ -133,9 +150,7 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
   // Post-Singularity era (by ship count) AND your lifetime Legacy clears the floor.
   // Hard-gated so it stays 0 through the whole early/mid game (no curve impact).
   const newTotalLegacy = state.stats.totalLegacy.add(gained);
-  const isAscension =
-    ships >= balance.eras.agiAtShips &&
-    newTotalLegacy.gte(Big.of(balance.eras.agi.legacyThreshold));
+  const isAscension = ascendsWith(state, gained);
 
   // Shipping deposits the flagship you just trained as a "raw model" draft in the
   // Products tab — the player commercialises it (pick a type + name, pay to launch)
