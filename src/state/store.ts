@@ -426,7 +426,10 @@ export const useGame = create<GameStore>((set, get) => ({
     seedProductKey(game);
     seedEmpKey(game);
     set({ game, offline, initialized: true });
-    localStorage.setItem(TIME_KEY, String(now()));
+    // Persist the caught-up lab AND the new lastSeen together (save() writes both).
+    // Stamping lastSeen alone left the pre-catch-up save on disk: an app killed in
+    // its first seconds relaunched with the whole time away lost (2026-09 bug hunt).
+    get().save();
     // Telemetry (R8.1): seed the diff baselines from the loaded save so a returning
     // player's first tick doesn't register a phantom purchase/era-arrival, then log
     // the session start. On-device only — see src/state/telemetry.ts.
