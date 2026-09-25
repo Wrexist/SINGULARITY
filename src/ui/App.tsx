@@ -47,7 +47,7 @@ import { labReveal } from "../engine/reveal";
 import { nextGoal } from "../engine/goals";
 import { marketLeaderboard, playerMarketRank } from "../engine/market";
 import { FlaskIcon, BoxIcon, TeamIcon, GearIcon, GiftIcon, TargetIcon } from "./Icons";
-import { fmt, fmtMoney, effRate, netMoneyRate } from "./format";
+import { fmt, fmtMoney, barRates } from "./format";
 import type { ProductTypeId } from "../engine/balance/products";
 import { iap } from "./iap";
 import { isPremium } from "../state/premium";
@@ -218,12 +218,16 @@ export function App() {
   const [showShipExplainer, setShowShipExplainer] = useState(false);
 
   // Rate-history sampler for the Lab Stats sparklines (session-only, UI-side).
-  // Reads this render's derive via a ref so the interval never re-arms.
+  // Reads this render's game + derive via refs so the interval never re-arms. Data is
+  // the rate the bar and the Lab Stats row quote (runs included once they restart
+  // themselves), so the trace trends the number printed beside it.
   const dRef = useRef(d);
   dRef.current = d;
+  const gRef = useRef(game);
+  gRef.current = game;
   useEffect(() => {
     const t = window.setInterval(
-      () => sampleHistory(dRef.current.computePerSec, dRef.current.dataPerSec, dRef.current.passiveMoneyPerSec),
+      () => sampleHistory(dRef.current.computePerSec, barRates(gRef.current, dRef.current).data, dRef.current.passiveMoneyPerSec),
       SAMPLE_MS,
     );
     return () => window.clearInterval(t);
@@ -909,19 +913,8 @@ export function App() {
     }
   };
 
-  // What the bar's rate lines claim must match what the numbers actually do. They
-  // used to show passive-only rates, so with auto-train on Money read "$156M/s"
-  // while climbing ~20T/s and Data showed no rate at all. Runs count once they
-  // restart themselves; product margin (with its staff buffs) and payroll (as much as
-  // the tick really takes) always flow — see netMoneyRate.
-  const barRates = (() => {
-    // Runs count only while they actually restart themselves: auto-train on AND an
-    // intensity above zero (0 = training held, e.g. a "save for this" pin).
-    const running = d.autoTrain && game.computeFocus > 0;
-    const data = running ? effRate(d, "data", game.computeFocus) : d.dataPerSec;
-    const base = running ? effRate(d, "money", game.computeFocus) : d.passiveMoneyPerSec;
-    return { data, money: netMoneyRate(game, d, base) };
-  })();
+  // The bar's rate lines: what the numbers actually do (see barRates in format.ts).
+  const rates = barRates(game, d);
 
   return (
     <div className={`app${reducedMotion ? " reduce-motion" : ""}${booted ? " app-booted" : ""}${tab === "lab" && section === "build" ? " app-split" : ""}`}>
@@ -946,8 +939,8 @@ export function App() {
         data={game.resources.data}
         money={game.resources.money}
         computeRate={d.computePerSec}
-        dataRate={barRates.data}
-        moneyRate={barRates.money}
+        dataRate={rates.data}
+        moneyRate={rates.money}
         quiet={d.autoTrain && game.computeFocus > 0}
       />
       <ModifierBar

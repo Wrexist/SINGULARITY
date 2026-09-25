@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChevronIcon } from "./Icons";
 import type { Derived, GameState } from "../engine/types";
-import { fmt, fmtMoney, fmtMult, m$, numOf, fmtDur, fmtSignedPct } from "./format";
+import { fmt, fmtMoney, fmtMult, m$, numOf, fmtDur, fmtSignedPct, barRates } from "./format";
 import { achievementDefs } from "../engine/achievements";
 import { reputationAvailable, endowmentMult } from "../engine/reputation";
 import { preprintMult } from "../engine/preprints";
@@ -107,7 +107,9 @@ export function StatsPanel({ game, derived }: Props) {
     // ResourceBar — the sparklines resurrect them as TREND rows: the ~3-minute
     // trace is information the bar doesn't carry.
     { label: "Compute / sec", value: fmt(derived.computePerSec), tone: "compute" as const, spark: history.compute },
-    { label: "Data / sec", value: fmt(derived.dataPerSec), tone: "data" as const, spark: history.data },
+    // The bar's Data rate (runs included once they restart themselves), not only the
+    // passive scraper lane: an auto-training lab read "Data / sec 0" while Data climbed.
+    { label: "Data / sec", value: fmt(barRates(game, derived).data), tone: "data" as const, spark: history.data },
     { label: "Compute multiplier", value: `×${fmtMult(derived.computeMult)}` },
     { label: "Data multiplier", value: `×${fmtMult(derived.dataMult)}` },
     { label: "$ multiplier", value: `×${fmtMult(derived.moneyMult)}` },

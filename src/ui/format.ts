@@ -47,6 +47,20 @@ export function netMoneyRate(game: GameState, d: Derived, base: Big): Big {
   return base.add(Big.of(margin)).sub(payrollPaid(d.payrollPerSec, earned));
 }
 
+/** The Data and Money rates the game quotes as "how fast it's coming in" — the
+ *  resource bar's rate lines, and the Lab Stats rows that trend them. They must match
+ *  what the numbers actually do: passive-only rates read "$156M/s" while Money climbed
+ *  ~20T/s, and "Data / sec 0" while Data climbed by run payouts. Runs count only while
+ *  they restart themselves (auto-train on AND an intensity above zero; 0 = training
+ *  held, e.g. a "save for this" pin); product margin (with its staff buffs) and payroll
+ *  (as much as the tick really takes) always flow — see netMoneyRate. */
+export function barRates(game: GameState, d: Derived): { data: Big; money: Big } {
+  const running = d.autoTrain && game.computeFocus > 0;
+  const data = running ? effRate(d, "data", game.computeFocus) : d.dataPerSec;
+  const base = running ? effRate(d, "money", game.computeFocus) : d.passiveMoneyPerSec;
+  return { data, money: netMoneyRate(game, d, base) };
+}
+
 /** A seconds-to-afford figure worth showing: finite, positive and under ~99 days; else null. */
 export function shownEta(secs: number | null): number | null {
   if (secs === null || !Number.isFinite(secs) || secs <= 0 || secs > 3600 * 24 * 99) return null;
