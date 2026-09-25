@@ -108,3 +108,34 @@ export function findElements(node: unknown, pred: (el: ReactElement) => boolean)
   walk(node);
   return out;
 }
+
+/** The chain of elements from the root down to (and including) `target`, or null. */
+export function pathTo(node: unknown, target: ReactElement): ReactElement[] | null {
+  const walk = (n: unknown, trail: ReactElement[]): ReactElement[] | null => {
+    if (Array.isArray(n)) {
+      for (const c of n) { const hit = walk(c, trail); if (hit) return hit; }
+      return null;
+    }
+    if (!n || typeof n !== "object" || !("props" in n)) return null;
+    const el = n as ReactElement;
+    const here = [...trail, el];
+    if (el === target) return here;
+    return walk((el.props as { children?: unknown }).children, here);
+  };
+  return walk(node, []);
+}
+
+/**
+ * Fire a click on the last element of `path` and bubble it outwards the way React
+ * does: every onClick on the way up runs until one calls stopPropagation. React
+ * bubbles through its OWN tree, so a click inside a portal reaches the component
+ * that rendered the portal even though the DOM node lives elsewhere.
+ */
+export function bubbleClick(path: ReactElement[]): void {
+  let stopped = false;
+  const ev = { stopPropagation: () => { stopped = true; }, preventDefault: () => {} };
+  for (let k = path.length - 1; k >= 0 && !stopped; k--) {
+    const onClick = (path[k]!.props as { onClick?: (e: typeof ev) => void }).onClick;
+    onClick?.(ev);
+  }
+}

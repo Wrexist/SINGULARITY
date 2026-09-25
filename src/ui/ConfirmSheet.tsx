@@ -24,7 +24,10 @@ export function ConfirmSheet({ kicker, title, body, confirmLabel, danger, hideCa
   useDialog(ref, { onClose: onCancel });
   return (
     <Portal>
-      <div className="modal-backdrop" onClick={onCancel}>
+      {/* The backdrop tap is the confirm's own: React bubbles a click through its
+          tree, portal or not, so without the stop it also reached the sheet that
+          opened this confirm (Settings' Restore) and closed that as well. */}
+      <div className="modal-backdrop" onClick={(e) => { e.stopPropagation(); onCancel(); }}>
         <div ref={ref} className="modal confirm-modal" role="alertdialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
           <div className="confirm-kicker">{kicker}</div>
           <h2 tabIndex={-1}>{title}</h2>
