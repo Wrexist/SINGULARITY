@@ -210,7 +210,7 @@ function HallCanvasImpl({ onExpand }: { onExpand: (id: string) => void }) {
       // pulses, monetize → golden beam glint) MUST be in the signature, else buying
       // them rebuilds nothing and the lab looks unchanged (2026-07: they were modeled
       // but omitted here, so a common buy like Overclock felt inert).
-      const sig = `${u.rack_basic ?? 0}|${u.rack_server ?? 0}|${u.rack_tpu ?? 0}|${u.expand_n ?? 0}|${u.expand_s ?? 0}|${u.expand_e ?? 0}|${u.expand_w ?? 0}|${u.overclock ?? 0}|${u.auto_train ?? 0}|${u.data_pipeline ?? 0}|${u.batching ?? 0}|${u.monetize ?? 0}|${powerSig}|${game.run.active ? 1 : 0}|${game.products.active.length}|${currentEra(game)}|${regulatorState(game).index}|${game.charter ?? ""}|${game.shipLog.length}|${wingRef.current}|${game.facilityWings}|${incSig}`;
+      const sig = `${u.rack_basic ?? 0}|${u.rack_server ?? 0}|${u.rack_tpu ?? 0}|${u.expand_n ?? 0}|${u.expand_s ?? 0}|${u.expand_e ?? 0}|${u.expand_w ?? 0}|${u.overclock ?? 0}|${u.auto_train ?? 0}|${u.data_pipeline ?? 0}|${u.batching ?? 0}|${u.monetize ?? 0}|${powerSig}|${game.run.active ? 1 : 0}|${game.run.readyToClaim ? 1 : 0}|${Math.round(game.alignment * 20)}|${game.products.active.map((p) => p.id).join(",")}|${currentEra(game)}|${regulatorState(game).index}|${game.charter ?? ""}|${game.shipLog.length}|${wingRef.current}|${game.facilityWings}|${incSig}`;
       if (sig !== modelSig || game.components.loadout !== rigLoadout || game.employees !== agentRoster) {
         modelSig = sig;
         rigLoadout = game.components.loadout;
