@@ -147,6 +147,36 @@ Still open from these audits:
 - **Expiry rings on stacked objective boosts.** When two boosts end together, Compute/s
   drops 81% with no warning.
 
+## Part 5c — Round 3: generations 2–20, accessibility, a live-game freeze
+
+A third audit played generations 2–20 on real engine saves. Its finding: past the first
+few ships the game stops **offering choices**. Legacy runs away, runs last seconds, and
+three whole systems (Doctrine, the Rep sinks, the charters) sit unreachable or settle
+into a habit. Everything below shipped with `npm run sim` byte-identical.
+
+| Finding | Fix |
+|---|---|
+| **Doctrine was unreachable.** Committing needed two same-side faction choices inside one run, but alignment resets every ship and late runs last seconds | **Declare a Stance** (ship 4+): Safety / Center / Acceleration in the Lab Charter card. It sets alignment to exactly the commit threshold and locks with the charter. Claims wait for the lock, so one run can't claim both sides |
+| **Rep dried up** after the achievements (+1 per ship), so Paradigms and Wings sat out of reach | **Personal records**: +2 Rep for each power of ten your career-peak Compute/s crosses above 1K/s, capped at 60 records. Computed from a stat already saved. A ring on the HQ Rep strip fills toward the next record |
+| **Veterans never see a real run** (Legacy ×1e3+ turns a generation into seconds) | **Unplugged Trials** (ship 10 / 20): Legacy off for one generation. Pays +1 product slot, then +30 Rep |
+| **All seven charters on screen every run**, so one habit took over by ship 3 | **Charter draft**: each ship deals 3. Last run's charter is always kept, so conviction streaks survive, and from ship 6 there's one rule-changer wild card: Research Sprint, Product Company or True Believers |
+| Conviction label read "↻ +%" on saves migrated with a streak of 0 | The card reads the engine's `charterConvictionMult` |
+| **Critical: permanent freeze.** `tick()` compared seconds but recursed in ms. About 2% of buff expiries re-split forever and overflowed the stack. That poisoned the save and also broke the offline catch-up | Compare in the recursive unit, and expire float dust under 1e-9 s. The new test fails on the old code |
+| Accessibility: dialogs trapped no focus, the core loop said nothing to VoiceOver, and hit areas were 13–30pt | `useDialog` (focus in/out, Tab cycle, Escape) on 13 overlays. The training bar is a progressbar with a polite live region. Hit areas grow to 44pt where neighbours allow |
+| Text contrast: rates and accents at 3–4:1 | Ink tokens for text (`--compute-ink` …), and accent fills darkened behind white text, with the same palette |
+
+The exhaustive bug-hunt workflow (six area finders, three independent verifiers per
+finding) returned 38 round-1 candidates. The freeze above was fixed first. The rest go
+to seven isolated fix batches, each reproduced by a failing test before it's changed.
+
+Deferred, owner's call:
+- **Ship-mode rebalance.** Hard's product penalty is wiped out by the next version push,
+  so Hard always wins. The fix is curve-safe, but it weakens a strategy live players use
+  today.
+- **Legacy softcap above ×10.** Also curve-safe (the sim peaks at ×2.9), but it
+  weakens saves already at ×1e6+. Unplugged Trials give veterans a real run without
+  touching it.
+
 ## Part 6 — App Store: "free to download"
 
 The listing copy already says "free" (`appstore/metadata/en-US/description.txt`:
