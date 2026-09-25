@@ -99,7 +99,10 @@ export function advisorItems(state: GameState, precomputed?: Derived): AdvisorIt
     const canBuyFirstResearch = state.research.length === 0 && FIRST_RESEARCH && canBuyResearch(state, FIRST_RESEARCH);
     if (canBuyFirstResearch) {
       items.push({ tab: "lab", section: "research", text: "Research your first capability", priority: 70 });
-    } else if (!state.run.active && !state.run.readyToClaim) {
+    } else if (!derived.autoTrain && !state.run.active && !state.run.readyToClaim) {
+      // Only while runs are started by hand. With Auto-Train the lab restarts them
+      // itself: an idle run is the gap between compute-bound runs (the chip flickered
+      // every cycle) or a deliberate hold, where starting one spends the banked Compute.
       items.push({ tab: "lab", section: "build", text: "Start a training run to earn Data & $", priority: 68 });
     }
   }
