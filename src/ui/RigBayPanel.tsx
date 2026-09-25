@@ -165,21 +165,50 @@ export function RigBayPanel({ game, onBuy, onEquip, onFuse }: Props) {
               </span>
             )}
           </div>
-          <div className="rig-slots">
-            {SLOTS_BY_TIER[tier]!.map((slot) => {
-              const id = game.components.loadout[tier]?.[slot];
-              const def = id ? componentDef(id) : undefined;
-              return (
-                <button key={slot} className={`rig-slot ${def ? `filled grade-${def.grade}` : ""}`} onClick={() => setPicking({ tier, slot })}>
-                  <span className="rig-slot-ic">{SLOT_META[slot].icon}</span>
-                  <span className="rig-slot-text">
-                    <span className="rig-slot-label">{def ? def.name : SLOT_META[slot].label}</span>
-                    <span className="rig-slot-sub">{def ? fmtEffect(def) : "empty — tap to fit"}</span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          {(() => {
+            // Fitted parts keep their full card; a tier's EMPTY slots fold into one row
+            // of small dashed "+ slot" chips (same tap, same picker) — a lab with no
+            // parts used to show a full "empty — tap to fit" card for every slot.
+            const slots = SLOTS_BY_TIER[tier]!;
+            const filled = slots.filter((slot) => !!componentDef(game.components.loadout[tier]?.[slot] ?? ""));
+            const empty = slots.filter((slot) => !filled.includes(slot));
+            return (
+              <>
+                {filled.length > 0 && (
+                  <div className="rig-slots">
+                    {filled.map((slot) => {
+                      const def = componentDef(game.components.loadout[tier]![slot]!)!;
+                      return (
+                        <button key={slot} className={`rig-slot filled grade-${def.grade}`} onClick={() => setPicking({ tier, slot })}>
+                          <span className="rig-slot-ic">{SLOT_META[slot].icon}</span>
+                          <span className="rig-slot-text">
+                            <span className="rig-slot-label">{def.name}</span>
+                            <span className="rig-slot-sub">{fmtEffect(def)}</span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {empty.length > 0 && (
+                  <div className="rig-empties">
+                    {empty.map((slot) => (
+                      <button
+                        key={slot}
+                        className="rig-empty"
+                        aria-label={`Fit ${SLOT_META[slot].label} to ${tierName(tier)}s`}
+                        onClick={() => setPicking({ tier, slot })}
+                      >
+                        <span className="rig-empty-plus" aria-hidden="true">+</span>
+                        <span className="rig-slot-ic" aria-hidden="true">{SLOT_META[slot].icon}</span>
+                        {SLOT_META[slot].label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
       ))}
       {chooser}

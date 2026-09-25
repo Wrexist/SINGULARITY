@@ -3224,6 +3224,17 @@ button.modchip.workable:active { transform: scale(0.94); }
 .rig-slot-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .rig-slot-label { font-size: var(--fs-md); font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rig-slot .rig-slot-sub { font-size: var(--fs-xs); color: var(--ink-3); }
+/* A tier's empty slots: one row of small dashed chips instead of a card each. */
+.rig-empties { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.rig-slots + .rig-empties { margin-top: 8px; }
+.rig-slots:first-child, .rig-tier-head + .rig-empties { margin-top: 0; }
+.rig-empty {
+  display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 6px 12px;
+  border-radius: 999px; border: 1px dashed rgba(16, 24, 40, 0.22); background: rgba(255, 255, 255, 0.6);
+  font-size: var(--fs-sm); font-weight: 700; color: var(--ink-2); cursor: pointer;
+}
+.rig-empty:hover { border-color: color-mix(in srgb, var(--accent) 45%, transparent); color: var(--ink); }
+.rig-empty-plus { font-weight: 850; color: var(--accent); }
 .rig-slot.filled .rig-slot-sub { color: #0b7a43; font-weight: 650; }
 
 /* Chooser sheet */
