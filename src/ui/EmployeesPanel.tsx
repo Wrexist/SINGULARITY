@@ -8,7 +8,7 @@ import {
   roleDef, traitDef, employeePayroll, canTrain, trainCost, hireCost,
   roleAffinity, roleMatchesSegment, rosterFull,
 } from "../engine/employees";
-import { typeDef, productMetrics, upgradeProgress } from "../engine/products";
+import { typeDef, productMetrics, upgradeProgress, upgradeWallSec } from "../engine/products";
 import { Big } from "../engine/math/Big";
 import type { GameState, Derived, Employee } from "../engine/types";
 import type { Candidate } from "../state/store";
@@ -383,7 +383,7 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
                 <div className="emp-proj-bar"><div className="emp-proj-fill" style={{ width: `${Math.min(100, pct)}%`, background: up ? "#7c5cff" : "var(--money)" }} /></div>
                 <div className="emp-proj-meta">
                   <span>{m$(me.mrr)}/s revenue</span>
-                  {up ? <span className="emp-inline-ic"><AtomIcon size={12} /> v{up.targetVersion} · ~{fmtDur(up.remainingSec)}</span> : <span>{Math.round(me.qf * 100)}% competitive</span>}
+                  {up ? <span className="emp-inline-ic"><AtomIcon size={12} /> v{up.targetVersion} · ~{fmtDur(upgradeWallSec(up.remainingSec, modsById[p.id]))}</span> : <span>{Math.round(me.qf * 100)}% competitive</span>}
                 </div>
                 <div className="emp-proj-crew">
                   {crew.length === 0 && <span className="emp-proj-empty">{selected || drag ? "Drop / tap to assign here" : "No crew assigned"}</span>}

@@ -610,6 +610,15 @@ export function startUpgrade(state: GameState, id: string): GameState {
   };
 }
 
+/** Real seconds `researchSec` of upgrade research takes on a product with these mods.
+ *  An upgrade's timer (remainingSec, upgradeDurationSec) counts RESEARCH seconds, and
+ *  advanceUpgrades moves it by real seconds × upgradeSpeed (ML Scientists), so a
+ *  countdown shown to the player divides by that speed. Neutral mods → unchanged. */
+export function upgradeWallSec(researchSec: number, mods: ProductMods = NEUTRAL_MODS): number {
+  const speed = mods.upgradeSpeed > 0 && Number.isFinite(mods.upgradeSpeed) ? mods.upgradeSpeed : 1;
+  return researchSec / speed;
+}
+
 /** Progress fraction [0,1] of an in-flight upgrade (for the UI bar). */
 export function upgradeProgress(u: UpgradeState): number {
   return u.totalSec > 0 ? clamp(1 - u.remainingSec / u.totalSec, 0, 1) : 1;

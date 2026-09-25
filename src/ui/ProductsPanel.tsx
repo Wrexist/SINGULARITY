@@ -5,7 +5,7 @@ import { marketLeaderboard, playerMarketRank, canCounterRival, counterCost, coun
 import { market as MKT } from "../engine/balance/market";
 import {
   typeDef, productMetrics, canLaunchDraft, canStartUpgrade,
-  upgradeProgress, maxActiveProducts,
+  upgradeProgress, upgradeWallSec, maxActiveProducts,
 } from "../engine/products";
 import { m$, numOf as num, fmtDur } from "./format";
 import { ProductDetail, TYPE_GLYPH } from "./ProductDetail";
@@ -206,7 +206,7 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
                 <div className="prod-research">
                   <div className="prod-research-head">
                     <span className="prod-inline-ic"><AtomIcon size={13} /> Researching v{up.targetVersion}</span>
-                    <span>{Math.round(upgradeProgress(up) * 100)}% · ~{fmtDur(up.remainingSec)} left</span>
+                    <span>{Math.round(upgradeProgress(up) * 100)}% · ~{fmtDur(upgradeWallSec(up.remainingSec, modsById[p.id]))} left</span>
                   </div>
                   <div className="prod-bar">
                     <div className="prod-bar-fill prod-bar-research" style={{ width: `${upgradeProgress(up) * 100}%` }} />

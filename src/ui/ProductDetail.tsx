@@ -4,7 +4,7 @@ import type { GameState, ProductMods } from "../engine/types";
 import { products as B, productFeatures, type FeatureLane, type ProductTypeId } from "../engine/balance/products";
 import {
   typeDef, productMetrics, canStartUpgrade, canBuyFeature, versionCostFor, featureMods,
-  upgradeDurationSec, upgradeProgress, retirePayout, enterpriseUnlocked, suggestChannelMix,
+  upgradeDurationSec, upgradeWallSec, upgradeProgress, retirePayout, enterpriseUnlocked, suggestChannelMix,
 } from "../engine/products";
 import { flagshipMoneyMult } from "../engine/flagship";
 import { m$, numOf as num, fmtDur } from "./format";
@@ -172,13 +172,13 @@ export function ProductDetail({ game, productId, mods, onClose, onStartUpgrade, 
             {me.qf < 0.5 && <p className="pd-hint"><TrendDownIcon size={14} /> Rivals are pulling ahead — research a new version to catch up.</p>}
             {up ? (
               <div className="pd-card">
-                <div className="pd-card-row"><span className="pd-card-label"><AtomIcon size={14} /> Researching v{up.targetVersion}</span><span className="pd-card-value">{Math.round(upgradeProgress(up) * 100)}% · ~{fmtDur(up.remainingSec)}</span></div>
+                <div className="pd-card-row"><span className="pd-card-label"><AtomIcon size={14} /> Researching v{up.targetVersion}</span><span className="pd-card-value">{Math.round(upgradeProgress(up) * 100)}% · ~{fmtDur(upgradeWallSec(up.remainingSec, mods))}</span></div>
                 <div className="pd-track"><div className="pd-track-fill" style={{ width: `${upgradeProgress(up) * 100}%`, background: "#7c5cff" }} /></div>
               </div>
             ) : (
               <button className="pd-primary" disabled={!canStartUpgrade(game, p.id)} onClick={() => onStartUpgrade(p.id)}>
                 <span>Research v{p.version + 1}</span>
-                <span className="pd-primary-sub">{num(versionCostFor(game, p.version).compute * B.upgrade.upfrontFrac)}+{num(versionCostFor(game, p.version).data * B.upgrade.upfrontFrac)} upfront · ~{fmtDur(upgradeDurationSec(p.version))}</span>
+                <span className="pd-primary-sub">{num(versionCostFor(game, p.version).compute * B.upgrade.upfrontFrac)}+{num(versionCostFor(game, p.version).data * B.upgrade.upfrontFrac)} upfront · ~{fmtDur(upgradeWallSec(upgradeDurationSec(p.version), mods))}</span>
               </button>
             )}
             {crew.length > 0 && (
