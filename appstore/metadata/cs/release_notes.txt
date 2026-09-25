@@ -1,9 +1,10 @@
 V této aktualizaci:
 
+• Nově v každé generaci: zvolte si Stance (Safety, Center nebo Acceleration) a odemkněte perky Doctrine dané strany. Každý Ship navíc rozdá tři karty Lab Charter, včetně takových, které mění samotná pravidla.
+• Unplugged Trials: vypněte na jednu generaci Legacy a projděte si znovu celou hru od nuly. Vaše rekordy v Compute teď přinášejí Lab Reputation.
 • Jasnější cíle: vždy vidíte další krok a kdy se Ship opravdu vyplatí.
-• „Šetřit na tohle“: klepněte na nedosažitelný výzkum a laboratoř na něj Compute našetří sama.
-• Víc klidu: vyrušují vás jen skutečná rozhodnutí, zbytek běží ve zpravodajském pásu.
-• Denní úkoly od sponzorů už od prvního Shipu.
-• Plynulejší chod na starších iPhonech, přesný čas offline a přes 20 oprav chyb.
+• „Šetřit na tohle“: klepněte na nedosažitelný výzkum a laboratoř na něj sama našetří Compute a koupí ho za vás.
+• Víc klidu: vyrušují vás jen skutečná rozhodnutí, zbytek běží ve zpravodajském pásu. Lepší podpora funkce VoiceOver a větší dotykové plochy.
+• Plynulejší chod na starších iPhonech, přesný čas offline a přes 60 oprav chyb.
 
 Pořád bez reklam. Pořád bez pay-to-win.

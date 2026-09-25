@@ -1,9 +1,10 @@
 In questo aggiornamento:
 
+• Novità a ogni generazione: dichiara la tua posizione (Safety, Center o Acceleration) e sblocca i vantaggi di Dottrina di quello schieramento. E ogni Ship ti mette in mano tre Carte del Laboratorio, comprese alcune che cambiano le regole.
+• Prove Unplugged: disattiva il Legacy per una generazione e rigioca una partita completa. I tuoi record di Compute ora ti fruttano Reputazione del Laboratorio.
 • Obiettivi più chiari: vedi sempre il prossimo passo e quando conviene davvero fare Ship.
-• «Risparmia per questo»: tocca una ricerca fuori portata e il laboratorio mette da parte la Compute per te.
-• Più calma: ti interrompono solo le vere decisioni, il resto scorre nel notiziario.
-• Obiettivi giornalieri degli sponsor già dal tuo primo Ship.
-• Più fluido sugli iPhone meno recenti, tempo offline preciso e oltre 20 correzioni.
+• «Risparmia per questo»: tocca una ricerca fuori portata e il laboratorio mette da parte la Compute, poi la sblocca per te.
+• Più calma: ti interrompono solo le vere decisioni, il resto scorre nel notiziario. Funziona meglio con VoiceOver, con aree di tocco più ampie.
+• Più fluido sugli iPhone meno recenti, tempo offline preciso e oltre 60 correzioni.
 
 Ancora zero pubblicità. Ancora zero pay-to-win.

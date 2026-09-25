@@ -1,9 +1,10 @@
 W tej aktualizacji:
 
+• Nowość w każdej generacji: zadeklaruj Stance (Safety, Center lub Acceleration) i odblokuj perki Doctrine tej strony. Każdy Ship rozdaje też trzy karty Lab Charter, w tym takie, które zmieniają zasady gry.
+• Unplugged Trials: wyłącz Legacy na jedną generację i znów zagraj pełną rozgrywkę od zera. Twoje rekordy Compute dają teraz Lab Reputation.
 • Czytelniejsze cele: zawsze widzisz kolejny krok i moment, w którym Ship naprawdę się opłaca.
-• „Odkładaj na to”: stuknij badanie poza zasięgiem, a laboratorium samo odłoży na nie Compute.
-• Więcej spokoju: przerywają ci tylko prawdziwe decyzje, reszta leci na pasku wiadomości.
-• Codzienne cele sponsorów już od pierwszego Shipa.
-• Płynniej na starszych iPhone’ach, dokładny czas offline i ponad 20 poprawek błędów.
+• „Odkładaj na to”: stuknij badanie poza zasięgiem, a laboratorium samo odłoży na nie Compute i kupi je za ciebie.
+• Więcej spokoju: przerywają ci tylko prawdziwe decyzje, reszta leci na pasku wiadomości. Lepsza obsługa VoiceOver i większe przyciski.
+• Płynniej na starszych iPhone’ach, dokładny czas offline i ponad 60 poprawek błędów.
 
 Nadal bez reklam. Nadal bez pay-to-win.

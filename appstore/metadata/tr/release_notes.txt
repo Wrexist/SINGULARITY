@@ -1,9 +1,10 @@
 Bu güncellemede:
 
+• Her nesilde yenilik: duruşunu ilan et (Safety, Center ya da Acceleration) ve o tarafın Doctrine avantajlarının kilidini aç. Her Ship sana ayrıca üç Lab Charter dağıtır; bazıları oyunun kurallarını değiştirir.
+• Unplugged Trials: bir nesil boyunca Legacy'yi kapat ve baştan sona tam bir oyun daha oyna. Compute rekorların artık Lab Reputation kazandırıyor.
 • Daha net hedefler: bir sonraki adımını ve Ship yapmanın gerçekten ne zaman değdiğini hep görürsün.
-• “Bunun için biriktir”: ulaşılamayan bir araştırmaya dokun, laboratuvar Compute'u kendiliğinden biriktirsin.
-• Daha sakin: seni yalnızca gerçek kararlar böler, gerisi haber bandında akar.
-• İlk Ship'inden itibaren günlük sponsor hedefleri.
-• Eski iPhone'larda daha akıcı, doğru çevrimdışı süre ve 20'den fazla hata düzeltmesi.
+• “Bunun için biriktir”: ulaşamadığın bir araştırmaya dokun, laboratuvar Compute'u biriktirip onu senin yerine satın alsın.
+• Daha sakin: seni yalnızca gerçek kararlar böler, gerisi haber bandında akar. VoiceOver desteği daha iyi, dokunma alanları daha büyük.
+• Eski iPhone'larda daha akıcı, doğru çevrimdışı süre ve 60'tan fazla hata düzeltmesi.
 
 Hâlâ reklam yok. Hâlâ pay-to-win yok.

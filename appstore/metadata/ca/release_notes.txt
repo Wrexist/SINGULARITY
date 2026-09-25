@@ -1,9 +1,10 @@
 En aquesta actualització:
 
+• Novetats a cada generació: declara la teva postura (Safety, Center o Acceleration) i desbloqueja els avantatges de Doctrina d'aquell bàndol. A més, cada Ship et reparteix tres Cartes del Laboratori, algunes de les quals canvien les regles.
+• Proves Unplugged: desactiva el Llegat durant una generació i torna a jugar una partida completa. Els teus rècords de Compute ara donen Reputació del Laboratori.
 • Objectius més clars: sempre veus el pas següent i quan val de debò la pena fer Ship.
-• «Estalviar per a això»: toca una recerca fora d'abast i el laboratori hi reserva la Compute tot sol.
-• Més calma: només t'interrompen les decisions de debò; la resta passa pel teletip de notícies.
-• Objectius diaris de patrocinadors des del teu primer Ship.
-• Més fluid als iPhone antics, temps fora de línia exacte i més de 20 correccions.
+• «Estalviar per a això»: toca una recerca fora d'abast i el laboratori hi reserva la Compute i te la compra tot sol.
+• Més calma: només t'interrompen les decisions de debò; la resta passa pel teletip de notícies. Funciona millor amb VoiceOver i té zones tàctils més grans.
+• Més fluid als iPhone antics, temps fora de línia exacte i més de 60 correccions.
 
 Encara sense anuncis. Encara sense pay-to-win.

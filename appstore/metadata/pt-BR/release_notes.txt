@@ -1,9 +1,10 @@
 Nesta atualização:
 
+• Novidade a cada geração: declare sua postura (Safety, Center ou Acceleration) e desbloqueie as vantagens de Doutrina desse lado. E cada Ship distribui três Cartas do Laboratório, algumas capazes de mudar as regras.
+• Provas Unplugged: desligue o Legacy por uma geração e jogue de novo uma partida completa. Seus recordes de Compute agora rendem Reputação do Laboratório.
 • Metas mais claras: você sempre vê o próximo passo e quando vale mesmo a pena fazer Ship.
-• "Guardar para isso": toque numa pesquisa fora de alcance e o laboratório junta a Compute sozinho.
-• Mais calma: só decisões de verdade interrompem você; o resto passa no feed de notícias.
-• Objetivos diários de patrocinadores a partir do seu primeiro Ship.
-• Mais fluido em iPhones antigos, tempo offline preciso e mais de 20 correções.
+• "Guardar para isso": toque numa pesquisa fora de alcance e o laboratório junta a Compute sozinho e faz a compra por você.
+• Mais calma: só decisões de verdade interrompem você; o resto passa no feed de notícias. Funciona melhor com o VoiceOver e tem áreas de toque maiores.
+• Mais fluido em iPhones antigos, tempo offline preciso e mais de 60 correções.
 
 Continua sem anúncios. Continua sem pay-to-win.

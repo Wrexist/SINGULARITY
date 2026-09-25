@@ -1,9 +1,10 @@
 Trong bản cập nhật này:
 
+• Mỗi thế hệ một lựa chọn mới: tuyên bố lập trường (Safety, Center hoặc Acceleration) để mở khóa đặc quyền Doctrine của phe đó. Mỗi lần Ship còn chia cho bạn ba lá Lab Charter, có cả những lá làm thay đổi luật chơi.
+• Unplugged Trials: tắt Legacy trong một thế hệ để chơi lại trọn vẹn một ván từ đầu đến cuối. Kỷ lục Compute của bạn giờ còn mang về Lab Reputation.
 • Mục tiêu rõ ràng hơn: luôn thấy bước tiếp theo và biết khi nào Ship thật sự đáng giá.
 • “Tiết kiệm cho cái này”: chạm vào nghiên cứu ngoài tầm với, phòng lab sẽ tự tích Compute rồi mua giúp bạn.
-• Yên tĩnh hơn: chỉ những quyết định thật sự mới làm gián đoạn, tin còn lại chạy trên dải tin tức.
-• Mục tiêu nhà tài trợ hằng ngày ngay từ lần Ship đầu tiên.
-• Mượt hơn trên iPhone đời cũ, tính thời gian ngoại tuyến chính xác và hơn 20 bản sửa lỗi.
+• Yên tĩnh hơn: chỉ những quyết định thật sự mới làm gián đoạn, tin còn lại chạy trên dải tin tức. Hỗ trợ VoiceOver tốt hơn, vùng chạm cũng rộng hơn.
+• Mượt hơn trên iPhone đời cũ, tính thời gian ngoại tuyến chính xác và hơn 60 bản sửa lỗi.
 
 Vẫn không quảng cáo. Vẫn không pay-to-win.

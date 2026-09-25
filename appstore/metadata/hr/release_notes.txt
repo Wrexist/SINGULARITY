@@ -1,9 +1,10 @@
 U ovom ažuriranju:
 
+• Novo u svakoj generaciji: odaberite Stance (Safety, Center ili Acceleration) i otključajte Doctrine pogodnosti te strane. Svaki Ship usto dijeli tri karte Lab Charter, među njima i one koje mijenjaju pravila igre.
+• Unplugged Trials: isključite Legacy na jednu generaciju i ponovno odigrajte cijelu igru od nule. Vaši Compute rekordi sada donose Lab Reputation.
 • Jasniji ciljevi: uvijek vidite sljedeći korak i kada se Ship stvarno isplati.
-• „Štedi za ovo”: dodirnite nedostižno istraživanje i laboratorij će sam uštedjeti Compute za njega.
-• Više mira: prekidaju vas samo prave odluke, ostalo ide na traku vijesti.
-• Dnevni ciljevi sponzora već od prvog Shipa.
-• Glađe na starijim iPhoneima, točno vrijeme izvan mreže i više od 20 ispravaka.
+• „Štedi za ovo”: dodirnite nedostižno istraživanje i laboratorij će sam skupiti Compute za njega i kupiti ga umjesto vas.
+• Više mira: prekidaju vas samo prave odluke, ostalo ide na traku vijesti. Bolje radi s VoiceOverom i ima veće dodirne površine.
+• Glađe na starijim iPhoneima, točno vrijeme izvan mreže i više od 60 ispravaka.
 
 I dalje bez oglasa. I dalje bez pay-to-win.

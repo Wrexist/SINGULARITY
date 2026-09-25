@@ -1,9 +1,10 @@
 Dieses Update:
 
+• Neu in jeder Generation: Bezieh Stellung – Safety, Center oder Acceleration – und schalte die Doctrine-Perks dieser Seite frei. Jedes Ship teilt dir außerdem drei Lab Charters aus, darunter auch solche, die die Regeln auf den Kopf stellen.
+• Unplugged Trials: Schalte Legacy für eine Generation ab und spiel noch einmal einen kompletten Run. Deine Compute-Rekorde bringen jetzt Lab Reputation.
 • Klarere Ziele: Du siehst immer deinen nächsten Schritt – und wann sich das Shippen wirklich lohnt.
-• „Dafür sparen“: Tipp auf Forschung außer Reichweite, und das Labor spart die Compute automatisch an.
-• Mehr Ruhe: Nur echte Entscheidungen unterbrechen dich, alles andere läuft über den Newswire.
-• Tägliche Sponsor-Ziele schon ab deinem ersten Ship.
-• Flüssiger auf älteren iPhones, korrekte Offline-Zeit und über 20 Bugfixes.
+• „Dafür sparen“: Tipp auf Forschung außer Reichweite, und das Labor spart die Compute an – und schlägt zu, sobald es reicht.
+• Mehr Ruhe: Nur echte Entscheidungen unterbrechen dich, alles andere läuft über den Newswire. Dazu bessere VoiceOver-Unterstützung und größere Tippflächen.
+• Flüssiger auf älteren iPhones, korrekte Offline-Zeit und über 60 Bugfixes.
 
 Weiterhin keine Werbung. Weiterhin kein Pay-to-win.

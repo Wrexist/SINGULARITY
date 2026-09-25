@@ -1,9 +1,10 @@
 Tässä päivityksessä:
 
+• Uutta joka sukupolvessa: valitse Stance (Safety, Center tai Acceleration) ja avaa sen puolen Doctrine-edut. Jokainen Ship jakaa myös kolme Lab Charter -korttia, ja osa niistä muuttaa itse pelin sääntöjä.
+• Unplugged Trials: kytke Legacy pois yhdeksi sukupolveksi ja pelaa taas kokonainen kierros alusta asti. Compute-ennätyksesi tuovat nyt Lab Reputationia.
 • Selkeämmät tavoitteet: näet aina seuraavan askeleen ja sen, milloin Ship todella kannattaa.
-• ”Säästä tähän”: napauta ulottumattomissa olevaa tutkimusta, niin labra säästää siihen Computea automaattisesti.
-• Rauhallisempaa: vain oikeat päätökset keskeyttävät sinut, muu näkyy uutisnauhalla.
-• Päivittäiset sponsoritavoitteet jo ensimmäisestä Shipistä alkaen.
-• Sujuvampi vanhemmilla iPhoneilla, tarkka offline-aika ja yli 20 virhekorjausta.
+• ”Säästä tähän”: napauta ulottumattomissa olevaa tutkimusta, niin labra säästää siihen Computea ja ostaa sen puolestasi.
+• Rauhallisempaa: vain oikeat päätökset keskeyttävät sinut, muu näkyy uutisnauhalla. Parempi VoiceOver-tuki ja isommat napautusalueet.
+• Sujuvampi vanhemmilla iPhoneilla, tarkka offline-aika ja yli 60 virhekorjausta.
 
 Edelleen ei mainoksia. Edelleen ei pay-to-winiä.

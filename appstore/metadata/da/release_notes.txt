@@ -1,9 +1,10 @@
 I denne opdatering:
 
+• Nyt hver generation: tag stilling med en Stance (Safety, Center eller Acceleration), og lås op for den sides Doctrine-fordele. Hvert Ship deler desuden tre Lab Charters ud, og nogle af dem ændrer selve reglerne.
+• Unplugged Trials: slå Legacy fra i én generation, og spil en hel runde fra bunden igen. Dine Compute-rekorder giver nu Lab Reputation.
 • Tydeligere mål: du kan altid se dit næste skridt, og hvornår det rigtig kan betale sig at shippe.
-• "Spar op til det": tryk på forskning uden for rækkevidde, så sparer laboratoriet Compute op til den automatisk.
-• Mere ro: kun rigtige beslutninger afbryder dig, resten kører på nyhedsbåndet.
-• Daglige sponsormål allerede fra dit første Ship.
-• Mere flydende på ældre iPhones, korrekt offlinetid og over 20 fejlrettelser.
+• "Spar op til det": tryk på forskning uden for rækkevidde, så sparer laboratoriet Compute op og køber den til dig.
+• Mere ro: kun rigtige beslutninger afbryder dig, resten kører på nyhedsbåndet. Bedre VoiceOver-understøttelse og større trykflader.
+• Mere flydende på ældre iPhones, korrekt offlinetid og over 60 fejlrettelser.
 
 Stadig ingen reklamer. Stadig ingen pay-to-win.

@@ -1,9 +1,10 @@
 Dans cette mise à jour :
 
+• Nouveau à chaque génération : choisissez votre camp (Safety, Center ou Acceleration) et débloquez ses avantages de Doctrine. Chaque Ship vous distribue aussi trois chartes de labo, dont certaines changent les règles du jeu.
+• Épreuves Unplugged : coupez le Legacy le temps d'une génération et refaites une partie complète. Vos records de Compute rapportent désormais de la Réputation de labo.
 • Des objectifs plus clairs : voyez toujours votre prochaine étape, et le moment où shipper vaut vraiment le coup.
-• « Économiser pour ça » : touchez une recherche hors de portée, le labo met la Compute de côté tout seul.
-• Plus de calme : seules les vraies décisions vous interrompent, le reste passe sur le fil d'actu.
-• Des objectifs de sponsor quotidiens dès votre premier Ship.
-• Plus fluide sur les iPhone plus anciens, temps hors ligne exact et plus de 20 correctifs.
+• « Économiser pour ça » : touchez une recherche hors de portée, le labo met la Compute de côté et la débloque pour vous.
+• Plus de calme : seules les vraies décisions vous interrompent, le reste passe sur le fil d'actu. Meilleure prise en charge de VoiceOver et zones tactiles plus grandes.
+• Plus fluide sur les iPhone plus anciens, temps hors ligne exact et plus de 60 correctifs.
 
 Toujours zéro pub. Toujours zéro pay-to-win.

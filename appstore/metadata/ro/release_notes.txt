@@ -1,9 +1,10 @@
 În această actualizare:
 
+• Nou în fiecare generație: alege-ți tabăra (Safety, Center sau Acceleration) și deblochează perk-urile Doctrine ale acesteia. Iar fiecare Ship îți împarte trei Lab Charters, inclusiv unele care schimbă regulile jocului.
+• Unplugged Trials: oprește Legacy pentru o generație și joacă din nou o partidă completă. Recordurile tale de Compute aduc acum Lab Reputation.
 • Obiective mai clare: vezi mereu pasul următor și când merită cu adevărat să faci Ship.
-• „Economisește pentru asta”: atinge o cercetare prea scumpă, iar laboratorul pune Compute deoparte singur.
-• Mai multă liniște: te întrerup doar deciziile reale, restul rulează în fluxul de știri.
-• Obiective zilnice de la sponsori încă de la primul tău Ship.
-• Mai fluid pe iPhone-urile mai vechi, timp offline corect și peste 20 de remedieri.
+• „Economisește pentru asta”: atinge o cercetare prea scumpă, iar laboratorul strânge Compute pentru ea și o cumpără în locul tău.
+• Mai multă liniște: te întrerup doar deciziile reale, restul rulează în fluxul de știri. Plus suport mai bun pentru VoiceOver și zone de atingere mai mari.
+• Mai fluid pe iPhone-urile mai vechi, timp offline corect și peste 60 de remedieri.
 
 În continuare fără reclame. În continuare fără pay-to-win.
