@@ -161,11 +161,12 @@ export function hireCost(roleId: string): number {
 
 // ---------- Aggregation into derive ----------
 
-/** Extra global morale from Mentor-type traits (added to office morale). */
+/** Extra global morale from Mentor-type traits (added to office morale), capped at
+ *  `staff.maxTeamMorale` so stacking Mentors can't multiply the whole economy. */
 export function teamMorale(employees: Employee[]): number {
   let m = 0;
   for (const e of employees) m += traitDef(e.trait)?.teamMorale ?? 0;
-  return m;
+  return Math.min(S.maxTeamMorale, m);
 }
 
 export interface StaffEffects {

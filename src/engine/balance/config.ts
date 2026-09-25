@@ -1429,6 +1429,14 @@ export const balance = {
      *  diminishes but payroll does NOT — so a small, trained, high-trait team beats
      *  zerg-hiring a wall of juniors. perLaneRate 0 = old linear behaviour. */
     diminishing: { perLaneRate: 0.18 },
+    /** Ceiling on the morale that Mentor-type traits add together (5 Mentors at +0.06).
+     *  Morale scales EVERY specialist's output and the Compute/Data/Money lanes multiply
+     *  those contributions, so an uncapped Mentor stack (free re-rolls, flat signing
+     *  bonus, payroll capped at half of income) turned the diminishing returns above
+     *  into runaway growth: 100 cheap Mentors took the Data lane past ×5,000. A handful
+     *  of Mentors still pays in full; the sixth adds nothing. Curve-safe: the balance
+     *  sim never hires, so it never has a Mentor. */
+    maxTeamMorale: 0.3,
     /** Rare "legendary" recruits: occasionally a candidate rolls in already trained
      *  (higher start level) with a guaranteed elite trait — a satisfying chase on
      *  re-roll. Same signing bonus, so they're a genuine score (not pay-to-win;

@@ -85,8 +85,9 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
   // officeMorale hid the Mentor contribution entirely (B2 fix).
   const morale = totalMorale(game);
   const mentorBoost = morale - officeMorale(game); // Mentor-trait share, for the breakdown
+  const mentorMaxed = mentorBoost >= balance.staff.maxTeamMorale - 1e-9; // Mentors stop stacking here
   const moraleHint = mentorBoost > 0.0001
-    ? `Office perks ×${officeMorale(game).toFixed(2)} + mentors +${Math.round(mentorBoost * 100)}%`
+    ? `Office perks ×${officeMorale(game).toFixed(2)} + mentors +${Math.round(mentorBoost * 100)}%${mentorMaxed ? " (max)" : ""}`
     : "From office perks (hire a Mentor to lift it further)";
 
   // Drag-to-assign (from a grip handle so list scrolling isn't hijacked). Hit-tests
