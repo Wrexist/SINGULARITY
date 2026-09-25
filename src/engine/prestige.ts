@@ -143,6 +143,21 @@ function trialStartingAtShip(state: GameState, trialsDone: string[] = trialsBank
   );
 }
 
+/**
+ * The timed boosts a Ship carries into the fresh run: the ones the PLAYER claimed — the
+ * Daily Boost (`daily_*`, actions.ts grantDailyBoost) and an Objective's reward
+ * (`obj_*`, objectives.ts claimObjective) — with the time they had left. They are the
+ * player's rewards, not the run's: a Ship rebuilt `modifiers` from scratch, so a Daily
+ * Boost claimed a minute before shipping was simply gone (and the daily bar stays spent
+ * until tomorrow). World-event effects are the run's news and still end with it. Both
+ * kinds are claim-gated, and the balance sim claims neither, so this is identity there.
+ */
+export function claimedBoostsAcrossShip(state: GameState): GameState["modifiers"] {
+  return state.modifiers.filter(
+    (m) => (m.id.startsWith("daily_") || m.id.startsWith("obj_")) && m.tone === "good" && m.remainingSec > 0,
+  );
+}
+
 export function legacyWeightsGain(state: GameState): Big {
   if (!canPrestige(state)) return Big.ZERO;
   const ratio = state.lifetimeMoney.div(balance.prestige.scale);
@@ -207,8 +222,9 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
       }))
     : fresh.modifiers;
   // A pending regulator truce crosses the ship with the suspicion it guards (see
-  // truceAcrossShip) — otherwise Chen is back on the fresh run's first tick.
-  const carriedMods = [...momentumMods, ...truceAcrossShip(state)];
+  // truceAcrossShip) — otherwise Chen is back on the fresh run's first tick. So do the
+  // timed boosts the player claimed (see claimedBoostsAcrossShip).
+  const carriedMods = [...momentumMods, ...truceAcrossShip(state), ...claimedBoostsAcrossShip(state)];
 
   // Frontier Race stakes (depth batch): resolve the active wager at ship — a win
   // banks Reputation by the rival's weight, a loss pays nothing; either way it
