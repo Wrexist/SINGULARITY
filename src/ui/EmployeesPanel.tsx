@@ -8,7 +8,7 @@ import {
   roleDef, traitDef, employeePayroll, canTrain, trainCost, hireCost,
   roleAffinity, roleMatchesSegment, rosterFull,
 } from "../engine/employees";
-import { typeDef, productMetrics, upgradeProgress, upgradeWallSec } from "../engine/products";
+import { typeDef, productMetrics, upgradeProgress, upgradeWallSec, productsUnlocked } from "../engine/products";
 import { Big } from "../engine/math/Big";
 import type { GameState, Derived, Employee } from "../engine/types";
 import type { Candidate } from "../state/store";
@@ -300,7 +300,9 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
                         ) : (
                           <button className="emp-act" disabled={!trainable} onClick={() => onTrain(e.id)}>{maxed ? "Max level" : `Train → L${e.level + 1} · ${m$(trainCost(e))}`}</button>
                         )}
-                        {roleDef(e.roleId)?.team === "product" && (
+                        {/* Only with a project to place them on: before the first Ship there
+                            are none (and no Products tab), and Assign… was a dead end. */}
+                        {roleDef(e.roleId)?.team === "product" && projects.length > 0 && (
                           <button className="emp-act" onClick={() => { setSeg("projects"); setSelectedId(e.id); }}>Assign…</button>
                         )}
                         <button className="emp-act danger" onClick={() => { onFire(e.id); setSelectedId(null); }}>Fire</button>
@@ -353,7 +355,9 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
               Placing <b>{selected.name.split(" ")[0]}</b> — tap a project below, or <button className="link-btn" onClick={() => place(null)}>send to Lab</button> · <button className="link-btn" onClick={() => setSelectedId(null)}>cancel</button>
             </div>
           )}
-          {projects.length === 0 && <EmptyState icon={<BoxIcon size={20} />} text="No products in development." hint={<>Launch one in the <b>Products</b> tab to staff a team.</>} />}
+          {projects.length === 0 && <EmptyState icon={<BoxIcon size={20} />} text="No products in development." hint={productsUnlocked(game)
+            ? <>Launch one in the <b>Products</b> tab to staff a team.</>
+            : <>Products open with your first Ship. Staff them here then.</>} />}
 
           {projects.map(({ p, me, crew }) => {
             const t = typeDef(p.type);
@@ -418,7 +422,7 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
           </div>
           {product.length === 0 && <p className="pd-pane-tip">Hire product-team roles (engineers, growth, sales…) in <b>People</b> to staff your projects.</p>}
           {shown.map((e) =>
-            personCard(e, (
+            personCard(e, projects.length === 0 ? null : (
               <div className="emp-avail-right">
                 <button className="emp-assign-btn" onClick={() => setSelectedId(selectedId === e.id ? null : e.id)}>{selectedId === e.id ? "Picking…" : "Assign"}</button>
                 <span className="emp-grip" onPointerDown={(ev) => startDrag(ev, e.id)} title="Drag onto a project" aria-label="Drag to assign">⠿</span>
