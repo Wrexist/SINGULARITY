@@ -71,7 +71,7 @@ import { counterRival, placeStake } from "../engine/market";
 import { negotiationDue, negotiationOffer, applyNegotiationChoice, NEGOTIATION_ID } from "../engine/negotiation";
 import { buyLegacyPerk } from "../engine/legacyTree";
 import { prestige, type ShipMode } from "../engine/prestige";
-import { applyOffline, summarizeWindow, recapWorthShowing, type OfflineSummary } from "../engine/offline";
+import { applyOffline, summarizeWindow, extendSummary, recapWorthShowing, type OfflineSummary } from "../engine/offline";
 import { serialize, deserialize } from "../engine/save";
 import { isPremium } from "./premium";
 import { balance } from "../engine/balance/config";
@@ -454,9 +454,16 @@ export const useGame = create<GameStore>((set, get) => ({
       // of the tick above, so the window can never be paid twice. (2026-08 §1.5.)
       const bigWindow = elapsedMs >= balance.offline.resumeRecapMinMs;
       let recapFired = false;
-      if (bigWindow && !s.offline) {
+      if (bigWindow) {
         const summary = summarizeWindow(s.game, game, rawElapsedMs ?? elapsedMs, elapsedMs);
-        if (recapWorthShowing(summary, balance.offline.resumeRecapMinMs)) {
+        if (s.offline) {
+          // A recap from an earlier window is still open (read, then the phone was
+          // locked without collecting). Fold this window into it: the window is paid
+          // either way, and skipping the recap used to credit it silently while its
+          // notices queued up behind the modal.
+          patch.offline = extendSummary(s.offline, summary);
+          recapFired = true;
+        } else if (recapWorthShowing(summary, balance.offline.resumeRecapMinMs)) {
           patch.offline = summary;
           recapFired = true;
         }

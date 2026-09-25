@@ -94,6 +94,39 @@ export function summarizeWindow(
 }
 
 /**
+ * Fold a later window into a recap that is still on screen — PURE. The player can
+ * read the recap, lock the phone without collecting, and come back hours later;
+ * the loop credits that second window like any other, so the open recap has to
+ * cover it too or its gains (and its unlocks) go unreported. Totals add, the
+ * lists join without repeats, and the story runs from where the lab stood before
+ * the first window to where it stands after the last.
+ */
+export function extendSummary(open: OfflineSummary, next: OfflineSummary): OfflineSummary {
+  const join = (a: string[], b: string[]) => [...a, ...b.filter((id) => !a.includes(id))];
+  return {
+    elapsedMs: open.elapsedMs + next.elapsedMs,
+    appliedMs: open.appliedMs + next.appliedMs,
+    capped: open.capped || next.capped,
+    gained: {
+      compute: open.gained.compute.add(next.gained.compute),
+      data: open.gained.data.add(next.gained.data),
+      money: open.gained.money.add(next.gained.money),
+    },
+    achievementsUnlocked: join(open.achievementsUnlocked, next.achievementsUnlocked),
+    reputationEarned: open.reputationEarned + next.reputationEarned,
+    story: {
+      milestones: join(open.story.milestones, next.story.milestones),
+      upgradesFinished: [...open.story.upgradesFinished, ...next.story.upgradesFinished],
+      leveledUp: [...open.story.leveledUp, ...next.story.leveledUp],
+      rankBefore: open.story.rankBefore,
+      rankAfter: next.story.rankAfter,
+      eraBefore: open.story.eraBefore,
+      eraAfter: next.story.eraAfter,
+    },
+  };
+}
+
+/**
  * Is this window worth taking over the screen for? The recap is a designed
  * reward beat, not a receipt: a momentary app-switch, or a window in which
  * nothing actually happened, must never interrupt with an empty "while you were

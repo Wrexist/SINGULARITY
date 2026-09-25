@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { applyOffline, summarizeWindow, recapWorthShowing } from "./offline";
+import { applyOffline, summarizeWindow, extendSummary, recapWorthShowing } from "./offline";
 import { earnedReputation } from "./reputation";
 import { createInitialState } from "./state";
 import { tick } from "./tick";
@@ -103,6 +103,51 @@ describe("resume recap — summarizeWindow", () => {
     const real = 20 * 3600 * 1000;
     expect(summarizeWindow(s, tick(s, applied), real, applied).capped).toBe(true);
     expect(summarizeWindow(s, tick(s, applied), applied, applied).capped).toBe(false);
+  });
+});
+
+describe("resume recap — extendSummary (a second window while the recap is open)", () => {
+  const producingLab = () => {
+    const s = createInitialState();
+    s.resources.compute = Big.of(1e6);
+    s.upgrades = { rack_basic: 20 };
+    return s;
+  };
+
+  it("reads as one window from the first's start to the second's end", () => {
+    const s0 = producingLab();
+    const a = 45 * 60 * 1000;
+    const b = 5 * 3600 * 1000;
+    const s1 = tick(s0, a);
+    const s2 = tick(s1, b);
+    const open = summarizeWindow(s0, s1, a, a);
+    const whole = summarizeWindow(s0, s2, a + b, a + b);
+    const merged = extendSummary(open, summarizeWindow(s1, s2, b, b));
+
+    expect(merged.elapsedMs).toBe(a + b);
+    expect(merged.appliedMs).toBe(a + b);
+    expect(merged.capped).toBe(false);
+    expect(merged.gained.compute.toNumber()).toBeCloseTo(whole.gained.compute.toNumber(), 6);
+    expect(merged.gained.data.toNumber()).toBeCloseTo(whole.gained.data.toNumber(), 6);
+    expect(merged.gained.money.toNumber()).toBeCloseTo(whole.gained.money.toNumber(), 6);
+    expect([...merged.achievementsUnlocked].sort()).toEqual([...whole.achievementsUnlocked].sort());
+    expect(merged.reputationEarned).toBe(whole.reputationEarned);
+    expect(merged.story.rankBefore).toBe(whole.story.rankBefore);
+    expect(merged.story.rankAfter).toBe(whole.story.rankAfter);
+    expect(merged.story.eraBefore).toBe(whole.story.eraBefore);
+    expect(merged.story.eraAfter).toBe(whole.story.eraAfter);
+  });
+
+  it("stays capped once either window was, and never repeats an unlock", () => {
+    const s = producingLab();
+    const w = summarizeWindow(s, tick(s, 3600_000), 3600_000, 3600_000);
+    expect(w.achievementsUnlocked.length).toBeGreaterThan(0);
+    const capped = { ...w, elapsedMs: w.elapsedMs * 3, capped: true };
+    const merged = extendSummary(w, capped);
+    expect(merged.capped).toBe(true);
+    expect(merged.achievementsUnlocked).toEqual(w.achievementsUnlocked);
+    // Pure: the recap already on screen is not mutated.
+    expect(w.appliedMs).toBe(3600_000);
   });
 });
 

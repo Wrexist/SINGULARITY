@@ -90,11 +90,42 @@ describe("resume recap — store wiring", () => {
     expect(game.resources.compute.toNumber()).toBeCloseTo(expected.resources.compute.toNumber(), 6); // ...but paid
   });
 
-  it("never replaces a recap already on screen", () => {
+  // The player reads the recap, locks the phone without collecting, and comes back
+  // hours later. The second window is credited either way; the recap still on
+  // screen must tell that story too, not keep showing only the first window while
+  // the second one's money (and its notices, queued behind the modal) vanish.
+  it("folds a second away-window into the recap still on screen", () => {
+    const first = 45 * 60 * 1000;
+    const second = 6 * 3600 * 1000;
+    const start = useGame.getState().game;
+    useGame.getState().advance(first, first);
+    const opened = useGame.getState().offline!;
+    expect(opened.appliedMs).toBe(first);
+    const mid = useGame.getState().game;
+    useGame.getState().advance(second, second);
+    const { offline, game, notice } = useGame.getState();
+
+    expect(offline!.appliedMs).toBe(first + second);
+    expect(offline!.elapsedMs).toBe(first + second);
+    // Nothing spends during the catch-up, so the two diffs add up to the whole away.
+    expect(offline!.gained.compute.toNumber()).toBeCloseTo(game.resources.compute.sub(start.resources.compute).toNumber(), 6);
+    expect(offline!.gained.compute.gt(opened.gained.compute)).toBe(true);
+    // The second window's unlocks are lines in the recap, not toasts behind it.
+    const newAch = game.achievements.filter((id) => !mid.achievements.includes(id));
+    expect(newAch.length).toBeGreaterThan(0);
+    for (const id of [...opened.achievementsUnlocked, ...newAch]) expect(offline!.achievementsUnlocked).toContain(id);
+    expect(new Set(offline!.achievementsUnlocked).size).toBe(offline!.achievementsUnlocked.length);
+    expect(notice).toBeNull();
+    // The story spans both windows: where the lab stood before the first, and after the second.
+    expect(offline!.story.eraBefore).toBe(opened.story.eraBefore);
+    expect(offline!.story.rankBefore).toBe(opened.story.rankBefore);
+  });
+
+  it("leaves a recap on screen alone on ordinary ticks", () => {
     const away = 45 * 60 * 1000;
     useGame.getState().advance(away, away);
     const first = useGame.getState().offline;
-    useGame.getState().advance(away, away);
+    for (let i = 0; i < 20; i++) useGame.getState().advance(100, 100);
     expect(useGame.getState().offline).toBe(first);
   });
 
