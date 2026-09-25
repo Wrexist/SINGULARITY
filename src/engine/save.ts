@@ -275,8 +275,12 @@ function isWellFormedProducts(p: unknown): p is ProductsState {
  *  linear and uncapped, so a crafted 1e9 would mint a 1e9× staff multiplier);
  *  roleId/trait must be KNOWN ids (an unknown role renders raw; an unknown trait
  *  could smuggle morale effects past the balance data); ids dedupe keep-first so
- *  fire/assign/train targeting and React keys stay well-defined. */
-function sanitizeEmployees(e: unknown): Employee[] {
+ *  fire/assign/train targeting and React keys stay well-defined. An assignment to a
+ *  product that did not survive the load (the product sanitizer dropped it) is cleared
+ *  like the flagship's: the person otherwise sat in no project's crew and off the
+ *  Available list, and the HR Autopilot, which only posts people with no assignment,
+ *  never picked them up again. */
+function sanitizeEmployees(e: unknown, productIds: ReadonlySet<string>): Employee[] {
   if (!Array.isArray(e)) return [];
   const seen = new Set<string>();
   const out: Employee[] = [];
@@ -297,7 +301,7 @@ function sanitizeEmployees(e: unknown): Employee[] {
       roleId: x.roleId,
       level: Math.min(balance.staff.maxLevel, Math.max(1, Math.floor(x.level))),
       trait: typeof x.trait === "string" && TRAIT_IDS.has(x.trait) ? x.trait : null,
-      assignedProductId: typeof x.assignedProductId === "string" ? x.assignedProductId : null,
+      assignedProductId: typeof x.assignedProductId === "string" && productIds.has(x.assignedProductId) ? x.assignedProductId : null,
       training:
         x.training && typeof x.training.remainingSec === "number" && Number.isFinite(x.training.remainingSec) &&
         typeof x.training.totalSec === "number" && Number.isFinite(x.training.totalSec) && x.training.totalSec > 0 &&
@@ -818,7 +822,7 @@ export function deserialize(json: string): GameState {
     alignment,
     computeFocus,
     products,
-    employees: sanitizeEmployees(raw.employees),
+    employees: sanitizeEmployees(raw.employees, new Set(products.active.map((p) => p.id))),
     stats,
     achievements,
     reputation: sanitizeReputation(raw.reputation, repEndowment, paradigmOwed + wingCostSum(facilityWings)),
