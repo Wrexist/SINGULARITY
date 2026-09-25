@@ -54,9 +54,15 @@ export function TrialsPanel({ game, onStart, onAbandon }: Props) {
           // One card per LADDER, showing the rung it is currently offering. A fully
           // banked ladder falls back to its last rung so the ✓ stays on the wall.
           const rungs = trialsBalance.list.filter((d) => d.ladder === ladder);
-          const t = ladderRung(game, ladder) ?? rungs[rungs.length - 1]!;
+          const current = ladderRung(game, ladder);
+          // The current rung running is shown above; this card then offers the rung
+          // after it, which can be queued now and starts at the Ship that banks this
+          // one (a ladder's last rung has nothing after it, so no card).
+          const t = current && game.activeTrial === current.id
+            ? rungs.find((d) => d.requires === current.id)
+            : current ?? rungs[rungs.length - 1]!;
+          if (!t || game.activeTrial === t.id) return null;
           const prog = ladderProgress(game, ladder);
-          if (game.activeTrial === t.id) return null; // shown above
           const isDone = done.has(t.id);
           const locked = game.prestige.ships < t.unlockShips;
           // A Trial is endured from a run's first second, so it is always QUEUED for
