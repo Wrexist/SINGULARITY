@@ -1,5 +1,5 @@
 import { charters as C, type CharterDef, type CharterRule } from "./balance/charters";
-import { autoResearchEnabled } from "./reputation";
+import { directorGrace, runElapsedSec } from "./director";
 import type { GameState } from "./types";
 
 /**
@@ -21,27 +21,9 @@ export function chartersUnlocked(state: GameState): boolean {
   return C.enabled && state.prestige.ships >= C.unlockAtShips;
 }
 
-/**
- * Engine seconds since this run's ship, read from the stamp prestige() writes on the
- * Archive entry (`atSec` = playtime at the ship). Deterministic — playtime accrues in
- * tick(), never from the wall clock — and needs no new saved field. null when the
- * stamp can't be trusted: no ship yet, a pre-v35 entry without it, a last entry that
- * isn't this generation's, or a stamp ahead of the clock.
- */
-export function runElapsedSec(state: GameState): number | null {
-  const last = state.shipLog[state.shipLog.length - 1];
-  if (!last || last.atSec === undefined || last.gen !== state.prestige.ships) return null;
-  const elapsed = state.stats.playtimeSec - last.atSec;
-  return Number.isFinite(elapsed) && elapsed >= 0 ? elapsed : null;
-}
-
-/** True while a Research Director owner's run is younger than the grace (see
- *  `directorGraceSec` in balance/charters.ts). False on an unreadable run clock. */
-function directorGrace(state: GameState): boolean {
-  if (!autoResearchEnabled(state)) return false;
-  const t = runElapsedSec(state);
-  return t !== null && t < C.directorGraceSec;
-}
+// The run clock and the Research Director's grace live in director.ts, shared with
+// the Prestige Trials gate (trials.ts cannot import this module without a cycle).
+export { runElapsedSec };
 
 /**
  * The start-of-run window the Lab Charter and the Stance share: open until the run

@@ -55,7 +55,7 @@ import {
 import { productMilestones as PRODUCT_MILESTONES, type ProductTypeId } from "../engine/balance/products";
 import { achievements as ACHIEVEMENT_DEFS } from "../engine/balance/achievements";
 import { buyReputationPerk, buyEndowment, pickEndowmentDirective, respecDirective, foundWing } from "../engine/reputation";
-import { startTrial, abandonTrial, canStartTrial, queueTrial } from "../engine/trials";
+import { abandonTrial, queueTrial } from "../engine/trials";
 import { setFlagship } from "../engine/flagship";
 import { buyParadigm } from "../engine/paradigms";
 import { claimDoctrine, declareStance, type Stance } from "../engine/doctrine";
@@ -772,9 +772,10 @@ export const useGame = create<GameStore>((set, get) => ({
   doPickDirective: (id) => set((s) => ({ game: pickEndowmentDirective(s.game, id) })),
   doRespecDirective: (id) => set((s) => ({ game: respecDirective(s.game, id) })),
   doPlaceStake: (name) => set((s) => ({ game: placeStake(s.game, name) })),
-  // Attempt: starts now on a fresh run; mid-run it queues for the next run (and a
-  // second tap on the queued Trial clears the queue).
-  doStartTrial: (id) => set((s) => ({ game: canStartTrial(s.game, id) ? startTrial(s.game, id) : queueTrial(s.game, id) })),
+  // Attempt QUEUES a Trial for the next run (a second tap clears the queue); the Ship
+  // starts it on the untouched fresh lab. Never mid-run: any in-run start, even at
+  // zero research, lets a player bank a Legacy-on stockpile first (r2 bug hunt).
+  doStartTrial: (id) => set((s) => ({ game: queueTrial(s.game, id) })),
   doAbandonTrial: () => set((s) => ({ game: abandonTrial(s.game) })),
   doSetFlagship: (id) => set((s) => ({ game: setFlagship(s.game, id) })),
   doBuyParadigm: (id) => set((s) => ({ game: buyParadigm(s.game, id) })),

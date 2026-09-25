@@ -4,6 +4,7 @@ import { contractsReputation } from "./contracts";
 import { balance } from "./balance/config";
 import { floorDrawnOut } from "./hall";
 import { trialBonusRep } from "./trials";
+import { autoResearchEnabled } from "./director";
 import type { GameState } from "./types";
 
 const shipModes = balance.prestige.shipModes;
@@ -273,12 +274,9 @@ export function reputationMods(state: GameState): ReputationMods {
   return { computeMult, dataMult, moneyMult, payrollMult };
 }
 
-/** True when the player owns the Research Director perk (auto-buys research). */
-export function autoResearchEnabled(state: GameState): boolean {
-  return R.perks.some(
-    (p) => p.effect.kind === "automate" && p.id === "rep_autoresearch" && state.reputation.perks.includes(p.id),
-  );
-}
+/** True when the player owns the Research Director perk (auto-buys research). Defined
+ *  in director.ts beside the Director's start-of-run grace. */
+export { autoResearchEnabled } from "./director";
 
 /** Research-cost multiplier from owned `researchDiscount` perks (≤ 1). Neutral = 1,
  *  so a fresh run (no perks) pays full price and the early curve is untouched. The

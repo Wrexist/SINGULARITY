@@ -56,13 +56,15 @@ export function ladderProgress(state: GameState, ladder: string): { done: number
   return { done: rungs.filter((d) => state.trialsDone.includes(d.id)).length, total: rungs.length };
 }
 
-/** Can the player START this Trial right now? The key rule (anti-cheese): a Trial is
- *  endured from a run's FIRST second. It used to be "before the run is shippable",
- *  which let a player play a whole run unconstrained, stop one node short of the
- *  capability research, Attempt, buy that node and bank the reward after zero seconds
- *  of the handicap (Unplugged's free product slot, 2026-09 bug hunt). Now it starts
- *  only on a fresh run with no research yet — mid-run, Attempt QUEUES it for the next
- *  run instead (queueTrial), and the Ship starts it on the fresh lab. */
+/** Could this Trial start on this state? Used by the Ship on the FRESH lab it just
+ *  built (trialToStartAtShip). The rule (anti-cheese): a Trial is endured from a
+ *  run's first second. It used to start any time before the run was shippable, which
+ *  let a player play a whole run unconstrained, stop one node short of the
+ *  capability research, Attempt, buy that node and bank the reward after zero
+ *  seconds of the handicap (Unplugged's free product slot, 2026-09 bug hunt). Even
+ *  "research 0" wasn't enough: a player could sit there banking a Legacy-on
+ *  stockpile first. So the player only ever QUEUES a Trial (queueTrial); the Ship
+ *  starts it on the untouched fresh lab. */
 export function canStartTrial(state: GameState, id: string): boolean {
   if (!trialEligible(state, id, false)) return false;
   if (state.activeTrial) return false; // one at a time

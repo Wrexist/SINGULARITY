@@ -1,5 +1,5 @@
 import type { GameState } from "../engine/types";
-import { trialsBalance, canStartTrial, canQueueTrial, trialConditionMet, ladderRung, trialLadders, ladderProgress, trialRewardLabel } from "../engine/trials";
+import { trialsBalance, canQueueTrial, trialConditionMet, ladderRung, trialLadders, ladderProgress, trialRewardLabel } from "../engine/trials";
 
 interface Props {
   game: GameState;
@@ -24,7 +24,7 @@ export function TrialsPanel({ game, onStart, onAbandon }: Props) {
       {/* First-run scaffolding — hide once the player has completed a Trial. */}
       {game.trialsDone.length === 0 && (
         <p className="trials-note">
-          Constrained runs — commit before you can ship, endure the handicap, then bank a permanent edge.
+          Constrained runs — queue one, endure its handicap for your whole next run, then bank a permanent edge.
         </p>
       )}
 
@@ -59,13 +59,12 @@ export function TrialsPanel({ game, onStart, onAbandon }: Props) {
           if (game.activeTrial === t.id) return null; // shown above
           const isDone = done.has(t.id);
           const locked = game.prestige.ships < t.unlockShips;
-          const canStart = canStartTrial(game, t.id);
-          // Mid-run, Attempt queues the Trial for the next run (it must be endured
-          // from a run's first second); the Ship starts it on the fresh lab.
+          // A Trial is endured from a run's first second, so it is always QUEUED for
+          // the next run; the Ship starts it on the fresh lab.
           const queued = game.queuedTrial === t.id;
-          const canQueue = !canStart && canQueueTrial(game, t.id);
+          const canQueue = canQueueTrial(game, t.id);
           return (
-            <div key={ladder} className={`trial-card meta-item ${isDone ? "trial-done" : canStart || queued ? "affordable" : locked ? "locked" : ""}`}>
+            <div key={ladder} className={`trial-card meta-item ${isDone ? "trial-done" : queued ? "affordable" : locked ? "locked" : ""}`}>
               <div className="trial-main">
                 <span className="trial-name">
                   {t.name}{isDone ? " ✓" : ""}
@@ -74,14 +73,9 @@ export function TrialsPanel({ game, onStart, onAbandon }: Props) {
                 <span className="trial-desc">{t.desc}</span>
                 {locked && <span className="trial-req">Unlocks at {t.unlockShips} ships</span>}
                 {queued && <span className="trial-req">Starts with your next run.</span>}
-                {!locked && !isDone && !canStart && !canQueue && !queued && game.activeTrial && (
-                  <span className="trial-req">Finish your active Trial first.</span>
-                )}
               </div>
               {isDone ? (
                 <span className="trial-owned">banked</span>
-              ) : canStart ? (
-                <button className="trial-attempt" onClick={() => onStart(t.id)}>Attempt</button>
               ) : (
                 <button
                   className={`trial-attempt ${queued ? "queued" : "next"}`}
