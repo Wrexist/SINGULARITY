@@ -154,10 +154,11 @@ export function advisorItems(state: GameState, precomputed?: Derived): AdvisorIt
   // GROSS revenue (passive money + run income + product MRR, before serving/marketing
   // costs), so a deliberate marketing-investment loss never trips it — consistent with
   // the "don't flag investment losses" policy above. Only fires with staff actually on
-  // payroll. Run income counts at the cadence runs really fire (runsPerSec — none while
-  // training is held): leaving it out told a first-generation lab, whose Money is ALL
-  // run income, to "let someone go" the moment it hired a single $2/s specialist.
-  if (state.employees.length > 0) {
+  // payroll, and only while the Team tab is open (a chip pointing at a hidden tab
+  // dead-ends). Run income counts at the cadence runs really fire (runsPerSec — none
+  // while training is held): leaving it out told a first-generation lab, whose Money is
+  // ALL run income, to "let someone go" the moment it hired a single $2/s specialist.
+  if (state.employees.length > 0 && staffUnlocked(state)) {
     if (derived.payrollPerSec.gt(0)) {
       let grossIncome = derived.passiveMoneyPerSec.add(derived.runMoneyYield.mul(runsPerSec(derived, state.computeFocus)));
       for (const p of ps.active) grossIncome = grossIncome.add(productMetrics(p, ps.frontier, derived.productModsById[p.id]).mrr);
