@@ -55,19 +55,37 @@ interface CdvPurchaseGlobal {
   LogLevel: { WARNING: number };
 }
 
-function cdv(): CdvPurchaseGlobal | null {
+const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/** How long a device waits for cordova.js to map the StoreKit bridge onto `window`. */
+const BRIDGE_WAIT_MS = 3000;
+
+/**
+ * The StoreKit bridge, or null off-device (web/dev). On a device a missing global is NOT
+ * the web build: cordova.js maps `CdvPurchase` at DOMContentLoaded, which can land after
+ * the launch effect's refresh(). Reading that as "web" cached a null store for the whole
+ * session, so Buy took the web stub (free Premium on a real device) and Restore never
+ * asked StoreKit. Wait for the bridge briefly instead, and fail (uncached) without it.
+ */
+async function cdv(): Promise<CdvPurchaseGlobal | null> {
   if (!Capacitor.isNativePlatform()) return null;
-  const g = (window as unknown as { CdvPurchase?: CdvPurchaseGlobal }).CdvPurchase;
-  return g ?? null;
+  const deadline = Date.now() + BRIDGE_WAIT_MS;
+  for (;;) {
+    const g = (window as unknown as { CdvPurchase?: CdvPurchaseGlobal }).CdvPurchase;
+    if (g) return g;
+    if (Date.now() >= deadline) throw new Error("StoreKit bridge (CdvPurchase) is not available");
+    await delay(100);
+  }
 }
 
 let initPromise: Promise<CdvStore | null> | null = null;
 
-/** Initialize the native store exactly once. Returns null on web/dev. */
+/** Initialize the native store exactly once. Returns null on web/dev only; on a
+ *  device it resolves to the store or rejects (never the web stub's null). */
 function ensureInit(): Promise<CdvStore | null> {
   if (initPromise) return initPromise;
   initPromise = (async () => {
-    const api = cdv();
+    const api = await cdv();
     if (!api) return null;
     const { store, ProductType, Platform, LogLevel } = api;
     store.verbosity = LogLevel.WARNING;
@@ -93,8 +111,6 @@ function ensureInit(): Promise<CdvStore | null> {
   });
   return initPromise;
 }
-
-const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /**
  * Wait for ownership to settle after an order/restore. CdvPurchase mirrors
