@@ -8,7 +8,7 @@ import { legacyTreeBalance, legacyAvailable, canBuyLegacyPerk } from "../engine/
 import { maxActiveProducts, productsUnlocked } from "../engine/products";
 import { balance } from "../engine/balance/config";
 import type { GameState } from "../engine/types";
-import { fmt } from "./format";
+import { fmt, fmtMoney } from "./format";
 import { Big } from "../engine/math/Big";
 import { ReputationModal } from "./ReputationModal";
 import { ConfirmSheet } from "./ConfirmSheet";
@@ -36,6 +36,25 @@ interface Props {
 
 /** A multiplier for display: two decimals while small, the compact format once big. */
 const fmtMult = (m: Big) => (m.lt(100) ? m.toNumber().toFixed(2) : fmt(m));
+
+/**
+ * What a give-away ship (Open-source, Sell) pays "in exchange" for the model, as the
+ * confirm sheet lists it — read from the numbers prestige() applies: the weights this
+ * mode banks, the cash a Sell hands the fresh lab, Reputation, momentum, an ascension.
+ * The cash used to be missing, so the Sell confirm offered "+10 Legacy weights" and
+ * nothing else while the chooser card above it promised "+ $1200 cash".
+ */
+export function giveAwayTerms(game: GameState, mode: ShipMode): string {
+  const m = balance.prestige.shipModes[mode];
+  const kickstart = m.moneyKickstartPerShip * (game.prestige.ships + 1);
+  return [
+    `+${fmt(legacyWeightsForMode(game, mode))} Legacy weights`,
+    kickstart > 0 ? `+${fmtMoney(Big.of(kickstart))} cash` : "",
+    m.reputationBonus > 0 ? `+${m.reputationBonus} Reputation` : "",
+    m.momentum ? "a momentum boost next run" : "",
+    shipWouldAscend(game, mode) ? `an AGI ascension (+${Math.round(balance.eras.agi.bonusPerAscension * 100)}%)` : "",
+  ].filter(Boolean).join(", ");
+}
 
 const legacyPerkName = (id?: string) => legacyTreeBalance.perks.find((p) => p.id === id)?.name ?? "a prerequisite";
 
@@ -204,7 +223,7 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
                           ? <span className="ship-tag warn">⧗ Draft parked — portfolio full ({game.products.active.length}/{maxActiveProducts(game)})</span>
                           : <span className="ship-tag good">✓ Product to sell in Products</span>)
                       : <span className="ship-tag warn">✗ No product — you gave the model away</span>}
-                    {kickstart > 0 && <span className="ship-tag good">+ ${kickstart} cash</span>}
+                    {kickstart > 0 && <span className="ship-tag good">+ {fmtMoney(Big.of(kickstart))} cash</span>}
                     {m.reputationBonus > 0 && <span className="ship-tag good">+ {m.reputationBonus} Reputation</span>}
                     {m.momentum && <span className="ship-tag good">+ momentum boost next run</span>}
                     {mayAscend && ascendingModes.has(m.id) && <span className="ship-tag good">✦ Ascends (+{Math.round(ascBoost * 100)}%)</span>}
@@ -220,12 +239,7 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
       {pendingMode && (() => {
         const m = Object.values(balance.prestige.shipModes).find((x) => x.id === pendingMode);
         if (!m) return null;
-        const perks = [
-          `+${fmt(legacyWeightsForMode(game, pendingMode))} Legacy weights`,
-          m.reputationBonus > 0 ? `+${m.reputationBonus} Reputation` : "",
-          m.momentum ? "a momentum boost next run" : "",
-          ascendingModes.has(m.id) ? `an AGI ascension (+${Math.round(ascBoost * 100)}%)` : "",
-        ].filter(Boolean).join(", ");
+        const perks = giveAwayTerms(game, pendingMode);
         return (
           <ConfirmSheet
             kicker="SHIP THE MODEL"
