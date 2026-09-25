@@ -1,4 +1,4 @@
-import { charters as C, type CharterDef } from "./balance/charters";
+import { charters as C, type CharterDef, type CharterRule } from "./balance/charters";
 import type { GameState } from "./types";
 
 /**
@@ -46,10 +46,62 @@ export function charterMods(state: GameState): { computeMult: number; dataMult: 
   };
 }
 
+/** The active charter's rule multipliers ({} = every rule ×1, incl. no charter). */
+export function charterRule(state: GameState): CharterRule {
+  if (!C.enabled) return {};
+  return charterDef(state.charter)?.rule ?? {};
+}
+
+/** A small deterministic generator (xorshift32) seeded by the ship count, so the same
+ *  ship always deals the same hand — no wall clock, no Math.random. */
+function dealer(seed: number): () => number {
+  let x = (Math.imul(seed + 1, 2654435761) ^ 0x9e3779b9) >>> 0 || 1;
+  return () => {
+    x ^= x << 13; x >>>= 0;
+    x ^= x >>> 17;
+    x ^= x << 5; x >>>= 0;
+    return x / 4294967296;
+  };
+}
+
+/**
+ * This run's hand: `handSize` charter ids dealt from the ship count (see the Charter
+ * Draft note in balance/charters.ts). Always holds `lastCharter` when there is one,
+ * so a conviction streak can continue; from the rule charters' unlock, one wild card;
+ * lane charters fill the rest. Empty before charters unlock.
+ */
+export function charterHand(state: GameState): string[] {
+  if (!chartersUnlocked(state)) return [];
+  const ships = state.prestige.ships;
+  const rnd = dealer(ships);
+  const shuffled = (list: CharterDef[]) => {
+    const a = [...list];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(rnd() * (i + 1));
+      [a[i], a[j]] = [a[j]!, a[i]!];
+    }
+    return a;
+  };
+  const eligible = C.list.filter((c) => (c.minShips ?? 0) <= ships);
+  const rules = shuffled(eligible.filter((c) => c.rule));
+  const lanes = shuffled(eligible.filter((c) => !c.rule));
+  const hand: string[] = [];
+  const last = state.lastCharter;
+  if (last && BY_ID.has(last) && eligible.some((c) => c.id === last)) hand.push(last);
+  const wild = rules.find((c) => !hand.includes(c.id));
+  if (wild && !hand.some((id) => BY_ID.get(id)?.rule)) hand.push(wild.id);
+  for (const c of lanes) {
+    if (hand.length >= C.handSize) break;
+    if (!hand.includes(c.id)) hand.push(c.id);
+  }
+  return hand.slice(0, C.handSize);
+}
+
 /** Set (or clear) the run's charter. No-op unless it's still changeable, and only
- *  accepts a real charter id or null. Pure. */
+ *  accepts a charter from this run's hand (or the one already adopted), or null. Pure. */
 export function setCharter(state: GameState, id: string | null): GameState {
   if (!canSetCharter(state)) return state;
   if (id !== null && !BY_ID.has(id)) return state;
+  if (id !== null && id !== state.charter && !charterHand(state).includes(id)) return state;
   return { ...state, charter: id };
 }

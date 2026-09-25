@@ -13,6 +13,7 @@ import { ALL_RESEARCH, researchTree, epochUnlocked } from "./researchTree";
 import { alignmentHeatMult } from "./alignment";
 import { suspicionEventMult, regulatorIsNamed, regulatorState, clampSuspicion } from "./regulator";
 import { autoResearchEnabled, researchCostMult } from "./reputation";
+import { charterRule } from "./charter";
 import { isRackId, floorFull, evictableRackFor } from "./hall";
 import { typeDef } from "./products";
 import type { ActiveModifier, Derived, GameState } from "./types";
@@ -236,9 +237,11 @@ export function researchLockedOut(state: GameState, id: string): boolean {
  *  Mult is 1 with no perk owned, so a fresh run pays the tuned full price. */
 export function researchCost(state: GameState, def: ResearchDef): { compute: Big; data: Big } {
   const mult = researchCostMult(state) * balance.difficulty.costMult;
+  // A rule charter (Research Sprint) re-weights the two lanes; ×1 with none set.
+  const rule = charterRule(state);
   return {
-    compute: Big.of(def.cost.compute).mul(mult),
-    data: Big.of(def.cost.data).mul(mult),
+    compute: Big.of(def.cost.compute).mul(mult * (rule.researchCompute ?? 1)),
+    data: Big.of(def.cost.data).mul(mult * (rule.researchData ?? 1)),
   };
 }
 
@@ -700,7 +703,9 @@ export function applyWorldEventChoice(
   const base = { id: def.id, headline: def.headline, body: def.body, tone: def.tone, summary: "" };
   if (!choice) return { state, event: base };
   const next = applyEffect(state, choice.effect, def.id, def.tone);
-  const alignment = Math.max(-1, Math.min(1, state.alignment + choice.alignment));
+  // True Believers (rule charter) doubles how far a choice moves you; ×1 otherwise.
+  const shift = choice.alignment * (charterRule(state).factionShift ?? 1);
+  const alignment = Math.max(-1, Math.min(1, state.alignment + shift));
   return {
     state: { ...next, alignment, stats: { ...next.stats, worldEventsResolved: next.stats.worldEventsResolved + 1 } },
     event: { ...base, summary: effectSummary(choice.effect) },

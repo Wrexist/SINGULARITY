@@ -2420,6 +2420,9 @@ button.modchip.workable:active { transform: scale(0.94); }
   padding: var(--pad-card); box-shadow: var(--shadow-xs);
 }
 .charter-card.on { border-color: color-mix(in srgb, var(--accent) 55%, transparent); background: linear-gradient(100deg, color-mix(in srgb, var(--accent) 8%, transparent), rgba(255, 255, 255, 0.6)); }
+/* The draft's wild card (a rule-changer): a faint whole-card wash, so the one card
+   that changes how the run PLAYS reads as different without a label. */
+.charter-card.wild:not(.on) { background: linear-gradient(100deg, color-mix(in srgb, var(--data) 7%, #fff), #fff); border-color: color-mix(in srgb, var(--data) 22%, transparent); }
 .charter-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .charter-name { font-weight: 800; font-size: var(--fs-base); color: var(--ink); }
 .charter-pick { color: var(--accent); }

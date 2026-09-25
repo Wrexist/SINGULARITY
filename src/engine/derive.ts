@@ -3,7 +3,7 @@ import { balance } from "./balance/config";
 import { computeStaffEffects, teamMorale, type StaffEffects } from "./employees";
 import { reputationMods } from "./reputation";
 import { alignmentProductionMods, alignmentProductMods } from "./alignment";
-import { charterMods } from "./charter";
+import { charterMods, charterRule } from "./charter";
 import { legacyAvailable, legacyTreeMods } from "./legacyTree";
 import { trialMods, legacyUnplugged } from "./trials";
 import { flagshipMoneyMult } from "./flagship";
@@ -213,11 +213,14 @@ export function derive(state: GameState): Derived {
   // neutral/cold, so a fresh run's product economics — and the sim — are untouched.
   const ap = alignmentProductMods(state);
   const heatChurnMult = 1 + (state.heat / balance.heat.max) * balance.heat.productChurnAtMax;
+  // Product Company (rule charter) multiplies every product's ARPU; ×1 otherwise.
+  const charterArpu = charterRule(state).productArpu ?? 1;
   const applyCross = (m: typeof fx.productMods) => ({
     ...m,
     acq: m.acq * ap.acq,
     heat: m.heat * ap.heat,
     churn: m.churn * heatChurnMult,
+    arpu: m.arpu * charterArpu,
   });
   const productMods = applyCross(fx.productMods);
   const productModsById = Object.fromEntries(

@@ -7,6 +7,19 @@
  * the tuned first-prestige curve is untouched.
  */
 
+/** A charter that changes a RULE rather than (only) tilting a lane. Every field is a
+ *  multiplier; omitted = ×1. */
+export interface CharterRule {
+  /** Research nodes' Compute cost. */
+  researchCompute?: number;
+  /** Research nodes' Data cost. */
+  researchData?: number;
+  /** Product revenue per paying user (ARPU), every product. */
+  productArpu?: number;
+  /** How far a faction world-event choice moves your alignment. */
+  factionShift?: number;
+}
+
 export interface CharterDef {
   id: string;
   name: string;
@@ -15,12 +28,30 @@ export interface CharterDef {
   computeMult?: number;
   dataMult?: number;
   moneyMult?: number;
+  /** Rule-changer charters only (see `rule`); lane charters leave it out. */
+  rule?: CharterRule;
+  /** Dealt only from this many ships on. Omitted = from the charter unlock. */
+  minShips?: number;
 }
 
+/**
+ * The Charter Draft (2026-09 generations audit). All seven charters used to sit on
+ * screen every run, so the pick settled into one habit by ship 3 and the card list
+ * pushed the rest of the Build tab down. Each ship now DEALS a hand of three:
+ *  - the charter you last flew, so a conviction streak can always continue;
+ *  - from ship 6, one rule-changer "wild card" (research, products or factions work
+ *    differently for the run);
+ *  - lane charters to fill the hand.
+ * The deal is a pure function of the ship count and `lastCharter`, both already
+ * saved, so there is no new field. Curve-safe: the sim never sets a charter, and
+ * every rule is ×1 with none set.
+ */
 export const charters = {
   enabled: true,
   /** Charters unlock once you've shipped at least this many models. */
   unlockAtShips: 1,
+  /** Cards dealt per ship. */
+  handSize: 3,
   list: [
     {
       id: "open_source",
@@ -71,6 +102,30 @@ export const charters = {
       computeMult: 0.2,
       moneyMult: 0.2,
       dataMult: -0.3,
+    },
+    // Rule-changers — the wild card in every hand from ship 6.
+    {
+      id: "research_sprint",
+      name: "Research Sprint",
+      blurb: "Throw people at the papers. Every breakthrough costs half the Compute — and nearly twice the Data.",
+      rule: { researchCompute: 0.5, researchData: 1.8 },
+      minShips: 6,
+    },
+    {
+      id: "product_company",
+      name: "Product Company",
+      blurb: "Forget the frontier; ship features. Products earn far more, the lab's own runs far less.",
+      moneyMult: -0.4,
+      rule: { productArpu: 2.5 },
+      minShips: 6,
+    },
+    {
+      id: "true_believers",
+      name: "True Believers",
+      blurb: "Every decision is a manifesto. Faction choices move your stance twice as far.",
+      dataMult: 0.15,
+      rule: { factionShift: 2 },
+      minShips: 6,
     },
   ] satisfies CharterDef[],
 };

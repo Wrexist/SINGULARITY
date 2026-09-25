@@ -3,7 +3,7 @@ import {
   doctrineBalance, doctrineUnlocked, committedSide, canClaimDoctrine, claimDoctrine, doctrineMods,
   doctrinePerks, perksPerSide, schismDepth, schismRevealed, stanceOpen, declareStance,
 } from "./doctrine";
-import { setCharter, lockCharter, chartersBalance } from "./charter";
+import { setCharter, lockCharter, charterHand } from "./charter";
 import { buyResearch, canBuyResearch } from "./actions";
 import { researchTree } from "./researchTree";
 import { derive } from "./derive";
@@ -231,7 +231,7 @@ describe("Declare a Stance", () => {
     expect(researched.research.length).toBe(1);
     expect(stanceOpen(researched)).toBe(false);
     expect(declareStance(researched, "doomer")).toBe(researched);
-    const locked = lockCharter(setCharter(s, chartersBalance.list[0]!.id));
+    const locked = lockCharter(setCharter(s, charterHand(s)[0]!));
     expect(locked.charterLocked).toBe(true);
     expect(stanceOpen(locked)).toBe(false);
     expect(declareStance(locked, null)).toBe(locked);

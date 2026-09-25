@@ -1,7 +1,8 @@
-import { chartersBalance, charterDef, canSetCharter, chartersUnlocked } from "../engine/charter";
+import { chartersBalance, charterDef, canSetCharter, chartersUnlocked, charterHand } from "../engine/charter";
 import { doctrineBalance, doctrineUnlocked, stanceOpen, committedSide, schismRevealed, type Stance } from "../engine/doctrine";
 import { alignmentProductionMods, alignmentHeatMult } from "../engine/alignment";
 import { balance } from "../engine/balance/config";
+import { charterConvictionMult } from "../engine/prestige";
 import type { GameState } from "../engine/types";
 import { ShieldIcon, ScalesIcon, RocketIcon } from "./Icons";
 
@@ -16,10 +17,18 @@ interface Props {
 
 const pct = (x: number | undefined) => (x ? `${x >= 0 ? "+" : ""}${Math.round(x * 100)}%` : null);
 
+/** "×2.5" for a rule multiplier, "½" for a half. */
+const times = (x: number) => (x === 0.5 ? "½" : `×${x}`);
+
 function effectChips(id: string) {
   const def = charterDef(id);
   if (!def) return null;
+  const r = def.rule ?? {};
   const parts = [
+    r.researchCompute !== undefined && `${times(r.researchCompute)} research compute`,
+    r.researchData !== undefined && `${times(r.researchData)} research data`,
+    r.productArpu !== undefined && `${times(r.productArpu)} product revenue`,
+    r.factionShift !== undefined && `${times(r.factionShift)} faction shifts`,
     pct(def.computeMult) && `${pct(def.computeMult)} compute`,
     pct(def.dataMult) && `${pct(def.dataMult)} data`,
     pct(def.moneyMult) && `${pct(def.moneyMult)} $`,
@@ -128,18 +137,23 @@ export function CharterPanel({ game, onSet, onLock, onStance }: Props) {
         <p className="charter-intro">Tap a charter to adopt this run's focus (tap again to drop it). It locks when you buy research — or lock it in below.</p>
       )}
       <div className="list">
-        {chartersBalance.list.map((c) => {
+        {/* This run's dealt hand (the Charter Draft), plus a charter already adopted
+            from outside it (a save made before the draft) so it can still be seen and
+            dropped. */}
+        {chartersBalance.list.filter((c) => charterHand(game).includes(c.id) || c.id === game.charter).map((c) => {
           const on = game.charter === c.id;
           const conviction = game.lastCharter === c.id;
-          const streak = conviction ? Math.max(1, (game.charterStreak ?? 0) + 1) : 0;
-          // The bonus THIS ship would earn: rung = streak − 2, capped on the ladder.
+          // The bonus THIS ship would earn if it flew this charter — read from the
+          // engine's own helper, so the card can't disagree with what the ship pays
+          // (it used to read "+%" on saves migrated with a streak of 0).
           const ladder = balance.prestige.charterConvictionLadder;
-          const rung = streak >= 2 ? Math.min(ladder.length - 1, streak - 2) : -1;
-          const convPct = rung >= 0 ? Math.round((ladder[rung]! - 1) * 100) : null;
+          const mult = conviction ? charterConvictionMult({ ...game, charter: c.id }) : 1;
+          const rung = mult > 1 ? ladder.indexOf(mult) : -1;
+          const convPct = mult > 1 ? Math.round((mult - 1) * 100) : null;
           return (
-            <button key={c.id} className={`charter-card ${on ? "on" : ""}`} onClick={() => onSet(on ? null : c.id)}>
+            <button key={c.id} className={`charter-card ${on ? "on" : ""} ${c.rule ? "wild" : ""}`} onClick={() => onSet(on ? null : c.id)}>
               <div className="charter-main">
-                <span className="charter-name">{c.name}{on && <span className="charter-pick"> ✓ adopted</span>}{conviction && (
+                <span className="charter-name">{c.name}{on && <span className="charter-pick"> ✓ adopted</span>}{conviction && convPct !== null && (
                   <span className="charter-conviction">
                     {" "}↻ +{convPct}%
                     <span className="charter-streak-pips" title={`Conviction streak — rung ${rung + 1} of ${ladder.length}`} aria-hidden="true">
