@@ -16,6 +16,11 @@ import { LocalNotifications } from "@capacitor/local-notifications";
 /** Fixed id so a fresh schedule always replaces the previous pending reminder. */
 const REMINDER_ID = 4207;
 
+/** Bumped by every cancel: a schedule still awaiting its permission check when the
+ *  player comes back must not land after the return's cancel (it would stay pending
+ *  and pop up over live play hours later). */
+let generation = 0;
+
 const isNative = (): boolean => {
   try {
     return Capacitor.isNativePlatform();
@@ -50,9 +55,10 @@ export async function ensureReminderPermission(): Promise<boolean> {
  */
 export async function scheduleReturnReminder(capHours: number, producing: boolean): Promise<void> {
   if (!isNative() || !producing || !Number.isFinite(capHours) || capHours <= 0) return;
+  const mine = generation;
   try {
     const perm = await LocalNotifications.checkPermissions();
-    if (perm.display !== "granted") return;
+    if (perm.display !== "granted" || mine !== generation) return;
     const at = new Date(Date.now() + capHours * 3_600_000);
     await LocalNotifications.schedule({
       notifications: [
@@ -73,9 +79,40 @@ export async function scheduleReturnReminder(capHours: number, producing: boolea
  *  (they're back; no need to nag) or when the toggle is turned off. */
 export async function cancelReturnReminder(): Promise<void> {
   if (!isNative()) return;
+  generation += 1;
   try {
     await LocalNotifications.cancel({ notifications: [{ id: REMINDER_ID }] });
   } catch {
     /* ignore */
   }
+}
+
+/** What the reminder needs from the game, read fresh at each visibility change. */
+export interface ReminderPlan {
+  enabled: boolean;
+  capHours: number;
+  producing: boolean;
+}
+
+/**
+ * Keep the reminder in step with the app's visibility: schedule it when the player
+ * leaves, cancel it when they're back. Also cancels once at start when the app opens
+ * visible: a cold launch (iOS killed the suspended app, the usual way a session ends)
+ * fires no visibilitychange, so the reminder set when the player last left stayed
+ * pending and was presented over live play (the plugin shows it in the foreground).
+ * Returns the unsubscribe.
+ */
+export function watchReturnReminders(plan: () => ReminderPlan): () => void {
+  const onVis = () => {
+    if (document.visibilityState === "hidden") {
+      const p = plan();
+      if (!p.enabled) return;
+      void scheduleReturnReminder(p.capHours, p.producing);
+    } else {
+      void cancelReturnReminder();
+    }
+  };
+  if (document.visibilityState !== "hidden") void cancelReturnReminder();
+  document.addEventListener("visibilitychange", onVis);
+  return () => document.removeEventListener("visibilitychange", onVis);
 }

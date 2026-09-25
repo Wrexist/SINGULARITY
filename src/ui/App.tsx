@@ -51,7 +51,7 @@ import { fmt, fmtMoney, barRates } from "./format";
 import type { ProductTypeId } from "../engine/balance/products";
 import { iap } from "./iap";
 import { isPremium } from "../state/premium";
-import { scheduleReturnReminder, cancelReturnReminder } from "./notifications";
+import { watchReturnReminders } from "./notifications";
 import { balance } from "../engine/balance/config";
 import { ALL_RESEARCH } from "../engine/researchTree";
 import { HallCanvas } from "./HallCanvas";
@@ -323,21 +323,14 @@ export function App() {
   // notification for when the offline cap fills; on return, cancel it. Reads fresh
   // state in the handler so it always reflects the current setting / production /
   // premium cap. A safe no-op on web and until the player enables the toggle.
-  useEffect(() => {
-    const onVis = () => {
-      if (document.visibilityState === "hidden") {
-        if (!useSettings.getState().notifyReminders) return;
-        const g = useGame.getState().game;
-        const producing = derive(g).computePerSec.gt(0) || g.products.active.length > 0;
-        const capHours = isPremium() ? balance.offline.premiumMaxHours : balance.offline.maxHours;
-        void scheduleReturnReminder(capHours, producing);
-      } else {
-        void cancelReturnReminder();
-      }
+  useEffect(() => watchReturnReminders(() => {
+    const g = useGame.getState().game;
+    return {
+      enabled: useSettings.getState().notifyReminders,
+      producing: derive(g).computePerSec.gt(0) || g.products.active.length > 0,
+      capHours: isPremium() ? balance.offline.premiumMaxHours : balance.offline.maxHours,
     };
-    document.addEventListener("visibilitychange", onVis);
-    return () => document.removeEventListener("visibilitychange", onVis);
-  }, []);
+  }), []);
 
   // The daily boost was only checked at mount, so a session left open across the
   // day rollover never saw the bar reappear. Re-check on a slow tick and whenever
