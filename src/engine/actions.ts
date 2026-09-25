@@ -13,7 +13,7 @@ import { ALL_RESEARCH, researchTree, epochUnlocked } from "./researchTree";
 import { alignmentHeatMult } from "./alignment";
 import { suspicionEventMult, regulatorIsNamed, regulatorState, clampSuspicion } from "./regulator";
 import { autoResearchEnabled, researchCostMult } from "./reputation";
-import { charterRule } from "./charter";
+import { charterRule, startWindowOpen, chartersUnlocked } from "./charter";
 import { isRackId, floorFull, evictableRackFor, floorDrawnOut } from "./hall";
 import { typeDef } from "./products";
 import { releaseEmptyTierParts } from "./components";
@@ -326,6 +326,21 @@ export function applyAutoResearch(state: GameState): GameState {
     s = buyResearch(s, node.id);
   }
   return s;
+}
+
+/**
+ * A research purchase the PLAYER made (a tap, or a "Save for this" pin they set).
+ * It commits the run to a path, so it closes the start-of-run window (charter and
+ * stance) even inside the Research Director's grace. The grace exists so the
+ * Director's own automatic buys don't count as a commitment. Without it, a Director
+ * owner could adopt Research Sprint, buy nodes at half Compute by hand, then swap to
+ * a lane charter before the lock (2026-09 bug hunt). Otherwise identical to
+ * buyResearch.
+ */
+export function buyResearchByHand(state: GameState, id: string): GameState {
+  const next = buyResearch(state, id);
+  if (next === state || !chartersUnlocked(state) || !startWindowOpen(state)) return next;
+  return { ...next, charterLocked: true };
 }
 
 export function buyResearch(state: GameState, id: string): GameState {

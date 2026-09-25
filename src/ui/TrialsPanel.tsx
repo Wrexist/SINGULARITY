@@ -1,6 +1,5 @@
 import type { GameState } from "../engine/types";
-import { trialsBalance, canStartTrial, trialConditionMet, ladderRung, trialLadders, ladderProgress, trialRewardLabel } from "../engine/trials";
-import { canPrestige } from "../engine/prestige";
+import { trialsBalance, canStartTrial, canQueueTrial, trialConditionMet, ladderRung, trialLadders, ladderProgress, trialRewardLabel } from "../engine/trials";
 
 interface Props {
   game: GameState;
@@ -19,7 +18,6 @@ interface Props {
 export function TrialsPanel({ game, onStart, onAbandon }: Props) {
   const active = game.activeTrial ? trialsBalance.list.find((t) => t.id === game.activeTrial) : null;
   const done = new Set(game.trialsDone);
-  const shippable = canPrestige(game);
 
   return (
     <>
@@ -62,8 +60,12 @@ export function TrialsPanel({ game, onStart, onAbandon }: Props) {
           const isDone = done.has(t.id);
           const locked = game.prestige.ships < t.unlockShips;
           const canStart = canStartTrial(game, t.id);
+          // Mid-run, Attempt queues the Trial for the next run (it must be endured
+          // from a run's first second); the Ship starts it on the fresh lab.
+          const queued = game.queuedTrial === t.id;
+          const canQueue = !canStart && canQueueTrial(game, t.id);
           return (
-            <div key={ladder} className={`trial-card meta-item ${isDone ? "trial-done" : canStart ? "affordable" : locked ? "locked" : ""}`}>
+            <div key={ladder} className={`trial-card meta-item ${isDone ? "trial-done" : canStart || queued ? "affordable" : locked ? "locked" : ""}`}>
               <div className="trial-main">
                 <span className="trial-name">
                   {t.name}{isDone ? " ✓" : ""}
@@ -71,17 +73,24 @@ export function TrialsPanel({ game, onStart, onAbandon }: Props) {
                 </span>
                 <span className="trial-desc">{t.desc}</span>
                 {locked && <span className="trial-req">Unlocks at {t.unlockShips} ships</span>}
-                {!locked && !isDone && !canStart && !game.activeTrial && shippable && (
-                  <span className="trial-req">Start on a fresh run — before you can ship.</span>
-                )}
-                {!locked && !isDone && !canStart && game.activeTrial && (
+                {queued && <span className="trial-req">Starts with your next run.</span>}
+                {!locked && !isDone && !canStart && !canQueue && !queued && game.activeTrial && (
                   <span className="trial-req">Finish your active Trial first.</span>
                 )}
               </div>
               {isDone ? (
                 <span className="trial-owned">banked</span>
+              ) : canStart ? (
+                <button className="trial-attempt" onClick={() => onStart(t.id)}>Attempt</button>
               ) : (
-                <button className="trial-attempt" disabled={!canStart} onClick={() => onStart(t.id)}>Attempt</button>
+                <button
+                  className={`trial-attempt ${queued ? "queued" : "next"}`}
+                  disabled={!canQueue && !queued}
+                  aria-pressed={queued}
+                  onClick={() => onStart(t.id)}
+                >
+                  {queued ? "Queued ✓" : "Next run"}
+                </button>
               )}
             </div>
           );

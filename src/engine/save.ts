@@ -389,6 +389,7 @@ interface SavedShape {
   /** Prestige Trials: the active Trial id (or null) + completed ids. Sanitized to
    *  known ids + migrated at v25. */
   activeTrial: string | null;
+  queuedTrial?: string | null;
   trialsDone: string[];
   /** Paradigm Research — owned node ids (Reputation cost reconciled into spent). v29. */
   paradigms: string[];
@@ -481,6 +482,7 @@ export function serialize(state: GameState): string {
     repEndowment: state.repEndowment,
     endowmentDirectives: state.endowmentDirectives,
     activeTrial: state.activeTrial,
+    queuedTrial: state.queuedTrial,
     trialsDone: state.trialsDone,
     paradigms: state.paradigms,
     doctrines: state.doctrines,
@@ -797,6 +799,9 @@ export function deserialize(json: string): GameState {
     // Prestige Trials: the active id must be a known Trial (else no active run), and
     // completed ids are filtered to known, deduped (the reward folds per unique id).
     activeTrial: typeof raw.activeTrial === "string" && TRIAL_IDS.has(raw.activeTrial) ? raw.activeTrial : null,
+    // A queued Trial must be a real, not-yet-banked Trial (hostile input: filter).
+    queuedTrial: typeof raw.queuedTrial === "string" && TRIAL_IDS.has(raw.queuedTrial)
+      && !(Array.isArray(raw.trialsDone) && raw.trialsDone.includes(raw.queuedTrial)) ? raw.queuedTrial : null,
     trialsDone: dedupeKnownIds(raw.trialsDone, TRIAL_IDS),
     // Flagship: the id must point at a real (sanitized) active product, else it's
     // cleared; tenure is clamped to [0, cap] so a crafted save can't over-brand.
@@ -1325,6 +1330,10 @@ export function migrate(raw: any): SavedShape {
     // by hand as far as the save can tell (the autopilot re-posted them within a tick
     // anyway), so the identity default is "absent" and there is nothing to rewrite.
     s = { ...s, version: 38 };
+  }
+  if (s.version === 38) {
+    // v38 → v39: Trials queue for the next run. Nobody had one queued.
+    s = { ...s, version: 39, queuedTrial: null };
   }
   return s as SavedShape;
 }

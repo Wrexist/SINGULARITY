@@ -76,7 +76,7 @@ describe("save v38: the hand-bench flag", () => {
     raw.version = 36;
     for (const e of raw.employees) delete e.benched;
     const loaded = deserialize(JSON.stringify(raw));
-    expect(loaded.version).toBe(38);
+    expect(loaded.version).toBe(39);
     expect(loaded.employees.every((e) => e.benched === undefined)).toBe(true);
     expect(where(applyAutomation(loaded), "emp-1")).toBe("prod-1");
   });

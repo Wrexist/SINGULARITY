@@ -6,7 +6,7 @@ import { carryEarnedComponents } from "./components";
 import { startingRacks } from "./reputation";
 import { hallCapacity } from "./hall";
 import { currentEra } from "./eras";
-import { trialConditionMet } from "./trials";
+import { trialConditionMet, trialToStartAtShip } from "./trials";
 import { advanceFlagship } from "./flagship";
 import { legacyMultiplier } from "./derive";
 import { legacyAvailable } from "./legacyTree";
@@ -195,6 +195,12 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
   // clears. The sim never stakes → repWon is 0 and this is identity.
   const stake = resolveStakeOutcome(state);
 
+  const trialsDoneNext = (() => {
+    const id = state.activeTrial;
+    if (!id || state.trialsDone.includes(id)) return state.trialsDone;
+    return trialConditionMet(state) ? [...state.trialsDone, id] : state.trialsDone;
+  })();
+
   // The fresh $0 lab can't bankroll a carried marketing campaign that loses money, so
   // each one is cut back to what its own product funds (see capCarriedMarketing). It
   // reads the finished post-ship state (reset staff assignments, Heat, frontier).
@@ -244,7 +250,10 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
       // Shipping while committed to safety (doomer past the faction threshold) earns
       // community standing → Lab Reputation (B1). Neutral/accel ships don't count, and
       // the first ship is always neutral, so this is 0 through the tuned curve.
-      safetyShips: state.stats.safetyShips + (state.alignment <= -balance.worldEvents.factionThreshold ? 1 : 0),
+      // Strictly PAST the threshold (2026-09): Declare a Stance sets exactly −0.4 with
+      // one tap, which would pay this +3 Rep/ship for free every run. A safety ship
+      // is one your own choices pushed further toward caution.
+      safetyShips: state.stats.safetyShips + (state.alignment < -balance.worldEvents.factionThreshold - 1e-9 ? 1 : 0),
       // Frontier Race stake payout (depth batch): a WON wager's Reputation lands here
       // and earnedReputation folds it in. 0 unless the player staked and won.
       stakesRepEarned: state.stats.stakesRepEarned + stake.repWon,
@@ -276,13 +285,11 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     // needs Heat ≥ 60, "neutral" needs an uncommitted alignment. Cleared either way
     // (a failed condition just gives no reward, retry next run). trialConditionMet is
     // the single source for every condition; inlined import keeps prestige cycle-free.
-    activeTrial: null,
-    trialsDone: (() => {
-      const id = state.activeTrial;
-      if (!id || state.trialsDone.includes(id)) return state.trialsDone;
-      const banks = trialConditionMet(state);
-      return banks ? [...state.trialsDone, id] : state.trialsDone;
-    })(),
+    // A Trial QUEUED during the run starts here, on the fresh lab, so its handicap
+    // is endured from the first second (see canStartTrial).
+    activeTrial: trialToStartAtShip({ ...state, prestige: { ...state.prestige, ships }, trialsDone: trialsDoneNext }, state.queuedTrial),
+    queuedTrial: null,
+    trialsDone: trialsDoneNext,
     // Grand Challenges are a career-spanning grind — funding + completions persist.
     challenges: state.challenges,
     // Megaprojects II (the repeatable post-challenge loop) persist across ships too.

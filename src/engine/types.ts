@@ -110,6 +110,10 @@ export interface GameState {
    *  Both empty through the whole tuned game, so identity for the sim. `trialsDone`
    *  survives prestige; `activeTrial` completes on ship. */
   activeTrial: string | null;
+  /** A Trial queued for the NEXT run (2026-09): Attempt mid-run queues it, and the
+   *  Ship starts it on the fresh lab, so a Trial is always endured from a run's first
+   *  second. Null when none. Persisted since save v39. */
+  queuedTrial: string | null;
   trialsDone: string[];
   /** Paradigm Research (2026-07): owned deep-endgame capability node ids, bought with
    *  Reputation (charged to reputation.spent). Empty until the deep endgame → identity

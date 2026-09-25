@@ -15,7 +15,7 @@ import {
   buyUpgrade,
   buyUpgradeBulk,
   buyOfficePerk,
-  buyResearch,
+  buyResearchByHand,
   canBuyResearch,
   researchAvailable,
   researchCost,
@@ -55,7 +55,7 @@ import {
 import { productMilestones as PRODUCT_MILESTONES, type ProductTypeId } from "../engine/balance/products";
 import { achievements as ACHIEVEMENT_DEFS } from "../engine/balance/achievements";
 import { buyReputationPerk, buyEndowment, pickEndowmentDirective, respecDirective, foundWing } from "../engine/reputation";
-import { startTrial, abandonTrial } from "../engine/trials";
+import { startTrial, abandonTrial, canStartTrial, queueTrial } from "../engine/trials";
 import { setFlagship } from "../engine/flagship";
 import { buyParadigm } from "../engine/paradigms";
 import { claimDoctrine, declareStance, type Stance } from "../engine/doctrine";
@@ -434,7 +434,7 @@ export const useGame = create<GameStore>((set, get) => ({
         if (Number.isFinite(needMs) && needMs < elapsedMs) {
           start = tick(start, needMs);
           remainingMs -= needMs;
-          if (canBuyResearch(start, pin.id)) start = buyResearch(start, pin.id);
+          if (canBuyResearch(start, pin.id)) start = buyResearchByHand(start, pin.id);
         }
         start = { ...start, computeFocus: pin.prevFocus };
         pinDone = true;
@@ -644,7 +644,7 @@ export const useGame = create<GameStore>((set, get) => ({
       if (s.savingFor && !pinDone) {
         const pin = s.savingFor;
         let g = patch.game ?? game;
-        if (!g.research.includes(pin.id) && canBuyResearch(g, pin.id)) g = buyResearch(g, pin.id);
+        if (!g.research.includes(pin.id) && canBuyResearch(g, pin.id)) g = buyResearchByHand(g, pin.id);
         const pinDef = ALL_RESEARCH.find((r) => r.id === pin.id);
         // Compute is there but the node still can't be bought (Data spent elsewhere, a
         // fork taken): let go rather than hold training forever.
@@ -736,7 +736,9 @@ export const useGame = create<GameStore>((set, get) => ({
   doPickDirective: (id) => set((s) => ({ game: pickEndowmentDirective(s.game, id) })),
   doRespecDirective: (id) => set((s) => ({ game: respecDirective(s.game, id) })),
   doPlaceStake: (name) => set((s) => ({ game: placeStake(s.game, name) })),
-  doStartTrial: (id) => set((s) => ({ game: startTrial(s.game, id) })),
+  // Attempt: starts now on a fresh run; mid-run it queues for the next run (and a
+  // second tap on the queued Trial clears the queue).
+  doStartTrial: (id) => set((s) => ({ game: canStartTrial(s.game, id) ? startTrial(s.game, id) : queueTrial(s.game, id) })),
   doAbandonTrial: () => set((s) => ({ game: abandonTrial(s.game) })),
   doSetFlagship: (id) => set((s) => ({ game: setFlagship(s.game, id) })),
   doBuyParadigm: (id) => set((s) => ({ game: buyParadigm(s.game, id) })),
@@ -808,7 +810,7 @@ export const useGame = create<GameStore>((set, get) => ({
     set((s) => (canBuyFeature(s.game, id, featureId) ? { game: buyFeature(s.game, id, featureId) } : {})),
   doRenameProduct: (id, name) => set((s) => ({ game: renameProduct(s.game, id, name) })),
   doRetireProduct: (id) => set((s) => ({ game: retireProduct(s.game, id) })),
-  doResearch: (id) => set((s) => ({ game: buyResearch(s.game, id) })),
+  doResearch: (id) => set((s) => ({ game: buyResearchByHand(s.game, id) })),
   // The wall clock isn't the only nondeterminism we keep out of the engine —
   // the risk roll lives here too and is passed in, mirroring how we pass time.
   doBuyData: (id) => {
