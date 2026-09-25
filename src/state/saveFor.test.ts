@@ -67,3 +67,48 @@ describe("save for this — store wiring", () => {
     expect(useGame.getState().game.computeFocus).toBe(1);
   });
 });
+
+describe("save for this — the review's failure modes", () => {
+  beforeEach(() => {
+    useGame.setState({ game: walledLab(), savingFor: null, offline: null, notice: null, event: null, worldEvent: null });
+  });
+
+  it("refuses a node that is also short on Data (holding training would freeze the lab)", () => {
+    const g = useGame.getState().game;
+    useGame.setState({ game: { ...g, resources: { ...g.resources, data: Big.ZERO } } });
+    useGame.getState().doSaveFor(NODE);
+    expect(useGame.getState().savingFor).toBeNull();
+    expect(useGame.getState().game.computeFocus).toBe(1);
+  });
+
+  it("a long resume window buys at the right moment and runs the rest at the player's own intensity", () => {
+    useGame.getState().doSaveFor(NODE);
+    const eightHours = 8 * 3600 * 1000;
+    useGame.getState().advance(eightHours, eightHours);
+    const after = useGame.getState();
+    expect(after.savingFor).toBeNull();
+    expect(after.game.research).toContain(NODE);
+    expect(after.game.computeFocus).toBe(1);
+    // The window was NOT spent with training held: runs paid out Money.
+    expect(after.game.resources.money.gt(Big.of(1e9))).toBe(true);
+  });
+
+  it("persists the player's own intensity, never the eased one", () => {
+    const store: Record<string, string> = {};
+    const prev = (globalThis as { localStorage?: Storage }).localStorage;
+    (globalThis as { localStorage?: unknown }).localStorage = {
+      getItem: (k: string) => store[k] ?? null,
+      setItem: (k: string, v: string) => { store[k] = v; },
+      removeItem: (k: string) => { delete store[k]; },
+    };
+    try {
+      useGame.getState().doSaveFor(NODE);
+      expect(useGame.getState().game.computeFocus).toBeLessThan(1);
+      useGame.getState().save();
+      const saved = JSON.parse(store["singularity.save.v1"]!);
+      expect(saved.computeFocus).toBe(1);
+    } finally {
+      (globalThis as { localStorage?: unknown }).localStorage = prev;
+    }
+  });
+});

@@ -1,10 +1,11 @@
 import { balance } from "./balance/config";
 import { productMetrics, productsUnlocked, canStartUpgrade, maxActiveProducts } from "./products";
 import { contractBoard, sponsorView } from "./contracts";
-import { canBuyResearch, researchStalled } from "./actions";
+import { canBuyResearch, researchStalled, researchAvailable, researchCost } from "./actions";
+import { researchTree } from "./researchTree";
 import { canPrestige, nextRunMultiplier } from "./prestige";
 import { hireCost } from "./employees";
-import { derive, FIRST_SHIP_WORTH_IT } from "./derive";
+import { derive, computeBankCeiling, FIRST_SHIP_WORTH_IT } from "./derive";
 import type { Derived, GameState } from "./types";
 
 /** The first research node (no prereqs) — the new player's first capability buy. */
@@ -61,9 +62,19 @@ export function advisorItems(state: GameState, precomputed?: Derived): AdvisorIt
   // the one moment it matters, through the nudge channel that already exists (no popup).
   // Any run can hit this (re-climbing the tree), so it isn't gated to the first session.
   if (researchStalled(state, derived)) {
-    // Land on Research, where tapping the walled node eases intensity just enough
-    // ("save for this"), rather than on a bare slider with no target to aim at.
-    items.push({ tab: "lab", section: "research", text: "Research out of reach — tap a node to save for it", priority: 66 });
+    // When a walled node has its Data already, land on Research: tapping it eases
+    // intensity just enough ("save for this"). If every walled node is ALSO short on
+    // Data, a pin can't help (holding training stops the Data income), so point at
+    // the slider instead.
+    const ceiling = computeBankCeiling(state, derived);
+    const savable = ceiling !== null && researchTree(state).some((def) => {
+      if (!researchAvailable(state, def.id)) return false;
+      const c = researchCost(state, def);
+      return c.compute.gt(ceiling) && state.resources.data.gte(c.data);
+    });
+    items.push(savable
+      ? { tab: "lab", section: "research", text: "Research out of reach — tap a node to save for it", priority: 66 }
+      : { tab: "lab", section: "build", text: "Ease training intensity to bank Compute", priority: 66 });
   }
 
   // ---- First-session hook: until the first Ship, hand-hold the core loop so a

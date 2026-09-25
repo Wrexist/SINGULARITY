@@ -1386,6 +1386,12 @@ export const balance = {
   /** PHASE 2 — Staff. Opt-in depth: hire to multiply a lane, pay payroll forever. */
   staff: {
     enabled: true,
+    /** Payroll is paid out of what the lab EARNS each tick, at most this share of it.
+     *  Staff carry across a Ship but the fresh lab starts at $0, so an uncapped drain
+     *  pinned a new run at $0: one $2/s hire pushed the first rack to ~89 minutes, and
+     *  three hires meant no rack in 3 hours (2026-09 generations audit). The balance
+     *  sim never hires, so this cannot move the tuned curve. */
+    payrollMaxShareOfIncome: 0.5,
     /** Assigned product-staff are this much more effective than unassigned, but only
      *  on their one product (the spread-vs-concentrate trade-off). */
     assignFocusMult: 2,

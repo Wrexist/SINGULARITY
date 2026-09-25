@@ -6,6 +6,7 @@ import { burst, floatText } from "./fx";
 import { RepeatIcon } from "./Icons";
 import { haptics } from "./haptics";
 import { sound } from "./sound";
+import { useGame } from "../state/store";
 
 interface Props {
   game: GameState;
@@ -27,14 +28,20 @@ export function TrainingDock({ game, derived, onStart, onClaim, onSetFocus }: Pr
   // self-suppress under reduced motion.
   const dockRef = useRef<HTMLDivElement>(null);
   const hadAutoClaim = useRef(derived.autoClaim);
+  // The dock first renders with the placeholder fresh state; the save loads a tick
+  // later, in the same update that sets `initialized`. Only a flip seen on an
+  // ALREADY-initialized render is a purchase; the load itself must stay silent.
+  const initialized = useGame((s) => s.initialized);
+  const wasInit = useRef(initialized);
   useEffect(() => {
-    if (derived.autoClaim && !hadAutoClaim.current && dockRef.current) {
+    if (derived.autoClaim && !hadAutoClaim.current && wasInit.current && dockRef.current) {
       const r = dockRef.current.querySelector(".progress")?.getBoundingClientRect();
       if (r) burst(r.left + r.width / 2, r.top + r.height / 2, { count: 26, power: 1.3, colors: ["#2f7bf6", "#9b51e0", "#16b364"] });
       haptics.success(); sound.success();
     }
     hadAutoClaim.current = derived.autoClaim;
-  }, [derived.autoClaim]);
+    wasInit.current = initialized;
+  }, [derived.autoClaim, initialized]);
   const pct = Math.min(100, run.progress * 100);
 
   // Training intensity: scales the RUN SIZE (a light run sips Compute and pays

@@ -1012,7 +1012,14 @@ function drawRackBody(
 // there is no resampling blur.
 type SpriteCanvas = HTMLCanvasElement | OffscreenCanvas;
 const rackSprites = new Map<string, { img: SpriteCanvas; ox: number; oy: number }>();
-const SPRITE_CAP = 400;
+// Every rack in a frame shares ONE density (it moves as a partial wing fills), so a
+// density change retires the whole cache rather than piling up 48 new sprites per
+// rack bought. The cap is a backstop for skins x tiers x sub-pixel phases.
+const SPRITE_CAP = 160;
+let spriteDensity = NaN;
+// Once the WebView refuses a canvas (iOS caps total canvas memory), stop asking:
+// retrying every rack every frame would only add to the pressure.
+let spritesUnavailable = false;
 
 function makeCanvas(w: number, h: number): SpriteCanvas | null {
   if (typeof OffscreenCanvas === "function") return new OffscreenCanvas(w, h);
@@ -1030,7 +1037,7 @@ function blitRackBody(
   ctx: CanvasRenderingContext2D, sx: number, sy: number, tileW: number, tileH: number,
   tier: number, density: number, skin?: string,
 ): boolean {
-  if (typeof ctx.getTransform !== "function") return false;
+  if (spritesUnavailable || typeof ctx.getTransform !== "function") return false;
   const m = ctx.getTransform();
   if (m.b !== 0 || m.c !== 0 || m.a !== m.d || m.a <= 0) return false;
   const k = m.a;
@@ -1040,6 +1047,7 @@ function blitRackBody(
   const key = `${tier}|${density}|${skin ?? ""}|${tileW}|${tileH}|${k}|${fx}|${fy}`;
   let spr = rackSprites.get(key);
   if (!spr) {
+    if (density !== spriteDensity) { rackSprites.clear(); spriteDensity = density; }
     const hw = (tileW / 2) * 0.64, hh = (tileH / 2) * 0.64;
     const ph = tileH * (1.1 + tier * 0.5) * (0.72 + 0.28 * density);
     // Body bounds around the centre (css px), plus a margin for stroke antialiasing.
@@ -1050,7 +1058,7 @@ function blitRackBody(
     const w = Math.ceil(ox + right * k) + 1, h = Math.ceil(oy + bottom * k) + 1;
     const img = makeCanvas(w, h);
     const sctx = img?.getContext("2d") as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null | undefined;
-    if (!img || !sctx) return false;
+    if (!img || !sctx) { spritesUnavailable = true; return false; }
     sctx.setTransform(k, 0, 0, k, ox, oy);
     drawRackBody(sctx, 0, 0, tileW, tileH, tier, density, 1, skin);
     if (rackSprites.size >= SPRITE_CAP) rackSprites.clear();

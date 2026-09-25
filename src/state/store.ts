@@ -405,9 +405,34 @@ export const useGame = create<GameStore>((set, get) => ({
       // (the engine finishes them inside tick; we surface the moment to the UI).
       const wasUpgrading = new Map(s.game.products.active.map((p) => [p.id, !!p.upgrade]));
       const wasTraining = new Map(s.game.employees.map((e) => [e.id, !!e.training]));
-      let game = tick(s.game, elapsedMs);
+      // "Save for this" across a big window (a resume from suspend): the eased
+      // intensity must not govern hours of catch-up. Tick only until the bank covers
+      // the pinned node, buy it and put the slider back, then run the rest normally;
+      // if the window can't get there, let go of the pin first.
+      let start = s.game;
+      let remainingMs = elapsedMs;
+      let pinDone = false;
+      if (s.savingFor && elapsedMs > 2000) {
+        const pin = s.savingFor;
+        const def = ALL_RESEARCH.find((r) => r.id === pin.id);
+        let needMs = Infinity;
+        if (def) {
+          const short = researchCost(start, def).compute.sub(start.resources.compute);
+          const cps = derive(start).computePerSec;
+          needMs = short.lte(0) ? 0 : cps.gt(0) ? short.div(cps).toNumber() * 1000 + 250 : Infinity;
+        }
+        if (Number.isFinite(needMs) && needMs < elapsedMs) {
+          start = tick(start, needMs);
+          remainingMs -= needMs;
+          if (canBuyResearch(start, pin.id)) start = buyResearch(start, pin.id);
+        }
+        start = { ...start, computeFocus: pin.prevFocus };
+        pinDone = true;
+      }
+      let game = tick(start, remainingMs);
       const secs = elapsedMs / 1000;
       const patch: Partial<GameStore> = { game };
+      if (pinDone) patch.savingFor = null;
 
       // "While you were away", on the RESUME path. On iOS the app is suspended and
       // resumed far more often than it is killed and cold-launched, and `init()` —
@@ -599,11 +624,15 @@ export const useGame = create<GameStore>((set, get) => ({
 
       // "Save for this": buy the pinned node the moment the eased bank covers it, then
       // restore the player's intensity. Also let go if it's gone some other way.
-      if (s.savingFor) {
+      if (s.savingFor && !pinDone) {
         const pin = s.savingFor;
         let g = patch.game ?? game;
         if (!g.research.includes(pin.id) && canBuyResearch(g, pin.id)) g = buyResearch(g, pin.id);
-        if (g.research.includes(pin.id) || !researchAvailable(g, pin.id)) {
+        const pinDef = ALL_RESEARCH.find((r) => r.id === pin.id);
+        // Compute is there but the node still can't be bought (Data spent elsewhere, a
+        // fork taken): let go rather than hold training forever.
+        const stuck = !!pinDef && !g.research.includes(pin.id) && g.resources.compute.gte(researchCost(g, pinDef).compute);
+        if (g.research.includes(pin.id) || !researchAvailable(g, pin.id) || stuck) {
           patch.game = { ...g, computeFocus: pin.prevFocus };
           patch.savingFor = null;
         } else if (g !== (patch.game ?? game)) {
@@ -616,7 +645,10 @@ export const useGame = create<GameStore>((set, get) => ({
 
   save: () => {
     try {
-      localStorage.setItem(SAVE_KEY, serialize(get().game));
+      // Persist the player's own intensity, never the temporary "save for this" one:
+      // an app killed mid-pin must not relaunch with training held.
+      const { game, savingFor } = get();
+      localStorage.setItem(SAVE_KEY, serialize(savingFor ? { ...game, computeFocus: savingFor.prevFocus } : game));
       localStorage.setItem(TIME_KEY, String(now()));
     } catch (err) {
       console.warn("Save failed:", err);
@@ -720,7 +752,12 @@ export const useGame = create<GameStore>((set, get) => ({
     set((s) => {
       const def = ALL_RESEARCH.find((r) => r.id === id);
       if (!def || s.game.research.includes(id) || !researchAvailable(s.game, id)) return {};
-      const focus = focusToBank(s.game, derive(s.game), researchCost(s.game, def).compute);
+      // Only when Compute is the ONE thing missing: easing intensity (usually to a full
+      // hold) stops the runs that earn Data and Money, so a node also short on Data
+      // would never become affordable and the pin would freeze the whole lab.
+      const cost = researchCost(s.game, def);
+      if (s.game.resources.data.lt(cost.data)) return {};
+      const focus = focusToBank(s.game, derive(s.game), cost.compute);
       // Re-pinning a different node keeps the ORIGINAL setting to restore.
       const prevFocus = s.savingFor?.prevFocus ?? s.game.computeFocus;
       return { game: { ...s.game, computeFocus: focus }, savingFor: { id, prevFocus } };
@@ -822,7 +859,7 @@ export const useGame = create<GameStore>((set, get) => ({
         game = migrateStaffCounts(game);
         seedProductKey(game);
         seedEmpKey(game);
-        set({ game, offline: null, event: null, notice: null, worldEvent: null, claimBurst: 0, candidates: null });
+        set({ game, offline: null, event: null, notice: null, worldEvent: null, claimBurst: 0, candidates: null, savingFor: null });
         localStorage.setItem(SAVE_KEY, serialize(game));
         localStorage.setItem(TIME_KEY, String(now()));
         return true;

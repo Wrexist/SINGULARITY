@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { balance } from "./balance/config";
 import { derive, totalMorale, officeMorale } from "./derive";
 import { tick } from "./tick";
 import { computeStaffEffects } from "./employees";
@@ -37,22 +38,31 @@ describe("staff (individual employees) — derive + payroll", () => {
     expect(d.productMods.heat).toBeLessThan(1);
   });
 
-  it("drains payroll from Money in tick, but not lifetimeMoney", () => {
+  it("never drains a lab with no income: a fresh run can always buy its first rack", () => {
+    // Staff carry across a Ship but the new lab starts at $0 with nothing earning; an
+    // uncapped drain used to pin it there for hours (2026-09 generations audit).
     const s = createInitialState();
     s.resources.money = Big.of(1000);
     s.employees = [person("staff_engineer", { id: "1" }), person("staff_engineer", { id: "2" }), person("staff_engineer", { id: "3" })];
     const next = tick(s, 10_000);
-    expect(next.resources.money.lt(1000)).toBe(true);
-    expect(next.lifetimeMoney.eq(0)).toBe(true); // payroll never touches lifetime earnings
+    expect(next.resources.money.eq(1000)).toBe(true);
   });
 
-  it("payroll floors Money at zero (never negative)", () => {
+  it("takes payroll out of earnings, at most the configured share, and never touches lifetimeMoney", () => {
     const s = createInitialState();
-    s.resources.money = Big.of(30);
+    s.research = [balance.prestige.capabilityResearch]; // passive API income
+    s.upgrades = { rack_basic: 20 };
+    s.resources.money = Big.of(1000);
     s.employees = Array.from({ length: 6 }, (_, i) => person("staff_pr", { id: String(i) })); // pricey crew
-    const next = tick(s, 100_000);
+    const next = tick(s, 10_000);
+    const earned = next.lifetimeMoney.sub(s.lifetimeMoney);
+    expect(earned.gt(0)).toBe(true);
+    const net = next.resources.money.sub(1000);
+    // Something was paid…
+    expect(net.lt(earned)).toBe(true);
+    // …but never more than the share of what was earned.
+    expect(net.gte(earned.mul(1 - balance.staff.payrollMaxShareOfIncome).sub(1e-9))).toBe(true);
     expect(next.resources.money.gte(0)).toBe(true);
-    expect(next.resources.money.eq(0)).toBe(true);
   });
 
   it("applies diminishing returns when stacking one lane (anti-zerg)", () => {

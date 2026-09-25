@@ -162,12 +162,6 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     run = { active: true, progress: 0, readyToClaim: false };
   }
 
-  // Staff payroll (Phase 2): an ongoing Money drain, floored at zero so it never
-  // goes negative. Only Money is touched — lifetimeMoney tracks earnings, not net.
-  if (d.payrollPerSec.gt(0)) {
-    money = money.sub(d.payrollPerSec.mul(seconds)).max(Big.ZERO);
-  }
-
   // Regulatory Heat cools passively when you're not buying shady data.
   let heat = Math.max(0, state.heat - balance.heat.coolPerSec * seconds);
 
@@ -186,6 +180,18 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     money = money.add(moneyDelta).max(Big.ZERO);
     if (moneyDelta > 0) lifetimeMoney = lifetimeMoney.add(moneyDelta);
     heat = Math.max(0, Math.min(balance.heat.max, heat + heatDelta));
+  }
+
+  // Staff payroll (Phase 2): an ongoing Money drain, paid out of this tick's EARNINGS
+  // and capped at a share of them (balance.staff.payrollMaxShareOfIncome), so a big
+  // roster can squeeze a run but never pin a fresh, income-less lab at $0. Earnings =
+  // what lifetimeMoney gained this tick (passive + auto-claimed runs + product profit).
+  // Only Money is touched — lifetimeMoney tracks earnings, not net.
+  if (d.payrollPerSec.gt(0)) {
+    const earned = lifetimeMoney.sub(state.lifetimeMoney).max(Big.ZERO);
+    const due = d.payrollPerSec.mul(seconds);
+    const paid = due.min(earned.mul(balance.staff.payrollMaxShareOfIncome));
+    money = money.sub(paid).max(Big.ZERO);
   }
 
   // Timed version upgrades drain Compute+Data over their research window. Run after

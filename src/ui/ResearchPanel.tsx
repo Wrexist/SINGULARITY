@@ -117,7 +117,10 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint, saving
     const lockedOut = !owned && researchLockedOut(game, def.id);
     // A node the drained auto-train bank can never reach is tappable anyway: the tap
     // pins it ("save for this") instead of buying — see store.doSaveFor.
-    const walledNow = !owned && avail && !canBuy && def.cost.compute > 0 && computeWalled(researchCost(game, def).compute);
+    // Only when Compute is the one thing missing (the store refuses otherwise): a
+    // Data-short node would never be reached with training held.
+    const rc = researchCost(game, def);
+    const walledNow = !owned && avail && !canBuy && def.cost.compute > 0 && computeWalled(rc.compute) && game.resources.data.gte(rc.data);
     const savable = walledNow && !!onSaveFor;
     const saving = savingFor === def.id && !owned;
     const state = owned ? "owned" : lockedOut ? "excluded" : avail ? "available" : "locked";

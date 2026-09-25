@@ -50,7 +50,7 @@ import { balance } from "../engine/balance/config";
 import { ALL_RESEARCH } from "../engine/researchTree";
 import { HallCanvas } from "./HallCanvas";
 import { sampleHistory, resetHistory, SAMPLE_MS } from "./history";
-import { NewsTicker, type Breaking } from "./NewsTicker";
+import { NewsTicker, BREAKING_MS, type Breaking } from "./NewsTicker";
 import { ExpandConfirm } from "./ExpandConfirm";
 import { ConfirmSheet } from "./ConfirmSheet";
 import { usePortalOpen } from "./Portal";
@@ -93,7 +93,8 @@ import { EraTransition } from "./EraTransition";
 import { WorldEventCard } from "./WorldEventCard";
 import { ModifierBar } from "./ModifierBar";
 import { regulatorIsNamed, regulatorState } from "../engine/regulator";
-import { canPrestige } from "../engine/prestige";
+import { canPrestige, nextRunMultiplier } from "../engine/prestige";
+import { FIRST_SHIP_WORTH_IT } from "../engine/derive";
 import { chartersUnlocked } from "../engine/charter";
 import { preprintsUnlocked } from "../engine/preprints";
 import { legacyAvailable } from "../engine/legacyTree";
@@ -381,6 +382,10 @@ export function App() {
     });
   }, []);
   const shipReady = canPrestige(game);
+  // The ship CALLS (explainer sheet, gold HQ dot, pulsing Lab icon) wait until the
+  // first Ship is worth the reset, matching the advisor and the goal strip, which
+  // say "grow it" until then. After the first ship, ready means ready.
+  const shipCalls = shipReady && (game.prestige.ships > 0 || nextRunMultiplier(game).toNumber() >= FIRST_SHIP_WORTH_IT);
 
   // Transient unlock toasts.
   const [toasts, setToasts] = useState<ToastData[]>([]);
@@ -482,8 +487,8 @@ export function App() {
       markShipExplained();
       return;
     }
-    if (shipReady) setShowShipExplainer(true);
-  }, [initialized, shipReady, shipExplained, game.prestige.ships, markShipExplained]);
+    if (shipCalls) setShowShipExplainer(true);
+  }, [initialized, shipCalls, shipExplained, game.prestige.ships, markShipExplained]);
 
   // Era transitions: a full-screen tentpole moment when the lab crosses an era.
   // Guarded by the same hydration sync so it never fires on a returning load.
@@ -550,6 +555,10 @@ export function App() {
     }
     logEvent(`${worldEvent.headline} — ${worldEvent.body} (${worldEvent.summary})`, worldEvent.tone);
     setBreaking({ key: worldEvent.key, text: `${worldEvent.headline} · ${worldEvent.summary}`, tone: worldEvent.tone });
+    // App owns the expiry: the ticker unmounts on section switches, so a timer kept
+    // inside it restarted and re-announced an old story on every return to Build.
+    const key = worldEvent.key;
+    window.setTimeout(() => setBreaking((b) => (b && b.key === key ? null : b)), BREAKING_MS);
     if (worldEvent.tone === "bad") haptics.warn(); // a setback is felt, not announced
     dismissWorldEvent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -860,8 +869,11 @@ export function App() {
   // restart themselves; product margin and payroll always flow.
   const barRates = (() => {
     const margin = game.products.active.reduce((sum, p) => sum + productMetrics(p, game.products.frontier).margin, 0);
-    const data = d.autoTrain ? effRate(d, "data") : d.dataPerSec;
-    const base = d.autoTrain ? effRate(d, "money") : d.passiveMoneyPerSec;
+    // Runs count only while they actually restart themselves: auto-train on AND an
+    // intensity above zero (0 = training held, e.g. a "save for this" pin).
+    const running = d.autoTrain && game.computeFocus > 0;
+    const data = running ? effRate(d, "data") : d.dataPerSec;
+    const base = running ? effRate(d, "money") : d.passiveMoneyPerSec;
     const money = base.add(Big.of(Number.isFinite(margin) ? margin : 0)).sub(d.payrollPerSec);
     return { data, money };
   })();
@@ -891,7 +903,7 @@ export function App() {
         computeRate={d.computePerSec}
         dataRate={barRates.data}
         moneyRate={barRates.money}
-        quiet={d.autoTrain}
+        quiet={d.autoTrain && game.computeFocus > 0}
       />
       <ModifierBar
         modifiers={game.modifiers}
@@ -1036,7 +1048,7 @@ export function App() {
                   Research{labAttention.research > 0 && <span className="tab-dot">{labAttention.research}</span>}
                 </button>
                 <button className={`tab ${section === "hq" ? "on" : ""}`} aria-current={section === "hq" ? "true" : undefined} onClick={() => { haptics.tap(); goSection("hq"); }}>
-                  HQ{shipReady && section !== "hq"
+                  HQ{shipCalls && section !== "hq"
                     ? <span className="tab-dot ship-ready" role="status" aria-label="Ship ready" />
                     : labAttention.hq > 0 && <span className="tab-dot">{labAttention.hq}</span>}
                 </button>
@@ -1137,7 +1149,7 @@ export function App() {
       <nav className="botnav" aria-label="Primary">
         {/* Destinations use aria-current; Awards/More are actions (open modals),
             so this is a nav bar, not a tablist (the panes aren't tab panels). */}
-        <button className={`botnav-item ${tab === "lab" ? "on" : ""} ${shipReady && tab !== "lab" ? "ship-ready" : ""}`} aria-current={tab === "lab" ? "page" : undefined} aria-label={shipReady && tab !== "lab" ? "Lab — ready to ship" : undefined} onClick={() => { haptics.tap(); if (shipReady && tab !== "lab") goSection("hq"); goTab("lab"); }}>
+        <button className={`botnav-item ${tab === "lab" ? "on" : ""} ${shipCalls && tab !== "lab" ? "ship-ready" : ""}`} aria-current={tab === "lab" ? "page" : undefined} aria-label={shipCalls && tab !== "lab" ? "Lab — ready to ship" : undefined} onClick={() => { haptics.tap(); if (shipCalls && tab !== "lab") goSection("hq"); goTab("lab"); }}>
           <span className="botnav-ic"><FlaskIcon size={23} /></span><span className="botnav-lbl">Lab</span>
           {/* Ship-ready is signalled AMBIENTLY here by the pulsing icon (the
               `ship-ready` class) — the word "Ship" was a redundant text badge on

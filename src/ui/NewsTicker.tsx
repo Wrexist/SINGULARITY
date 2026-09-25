@@ -28,8 +28,8 @@ export interface Breaking {
   tone: "good" | "bad";
 }
 
-/** How long a BREAKING line holds the wire before the feed resumes. */
-const BREAKING_MS = 14000;
+/** How long a BREAKING line holds the wire before the feed resumes (App clears it). */
+export const BREAKING_MS = 14000;
 
 function NewsTickerImpl({ breaking = null }: { breaking?: Breaking | null }) {
   const reduced = useReducedMotion();
@@ -50,16 +50,8 @@ function NewsTickerImpl({ breaking = null }: { breaking?: Breaking | null }) {
     return () => window.clearInterval(t);
   }, [reduced]);
 
-  // A fresh BREAKING line takes the wire for a while, then the feed resumes. Keyed on
-  // the event, so the same story never re-takes the wire after it has expired.
-  const [liveKey, setLiveKey] = useState<number | null>(null);
-  useEffect(() => {
-    if (!breaking) return;
-    setLiveKey(breaking.key);
-    const t = window.setTimeout(() => setLiveKey((k) => (k === breaking.key ? null : k)), BREAKING_MS);
-    return () => window.clearTimeout(t);
-  }, [breaking?.key]); // eslint-disable-line react-hooks/exhaustive-deps
-  const live = breaking && liveKey === breaking.key ? breaking : null;
+  // A BREAKING line holds the wire while App keeps it (it clears it after BREAKING_MS).
+  const live = breaking;
 
   return (
     <div className={`news-ticker${live ? ` breaking ${live.tone}` : ""}`} aria-label="AI industry newswire" aria-live={live ? "polite" : undefined}>
