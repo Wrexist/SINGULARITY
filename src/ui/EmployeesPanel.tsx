@@ -3,7 +3,7 @@ import { Portal } from "./Portal";
 import { EmptyState } from "./EmptyState";
 import { balance } from "../engine/balance/config";
 import { canBuyOfficePerk } from "../engine/actions";
-import { officeMorale, totalMorale } from "../engine/derive";
+import { officeMorale, totalMorale, payrollMultiplier } from "../engine/derive";
 import {
   roleDef, traitDef, employeePayroll, canTrain, trainCost, hireCost,
   roleAffinity, roleMatchesSegment, rosterFull,
@@ -86,6 +86,9 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
   const morale = totalMorale(game);
   const mentorBoost = morale - officeMorale(game); // Mentor-trait share, for the breakdown
   const mentorMaxed = mentorBoost >= balance.staff.maxTeamMorale - 1e-9; // Mentors stop stacking here
+  // Office and Reputation payroll perks trim every salary before it is charged, so the
+  // pay a card quotes carries them too (the Payroll /s KPI always did).
+  const payMult = payrollMultiplier(game);
   const moraleHint = mentorBoost > 0.0001
     ? `Office perks ×${officeMorale(game).toFixed(2)} + mentors +${Math.round(mentorBoost * 100)}%${mentorMaxed ? " (max)" : ""}`
     : "From office perks (hire a Mentor to lift it further)";
@@ -260,9 +263,9 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
                       <div className="emp-person-tags">
                         <span className="emp-tag role">{role?.name}</span>
                         {trait && <span className="emp-tag" style={{ color: TRAIT_TONE[trait.tone], background: `color-mix(in srgb, ${TRAIT_TONE[trait.tone]} 12%, #fff)` }}>{trait.name}</span>}
-                        {/* The salary this person will draw (role × level × trait), the same
-                            number the roster shows once hired — not the role's base pay. */}
-                        <span className="emp-tag muted">{m$(employeePayroll({ roleId: c.roleId, level: c.level ?? 1, trait: c.trait }))}/s</span>
+                        {/* The salary this person will draw (role × level × trait, after the
+                            payroll perks), the same number the roster shows once hired. */}
+                        <span className="emp-tag muted">{m$(employeePayroll({ roleId: c.roleId, level: c.level ?? 1, trait: c.trait }) * payMult)}/s</span>
                       </div>
                     </div>
                     <button className="emp-hire-btn" disabled={!afford || full} onClick={(e) => {
@@ -288,7 +291,7 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
                 return (
                   <div className="emp-person-wrap" key={e.id}>
                     {personCard(e, (
-                      <span className="emp-person-pay">{m$(employeePayroll(e))}/s</span>
+                      <span className="emp-person-pay">{m$(employeePayroll(e) * payMult)}/s</span>
                     ), () => setSelectedId(open ? null : e.id))}
                     {open && (
                       <div className="emp-person-actions">

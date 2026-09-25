@@ -67,6 +67,13 @@ export function officePayrollMult(state: GameState): number {
   return mult;
 }
 
+/** What every person's salary is multiplied by before it is charged: the office perks
+ *  × the Lab Reputation payroll perk — the same two derive() folds into payrollPerSec.
+ *  For the per-person pay a roster or candidate card quotes. Pure. */
+export function payrollMultiplier(state: GameState): number {
+  return officePayrollMult(state) * reputationMods(state).payrollMult;
+}
+
 /**
  * Fold owned upgrades, research, and prestige into the stats the sim and UI use.
  * Pure and cheap — safe to call every frame. Keeping this the single source of
