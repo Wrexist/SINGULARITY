@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChevronIcon } from "./Icons";
 import type { Derived, GameState } from "../engine/types";
-import { fmt, fmtMoney, m$, numOf, fmtDur } from "./format";
+import { fmt, fmtMoney, m$, numOf, fmtDur, fmtSignedPct } from "./format";
 import { achievementDefs } from "../engine/achievements";
 import { reputationAvailable, endowmentMult } from "../engine/reputation";
 import { preprintMult } from "../engine/preprints";
@@ -36,7 +36,7 @@ type Row = { label: string; value: string; tone?: "compute" | "data" | "money" |
  *  lifetime career: peaks, totals, and meta-progression earned across every run). */
 /** Compact "+9% cmp · −6% $ · +30% heat" summary of the active stance, or null
  *  at neutral. Makes the (now real) faction tilt legible instead of invisible. */
-const pct = (x: number) => `${x >= 0 ? "+" : ""}${Math.round(x * 100)}%`;
+const pct = fmtSignedPct;
 
 function stanceEffects(game: GameState): string | null {
   if (game.alignment === 0) return null;

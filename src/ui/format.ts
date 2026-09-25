@@ -106,6 +106,18 @@ export function m$(n: number): string {
   return x < 0 ? `-${fmtMoney(Big.of(Math.round(-x)))}` : fmtMoney(Big.of(Math.round(x)));
 }
 
+/** A signed effect size as a percent: "+6%", "-35%", and — below one percent — one
+ *  decimal ("+0.3%", "-0.2%", "+<0.1%"). Whole-percent rounding read a real +0.3%
+ *  Compute tilt as "+0%" and a −0.2% loss as "0%" (Math.round gives −0, which prints
+ *  unsigned). Exact zero (or a non-finite input) reads "+0%". */
+export function fmtSignedPct(x: number): string {
+  if (!Number.isFinite(x) || x === 0) return "+0%";
+  const sign = x > 0 ? "+" : "-";
+  const a = Math.abs(x) * 100;
+  const body = a >= 0.95 ? String(Math.round(a)) : a >= 0.05 ? a.toFixed(1) : "<0.1";
+  return `${sign}${body}%`;
+}
+
 /** Rounded count via the K/M/B formatter. */
 export function numOf(n: number): string {
   return fmt(Big.of(Number.isFinite(n) ? Math.round(n) : 0));

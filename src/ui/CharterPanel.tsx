@@ -6,6 +6,7 @@ import { charterConvictionMult } from "../engine/prestige";
 import { autoResearchEnabled } from "../engine/reputation";
 import type { GameState } from "../engine/types";
 import { ShieldIcon, ScalesIcon, RocketIcon } from "./Icons";
+import { fmtSignedPct } from "./format";
 
 interface Props {
   game: GameState;
@@ -16,7 +17,7 @@ interface Props {
   onStance: (stance: Stance) => void;
 }
 
-const pct = (x: number | undefined) => (x ? `${x >= 0 ? "+" : ""}${Math.round(x * 100)}%` : null);
+const pct = (x: number | undefined) => (x ? fmtSignedPct(x) : null);
 
 /** "×2.5" for a rule multiplier, "½" for a half. */
 const times = (x: number) => (x === 0.5 ? "½" : `×${x}`);
