@@ -213,7 +213,8 @@ export function ProductDetail({ game, productId, mods, onClose, onStartUpgrade, 
             <div className="pd-card">
               <div className="pd-card-row">
                 <span className="pd-card-label">Pro price{p.priceMult > 1 ? " · premium" : p.priceMult < 1 ? " · value" : ""}</span>
-                <span className="pd-card-value">{perUserPrice(t.baseArpu * p.priceMult * p.quality * featureMods(p).arpu)} <span className="pd-mult-note">×{p.priceMult.toFixed(1)}</span></span>
+                {/* With the product's revenue buffs (staff, the Product Company charter), as billed. */}
+                <span className="pd-card-value">{perUserPrice(t.baseArpu * p.priceMult * p.quality * featureMods(p).arpu * (mods?.arpu ?? 1))} <span className="pd-mult-note">×{p.priceMult.toFixed(1)}</span></span>
               </div>
               <input className="pd-slider" type="range" min={Math.round(B.priceMin * 10)} max={Math.round(B.priceMax * 10)} step={1}
                 style={fill(((p.priceMult - B.priceMin) / (B.priceMax - B.priceMin)) * 100)}
