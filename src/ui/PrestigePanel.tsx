@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { canPrestige, legacyWeightsGain, legacyWeightsForMode, ascensionMultiplier, shipPath, nextRunMultiplier, shipWouldAscend, type ShipMode } from "../engine/prestige";
+import { canPrestige, legacyWeightsGain, legacyWeightsForMode, ascensionMultiplier, shipPath, nextRunMultiplier, shipWouldAscend, productSlotsAfterShip, type ShipMode } from "../engine/prestige";
 import { legacyMultiplier } from "../engine/derive";
 import { currentEra } from "../engine/eras";
 import { reputationAvailable, nextRecordProgress } from "../engine/reputation";
 import { legacyUnplugged } from "../engine/trials";
 import { legacyTreeBalance, legacyAvailable, canBuyLegacyPerk } from "../engine/legacyTree";
-import { maxActiveProducts, productsUnlocked } from "../engine/products";
+import { productsUnlocked } from "../engine/products";
 import { balance } from "../engine/balance/config";
 import type { GameState } from "../engine/types";
 import { fmt, fmtMoney } from "./format";
@@ -198,7 +198,10 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
               better but its one edge (the draft) is parked while give-it-away modes bank
               legacy + Rep + momentum right now. */}
           {(() => {
-            const slotsFull = productsUnlocked(game) && game.products.active.length >= maxActiveProducts(game);
+            // Counted AFTER the Ship: a Trial it banks can pay a slot (Unplugged I), and a
+            // draft the Ship itself makes room for is not parked.
+            const slotsAfter = productSlotsAfterShip(game);
+            const slotsFull = productsUnlocked(game) && game.products.active.length >= slotsAfter;
             return shipModes.map((m) => {
             const banked = legacyWeightsForMode(game, m.id as ShipMode);
             const kickstart = m.moneyKickstartPerShip * (game.prestige.ships + 1);
@@ -220,7 +223,7 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
                   <div className="ship-mode-tags">
                     {m.keepsDraft
                       ? (slotsFull
-                          ? <span className="ship-tag warn">⧗ Draft parked — portfolio full ({game.products.active.length}/{maxActiveProducts(game)})</span>
+                          ? <span className="ship-tag warn">⧗ Draft parked — portfolio full ({game.products.active.length}/{slotsAfter})</span>
                           : <span className="ship-tag good">✓ Product to sell in Products</span>)
                       : <span className="ship-tag warn">✗ No product — you gave the model away</span>}
                     {kickstart > 0 && <span className="ship-tag good">+ {fmtMoney(Big.of(kickstart))} cash</span>}

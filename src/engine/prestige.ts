@@ -11,7 +11,7 @@ import { advanceFlagship } from "./flagship";
 import { legacyMultiplier } from "./derive";
 import { legacyAvailable } from "./legacyTree";
 import { resolveStakeOutcome, playerMarketRank, rivalsBeaten } from "./market";
-import { capCarriedMarketing } from "./products";
+import { capCarriedMarketing, maxActiveProducts } from "./products";
 import { truceAcrossShip } from "./negotiation";
 import type { DraftModel, GameState } from "./types";
 
@@ -132,6 +132,13 @@ function trialsBankedAtShip(state: GameState): string[] {
   const id = state.activeTrial;
   if (!id || state.trialsDone.includes(id)) return state.trialsDone;
   return trialConditionMet(state) ? [...state.trialsDone, id] : state.trialsDone;
+}
+
+/** Concurrent product slots the lab has right after shipping now: a Trial that banks
+ *  at this Ship (Unplugged I pays a slot) counts already, so the Ship panel never calls
+ *  a kept draft "parked" when the Ship itself frees the room to launch it. Pure. */
+export function productSlotsAfterShip(state: GameState): number {
+  return maxActiveProducts({ ...state, trialsDone: trialsBankedAtShip(state) });
 }
 
 /** The Trial shipping now would start on the fresh lab: the queued one, if it can
