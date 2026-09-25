@@ -56,6 +56,10 @@ export function giveAwayTerms(game: GameState, mode: ShipMode): string {
   ].filter(Boolean).join(", ");
 }
 
+/** Smallest next-weight step, relative to the lifetime money it is measured against,
+ *  that the timing bar can still resolve to about a percent (Big keeps ~15 digits). */
+const TIMING_MIN_REL_STEP = 1e-12;
+
 const legacyPerkName = (id?: string) => legacyTreeBalance.perks.find((p) => p.id === id)?.name ?? "a prerequisite";
 
 export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndowment, onPickDirective, onRespecDirective, onBuyLegacyPerk }: Props) {
@@ -156,7 +160,12 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
         const lAt = Big.of(balance.prestige.scale).mul(gain.pow(1 / exp));
         const lNext = Big.of(balance.prestige.scale).mul(gain.add(1).pow(1 / exp));
         const span = lNext.sub(lAt);
-        const pct = span.gt(0) ? Math.max(0, Math.min(1, game.lifetimeMoney.sub(lAt).div(span).toNumber())) : 1;
+        // One weight's worth of money is ~2/gain of the lifetime figure, and Big keeps
+        // ~15 significant digits: once a ship banks trillions of weights the step is
+        // rounding noise (the bar read 0/50/100% at random, then pinned at 100% with
+        // "you're close" for good). There is no honest progress to show, so no row.
+        if (!span.gt(lNext.mul(TIMING_MIN_REL_STEP))) return null;
+        const pct = Math.max(0, Math.min(1, game.lifetimeMoney.sub(lAt).div(span).toNumber()));
         return (
           <div className="prestige-timing">
             {/* Owns only the hold-vs-ship timing; the actual weight count is quoted
