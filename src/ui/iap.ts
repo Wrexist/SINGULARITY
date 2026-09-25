@@ -208,14 +208,21 @@ export const iap = {
   async restore(): Promise<boolean> {
     const store = await ensureInit();
     if (!store) return isPremium();
+    // CdvPurchase reports a failed restore by RESOLVING with an IError, not by throwing.
+    let failure: unknown = null;
     try {
-      await store.restorePurchases();
+      failure = (await store.restorePurchases()) ?? null;
     } catch (e) {
-      console.warn("IAP restore failed:", e);
+      failure = e ?? new Error("restore failed");
     }
+    if (failure) console.warn("IAP restore failed:", failure);
     // Same grant-only rule as the launch sync: a restore that replays nothing leaves a
     // Premium already on this device in place.
     if (await settleOwnership(store)) setPremium(true);
-    return isPremium();
+    if (isPremium()) return true;
+    // Nothing owned AND StoreKit never answered: say so (the sheet shows "Store
+    // unreachable") instead of "No previous purchase found for this Apple ID".
+    if (failure) throw new Error("StoreKit restore failed");
+    return false;
   },
 };

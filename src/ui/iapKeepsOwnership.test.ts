@@ -88,3 +88,15 @@ describe("iap: a launch before StoreKit reports ownership", () => {
     expect(isPremium()).toBe(false);
   });
 });
+
+describe("iap: a Restore that StoreKit could not run", () => {
+  // restorePurchases() resolves with an IError (it does not throw) when StoreKit can't
+  // reach the App Store. That result was ignored, so the sheet told an owner who was
+  // simply offline "No previous purchase found for this Apple ID".
+  it("reports the failure instead of 'nothing to restore'", async () => {
+    const api = launchApi({ restoreResult: { code: 6777010, message: "The network connection was lost." } });
+    const { iap, isPremium } = await loadNative(api, {});
+    await expect(iap.restore()).rejects.toThrow();
+    expect(isPremium()).toBe(false);
+  });
+});
