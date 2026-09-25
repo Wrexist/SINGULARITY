@@ -179,10 +179,71 @@ export interface ProductsSimResult {
   heatDelta: number;
 }
 
+/** Largest per-capita viral growth one sub-step may apply (users × rate × dt). */
+const MAX_GROWTH_PER_STEP = 0.02;
+/** Hard ceiling on sub-steps per call (bounds a pathological rate). */
+const MAX_PRODUCT_SUBSTEPS = 4000;
+/** Windows up to this long are never sliced: live 10 Hz frames, a throttled
+ *  background tab's 1 s frames and the balance sim's product steps keep the exact
+ *  single-step arithmetic they were tuned on (like tick.ts's RUN_START_SPLIT_MS). */
+const PRODUCT_SLICE_MIN_SEC = 1;
+
+/**
+ * How many equal slices a window needs so viral growth compounds instead of being
+ * applied as one straight line. Word of mouth is per-capita (users × virality), so
+ * the portfolio grows exponentially until it saturates its market; one forward step
+ * over a long window grew it linearly instead. After a 5-minute app switch a freshly
+ * launched product came back with ~2.5K users where the app left open had ~8.6M (and
+ * the marketing bill for the whole window was still charged). The rate bounded here is
+ * per capita, so a product still at 0 users that marketing is seeding counts too.
+ * Only windows longer than PRODUCT_SLICE_MIN_SEC are sliced (a resume, the offline
+ * catch-up's 5-minute steps); a frame is one step, exactly as before.
+ */
+function productSubsteps(ps: ProductsState, seconds: number, modsById: Record<string, ProductMods>): number {
+  if (!(seconds > PRODUCT_SLICE_MIN_SEC)) return 1;
+  let rate = 0;
+  for (const p of ps.active) {
+    const t = typeDef(p.type);
+    const mods = modsById[p.id] ?? NEUTRAL_MODS;
+    const fm = featureMods(p);
+    // The same per-capita rate simulateProductsStep applies, at the window's start:
+    // competitiveness and market headroom only fall across a window (the frontier
+    // climbs, users only arrive), so this bounds every slice. A saturated or stale
+    // product needs no slicing at all, which keeps a long offline catch-up cheap.
+    const qf = clamp(p.quality / Math.max(ps.frontier, 1e-9), 0, 1);
+    const sat = Math.max(0, 1 - p.mau / (t.tam * fm.tam));
+    const r = t.virality * qf * sat * (p.buzzSec > 0 ? B.buzzAcqMult : 1) * mods.acq * fm.acq;
+    if (Number.isFinite(r) && r > rate) rate = r;
+  }
+  const n = Math.ceil((rate * seconds) / MAX_GROWTH_PER_STEP);
+  return Number.isFinite(n) ? Math.max(1, Math.min(MAX_PRODUCT_SUBSTEPS, n)) : 1;
+}
+
 export function simulateProducts(
   ps: ProductsState,
   seconds: number,
   modsById: Record<string, ProductMods> = {},
+): ProductsSimResult {
+  const n = ps.active.length > 0 ? productSubsteps(ps, seconds, modsById) : 1;
+  if (n <= 1) return simulateProductsStep(ps, seconds, modsById);
+  const dt = seconds / n;
+  let cur = ps;
+  let moneyDelta = 0;
+  let heatDelta = 0;
+  for (let i = 0; i < n; i++) {
+    const r = simulateProductsStep(cur, dt, modsById);
+    cur = r.products;
+    moneyDelta += r.moneyDelta;
+    heatDelta += r.heatDelta;
+  }
+  return { products: cur, moneyDelta, heatDelta };
+}
+
+/** One forward step of the portfolio over `seconds` (see simulateProducts). */
+function simulateProductsStep(
+  ps: ProductsState,
+  seconds: number,
+  modsById: Record<string, ProductMods>,
 ): ProductsSimResult {
   if (ps.active.length === 0) {
     // Frontier still drifts so a future product launches against current state.
