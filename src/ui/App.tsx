@@ -39,6 +39,7 @@ import { EventLog } from "./EventLog";
 import { FxCanvas } from "./FxCanvas";
 import { burst as fxBurst, floatText as fxFloat, FX_PALETTES } from "./fx";
 import { ProductLaunch } from "./ProductLaunch";
+import { draftLaunchable, shipLeftModelToLaunch } from "./shipLanding";
 import { productsUnlocked, typeDef, retirePayout } from "../engine/products";
 import { advisorItems, type AdvisorTab, type LabSection } from "../engine/advisor";
 import { labReveal } from "../engine/reveal";
@@ -714,7 +715,8 @@ export function App() {
       void gameCenterSubmitScores(game);
       // The flagship you just shipped is waiting as a free-to-launch product —
       // make sure the player knows (a ship that "gave nothing" was the #1 confusion).
-      if (game.products.drafts.length > 0) {
+      // Only when this ship really left one to launch by hand (see shipLanding.ts).
+      if (shipLeftModelToLaunch(game)) {
         pushToast(modelReadyNote(game.prestige.ships), "good");
       }
       // An AGI ascension (a ship in the Post-Singularity era) gets the grander beat:
@@ -1217,8 +1219,9 @@ export function App() {
             // A fresh run starts at the hall — don't leave the Lab parked on HQ.
             setLabSection("build");
             // Land the player on their reward: a freshly-shipped model waiting to
-            // be commercialised. Removes the "I shipped and got nothing" dead-end.
-            if (productsUnlocked(game) && game.products.drafts.length > 0) setTab("products");
+            // be commercialised. Removes the "I shipped and got nothing" dead-end —
+            // but only when a slot is free, or it lands on a wall of "Slots full".
+            if (draftLaunchable(game)) setTab("products");
           }}
         />
       )}
