@@ -1,5 +1,5 @@
 import { balance } from "../engine/balance/config";
-import { canBuyUpgrade, upgradeCost } from "../engine/actions";
+import { canBuyUpgrade, upgradeCost, isIncident } from "../engine/actions";
 import type { GameState } from "../engine/types";
 import { currentEra } from "../engine/eras";
 import { powerStats } from "../engine/power";
@@ -391,7 +391,7 @@ export function buildHallModel(game: GameState, wing = 0): HallModel {
     incidents:
       racks.length > 0
         ? game.modifiers
-            .filter((m) => m.tone === "bad" && m.remainingSec > 0)
+            .filter(isIncident)
             .map((m) => ({ id: m.id, rackIndex: hashStr(m.id) % racks.length, worked: m.worked === true }))
         : [],
     crowd: Math.min(6, game.modifiers.filter((m) => m.tone === "good" && m.remainingSec > 0).length * 2),

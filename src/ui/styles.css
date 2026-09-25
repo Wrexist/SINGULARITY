@@ -1770,6 +1770,8 @@ svg { vertical-align: middle; }
 .modchip em { font-style: normal; font-variant-numeric: tabular-nums; opacity: 0.7; }
 .modchip.good { color: #0b7a43; background: rgba(22, 179, 100, 0.12); border-color: rgba(22, 179, 100, 0.3); }
 .modchip.bad { color: #b3243f; background: rgba(255, 56, 92, 0.1); border-color: rgba(255, 56, 92, 0.28); }
+/* A status, not a setback (e.g. the regulator truce): quiet ink, no alarm colour. */
+.modchip.neutral { color: var(--ink-2); background: rgba(16, 24, 40, 0.05); border-color: rgba(16, 24, 40, 0.12); }
 /* A BAD modifier the player can "work" (shave time) is now a real, accessible button
    (previously only tappable on the aria-hidden hall canvas). Reset the native button
    chrome so it matches the span chips; the dashed edge hints it's actionable. */

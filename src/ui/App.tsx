@@ -100,7 +100,7 @@ import { doctrineUnlocked } from "../engine/doctrine";
 import { preprintsUnlocked } from "../engine/preprints";
 import { legacyAvailable } from "../engine/legacyTree";
 import { endowmentUnlocked } from "../engine/reputation";
-import { canBuyOfficePerk } from "../engine/actions";
+import { canBuyOfficePerk, isIncident } from "../engine/actions";
 import { modelReadyNote, researchStartNote, soldNote, hireWelcome, fireSendoff } from "../engine/notices";
 import { challengeById } from "../engine/challenges";
 import { ParadigmPanel } from "./ParadigmPanel";
@@ -644,7 +644,7 @@ export function App() {
   const incidentsSynced = useRef(false);
   useEffect(() => {
     if (!initialized) return;
-    const now = new Set(game.modifiers.filter((m) => m.tone === "bad" && m.remainingSec > 0).map((m) => m.id));
+    const now = new Set(game.modifiers.filter(isIncident).map((m) => m.id));
     const before = prevBadIncidents.current;
     if (incidentsSynced.current && before.size > 0 && now.size === 0 && game.prestige.ships === prevShips.current) {
       sound.incidentCleared();

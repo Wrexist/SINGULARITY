@@ -1,4 +1,5 @@
 import type { ActiveModifier } from "../engine/types";
+import { isIncident } from "../engine/actions";
 import { GearIcon } from "./Icons";
 
 /** A persistent (non-countdown) status chip, e.g. an active standing the player
@@ -43,9 +44,12 @@ export function ModifierBar({
         <span key={s.key} className={`modchip ${s.tone}`}>{toneWord(s.tone) && <span className="sr-only">{toneWord(s.tone)}</span>}{s.label}</span>
       ))}
       {chips.map((m) => {
-        // A bad, not-yet-worked modifier is an actionable button; everything else is
-        // a plain status chip. Guard on onWork so the bar still works without it.
-        const workable = !!onWork && m.tone === "bad" && m.worked !== true;
+        // A not-yet-worked incident is an actionable button; everything else is a
+        // plain status chip. Guard on onWork so the bar still works without it. A
+        // factor-1 marker (the regulator truce) is a status, not a setback — neutral,
+        // and never workable (shaving it only brought Chen back sooner).
+        const workable = !!onWork && isIncident(m) && m.worked !== true;
+        const tone = m.factor === 1 ? "neutral" : m.tone;
         if (workable) {
           return (
             <button
@@ -61,8 +65,8 @@ export function ModifierBar({
           );
         }
         return (
-          <span key={m.id} className={`modchip ${m.tone}`}>
-            <span className="sr-only">{toneWord(m.tone)}</span>{m.label} <em>{Math.ceil(m.remainingSec)}s</em>
+          <span key={m.id} className={`modchip ${tone}`}>
+            {toneWord(tone) && <span className="sr-only">{toneWord(tone)}</span>}{m.label} <em>{Math.ceil(m.remainingSec)}s</em>
           </span>
         );
       })}

@@ -12,6 +12,7 @@ import { legacyMultiplier } from "./derive";
 import { legacyAvailable } from "./legacyTree";
 import { resolveStakeOutcome } from "./market";
 import { capCarriedMarketing } from "./products";
+import { truceAcrossShip } from "./negotiation";
 import type { DraftModel, GameState } from "./types";
 
 /**
@@ -185,6 +186,9 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
         tone: "good" as const,
       }))
     : fresh.modifiers;
+  // A pending regulator truce crosses the ship with the suspicion it guards (see
+  // truceAcrossShip) — otherwise Chen is back on the fresh run's first tick.
+  const carriedMods = [...momentumMods, ...truceAcrossShip(state)];
 
   // Frontier Race stakes (depth batch): resolve the active wager at ship — a win
   // banks Reputation by the rival's weight, a loss pays nothing; either way it
@@ -200,7 +204,7 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     // Trophy hardware survives the ship (earned by persistent milestones); bought
     // parts go with the acquirer, and the loadout clears like the racks it fitted.
     components: carryEarnedComponents(state),
-    modifiers: momentumMods,
+    modifiers: carriedMods,
     resources: kickstart > 0
       ? { ...fresh.resources, money: fresh.resources.money.add(kickstart) }
       : fresh.resources,

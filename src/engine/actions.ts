@@ -699,6 +699,16 @@ export function applyWorldEvent(state: GameState, eventId: string): { state: Gam
 }
 
 /**
+ * An incident: a running BAD modifier that actually bites. A factor-1 marker (the
+ * regulator truce) has no effect to shorten — it only gates Chen's return — so it is
+ * a status, never a burning rack, and "working" it would just hurry him back. The one
+ * definition the hall, the modifier bar and workProblem all read.
+ */
+export function isIncident(m: ActiveModifier): boolean {
+  return m.tone === "bad" && m.factor !== 1 && m.remainingSec > 0;
+}
+
+/**
  * IDEAS #5 — "work the problem": the player tapped a manifested incident in the
  * hall. Shaves a flat, bounded slice off a BAD timed modifier, once per incident
  * (marked `worked`). Same-ref no-op otherwise. Tap-gated + small → juice for the
@@ -706,7 +716,7 @@ export function applyWorldEvent(state: GameState, eventId: string): { state: Gam
  */
 export function workProblem(state: GameState, modifierId: string): GameState {
   const idx = state.modifiers.findIndex(
-    (m) => m.id === modifierId && m.tone === "bad" && m.worked !== true && m.remainingSec > 0,
+    (m) => m.id === modifierId && isIncident(m) && m.worked !== true,
   );
   if (idx === -1) return state;
   const modifiers = state.modifiers.map((m, i) =>

@@ -1936,6 +1936,10 @@ export const balance = {
       /** After ANY branch a truce marker (factor-1 identity modifier) sits in
        *  the bar this long — Chen doesn't come back mid-paperwork. */
       truceSec: 240,
+      /** A ship carries a pending truce into the fresh run (suspicion carries too),
+       *  with at least this long left: Chen never meets a lab seconds old, whose
+       *  "−20% cash" would be 20% of nothing. The sim's clean lab never has a truce. */
+      shipTruceFloorSec: 60,
     },
   },
 
