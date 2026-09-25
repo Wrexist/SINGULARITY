@@ -400,6 +400,20 @@ svg { vertical-align: middle; }
 .rep-strip-text b { font-weight: 850; }
 .rep-strip-go { font-size: var(--fs-sm); font-weight: 750; color: var(--data); white-space: nowrap; }
 .rep-modal { max-width: 440px; }
+/* Personal Compute records — one quiet row + a slim log-scale bar in the sheet. */
+.rep-records { margin: 0 0 12px; }
+.rep-records-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 6px; font-size: var(--fs-sm); font-weight: 650; color: var(--ink-2); }
+.rep-records-row b { color: var(--ink); font-weight: 850; }
+.rep-records-next { flex: none; font-size: var(--fs-xs); font-weight: 750; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+/* The HQ strip's mark carries a ring that fills toward the next record — ambient,
+   wordless; the sheet above says what it is. Reuses the icon-ring's --pct dial. */
+.rep-strip-mark.rec-ring { position: relative; width: 30px; height: 30px; justify-content: center; transition: --pct 0.5s var(--ease-out); }
+.rep-strip-mark.rec-ring::before {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(from -90deg, var(--data) calc(var(--pct, 0) * 360deg), color-mix(in srgb, var(--data) 14%, transparent) 0);
+  -webkit-mask: radial-gradient(farthest-side, #0000 calc(100% - 3px), #000 calc(100% - 2.5px));
+          mask: radial-gradient(farthest-side, #0000 calc(100% - 3px), #000 calc(100% - 2.5px));
+}
 .rep-pts { color: var(--data); font-weight: 850; }
 .rep-list { margin-top: 6px; }
 .rep-card .card-note.rep-req { color: var(--coral); }
@@ -722,6 +736,10 @@ svg { vertical-align: middle; }
 .progress-fill.money {
   background: linear-gradient(90deg, var(--money), #4fe0a0);
   box-shadow: 0 0 18px -2px rgba(22, 179, 100, 0.5);
+}
+.progress-fill.data {
+  background: linear-gradient(90deg, var(--data), #b794ff);
+  box-shadow: 0 0 18px -2px color-mix(in srgb, var(--data) 50%, transparent);
 }
 /* moving sheen */
 .progress.active .progress-fill::after {

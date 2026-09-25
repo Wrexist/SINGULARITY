@@ -100,7 +100,7 @@ export class Big {
 
   /** Base-10 magnitude as a native number — finite at ANY scale (unlike
    *  toNumber, which overflows to Infinity past ~1e308). -Infinity at zero.
-   *  UI-only convenience (sparkline normalization); the engine never calls it. */
+   *  Pure; used for sparkline normalization and the Reputation records ladder. */
   log10(): number {
     const m = Math.abs(this.d.mantissa);
     return m > 0 ? this.d.exponent + Math.log10(m) : -Infinity;

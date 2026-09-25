@@ -2,7 +2,7 @@ import { useState } from "react";
 import { canPrestige, legacyWeightsGain, legacyWeightsForMode, ascensionMultiplier, shipPath, nextRunMultiplier, type ShipMode } from "../engine/prestige";
 import { legacyMultiplier } from "../engine/derive";
 import { currentEra } from "../engine/eras";
-import { reputationAvailable } from "../engine/reputation";
+import { reputationAvailable, nextRecordProgress } from "../engine/reputation";
 import { legacyTreeBalance, legacyAvailable, canBuyLegacyPerk } from "../engine/legacyTree";
 import { maxActiveProducts, productsUnlocked } from "../engine/products";
 import { balance } from "../engine/balance/config";
@@ -115,7 +115,7 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
 
       {(repPoints > 0 || repOwned > 0) && (
         <button className="rep-strip" onClick={() => setRepOpen(true)}>
-          <span className="rep-strip-mark"><LandmarkIcon size={18} /></span>
+          <span className="rep-strip-mark rec-ring" style={{ ["--pct" as string]: nextRecordProgress(game) }}><LandmarkIcon size={16} /></span>
           <span className="rep-strip-text">Lab Reputation — <b>{repPoints}</b> point{repPoints === 1 ? "" : "s"} to spend{repOwned > 0 ? ` · ${repOwned} perk${repOwned === 1 ? "" : "s"} owned` : ""}</span>
           <span className="rep-strip-go">open ▸</span>
         </button>

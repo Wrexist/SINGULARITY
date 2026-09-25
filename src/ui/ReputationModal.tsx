@@ -6,7 +6,10 @@ import {
   reputationBalance, reputationAvailable, earnedReputation, canBuyReputationPerk,
   endowmentUnlocked, endowmentCost, canBuyEndowment, endowmentMult,
   directivePicksAvailable, endowmentDirectiveMods, canRespecDirective, directiveRespecCost,
+  recordsCount, nextRecordProgress, nextRecordMag,
 } from "../engine/reputation";
+import { Big } from "../engine/math/Big";
+import { fmt } from "./format";
 import { LandmarkIcon } from "./Icons";
 
 /** Phase 3 — the Lab Reputation perk tree: spend meta-currency earned from
@@ -45,7 +48,27 @@ export function ReputationModal({ game, onBuy, onBuyEndowment, onPickDirective, 
           <button className="link-btn" onClick={onClose}>close</button>
         </div>
 
-        <p className="pd-pane-tip">Reputation comes from achievements and AGI ascensions. Perks are permanent and survive every reset — including ascension.</p>
+        <p className="pd-pane-tip">Reputation comes from achievements, ships, contracts and your Compute records. Perks are permanent and survive every reset — including ascension.</p>
+
+        {/* Personal records (2026-09): the one Rep source that keeps paying as the lab
+            grows. A slim log-scale bar toward the next power of ten — no toast. */}
+        {(() => {
+          const held = recordsCount(game);
+          const next = nextRecordMag(game);
+          return (
+            <div className="rep-records">
+              <div className="rep-records-row">
+                <span>Compute records <b>{held}</b>{held > 0 ? ` · +${held * reputationBalance.records.perMagnitude} pts` : ""}</span>
+                {next !== null && <span className="rep-records-next">next at {fmt(Big.of(10).pow(next))}/s</span>}
+              </div>
+              {next !== null && (
+                <div className="progress slim" aria-hidden="true">
+                  <div className="progress-fill data" style={{ width: `${Math.round(nextRecordProgress(game) * 100)}%` }} />
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         <div className="list rep-list">
           {reputationBalance.perks.map((perk) => {

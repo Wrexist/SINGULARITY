@@ -39,6 +39,22 @@ export const reputation = {
    *  principled meta-strategy; 0 through the tuned curve (first ship is neutral). */
   perSafetyShip: 3,
 
+  /**
+   * PERSONAL RECORDS (2026-09 generations audit). Past the achievement ladder, Rep
+   * came almost only from +1 per ship, so Paradigms, Wings and the rest of the Rep
+   * sinks sat out of reach through gens 2–20. A record is each power of ten your
+   * career-peak Compute/sec crosses above `floorMag` (10K/s is the first, 100K/s the
+   * second, …), worth `perMagnitude` each. It is computed from `stats.peakComputePerSec`,
+   * which is already saved, so there is no new field. `maxRecords` bounds a crafted or
+   * runaway peak. Curve-safe: the sim earns Rep but never spends it.
+   */
+  records: {
+    perMagnitude: 2,
+    /** Magnitudes at or below this don't count (10^3 = 1K/s is still the tutorial). */
+    floorMag: 3,
+    maxRecords: 60,
+  },
+
   /** Floor for stacked research-cost discounts (research can get cheap, never free). */
   researchDiscountFloor: 0.25,
 
