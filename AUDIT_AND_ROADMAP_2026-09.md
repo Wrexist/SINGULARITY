@@ -239,6 +239,36 @@ Highlights:
   - An AGI ascension gets its own headline.
   - The recap waits for an open sheet.
 
+**Round 3** used new slices: products and rivals, staff and automation, goal systems, a
+property-based multi-generation invariant fuzzer (now a permanent test), UI panels, and
+deep meta. It landed 32 fixes, and I added 4 on top. The suite is at 1199 tests and the
+sim is still byte-identical. The ones players will feel:
+
+- **Payroll is charged per second, not per frame.** Today's soft-lock fix capped each
+  tick at half its receipts, so live play between run payouts paid 2–5% of the wage
+  bill while offline paid it all. It now charges min(bill, half the income rate), the
+  same for a frame, a resume or an offline step.
+- **Revenue ladders read settled revenue.** A one-frame price-dial flick can no longer
+  clear $/s milestones, revenue contracts, objectives or achievements.
+- **"Earn $X lifetime" objectives count all-time earnings.** They reset every Ship, so
+  the $10B and $1T rungs blocked the board for good.
+- **Offline product growth compounds.** Users grew linearly while marketing was billed in
+  full.
+- **Heat nets against cooling before the floor.** A resume no longer spikes Heat into a
+  regulator fine.
+- **HQ, Research and the Team stay open after a Ship.** They used to vanish until the
+  run's first research.
+- **Every Money figure uses the rate the tick really pays**, including each product's
+  buffs and the payroll actually taken:
+  - the top bar and money ETAs;
+  - version countdowns;
+  - Pro price;
+  - salaries.
+- **Other fixes:**
+  - The Launch Autopilot picks the strongest shipped model.
+  - A ladder's next Trial rung can be queued while the current one runs.
+  - A deep-endgame daily sponsor no longer rolls "∞ / ∞".
+
 Also left for the owner:
 - Megaproject cycles now end at 512. Raising that to about 890 is a balance call.
 - A Reasoning Engine priced under about 0.53× Pro loses money even with marketing
