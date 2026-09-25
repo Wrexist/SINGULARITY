@@ -10,7 +10,7 @@ import { fmt } from "./format";
 import { Big } from "../engine/math/Big";
 import { ReputationModal } from "./ReputationModal";
 import { ConfirmSheet } from "./ConfirmSheet";
-import { LandmarkIcon, RocketIcon, GlobeIcon, CoinIcon, SwordsIcon, MegaphoneIcon } from "./Icons";
+import { LandmarkIcon, RocketIcon, GlobeIcon, CoinIcon, SwordsIcon, MegaphoneIcon, ChevronIcon } from "./Icons";
 import type { ReactNode } from "react";
 
 /** Per-ship-mode icon (keyed by mode id; matches the engine's shipModes). */
@@ -41,6 +41,8 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
   // without realising they'd land in the next run with nothing to launch.
   const [pendingMode, setPendingMode] = useState<ShipMode | null>(null);
   const [repOpen, setRepOpen] = useState(false);
+  // null = follow the default (open only while something in it is affordable).
+  const [legacyOpen, setLegacyOpen] = useState<boolean | null>(null);
   const repPoints = reputationAvailable(game);
   const repOwned = game.reputation.perks.length;
   const ready = canPrestige(game);
@@ -110,28 +112,6 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
           <span className="rep-strip-text">Lab Reputation — <b>{repPoints}</b> point{repPoints === 1 ? "" : "s"} to spend{repOwned > 0 ? ` · ${repOwned} perk${repOwned === 1 ? "" : "s"} owned` : ""}</span>
           <span className="rep-strip-go">open ▸</span>
         </button>
-      )}
-
-      {have.gt(0) && legacyTreeBalance.enabled && (
-        <div className="legacy-tree">
-          <div className="legacy-tree-head">Legacy Investments — <b>{fmt(legacyAvailable(game))}</b> weights free</div>
-          <p className="legacy-tree-note">Invest to specialise a lane — but invested weights stop feeding your global boost.</p>
-          {legacyTreeBalance.perks.map((p) => {
-            const owned = game.legacyInvestments.includes(p.id);
-            const can = canBuyLegacyPerk(game, p.id);
-            const lockedByReq = !!p.requires && !game.legacyInvestments.includes(p.requires);
-            return (
-              <button key={p.id} className={`legacy-perk ${owned ? "owned" : ""}`} disabled={owned || !can} onClick={() => onBuyLegacyPerk(p.id)}>
-                <div className="legacy-perk-main">
-                  <span className="legacy-perk-name">{p.name}{owned ? " ✓" : ""}</span>
-                  <span className="legacy-perk-desc">{p.desc}</span>
-                  {lockedByReq && <span className="legacy-perk-req">needs {legacyPerkName(p.requires)}</span>}
-                </div>
-                <span className="legacy-perk-cost">{owned ? "owned" : `${p.cost} wt`}</span>
-              </button>
-            );
-          })}
-        </div>
       )}
 
       {/* Timing guidance (the classic idle "ship now or keep going?" decision): the
@@ -240,6 +220,44 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
           />
         );
       })()}
+      {/* Legacy Investments sit BELOW the ship decision and fold: ten rows above the
+          Ship button put the panel's primary action ~1.5 screens down. The fold opens
+          by itself whenever something in it is affordable. */}
+      {have.gt(0) && legacyTreeBalance.enabled && (() => {
+        const buyable = legacyTreeBalance.perks.some((p) => canBuyLegacyPerk(game, p.id));
+        const open = legacyOpen ?? buyable;
+        return (
+          <div className={`legacy-tree${open ? " open" : ""}`}>
+            <button className="legacy-tree-head legacy-tree-toggle" onClick={() => setLegacyOpen(!open)} aria-expanded={open}>
+              <span>Legacy Investments — <b>{fmt(legacyAvailable(game))}</b> weights free</span>
+              <span className="chevron" aria-hidden="true"><ChevronIcon size={12} dir={open ? "up" : "down"} /></span>
+            </button>
+            {open && (
+              <>
+                <p className="legacy-tree-note">Invest to specialise a lane — but invested weights stop feeding your global boost.</p>
+                {legacyTreeBalance.perks.map((p) => {
+                  const owned = game.legacyInvestments.includes(p.id);
+                  const can = canBuyLegacyPerk(game, p.id);
+                  const lockedByReq = !!p.requires && !game.legacyInvestments.includes(p.requires);
+                  return (
+                    <button key={p.id} className={`legacy-perk ${owned ? "owned" : ""}`} disabled={owned || !can} onClick={() => { setLegacyOpen(true); onBuyLegacyPerk(p.id); }}>
+                      {/* Pin the fold open on a buy, so spending the last affordable
+                          weight doesn't snap the list shut under the player's thumb. */}
+                      <div className="legacy-perk-main">
+                        <span className="legacy-perk-name">{p.name}{owned ? " ✓" : ""}</span>
+                        <span className="legacy-perk-desc">{p.desc}</span>
+                        {lockedByReq && <span className="legacy-perk-req">needs {legacyPerkName(p.requires)}</span>}
+                      </div>
+                      <span className="legacy-perk-cost">{owned ? "owned" : `${p.cost} wt`}</span>
+                    </button>
+                  );
+                })}
+              </>
+            )}
+          </div>
+        );
+      })()}
+
       {repOpen && <ReputationModal game={game} onBuy={onBuyReputationPerk} onBuyEndowment={onBuyEndowment} onPickDirective={onPickDirective} {...(onRespecDirective ? { onRespecDirective } : {})} onClose={() => setRepOpen(false)} />}
     </section>
   );

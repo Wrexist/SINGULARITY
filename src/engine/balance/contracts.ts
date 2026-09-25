@@ -91,8 +91,11 @@ export const contracts = {
     enabled: true,
     /** Flat Reputation per completed sponsor objective. */
     rep: 6,
-    /** Kept sponsor completions are bounded (~13 months of daily play). */
-    maxCompleted: 400,
+    /** Kept sponsor completions are bounded against crafted saves. Earned Reputation
+     *  is RECOMPUTED from these ids on load, so the old 400 (~13 months of daily
+     *  play) silently took 6 Rep per trimmed id from a loyal player on every reload.
+     *  3650 is ten years of dailies: out of reach for real play, still a hard cap. */
+    maxCompleted: 3650,
     /** Target = max(floor, ceil(current × mult)) — mult picked by day hash. */
     mults: [1.2, 1.3, 1.4],
     /** Only metrics that keep growing in the deep endgame qualify. */

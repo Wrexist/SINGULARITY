@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { balance, type ResearchDef } from "../engine/balance/config";
 import { researchTree, unlockedEpochs, isEpochNode } from "../engine/researchTree";
 import { canBuyResearch, researchAvailable, researchLockedOut, researchCost } from "../engine/actions";
@@ -26,11 +26,17 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint }: Prop
   // groups are all "done", and rendering them as full cards put ~4 screens of
   // spent nodes above the first one the player could act on.
   const [openDone, setOpenDone] = useState<ReadonlySet<string>>(() => new Set());
-  const toggleDone = (id: string) => setOpenDone((cur) => {
-    const next = new Set(cur);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    return next;
-  });
+  // Categories the player watched while still open this visit. Finishing one with a
+  // tap must not snap it shut under their thumb; it folds next time they come back.
+  const seenOpen = useRef(new Set<string>()).current;
+  const toggleDone = (id: string, isOpen: boolean) => {
+    seenOpen.delete(id); // an explicit tap overrides the stay-open grace
+    setOpenDone((cur) => {
+      const next = new Set(cur);
+      if (isOpen) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
   // Reveal in waves (GDD): show owned/available nodes and the NEXT wave (locked
   // nodes whose prerequisites are owned or already available) — not the whole tree.
   // researchTree() = the base tree PLUS any epoch branch whose Paradigm is owned.
@@ -149,11 +155,12 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint }: Prop
   // above — so a group is only "done" when nothing in it is left to buy.
   const renderCat = (key: string, name: string, owned: number, total: number, items: Def[], whole: Def[], extraClass = "") => {
     const done = whole.length > 0 && whole.every((d) => isOwned(d.id) || researchLockedOut(game, d.id));
-    const open = !done || openDone.has(key);
+    if (!done) seenOpen.add(key);
+    const open = !done || openDone.has(key) || seenOpen.has(key);
     return (
       <div className={`research-cat${extraClass}${done ? " done" : ""}`} key={key}>
         {done ? (
-          <button className="research-cat-head research-cat-toggle" onClick={() => toggleDone(key)} aria-expanded={open}>
+          <button className="research-cat-head research-cat-toggle" onClick={() => toggleDone(key, open)} aria-expanded={open}>
             <span className="research-cat-name">{name}</span>
             <span className="research-cat-count"><CheckIcon size={11} /> {owned}/{total}</span>
             <span className="chevron" aria-hidden="true"><ChevronIcon size={12} dir={open ? "up" : "down"} /></span>

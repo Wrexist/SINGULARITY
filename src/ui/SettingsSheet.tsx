@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSettings } from "./settings";
 import { iap, PREMIUM_PRICE } from "./iap";
 import { haptics as hpt } from "./haptics";
@@ -75,6 +75,12 @@ export function SettingsSheet({ onClose, onReset }: Props) {
   ];
 
   const [premium, setPremiumState] = useState(iap.isPremium());
+  const [price, setPrice] = useState(PREMIUM_PRICE);
+  useEffect(() => {
+    let live = true;
+    void iap.priceLabel().then((p) => { if (live) setPrice(p); });
+    return () => { live = false; };
+  }, []);
   // Cosmetic collection (R6.3): unlocks are derived from monotonic lifetime stats, so
   // a one-shot read at render is enough (no need to re-check at 10Hz while the sheet is open).
   const game = useGame.getState().game;
@@ -179,7 +185,7 @@ export function SettingsSheet({ onClose, onReset }: Props) {
         <div className={`premium-card ${premium ? "owned" : ""}`}>
           <div className="premium-head">
             <span className="premium-title">✦ Premium {premium && <span className="premium-badge">Founder</span>}</span>
-            {!premium && <span className="premium-price">{PREMIUM_PRICE}</span>}
+            {!premium && <span className="premium-price">{price}</span>}
           </div>
           <ul className="premium-perks">
             <li>{balance.offline.premiumMaxHours}-hour offline cap (up from {balance.offline.maxHours}h)</li>
@@ -191,7 +197,7 @@ export function SettingsSheet({ onClose, onReset }: Props) {
           ) : (
             <div className="premium-actions">
               <button className="btn btn-primary" disabled={busy} onClick={buy}>
-                {busy ? "…" : `Unlock ${PREMIUM_PRICE}`}
+                {busy ? "…" : `Unlock ${price}`}
               </button>
               <button className="link-btn" disabled={busy} onClick={restore}>
                 Restore

@@ -81,4 +81,13 @@ describe("sponsor contracts (IDEAS #9)", () => {
     tampered.sponsor.rep = 9_999;
     expect(deserialize(JSON.stringify(tampered)).sponsor!.rep).toBe(contractsBalance.sponsor.rep);
   });
+
+  it("a year and more of dailies keeps every point of Reputation through a reload", () => {
+    const s = clearedLadder();
+    const days = 450; // past the old 400 cap, which trimmed 300 Rep on every load
+    s.contracts = { completed: [...s.contracts.completed, ...Array.from({ length: days }, (_, i) => sponsorIdFor(DAY + i))] };
+    const before = contractsReputation(s);
+    expect(contractsReputation(deserialize(serialize(s)))).toBe(before);
+  });
 });
+

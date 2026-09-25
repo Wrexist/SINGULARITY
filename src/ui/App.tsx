@@ -53,6 +53,7 @@ import { sampleHistory, resetHistory, SAMPLE_MS } from "./history";
 import { NewsTicker } from "./NewsTicker";
 import { ExpandConfirm } from "./ExpandConfirm";
 import { ConfirmSheet } from "./ConfirmSheet";
+import { usePortalOpen } from "./Portal";
 import { RigBayPanel } from "./RigBayPanel";
 import { componentsUnlocked, earnedDefs } from "../engine/components";
 
@@ -172,6 +173,7 @@ export function App() {
   const [pendingRetire, setPendingRetire] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const portalOpen = usePortalOpen();
   const [challengeDoneId, setChallengeDoneId] = useState<string | null>(null); // Grand Challenge just completed → moment
   const [flash, setFlash] = useState(0); // AGI ascension screen flash (key replays the anim)
   const [dailyOn, setDailyOn] = useState(() => dailyAvailable());
@@ -227,13 +229,15 @@ export function App() {
   // consequence of something the player just did; this is the only uninvited one, so
   // it's the only one that waits. The store holds it in a single slot, so it simply
   // shows once the sheet closes. (2026-08 — reproduced in a seeded smoke run.)
-  const sheetOpen = showSettings || !!pendingExpansion || confirmReset || !!pendingRetire;
+  const sheetOpen = showSettings || !!pendingExpansion || confirmReset || !!pendingRetire || portalOpen;
 
   // The moment queue's head: exactly ONE full-screen moment renders at a time,
   // by priority. Dismissing the head lets the next pending one show.
   const moment = offline ? "offline"
     : celebration ? "celebration"
-    : eraMoment !== null ? "era"
+    // An era crossing is earned by passive progress too, so like a world event it
+    // is uninvited and waits for an open sheet rather than stacking on it.
+    : eraMoment !== null && !sheetOpen ? "era"
     : challengeDoneId ? "challenge"
     : launch ? "launch"
     : worldEvent && !sheetOpen ? "world"

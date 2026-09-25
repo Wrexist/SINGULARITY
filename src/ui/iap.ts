@@ -22,13 +22,16 @@ import { isPremium, setPremium } from "../state/premium";
  */
 
 export const PREMIUM_PRODUCT_ID = "com.wrexist.singularityinc.premium";
+/** Fallback label only (web/dev, or before StoreKit has answered). On device the
+ *  card shows StoreKit's localized price — a hardcoded "$6.99" told a player in
+ *  the UK, EU or Japan a price StoreKit would not actually charge them. */
 export const PREMIUM_PRICE = "$6.99";
 
 // --- Minimal typing for the bits of the (globally-injected) CdvPurchase we use.
 // We deliberately DON'T `import "cordova-plugin-purchase"` so the web/Vite build
 // never pulls Cordova globals; Capacitor injects `window.CdvPurchase` on device.
 interface CdvOffer { order(): Promise<unknown> }
-interface CdvProduct { getOffer(): CdvOffer | undefined }
+interface CdvProduct { getOffer(): CdvOffer | undefined; readonly pricing?: { price?: string } }
 interface CdvTransaction { finish(): void }
 interface CdvWhen {
   approved(cb: (t: CdvTransaction) => void): CdvWhen;
@@ -107,7 +110,27 @@ async function settleOwnership(store: CdvStore, timeoutMs = 1500): Promise<boole
   return store.owned(PREMIUM_PRODUCT_ID);
 }
 
+/** StoreKit's localized price string for Premium, or null when unknown. */
+function storePrice(store: CdvStore | null): string | null {
+  try {
+    const p = store?.get(PREMIUM_PRODUCT_ID)?.pricing?.price;
+    return typeof p === "string" && p.trim() ? p : null;
+  } catch {
+    return null;
+  }
+}
+
 export const iap = {
+  /** The price to show on the Premium card: StoreKit's localized string on device
+   *  once available, else the fallback label. Never throws. */
+  async priceLabel(): Promise<string> {
+    try {
+      return storePrice(await ensureInit()) ?? PREMIUM_PRICE;
+    } catch {
+      return PREMIUM_PRICE;
+    }
+  },
+
   /**
    * Re-sync ownership from StoreKit at app launch (native only). This makes the
    * local entitlement cache non-authoritative: CdvPurchase auto-detects an owned

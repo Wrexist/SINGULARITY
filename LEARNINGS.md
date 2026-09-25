@@ -535,3 +535,26 @@ when" balance, dials the whole curve, and the UI cost displays update for free (
   a state where the employees-tab nudge actually fires, so its assertion was dead code. When a test
   loops over states × conditions, assert the condition set was actually EXERCISED (collect + expect
   non-empty), or the test proves nothing as the trigger conditions drift.
+
+### 2026-09 audit — precision, clocks, and overlays that cover the thing you're testing
+- **Big (break_infinity) keeps ~15 significant digits, so "funded >= cost" can be unreachable.**
+  Instalments can leave `funded` a hair under `cost` while `cost.sub(funded)` already rounds to 0,
+  so the next contribution is 0 and an "is there anything to give?" early return strands the goal
+  forever. Any accumulate-to-a-target loop needs (a) a tolerance on "met" and (b) a snap to exactly
+  `cost` on the closing payment, so no residue is ever persisted. See `laneMet` in challenges.ts.
+- **Between-tick actions must bump derived stats themselves.** tick() derives `stats.totalMoney`
+  from the `lifetimeMoney` delta WITHIN a tick, so anything that pays out between ticks (claimRun,
+  retireProduct) has to add to `totalMoney` itself or all-time earnings silently under-count.
+- **`prestige()` builds from `createInitialState()`; every permanent field must be carried
+  explicitly.** instituteFellowships was missing and zeroed every ship. When adding a permanent
+  persisted field, grep prestige.ts for its siblings and add it there too.
+- **performance.now() can stop while an iOS device sleeps.** It's the right clock for smooth
+  ticks, but not for measuring a suspend. useGameLoop now trusts Date.now() when it saw clearly
+  more time pass.
+- **Screenshot/smoke seeds must pre-dismiss every one-time explainer.** The store-screenshot ship
+  scene was captured with the first-ship explainer over it (the seed had no `shipExplained`),
+  producing an empty, blurred frame with no error. When a capture step "can't find" its button,
+  look for an overlay before blaming the selector.
+- **The bot can't click "unstable" elements.** Playwright refuses to click buttons in the middle of
+  a CSS animation (e.g. the first-run `nudge`) and times out quietly inside `.catch(() => {})`. Pass
+  `force: true` for play-throughs, or the "player" never presses the button.

@@ -1405,7 +1405,7 @@ svg { vertical-align: middle; }
 .rack-card-stats b { color: #fff; font-weight: 750; }
 
 /* ---------- Lab Stats (collapsible) ---------- */
-.stats { padding: 6px 18px; }
+.stats { padding-top: 4px; padding-bottom: 4px; }
 .stats.open { padding-bottom: 16px; }
 .stats-toggle {
   display: flex;
@@ -1414,7 +1414,8 @@ svg { vertical-align: middle; }
   width: 100%;
   background: none;
   border: none;
-  padding: 14px 0;
+  /* Same 8px row as .collapsible-toggle, so every fold on HQ is one height. */
+  padding: 8px 2px;
   cursor: pointer;
   color: var(--ink-3);
 }
@@ -1924,7 +1925,10 @@ button.modchip.workable:active { transform: scale(0.94); }
 /* ---------- Toasts ---------- */
 .toast-stack {
   position: fixed;
-  top: calc(72px + env(safe-area-inset-top));
+  /* Just under the resource bar, pinned or not (it ends at ~173px at rest, ~113px
+     pinned). At 72px a toast sat squarely on the Compute/Data/Money values — the
+     very numbers a decision toast ("pay the fine: −20% cash") is about. */
+  top: calc(182px + env(safe-area-inset-top));
   left: 0;
   right: 0;
   /* Below modal/sheet backdrops (50/60) so an open pop-up covers toasts rather
@@ -2389,6 +2393,12 @@ button.modchip.workable:active { transform: scale(0.94); }
 /* ---------- Legacy Investments tree (Phase 4 / R5.4) ---------- */
 .legacy-tree { margin: 10px 0; display: flex; flex-direction: column; gap: 7px; }
 .legacy-tree-head { font-size: var(--fs-md); font-weight: 800; color: var(--ink); }
+.legacy-tree-toggle {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; padding: 12px 2px 4px; background: none; border: none; border-top: 1px solid var(--line);
+  font: inherit; font-size: var(--fs-md); font-weight: 800; color: var(--ink); text-align: left; cursor: pointer;
+}
+.legacy-tree-toggle .chevron { color: var(--ink-3); display: inline-flex; }
 .legacy-tree-note { font-size: var(--fs-xs); color: var(--ink-3); margin: -2px 0 4px; }
 .legacy-perk {
   display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; cursor: pointer;
