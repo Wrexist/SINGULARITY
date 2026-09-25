@@ -24,7 +24,11 @@ export function ChallengeComplete({ challenge, onDone }: Props) {
         <div className="challenge-complete-icon" aria-hidden="true">{iconFor(challenge.icon, 52)}</div>
         <h2 className="era-title" id="challenge-complete-title" tabIndex={-1}>{challenge.name}</h2>
         <div className="era-press">
-          <span className="era-press-tag"><GiftIcon size={14} /> {challenge.reward.desc}</span>
+          {/* A forked moonshot grants nothing until an arm is picked on its card, and
+              the arms differ — so name the choice rather than promise the preview. */}
+          <span className="era-press-tag"><GiftIcon size={14} /> {challenge.forks
+            ? `Choose your reward: ${challenge.forks[0].label} or ${challenge.forks[1].label}`
+            : challenge.reward.desc}</span>
           <p>{challenge.lore}</p>
         </div>
         <button className="btn btn-primary" onClick={onDone}>Onward</button>
