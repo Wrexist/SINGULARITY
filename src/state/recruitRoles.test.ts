@@ -15,7 +15,7 @@ describe("recruit rolls", () => {
     useGame.setState({ game: g, candidates: [] });
     for (let i = 0; i < 60; i++) {
       useGame.getState().doRefreshCandidates();
-      for (const c of useGame.getState().candidates) expect(productRoles.has(c.roleId)).toBe(false);
+      for (const c of useGame.getState().candidates ?? []) expect(productRoles.has(c.roleId)).toBe(false);
     }
   });
 
@@ -28,7 +28,7 @@ describe("recruit rolls", () => {
     let sawProduct = false;
     for (let i = 0; i < 60 && !sawProduct; i++) {
       useGame.getState().doRefreshCandidates();
-      sawProduct = useGame.getState().candidates.some((c) => productRoles.has(c.roleId));
+      sawProduct = (useGame.getState().candidates ?? []).some((c) => productRoles.has(c.roleId));
     }
     expect(sawProduct).toBe(true);
   });
