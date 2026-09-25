@@ -192,7 +192,16 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     // Phase 3 — released products are your standing business; they survive the
     // reset and keep earning Money into the next run (the meta-reward for shipping).
     // A "hard" ship leaps the competitive frontier so carried products start behind.
-    products: { ...state.products, drafts, frontier: state.products.frontier + modeDef.frontierPenalty },
+    // A version upgrade still in flight is dropped, not carried: its remaining cost was
+    // priced from the OLD run's Data rate, so in the fresh lab it drained every bit of
+    // Data (and a share of Compute) each tick and froze research for the whole
+    // generation. Its upfront share came out of pools this Ship wipes anyway.
+    products: {
+      ...state.products,
+      active: state.products.active.map((p) => (p.upgrade ? { ...p, upgrade: null } : p)),
+      drafts,
+      frontier: state.products.frontier + modeDef.frontierPenalty,
+    },
     // Flagship brand: if the designated product survived to this ship, its tenure grows
     // (capped); if it was retired, the brand is lost. The sim never has a flagship.
     flagship: advanceFlagship(state),
