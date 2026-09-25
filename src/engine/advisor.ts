@@ -5,7 +5,7 @@ import { canBuyResearch, researchStalled, researchAvailable, researchCost } from
 import { researchTree } from "./researchTree";
 import { canPrestige, nextRunMultiplier } from "./prestige";
 import { hireCost } from "./employees";
-import { derive, computeBankReach, FIRST_SHIP_WORTH_IT } from "./derive";
+import { derive, computeBankReach, runsPerSec, FIRST_SHIP_WORTH_IT } from "./derive";
 import type { Derived, GameState } from "./types";
 
 /** The first research node (no prereqs) — the new player's first capability buy. */
@@ -151,12 +151,15 @@ export function advisorItems(state: GameState, precomputed?: Derived): AdvisorIt
   }
 
   // Payroll outrunning income: a structural over-hire warning. Compares wages against
-  // GROSS revenue (passive money + product MRR, before serving/marketing costs), so a
-  // deliberate marketing-investment loss never trips it — consistent with the "don't
-  // flag investment losses" policy above. Only fires with staff actually on payroll.
+  // GROSS revenue (passive money + run income + product MRR, before serving/marketing
+  // costs), so a deliberate marketing-investment loss never trips it — consistent with
+  // the "don't flag investment losses" policy above. Only fires with staff actually on
+  // payroll. Run income counts at the cadence runs really fire (runsPerSec — none while
+  // training is held): leaving it out told a first-generation lab, whose Money is ALL
+  // run income, to "let someone go" the moment it hired a single $2/s specialist.
   if (state.employees.length > 0) {
     if (derived.payrollPerSec.gt(0)) {
-      let grossIncome = derived.passiveMoneyPerSec;
+      let grossIncome = derived.passiveMoneyPerSec.add(derived.runMoneyYield.mul(runsPerSec(derived, state.computeFocus)));
       for (const p of ps.active) grossIncome = grossIncome.add(productMetrics(p, ps.frontier, derived.productModsById[p.id]).mrr);
       if (derived.payrollPerSec.gt(grossIncome)) {
         items.push({ tab: "employees", text: "Payroll is outrunning your income — grow revenue or let someone go", priority: 58 });
