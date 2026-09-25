@@ -244,8 +244,11 @@ export function ProductDetail({ game, productId, mods, onClose, onStartUpgrade, 
         )}
 
         {tab === "marketing" && (() => {
-          const totalW = B.channels.reduce((s, c) => s + Math.max(0, p.channelMix[c.id] ?? 0), 0) || 1;
-          const activeCount = B.channels.filter((c) => (p.channelMix[c.id] ?? 0) > 0).length;
+          const totalW = B.channels.reduce((s, c) => s + Math.max(0, p.channelMix[c.id] ?? 0), 0);
+          // The share of the budget each channel really gets. An all-zero split doesn't stop
+          // the campaign: the sim spends it all on Paid Ads (channelAcq's fallback), so show that.
+          const shareOf = (id: string) => (totalW > 0 ? Math.max(0, p.channelMix[id] ?? 0) / totalW : id === "ads" ? 1 : 0);
+          const activeCount = B.channels.filter((c) => shareOf(c.id) > 0).length;
           const budgetPct = mktCap > 0 ? (Math.min(p.marketingPerSec, mktCap) / mktCap) * 100 : 0;
           return (
             <div className="pd-pane">
@@ -262,7 +265,7 @@ export function ProductDetail({ game, productId, mods, onClose, onStartUpgrade, 
               </div>
               {B.channels.map((c) => {
                 const w = Math.max(0, p.channelMix[c.id] ?? 0);
-                const pct = Math.round((w / totalW) * 100);
+                const pct = Math.round(shareOf(c.id) * 100);
                 const meta = CH_META[c.id] ?? { glyph: <MegaphoneIcon size={16} />, tint: "#7c5cff" };
                 return (
                   <label className="pd-channel-card" key={c.id}>
