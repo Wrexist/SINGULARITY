@@ -117,6 +117,7 @@ export function App() {
   const notice = useGame((s) => s.notice);
   const worldEvent = useGame((s) => s.worldEvent);
   const candidates = useGame((s) => s.candidates);
+  const savingFor = useGame((s) => s.savingFor);
   const { doStartRun, doClaim, doBuyUpgrade, doBuyUpgradeBulk, doBuyOfficePerk, doBuyReputationPerk, doBuyEndowment, doFoundWing, doPickDirective, doRespecDirective, doPlaceStake, doBuyLegacyPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
@@ -931,7 +932,8 @@ export function App() {
                 if (goal.kind === "achievement" || goal.kind === "milestone") { setGoalsSection("collection"); goTab("goals"); }
                 else {
                   goTab("lab");
-                  if (labSectioned) goSection(goal.kind === "era" && era === 0 ? "research" : "hq");
+                  // The ship goal and the first era both advance through research nodes.
+                  if (labSectioned) goSection(goal.kind === "ship" || (goal.kind === "era" && era === 0) ? "research" : "hq");
                 }
               }}
             >
@@ -1058,7 +1060,16 @@ export function App() {
             )}
             {section === "research" && (
               <>
-                {showResearch && <ResearchPanel game={game} derived={d} onResearch={onResearch} onBuyPreprint={() => { haptics.success(); sound.purchase(); doBuyPreprint(); }} />}
+                {showResearch && (
+                  <ResearchPanel
+                    game={game}
+                    derived={d}
+                    onResearch={onResearch}
+                    onBuyPreprint={() => { haptics.success(); sound.purchase(); doBuyPreprint(); }}
+                    savingFor={savingFor?.id ?? null}
+                    onSaveFor={(id) => { haptics.tap(); sound.tap(); useGame.getState().doSaveFor(id); }}
+                  />
+                )}
                 {paradigmsUnlocked(game) && <ParadigmPanel game={game} onBuy={(id) => { haptics.celebrate(); sound.purchase(); doBuyParadigm(id); }} />}
                 {showMarket && <DataMarketPanel game={game} onBuyData={onBuyData} onBuyTool={onBuy} onLobby={() => { haptics.tap(); sound.purchase(); doLobby(); }} />}
               </>

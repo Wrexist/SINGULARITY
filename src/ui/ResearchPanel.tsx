@@ -11,6 +11,7 @@ import { burst, punch } from "./fx";
 import { CheckIcon, ChevronIcon, LockIcon } from "./Icons";
 import { ResearchRingIcon, EffectPill } from "./effectVisual";
 import { groupByCategory } from "../engine/researchCategories";
+import { onShipPath } from "../engine/prestige";
 
 interface Props {
   game: GameState;
@@ -18,9 +19,13 @@ interface Props {
   onResearch: (id: string) => void;
   /** IDEAS #10 — publish a frontier preprint (post-tree repeatable). */
   onBuyPreprint: () => void;
+  /** The node the player pinned with "Save for this", if any. */
+  savingFor?: string | null;
+  /** Tap a Compute-walled node: ease intensity until it's affordable, then buy it. */
+  onSaveFor?: (id: string) => void;
 }
 
-export function ResearchPanel({ game, derived, onResearch, onBuyPreprint }: Props) {
+export function ResearchPanel({ game, derived, onResearch, onBuyPreprint, savingFor = null, onSaveFor }: Props) {
   const isOwned = (id: string) => game.research.includes(id);
   // Finished categories fold to their header by default. By mid-run the first
   // groups are all "done", and rendering them as full cards put ~4 screens of
@@ -86,10 +91,23 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint }: Prop
   const affordable = available.filter((d) => canBuyResearch(game, d.id));
   const totalCost = (d: Def) => d.cost.compute + d.cost.data;
   let hero: Def | null = null;
+  const pinned = savingFor ? available.find((d) => d.id === savingFor) ?? null : null;
   if (affordable.length) hero = affordable.reduce((a, b) => (totalCost(a) <= totalCost(b) ? a : b));
+  else if (pinned) hero = pinned; // the node being banked for is the obvious next thing
   else {
     const withEta = available.map((d) => ({ d, eta: etaFor(d) })).filter((x) => x.eta != null) as { d: Def; eta: number }[];
     if (withEta.length) hero = withEta.reduce((a, b) => (a.eta <= b.eta ? a : b)).d;
+    // Everything left is Compute-walled (no countdown can be honest). Still name the
+    // next thing — the cheapest walled node, whose card offers "save for this" —
+    // rather than leaving the panel with no anchor at the exact moment the player is
+    // stuck. This is what the Ship's own node looks like mid-run at full intensity.
+    // Before the first Ship, the Ship's own path comes first.
+    else if (available.length) {
+      const pool = game.prestige.ships === 0 && available.some((d) => onShipPath(d.id))
+        ? available.filter((d) => onShipPath(d.id))
+        : available;
+      hero = pool.reduce((a, b) => (totalCost(a) <= totalCost(b) ? a : b));
+    }
   }
 
   const renderNode = (def: Def, isHero = false) => {
@@ -97,6 +115,11 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint }: Prop
     const avail = researchAvailable(game, def.id);
     const canBuy = canBuyResearch(game, def.id);
     const lockedOut = !owned && researchLockedOut(game, def.id);
+    // A node the drained auto-train bank can never reach is tappable anyway: the tap
+    // pins it ("save for this") instead of buying — see store.doSaveFor.
+    const walledNow = !owned && avail && !canBuy && def.cost.compute > 0 && computeWalled(researchCost(game, def).compute);
+    const savable = walledNow && !!onSaveFor;
+    const saving = savingFor === def.id && !owned;
     const state = owned ? "owned" : lockedOut ? "excluded" : avail ? "available" : "locked";
     const eta = !owned && avail && !canBuy ? etaFor(def) : null;
     // Ring progress: full for owned/affordable, live affordability climb while available,
@@ -105,9 +128,10 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint }: Prop
     return (
       <button
         key={def.id}
-        className={`node ${isHero ? "node-hero" : ""} ${state} ${canBuy ? "affordable" : ""}`}
-        disabled={!canBuy}
+        className={`node ${isHero ? "node-hero" : ""} ${state} ${canBuy ? "affordable" : ""}${savable ? " savable" : ""}${saving ? " saving" : ""}`}
+        disabled={!canBuy && !savable}
         onClick={(e) => {
+          if (!canBuy) { if (savable) { punch(e.currentTarget); onSaveFor!(def.id); } return; }
           const r = e.currentTarget.getBoundingClientRect();
           burst(r.left + r.width / 2, r.top + r.height / 2, { count: isHero ? 22 : 18, power: 1.1, colors: ["#9b51e0", "#2f7bf6", "#16b364"] });
           punch(e.currentTarget);
@@ -138,8 +162,12 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint }: Prop
                 {def.cost.data > 0 && (
                   <span style={{ color: "var(--data)" }}>{fmt(c.data)} data</span>
                 )}
-                {walled ? (
-                  <span className="cost-eta walled" title="Auto-train is draining Compute — ease training intensity to let the bank climb">ease intensity ↓</span>
+                {saving ? (
+                  <span className="cost-eta saving">banking for this{eta != null ? ` · ~${fmtDur(eta)}` : ""}</span>
+                ) : walled ? (
+                  <span className="cost-eta walled" title="Auto-train drains Compute before it can bank this much. Tap to ease intensity until it's affordable.">
+                    {savable ? "tap to save for this" : "ease intensity ↓"}
+                  </span>
                 ) : eta != null && <span className="cost-eta">~{fmtDur(eta)}</span>}
               </span>
             );

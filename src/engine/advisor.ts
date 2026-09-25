@@ -61,7 +61,9 @@ export function advisorItems(state: GameState, precomputed?: Derived): AdvisorIt
   // the one moment it matters, through the nudge channel that already exists (no popup).
   // Any run can hit this (re-climbing the tree), so it isn't gated to the first session.
   if (researchStalled(state, derived)) {
-    items.push({ tab: "lab", section: "build", text: "Ease training intensity to bank Compute", priority: 66 });
+    // Land on Research, where tapping the walled node eases intensity just enough
+    // ("save for this"), rather than on a bare slider with no target to aim at.
+    items.push({ tab: "lab", section: "research", text: "Research out of reach — tap a node to save for it", priority: 66 });
   }
 
   // ---- First-session hook: until the first Ship, hand-hold the core loop so a

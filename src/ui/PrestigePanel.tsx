@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { canPrestige, legacyWeightsGain, legacyWeightsForMode, ascensionMultiplier, type ShipMode } from "../engine/prestige";
+import { canPrestige, legacyWeightsGain, legacyWeightsForMode, ascensionMultiplier, shipPath, type ShipMode } from "../engine/prestige";
 import { currentEra } from "../engine/eras";
 import { reputationAvailable } from "../engine/reputation";
 import { legacyTreeBalance, legacyAvailable, canBuyLegacyPerk } from "../engine/legacyTree";
@@ -48,8 +48,9 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
   const ready = canPrestige(game);
   const gain = legacyWeightsGain(game);
   const have = game.prestige.legacyWeights;
-  const researchedCount = balance.research.filter((r) => game.research.includes(r.id)).length;
-  const progress = Math.min(100, (researchedCount / balance.research.length) * 100);
+  // The research the Ship actually needs, not the whole tree (see shipPath).
+  const path = shipPath(game);
+  const progress = path.total > 0 ? Math.min(100, (path.done / path.total) * 100) : 100;
 
   // AGI ascension (Post-Singularity era): a ship here past the Legacy floor is an
   // ascension — a permanent compounding boost. Mirror prestige()'s gate.
@@ -98,7 +99,7 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
               wrapped to two lines inside a 24px track and was clipped. */}
           <p className="ship-gate-label">
             <span>Build the Inference API to ship</span>
-            <span className="ship-gate-count">Research {researchedCount}/{balance.research.length}</span>
+            <span className="ship-gate-count">{path.done}/{path.total} on the path</span>
           </p>
           <div className="progress slim">
             <div className="progress-fill money" style={{ width: `${progress}%` }} />

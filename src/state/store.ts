@@ -2,7 +2,8 @@ import { create } from "zustand";
 import type { Employee, GameState } from "../engine/types";
 import { createInitialState } from "../engine/state";
 import { tick } from "../engine/tick";
-import { derive } from "../engine/derive";
+import { derive, focusToBank } from "../engine/derive";
+import { ALL_RESEARCH } from "../engine/researchTree";
 import {
   addEmployee, startTraining, canTrain, fireEmployee, hireCost,
   assignEmployee as assignEmployeeToProduct, levelUpNote,
@@ -15,6 +16,9 @@ import {
   buyUpgradeBulk,
   buyOfficePerk,
   buyResearch,
+  canBuyResearch,
+  researchAvailable,
+  researchCost,
   buyDataOffer,
   lobby,
   maybeHeatEvent,
@@ -134,6 +138,9 @@ interface GameStore {
   claimBurst: number;
   /** Open recruiting candidates (3 to choose from), or null when closed. */
   candidates: Candidate[] | null;
+  /** "Save for this": a Compute-walled research node the player pinned, and the
+   *  training intensity to restore once it's bought. UI state — never persisted. */
+  savingFor: { id: string; prevFocus: number } | null;
   // lifecycle
   init: () => void;
   dismissWorldEvent: () => void;
@@ -208,6 +215,9 @@ interface GameStore {
   /** Flip an Automation autopilot on/off (no-op if still locked). */
   doToggleAutomation: (id: string) => void;
   setComputeFocus: (v: number) => void;
+  /** Pin a Compute-walled research node: ease intensity just enough to bank for it,
+   *  buy it the moment it's affordable, then put the slider back. */
+  doSaveFor: (id: string) => void;
   /** Returns true if the release succeeded (so the UI only celebrates on a real ship). */
   doReleaseProduct: (type: ProductTypeId, name: string) => boolean;
   /** Commercialise a shipped draft model. Returns true on a real launch. */
@@ -324,6 +334,7 @@ export const useGame = create<GameStore>((set, get) => ({
   worldEvent: null,
   claimBurst: 0,
   candidates: null,
+  savingFor: null,
   dismissWorldEvent: () => set({ worldEvent: null }),
   chooseWorldEvent: (choiceIndex) =>
     set((s) => {
@@ -586,6 +597,20 @@ export const useGame = create<GameStore>((set, get) => ({
       }
       lastEra = era;
 
+      // "Save for this": buy the pinned node the moment the eased bank covers it, then
+      // restore the player's intensity. Also let go if it's gone some other way.
+      if (s.savingFor) {
+        const pin = s.savingFor;
+        let g = patch.game ?? game;
+        if (!g.research.includes(pin.id) && canBuyResearch(g, pin.id)) g = buyResearch(g, pin.id);
+        if (g.research.includes(pin.id) || !researchAvailable(g, pin.id)) {
+          patch.game = { ...g, computeFocus: pin.prevFocus };
+          patch.savingFor = null;
+        } else if (g !== (patch.game ?? game)) {
+          patch.game = g;
+        }
+      }
+
       return patch;
     }),
 
@@ -688,8 +713,18 @@ export const useGame = create<GameStore>((set, get) => ({
   doPickMandate: (id) => set((s) => ({ game: pickMandate(s.game, id) })),
   doClaimObjective: (id, target) => set((s) => ({ game: claimObjective(s.game, id, target) })),
   doToggleAutomation: (id) => set((s) => ({ game: toggleAutomation(s.game, id) })),
+  // Moving the slider by hand is an explicit choice: it cancels any "save for this" pin.
   setComputeFocus: (v) =>
-    set((s) => ({ game: { ...s.game, computeFocus: Math.max(0, Math.min(1, v)) } })),
+    set((s) => ({ game: { ...s.game, computeFocus: Math.max(0, Math.min(1, v)) }, savingFor: null })),
+  doSaveFor: (id) =>
+    set((s) => {
+      const def = ALL_RESEARCH.find((r) => r.id === id);
+      if (!def || s.game.research.includes(id) || !researchAvailable(s.game, id)) return {};
+      const focus = focusToBank(s.game, derive(s.game), researchCost(s.game, def).compute);
+      // Re-pinning a different node keeps the ORIGINAL setting to restore.
+      const prevFocus = s.savingFor?.prevFocus ?? s.game.computeFocus;
+      return { game: { ...s.game, computeFocus: focus }, savingFor: { id, prevFocus } };
+    }),
   // The store mints the product id (nondeterminism stays out of the engine).
   // Guard first so a stale/double tap can't burn an id or fake a celebration.
   doReleaseProduct: (type, name) => {
@@ -751,7 +786,7 @@ export const useGame = create<GameStore>((set, get) => ({
       // so the reset itself isn't mis-read as a purchase/era change next tick.
       lastSig = purchaseSignature(game.upgrades, game.research);
       lastEra = currentEra(game);
-      return { game };
+      return { game, savingFor: null };
     }),
   doClaimDaily: () => set((s) => ({ game: grantDailyBoost(s.game) })),
 
@@ -761,7 +796,7 @@ export const useGame = create<GameStore>((set, get) => ({
     localStorage.removeItem(TIME_KEY);
     // Clear transient UI state too, or a stale world-event card / claim burst
     // could survive into the fresh run.
-    set({ game: createInitialState(), offline: null, event: null, notice: null, worldEvent: null, claimBurst: 0, candidates: null });
+    set({ game: createInitialState(), offline: null, event: null, notice: null, worldEvent: null, claimBurst: 0, candidates: null, savingFor: null });
   },
 
   // ---- Save backup (local-only; the player owns their progress) ----

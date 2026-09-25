@@ -402,3 +402,22 @@ export function computeBankCeiling(state: GameState, d: Derived): Big | null {
   if (!d.autoTrain || !Number.isFinite(state.computeFocus) || state.computeFocus <= 0) return null;
   return d.runComputeCost.div(state.computeFocus);
 }
+
+/**
+ * "Save for this": the highest training intensity (in the slider's 5% steps, never
+ * above the current one) whose auto-train bank ceiling clears `computeCost` with a
+ * little headroom — i.e. how far to ease the slider so a Compute-walled node becomes
+ * reachable by waiting. 0 (training held, bank unbounded) when no running intensity
+ * gets there. Returns the current focus when it already clears. Pure.
+ */
+export function focusToBank(state: GameState, d: Derived, computeCost: Big): number {
+  const current = Math.max(0, Math.min(1, state.computeFocus));
+  const need = computeCost.mul(1.05);
+  const perSecCost = d.computePerSec.mul(balance.run.costSeconds);
+  for (let step = Math.round(current * 20); step >= 1; step--) {
+    const f = step / 20;
+    const runCost = perSecCost.mul(trainingIntensity(f)).max(balance.run.minCompute);
+    if (runCost.div(f).gte(need)) return f;
+  }
+  return 0;
+}

@@ -1001,6 +1001,10 @@ svg { vertical-align: middle; }
    so instead of a lying countdown we point at the real lever. Warm amber (a nudge, not
    an error), a hair bolder than a plain ETA so the eye lands on the fix. */
 .cost-eta.walled { color: var(--amber, #c67c1e); font-weight: 750; }
+/* A pinned "save for this" node: the ring on its icon fills as Compute banks; the
+   tag just says what's happening, in the accent, with no animation of its own. */
+.cost-eta.saving { color: var(--accent); font-weight: 750; }
+.node.saving { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
 .cost-sub { font-size: var(--fs-xs); font-weight: 700; color: var(--money); }
 .cost-blocked { color: var(--coral); font-size: var(--fs-sm); font-weight: 750; }
 

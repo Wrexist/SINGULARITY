@@ -33,6 +33,34 @@ export function canPrestige(state: GameState): boolean {
   return state.research.includes(balance.prestige.capabilityResearch);
 }
 
+/** The capability node plus every prerequisite under it, in tree order: the research
+ *  a run actually needs to be able to Ship. Static over the balance data. */
+const SHIP_PATH: readonly string[] = (() => {
+  const byId = new Map(balance.research.map((r) => [r.id, r]));
+  const need = new Set<string>();
+  const visit = (id: string) => {
+    if (need.has(id)) return;
+    need.add(id);
+    for (const r of byId.get(id)?.requires ?? []) visit(r);
+  };
+  visit(balance.prestige.capabilityResearch);
+  return balance.research.filter((r) => need.has(r.id)).map((r) => r.id);
+})();
+
+/**
+ * Progress along the road to a Ship: how many of the research nodes the capability
+ * node depends on are owned. The panel used to show "Research n/25" — the WHOLE
+ * tree — so the bar read 36–48% at the very moment shipping unlocked. Pure.
+ */
+export function onShipPath(id: string): boolean {
+  return SHIP_PATH.includes(id);
+}
+
+export function shipPath(state: GameState): { done: number; total: number } {
+  const owned = new Set(state.research);
+  return { done: SHIP_PATH.filter((id) => owned.has(id)).length, total: SHIP_PATH.length };
+}
+
 /** Charter-conviction multiplier (B1, escalated in the depth batch): shipping with
  *  the SAME charter as previous consecutive runs rewards commitment on a ladder —
  *  ×1.15 → ×1.25 → ×1.40 capped. 1 when no charter / different / first runs.

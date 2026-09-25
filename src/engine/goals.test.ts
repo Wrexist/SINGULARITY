@@ -16,8 +16,12 @@ describe("goals (the next-goal carrot)", () => {
     }
   });
 
-  it("nextGoal returns the candidate with the highest progress", () => {
+  it("nextGoal returns the candidate with the highest progress (once the first Ship is behind you)", () => {
     const s = createInitialState();
+    s.prestige.ships = 1;
+    s.stats.totalShips = 1;
+    s.lifetimeMoney = Big.of(5_000);
+    s.stats.totalMoney = Big.of(5_000);
     const goals = goalCandidates(s);
     const top = nextGoal(s)!;
     for (const g of goals) expect(top.progress).toBeGreaterThanOrEqual(g.progress);
@@ -67,5 +71,26 @@ describe("product-milestone goals (mid-game carrots)", () => {
 
   it("stays out of the pre-products game entirely", () => {
     expect(goalCandidates(createInitialState()).some((g) => g.kind === "milestone")).toBe(false);
+  });
+
+  it("in generation 1 the first Ship is the goal, measured along its research path", () => {
+    const s = createInitialState();
+    s.stats.totalMoney = Big.of(9_000); // a side-chase at 90% must not bury it
+    let g = nextGoal(s)!;
+    expect(g.kind).toBe("ship");
+    expect(g.progress).toBe(0);
+    s.research = ["backprop", "curated_data"];
+    g = nextGoal(s)!;
+    expect(g.kind).toBe("ship");
+    expect(g.progress).toBeGreaterThan(0);
+    // Once the capability node is owned the goal is met and leaves the strip.
+    s.research = [...s.research, balance.prestige.capabilityResearch];
+    expect(goalCandidates(s).some((x) => x.kind === "ship")).toBe(false);
+  });
+
+  it("never offers a cosmetic collection counter as the next goal", () => {
+    const s = createInitialState();
+    s.prestige.ships = 1;
+    expect(goalCandidates(s).some((g) => /theme/i.test(g.desc))).toBe(false);
   });
 });

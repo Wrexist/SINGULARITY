@@ -4,6 +4,7 @@ import { achievementDefs, achievementProgress } from "./achievements";
 import { currentEra, eraName } from "./eras";
 import { productMilestones } from "./balance/products";
 import { milestoneValue, productsUnlocked } from "./products";
+import { canPrestige, shipPath } from "./prestige";
 import type { GameState } from "./types";
 
 /**
@@ -15,7 +16,7 @@ import type { GameState } from "./types";
  * Deterministic; no React, no clock.
  */
 
-export type GoalKind = "era" | "contract" | "achievement" | "milestone";
+export type GoalKind = "ship" | "era" | "contract" | "achievement" | "milestone";
 
 export interface Goal {
   kind: GoalKind;
@@ -27,9 +28,25 @@ export interface Goal {
   progress: number;
 }
 
+/** Achievement metrics that are collection counters, not something to work toward. */
+const UNACTIONABLE = new Set<string>(["themesUnlocked"]);
+
 /** All goals currently in progress, unordered. Exported for tests/inspection. */
 export function goalCandidates(state: GameState): Goal[] {
   const goals: Goal[] = [];
+
+  // The first Ship is THE goal of generation 1, and it used to be missing from this
+  // strip entirely, so the whole first hour showed whatever side-chase happened to
+  // be furthest along. Its progress is the research path the capability node needs.
+  if (state.prestige.ships === 0 && !canPrestige(state)) {
+    const p = shipPath(state);
+    goals.push({
+      kind: "ship",
+      label: "Ship your first model",
+      desc: `${p.done}/${p.total} research on the path`,
+      progress: p.total > 0 ? p.done / p.total : 0,
+    });
+  }
 
   // Era transitions with a scalar to show. Era 0→1 counts research; eras 2→5
   // count ships. (1→2 is a single named research node — binary, so no bar.)
@@ -87,7 +104,9 @@ export function goalCandidates(state: GameState): Goal[] {
   // Achievements: locked and visible. Secret ones stay a surprise.
   const have = new Set(state.achievements);
   for (const def of achievementDefs) {
-    if (have.has(def.id) || def.secret) continue;
+    // Cosmetic collection counts start part-full (the free themes) and move on their
+    // own, so "Wardrobe 67%" beat every real goal from the first second of play.
+    if (have.has(def.id) || def.secret || UNACTIONABLE.has(def.metric)) continue;
     const p = achievementProgress(state, def);
     if (p < 1) goals.push({ kind: "achievement", label: def.label, desc: def.desc, progress: p });
   }
@@ -95,10 +114,13 @@ export function goalCandidates(state: GameState): Goal[] {
   return goals;
 }
 
-/** The single goal closest to popping (highest progress), or null when quiet. */
+/** The single goal closest to popping (highest progress), or null when quiet. The
+ *  first-Ship goal, while it exists, always wins: it is the run's actual objective,
+ *  and a side-chase at 80% must not bury it. */
 export function nextGoal(state: GameState): Goal | null {
   let best: Goal | null = null;
   for (const g of goalCandidates(state)) {
+    if (g.kind === "ship") return g;
     if (!best || g.progress > best.progress) best = g;
   }
   return best;

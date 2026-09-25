@@ -82,15 +82,15 @@ describe("researchStalled", () => {
 });
 
 describe("advisor surfaces the intensity lever exactly when research stalls", () => {
-  it("nudges to ease training intensity when the bank is walled, and stays quiet otherwise", () => {
+  it("points at \"save for this\" when the bank is walled, and stays quiet otherwise", () => {
     const walled = autoTrainingAt(1);
     walled.resources.compute = Big.of(1);
     walled.resources.data = Big.of(1e9);
-    expect(advisorItems(walled).some((i) => i.text.toLowerCase().includes("training intensity"))).toBe(true);
+    expect(advisorItems(walled).some((i) => i.text.toLowerCase().includes("save for it"))).toBe(true);
 
     // Auto-train not owned → no ceiling → no nudge (the mechanic doesn't exist yet).
     const early = createInitialState();
     early.resources.compute = Big.of(1);
-    expect(advisorItems(early).some((i) => i.text.toLowerCase().includes("training intensity"))).toBe(false);
+    expect(advisorItems(early).some((i) => i.text.toLowerCase().includes("save for it"))).toBe(false);
   });
 });
