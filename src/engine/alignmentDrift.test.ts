@@ -43,12 +43,19 @@ describe("alignment round trips land where they started", () => {
     expect(committedSide(s)).toBe("doomer");
   });
 
-  it("the Safety ship still earns its Reputation after the round trip", () => {
+  it("a round trip lands back on the declared point — which alone is not a Safety ship", () => {
+    // A bare Safety declaration (exactly −0.4) earns no safety-ship Rep: that bonus
+    // is for choices that push PAST the stance (see prestige.ts). The round trip must
+    // land exactly there, not a float hair either side of it.
     let s = declared("doomer");
     s = applyWorldEventChoice(s, "choice_eu_act", 0).state; // Comply fully: −0.3
     s = applyWorldEventChoice(s, "choice_eu_act", 1).state; // Move it offshore: +0.3
-    s = { ...s, research: [...s.research, balance.prestige.capabilityResearch], lifetimeMoney: Big.of(1e9) };
-    expect(prestige(s).stats.safetyShips).toBe(s.stats.safetyShips + 1);
+    expect(s.alignment).toBe(-0.4);
+    const ready = (g: typeof s) => ({ ...g, research: [...g.research, balance.prestige.capabilityResearch], lifetimeMoney: Big.of(1e9) });
+    expect(prestige(ready(s)).stats.safetyShips).toBe(s.stats.safetyShips);
+    // One more cautious choice past the stance, and it is.
+    const past = applyWorldEventChoice(s, "choice_eu_act", 0).state; // −0.3 → −0.7
+    expect(prestige(ready(past)).stats.safetyShips).toBe(s.stats.safetyShips + 1);
   });
 
   it("the regulator's lobby and defy shifts round-trip too", () => {
