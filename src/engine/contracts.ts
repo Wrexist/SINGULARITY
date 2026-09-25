@@ -100,8 +100,14 @@ export function rollSponsor(state: GameState, dayKey: number): GameState {
   // Only lanes the player has actually started: a lab with no products yet must not
   // be asked to grow product revenue. A cleared-ladder veteran has every lane > 0,
   // so their daily roll is unchanged.
-  const started = S.lanes.filter((l) => contractMetric(state, l.metric) > 0);
-  const lanes = started.length > 0 ? started : S.lanes;
+  // Only lanes whose "beat your best" target is a real number: all-time earnings and
+  // peak Compute are Bigs a deep-endgame lab carries past 1.8e308, where the number read
+  // is Infinity — the goal became "∞", met the moment it was rolled, and its target
+  // saved as null so the loader dropped it. Identity below that scale.
+  const topMult = Math.max(...S.mults);
+  const finite = S.lanes.filter((l) => Number.isFinite(contractMetric(state, l.metric) * topMult));
+  const started = finite.filter((l) => contractMetric(state, l.metric) > 0);
+  const lanes = started.length > 0 ? started : finite.length > 0 ? finite : S.lanes;
   const lane = lanes[h % lanes.length]!;
   const current = contractMetric(state, lane.metric);
   const mult = S.mults[(h >>> 4) % S.mults.length]!;
