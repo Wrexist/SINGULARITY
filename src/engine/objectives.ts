@@ -79,6 +79,11 @@ export function canClaimObjective(state: GameState, id: string): boolean {
   return !!view && view.ready;
 }
 
+/** An Objective reward boost (the modifier claimObjective grants). */
+function isObjectiveBoost(m: { id: string; tone: string }): boolean {
+  return m.id.startsWith("obj_") && m.tone === "good";
+}
+
 /**
  * Claim a met objective: apply its reward (a short output-boost modifier) and record
  * completion so the next pool entry rotates onto the board. Pure; same-ref no-op if not
@@ -86,18 +91,30 @@ export function canClaimObjective(state: GameState, id: string): boolean {
  * `objectiveRewardOptions`) — all options share the same factor/duration, so `target` is a
  * placement choice only and can't inflate the reward. An absent/invalid `target` falls back
  * to the headline lane (so the balance sim's non-claiming path and old saves are unaffected).
- * The reward multiplies current output, so it's always meaningful and never inflates the
- * permanent curve (temporary + the sim never claims).
+ * The reward multiplies current output, so it's always meaningful; it is temporary, one
+ * per lane at a time, and the sim never claims.
  */
 export function claimObjective(state: GameState, id: string, target?: ObjectiveReward["target"]): GameState {
   if (!canClaimObjective(state, id)) return state;
   const r = BY_ID.get(id)!.reward;
   const chosen = objectiveRewardOptions(r).find((o) => o.target === target) ?? r;
-  const mod = { id: `obj_${id}`, target: chosen.target, factor: chosen.factor, remainingSec: chosen.durationSec, label: `Objective ×${chosen.factor}`, tone: "good" as const };
+  // One Objective boost per lane, refreshed like every other re-granted buff (world
+  // events, the Daily Boost): a claim onto a lane that already runs one keeps the
+  // stronger factor and the longer time left, instead of adding a modifier of its own.
+  // Overlapping claims used to MULTIPLY: a backlog tapped through at once (or the
+  // Objective Autopilot catching up, three a tick) ran a lane at ×10⁵ and more, and on
+  // a real generation-5 save the next Ship banked ~763K Legacy Weights instead of ~90 —
+  // permanent, from a "short" reward (r4 bug hunt). A lone claim, or one after the
+  // lane's boost ran out, is exactly the card's reward; nothing shortens a running one.
+  const joined = state.modifiers.filter((m) => isObjectiveBoost(m) && m.target === chosen.target && m.remainingSec > 0);
+  const factor = Math.max(chosen.factor, ...joined.map((m) => m.factor));
+  const remainingSec = joined.reduce((t, m) => Math.max(t, m.remainingSec), chosen.durationSec);
+  const mod = { id: `obj_${id}`, target: chosen.target, factor, remainingSec, label: `Objective ×${factor}`, tone: "good" as const };
   return {
     ...state,
-    // id-keyed so a (re)claim refreshes rather than duplicates.
-    modifiers: [...state.modifiers.filter((m) => m.id !== mod.id), mod],
+    // id-keyed so a (re)claim refreshes rather than duplicates; the lane's running
+    // boost is folded into it.
+    modifiers: [...state.modifiers.filter((m) => m.id !== mod.id && !joined.includes(m)), mod],
     objectives: { completed: [...state.objectives.completed, id] },
   };
 }
