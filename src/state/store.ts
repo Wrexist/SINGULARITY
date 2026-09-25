@@ -530,11 +530,19 @@ export const useGame = create<GameStore>((set, get) => ({
         earned.push({ key: noticeKey, message, tone: "good", kind });
       };
 
+      // Several can land on one tick — a first launch at the frontier is "Hello, World"
+      // and "Market Leader" at once — and each pays Money, so name them all (one notice,
+      // like the achievements below) instead of the first alone.
       const before = new Set(s.game.products.milestones);
-      const newMs = game.products.milestones.find((id) => !before.has(id));
-      if (newMs) {
-        const def = PRODUCT_MILESTONES.find((m) => m.id === newMs);
-        if (def) pushNotice(`${def.label} — ${def.desc} (+$${def.reward.toLocaleString()})`, "milestone");
+      const newMs = PRODUCT_MILESTONES.filter((m) => !before.has(m.id) && game.products.milestones.includes(m.id));
+      if (newMs.length === 1) {
+        const def = newMs[0]!;
+        pushNotice(`${def.label} — ${def.desc} (+$${def.reward.toLocaleString()})`, "milestone");
+      } else if (newMs.length > 1) {
+        const paid = newMs.reduce((sum, m) => sum + m.reward, 0);
+        const named = newMs.slice(0, 3).map((m) => m.label).join(", ");
+        const more = newMs.length > 3 ? ` and ${newMs.length - 3} more` : "";
+        pushNotice(`${newMs.length} milestones — ${named}${more} (+$${paid.toLocaleString()})`, "milestone");
       }
 
       // Several can finish in one tick (offline catch-up) — name one, count the rest.
