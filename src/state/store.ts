@@ -276,9 +276,22 @@ let noticeGateMs = 0;
  *  release can't collide with a saved product (ids are React keys + find() keys). */
 function seedProductKey(game: GameState): void {
   for (const p of game.products.active) {
-    const n = Number(p.id.replace(/^prod-/, ""));
-    if (Number.isFinite(n) && n > productKey) productKey = n;
+    const n = mintedIndex(p.id, "prod-");
+    if (n > productKey) productKey = n;
   }
+}
+
+/** The counter value a loaded id claims when it has the MINTED shape (`<prefix>N`, N a
+ *  plain decimal integer), else 0. Only that shape can collide with an id the store
+ *  mints, and N is bounded so `+= 1` still moves the counter: a loaded
+ *  "emp-9007199254740993" (past 2^53) used to seed a counter that +1 no longer changed,
+ *  so every later hire got the SAME id — assigning, training or firing one hit all of
+ *  them, and the loader's keep-first dedupe deleted the rest (signing bonuses paid) on
+ *  the next launch. Saves are hostile input. */
+function mintedIndex(id: string, prefix: string): number {
+  if (!id.startsWith(prefix)) return 0;
+  const digits = id.slice(prefix.length);
+  return /^\d{1,15}$/.test(digits) ? Number(digits) : 0;
 }
 
 /**
@@ -317,8 +330,8 @@ function persistedGame(game: GameState, savingFor: { prevFocus: number } | null)
 let empKey = 0;
 function seedEmpKey(game: GameState): void {
   for (const e of game.employees) {
-    const n = Number(e.id.replace(/^emp-/, ""));
-    if (Number.isFinite(n) && n > empKey) empKey = n;
+    const n = mintedIndex(e.id, "emp-");
+    if (n > empKey) empKey = n;
   }
 }
 
