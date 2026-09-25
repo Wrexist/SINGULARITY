@@ -354,12 +354,30 @@ function isWellFormedModifier(m: unknown): m is ActiveModifier {
     MODIFIER_TARGETS.includes(mod.target as ModifierTarget) &&
     typeof mod.factor === "number" &&
     Number.isFinite(mod.factor) &&
+    // Every buff and debuff the game grants is a positive factor; ≤ 0 would flip
+    // production negative and drain the resource banks below zero.
+    mod.factor > 0 &&
     typeof mod.remainingSec === "number" &&
     Number.isFinite(mod.remainingSec) &&
     mod.remainingSec > 0 &&
     typeof mod.label === "string" &&
     (mod.tone === "good" || mod.tone === "bad")
   );
+}
+
+/** One live modifier per id, the LAST occurrence (order otherwise kept): granting a
+ *  buff replaces any live one with its id (see grantDailyBoost, claimObjective), so a
+ *  save repeating an id is one the runtime never wrote — it would stack the factor. */
+function lastPerId<T extends { id: string }>(mods: T[]): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (let i = mods.length - 1; i >= 0; i--) {
+    const m = mods[i]!;
+    if (seen.has(m.id)) continue;
+    seen.add(m.id);
+    out.push(m);
+  }
+  return out.reverse();
 }
 
 /**
@@ -652,7 +670,7 @@ export function deserialize(json: string): GameState {
   // buffs — a claimed Objective backlog + the Daily Boost + open-source momentum
   // passes 20 in honest play, and the newest claims vanished on reload.
   const modifiers = Array.isArray(raw.modifiers)
-    ? capActiveModifiers(raw.modifiers.filter(isWellFormedModifier))
+    ? capActiveModifiers(lastPerId(raw.modifiers.filter(isWellFormedModifier)))
     : fresh.modifiers;
   const alignment =
     typeof raw.alignment === "number" && Number.isFinite(raw.alignment)

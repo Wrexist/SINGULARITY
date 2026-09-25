@@ -1,7 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { deserialize } from "./save";
+import { deserialize, serialize } from "./save";
+import { createInitialState } from "./state";
 import { tick } from "./tick";
+import { Big } from "./math/Big";
 import { productFeatures } from "./balance/products";
+import type { GameState } from "./types";
 
 /**
  * Hostile saves, round 2. A backup is text a player can paste from anywhere, so each
@@ -22,6 +25,14 @@ const product = (over: Record<string, unknown> = {}) => ({
 
 const productsOf = (active: unknown[], extra: Record<string, unknown> = {}) =>
   ({ active, drafts: [], frontier: 10, sold: 0, milestones: [], ...extra });
+
+/** A lab with racks, so a tick visibly moves every lane. */
+function runningLab(): GameState {
+  const s = createInitialState();
+  s.upgrades = { rack_basic: 10, rack_server: 2 };
+  s.resources = { compute: Big.of(1000), data: Big.of(1000), money: Big.of(1000) };
+  return s;
+}
 
 describe("product features load as the catalogue's own ids", () => {
   const known = productFeatures.map((f) => f.id);
@@ -81,5 +92,41 @@ describe("product ids that can't key a plain object", () => {
     expect(Number.isFinite(t.stats.peakMrr)).toBe(true);
     // The honest product is untouched.
     expect(t.products.active.map((p) => p.id)).toContain("prod-1");
+  });
+});
+
+describe("timed buffs load as the runtime makes them", () => {
+  const buff = { id: "evt", target: "computeMult", factor: 1.5, remainingSec: 600, label: "Buff", tone: "good" };
+
+  it("a buff with a zero or negative factor is dropped (no negative Compute)", () => {
+    // Every buff/debuff the game grants multiplies by a positive factor. A crafted
+    // factor of −1 flipped Compute production negative and drained the bank below 0.
+    const save = JSON.parse(serialize(runningLab()));
+    save.modifiers = [{ ...buff, factor: -1 }, { ...buff, id: "zero", factor: 0 }];
+    const g = deserialize(JSON.stringify(save));
+    expect(g.modifiers).toEqual([]);
+    const t = tick(g, 5_000);
+    expect(t.resources.compute.gte(0)).toBe(true);
+  });
+
+  it("the same buff id loads once, like the runtime replaces it", () => {
+    // Granting a buff replaces any live one with its id; a pasted save that repeated
+    // the Daily Boost 40 times stacked it 40 times over.
+    const save = JSON.parse(serialize(runningLab()));
+    save.modifiers = Array.from({ length: 40 }, (_, i) => ({ ...buff, remainingSec: 600 - i }));
+    const g = deserialize(JSON.stringify(save));
+    expect(g.modifiers.length).toBe(1);
+    // The newest grant (last in the list) is the one the runtime would hold.
+    expect(g.modifiers[0]!.remainingSec).toBe(561);
+  });
+
+  it("an honest buff stack is untouched", () => {
+    const s = runningLab();
+    s.modifiers = [
+      { id: "a", target: "computeMult", factor: 1.5, remainingSec: 60, label: "A", tone: "good" },
+      { id: "b", target: "dataMult", factor: 0.7, remainingSec: 90, label: "B", tone: "bad", worked: true },
+      { id: "regulator_truce", target: "moneyMult", factor: 1, remainingSec: 300, label: "Truce", tone: "bad" },
+    ];
+    expect(deserialize(serialize(s)).modifiers).toEqual(s.modifiers);
   });
 });
