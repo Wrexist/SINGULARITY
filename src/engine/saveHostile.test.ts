@@ -130,3 +130,22 @@ describe("timed buffs load as the runtime makes them", () => {
     expect(deserialize(serialize(s)).modifiers).toEqual(s.modifiers);
   });
 });
+
+describe("a corrupt frontier doesn't wipe the portfolio", () => {
+  it("keeps products, drafts and milestones when only the frontier is unreadable", () => {
+    // NaN serializes as null. The container check demanded a finite frontier and fell
+    // back to a FRESH products state — every live product, draft, sale and milestone
+    // gone — although the frontier has its own clamp a few lines later.
+    const drafts = [{ id: "draft-4", quality: 30, ships: 4 }];
+    const g = deserialize(blob({
+      products: productsOf([product({ quality: 42 })], { frontier: null, drafts, sold: 2, milestones: ["m1"] }),
+    }));
+    expect(g.products.active.map((p) => p.id)).toEqual(["prod-1"]);
+    expect(g.products.drafts).toEqual(drafts);
+    expect(g.products.sold).toBe(2);
+    expect(g.products.milestones).toEqual(["m1"]);
+    // The frontier is never below a product that launched against it, so a reset
+    // can't hand the portfolio a free competitiveness buff.
+    expect(g.products.frontier).toBeGreaterThanOrEqual(42);
+  });
+});

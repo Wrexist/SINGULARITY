@@ -263,12 +263,10 @@ function sanitizeDrafts(d: unknown): DraftModel[] {
  *  frontier) back to fresh — same per-entry policy as employees/drafts. */
 function isWellFormedProducts(p: unknown): p is ProductsState {
   const o = p as Partial<ProductsState> | null;
-  return (
-    !!o &&
-    Array.isArray(o.active) &&
-    typeof o.frontier === "number" &&
-    Number.isFinite(o.frontier)
-  );
+  // The frontier is NOT part of the shape: it has its own clamp (and fallback) at load,
+  // and demanding it here wiped every product, draft and milestone when it alone was
+  // unreadable (a NaN frontier serializes as null).
+  return !!o && Array.isArray(o.active);
 }
 
 /** Employees are untrusted; keep only well-formed people, sanitizing training.
@@ -769,6 +767,16 @@ export function deserialize(json: string): GameState {
       ? (loadedProducts as ProductsState).milestones.filter((m): m is string => typeof m === "string").slice(0, MAX_SAVED_IDS)
       : [],
   };
+  // An unreadable frontier falls back to the highest quality on record rather than the
+  // start value: every product and draft launched at (or below) the frontier of its day,
+  // and the frontier only climbs, so the real one was at least this high — the start
+  // value would hand the whole portfolio a free competitiveness buff.
+  if (!Number.isFinite(loadedProducts.frontier)) {
+    products.frontier = Math.min(
+      PROD_CAPS.frontier,
+      Math.max(PRODUCTS.frontierStart, ...products.active.map((p) => p.quality), ...products.drafts.map((d) => d.quality)),
+    );
+  }
   // Hoisted: the Rig Bay sanitizer needs the rack counts (a tier with no racks
   // can't hold a fitted part).
   const upgrades = sanitizeUpgrades(raw.upgrades);
