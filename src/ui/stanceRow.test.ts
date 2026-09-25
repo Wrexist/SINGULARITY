@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { CharterPanel } from "./CharterPanel";
+import { DoctrinePanel } from "./DoctrinePanel";
+import { chartersBalance } from "../engine/charter";
 import { createInitialState } from "../engine/state";
 import { doctrineBalance, declareStance, stanceOpen, committedSide } from "../engine/doctrine";
 import { applyNegotiationChoice } from "../engine/negotiation";
@@ -79,5 +81,38 @@ describe("the Stance row describes the lab's real alignment", () => {
     const html = render(s);
     expect(html).toContain("stance-locked-fx");
     expect(html).toContain("+3% compute");
+  });
+});
+
+describe("the Doctrine panel says when a Director owner's stance locks", () => {
+  const renderDoctrine = (game: GameState) =>
+    renderToStaticMarkup(createElement(DoctrinePanel, { game, onClaim: noop }));
+  const hintOf = (html: string, track: string) =>
+    new RegExp(`${track}(?:<span[^>]*>[^<]*</span>)*</div><p class="doctrine-track-hint">(.*?)</p>`).exec(html)?.[1] ?? null;
+
+  /** A Director owner seconds after a ship: the Director has already researched, the
+   *  stance is still open (its grace), Safety declared. */
+  function directorRun(): GameState {
+    const s = fresh();
+    s.stats.totalShips = s.prestige.ships;
+    s.stats.playtimeSec = 9_000;
+    s.shipLog = [{ mode: "deploy", era: 1, asc: false, gen: s.prestige.ships, atSec: 8_995 }];
+    s.reputation.perks = ["rep_autoresearch"];
+    s.research = ["backprop"];
+    return declareStance(s, "doomer");
+  }
+
+  it("points at the grace, not at a first research that already happened", () => {
+    const s = directorRun();
+    expect(stanceOpen(s)).toBe(true); // research exists, yet the stance is still open
+    const hint = hintOf(renderDoctrine(s), "Safety");
+    expect(hint).not.toBeNull();
+    expect(hint).not.toContain("first research");
+    expect(hint).toContain(`${chartersBalance.directorGraceSec} seconds`);
+  });
+
+  it("keeps the research hint for everyone else", () => {
+    const s = declareStance(fresh(), "doomer");
+    expect(hintOf(renderDoctrine(s), "Safety")).toContain("first research");
   });
 });

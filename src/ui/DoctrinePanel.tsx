@@ -1,6 +1,8 @@
 import type { GameState } from "../engine/types";
 import { doctrineBalance, committedSide, canClaimDoctrine, schismRevealed, schismDepth, stanceOpen } from "../engine/doctrine";
 import type { DoctrineSide } from "../engine/balance/doctrine";
+import { chartersBalance } from "../engine/charter";
+import { autoResearchEnabled } from "../engine/reputation";
 
 interface Props {
   game: GameState;
@@ -18,6 +20,13 @@ const SIDE_HINT: Record<DoctrineSide, string> = {
 /** Shown on your declared side while the run's stance is still open — claims wait
  *  for it to lock, so a run can't be declared, claimed, flipped and claimed again. */
 const LOCK_HINT = "Claim once your first research locks your stance in.";
+/** A Research Director owner's window is time-boxed instead: the Director's own
+ *  purchases don't lock it (charter.ts `startWindowOpen`), so "first research" pointed
+ *  at a purchase that had already happened while the Claim button stayed dead. */
+const lockHint = (game: GameState) =>
+  autoResearchEnabled(game)
+    ? `Claim once your stance locks in, ${chartersBalance.directorGraceSec} seconds into the run.`
+    : LOCK_HINT;
 
 /**
  * Doctrine Consequences — your STANCE as a build. Declare Safety or Acceleration at
@@ -40,7 +49,7 @@ export function DoctrinePanel({ game, onClaim }: Props) {
   const trackHint = (s: DoctrineSide): string | null => {
     if (doctrineBalance.perks.every((p) => p.side !== s || owned.has(p.id))) return null;
     const here = s === "schism" ? side === null : side === s;
-    return here ? (open ? LOCK_HINT : null) : SIDE_HINT[s];
+    return here ? (open ? lockHint(game) : null) : SIDE_HINT[s];
   };
 
   const track = (s: DoctrineSide) => (
