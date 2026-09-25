@@ -6,6 +6,7 @@ import { researchTree } from "./researchTree";
 import { canPrestige, nextRunMultiplier } from "./prestige";
 import { hireCost } from "./employees";
 import { derive, computeBankReach, runsPerSec, FIRST_SHIP_WORTH_IT } from "./derive";
+import { labReveal } from "./reveal";
 import type { Derived, GameState } from "./types";
 
 /** The first research node (no prereqs) — the new player's first capability buy. */
@@ -38,9 +39,9 @@ export interface AdvisorItem {
   priority: number;
 }
 
-/** True once the Employees tab is available (mirrors App's showStaff gate). */
+/** True once the Employees tab is available (the same gate App draws it by). */
 function staffUnlocked(state: GameState): boolean {
-  return balance.staff.enabled && state.research.length >= balance.staff.revealAtResearch;
+  return labReveal(state).staff;
 }
 
 /**

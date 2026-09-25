@@ -41,6 +41,7 @@ import { burst as fxBurst, floatText as fxFloat, FX_PALETTES } from "./fx";
 import { ProductLaunch } from "./ProductLaunch";
 import { productsUnlocked, typeDef, retirePayout } from "../engine/products";
 import { advisorItems, type AdvisorTab, type LabSection } from "../engine/advisor";
+import { labReveal } from "../engine/reveal";
 import { nextGoal } from "../engine/goals";
 import { marketLeaderboard, playerMarketRank } from "../engine/market";
 import { FlaskIcon, BoxIcon, TeamIcon, GearIcon, GiftIcon, TargetIcon } from "./Icons";
@@ -359,10 +360,13 @@ export function App() {
 
   // Progressive disclosure (reveal depth in waves — GDD): Research appears after
   // your first payout (you need Data to research); Prestige once you're on the path.
-  const showResearch = game.resources.data.gt(0) || game.research.length > 0;
-  const showPrestige = game.research.length > 0;
-  const showMarket = game.research.length > 0;
-  const showStaff = balance.staff.enabled && game.research.length >= balance.staff.revealAtResearch;
+  // A lab that has shipped keeps them all (see labReveal), and the advisor reads the
+  // same gates, so a chip never points at a tab that isn't drawn.
+  const reveal = labReveal(game);
+  const showResearch = reveal.research;
+  const showPrestige = reveal.prestige;
+  const showMarket = reveal.market;
+  const showStaff = reveal.staff;
   const showProducts = productsUnlocked(game);
   const [tab, setTab] = useState<"lab" | "products" | "employees" | "goals">("lab");
   // GOALS remembers which horizon you were reading, like the Lab remembers its section.
