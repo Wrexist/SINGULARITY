@@ -17,6 +17,7 @@ export function EasedNumber({ value, format, smoothing = 0.18 }: { value: number
   formatRef.current = format;
   const [, force] = useState(0);
   const lastStr = useRef(format(value));
+  const kick = useRef<() => void>(() => {});
 
   useEffect(() => {
     if (reduced) {
@@ -37,11 +38,16 @@ export function EasedNumber({ value, format, smoothing = 0.18 }: { value: number
         lastStr.current = s;
         force((n) => n + 1);
       }
-      raf = requestAnimationFrame(step);
+      // Settled: stop the loop instead of waking every frame (battery). A new
+      // value restarts it through `kick` below.
+      raf = next === t ? 0 : requestAnimationFrame(step);
     };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
+    kick.current = () => { if (!raf) raf = requestAnimationFrame(step); };
+    kick.current();
+    return () => { cancelAnimationFrame(raf); raf = 0; kick.current = () => {}; };
   }, [smoothing, reduced]);
+  // Any change of value wakes a settled loop.
+  useEffect(() => { kick.current(); }, [value]);
 
   const shown = reduced ? value : displayRef.current;
   return <>{format(shown)}</>;

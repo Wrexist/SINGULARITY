@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { useReducedMotion } from "./motion";
 
 // The satirical voice (design spine §5) — pure flavor, zero gameplay effect.
@@ -94,7 +94,7 @@ function shuffledOrder(): number[] {
   return idx;
 }
 
-export function Tagline() {
+function TaglineImpl() {
   const reduced = useReducedMotion();
   const [order] = useState(shuffledOrder);
   const [n, setN] = useState(0);
@@ -115,3 +115,7 @@ export function Tagline() {
     </span>
   );
 }
+
+/** Memoised: App re-renders at 10Hz, and this component's props are stable (it reads
+ *  the store itself where it needs live state), so those renders were pure waste. */
+export const Tagline = memo(TaglineImpl);

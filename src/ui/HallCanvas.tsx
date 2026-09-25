@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { useGame } from "../state/store";
 import { useSettings } from "./settings";
 import { reduceMotionNow } from "./motion";
@@ -29,7 +29,7 @@ const BUZZ_WINDOW_SEC = PRODUCTS_BAL.buzzDurationSec;
  * the room. Buying a rack manifests it here — the load-bearing dopamine (GDD §5).
  * DPR-aware, pauses when the tab is hidden, and honors reduced-motion.
  */
-export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
+function HallCanvasImpl({ onExpand }: { onExpand: (id: string) => void }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // Keep the latest callback reachable from the (mount-only) pointer handler.
@@ -297,11 +297,25 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       if (raf) cancelAnimationFrame(raf);
       raf = 0;
     };
-    start();
+    // Draw only while the hall can actually be seen: the tab is visible AND the card
+    // is on screen. A late-game floor is ~1,400 canvas calls a frame, and it used to
+    // keep drawing while the player scrolled the upgrade list below it — measured at
+    // 4x CPU throttle, pausing it off-screen took the main thread from ~790 to ~330
+    // ms/s and long tasks from ~79 to ~1 per 10s. (2026-09 performance audit.)
+    let pageVisible = document.visibilityState !== "hidden";
+    let onScreen = true;
+    const sync = () => (pageVisible && onScreen ? start() : stop());
+    sync();
 
-    // Pause the loop when the tab is hidden (battery on mobile).
-    const onVis = () => (document.visibilityState === "hidden" ? stop() : start());
+    const onVis = () => { pageVisible = document.visibilityState !== "hidden"; sync(); };
     document.addEventListener("visibilitychange", onVis);
+    const io = typeof IntersectionObserver === "function"
+      ? new IntersectionObserver((entries) => {
+          const e = entries[entries.length - 1];
+          if (e) { onScreen = e.isIntersecting; sync(); }
+        })
+      : null;
+    io?.observe(wrap);
 
     // Tap a side marker to buy that expansion (the in-hall affordance).
     const markerAt = (ev: PointerEvent) => {
@@ -407,6 +421,7 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       stop();
       ro.disconnect();
       document.removeEventListener("visibilitychange", onVis);
+      io?.disconnect();
       canvas.removeEventListener("pointerdown", onDown);
       canvas.removeEventListener("pointermove", onMove);
     };
@@ -487,3 +502,7 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
     </div>
   );
 }
+
+/** Memoised: App re-renders at 10Hz, and this component's props are stable (it reads
+ *  the store itself where it needs live state), so those renders were pure waste. */
+export const HallCanvas = memo(HallCanvasImpl);

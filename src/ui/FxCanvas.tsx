@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 import { _fxState, _onFxWake } from "./fx";
 
 /**
@@ -7,7 +7,7 @@ import { _fxState, _onFxWake } from "./fx";
  * draw (zero battery cost at idle) and is woken by fx.burst()/floatText(). Honors
  * reduced-motion by skipping the draw entirely.
  */
-export function FxCanvas({ reducedMotion }: { reducedMotion: boolean }) {
+function FxCanvasImpl({ reducedMotion }: { reducedMotion: boolean }) {
   const ref = useRef<HTMLCanvasElement | null>(null);
   const running = useRef(false);
   const last = useRef(0);
@@ -86,3 +86,7 @@ export function FxCanvas({ reducedMotion }: { reducedMotion: boolean }) {
   if (reducedMotion) return null;
   return <canvas ref={ref} className="fx-canvas" aria-hidden="true" />;
 }
+
+/** Memoised: App re-renders at 10Hz, and this component's props are stable (it reads
+ *  the store itself where it needs live state), so those renders were pure waste. */
+export const FxCanvas = memo(FxCanvasImpl);

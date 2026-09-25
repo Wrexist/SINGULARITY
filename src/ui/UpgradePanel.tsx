@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { balance } from "../engine/balance/config";
 import { upgradeCost, canBuyUpgrade, planBulkUpgrade } from "../engine/actions";
 import { recommendedUpgrade } from "../engine/recommend";
@@ -121,7 +121,15 @@ export function UpgradePanel({ game, derived, onBuy, onFoundWing }: Props) {
   // Recommended next buy: the best-VALUE upgrade you can afford (most marginal
   // benefit per cost), NOT merely the cheapest — so it never points you at a
   // strictly-worse rack. Pure/tested in the engine. Null if nothing's buyable.
-  const heroId = recommendedUpgrade(game);
+  //
+  // Memoised: it re-derives the economy once per candidate (13-16 derive() calls a
+  // tick on a late save, ~20% of all React render work at 4x CPU throttle). The
+  // answer only moves when what you own or can afford changes, so recompute on
+  // those, plus a 2s heartbeat for slow drifts (modifiers, heat, power).
+  const affordKey = balance.upgrades.filter((u) => canBuyUpgrade(game, u.id)).map((u) => u.id).join(",");
+  const beat = Math.floor(game.stats.playtimeSec / 2);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const heroId = useMemo(() => recommendedUpgrade(game), [game.upgrades, game.research, affordKey, beat]);
   const hero = heroId ? (defs.find((d) => d.id === heroId) ?? null) : null;
 
   const rest = defs.filter((def) => def.id !== hero?.id);

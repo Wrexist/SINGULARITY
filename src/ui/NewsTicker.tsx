@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { useGame } from "../state/store";
 import { useReducedMotion } from "./motion";
 import { buildNews } from "../engine/news";
@@ -31,7 +31,7 @@ export interface Breaking {
 /** How long a BREAKING line holds the wire before the feed resumes. */
 const BREAKING_MS = 14000;
 
-export function NewsTicker({ breaking = null }: { breaking?: Breaking | null }) {
+function NewsTickerImpl({ breaking = null }: { breaking?: Breaking | null }) {
   const reduced = useReducedMotion();
   // Coarse signature: era · ships · faction lean · market rank. The ticker only
   // reshuffles (and re-renders) when one of these changes — never on the 10Hz trickle.
@@ -70,3 +70,7 @@ export function NewsTicker({ breaking = null }: { breaking?: Breaking | null }) 
     </div>
   );
 }
+
+/** Memoised: App re-renders at 10Hz, and this component's props are stable (it reads
+ *  the store itself where it needs live state), so those renders were pure waste. */
+export const NewsTicker = memo(NewsTickerImpl);

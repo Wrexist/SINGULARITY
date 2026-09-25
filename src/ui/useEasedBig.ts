@@ -17,6 +17,7 @@ export function useEasedBig(target: Big, smoothing = 0.16): Big {
   const displayRef = useRef(target);
   const [, force] = useState(0);
   const lastStr = useRef(target.format());
+  const kick = useRef<() => void>(() => {});
 
   useEffect(() => {
     if (reduced) {
@@ -42,11 +43,16 @@ export function useEasedBig(target: Big, smoothing = 0.16): Big {
         lastStr.current = s;
         force((n) => n + 1);
       }
-      raf = requestAnimationFrame(step);
+      // Settled: stop the loop instead of waking every frame (battery). A new
+      // target restarts it through `kick` below.
+      raf = next.eq(t) ? 0 : requestAnimationFrame(step);
     };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
+    kick.current = () => { if (!raf) raf = requestAnimationFrame(step); };
+    kick.current();
+    return () => { cancelAnimationFrame(raf); raf = 0; kick.current = () => {}; };
   }, [smoothing, reduced]);
+  // Any change of target wakes a settled loop.
+  useEffect(() => { kick.current(); }, [target]);
 
   return reduced ? target : displayRef.current;
 }
