@@ -18,7 +18,10 @@ export function ToneIcon({ tone }: { tone: ToastData["tone"] }) {
 
 const EXIT_MS = 280;
 
-function Toast({ toast, onDone }: { toast: ToastData; onDone: (id: number) => void }) {
+/** `paused`: the toast is covered (a full-screen moment or a sheet is up, and toasts
+ *  sit under every backdrop), so its life does not run yet. It gets its whole life
+ *  once the stage clears, instead of timing out unread behind the moment. */
+export function Toast({ toast, onDone, paused = false }: { toast: ToastData; onDone: (id: number) => void; paused?: boolean }) {
   const lasting = toast.tone === "bad" || toast.tone === "good";
   const [exiting, setExiting] = useState(false);
   // Keep onDone in a ref so the dismiss timer depends ONLY on the toast id.
@@ -35,9 +38,10 @@ function Toast({ toast, onDone }: { toast: ToastData; onDone: (id: number) => vo
     window.setTimeout(() => onDoneRef.current(toast.id), EXIT_MS);
   };
   useEffect(() => {
+    if (paused) return;
     const t = window.setTimeout(() => dismiss.current(), lasting ? 4200 : 2800);
     return () => window.clearTimeout(t);
-  }, [toast.id, lasting]);
+  }, [toast.id, lasting, paused]);
 
   return (
     <div
@@ -51,11 +55,11 @@ function Toast({ toast, onDone }: { toast: ToastData; onDone: (id: number) => vo
 }
 
 /** Transient unlock/availability notifications (anticipation + feedback, §7). */
-export function ToastStack({ toasts, onDone }: { toasts: ToastData[]; onDone: (id: number) => void }) {
+export function ToastStack({ toasts, onDone, paused = false }: { toasts: ToastData[]; onDone: (id: number) => void; paused?: boolean }) {
   return (
     <div className="toast-stack" aria-live="polite">
       {toasts.map((t) => (
-        <Toast key={t.id} toast={t} onDone={onDone} />
+        <Toast key={t.id} toast={t} onDone={onDone} paused={paused} />
       ))}
     </div>
   );

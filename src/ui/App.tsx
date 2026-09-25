@@ -1305,7 +1305,8 @@ export function App() {
       {/* Onboarding waits for a clear stage: any full-screen moment (offline,
           launch, celebration…) plays first — never two overlays stacked. */}
       {!onboarded && moment === null && <Onboarding onDone={completeOnboarding} />}
-      <ToastStack toasts={toasts} onDone={dropToast} />
+      {/* Covered toasts keep their life for when the stage clears (see Toast). */}
+      <ToastStack toasts={toasts} onDone={dropToast} paused={stageBusy} />
       <FxCanvas reducedMotion={reducedMotion} />
       {flash > 0 && !reducedMotion && <div key={flash} className="screen-flash" aria-hidden="true" onAnimationEnd={() => setFlash(0)} />}
     </div>
