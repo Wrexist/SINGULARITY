@@ -13,7 +13,9 @@ import type { GameState } from "./types";
 export { objectiveRewardLabel };
 const BY_ID = new Map(O.pool.map((o) => [o.id, o]));
 
-/** Current value of an objective's tracked metric (read straight from state/stats). */
+/** Current value of an objective's tracked metric (read straight from state/stats).
+ *  A claimed objective is recorded in `objectives.completed` and leaves the board, so a
+ *  CURRENT-count metric dropping later (a product sold, a person fired) never un-claims it. */
 export function objectiveMetric(state: GameState, metric: ObjectiveMetric): number {
   switch (metric) {
     case "lifetimeMoney": return state.lifetimeMoney.toNumber();
@@ -22,7 +24,11 @@ export function objectiveMetric(state: GameState, metric: ObjectiveMetric): numb
     case "racks": return totalRacks(state);
     case "ships": return state.prestige.ships;
     case "products": return state.stats.productsLaunched;
+    // "Run N live products" / "Employ N specialists" promise what the player has NOW —
+    // the lifetime counters let a launch-sell-relaunch or a hire-and-fire complete them.
+    case "liveProducts": return state.products.active.length;
     case "employees": return state.stats.employeesHired;
+    case "staff": return state.employees.length;
     case "mau": return state.stats.peakMau;
     case "mrr": return state.stats.peakMrr;
     case "events": return state.stats.worldEventsResolved;
