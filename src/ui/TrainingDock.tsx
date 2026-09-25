@@ -1,6 +1,6 @@
 import type { Derived, GameState } from "../engine/types";
 import { fmt, fmtMoney } from "./format";
-import { trainingIntensity, runYieldAt, computeBankCeiling } from "../engine/derive";
+import { trainingIntensity, runYieldAt, computeBankReach } from "../engine/derive";
 import { useEffect, useRef } from "react";
 import { burst, floatText } from "./fx";
 import { RepeatIcon } from "./Icons";
@@ -51,8 +51,9 @@ export function TrainingDock({ game, derived, onStart, onClaim, onSetFocus }: Pr
   const focus = game.computeFocus;
   const runSizePct = Math.round(trainingIntensity(focus) * 100);
   // "banks up to" only while a ceiling really binds: once runs last longer than their
-  // Compute takes to produce, the bank climbs past it on its own (see derive.ts).
-  const ceiling = computeBankCeiling(game, derived);
+  // Compute takes to produce, the bank climbs past it on its own (see derive.ts). The
+  // figure is what the bank really reaches, the same line the research walls use.
+  const ceiling = computeBankReach(game, derived);
   const focusLabel =
     focus === 0
       ? `Holding — light ${runSizePct}% runs, Compute banks freely`

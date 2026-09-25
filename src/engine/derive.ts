@@ -453,6 +453,24 @@ export function computeBankCeiling(state: GameState, d: Derived): Big | null {
   return d.runComputeCost.div(state.computeFocus);
 }
 
+/** Margin between the bank's ceiling and what it can be counted on to show. Auto-train
+ *  fires in the same tick the bank reaches runCost / focus, so no frame ever shows the
+ *  bank AT its ceiling: at full intensity a 10Hz frame tops out ~5% under it. */
+const BANK_HEADROOM = 1.05;
+
+/**
+ * The most Compute the bank can be counted on to reach while auto-train runs: the
+ * ceiling less BANK_HEADROOM. A research node costing more is walled at this intensity.
+ * Judged against the ceiling itself, a node in that last ~5% read "~1s" with a full ring
+ * (often as "Recommended next") yet never became affordable, and since it was not
+ * "walled" the advisor stayed silent and its card could not be tapped to save for it.
+ * Null exactly when computeBankCeiling is (the bank is unbounded). Pure; display only.
+ */
+export function computeBankReach(state: GameState, d: Derived): Big | null {
+  const ceiling = computeBankCeiling(state, d);
+  return ceiling === null ? null : ceiling.div(BANK_HEADROOM);
+}
+
 /**
  * Training runs per second the current settings sustain: one per run duration, unless
  * Compute production can't fund them that fast (compute-bound: one per runCost /
@@ -501,7 +519,7 @@ export function computeBankEtaSecs(state: GameState, d: Derived, have: Big, targ
  */
 export function focusToBank(state: GameState, d: Derived, computeCost: Big): number {
   const current = Math.max(0, Math.min(1, state.computeFocus));
-  const need = computeCost.mul(1.05);
+  const need = computeCost.mul(BANK_HEADROOM); // i.e. within computeBankReach at f
   for (let step = Math.round(current * 20); step >= 1; step--) {
     const f = step / 20;
     const runCost = runCostAt(d.computePerSec, f);

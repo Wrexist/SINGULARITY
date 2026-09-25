@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { balance, type ResearchDef } from "../engine/balance/config";
 import { researchTree, unlockedEpochs, isEpochNode } from "../engine/researchTree";
 import { canBuyResearch, researchAvailable, researchLockedOut, researchCost } from "../engine/actions";
-import { computeBankCeiling, computeBankEtaSecs } from "../engine/derive";
+import { computeBankReach, computeBankEtaSecs } from "../engine/derive";
 import { canBuyPreprint, preprintCost, preprintTitle } from "../engine/preprints";
 import { Big } from "../engine/math/Big";
 import type { Derived, GameState } from "../engine/types";
@@ -56,20 +56,20 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint, saving
   // tree now also carries epoch nodes, which are typed as ResearchDef.
   type Def = ResearchDef;
   const epochBranches = unlockedEpochs(game);
-  // Compute the auto-train bank ceiling once: any node costing more Compute than this is
+  // The most the auto-train bank reaches, once: any node costing more Compute than this is
   // unreachable at the current intensity, so a "~2m" ETA would be a lie (see derive.ts).
-  const ceiling = computeBankCeiling(game, derived);
-  const computeWalled = (computeCost: Big) => ceiling !== null && computeCost.gt(ceiling);
+  const bankReach = computeBankReach(game, derived);
+  const computeWalled = (computeCost: Big) => bankReach !== null && computeCost.gt(bankReach);
   const clamp01 = (x: number) => (Number.isFinite(x) ? Math.max(0, Math.min(1, x)) : 0);
   // Progress toward affording a node (0..1) = the min across its costed resources, so the
-  // ring reflects the true bottleneck. Compute uses the auto-train ceiling (the bank's
+  // ring reflects the true bottleneck. Compute uses the auto-train bank's reach (its
   // stable maximum) rather than the live balance, which oscillates every run cycle — that
   // keeps the ring from flickering. Data uses the live balance (it accrues steadily).
   const progressFor = (def: Def): number => {
     const c = researchCost(game, def);
     const ratios: number[] = [];
     if (c.compute.gt(Big.ZERO)) {
-      const reach = ceiling !== null ? ceiling.max(game.resources.compute) : game.resources.compute;
+      const reach = bankReach !== null ? bankReach.max(game.resources.compute) : game.resources.compute;
       ratios.push(clamp01(reach.div(c.compute).toNumber()));
     }
     if (c.data.gt(Big.ZERO)) ratios.push(clamp01(game.resources.data.div(c.data).toNumber()));
@@ -239,7 +239,7 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint, saving
         const c = preprintCost(game);
         const canBuy = canBuyPreprint(game);
         const preprintWalled = !canBuy && computeWalled(c.compute);
-        const preprintReach = ceiling !== null ? ceiling.max(game.resources.compute) : game.resources.compute;
+        const preprintReach = bankReach !== null ? bankReach.max(game.resources.compute) : game.resources.compute;
         const preprintPct = canBuy ? 1 : Math.min(
           c.compute.gt(Big.ZERO) ? clamp01(preprintReach.div(c.compute).toNumber()) : 1,
           c.data.gt(Big.ZERO) ? clamp01(game.resources.data.div(c.data).toNumber()) : 1,

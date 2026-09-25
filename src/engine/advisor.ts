@@ -5,7 +5,7 @@ import { canBuyResearch, researchStalled, researchAvailable, researchCost } from
 import { researchTree } from "./researchTree";
 import { canPrestige, nextRunMultiplier } from "./prestige";
 import { hireCost } from "./employees";
-import { derive, computeBankCeiling, FIRST_SHIP_WORTH_IT } from "./derive";
+import { derive, computeBankReach, FIRST_SHIP_WORTH_IT } from "./derive";
 import type { Derived, GameState } from "./types";
 
 /** The first research node (no prereqs) — the new player's first capability buy. */
@@ -66,11 +66,11 @@ export function advisorItems(state: GameState, precomputed?: Derived): AdvisorIt
     // intensity just enough ("save for this"). If every walled node is ALSO short on
     // Data, a pin can't help (holding training stops the Data income), so point at
     // the slider instead.
-    const ceiling = computeBankCeiling(state, derived);
-    const savable = ceiling !== null && researchTree(state).some((def) => {
+    const reach = computeBankReach(state, derived);
+    const savable = reach !== null && researchTree(state).some((def) => {
       if (!researchAvailable(state, def.id)) return false;
       const c = researchCost(state, def);
-      return c.compute.gt(ceiling) && state.resources.data.gte(c.data);
+      return c.compute.gt(reach) && state.resources.data.gte(c.data);
     });
     items.push(savable
       ? { tab: "lab", section: "research", text: "Research out of reach — tap a node to save for it", priority: 66 }

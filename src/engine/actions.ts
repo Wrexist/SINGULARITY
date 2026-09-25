@@ -8,7 +8,7 @@ import {
   type WorldEvent,
   type WorldEventEffect,
 } from "./balance/config";
-import { derive, computeBankCeiling, runYieldAt } from "./derive";
+import { derive, computeBankReach, runYieldAt } from "./derive";
 import { ALL_RESEARCH, researchTree, epochUnlocked } from "./researchTree";
 import { alignmentHeatMult } from "./alignment";
 import { suspicionEventMult, regulatorIsNamed, regulatorState, clampSuspicion } from "./regulator";
@@ -280,7 +280,7 @@ export function canBuyResearch(state: GameState, id: string): boolean {
  * True when auto-train's Compute ceiling has STALLED research: training is draining the
  * bank (auto-train on, intensity > 0), there IS an available node to chase, yet none is
  * affordable and every available node's Compute cost exceeds what the bank can hold at
- * this intensity (see `computeBankCeiling`). In that state a `cost / rate` ETA lies — the
+ * this intensity (see `computeBankReach`). In that state a `cost / rate` ETA lies — the
  * node is unreachable by waiting — so the UI points the player at the real fix: ease the
  * training-intensity slider (which raises the ceiling) or grow Compute production. Nodes
  * blocked only on Data (Compute fits under the ceiling) are reachable by waiting, so they
@@ -288,15 +288,15 @@ export function canBuyResearch(state: GameState, id: string): boolean {
  * default early run never trips it before the mechanic exists.
  */
 export function researchStalled(state: GameState, d: Derived): boolean {
-  const ceiling = computeBankCeiling(state, d);
-  if (ceiling === null) return false; // unbounded bank (auto-train off / focus 0 / duration-bound runs) → never stalled
+  const reach = computeBankReach(state, d);
+  if (reach === null) return false; // unbounded bank (auto-train off / focus 0 / duration-bound runs) → never stalled
   const avail = researchTree(state).filter((def) => researchAvailable(state, def.id));
   if (avail.length === 0) return false; // tree done / next wave locked on prereqs → not a stall
   let anyWalled = false;
   for (const def of avail) {
     if (canBuyResearch(state, def.id)) return false; // something affordable right now → not stalled
     const cost = researchCost(state, def);
-    if (!cost.compute.gt(ceiling)) return false; // reachable by waiting (Compute fits) → not stalled
+    if (!cost.compute.gt(reach)) return false; // reachable by waiting (Compute fits) → not stalled
     anyWalled = true;
   }
   return anyWalled;
