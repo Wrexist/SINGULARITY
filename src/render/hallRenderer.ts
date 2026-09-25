@@ -945,6 +945,125 @@ function drawFloor(ctx: CanvasRenderingContext2D, L: Layout, era: number): void 
   }
 }
 
+/**
+ * A rack's STATIC body: floor shadow, the three shaded faces, the unit separator
+ * lines and the five edge highlights. Everything here depends only on tier,
+ * density, skin and tile size, never on time, so it can be rendered once into a
+ * sprite and blitted (see rackSprite). Nothing in the live layer drawn after it
+ * overlaps these strokes except the tiny-rack LED dot, which is emissive and
+ * reads correctly on top.
+ */
+function drawRackBody(
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  sx: number, sy: number, tileW: number, tileH: number,
+  tier: number, density: number, scale: number, skin?: string,
+): void {
+  const c = ctx as CanvasRenderingContext2D;
+  const base = skinTint(tierBase(tier), skin);
+  const hw = (tileW / 2) * 0.64 * scale;
+  const hh = (tileH / 2) * 0.64 * scale;
+  const ph = tileH * (1.1 + tier * 0.5) * (0.72 + 0.28 * density) * scale;
+  const detail = hw > 8.5;
+  const bRight: Pt = { x: sx + hw, y: sy };
+  const bBottom: Pt = { x: sx, y: sy + hh };
+  const bLeft: Pt = { x: sx - hw, y: sy };
+  const tTop: Pt = { x: sx, y: sy - hh - ph };
+  const tRight: Pt = { x: sx + hw, y: sy - ph };
+  const tBottom: Pt = { x: sx, y: sy + hh - ph };
+  const tLeft: Pt = { x: sx - hw, y: sy - ph };
+
+  c.fillStyle = "rgba(0,0,0,0.30)";
+  c.beginPath();
+  c.ellipse(sx, sy + hh * 0.32, hw * 1.05, hh * 1.0, 0, 0, Math.PI * 2);
+  c.fill();
+
+  if (detail) {
+    gradFace(c, bLeft, bBottom, ph, shade(base, 0.92), shade(base, 0.5));
+    gradFace(c, bBottom, bRight, ph, shade(base, 0.64), shade(base, 0.34));
+    const topG = c.createLinearGradient(tTop.x, tTop.y, tBottom.x, tBottom.y);
+    topG.addColorStop(0, rgb(shade(base, 1.42)));
+    topG.addColorStop(1, rgb(shade(base, 1.08)));
+    poly(c, [tLeft, tTop, tRight, tBottom], topG);
+    const rfp = (u: number, v: number): Pt => ({
+      x: bBottom.x + (bRight.x - bBottom.x) * u,
+      y: bBottom.y + (bRight.y - bBottom.y) * u - v * ph,
+    });
+    const units = clamp(3 + tier * 2 + Math.round(density * 2), 3, 9);
+    for (let r = 0; r < units; r++) stroke(c, rfp(0.06, r / units), rfp(0.94, r / units), "rgba(0,0,0,0.22)", 1);
+  } else {
+    poly(c, [bLeft, bBottom, { x: bBottom.x, y: bBottom.y - ph }, { x: bLeft.x, y: bLeft.y - ph }], rgb(shade(base, 0.7)));
+    poly(c, [bBottom, bRight, { x: bRight.x, y: bRight.y - ph }, { x: bBottom.x, y: bBottom.y - ph }], rgb(shade(base, 0.48)));
+    poly(c, [tLeft, tTop, tRight, tBottom], rgb(shade(base, 1.25)));
+  }
+
+  stroke(c, tLeft, tTop, "rgba(255,255,255,0.28)", 1);
+  stroke(c, tTop, tRight, "rgba(255,255,255,0.18)", 1);
+  stroke(c, tLeft, tBottom, rgba(shade(base, 1.7), 0.5), 1);
+  stroke(c, tRight, tBottom, rgba(shade(base, 1.3), 0.4), 1);
+  stroke(c, bBottom, tBottom, rgba(shade(base, 1.4), 0.35), 1);
+}
+
+// ---- Rack body sprites (2026-09 performance audit) --------------------------
+// A late floor draws 100+ racks a frame; their bodies were ~11 path fills and three
+// fresh gradients EACH, every frame, for pixels that never change. Every rack in a
+// frame shares one density, so there are only a handful of distinct bodies: render
+// each once into an offscreen canvas and blit it. The blit lands on whole device
+// pixels (the sub-pixel phase is baked into the sprite, quantised to 1/4 px), so
+// there is no resampling blur.
+type SpriteCanvas = HTMLCanvasElement | OffscreenCanvas;
+const rackSprites = new Map<string, { img: SpriteCanvas; ox: number; oy: number }>();
+const SPRITE_CAP = 400;
+
+function makeCanvas(w: number, h: number): SpriteCanvas | null {
+  if (typeof OffscreenCanvas === "function") return new OffscreenCanvas(w, h);
+  if (typeof document !== "undefined") {
+    const cv = document.createElement("canvas");
+    cv.width = w; cv.height = h;
+    return cv;
+  }
+  return null;
+}
+
+/** Blit the cached body at (sx, sy). Returns false when it can't (no canvas support,
+ *  a non-uniform transform) so the caller draws it directly instead. */
+function blitRackBody(
+  ctx: CanvasRenderingContext2D, sx: number, sy: number, tileW: number, tileH: number,
+  tier: number, density: number, skin?: string,
+): boolean {
+  if (typeof ctx.getTransform !== "function") return false;
+  const m = ctx.getTransform();
+  if (m.b !== 0 || m.c !== 0 || m.a !== m.d || m.a <= 0) return false;
+  const k = m.a;
+  const dx = sx * k + m.e, dy = sy * k + m.f; // rack centre in device pixels
+  const fx = Math.round((dx - Math.floor(dx)) * 4) / 4;
+  const fy = Math.round((dy - Math.floor(dy)) * 4) / 4;
+  const key = `${tier}|${density}|${skin ?? ""}|${tileW}|${tileH}|${k}|${fx}|${fy}`;
+  let spr = rackSprites.get(key);
+  if (!spr) {
+    const hw = (tileW / 2) * 0.64, hh = (tileH / 2) * 0.64;
+    const ph = tileH * (1.1 + tier * 0.5) * (0.72 + 0.28 * density);
+    // Body bounds around the centre (css px), plus a margin for stroke antialiasing.
+    const left = hw * 1.05 + 2, right = hw * 1.05 + 2;
+    const top = hh + ph + 2, bottom = hh * 1.32 + 2;
+    const ox = Math.ceil(left * k) + fx; // centre inside the sprite, device px
+    const oy = Math.ceil(top * k) + fy;
+    const w = Math.ceil(ox + right * k) + 1, h = Math.ceil(oy + bottom * k) + 1;
+    const img = makeCanvas(w, h);
+    const sctx = img?.getContext("2d") as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null | undefined;
+    if (!img || !sctx) return false;
+    sctx.setTransform(k, 0, 0, k, ox, oy);
+    drawRackBody(sctx, 0, 0, tileW, tileH, tier, density, 1, skin);
+    if (rackSprites.size >= SPRITE_CAP) rackSprites.clear();
+    spr = { img, ox, oy };
+    rackSprites.set(key, spr);
+  }
+  // Integer device-pixel destination, expressed back in css space.
+  const destX = (Math.floor(dx) + fx - spr.ox - m.e) / k;
+  const destY = (Math.floor(dy) + fy - spr.oy - m.f) / k;
+  ctx.drawImage(spr.img as CanvasImageSource, destX, destY, spr.img.width / k, spr.img.height / k);
+  return true;
+}
+
 function drawRack(
   ctx: CanvasRenderingContext2D,
   sx: number, sy: number, tileW: number, tileH: number,
@@ -965,10 +1084,6 @@ function drawRack(
   const bRight: Pt = { x: sx + hw, y: sy };
   const bBottom: Pt = { x: sx, y: sy + hh };
   const bLeft: Pt = { x: sx - hw, y: sy };
-  const tTop: Pt = { x: sx, y: sy - hh - ph };
-  const tRight: Pt = { x: sx + hw, y: sy - ph };
-  const tBottom: Pt = { x: sx, y: sy + hh - ph };
-  const tLeft: Pt = { x: sx - hw, y: sy - ph };
 
   if (detail) {
     const spill = (active ? 0.18 : 0.08) + 0.5 * powerOn + 0.12 * workPulse;
@@ -981,22 +1096,13 @@ function drawRack(
     ctx.fill();
   }
 
-  ctx.fillStyle = "rgba(0,0,0,0.30)";
-  ctx.beginPath();
-  ctx.ellipse(sx, sy + hh * 0.32, hw * 1.05, hh * 1.0, 0, 0, Math.PI * 2);
-  ctx.fill();
+  // The static body: from the sprite cache at full size, drawn live while a rack is
+  // still scaling in (the spawn animation), or when sprites aren't available.
+  if (scale !== 1 || !blitRackBody(ctx, sx, sy, tileW, tileH, tier, density, skin)) {
+    drawRackBody(ctx, sx, sy, tileW, tileH, tier, density, scale, skin);
+  }
 
-  if (detail) {
-    gradFace(ctx, bLeft, bBottom, ph, shade(base, 0.92), shade(base, 0.5));
-    gradFace(ctx, bBottom, bRight, ph, shade(base, 0.64), shade(base, 0.34));
-    const topG = ctx.createLinearGradient(tTop.x, tTop.y, tBottom.x, tBottom.y);
-    topG.addColorStop(0, rgb(shade(base, 1.42)));
-    topG.addColorStop(1, rgb(shade(base, 1.08)));
-    poly(ctx, [tLeft, tTop, tRight, tBottom], topG);
-  } else {
-    poly(ctx, [bLeft, bBottom, { x: bBottom.x, y: bBottom.y - ph }, { x: bLeft.x, y: bLeft.y - ph }], rgb(shade(base, 0.7)));
-    poly(ctx, [bBottom, bRight, { x: bRight.x, y: bRight.y - ph }, { x: bBottom.x, y: bBottom.y - ph }], rgb(shade(base, 0.48)));
-    poly(ctx, [tLeft, tTop, tRight, tBottom], rgb(shade(base, 1.25)));
+  if (!detail) {
     // Keep the fleet ALIVE at scale: below the detail threshold (huge floors, where
     // the LED strip and component bays are too small to draw) each rack still shows one
     // emissive LED, so a 300-rack hall twinkles instead of collapsing to flat dots.
@@ -1006,6 +1112,9 @@ function drawRack(
     ctx.beginPath();
     ctx.ellipse(sx, sy - ph * 0.55, Math.max(0.9, hw * 0.2), Math.max(0.9, hw * 0.2), 0, 0, Math.PI * 2);
     ctx.fill();
+    // The body's front edge highlight used to be painted OVER this dot; with the body
+    // now drawn first (sprite), repeat that one stroke so the look is unchanged.
+    stroke(ctx, bBottom, { x: sx, y: sy + hh - ph }, rgba(shade(base, 1.4), 0.35), 1);
   }
 
   const rfp = (u: number, v: number): Pt => ({
@@ -1016,7 +1125,6 @@ function drawRack(
     const units = clamp(3 + tier * 2 + Math.round(density * 2), 3, 9);
     for (let r = 0; r < units; r++) {
       const v0 = r / units;
-      stroke(ctx, rfp(0.06, v0), rfp(0.94, v0), "rgba(0,0,0,0.22)", 1);
       const lit = (blink + r * 0.37) % 1 > 0.4;
       const aa = active ? Math.max(0.5, workPulse) : lit ? 0.95 : 0.22;
       const p = rfp(0.2, v0 + 0.5 / units);
@@ -1090,12 +1198,6 @@ function drawRack(
     ctx.fillStyle = rgba(led, active ? Math.max(0.5, workPulse) : 0.6);
     ctx.fillRect(p.x - 1, p.y - 1, 2, 2);
   }
-
-  stroke(ctx, tLeft, tTop, "rgba(255,255,255,0.28)", 1);
-  stroke(ctx, tTop, tRight, "rgba(255,255,255,0.18)", 1);
-  stroke(ctx, tLeft, tBottom, rgba(shade(base, 1.7), 0.5), 1);
-  stroke(ctx, tRight, tBottom, rgba(shade(base, 1.3), 0.4), 1);
-  stroke(ctx, bBottom, tBottom, rgba(shade(base, 1.4), 0.35), 1);
 
   if (powerOn > 0) {
     ctx.save();
