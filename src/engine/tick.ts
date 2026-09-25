@@ -50,6 +50,14 @@ export function capActiveModifiers<T extends { remainingSec: number }>(mods: T[]
 const MAX_STEP_MS = 300_000;
 
 /**
+ * A window longer than this starts an auto-trained run at the moment the bank reached
+ * its firing level and trains it through the rest of the window. Shorter ones (a live
+ * 10Hz frame, the balance sim's 250ms step) start it at 0% at the end, as always: the
+ * lag is under one frame there, and the tuned curve was built on it.
+ */
+const RUN_START_SPLIT_MS = 500;
+
+/**
  * The deterministic heartbeat. Given a state and elapsed time, returns the next
  * state. The engine never reads the wall clock (CLAUDE.md hard rule) — time is
  * passed in, which makes offline progress "just a tick with a big elapsedMs".
@@ -124,10 +132,32 @@ export function tick(state: GameState, elapsedMs: number): GameState {
 
   let run = { ...state.run };
 
+  // Seconds of this window the run trains for: all of it for a run already in flight.
+  let runSecs = run.active ? seconds : 0;
+  if (!run.active && run.readyToClaim && d.autoClaim) {
+    // A run finished last tick before auto-claim existed; claim it now.
+    ({ data, money, lifetimeMoney } = claimInto(runYieldAt(state, d, run.focus), data, money, lifetimeMoney));
+    run = { active: false, progress: 0, readyToClaim: false };
+  } else if (!run.active && !run.readyToClaim && autoTrainReady(compute)) {
+    // Idle + auto-train (and focus allows): kick off a fresh run.
+    compute = compute.sub(d.runComputeCost);
+    run = { active: true, progress: 0, readyToClaim: false, focus: state.computeFocus };
+    // In a long window (a resume, an offline catch-up step) the run starts when the bank
+    // reached its firing level, not at the end: it trains through the rest of the window.
+    // It used to sit at 0% for all of it, so a window that began between two
+    // compute-bound runs paid no run at all. A live-sized tick keeps the old behaviour
+    // (the lag is under one frame, and the balance sim's curve was tuned on it).
+    if (elapsedMs > RUN_START_SPLIT_MS) {
+      const short = d.runComputeCost.div(state.computeFocus).sub(state.resources.compute);
+      const startedAt = short.gt(0) ? short.div(d.computePerSec).toNumber() : 0;
+      runSecs = seconds - Math.min(seconds, Math.max(0, startedAt));
+    }
+  }
+
   // Advance the active run; it may complete (and, with automation, re-loop)
   // multiple times within one big offline tick.
-  if (run.active) {
-    let remaining = seconds;
+  if (run.active && runSecs > 0) {
+    let remaining = runSecs;
     // Guard against pathological loops on huge offline deltas. Sized to the window:
     // the most runs that can legitimately complete is (elapsed / shortest run), so a
     // premium 24h catch-up at the run-duration floor (86400/0.5 = 172800 runs) no
@@ -164,14 +194,6 @@ export function tick(state: GameState, elapsedMs: number): GameState {
         remaining = 0;
       }
     }
-  } else if (run.readyToClaim && d.autoClaim) {
-    // A run finished last tick before auto-claim existed; claim it now.
-    ({ data, money, lifetimeMoney } = claimInto(runYieldAt(state, d, run.focus), data, money, lifetimeMoney));
-    run = { active: false, progress: 0, readyToClaim: false };
-  } else if (!run.active && !run.readyToClaim && autoTrainReady(compute)) {
-    // Idle + auto-train (and focus allows): kick off a fresh run.
-    compute = compute.sub(d.runComputeCost);
-    run = { active: true, progress: 0, readyToClaim: false, focus: state.computeFocus };
   }
 
   // Regulatory Heat cools passively when you're not buying shady data.
