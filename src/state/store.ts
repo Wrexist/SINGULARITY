@@ -653,7 +653,10 @@ export const useGame = create<GameStore>((set, get) => ({
         if (automationEnabled(game, "auto_launch")) {
           let guard = 0;
           while (game.products.drafts.length > 0 && game.products.active.length < maxActiveProducts(game) && guard++ < 8) {
-            const draft = game.products.drafts[0]!;
+            // The strongest model on the shelf (ties → the newest). Drafts are stored
+            // oldest first, and drafts[0] turned the weakest, most out-of-date model into
+            // a product that was behind rivals on day one while the one just shipped waited.
+            const draft = game.products.drafts.reduce((best, d) => (d.quality >= best.quality ? d : best));
             const type: ProductTypeId = "general";
             if (!canLaunchDraft(game, draft.id, type)) break;
             productKey += 1;
