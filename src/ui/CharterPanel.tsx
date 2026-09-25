@@ -1,5 +1,5 @@
 import { chartersBalance, charterDef, canSetCharter, chartersUnlocked, charterHand } from "../engine/charter";
-import { doctrineBalance, doctrineUnlocked, stanceOpen, committedSide, schismRevealed, type Stance } from "../engine/doctrine";
+import { doctrineUnlocked, stanceOpen, committedSide, schismRevealed, type Stance } from "../engine/doctrine";
 import { alignmentProductionMods, alignmentHeatMult } from "../engine/alignment";
 import { balance } from "../engine/balance/config";
 import { charterConvictionMult } from "../engine/prestige";
@@ -43,16 +43,17 @@ const STANCES: { id: Stance; label: string; Icon: typeof ShieldIcon }[] = [
   { id: "accel", label: "Acceleration", Icon: RocketIcon },
 ];
 
-/** "+6% $ · −4% compute · −20% heat" for a stance, read from the same engine
- *  helpers derive uses — so the line can never disagree with the effect. */
-function stanceEffects(game: GameState, stance: Stance): string {
-  if (stance === null) return "No tilt";
-  const a = stance === "doomer" ? -doctrineBalance.threshold : doctrineBalance.threshold;
-  const probe = { ...game, alignment: a };
-  const m = alignmentProductionMods(probe);
-  const heat = alignmentHeatMult(probe);
+/** "+6% $ · −4% compute · −20% heat" — the tilt the lab's alignment applies right now,
+ *  read from the same engine helpers derive uses, so the line can never disagree with
+ *  the effect. It reads the LIVE alignment, not the declared point: Chen's Lobby / Defy
+ *  and faction choices keep moving it after a declaration (a Defy leaves an undeclared
+ *  lab at +0.2, which is a real tilt, not "No tilt"). */
+function stanceEffects(game: GameState): string {
+  if (game.alignment === 0) return "No tilt";
+  const m = alignmentProductionMods(game);
+  const heat = alignmentHeatMult(game);
   const lanes = [pct(m.moneyMult - 1) && `${pct(m.moneyMult - 1)} $`, pct(m.computeMult - 1) && `${pct(m.computeMult - 1)} compute`];
-  if (stance === "accel") lanes.reverse(); // lead with the side's upside
+  if (game.alignment > 0) lanes.reverse(); // lead with the side's upside
   return [...lanes, pct(heat - 1) && `${pct(heat - 1)} heat`].filter(Boolean).join(" · ");
 }
 
@@ -69,7 +70,7 @@ function StanceRow({ game, onStance }: { game: GameState; onStance: (s: Stance) 
     return (
       <p className="stance-locked">
         <span className={`stance-chip ${current.id ?? "center"}`}><Icon size={14} /> {current.label}</span>
-        {current.id !== null && <span className="stance-locked-fx"> · {stanceEffects(game, current.id)}</span>}
+        {game.alignment !== 0 && <span className="stance-locked-fx"> · {stanceEffects(game)}</span>}
       </p>
     );
   }
@@ -82,7 +83,10 @@ function StanceRow({ game, onStance }: { game: GameState; onStance: (s: Stance) 
       <div className="stance-head">Stance</div>
       <div className="stance-opts" role="radiogroup" aria-label="Stance this run">
         {STANCES.map(({ id, label, Icon }) => {
-          const on = side === id;
+          // Center is the lab's position only at exactly 0: a lean inside the band is
+          // uncommitted but not centred, so nothing reads as chosen and Center stays a
+          // live tap that really re-centres (declareStance sets 0).
+          const on = id === null ? game.alignment === 0 : side === id;
           return (
             <button
               key={label}
@@ -98,7 +102,7 @@ function StanceRow({ game, onStance }: { game: GameState; onStance: (s: Stance) 
         })}
       </div>
       <p className="stance-fx">
-        {stanceEffects(game, side)}
+        {stanceEffects(game)}
         {hint && <span className="stance-hint"> · {hint}</span>}
       </p>
     </div>
