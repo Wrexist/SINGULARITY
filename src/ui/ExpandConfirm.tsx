@@ -36,7 +36,7 @@ export function ExpandConfirm({ id, onConfirm, onDecline }: Props) {
         <p className="modal-sub">{def.desc}</p>
         <div className="confirm-row">
           <span>Adds</span>
-          <b style={{ color: "var(--compute)" }}>{adds}</b>
+          <b style={{ color: "var(--compute-ink)" }}>{adds}</b>
         </div>
         <div className="confirm-row">
           <span>Cost</span>

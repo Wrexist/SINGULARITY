@@ -160,10 +160,10 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint, saving
             return (
               <span className="node-cost">
                 {def.cost.compute > 0 && (
-                  <span style={{ color: "var(--compute)" }}>{fmt(c.compute)} compute </span>
+                  <span style={{ color: "var(--compute-ink)" }}>{fmt(c.compute)} compute </span>
                 )}
                 {def.cost.data > 0 && (
-                  <span style={{ color: "var(--data)" }}>{fmt(c.data)} data</span>
+                  <span style={{ color: "var(--data-ink)" }}>{fmt(c.data)} data</span>
                 )}
                 {saving ? (
                   <span className="cost-eta saving">banking for this{eta != null ? ` · ~${fmtDur(eta)}` : ""}</span>
@@ -271,8 +271,8 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint, saving
                   Publish a preprint: ×{balance.preprints.perLevelMult.toFixed(2)} to everything, this run. Peer review optional.
                 </span>
                 <span className="node-cost">
-                  <span style={{ color: "var(--compute)" }}>{fmt(c.compute)} compute </span>
-                  <span style={{ color: "var(--data)" }}>{fmt(c.data)} data</span>
+                  <span style={{ color: "var(--compute-ink)" }}>{fmt(c.compute)} compute </span>
+                  <span style={{ color: "var(--data-ink)" }}>{fmt(c.data)} data</span>
                   {preprintWalled ? (
                     <span className="cost-eta walled" title="Auto-train is draining Compute — ease training intensity to let the bank climb">ease intensity ↓</span>
                   ) : eta != null && eta > 0 && <span className="cost-eta">~{fmtDur(eta)}</span>}

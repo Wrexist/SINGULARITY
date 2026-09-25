@@ -66,7 +66,7 @@ export function DataMarketPanel({ game, onBuyData, onBuyTool, onLobby }: Props) 
                 <span className="card-desc">{o.desc}</span>
               </div>
               <div className="card-cost">
-                <span style={{ color: "var(--data)" }}>+{fmt(Big.of(o.data))} data</span>
+                <span style={{ color: "var(--data-ink)" }}>+{fmt(Big.of(o.data))} data</span>
                 <span className="cost-sub">{fmtMoney(Big.of(o.cost))}</span>
               </div>
             </button>
@@ -108,7 +108,7 @@ export function DataMarketPanel({ game, onBuyData, onBuyTool, onLobby }: Props) 
                 </span>
               </div>
               <div className="card-cost">
-                <span style={{ color: "var(--data)" }}>~+{fmt(Big.of(o.data))} data</span>
+                <span style={{ color: "var(--data-ink)" }}>~+{fmt(Big.of(o.data))} data</span>
                 <span className="cost-sub">{fmtMoney(Big.of(o.cost))}</span>
               </div>
             </button>
@@ -137,7 +137,7 @@ export function DataMarketPanel({ game, onBuyData, onBuyTool, onLobby }: Props) 
                 <span className="card-desc">{upgradeFlavor(def.id, owned, def.desc)}</span>
               </div>
               <div className="card-cost">
-                <span style={{ color: "var(--money)" }}>{fmtMoney(cost)}</span>
+                <span style={{ color: "var(--money-ink)" }}>{fmtMoney(cost)}</span>
               </div>
             </button>
           );

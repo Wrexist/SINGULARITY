@@ -36,10 +36,11 @@ const WING_LETTER = (i: number) => (i < 26 ? `Wing ${String.fromCharCode(65 + i)
 /** Buy-quantity for the panel: one, ten, or as many as affordable. */
 type BuyQty = 1 | 10 | "max";
 
+// Cost text colour per resource: the AA-contrast "ink" shades (see styles.css).
 const RESOURCE_VAR: Record<string, string> = {
-  money: "--money",
-  data: "--data",
-  compute: "--compute",
+  money: "--money-ink",
+  data: "--data-ink",
+  compute: "--compute-ink",
 };
 
 /** Power soft-cap meter (Phase 2): draw vs capacity; warns when throttling. */

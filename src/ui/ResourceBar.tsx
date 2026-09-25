@@ -41,7 +41,7 @@ function Resource({ label, cssVar, icon, value, rate, ratePrefix = "", quiet = f
   const display = useEasedBig(value);
 
   return (
-    <div className="resource" style={{ ["--c" as string]: `var(${cssVar})` }}>
+    <div className="resource" style={{ ["--c" as string]: `var(${cssVar})`, ["--ci" as string]: `var(${cssVar}-ink)` }}>
       <div className="resource-icon">{icon}</div>
       <div className="resource-body">
         <div className="resource-label">{label}</div>
