@@ -1,7 +1,7 @@
 import { Big } from "./math/Big";
 import { SAVE_VERSION, createInitialState } from "./state";
 import { initialStats } from "./stats";
-import { products as PRODUCTS } from "./balance/products";
+import { products as PRODUCTS, productFeatures } from "./balance/products";
 import { contracts as CONTRACTS } from "./balance/contracts";
 import { legacyTree as LEGACY } from "./balance/legacyTree";
 import { reputation as REPUTATION } from "./balance/reputation";
@@ -55,6 +55,8 @@ const DOCTRINE_IDS = new Set(DOCTRINE.perks.map((p) => p.id));
 const ROLE_IDS = new Set(balance.staff.roles.map((r) => r.id));
 const TRAIT_IDS = new Set(balance.staff.traits.map((t) => t.id));
 const INSTITUTE_IDS = new Set(INSTITUTE.perks.map((p) => p.id));
+/** Per-product feature ids: only the catalogue's (buyFeature sells nothing else). */
+const FEATURE_IDS = new Set(productFeatures.map((f) => f.id));
 
 /** Keep only known ids, each at most once (order preserved). Closes the duplicate /
  *  unknown-id save-edit class for contracts / legacy investments / reputation perks. */
@@ -721,8 +723,10 @@ export function deserialize(json: string): GameState {
         marketingPerSec: clampNum(o.marketingPerSec, 0, quality * PRODUCTS.marketingCapPerQuality, 0),
         buzzSec: clampNum(o.buzzSec, 0, PROD_CAPS.buzzSec, 0),
         upgrade: sanitizeUpgrade(o.upgrade),
-        // Dedupe features — a hand-edited save could repeat an id to stack its multiplier.
-        features: Array.isArray(o.features) ? [...new Set(o.features.filter((s): s is string => typeof s === "string"))] : [],
+        // Known feature ids, each once: a repeat would stack its multiplier, and an
+        // unknown id buys nothing yet costs every tick (featureMods walks the list per
+        // product per tick and per render), so a pasted flood of them froze the game.
+        features: dedupeKnownIds(o.features, FEATURE_IDS),
         enterprise: o.enterprise === true,
         enterprisePrice: clampNum(o.enterprisePrice, PRODUCTS.enterprise.priceMin, PRODUCTS.enterprise.priceMax, 1),
         channelMix: sanitizeChannelMix(o.channelMix),
