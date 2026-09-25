@@ -195,6 +195,10 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     doctrines: state.doctrines,
     // The Institute's founded wings are the deepest permanent meta-progression.
     institute: state.institute,
+    // ...and so are the Fellowship chairs endowed from its Grants. They were missing
+    // here, so `...fresh` zeroed them on every ship while the Grants they cost were
+    // silently refunded — the player had to re-endow every generation.
+    instituteFellowships: state.instituteFellowships,
     // Facility Wings are a BUILDING, not a run: the floors you founded (and the
     // Reputation you spent founding them, carried in `reputation` above) survive the
     // reset. Racks reset like every other upgrade; the rooms that housed them don't.

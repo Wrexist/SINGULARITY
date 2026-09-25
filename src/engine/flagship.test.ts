@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createInitialState } from "./state";
-import { releaseProduct } from "./products";
+import { releaseProduct, retireProduct } from "./products";
 import { prestige } from "./prestige";
 import { setFlagship, flagshipMoneyMult, flagshipTenure, advanceFlagship } from "./flagship";
 import { products as B } from "./balance/products";
@@ -66,5 +66,13 @@ describe("flagship brand (cross-ship memory)", () => {
     const over = JSON.parse(serialize(s));
     over.flagship = { productId: "p1", tenure: 999 };
     expect(deserialize(JSON.stringify(over)).flagship.tenure).toBe(B.flagship.capShips);
+  });
+
+  it("selling the flagship ends its reign (no bonus for a product that is gone)", () => {
+    const flagged = { ...setFlagship(withProduct(), "p1"), flagship: { productId: "p1", tenure: 5 } };
+    expect(flagshipMoneyMult(flagged)).toBeGreaterThan(1);
+    const sold = retireProduct(flagged, "p1");
+    expect(sold.flagship.productId).toBeNull();
+    expect(flagshipMoneyMult(sold)).toBe(1);
   });
 });

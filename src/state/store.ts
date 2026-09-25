@@ -348,12 +348,19 @@ export const useGame = create<GameStore>((set, get) => ({
           const elapsed = now() - last;
           // Premium grants a longer offline cap (QoL perk, not power).
           const capHours = isPremium() ? balance.offline.premiumMaxHours : balance.offline.maxHours;
-          const result = applyOffline(game, elapsed, capHours);
-          game = result.state;
-          // Only surface the WIWA screen if the window earned it — real time away
-          // AND something to report. Shares one predicate with the resume path so
-          // cold launch and resume can never disagree about what deserves the screen.
-          if (recapWorthShowing(result.summary)) offline = result.summary;
+          // Offline catch-up gets its OWN guard: a throw here is an engine bug, not a
+          // corrupt save, and must never fall through to the fresh-game path below.
+          // Keep the loaded save and skip the catch-up instead.
+          try {
+            const result = applyOffline(game, elapsed, capHours);
+            game = result.state;
+            // Only surface the WIWA screen if the window earned it — real time away
+            // AND something to report. Shares one predicate with the resume path so
+            // cold launch and resume can never disagree about what deserves the screen.
+            if (recapWorthShowing(result.summary)) offline = result.summary;
+          } catch (err) {
+            console.warn("Offline catch-up failed; loading the save without it:", err);
+          }
         }
       }
     } catch (err) {

@@ -63,6 +63,11 @@ export function claimRun(state: GameState): GameState {
       money: state.resources.money.add(d.runMoneyYield),
     },
     lifetimeMoney: state.lifetimeMoney.add(d.runMoneyYield),
+    // tick() derives stats.totalMoney from the lifetimeMoney delta WITHIN a tick, so a
+    // claim landing between ticks was never counted: a hand-claiming opening showed
+    // $0 all-time earned and the Seed Round contract / lifetime achievements sat
+    // still until auto-claim arrived. (retireProduct already does the same.)
+    stats: { ...state.stats, totalMoney: state.stats.totalMoney.add(d.runMoneyYield) },
     run: { active: false, progress: 0, readyToClaim: false },
   };
 }
@@ -273,7 +278,7 @@ export function researchStalled(state: GameState, d: Derived): boolean {
 /**
  * Auto-buy research (R5.3, gated behind the Research Director reputation perk).
  * Buys the cheapest affordable, prerequisite-met node repeatedly until none is
- * affordable. Pure; runs in tick() so it also works during offline catch-up. Does
+ * affordable, skipping either/or fork nodes (those are the player's call). Pure; runs in tick() so it also works during offline catch-up. Does
  * exactly what an engaged player would do by hand, so it can't outrun the curve —
  * and it's off until the (deep-endgame) perk is owned, so the sim is unaffected.
  */
@@ -282,8 +287,11 @@ export function applyAutoResearch(state: GameState): GameState {
   let s = state;
   let guard = 0;
   while (guard++ < 500) {
+    // Never an either/or node: taking the cheaper side of every fork (commercialize
+    // over scale_up, closed_api over open_weights, ...) is a decision the perk made
+    // for the player, permanently locking out the other arm. Forks stay manual.
     const node = researchTree(s)
-      .filter((r) => canBuyResearch(s, r.id))
+      .filter((r) => !r.exclusiveGroup && canBuyResearch(s, r.id))
       .sort((a, b) => a.cost.compute + a.cost.data - (b.cost.compute + b.cost.data))[0];
     if (!node) break;
     s = buyResearch(s, node.id);

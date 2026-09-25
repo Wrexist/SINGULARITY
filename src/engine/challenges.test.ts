@@ -186,3 +186,59 @@ describe("Megaprojects II (repeatable post-challenge loop)", () => {
     expect(fixed.megaprojects.funded.compute.lte(megaprojectCost(0).compute)).toBe(true); // clamped to cost
   });
 });
+
+describe("instalment precision (Big keeps ~15 significant digits)", () => {
+  it("a challenge paid in awkward instalments always completes", () => {
+    for (const def of C.list) {
+      for (const frac of [0.13, 0.29, 0.4, 0.61]) {
+        let s = rich(200);
+        for (let i = 0; i < 40 && !s.challenges.completed.includes(def.id); i++) {
+          s = fundChallenge({
+            ...s,
+            resources: {
+              compute: Big.of(def.cost.compute).mul(frac),
+              data: Big.of(def.cost.data).mul(frac),
+              money: Big.of(def.cost.money).mul(frac),
+            },
+          }, def.id).state;
+        }
+        expect(s.challenges.completed).toContain(def.id);
+      }
+    }
+  });
+
+  it("a save already stuck a hair under the cost completes on the next tap, even broke", () => {
+    const s = rich(200);
+    const cost = Big.of(first.cost.data);
+    s.challenges.funded[first.id] = {
+      compute: Big.of(first.cost.compute),
+      data: cost.mul(1 - 3e-15), // the residue that used to strand it forever
+      money: Big.of(first.cost.money),
+    };
+    s.resources = { compute: Big.ZERO, data: Big.ZERO, money: Big.ZERO };
+    expect(canFundChallenge(s, first.id)).toBe(true);
+    const out = fundChallenge(s, first.id);
+    expect(out.justCompleted).toBe(true);
+    // And a reload recognises it too.
+    expect(deserialize(serialize(s)).challenges.completed).toContain(first.id);
+  });
+
+  it("a megaproject cycle paid in 40% instalments completes", () => {
+    let s = rich(60);
+    s.challenges = {
+      funded: Object.fromEntries(C.list.map((c) => [c.id, {
+        compute: Big.of(c.cost.compute), data: Big.of(c.cost.data), money: Big.of(c.cost.money),
+      }])),
+      completed: C.list.map((c) => c.id),
+      forks: {},
+    };
+    const cost = megaprojectCost(0);
+    for (let i = 0; i < 10 && s.megaprojects.level === 0; i++) {
+      s = fundMegaproject({
+        ...s,
+        resources: { compute: cost.compute.mul(0.4), data: cost.data.mul(0.4), money: cost.money.mul(0.4) },
+      }).state;
+    }
+    expect(s.megaprojects.level).toBe(1);
+  });
+});

@@ -99,8 +99,11 @@ export function versionCostFor(state: GameState, version: number): { compute: nu
   // Fall back to the flat base when Data output is so large the term overflows JS
   // number (>~1e308): at that scale the player's Data is effectively unbounded, so a
   // cheaper push is the gameplay-safe choice (an Infinity cost would just block pushes).
-  const economyData = Number.isFinite(dataPerSec) ? Math.max(0, dataPerSec) * B.versionDataSecondsOfOutput : 0;
-  return { compute: base.compute, data: base.data + economyData };
+  // The product can overflow even when dataPerSec itself is finite (≈3e305 × 600).
+  const scaled = Math.max(0, dataPerSec) * B.versionDataSecondsOfOutput;
+  const economyData = Number.isFinite(scaled) ? scaled : 0;
+  const data = base.data + economyData;
+  return { compute: base.compute, data: Number.isFinite(data) ? data : base.data };
 }
 
 /** Whether a state has shipped enough to OFFER the Enterprise tier. */
@@ -782,6 +785,9 @@ export function retireProduct(state: GameState, id: string): GameState {
     // would otherwise never count it toward all-time earnings.
     stats: { ...state.stats, totalMoney: state.stats.totalMoney.add(Math.max(0, payout)) },
     employees,
+    // Selling the flagship ends its reign: the brand bonus went on paying for a product
+    // that no longer existed until the loader quietly dropped the dangling id.
+    flagship: state.flagship.productId === id ? { productId: null, tenure: 0 } : state.flagship,
     products: {
       ...state.products,
       active: state.products.active.filter((x) => x.id !== id),

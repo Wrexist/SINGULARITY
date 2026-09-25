@@ -22,6 +22,7 @@ import { challenges as CHALLENGES } from "./balance/challenges";
 import { objectives as OBJECTIVES } from "./balance/objectives";
 import { automation as AUTOMATION } from "./balance/automation";
 import { freshComponents } from "./components";
+import { laneMet } from "./challenges";
 import type { ChallengeState } from "./types";
 import type { ActiveModifier, ComponentsState, DraftModel, Employee, GameState, LifetimeStats, ModifierTarget, ProductsState, ProductState, ShipLogEntry, UpgradeState } from "./types";
 
@@ -542,7 +543,7 @@ function sanitizeChallenges(raw: unknown): ChallengeState {
     const data = safeBig(f.data).min(cost.data);
     const money = safeBig(f.money).min(cost.money);
     if (compute.gt(0) || data.gt(0) || money.gt(0)) out.funded[def.id] = { compute, data, money };
-    if (compute.gte(cost.compute) && data.gte(cost.data) && money.gte(cost.money)) out.completed.push(def.id);
+    if (laneMet(compute, cost.compute) && laneMet(data, cost.data) && laneMet(money, cost.money)) out.completed.push(def.id);
   }
   // Forks: a chosen arm is legitimate ONLY for a COMPLETED forked challenge and must be
   // a real arm id of that challenge (else a crafted save could pick a phantom reward).
@@ -866,7 +867,9 @@ function sanitizeShipLog(raw: unknown, totalShips: number): GameState["shipLog"]
       const put = <K extends keyof ShipLogEntry>(k: K, v: ShipLogEntry[K] | undefined) => {
         if (v !== undefined) opt[k] = v;
       };
-      put("gen", archiveCount(e.gen, MAX_SAVED_IDS));
+      // A generation NUMBER, not a list length: capping it at MAX_SAVED_IDS (512)
+      // renamed every entry past Gen 512 to "Gen 512" on the next load.
+      put("gen", archiveCount(e.gen, 10_000_000)); // same ceiling as prestige.ships
       put("legacyMag", archiveMag(e.legacyMag));
       put("peakComputeMag", archiveMag(e.peakComputeMag));
       put("research", archiveCount(e.research, MAX_SAVED_IDS));

@@ -59,4 +59,15 @@ describe("R5.3 — research auto-buyer", () => {
     plain.resources.data = Big.of(1e12);
     expect(tick(plain, 1000).research).toHaveLength(0);
   });
+
+  it("never takes a side of an either/or fork — those stay the player's call", () => {
+    const s = withDirector();
+    s.research = balance.research.filter((r) => !r.exclusiveGroup).map((r) => r.id);
+    s.resources.compute = Big.of(1e30);
+    s.resources.data = Big.of(1e30);
+    const after = applyAutoResearch(s);
+    for (const r of balance.research.filter((x) => x.exclusiveGroup)) {
+      expect(after.research).not.toContain(r.id);
+    }
+  });
 });

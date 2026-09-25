@@ -288,4 +288,13 @@ describe("The Archive — career arc", () => {
     expect(arc.mags).toHaveLength(40);
     for (const m of arc.mags) expect(Number.isFinite(m)).toBe(true);
   });
+
+  it("keeps generation numbers past 512 through a reload", () => {
+    let s = shippable();
+    s = { ...s, prestige: { ...s.prestige, ships: 700 }, stats: { ...s.stats, totalShips: 700 } };
+    const shipped = prestige(s);
+    const gen = shipped.shipLog.at(-1)!.gen;
+    expect(gen).toBe(701);
+    expect(deserialize(serialize(shipped)).shipLog.at(-1)!.gen).toBe(701);
+  });
 });
