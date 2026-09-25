@@ -166,8 +166,49 @@ into a habit. Everything below shipped with `npm run sim` byte-identical.
 | Text contrast: rates and accents at 3–4:1 | Ink tokens for text (`--compute-ink` …), and accent fills darkened behind white text, with the same palette |
 
 The exhaustive bug-hunt workflow (six area finders, three independent verifiers per
-finding) returned 38 round-1 candidates. The freeze above was fixed first. The rest go
-to seven isolated fix batches, each reproduced by a failing test before it's changed.
+finding) returned 38 round-1 candidates. The freeze above was fixed first. The other
+35 went to seven isolated fix batches, and each was reproduced by a failing test
+before it was changed. All 35 were fixed or folded into a duplicate, the sim stayed
+byte-identical after every commit, and the suite grew from 866 to 992 tests. The
+fixes that change what live players see:
+
+- **Runs are priced at the intensity they were started at** (save v37, `run.focus`).
+  Moving the slider mid-run used to reprice a run already paid for: ×3.3 as an
+  exploit, or −70% when easing it as the advisor (and "Save for this") advised.
+- **Honest Compute walls and ETAs.** A wall is reported only when auto-train really
+  caps the bank, countdowns follow the real run cadence, and a held lab shows passive
+  income only.
+- **Rig Bay parts return to inventory** when an in-place rack upgrade empties their tier.
+- **×10 / Max hall expansion** stops at the level that fills the floor.
+- **No reload deletes progress.** Modifiers keep 48 (was 20), and megaproject cycles
+  and hires stop at the 512 the loader keeps. Export keeps the player's own
+  intensity, not the "Save for this" one.
+- **Products across a Ship.** An in-flight version upgrade is dropped, and a
+  loss-making campaign is cut back, so neither stalls the fresh lab. Sales are valued
+  on the settled subscriber count, which ends the price-dial pump. A met sponsor is
+  never lost: the autopilot claims it and the rollover banks it.
+- **Staff.** Mentor morale is capped at +30%, closing a ×13 stacking exploit. Recruit
+  cards show real salaries. A hand-benched specialist stays benched under HR
+  Autopilot (save v38). "Run N products" and "Employ N specialists" objectives count
+  what you have now.
+- **Meta.**
+  - The Research Director leaves the Charter/Stance window open for a 60-second grace.
+  - The Ship panel predicts ascension per ship mode.
+  - The regulator truce survives a ship and no longer draws as a burning rack.
+  - The first megaproject cycle quotes its real reward.
+- **Shell.**
+  - FIRST STEPS stays retired.
+  - Contract goals land on Goals › Now, where the board renders.
+  - One-time unlock toasts stay one-time.
+  - Confetti rolls once per burst.
+  - A second away-window folds into an open recap.
+  - The achievements badge re-anchors after a reset or import.
+
+Also left for the owner:
+- Megaproject cycles now end at 512. Raising that to about 890 is a balance call.
+- A Reasoning Engine priced under about 0.53× Pro loses money even with marketing
+  at 0.
+- Staff lane multipliers still grow steeply with very large trained crews.
 
 Deferred, owner's call:
 - **Ship-mode rebalance.** Hard's product penalty is wiped out by the next version push,
