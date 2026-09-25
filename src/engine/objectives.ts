@@ -18,7 +18,12 @@ const BY_ID = new Map(O.pool.map((o) => [o.id, o]));
  *  CURRENT-count metric dropping later (a product sold, a person fired) never un-claims it. */
 export function objectiveMetric(state: GameState, metric: ObjectiveMetric): number {
   switch (metric) {
-    case "lifetimeMoney": return state.lifetimeMoney.toNumber();
+    // "Earn $X lifetime" means ALL-TIME earnings, as in the achievements and contracts
+    // worded the same way. `lifetimeMoney` is the run's own total (the Legacy base a
+    // Ship zeroes): reading it threw every bar back to $0 at each Ship and parked the
+    // $10B / $1T rungs on the board for good. The run total never exceeds the all-time
+    // one in real play; max() keeps a save whose stats lag it from reading low.
+    case "lifetimeMoney": return state.stats.totalMoney.max(state.lifetimeMoney).toNumber();
     case "compute": return state.stats.peakComputePerSec.toNumber();
     case "research": return state.research.length;
     case "racks": return totalRacks(state);
