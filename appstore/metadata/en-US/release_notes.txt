@@ -1,12 +1,13 @@
-A big polish-and-fixes update:
+A big update — more to decide every generation:
 
-• Always know what's next: the goal bar now tracks your road to the first Ship, and shows when shipping is actually worth it
+• Declare a Stance: pick Safety, Center or Acceleration at the start of a run and unlock the Doctrine perks for that side
+• Charter draft: every Ship deals three Lab Charters, including rule-changers like Research Sprint and Product Company
+• Unplugged Trials: veterans can switch Legacy off for one generation and play a real, full run again
+• Personal records: every new power of ten in your peak Compute earns Lab Reputation
+• Always know what's next: the goal bar tracks your road to the first Ship, and shows when shipping is actually worth it
 • "Save for this": tap research that's out of reach and the lab banks Compute for it, then buys it for you
-• Calmer news: only real decisions interrupt you now; everything else runs on the Newswire
-• Daily sponsor objectives start after your first Ship, not just in the endgame
-• Offline time is counted properly even when your phone sleeps
-• Smoother on older iPhones: the hall rests when it's off-screen
-• Fixed Grand Challenges that could get stuck, Institute Fellowships that reset on ship, and 20+ other bugs
-• Cleaner screens: finished research folds away, clearer Ship choices, prices shown in your currency
+• Calmer news: only real decisions interrupt you; everything else runs on the Newswire
+• Works better with VoiceOver and keyboards, with bigger tap targets and clearer text
+• Smoother on older iPhones, offline time counted properly, and 60+ fixes, including a rare freeze when a boost expired
 
 Thanks for playing. Tell us what to build next.
