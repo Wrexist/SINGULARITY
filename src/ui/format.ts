@@ -100,10 +100,15 @@ export function fmtTime(ms: number): string {
 // ---- Product-tab number helpers (shared by the portfolio card + detail screen) ----
 
 /** Sign-aware money from a plain number: the sign sits OUTSIDE the $ (−$5K, not
- *  the ungrouped "$-5000" that overflowed cards). */
+ *  the ungrouped "$-5000" that overflowed cards). Same precision as fmtMoney — it
+ *  used to round to whole dollars first, so a $1.20/s salary read "$1/s" beside a
+ *  "$1.2" Payroll /s, and a $0.30/s loss read "-$0". Anything that shows as zero
+ *  (under a nickel) is plain "$0", never signed. */
 export function m$(n: number): string {
   const x = Number.isFinite(n) ? n : 0; // a non-finite product value can't print garbage
-  return x < 0 ? `-${fmtMoney(Big.of(Math.round(-x)))}` : fmtMoney(Big.of(Math.round(x)));
+  const a = Math.abs(x);
+  if (a < 0.05) return fmtMoney(Big.ZERO);
+  return x < 0 ? `-${fmtMoney(Big.of(a))}` : fmtMoney(Big.of(a));
 }
 
 /** A signed effect size as a percent: "+6%", "-35%", and — below one percent — one
