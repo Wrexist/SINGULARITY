@@ -160,6 +160,10 @@ function isWellFormedProduct(p: unknown): p is ProductState {
   return (
     !!o &&
     typeof o.id === "string" &&
+    // The id keys per-product staff buffs in plain objects (derive/employees), where
+    // `obj["__proto__"] = …` sets the prototype instead of a key — that product then
+    // read Object.prototype as its buffs and went NaN. Runtime ids are always prod-N.
+    o.id !== "__proto__" &&
     typeof o.name === "string" &&
     typeof o.type === "string" &&
     (PRODUCT_TYPE_IDS as string[]).includes(o.type) &&

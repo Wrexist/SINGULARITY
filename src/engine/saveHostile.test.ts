@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { deserialize } from "./save";
+import { tick } from "./tick";
 import { productFeatures } from "./balance/products";
 
 /**
@@ -57,5 +58,28 @@ describe("ship log cap", () => {
     const shipLog = Array.from({ length: 10 }, (_, i) => ({ ...entry, gen: i + 1 }));
     const g = deserialize(blob({ shipLog, stats: { totalShips: 3 } }));
     expect(g.shipLog.map((e) => e.gen)).toEqual([8, 9, 10]);
+  });
+});
+
+describe("product ids that can't key a plain object", () => {
+  it("a product saved as '__proto__' can't turn the portfolio's numbers into NaN", () => {
+    // The staff fold keys per-product buffs by id in plain objects, and assigning to
+    // obj["__proto__"] sets the prototype instead of a key: the product then read
+    // Object.prototype as its buffs, its users/subscribers went NaN on the next tick,
+    // and so did the career peaks folded from them (which the next reload zeroed).
+    const g = deserialize(blob({
+      prestige: { legacyWeights: "0", ships: 3 },
+      products: productsOf([product(), product({ id: "__proto__" })]),
+    }));
+    let t = g;
+    for (let i = 0; i < 5; i++) t = tick(t, 1000);
+    for (const p of t.products.active) {
+      expect(Number.isFinite(p.mau)).toBe(true);
+      expect(Number.isFinite(p.paid)).toBe(true);
+    }
+    expect(Number.isFinite(t.stats.peakMau)).toBe(true);
+    expect(Number.isFinite(t.stats.peakMrr)).toBe(true);
+    // The honest product is untouched.
+    expect(t.products.active.map((p) => p.id)).toContain("prod-1");
   });
 });
