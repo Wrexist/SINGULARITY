@@ -17,7 +17,7 @@ import { UpgradePanel } from "./UpgradePanel";
 import { ResearchPanel } from "./ResearchPanel";
 import { PrestigePanel } from "./PrestigePanel";
 import { OfflineModal } from "./OfflineModal";
-import { Celebration, type ShipReport } from "./Celebration";
+import { Celebration, shipReportFor, type ShipReport } from "./Celebration";
 import { SettingsSheet } from "./SettingsSheet";
 import { ToastStack, type ToastData } from "./Toast";
 import { StatsPanel } from "./StatsPanel";
@@ -41,7 +41,7 @@ import { ProductLaunch } from "./ProductLaunch";
 import { productsUnlocked, typeDef, retirePayout, productMetrics } from "../engine/products";
 import { advisorItems, type AdvisorTab, type LabSection } from "../engine/advisor";
 import { nextGoal } from "../engine/goals";
-import { marketLeaderboard, playerMarketRank, rivalsBeaten } from "../engine/market";
+import { marketLeaderboard, playerMarketRank } from "../engine/market";
 import { FlaskIcon, BoxIcon, TeamIcon, GearIcon, GiftIcon, TargetIcon } from "./Icons";
 import { fmt, fmtMoney, effRate } from "./format";
 import type { ProductTypeId } from "../engine/balance/products";
@@ -681,20 +681,9 @@ export function App() {
     }
     if (game.prestige.ships > prevShips.current) {
       const gained = game.prestige.legacyWeights.sub(prevWeights.current);
-      // Prefer the just-finished run's peaks (captured by prestige before the reset)
-      // so the report reflects THIS generation, not all-time career bests. Fall back
-      // to career stats only if the snapshot is somehow absent.
-      const ship = game.lastShipReport;
-      const report = {
-        gen: game.prestige.ships,
-        rank: playerMarketRank(game),
-        peakCompute: ship?.peakCompute ?? game.stats.peakComputePerSec,
-        peakMrr: ship?.peakMrr ?? game.stats.peakMrr,
-        era: currentEra(game),
-        alignment: game.alignment,
-        productsLive: game.products.active.length,
-        rivalsBeaten: rivalsBeaten(game),
-      };
+      // Read the just-finished run from prestige()'s snapshot (taken before the reset)
+      // so the report reflects THIS generation, not the fresh lab it left behind.
+      const report = shipReportFor(game);
       const ascended = game.stats.ascensions > prevAscensions.current;
       resetHistory(); // the new generation's sparklines start from its own floor
       setCelebration({ gained, total: game.prestige.legacyWeights, report, ascended });

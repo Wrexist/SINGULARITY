@@ -185,9 +185,19 @@ export interface GameState {
   runPeakCompute: Big;
   /** Peak total product revenue/sec since the last ship (generation-scoped). */
   runPeakMrr: number;
-  /** Snapshot of the just-finished run's peaks, captured by prestige() before the
-   *  reset so the post-reset UI can show an accurate Generation Report. Transient. */
-  lastShipReport: { peakCompute: Big; peakMrr: number } | null;
+  /** Snapshot of the just-finished run, captured by prestige() before the reset so
+   *  the post-reset UI can show an accurate Generation Report: its peaks, and the
+   *  standing the reset wipes or moves (alignment returns to 0, blitz strikes clear,
+   *  the era is counted from the new ship total). Transient — never persisted. */
+  lastShipReport: {
+    peakCompute: Big;
+    peakMrr: number;
+    era: number;
+    alignment: number;
+    rank: number | null;
+    rivalsBeaten: number;
+    productsLive: number;
+  } | null;
   /** IDEAS #6 — the Legacy Wall: one small record per shipped generation (how it
    *  shipped, the era it reached, whether it ascended). Persists across prestige —
    *  it IS the prestige history — capped (balance.prestige.shipLogCap) so a

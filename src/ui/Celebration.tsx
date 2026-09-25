@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { Big } from "../engine/math/Big";
+import type { GameState } from "../engine/types";
+import { playerMarketRank, rivalsBeaten } from "../engine/market";
+import { currentEra } from "../engine/eras";
 import { fmt, m$ } from "./format";
 import { shipHeadline, runStory, shipSubtitle } from "./headlines";
 import { shareRunCard } from "./shareCard";
@@ -20,6 +23,25 @@ export interface ShipReport {
   alignment: number;
   productsLive: number;
   rivalsBeaten: number;
+}
+
+/** The Generation Report for the ship that just happened, read from the POST-ship
+ *  state. Everything about the finished run comes from prestige()'s snapshot: the
+ *  fresh state has alignment 0 (every report used to read "down the middle"), no
+ *  press-blitz strikes (rank slid back), and an era counted from the new ship total.
+ *  Career stats are only a fallback for a state with no snapshot. */
+export function shipReportFor(game: GameState): ShipReport {
+  const ship = game.lastShipReport;
+  return {
+    gen: game.prestige.ships,
+    rank: ship ? ship.rank : playerMarketRank(game),
+    peakCompute: ship?.peakCompute ?? game.stats.peakComputePerSec,
+    peakMrr: ship?.peakMrr ?? game.stats.peakMrr,
+    era: ship?.era ?? currentEra(game),
+    alignment: ship?.alignment ?? game.alignment,
+    productsLive: ship?.productsLive ?? game.products.active.length,
+    rivalsBeaten: ship?.rivalsBeaten ?? rivalsBeaten(game),
+  };
 }
 
 interface Props {

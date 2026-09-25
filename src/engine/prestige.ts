@@ -10,7 +10,7 @@ import { trialConditionMet, trialToStartAtShip } from "./trials";
 import { advanceFlagship } from "./flagship";
 import { legacyMultiplier } from "./derive";
 import { legacyAvailable } from "./legacyTree";
-import { resolveStakeOutcome } from "./market";
+import { resolveStakeOutcome, playerMarketRank, rivalsBeaten } from "./market";
 import { capCarriedMarketing } from "./products";
 import { truceAcrossShip } from "./negotiation";
 import type { DraftModel, GameState } from "./types";
@@ -321,8 +321,19 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     suspicion: state.suspicion,
     // Snapshot the just-finished run's peaks for the Generation Report (the fresh
     // run's own peaks reset to 0 via ...fresh). This is what makes the report show
-    // THIS generation's high-water marks instead of all-time career peaks.
-    lastShipReport: { peakCompute: state.runPeakCompute, peakMrr: state.runPeakMrr },
+    // THIS generation's high-water marks instead of all-time career peaks. The rest is
+    // read here for the same reason: after the reset the alignment is back to 0, the
+    // press-blitz strikes are cleared (rivals regain their users) and the era counts
+    // the new ship, so a report built from the fresh state described the NEXT run.
+    lastShipReport: {
+      peakCompute: state.runPeakCompute,
+      peakMrr: state.runPeakMrr,
+      era: currentEra(state),
+      alignment: state.alignment,
+      rank: playerMarketRank(state),
+      rivalsBeaten: rivalsBeaten(state),
+      productsLive: state.products.active.length,
+    },
     // The Legacy Wall (IDEAS #6) remembers how this generation shipped: the hall
     // renders these as trophy plinths, so the reset visibly ADDS to the room.
     // The Archive: what this generation actually WAS, recorded at the ship. Reads
