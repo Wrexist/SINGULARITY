@@ -50,10 +50,14 @@ import { balance } from "../engine/balance/config";
 import { ALL_RESEARCH } from "../engine/researchTree";
 import { HallCanvas } from "./HallCanvas";
 import { sampleHistory, resetHistory, SAMPLE_MS } from "./history";
-import { NewsTicker } from "./NewsTicker";
+import { NewsTicker, type Breaking } from "./NewsTicker";
 import { ExpandConfirm } from "./ExpandConfirm";
 import { ConfirmSheet } from "./ConfirmSheet";
 import { usePortalOpen } from "./Portal";
+import type { FiredWorldEvent } from "../state/store";
+
+/** A world event that asks the player to choose — the only kind that earns a card. */
+const worldEventIsDecision = (e: FiredWorldEvent) => (e.choices?.length ?? 0) > 0;
 import { RigBayPanel } from "./RigBayPanel";
 import { componentsUnlocked, earnedDefs } from "../engine/components";
 
@@ -175,6 +179,7 @@ export function App() {
   const [confirmReset, setConfirmReset] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const portalOpen = usePortalOpen();
+  const [breaking, setBreaking] = useState<Breaking | null>(null);
   const [challengeDoneId, setChallengeDoneId] = useState<string | null>(null); // Grand Challenge just completed → moment
   const [flash, setFlash] = useState(0); // AGI ascension screen flash (key replays the anim)
   const [dailyOn, setDailyOn] = useState(() => dailyAvailable());
@@ -241,7 +246,7 @@ export function App() {
     : eraMoment !== null && !sheetOpen ? "era"
     : challengeDoneId ? "challenge"
     : launch ? "launch"
-    : worldEvent && !sheetOpen ? "world"
+    : worldEvent && worldEventIsDecision(worldEvent) && !sheetOpen ? "world"
     : null;
 
   const era = currentEra(game);
@@ -531,11 +536,22 @@ export function App() {
     }
   }, [initialized, myRank]);
 
-  // Ambient world events: feedback when a new card appears.
+  // World events. Only a DECISION earns a full-screen card. The rest (about four in
+  // five fired, each of which used to take over the screen just to be dismissed with
+  // "Let's gooo") run on the newswire under the hall as a BREAKING line. Their effect
+  // already landed at fire time, and a timed one shows as a chip in the modifier bar.
+  // The full story goes to Recent activity. (2026-09 pacing audit.)
   useEffect(() => {
     if (!worldEvent) return;
-    if (worldEvent.tone === "good") { haptics.success(); sound.success(); }
-    else { haptics.warn(); sound.alert(); }
+    if (worldEventIsDecision(worldEvent)) {
+      if (worldEvent.tone === "good") { haptics.success(); sound.success(); }
+      else { haptics.warn(); sound.alert(); }
+      return;
+    }
+    logEvent(`${worldEvent.headline} — ${worldEvent.body} (${worldEvent.summary})`, worldEvent.tone);
+    setBreaking({ key: worldEvent.key, text: `${worldEvent.headline} · ${worldEvent.summary}`, tone: worldEvent.tone });
+    if (worldEvent.tone === "bad") haptics.warn(); // a setback is felt, not announced
+    dismissWorldEvent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [worldEvent?.key]);
 
@@ -1033,7 +1049,7 @@ export function App() {
                     layout-invisible (same flat stage as before). */}
                 <div className="stage-left">
                   <HallCanvas onExpand={setPendingExpansion} />
-                  {!firstSteps && <NewsTicker />}
+                  {!firstSteps && <NewsTicker breaking={breaking} />}
                   {/* The dock comes BEFORE the checklist: on a 390×844 phone the
                       checklist used to push the game's one button under the bottom
                       nav on the very first screen. */}

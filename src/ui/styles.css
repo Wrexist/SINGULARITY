@@ -1378,6 +1378,12 @@ svg { vertical-align: middle; }
   animation: news-in 0.5s var(--ease-out) both;
 }
 .reduce-motion .news-line { animation: none; }
+/* A world event on the wire: the label and a soft full-card tint carry the tone
+   (house rule: never a left-edge bar). No extra motion beyond the line's own fade. */
+.news-ticker.breaking.good { border-color: rgba(22, 179, 100, 0.45); background: linear-gradient(180deg, #17302a, #131f1d); }
+.news-ticker.breaking.bad { border-color: rgba(255, 92, 115, 0.45); background: linear-gradient(180deg, #321c24, #22151b); }
+.news-ticker.breaking.good .news-wire { color: #4fe0a0; }
+.news-ticker.breaking .news-line { color: #fff; }
 @keyframes news-in { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
 
 /* Tappable-rack info card (R2.1) — a tap on a rack opens this; tap to dismiss. */
