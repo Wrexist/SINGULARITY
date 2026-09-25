@@ -124,12 +124,21 @@ export function advanceTraining(employees: Employee[], seconds: number): Trainin
 // ---------- Roster transitions (pure) ----------
 
 /** Assign a person to a product (or null to bench them). Infra roles ignore the
- *  product (they always work on the lab) but may still be benched/un-benched. */
+ *  product (they always work on the lab) but may still be benched/un-benched.
+ *  Benching marks the person `benched` so the HR Autopilot doesn't post them straight
+ *  back on the next tick; placing them on a product clears the mark. */
 export function assignEmployee(state: GameState, empId: string, productId: string | null): GameState {
   const target = productId && state.products.active.some((p) => p.id === productId) ? productId : null;
   return {
     ...state,
-    employees: state.employees.map((e) => (e.id === empId ? { ...e, assignedProductId: target } : e)),
+    employees: state.employees.map((e) => {
+      if (e.id !== empId) return e;
+      const { benched: _wasBenched, ...rest } = e;
+      if (target) return { ...rest, assignedProductId: target };
+      // Only an explicit bench (null) is the player's choice; a placement onto a product
+      // that has since gone away just leaves them idle for the autopilot to re-post.
+      return productId === null ? { ...rest, assignedProductId: null, benched: true } : { ...rest, assignedProductId: null };
+    }),
   };
 }
 

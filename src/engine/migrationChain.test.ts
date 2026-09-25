@@ -36,7 +36,7 @@ describe("migration chain", () => {
    *      new fields arrive at their defaults.
    */
   it("is at the version this commit intends", () => {
-    expect(SAVE_VERSION).toBe(37);
+    expect(SAVE_VERSION).toBe(38);
   });
 
   it("ends exactly at SAVE_VERSION", () => {

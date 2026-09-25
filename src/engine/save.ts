@@ -299,6 +299,9 @@ function sanitizeEmployees(e: unknown): Employee[] {
         x.training.remainingSec > 0
           ? { remainingSec: x.training.remainingSec, totalSec: x.training.totalSec }
           : null,
+      // v37: a hand-bench only ever means literal `true`; anything else is "not benched"
+      // (omitted, so pre-v37 people and crafted junk load exactly as before).
+      ...(x.benched === true ? { benched: true as const } : {}),
     });
   }
   return out;
@@ -1315,6 +1318,13 @@ export function migrate(raw: any): SavedShape {
     const run = s.run && typeof s.run === "object" ? s.run : undefined;
     const inFlight = !!run && (run.active === true || run.readyToClaim === true);
     s = { ...s, version: 37, run: inFlight && run.focus === undefined ? { ...run, focus: s.computeFocus } : run };
+  }
+  if (s.version === 37) {
+    // v37 → v38: an employee may carry `benched: true` — the player sent them to the
+    // Lab, so the HR Autopilot leaves them there. Nobody in an older save was benched
+    // by hand as far as the save can tell (the autopilot re-posted them within a tick
+    // anyway), so the identity default is "absent" and there is nothing to rewrite.
+    s = { ...s, version: 38 };
   }
   return s as SavedShape;
 }

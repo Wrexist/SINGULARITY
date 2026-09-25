@@ -109,7 +109,7 @@ describe("run intensity persists (save v37)", () => {
     raw.version = 36;
     delete raw.run.focus;
     const back = deserialize(JSON.stringify(raw));
-    expect(back.version).toBe(37);
+    expect(back.version).toBe(38);
     expect(back.run.focus).toBe(0.4);
     const ready = { ...raw, run: { active: false, progress: 1, readyToClaim: true } };
     expect(deserialize(JSON.stringify(ready)).run.focus).toBe(0.4);

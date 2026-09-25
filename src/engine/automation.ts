@@ -65,8 +65,10 @@ export function applyAutomation(state: GameState): GameState {
 
   if (automationEnabled(s, "auto_assign") && s.products.active.length > 0) {
     // Post each idle product-team specialist to a product it synergizes with (else the first).
+    // Someone the PLAYER benched stays benched — re-posting them on the next tick made
+    // "send to Lab" appear to do nothing while the autopilot was on.
     for (const e of s.employees) {
-      if (e.assignedProductId !== null || roleDef(e.roleId)?.team !== "product") continue;
+      if (e.assignedProductId !== null || e.benched || roleDef(e.roleId)?.team !== "product") continue;
       const match = s.products.active.find((p) => roleMatchesSegment(e.roleId, SEG_BY_TYPE[p.type] ?? "consumer"));
       const target = match ?? s.products.active[0];
       if (target) s = assignEmployee(s, e.id, target.id);

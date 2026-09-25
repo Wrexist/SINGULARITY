@@ -335,6 +335,11 @@ export interface Employee {
   assignedProductId: string | null;
   /** In-progress timed training, or null. On completion: level + 1. */
   training: { remainingSec: number; totalSec: number } | null;
+  /** The PLAYER benched this person ("send to Lab"), so the HR Autopilot leaves them
+   *  there. Cleared the next time the player places them on a product. Absent = not
+   *  benched by hand (a fresh hire, or freed by a sold product / a new generation).
+   *  Save v38; only ever stored as `true`. */
+  benched?: true;
 }
 
 /** A released AI product (Phase 3). Economic fields are plain numbers; net margin
