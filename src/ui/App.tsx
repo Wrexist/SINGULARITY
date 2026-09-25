@@ -25,6 +25,7 @@ import { Tagline } from "./Tagline";
 import { Onboarding } from "./Onboarding";
 import { FirstSteps, firstStepsVisible } from "./FirstSteps";
 import { goalDestination, nudgeDestination, type Destination } from "./wayfinding";
+import { newTransitionMemory, stepTransitionToasts, type TransitionToast } from "./transitionToasts";
 import { gameCenterSubmitScores, gameCenterUnlock } from "./gameCenter";
 import { DataMarketPanel } from "./DataMarketPanel";
 import { EmployeesPanel } from "./EmployeesPanel";
@@ -432,14 +433,19 @@ export function App() {
   // From the Doctrine reveal on, the player DECLARES a stance in the Lab Charter —
   // telling them their choices "tilt" the lab every run would narrate their own tap.
   const alignDir = game.alignment === 0 || doctrineUnlocked(game) ? "" : game.alignment > 0 ? "accel" : "doomer";
-  const transitionToasts: { key: string; fact: string | boolean; when: string | boolean; text: string; tone: ToastData["tone"] }[] = [
-    { key: "research", fact: showResearch, when: true, text: "Research unlocked", tone: "good" },
-    { key: "market", fact: showMarket, when: true, text: "Data Market unlocked", tone: "good" },
-    { key: "prestige", fact: showPrestige, when: true, text: "The path to shipping is open", tone: "good" },
+  // Unlock lines fire once per session (stepTransitionToasts spends them); only rows
+  // marked `repeat` re-arm. The first Ship needs research, so a lab that has shipped
+  // has had the three opening reveals — keying them on ships too keeps them quiet
+  // after a relaunch in the gap between a Ship and the next payout.
+  const shipped = game.prestige.ships > 0;
+  const transitionToasts: TransitionToast[] = [
+    { key: "research", fact: showResearch || shipped, when: true, text: "Research unlocked", tone: "good" },
+    { key: "market", fact: showMarket || shipped, when: true, text: "Data Market unlocked", tone: "good" },
+    { key: "prestige", fact: showPrestige || shipped, when: true, text: "The path to shipping is open", tone: "good" },
     // (No "You can Ship the Model!" toast — the same state change already opens the
     // one-time ship explainer sheet and lights the HQ dot. 2026-08 noise sweep.)
-    { key: "align", fact: alignDir, when: "accel", text: "Your choices tilt the lab accelerationist — faster, hotter. See Lab Stats.", tone: "neutral" },
-    { key: "align", fact: alignDir, when: "doomer", text: "Your choices tilt the lab doomer — safer, steadier. See Lab Stats.", tone: "neutral" },
+    { key: "align", fact: alignDir, when: "accel", text: "Your choices tilt the lab accelerationist — faster, hotter. See Lab Stats.", tone: "neutral", repeat: true },
+    { key: "align", fact: alignDir, when: "doomer", text: "Your choices tilt the lab doomer — safer, steadier. See Lab Stats.", tone: "neutral", repeat: true },
     { key: "autoTrain", fact: d.autoTrain, when: true, text: "Auto-train online — runs restart themselves. Set your training intensity.", tone: "good" },
     { key: "hired", fact: game.stats.employeesHired > 0, when: true, text: "First hire aboard — specialists level up as they work", tone: "good" },
     // Systems that used to appear as unexplained new panels (onboarding audit): one
@@ -450,7 +456,7 @@ export function App() {
     { key: "legacytree", fact: legacyAvailable(game).gt(0), when: true, text: "Legacy Investments unlocked — spend Legacy Weights on a permanent lane focus in HQ → Prestige.", tone: "good" },
     { key: "endowment", fact: endowmentUnlocked(game), when: true, text: "Reputation Endowment unlocked — you own the whole perk tree; pour surplus Reputation into a permanent, escalating boost in HQ → Lab Reputation.", tone: "good" },
     // Heat used to explain itself only by punishing you (pre-launch audit).
-    { key: "heat", fact: game.heat >= 25, when: true, text: "Regulatory Heat is rising — fines and raids get likelier. Time and lobbying cool it.", tone: "neutral" },
+    { key: "heat", fact: game.heat >= 25, when: true, text: "Regulatory Heat is rising — fines and raids get likelier. Time and lobbying cool it.", tone: "neutral", repeat: true },
     // Gentle backup nudge (R8.2): once real progress exists and no backup ever
     // has, say it ONCE. No timers, no urgency — a fact-transition like the rest.
     { key: "backup", fact: game.prestige.ships >= 2 && lastBackupAt === null, when: true, text: "Two generations banked — your save lives only on this device. Back it up in More → Back up.", tone: "neutral" },
@@ -465,8 +471,7 @@ export function App() {
       tone: "good" as const,
     })),
   ];
-  const seenFacts = useRef<Record<string, string | boolean>>({});
-  const syncedToSave = useRef(false);
+  const toastMemory = useRef(newTransitionMemory());
   // Effect dep: a compact signature of all facts, so the effect runs exactly when
   // one of them changes (not on every 10Hz render).
   const factSignature = transitionToasts.map((t) => `${t.key}=${t.fact}`).join("|");
@@ -474,15 +479,7 @@ export function App() {
     // Wait for the save to hydrate, then sync the "seen" baseline once so we
     // don't toast facts the player already had on a returning load.
     if (!initialized) return;
-    // Check ALL rows before updating the seen-map — rows can share a key (the
-    // two faction directions), and an interleaved write would mask the second.
-    if (syncedToSave.current) {
-      for (const t of transitionToasts) {
-        if (seenFacts.current[t.key] !== t.fact && t.fact === t.when) pushToast(t.text, t.tone);
-      }
-    }
-    for (const t of transitionToasts) seenFacts.current[t.key] = t.fact;
-    syncedToSave.current = true;
+    for (const t of stepTransitionToasts(transitionToasts, toastMemory.current)) pushToast(t.text, t.tone);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialized, factSignature]);
 
