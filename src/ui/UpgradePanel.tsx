@@ -12,7 +12,7 @@ import type { Derived, GameState } from "../engine/types";
 import { fmt, effRate, fmtEta } from "./format";
 import { BoltIcon } from "./Icons";
 import { burst, punch, floatText, registerBuyStreak } from "./fx";
-import { UpgradeRingIcon, EffectPill, upgradeGroup, UP_GROUP_ORDER, rackTierMark } from "./effectVisual";
+import { UpgradeRingIcon, EffectPill, upgradeGroup, UP_GROUP_ORDER, rackTierMark, metaForKind } from "./effectVisual";
 
 const RES_HEX: Record<string, string> = { compute: "#2f7bf6", data: "#9b51e0", money: "#16b364" };
 // Rack tiers finally read as three distinct pieces of hardware (the ramp already lives
@@ -283,12 +283,33 @@ export function UpgradePanel({ game, derived, onBuy, onFoundWing }: Props) {
           {renderCard(hero, true)}
         </div>
       )}
-      {groups.map(({ g, items }) => (
-        <div className="up-group" key={g}>
-          <div className="up-group-head">{g}</div>
-          <div className="list">{items.map((d) => renderCard(d))}</div>
-        </div>
-      ))}
+      {groups.map(({ g, items }) => {
+        // A maxed upgrade has nothing left to decide, so it folds into a quiet pill
+        // row (icon · name · ✓) instead of a full MAX card. Late-game Build tabs
+        // were mostly MAX cards; a fully maxed group is now one line.
+        const live = items.filter((d) => (game.upgrades[d.id] ?? 0) < d.max);
+        const maxed = items.filter((d) => (game.upgrades[d.id] ?? 0) >= d.max);
+        return (
+          <div className="up-group" key={g}>
+            <div className="up-group-head">{g}</div>
+            {live.length > 0 && <div className="list">{live.map((d) => renderCard(d))}</div>}
+            {maxed.length > 0 && (
+              <ul className="up-maxed" aria-label={`${g} — maxed`}>
+                {maxed.map((d) => {
+                  const m = metaForKind(d.effect.kind, 14);
+                  return (
+                    <li key={d.id} className="up-maxed-pill" style={{ ["--tint" as string]: m.tint }} title={d.desc}>
+                      <span className="up-maxed-ic" aria-hidden="true">{m.icon}</span>
+                      {d.name}
+                      <span className="up-maxed-check" aria-label="maxed">✓</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        );
+      })}
     </section>
   );
 }

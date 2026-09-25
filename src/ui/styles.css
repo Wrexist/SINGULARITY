@@ -2374,6 +2374,18 @@ button.modchip.workable:active { transform: scale(0.94); }
 .daily-text b { font-weight: 800; }
 .daily-go { font-size: var(--fs-sm); font-weight: 800; color: #fff; background: color-mix(in srgb, var(--accent) 85%, #000); border-radius: 999px; padding: 4px 12px; white-space: nowrap; }
 
+/* Maxed upgrades fold into a quiet pill row (icon · name · ✓) under their group —
+   nothing left to decide, so no full card. Tinted by the upgrade's own effect. */
+.up-maxed { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.up-maxed-pill {
+  display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 999px;
+  font-size: var(--fs-xs); font-weight: 750; color: var(--ink-2);
+  background: color-mix(in srgb, var(--tint, var(--accent)) 8%, #fff);
+  border: 1px solid color-mix(in srgb, var(--tint, var(--accent)) 22%, transparent);
+}
+.up-maxed-ic { display: inline-flex; color: var(--tint, var(--accent)); }
+.up-maxed-check { color: var(--money-ink); font-weight: 850; }
+
 /* Buy-quantity selector (×1 / ×10 / Max) for the Hardware panel. */
 .buy-qty { display: flex; gap: 6px; margin: 2px 0 4px; }
 .buy-qty-btn {
