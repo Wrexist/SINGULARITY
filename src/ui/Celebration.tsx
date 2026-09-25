@@ -6,6 +6,7 @@ import { shareRunCard } from "./shareCard";
 import { useReducedMotion } from "./motion";
 import { RocketIcon } from "./Icons";
 import { useDialog } from "./useDialog";
+import { useConfetti, confettiStyle } from "./confetti";
 
 export interface ShipReport {
   /** The generation number just completed (ships). */
@@ -32,8 +33,8 @@ interface Props {
   onDone: () => void;
 }
 
-const CONFETTI = Array.from({ length: 26 });
-const ASCENSION_CONFETTI = Array.from({ length: 48 });
+const CONFETTI_COUNT = 26;
+const ASCENSION_CONFETTI_COUNT = 48;
 const COLORS = ["#ff385c", "#2f7bf6", "#9b51e0", "#16b364", "#ff9f0a"];
 const GOLD = ["#ffd60a", "#ff9f0a", "#a855f7", "#ffe9a3", "#fff"];
 
@@ -74,21 +75,14 @@ export function Celebration({ weightsGained, totalWeights, report, ascended, onD
   const reducedMotion = useReducedMotion();
   const cardRef = useRef<HTMLDivElement>(null);
   useDialog(cardRef, { onClose: onDone, labelledBy: "celebrate-title" });
+  const confetti = useConfetti(ascended ? ASCENSION_CONFETTI_COUNT : CONFETTI_COUNT);
+  const palette = ascended ? GOLD : COLORS;
 
   return (
     <div className="celebrate" onClick={onDone}>
       {!reducedMotion && <div className="confetti" aria-hidden="true">
-        {(ascended ? ASCENSION_CONFETTI : CONFETTI).map((_, i) => (
-          <span
-            key={i}
-            style={{
-              ["--x" as string]: `${(Math.random() * 2 - 1).toFixed(2)}`,
-              ["--d" as string]: `${(Math.random() * 0.5).toFixed(2)}s`,
-              ["--r" as string]: `${Math.floor(Math.random() * 360)}deg`,
-              left: `${Math.floor(Math.random() * 100)}%`,
-              background: (ascended ? GOLD : COLORS)[i % (ascended ? GOLD : COLORS).length],
-            }}
-          />
+        {confetti.map((p, i) => (
+          <span key={i} style={confettiStyle(p, palette[i % palette.length]!)} />
         ))}
       </div>}
 
