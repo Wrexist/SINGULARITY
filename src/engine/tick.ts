@@ -13,6 +13,8 @@ import type { Derived, GameState } from "./types";
 /** Hard ceiling on simultaneously-active modifiers processed in a tick. The window-split
  *  recursion below descends once per distinct expiry, so this bounds its depth against a
  *  crafted/pathological buff stack. Sits far above any reachable legit stack. */
+/** Remaining time below this is float dust from the expiry split, not a live buff. */
+const MODIFIER_EPSILON_SEC = 1e-9;
 const MAX_ACTIVE_MODIFIERS = 48;
 
 /**
@@ -91,8 +93,12 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     }
     let minRem = Infinity;
     for (const m of active) if (m.remainingSec < minRem) minRem = m.remainingSec;
-    if (minRem > 0 && minRem < seconds) {
-      const firstMs = minRem * 1000;
+    // Compare in the SAME unit as the recursive argument. Comparing seconds let the
+    // inner call re-split forever: for ~2% of doubles, (r*1000)/1000 rounds one ulp
+    // above r, so `minRem < seconds` held again with the same firstMs and the stack
+    // overflowed — every frame, and on the offline catch-up (2026-09 bug hunt).
+    const firstMs = minRem * 1000;
+    if (minRem > 0 && firstMs < elapsedMs) {
       return tick(tick(state, firstMs), elapsedMs - firstMs);
     }
   }
@@ -209,7 +215,8 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   if (modifiers.length > 0) {
     modifiers = modifiers
       .map((m) => ({ ...m, remainingSec: m.remainingSec - seconds }))
-      .filter((m) => m.remainingSec > 0);
+      // A sliver left by float rounding (the split above lands a hair short) is spent.
+      .filter((m) => m.remainingSec > MODIFIER_EPSILON_SEC);
   }
 
   // Employee training advances on the wall clock (completions level them up).
