@@ -3,7 +3,7 @@ import { Portal } from "./Portal";
 import { Big } from "../engine/math/Big";
 import {
   componentsBalance, SLOTS_BY_TIER, componentDef, visibleCatalog, canBuyComponent, equippedCount,
-  earnedDefs, earnedSourceComplete, canFuse, freeCopies, tierSetMatched,
+  earnedDefs, earnedSourceComplete, canFuse, freeCopies, tierSetMatched, trophyEarnHint,
 } from "../engine/components";
 import type { SlotClass, ComponentDef, ComponentGrade } from "../engine/balance/components";
 import { RACK_IDS } from "../engine/hall";
@@ -136,7 +136,7 @@ export function RigBayPanel({ game, onBuy, onEquip, onFuse }: Props) {
             <div className="rig-option-main">
               <span className="rig-option-name"><LockIcon size={12} /> {def.name} <em className={`rig-grade grade-${def.grade}`}>{GRADE_LABEL[def.grade]}</em></span>
               <span className="rig-option-stat">{fmtEffect(def)}</span>
-              <span className="rig-option-desc">Trophy hardware — {def.earnedBy!.label}.</span>
+              <span className="rig-option-desc">Trophy hardware — {trophyEarnHint(def)}.</span>
             </div>
             <span className="rig-option-go rig-earn">earn it</span>
           </div>

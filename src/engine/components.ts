@@ -1,4 +1,5 @@
 import { components as C, SLOTS_BY_TIER, type ComponentDef, type SlotClass } from "./balance/components";
+import { contracts as CONTRACTS } from "./balance/contracts";
 import { RACK_IDS, totalRacks } from "./hall";
 import type { ComponentsState, GameState } from "./types";
 
@@ -70,6 +71,22 @@ export function grantEarnedComponents(state: GameState): GameState {
   }
   if (!owned) return state;
   return { ...state, components: { ...state.components, owned } };
+}
+
+/** How a trophy part is earned, as the Rig Bay's locked row says it. A contract pays its
+ *  part when it is CLAIMED, not when its goal is met, so a contract-earned part names the
+ *  contract to claim: "Ship your first model" on a lab that had shipped five times read
+ *  as a promise already broken (Ship It sits below three earlier rungs of the ladder,
+ *  and until they are claimed it is not even on the board). An achievement is awarded
+ *  on its own, so its goal is the hint. */
+export function trophyEarnHint(def: ComponentDef): string {
+  const by = def.earnedBy;
+  if (!by) return "";
+  if (by.kind === "contract") {
+    const title = CONTRACTS.pool.find((c) => c.id === by.id)?.title;
+    if (title) return `Claim the "${title}" contract`;
+  }
+  return by.label;
 }
 
 /** The trophy copies to carry through a prestige reset (loadout still clears). */
