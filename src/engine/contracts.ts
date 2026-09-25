@@ -87,10 +87,15 @@ const dayHash = (dayKey: number): number => (dayKey * 2654435761) >>> 0;
 export function rollSponsor(state: GameState, dayKey: number): GameState {
   const S = C.sponsor;
   const open = activeContracts(state).length === 0 || (S.openAtShips > 0 && state.prestige.ships >= S.openAtShips);
+  // A sponsor that was met but not yet claimed is banked before it is replaced or
+  // cleared: the player earned it ("miss it and nothing is lost"), and a lab that
+  // simply didn't open GOALS that day used to lose the Reputation at the rollover.
+  // claimSponsor is a same-ref no-op for an unmet or already-claimed sponsor.
   if (!C.enabled || !S.enabled || !open) {
-    return state.sponsor === null ? state : { ...state, sponsor: null };
+    return state.sponsor === null ? state : { ...claimSponsor(state), sponsor: null };
   }
   if (state.sponsor?.dayKey === dayKey) return state;
+  const banked = claimSponsor(state);
   const h = dayHash(dayKey);
   // Only lanes the player has actually started: a lab with no products yet must not
   // be asked to grow product revenue. A cleared-ladder veteran has every lane > 0,
@@ -103,7 +108,7 @@ export function rollSponsor(state: GameState, dayKey: number): GameState {
   const target = Math.max(lane.floor, Math.ceil(current * mult));
   const title = S.sponsors[(h >>> 8) % S.sponsors.length]!;
   return {
-    ...state,
+    ...banked,
     sponsor: {
       dayKey,
       metric: lane.metric,
