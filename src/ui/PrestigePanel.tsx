@@ -8,7 +8,7 @@ import { legacyTreeBalance, legacyAvailable, canBuyLegacyPerk } from "../engine/
 import { productsUnlocked } from "../engine/products";
 import { balance } from "../engine/balance/config";
 import type { GameState } from "../engine/types";
-import { fmt, fmtMoney } from "./format";
+import { fmt, fmtMoney, fmtMult } from "./format";
 import { Big } from "../engine/math/Big";
 import { ReputationModal } from "./ReputationModal";
 import { ConfirmSheet } from "./ConfirmSheet";
@@ -33,9 +33,6 @@ interface Props {
   onRespecDirective?: (id: string) => void;
   onBuyLegacyPerk: (id: string) => void;
 }
-
-/** A multiplier for display: two decimals while small, the compact format once big. */
-const fmtMult = (m: Big) => (m.lt(100) ? m.toNumber().toFixed(2) : fmt(m));
 
 /**
  * What a give-away ship (Open-source, Sell) pays "in exchange" for the model, as the

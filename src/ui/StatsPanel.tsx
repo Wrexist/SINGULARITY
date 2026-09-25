@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChevronIcon } from "./Icons";
 import type { Derived, GameState } from "../engine/types";
-import { fmt, fmtMoney, m$, numOf, fmtDur, fmtSignedPct } from "./format";
+import { fmt, fmtMoney, fmtMult, m$, numOf, fmtDur, fmtSignedPct } from "./format";
 import { achievementDefs } from "../engine/achievements";
 import { reputationAvailable, endowmentMult } from "../engine/reputation";
 import { preprintMult } from "../engine/preprints";
@@ -108,10 +108,10 @@ export function StatsPanel({ game, derived }: Props) {
     // trace is information the bar doesn't carry.
     { label: "Compute / sec", value: fmt(derived.computePerSec), tone: "compute" as const, spark: history.compute },
     { label: "Data / sec", value: fmt(derived.dataPerSec), tone: "data" as const, spark: history.data },
-    { label: "Compute multiplier", value: `×${fmt(derived.computeMult)}` },
-    { label: "Data multiplier", value: `×${fmt(derived.dataMult)}` },
-    { label: "$ multiplier", value: `×${fmt(derived.moneyMult)}` },
-    { label: "Legacy boost", value: `×${fmt(derived.legacyMult)}`, tone: "good" as const },
+    { label: "Compute multiplier", value: `×${fmtMult(derived.computeMult)}` },
+    { label: "Data multiplier", value: `×${fmtMult(derived.dataMult)}` },
+    { label: "$ multiplier", value: `×${fmtMult(derived.moneyMult)}` },
+    { label: "Legacy boost", value: `×${fmtMult(derived.legacyMult)}`, tone: "good" as const },
     // Endgame boosts that were previously invisible — surface them the moment they're
     // non-identity so the "small compounding boosts" actually read as working.
     ...(game.preprints > 0 ? [{ label: "Preprints", value: `×${preprintMult(game).toNumber().toFixed(2)} · ${game.preprints} paper${game.preprints === 1 ? "" : "s"}` }] : []),

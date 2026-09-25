@@ -72,6 +72,14 @@ export function fmt(v: Big): string {
   return useSettings.getState().scientificNotation ? v.formatScientific() : v.format();
 }
 
+/** A multiplier for display (the "×" is the caller's): two decimals while small
+ *  ("1.04", "0.96"), the compact format once it reaches 100 ("250B"). The resource
+ *  formatter keeps one decimal under 10, which read a ×1.04 boost or a ×0.96 penalty
+ *  as "×1.0". */
+export function fmtMult(m: Big): string {
+  return m.isFinite() && m.lt(99.995) ? m.toNumber().toFixed(2) : fmt(m);
+}
+
 /** Money is shown as currency: $1.2K, $58, etc. */
 export function fmtMoney(v: Big): string {
   return `$${fmt(v)}`;
