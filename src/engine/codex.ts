@@ -35,6 +35,13 @@ export function codexMetricValue(state: GameState, metric: CodexEntry["metric"])
   }
 }
 
+/** Is the Field Notes panel on the screen yet? It opens on Lab › HQ with the first
+ *  Ship. Notes still unlock before that (they are derived from stats); this gates only
+ *  what is SHOWN and ANNOUNCED, so a "new Field Note" never points at a missing panel. */
+export function codexRevealed(state: GameState): boolean {
+  return state.prestige.ships > 0;
+}
+
 export function codexUnlocked(state: GameState, entry: CodexEntry): boolean {
   return codexMetricValue(state, entry.metric) >= entry.threshold;
 }

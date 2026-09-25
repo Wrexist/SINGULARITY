@@ -78,7 +78,7 @@ import { balance } from "../engine/balance/config";
 import { recordTelemetry } from "./telemetry";
 import { purchaseSignature } from "../engine/telemetry";
 import { currentEra } from "../engine/eras";
-import { codexBalance, codexUnlocked } from "../engine/codex";
+import { codexBalance, codexUnlocked, codexRevealed } from "../engine/codex";
 import type { Big } from "../engine/math/Big";
 
 const SAVE_KEY = "singularity.save.v1";
@@ -572,7 +572,9 @@ export const useGame = create<GameStore>((set, get) => ({
       // satire wedge appeared only if you opened the panel). Surface it as a gentle
       // "new field note" toast — a good-tone notice with no special kind, so it gets
       // the soft discovery chime, not the achievement fanfare. One per tick (coalesced).
-      {
+      // Only once the Field Notes panel is on HQ (the first Ship): in generation 1 the
+      // note unlocks quietly, and the toast pointed at a panel the player couldn't find.
+      if (codexRevealed(game)) {
         const newCodex = codexBalance.entries.filter((e) => !codexUnlocked(s.game, e) && codexUnlocked(game, e));
         if (newCodex.length >= 1) {
           noticeKey += 1;

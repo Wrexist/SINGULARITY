@@ -34,6 +34,7 @@ import { GoalsPanel, type GoalsSection } from "./GoalsPanel";
 import { goalsCounts } from "./goalsCount";
 import { CharterPanel } from "./CharterPanel";
 import { CodexPanel } from "./CodexPanel";
+import { codexRevealed } from "../engine/codex";
 import { EventLog } from "./EventLog";
 import { FxCanvas } from "./FxCanvas";
 import { burst as fxBurst, floatText as fxFloat, FX_PALETTES } from "./fx";
@@ -1123,7 +1124,7 @@ export function App() {
                   </Collapsible>
                 )}
                 <StatsPanel game={game} derived={d} />
-                {game.prestige.ships > 0 && <CodexPanel game={game} />}
+                {codexRevealed(game) && <CodexPanel game={game} />}
                 <EventLog log={log} />
               </>
             )}
