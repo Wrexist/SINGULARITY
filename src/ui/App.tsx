@@ -948,8 +948,10 @@ export function App() {
                 if (goal.kind === "achievement" || goal.kind === "milestone") { setGoalsSection("collection"); goTab("goals"); }
                 else {
                   goTab("lab");
-                  // The ship goal and the first era both advance through research nodes.
-                  if (labSectioned) goSection(goal.kind === "ship" || (goal.kind === "era" && era === 0) ? "research" : "hq");
+                  // The road to the first Ship and the first era both advance through research;
+                  // once shipping is possible, the ship goal lives on HQ.
+                  const toResearch = (goal.kind === "ship" && !shipReady) || (goal.kind === "era" && era === 0);
+                  if (labSectioned) goSection(toResearch ? "research" : "hq");
                 }
               }}
             >

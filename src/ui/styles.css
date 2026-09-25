@@ -1536,6 +1536,7 @@ svg { vertical-align: middle; }
 .ship-mode-ic { flex: 0 0 auto; width: 38px; height: 38px; border-radius: var(--radius-xs); display: inline-flex; align-items: center; justify-content: center; font-size: var(--fs-2xl); background: color-mix(in srgb, var(--ship) 12%, #fff); }
 .ship-mode-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .ship-mode-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.ship-mode-next { font-size: var(--fs-xs); font-weight: 750; color: var(--ink-2); font-variant-numeric: tabular-nums; margin-top: 1px; }
 .ship-mode-label { font-size: var(--fs-base); font-weight: 800; color: var(--ink); }
 .ship-mode-gain { flex: 0 0 auto; font-size: var(--fs-md); font-weight: 800; color: var(--ship); font-variant-numeric: tabular-nums; }
 .ship-mode-blurb { font-size: var(--fs-xs); color: var(--ink-2); line-height: 1.35; }

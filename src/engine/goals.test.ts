@@ -83,8 +83,16 @@ describe("product-milestone goals (mid-game carrots)", () => {
     g = nextGoal(s)!;
     expect(g.kind).toBe("ship");
     expect(g.progress).toBeGreaterThan(0);
-    // Once the capability node is owned the goal is met and leaves the strip.
+    // Shippable but barely worth it: the strip shows the first Ship's value growing…
     s.research = [...s.research, balance.prestige.capabilityResearch];
+    s.lifetimeMoney = Big.of(1e5);
+    g = nextGoal(s)!;
+    expect(g.kind).toBe("ship");
+    expect(g.label).toBe("Grow your first Ship");
+    expect(g.progress).toBeGreaterThan(0);
+    expect(g.progress).toBeLessThan(1);
+    // …and leaves once the reset clearly pays (the advisor takes over from there).
+    s.lifetimeMoney = Big.of(1e9);
     expect(goalCandidates(s).some((x) => x.kind === "ship")).toBe(false);
   });
 

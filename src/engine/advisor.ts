@@ -2,9 +2,9 @@ import { balance } from "./balance/config";
 import { productMetrics, productsUnlocked, canStartUpgrade, maxActiveProducts } from "./products";
 import { contractBoard, sponsorView } from "./contracts";
 import { canBuyResearch, researchStalled } from "./actions";
-import { canPrestige } from "./prestige";
+import { canPrestige, nextRunMultiplier } from "./prestige";
 import { hireCost } from "./employees";
-import { derive } from "./derive";
+import { derive, FIRST_SHIP_WORTH_IT } from "./derive";
 import type { Derived, GameState } from "./types";
 
 /** The first research node (no prereqs) — the new player's first capability buy. */
@@ -72,8 +72,15 @@ export function advisorItems(state: GameState, precomputed?: Derived): AdvisorIt
   if (state.prestige.ships === 0) {
     // NOTE: no "claim your finished run" item — the big bobbing Claim button IS
     // that nudge, and a chip duplicating an on-screen CTA read as noise (owner).
+    // Nudge the first Ship only once it's clearly worth the reset. It unlocks with
+    // ~2 weights (next run ×1.03) for an engaged player at ~13m, and a priority-92
+    // "ship now" there talked players into resetting for nothing. Until the boost is
+    // real, the goal strip shows it growing instead (goals.ts).
     if (canPrestige(state)) {
-      items.push({ tab: "lab", section: "hq", text: "Ship the Model — reset for a permanent boost", priority: 92 });
+      const mult = nextRunMultiplier(state).toNumber();
+      if (mult >= FIRST_SHIP_WORTH_IT) {
+        items.push({ tab: "lab", section: "hq", text: `Ship the Model — next run starts ×${mult.toFixed(2)}`, priority: 92 });
+      }
     }
     // Affordable first research outranks the idle "start a run" nudge, so it
     // actually surfaces when it becomes the meaningful next step (nextAction

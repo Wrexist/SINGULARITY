@@ -4,7 +4,8 @@ import { achievementDefs, achievementProgress } from "./achievements";
 import { currentEra, eraName } from "./eras";
 import { productMilestones } from "./balance/products";
 import { milestoneValue, productsUnlocked } from "./products";
-import { canPrestige, shipPath } from "./prestige";
+import { canPrestige, shipPath, nextRunMultiplier } from "./prestige";
+import { FIRST_SHIP_WORTH_IT } from "./derive";
 import type { GameState } from "./types";
 
 /**
@@ -46,6 +47,18 @@ export function goalCandidates(state: GameState): Goal[] {
       desc: `${p.done}/${p.total} research on the path`,
       progress: p.total > 0 ? p.done / p.total : 0,
     });
+  } else if (state.prestige.ships === 0) {
+    // Shippable, but not yet worth much: show the first Ship's value GROWING toward
+    // the point where the reset clearly pays (then the advisor says "ship").
+    const mult = nextRunMultiplier(state).toNumber();
+    if (Number.isFinite(mult) && mult < FIRST_SHIP_WORTH_IT) {
+      goals.push({
+        kind: "ship",
+        label: "Grow your first Ship",
+        desc: `next run ×${mult.toFixed(2)} of ×${FIRST_SHIP_WORTH_IT.toFixed(2)}`,
+        progress: Math.max(0, Math.min(0.999, (mult - 1) / (FIRST_SHIP_WORTH_IT - 1))),
+      });
+    }
   }
 
   // Era transitions with a scalar to show. Era 0→1 counts research; eras 2→5

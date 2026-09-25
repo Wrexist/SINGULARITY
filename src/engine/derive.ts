@@ -82,6 +82,18 @@ export function trainingIntensity(focus: number): number {
   return floor + (1 - floor) * Math.max(0, Math.min(1, focus));
 }
 
+/** The permanent global multiplier a pool of (uninvested) Legacy Weights grants:
+ *  1 + perPoint × weights^exponent. Single source for derive() and every display
+ *  of it (the HQ panel used to show the linear 1 + perPoint × weights, overstating
+ *  a 5K-weight lab as ×91 when it was really ×17). Pure. */
+export function legacyMultiplier(weights: Big): Big {
+  return Big.ONE.add(weights.max(Big.ZERO).pow(balance.prestige.multiplierExponent).mul(balance.prestige.multiplierPerPoint));
+}
+
+/** First-Ship value: the global multiplier the NEXT run would start with if the
+ *  player shipped now (deploy), vs. the threshold where it is clearly worth it. */
+export const FIRST_SHIP_WORTH_IT = 1.25;
+
 export function derive(state: GameState): Derived {
   let computeFlat = Big.of(balance.baseComputePerSec);
   let computeMult = Big.ONE;
@@ -230,9 +242,7 @@ export function derive(state: GameState): Derived {
   // doesn't collapse to sub-minute ships. R5.4: weights INVESTED in the legacy tree
   // are removed from this pool (legacyAvailable) — the focus-vs-breadth trade-off.
   // With nothing invested, available === total, so the curve is unchanged.
-  const legacyMult = Big.ONE.add(
-    legacyAvailable(state).pow(balance.prestige.multiplierExponent).mul(balance.prestige.multiplierPerPoint),
-  );
+  const legacyMult = legacyMultiplier(legacyAvailable(state));
   computeMult = computeMult.mul(legacyMult);
   dataMult = dataMult.mul(legacyMult);
   moneyMult = moneyMult.mul(legacyMult);

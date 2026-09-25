@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { canPrestige, legacyWeightsGain, legacyWeightsForMode, ascensionMultiplier, shipPath, type ShipMode } from "../engine/prestige";
+import { canPrestige, legacyWeightsGain, legacyWeightsForMode, ascensionMultiplier, shipPath, nextRunMultiplier, type ShipMode } from "../engine/prestige";
+import { legacyMultiplier } from "../engine/derive";
 import { currentEra } from "../engine/eras";
 import { reputationAvailable } from "../engine/reputation";
 import { legacyTreeBalance, legacyAvailable, canBuyLegacyPerk } from "../engine/legacyTree";
@@ -31,6 +32,9 @@ interface Props {
   onRespecDirective?: (id: string) => void;
   onBuyLegacyPerk: (id: string) => void;
 }
+
+/** A multiplier for display: two decimals while small, the compact format once big. */
+const fmtMult = (m: Big) => (m.lt(100) ? m.toNumber().toFixed(2) : fmt(m));
 
 const legacyPerkName = (id?: string) => legacyTreeBalance.perks.find((p) => p.id === id)?.name ?? "a prerequisite";
 
@@ -71,12 +75,14 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
       {game.prestige.ships === 0 && (
         <p className="prestige-blurb">
           Ship your flagship model to reset the lab and bank <b>Legacy Weights</b> —
-          a permanent +{(balance.prestige.multiplierPerPoint * 100).toFixed(0)}% global boost each.
+          a permanent boost to everything, bigger the longer this run goes.
         </p>
       )}
 
       <div className="prestige-stats">
-        <span>Held weights: <b>{fmt(have)}</b> (×{fmt(Big.ONE.add(have.mul(balance.prestige.multiplierPerPoint)))})</span>
+        {/* The multiplier derive() actually applies: diminishing in weights, and only
+            the uninvested ones count. This used to show the linear 1 + 1.8% × weights. */}
+        <span>Held weights: <b>{fmt(have)}</b> (×{fmtMult(legacyMultiplier(legacyAvailable(game)))})</span>
         <span>Models shipped: <b>{game.prestige.ships}</b></span>
       </div>
 
@@ -181,6 +187,9 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
                   <div className="ship-mode-top">
                     <span className="ship-mode-label">{m.label}</span>
                     <span className="ship-mode-gain">+{fmt(banked)} weights</span>
+                  </div>
+                  <div className="ship-mode-next">
+                    Legacy boost ×{fmtMult(legacyMultiplier(legacyAvailable(game)))} → ×{fmtMult(nextRunMultiplier(game, m.id as ShipMode))}
                   </div>
                   <span className="ship-mode-blurb">{m.blurb}</span>
                   <div className="ship-mode-tags">

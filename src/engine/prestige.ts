@@ -8,6 +8,8 @@ import { hallCapacity } from "./hall";
 import { currentEra } from "./eras";
 import { trialConditionMet } from "./trials";
 import { advanceFlagship } from "./flagship";
+import { legacyMultiplier } from "./derive";
+import { legacyAvailable } from "./legacyTree";
 import { resolveStakeOutcome } from "./market";
 import type { DraftModel, GameState } from "./types";
 
@@ -96,6 +98,12 @@ export function ascensionMultiplier(state: GameState): number {
  * Infinity past ~1e308 and poisons the permanent multiplier — the entire reason
  * the Big abstraction exists (LEARNINGS: idle curves hit 1e308 within hours).
  */
+/** The global multiplier the NEXT run would start with if the player shipped now in
+ *  `mode`: today's uninvested weights plus what this ship banks. Pure display. */
+export function nextRunMultiplier(state: GameState, mode: ShipMode = "deploy"): Big {
+  return legacyMultiplier(legacyAvailable(state).add(legacyWeightsForMode(state, mode)));
+}
+
 export function legacyWeightsGain(state: GameState): Big {
   if (!canPrestige(state)) return Big.ZERO;
   const ratio = state.lifetimeMoney.div(balance.prestige.scale);
