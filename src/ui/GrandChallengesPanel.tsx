@@ -2,6 +2,7 @@ import type { GameState } from "../engine/types";
 import { visibleChallenges, challengeView, canFundChallenge, pendingForkChallenge, megaprojectUnlocked, megaprojectView, canFundMegaproject, mandateDefs, mandatePicksAvailable, mandateMods } from "../engine/challenges";
 import { challenges as C } from "../engine/balance/challenges";
 import { fmt } from "./format";
+import type { Big } from "../engine/math/Big";
 import { ComputeIcon, DataIcon, MoneyIcon, GiftIcon } from "./Icons";
 import { iconFor } from "./iconRegistry";
 
@@ -37,7 +38,12 @@ export function GrandChallengesPanel({ game, onFund, onChooseFork, onFundMegapro
   const picks = mandatePicksAvailable(game);
   const mandateHeld = game.megaprojects.mandates.length;
   const mm = mandateMods(game);
-  const asPct = (b: { toNumber: () => number }) => Math.round((b.toNumber() - 1) * 100);
+  // Whole percents while small; the compact format from 1000% up. Mandates compound, so
+  // a deep single-lane stack printed "+8352127%" and then "+4.866414170442524e+21%".
+  const asPct = (b: Big) => {
+    const p = b.sub(1).mul(100);
+    return p.lt(999.5) ? String(Math.round(p.toNumber())) : fmt(p);
+  };
   const mandateSummary = `+${asPct(mm.compute)}% C · +${asPct(mm.data)}% D · +${asPct(mm.money)}% $`;
 
   const body = (
