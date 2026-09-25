@@ -203,7 +203,7 @@ const MAX_SINGLE_STEP_GROWTH = 0.1;
  * sliced (a resume, the offline catch-up's 5-minute steps, a throttled tab's frame for
  * a heavily boosted product); an ordinary frame is one step, exactly as before.
  */
-function productSubsteps(ps: ProductsState, seconds: number, modsById: Record<string, ProductMods>): number {
+export function productSubsteps(ps: ProductsState, seconds: number, modsById: Record<string, ProductMods>): number {
   let rate = 0;
   for (const p of ps.active) {
     const t = typeDef(p.type);
@@ -213,13 +213,19 @@ function productSubsteps(ps: ProductsState, seconds: number, modsById: Record<st
     // competitiveness and market headroom only fall across a window (the frontier
     // climbs, users only arrive), so this bounds every slice. A saturated or stale
     // product needs no slicing at all, which keeps a long offline catch-up cheap.
-    const qf = clamp(p.quality / Math.max(ps.frontier, 1e-9), 0, 1);
     const tam = t.tam * fm.tam;
-    const sat = Math.max(0, 1 - p.mau / tam);
+    const sat = tam > 0 ? Math.max(0, 1 - p.mau / tam) : 0;
+    const bought = tam > 0 ? channelAcq(p, tam) * mods.acq * fm.acq : 0;
+    // No users and no campaign seeding any (a launch left at $0 marketing): nothing
+    // can grow, so nothing to slice however long the window.
+    if (!(sat > 0) || (p.mau <= 0 && !(bought > 0))) continue;
+    const qf = clamp(p.quality / Math.max(ps.frontier, 1e-9), 0, 1);
     const viral = t.virality * qf * sat * (p.buzzSec > 0 ? B.buzzAcqMult : 1) * mods.acq * fm.acq;
     // Paid acquisition saturates too: its cost per user climbs with penetration, so a
     // heavy campaign's reach falls within the window. One straight step overshot it.
-    const paid = tam > 0 ? (channelAcq(p, tam) * mods.acq * fm.acq * B.cacSaturation * MAX_SAT_MULT) / tam : 0;
+    // Only while there is market left to take: a product at its TAM is clamped there
+    // however the window is cut, so a campaign kept running on it needs no slicing.
+    const paid = (bought * B.cacSaturation * MAX_SAT_MULT * sat) / tam;
     const r = viral + paid;
     if (Number.isFinite(r) && r > rate) rate = r;
   }

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { createInitialState } from "./state";
 import { tick } from "./tick";
 import { applyOffline } from "./offline";
+import { productSubsteps } from "./products";
 import { products as PRODUCTS } from "./balance/products";
 import { Big } from "./math/Big";
 import type { GameState, ProductState } from "./types";
@@ -86,6 +87,23 @@ describe("product growth does not depend on how the window is sliced", () => {
     for (let t = 0; t < 40; t++) slow = tick(slow, 1000);
     const open = live(s, 40_000);
     expect(users(slow) / users(open)).toBeGreaterThan(0.97);
+  });
+
+  it("slicing leaves idle and saturated products alone, so their catch-up stays cheap", () => {
+    // A launch left at $0 marketing has no users to compound, and a product at its TAM
+    // is clamped there however the window is cut: neither may cost hundreds of slices
+    // on every 5-minute step of a day-long catch-up (they did, ~25x the old catch-up).
+    const tamOf = (t: ProductState["type"]) => PRODUCTS.types.find((x) => x.id === t)!.tam;
+    const five = 300;
+    const idle = lab({ ...product("companion", 0, 0, PRODUCTS.buzzDurationSec), quality: 40 }).products;
+    expect(productSubsteps(idle, five, {})).toBe(1);
+    const full = lab({ ...product("code", tamOf("code"), 8_000_000, 0), quality: 5_000 }).products;
+    expect(productSubsteps({ ...full, frontier: 5_000 }, five, {})).toBe(1);
+    // …while a young product with users or a campaign still is.
+    const young = lab(product("companion", 100, 50, PRODUCTS.buzzDurationSec)).products;
+    expect(productSubsteps(young, five, {})).toBeGreaterThan(100);
+    const seeding = lab(product("code", 0, 8_000, 0)).products;
+    expect(productSubsteps(seeding, five, {})).toBeGreaterThan(1);
   });
 
   it("slicing keeps a full day's catch-up of a young portfolio cheap", () => {
