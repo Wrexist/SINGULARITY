@@ -503,6 +503,10 @@ export function App() {
 
   // First-ever ship-ready: queue the one-time explainer (settings-persisted).
   // Only for a first-generation lab — veterans already know what shipping does.
+  // Uninvited like the era and world moments (a "Save for this" pin or the Research
+  // Director buys the Ship node on its own, and the boost crosses the line as Money
+  // comes in), so it waits for an open sheet instead of stacking on it. Once up it
+  // stays up: its own sheet counts as open, and must not send it back to waiting.
   useEffect(() => {
     if (!initialized || shipExplained) return;
     if (game.prestige.ships > 0) {
@@ -512,8 +516,8 @@ export function App() {
       markShipExplained();
       return;
     }
-    if (shipCalls) setShowShipExplainer(true);
-  }, [initialized, shipCalls, shipExplained, game.prestige.ships, markShipExplained]);
+    if (shipCalls && !sheetOpen) setShowShipExplainer(true);
+  }, [initialized, shipCalls, shipExplained, game.prestige.ships, markShipExplained, sheetOpen]);
 
   // Era transitions: a full-screen tentpole moment when the lab crosses an era.
   // Guarded by the same hydration sync so it never fires on a returning load.
