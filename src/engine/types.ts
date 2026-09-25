@@ -23,6 +23,12 @@ export interface TrainingRun {
   progress: number;
   /** Completed and awaiting a claim (the dopamine beat). */
   readyToClaim: boolean;
+  /** The Training intensity (computeFocus) this run was STARTED at — the size its
+   *  Compute was charged at, so the size its payout is priced at (see runYieldAt), not
+   *  wherever the slider sits when it lands. Set on every run that starts; absent on an
+   *  idle run. Absent on an in-flight run only from a hand-built state, which then falls
+   *  back to the live slider. Persisted since save v37. */
+  focus?: number;
 }
 
 export interface PrestigeState {

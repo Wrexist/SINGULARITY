@@ -8,7 +8,7 @@ import {
   type WorldEvent,
   type WorldEventEffect,
 } from "./balance/config";
-import { derive, computeBankCeiling } from "./derive";
+import { derive, computeBankCeiling, runYieldAt } from "./derive";
 import { ALL_RESEARCH, researchTree, epochUnlocked } from "./researchTree";
 import { alignmentHeatMult } from "./alignment";
 import { suspicionEventMult, regulatorIsNamed, regulatorState, clampSuspicion } from "./regulator";
@@ -48,27 +48,29 @@ export function startRun(state: GameState): GameState {
   return {
     ...state,
     resources: { ...state.resources, compute: state.resources.compute.sub(d.runComputeCost) },
-    run: { active: true, progress: 0, readyToClaim: false },
+    // Record the intensity this run was charged at: its payout is priced at it.
+    run: { active: true, progress: 0, readyToClaim: false, focus: state.computeFocus },
   };
 }
 
-/** Claim a finished run's Data + Money payout. No-op if nothing is ready. */
+/** Claim a finished run's Data + Money payout, priced at the intensity the run was
+ *  started at (see runYieldAt). No-op if nothing is ready. */
 export function claimRun(state: GameState): GameState {
   if (!state.run.readyToClaim) return state;
-  const d = derive(state);
+  const y = runYieldAt(state, derive(state), state.run.focus);
   return {
     ...state,
     resources: {
       ...state.resources,
-      data: state.resources.data.add(d.runDataYield),
-      money: state.resources.money.add(d.runMoneyYield),
+      data: state.resources.data.add(y.data),
+      money: state.resources.money.add(y.money),
     },
-    lifetimeMoney: state.lifetimeMoney.add(d.runMoneyYield),
+    lifetimeMoney: state.lifetimeMoney.add(y.money),
     // tick() derives stats.totalMoney from the lifetimeMoney delta WITHIN a tick, so a
     // claim landing between ticks was never counted: a hand-claiming opening showed
     // $0 all-time earned and the Seed Round contract / lifetime achievements sat
     // still until auto-claim arrived. (retireProduct already does the same.)
-    stats: { ...state.stats, totalMoney: state.stats.totalMoney.add(d.runMoneyYield) },
+    stats: { ...state.stats, totalMoney: state.stats.totalMoney.add(y.money) },
     run: { active: false, progress: 0, readyToClaim: false },
   };
 }

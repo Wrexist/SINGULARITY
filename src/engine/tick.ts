@@ -1,6 +1,6 @@
 import { Big } from "./math/Big";
 import { balance } from "./balance/config";
-import { derive } from "./derive";
+import { derive, runYieldAt } from "./derive";
 import { simulateProducts, advanceUpgrades, applyMilestones, productMetrics } from "./products";
 import { advanceTraining } from "./employees";
 import { accrueStats } from "./stats";
@@ -8,7 +8,7 @@ import { applyAchievements } from "./achievements";
 import { grantEarnedComponents } from "./components";
 import { applyAutoResearch } from "./actions";
 import { rivalsBeaten } from "./market";
-import type { Derived, GameState } from "./types";
+import type { GameState } from "./types";
 
 /** Hard ceiling on simultaneously-active modifiers processed in a tick. The window-split
  *  recursion below descends once per distinct expiry, so this bounds its depth against a
@@ -138,15 +138,16 @@ export function tick(state: GameState, elapsedMs: number): GameState {
       guard++;
       const secsToFinish = (1 - run.progress) * d.runDurationSec;
       if (remaining >= secsToFinish) {
-        // Run completes.
+        // Run completes. It keeps the intensity it was started at: that is what its
+        // Compute was charged at, so that is what it pays (see runYieldAt).
         remaining -= secsToFinish;
-        run = { active: false, progress: 1, readyToClaim: true };
+        run = { ...run, active: false, progress: 1, readyToClaim: true };
         if (d.autoClaim) {
-          ({ data, money, lifetimeMoney } = claimInto(d, data, money, lifetimeMoney));
+          ({ data, money, lifetimeMoney } = claimInto(runYieldAt(state, d, run.focus), data, money, lifetimeMoney));
           run = { active: false, progress: 0, readyToClaim: false };
           if (autoTrainReady(compute)) {
             compute = compute.sub(d.runComputeCost);
-            run = { active: true, progress: 0, readyToClaim: false };
+            run = { active: true, progress: 0, readyToClaim: false, focus: state.computeFocus };
           } else {
             break;
           }
@@ -160,12 +161,12 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     }
   } else if (run.readyToClaim && d.autoClaim) {
     // A run finished last tick before auto-claim existed; claim it now.
-    ({ data, money, lifetimeMoney } = claimInto(d, data, money, lifetimeMoney));
+    ({ data, money, lifetimeMoney } = claimInto(runYieldAt(state, d, run.focus), data, money, lifetimeMoney));
     run = { active: false, progress: 0, readyToClaim: false };
   } else if (!run.active && !run.readyToClaim && autoTrainReady(compute)) {
     // Idle + auto-train (and focus allows): kick off a fresh run.
     compute = compute.sub(d.runComputeCost);
-    run = { active: true, progress: 0, readyToClaim: false };
+    run = { active: true, progress: 0, readyToClaim: false, focus: state.computeFocus };
   }
 
   // Regulatory Heat cools passively when you're not buying shady data.
@@ -277,10 +278,10 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   return applyAutoResearch(granted);
 }
 
-function claimInto(d: Derived, data: Big, money: Big, lifetimeMoney: Big) {
+function claimInto(y: { data: Big; money: Big }, data: Big, money: Big, lifetimeMoney: Big) {
   return {
-    data: data.add(d.runDataYield),
-    money: money.add(d.runMoneyYield),
-    lifetimeMoney: lifetimeMoney.add(d.runMoneyYield),
+    data: data.add(y.data),
+    money: money.add(y.money),
+    lifetimeMoney: lifetimeMoney.add(y.money),
   };
 }

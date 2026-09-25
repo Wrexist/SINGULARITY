@@ -373,9 +373,7 @@ export function derive(state: GameState): Derived {
   // Training intensity (computeFocus) scales the INVESTMENT: at low intensity a
   // run sips Compute (and pays proportionally less), so the bank can actually
   // climb — identity at focus 1, so the tuned curve and the sim are unchanged.
-  const runComputeCost = computePerSec
-    .mul(balance.run.costSeconds * trainingIntensity(state.computeFocus))
-    .max(balance.run.minCompute);
+  const runComputeCost = runCostAt(computePerSec, state.computeFocus);
 
   return {
     computePerSec,
@@ -401,6 +399,36 @@ export function derive(state: GameState): Derived {
     productMods,
     productModsById,
     hireDiscount,
+  };
+}
+
+/** Compute one training run invests at a given intensity: `costSeconds` of production
+ *  scaled by trainingIntensity(focus), floored at minCompute. The single formula behind
+ *  derive()'s runComputeCost, a run's claim-time payout and focusToBank. Pure. */
+function runCostAt(computePerSec: Big, focus: number): Big {
+  return computePerSec.mul(balance.run.costSeconds * trainingIntensity(focus)).max(balance.run.minCompute);
+}
+
+/**
+ * The Data + Money a finishing run pays, priced at the intensity it was STARTED at
+ * (`run.focus`). A run's Compute is charged when it starts, so pricing its payout at
+ * the live slider let a mid-run slider move rewrite a run already paid for: easing
+ * intensity ("Save for this", the advisor's nudge) cut the in-flight run by up to 70%,
+ * and starting a light run then cranking the slider paid 3.3x its cost. Everything
+ * else (production, multipliers) is still read at claim time, exactly as before.
+ *
+ * When the run's intensity is unknown or equal to the live slider — always, in the
+ * balance sim — this returns derive()'s own yields untouched, so the tuned curve
+ * cannot move. Pure.
+ */
+export function runYieldAt(state: GameState, d: Derived, focus: number | undefined): { data: Big; money: Big } {
+  if (focus === undefined || !Number.isFinite(focus) || focus === state.computeFocus) {
+    return { data: d.runDataYield, money: d.runMoneyYield };
+  }
+  const cost = runCostAt(d.computePerSec, focus);
+  return {
+    data: cost.mul(balance.run.dataPerCompute).mul(d.dataMult),
+    money: cost.mul(balance.run.moneyPerCompute).mul(d.moneyMult),
   };
 }
 
@@ -430,10 +458,9 @@ export function computeBankCeiling(state: GameState, d: Derived): Big | null {
 export function focusToBank(state: GameState, d: Derived, computeCost: Big): number {
   const current = Math.max(0, Math.min(1, state.computeFocus));
   const need = computeCost.mul(1.05);
-  const perSecCost = d.computePerSec.mul(balance.run.costSeconds);
   for (let step = Math.round(current * 20); step >= 1; step--) {
     const f = step / 20;
-    const runCost = perSecCost.mul(trainingIntensity(f)).max(balance.run.minCompute);
+    const runCost = runCostAt(d.computePerSec, f);
     if (runCost.div(f).gte(need)) return f;
   }
   return 0;

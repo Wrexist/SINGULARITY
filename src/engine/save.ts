@@ -595,6 +595,22 @@ function sanitizeMegaprojects(raw: unknown, completedChallenges: string[]): Game
   };
 }
 
+/** The training run, sanitized. A run that is in flight or awaiting its claim carries
+ *  the intensity it was started at (its payout is priced at it — see runYieldAt),
+ *  clamped to the slider's [0, 1]; a missing or non-numeric one falls back to the saved
+ *  slider, which is exactly what that run would have been paid at before v37. An idle
+ *  run carries none. */
+function sanitizeRun(raw: unknown, computeFocus: number): GameState["run"] {
+  const r = (raw && typeof raw === "object" ? raw : {}) as Partial<GameState["run"]>;
+  const run: GameState["run"] = {
+    active: r.active === true,
+    progress: clampNum(r.progress, 0, 1, 0),
+    readyToClaim: r.readyToClaim === true,
+  };
+  if (run.active || run.readyToClaim) run.focus = clampNum(r.focus, 0, 1, computeFocus);
+  return run;
+}
+
 export function deserialize(json: string): GameState {
   const raw = migrate(JSON.parse(json)) as Partial<SavedShape>;
   const fresh = createInitialState();
@@ -733,11 +749,7 @@ export function deserialize(json: string): GameState {
       const ep = epochNode(id);
       return !ep || paradigms.includes(ep.requiresParadigm);
     }),
-    run: {
-      active: (raw.run as GameState["run"] | undefined)?.active === true,
-      progress: clampNum((raw.run as GameState["run"] | undefined)?.progress, 0, 1, 0),
-      readyToClaim: (raw.run as GameState["run"] | undefined)?.readyToClaim === true,
-    },
+    run: sanitizeRun(raw.run, computeFocus),
     prestige: {
       legacyWeights: safeBig(pres.legacyWeights),
       // Ceiling as well as floor: ships is submitted verbatim to the Game Center
@@ -1277,6 +1289,16 @@ export function migrate(raw: any): SavedShape {
     // capacity is exactly what it was — hallCapacity multiplies by wings+1, and
     // wings is 0 here. The Reputation already spent is untouched.
     s = { ...s, version: 36, facilityWings: s.facilityWings ?? 0 };
+  }
+  if (s.version === 36) {
+    // v36 → v37: a training run records the intensity it was started at, and its
+    // payout is priced at that instead of the live slider. A run already in flight
+    // (or waiting for its claim) was always priced at the saved slider, so that is
+    // its value here — the returning player's in-flight run pays exactly what it
+    // would have. The sanitizer clamps it; an idle run carries none.
+    const run = s.run && typeof s.run === "object" ? s.run : undefined;
+    const inFlight = !!run && (run.active === true || run.readyToClaim === true);
+    s = { ...s, version: 37, run: inFlight && run.focus === undefined ? { ...run, focus: s.computeFocus } : run };
   }
   return s as SavedShape;
 }

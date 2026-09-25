@@ -1,6 +1,6 @@
 import type { Derived, GameState } from "../engine/types";
 import { fmt, fmtMoney } from "./format";
-import { trainingIntensity } from "../engine/derive";
+import { trainingIntensity, runYieldAt } from "../engine/derive";
 import { useEffect, useRef } from "react";
 import { burst, floatText } from "./fx";
 import { RepeatIcon } from "./Icons";
@@ -112,9 +112,12 @@ export function TrainingDock({ game, derived, onStart, onClaim, onSetFocus }: Pr
             // floaters right at the button.
             const r = e.currentTarget.getBoundingClientRect();
             const cx = r.left + r.width / 2;
+            // What this claim actually pays: the run is priced at the intensity it
+            // started at, which the slider may have moved away from since.
+            const paid = runYieldAt(game, derived, run.focus);
             burst(cx, r.top + r.height / 2, { count: 18, power: 1.1, colors: ["#2f7bf6", "#16b364", "#ff9f0a"] });
-            floatText(cx - 34, r.top, `+${fmt(derived.runDataYield)}`, "#9b51e0", 17);
-            floatText(cx + 34, r.top - 4, `+${fmtMoney(derived.runMoneyYield)}`, "#16b364", 17);
+            floatText(cx - 34, r.top, `+${fmt(paid.data)}`, "#9b51e0", 17);
+            floatText(cx + 34, r.top - 4, `+${fmtMoney(paid.money)}`, "#16b364", 17);
             onClaim();
           }}
         >
