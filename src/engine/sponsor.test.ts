@@ -91,3 +91,25 @@ describe("sponsor contracts (IDEAS #9)", () => {
   });
 });
 
+
+describe("sponsors run alongside the ladder from the first Ship", () => {
+  it("rolls for a shipped lab mid-ladder, only on lanes it has started", () => {
+    const s = createInitialState();
+    s.prestige.ships = contractsBalance.sponsor.openAtShips;
+    s.stats.totalShips = s.prestige.ships;
+    s.stats.peakComputePerSec = Big.of(50_000);
+    s.stats.totalMoney = Big.of(2e6);
+    // No products yet → peak MAU / MRR are 0 and must never be the lane.
+    for (let day = DAY; day < DAY + 40; day++) {
+      const r = rollSponsor(s, day);
+      expect(r.sponsor).not.toBeNull();
+      expect(["peakComputePerSec", "totalMoney"]).toContain(r.sponsor!.metric);
+    }
+  });
+
+  it("still waits for the ladder in the first generation", () => {
+    const s = createInitialState();
+    s.stats.peakComputePerSec = Big.of(50_000);
+    expect(rollSponsor(s, DAY).sponsor).toBeNull();
+  });
+});

@@ -25,30 +25,36 @@ interface Props {
 export function ContractsPanel({ game, onClaim, onClaimSponsor, bare = false }: Props) {
   const board = contractBoard(game);
   const allDone = board.length === 0;
-  // Post-ladder: one date-seeded sponsor objective per local day (IDEAS #9).
-  const sponsor = allDone ? sponsorView(game) : null;
+  // One date-seeded sponsor objective per day (IDEAS #9). Once the finite ladder is
+  // cleared it is the whole board; from the first Ship on it also rides ON TOP of the
+  // ladder, so a player in their first days has a daily reason to come back.
+  const sponsor = sponsorView(game);
+
+  const sponsorCard = sponsor && (
+    <div className={`contract-card ${sponsor.ready ? "ready" : ""}`}>
+      <div className="contract-main">
+        <span className="contract-title">{sponsor.def.title}</span>
+        <span className="contract-desc">{sponsor.def.desc}</span>
+        <div className="contract-bar">
+          <div className="contract-fill" style={{ width: `${Math.round(sponsor.progress * 100)}%` }} />
+        </div>
+        <span className="contract-prog">{fmt(Big.of(Math.floor(sponsor.value)))} / {fmt(Big.of(sponsor.def.target))}</span>
+      </div>
+      <div className="contract-side">
+        <span className="contract-rep">+{sponsor.def.rep} Rep</span>
+        <button className="contract-claim" disabled={!sponsor.ready} onClick={onClaimSponsor}>
+          {sponsor.claimed ? "Done today" : sponsor.ready ? "Claim" : "In progress"}
+        </button>
+      </div>
+    </div>
+  );
 
   const body = (
     <>
       {allDone ? (
         sponsor ? (
           <div className="list">
-            <div className={`contract-card ${sponsor.ready ? "ready" : ""}`}>
-              <div className="contract-main">
-                <span className="contract-title">{sponsor.def.title}</span>
-                <span className="contract-desc">{sponsor.def.desc}</span>
-                <div className="contract-bar">
-                  <div className="contract-fill" style={{ width: `${Math.round(sponsor.progress * 100)}%` }} />
-                </div>
-                <span className="contract-prog">{fmt(Big.of(Math.floor(sponsor.value)))} / {fmt(Big.of(sponsor.def.target))}</span>
-              </div>
-              <div className="contract-side">
-                <span className="contract-rep">+{sponsor.def.rep} Rep</span>
-                <button className="contract-claim" disabled={!sponsor.ready} onClick={onClaimSponsor}>
-                  {sponsor.claimed ? "Done today" : sponsor.ready ? "Claim" : "In progress"}
-                </button>
-              </div>
-            </div>
+            {sponsorCard}
             <p className="contracts-empty">Daily sponsor objective — a new one calls tomorrow.</p>
           </div>
         ) : (
@@ -56,6 +62,7 @@ export function ContractsPanel({ game, onClaim, onClaimSponsor, bare = false }: 
         )
       ) : (
         <div className="list">
+          {/* Claimable ladder rungs first; today's sponsor sits after the ladder. */}
           {board.map(({ def, value, progress, ready }) => (
             <div key={def.id} className={`contract-card ${ready ? "ready" : ""}`}>
               <div className="contract-main">
@@ -78,6 +85,7 @@ export function ContractsPanel({ game, onClaim, onClaimSponsor, bare = false }: 
               </div>
             </div>
           ))}
+          {sponsorCard}
         </div>
       )}
       <p className="contracts-foot">

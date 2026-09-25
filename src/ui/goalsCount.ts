@@ -26,11 +26,12 @@ import { productMilestones } from "../engine/balance/products";
  */
 export function goalsCounts(game: GameState) {
   const objectives = objectivesUnlocked(game) ? claimableObjectives(game) : 0;
-  // The sponsor only appears once the contract board is clear (see ContractsPanel),
-  // so count it the same way the board renders it — a badge must never promise a
-  // row the player cannot find.
+  // The sponsor card renders whenever one is rolled (see ContractsPanel: alone once
+  // the ladder is clear, on top of it from the first Ship on), so count it whenever
+  // it is ready — a badge must never promise a row the player cannot find, and
+  // rollSponsor only rolls one where the board shows it.
   const board = contractBoard(game);
-  const sponsorReady = board.length === 0 && !!sponsorView(game)?.ready;
+  const sponsorReady = !!sponsorView(game)?.ready;
   const contracts = board.filter((c) => c.ready).length + (sponsorReady ? 1 : 0);
 
   const seen = challengesUnlocked(game) ? visibleChallenges(game) : [];

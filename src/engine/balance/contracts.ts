@@ -89,6 +89,10 @@ export const contracts = {
    */
   sponsor: {
     enabled: true,
+    /** Sponsors also run ALONGSIDE the ladder from this many ships on, so a player
+     *  in the first days has a daily reason to come back, not only a veteran who
+     *  has cleared all 32 rungs (2026-09 retention audit). 0 = ladder-cleared only. */
+    openAtShips: 1,
     /** Flat Reputation per completed sponsor objective. */
     rep: 6,
     /** Kept sponsor completions are bounded against crafted saves. Earned Reputation

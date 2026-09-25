@@ -79,19 +79,25 @@ const dayHash = (dayKey: number): number => (dayKey * 2654435761) >>> 0;
 
 /**
  * Roll (or clear) today's sponsor objective. Deterministic in (state, dayKey);
- * same-ref no-op when nothing changes. Only offered once the base ladder is
- * fully cleared; the target is anchored to the CURRENT stat at roll time so
+ * same-ref no-op when nothing changes. Offered once the base ladder is cleared,
+ * or alongside it from `openAtShips` ships on; the target is anchored to the CURRENT stat at roll time so
  * it stays a fixed, beatable goal for the day. The store passes the local
  * day number in — the engine stays clockless.
  */
 export function rollSponsor(state: GameState, dayKey: number): GameState {
   const S = C.sponsor;
-  if (!C.enabled || !S.enabled || activeContracts(state).length > 0) {
+  const open = activeContracts(state).length === 0 || (S.openAtShips > 0 && state.prestige.ships >= S.openAtShips);
+  if (!C.enabled || !S.enabled || !open) {
     return state.sponsor === null ? state : { ...state, sponsor: null };
   }
   if (state.sponsor?.dayKey === dayKey) return state;
   const h = dayHash(dayKey);
-  const lane = S.lanes[h % S.lanes.length]!;
+  // Only lanes the player has actually started: a lab with no products yet must not
+  // be asked to grow product revenue. A cleared-ladder veteran has every lane > 0,
+  // so their daily roll is unchanged.
+  const started = S.lanes.filter((l) => contractMetric(state, l.metric) > 0);
+  const lanes = started.length > 0 ? started : S.lanes;
+  const lane = lanes[h % lanes.length]!;
   const current = contractMetric(state, lane.metric);
   const mult = S.mults[(h >>> 4) % S.mults.length]!;
   const target = Math.max(lane.floor, Math.ceil(current * mult));
