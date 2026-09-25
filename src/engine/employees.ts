@@ -136,7 +136,16 @@ export function fireEmployee(state: GameState, empId: string): GameState {
   return { ...state, employees: state.employees.filter((e) => e.id !== empId) };
 }
 
+/** The roster is at the cap the save loader keeps (balance.staff.maxRoster). */
+export function rosterFull(state: GameState): boolean {
+  return state.employees.length >= S.maxRoster;
+}
+
+/** Add a hire. A full roster refuses (same-reference no-op): past the cap the person
+ *  would be deleted by the loader on the next launch. Callers that charge a signing
+ *  bonus must check rosterFull() first. */
 export function addEmployee(state: GameState, emp: Employee): GameState {
+  if (rosterFull(state)) return state;
   return {
     ...state,
     employees: [...state.employees, emp],

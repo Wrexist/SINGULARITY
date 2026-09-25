@@ -1406,6 +1406,10 @@ export const balance = {
     /** Seniority levels (1 = junior). Each level above 1 multiplies a person's
      *  output (+levelEffectStep) and salary (+levelPayrollStep). */
     maxLevel: 4,
+    /** Largest roster the lab can hold. The save loader keeps at most this many people
+     *  (per-tick cost is linear in headcount), so hiring stops here too — a hire past it
+     *  would be paid for and then silently deleted on the next launch. */
+    maxRoster: 512,
     levelEffectStep: 0.5,
     levelPayrollStep: 0.6,
     /** Timed training to the NEXT level: duration grows per level; cost in Money. */

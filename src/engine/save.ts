@@ -219,12 +219,15 @@ function sanitizeChannelMix(m: unknown): Record<string, number> {
  * hard reset is the only escape. `modifiers` already had a cap for exactly this reason
  * (tick.ts MAX_ACTIVE_MODIFIERS); these generalise it to the rest.
  *
- * All are far above any reachable legit value (portfolio caps out around 5 slots, a
- * roster in the dozens, ~52 achievements, ~21 upgrade ids), so honest saves never
- * notice — only crafted ones are truncated.
+ * All are far above any reachable legit value (portfolio caps out around 5 slots,
+ * ~52 achievements, ~21 upgrade ids), so honest saves never notice — only crafted ones
+ * are truncated. Where deep play CAN reach a cap (the roster, megaproject cycles), the
+ * runtime enforces the same value, so a reload never deletes what was earned.
  */
 const MAX_SAVED_PRODUCTS = 64;
-const MAX_SAVED_EMPLOYEES = 512;
+/** The same roster cap hiring enforces (employees.rosterFull), so a reload never
+ *  deletes a hire the player paid for. */
+const MAX_SAVED_EMPLOYEES = balance.staff.maxRoster;
 const MAX_SAVED_IDS = 512;
 /** Ceiling on megaproject cycles — see sanitizeMegaprojects. The SAME value the runtime
  *  stops funding at (canFundMegaproject), so a reload never deletes an earned cycle. */

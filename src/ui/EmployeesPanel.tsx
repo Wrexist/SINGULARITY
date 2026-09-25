@@ -6,7 +6,7 @@ import { canBuyOfficePerk } from "../engine/actions";
 import { officeMorale, totalMorale } from "../engine/derive";
 import {
   roleDef, traitDef, employeePayroll, canTrain, trainCost, hireCost,
-  roleAffinity, roleMatchesSegment,
+  roleAffinity, roleMatchesSegment, rosterFull,
 } from "../engine/employees";
 import { typeDef, productMetrics, upgradeProgress } from "../engine/products";
 import { Big } from "../engine/math/Big";
@@ -79,6 +79,8 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
   const [perksOpen, setPerksOpen] = useState(false);
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const team = game.employees;
+  // At the roster cap hiring is refused (the save keeps no more), so the buttons say so.
+  const full = rosterFull(game);
   // The morale derive() actually applies = office perks + Mentor traits. Showing only
   // officeMorale hid the Mentor contribution entirely (B2 fix).
   const morale = totalMorale(game);
@@ -260,7 +262,7 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
                         <span className="emp-tag muted">{m$(role?.payroll ?? 0)}/s</span>
                       </div>
                     </div>
-                    <button className="emp-hire-btn" disabled={!afford} onClick={(e) => {
+                    <button className="emp-hire-btn" disabled={!afford || full} onClick={(e) => {
                       const r = e.currentTarget.getBoundingClientRect();
                       burst(r.left + r.width / 2, r.top + r.height / 2, { count: c.rare ? 26 : 16, power: c.rare ? 1.4 : 1, colors: c.rare ? ["#ffd60a", "#ff9f0a", "#7c5cff"] : ["#16b364", "#2f7bf6"] });
                       onHireCandidate(i);
@@ -273,7 +275,7 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
             <>
               <div className="emp-section-head">
                 <span>Your team · {team.length}</span>
-                <button className="emp-recruit" onClick={onRecruit}>+ Recruit</button>
+                <button className="emp-recruit" disabled={full} onClick={onRecruit}>{full ? "Team full" : "+ Recruit"}</button>
               </div>
               {team.length === 0 && <EmptyState icon={<TeamIcon size={20} />} text="The lab floor is quiet — no specialists yet." hint={<>Tap <b>+ Recruit</b> to hire your first specialist.</>} />}
               {team.map((e) => {

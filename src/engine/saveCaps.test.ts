@@ -3,9 +3,11 @@ import { createInitialState } from "./state";
 import { serialize, deserialize } from "./save";
 import { tick } from "./tick";
 import { canFundMegaproject, fundMegaproject, megaprojectView, pickMandate } from "./challenges";
+import { addEmployee, rosterFull } from "./employees";
 import { challenges as C } from "./balance/challenges";
+import { balance } from "./balance/config";
 import { Big } from "./math/Big";
-import type { ActiveModifier, GameState } from "./types";
+import type { ActiveModifier, Employee, GameState } from "./types";
 
 /**
  * Load-time caps must agree with what the runtime can build (2026-09 bug hunt).
@@ -83,5 +85,31 @@ describe("megaproject level: the runtime stops where the loader does", () => {
     const back = roundTrip(top);
     expect(back.megaprojects.level).toBe(MAX);
     expect(back.megaprojects.mandates).toEqual(top.megaprojects.mandates);
+  });
+});
+
+describe("staff roster: hiring stops where the loader does", () => {
+  const MAX = balance.staff.maxRoster;
+  const person = (i: number): Employee => ({
+    id: `emp-${i}`, name: `N${i}`, roleId: "staff_engineer", level: 1, trait: null, assignedProductId: null, training: null,
+  });
+  const withRoster = (n: number): GameState => {
+    const s = createInitialState();
+    return { ...s, employees: Array.from({ length: n }, (_, i) => person(i + 1)) };
+  };
+
+  it("a full roster refuses the next hire instead of losing it on reload", () => {
+    const almost = withRoster(MAX - 1);
+    expect(rosterFull(almost)).toBe(false);
+    const full = addEmployee(almost, person(MAX));
+    expect(full.employees.length).toBe(MAX);
+    expect(rosterFull(full)).toBe(true);
+    const over = addEmployee(full, person(MAX + 1));
+    expect(over).toBe(full); // nothing added, no phantom employeesHired
+  });
+
+  it("a full roster reloads intact", () => {
+    const full = withRoster(MAX);
+    expect(roundTrip(full).employees.map((e) => e.id)).toEqual(full.employees.map((e) => e.id));
   });
 });

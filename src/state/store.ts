@@ -5,7 +5,7 @@ import { tick } from "../engine/tick";
 import { derive, focusToBank } from "../engine/derive";
 import { ALL_RESEARCH } from "../engine/researchTree";
 import {
-  addEmployee, startTraining, canTrain, fireEmployee, hireCost,
+  addEmployee, rosterFull, startTraining, canTrain, fireEmployee, hireCost,
   assignEmployee as assignEmployeeToProduct, levelUpNote,
 } from "../engine/employees";
 import { versionShipNote } from "../engine/notices";
@@ -319,7 +319,8 @@ function migrateStaffCounts(game: GameState): GameState {
   const upgrades = { ...game.upgrades };
   for (const role of balance.staff.roles) {
     const n = upgrades[role.id] ?? 0;
-    for (let i = 0; i < n; i++) employees.push(mintEmployee(role.id, randomName(), randomTrait()));
+    // Never past the roster cap: the loader would drop the excess on the next launch.
+    for (let i = 0; i < n && employees.length < balance.staff.maxRoster; i++) employees.push(mintEmployee(role.id, randomName(), randomTrait()));
     if (n > 0) { any = true; delete upgrades[role.id]; }
   }
   // Also drop any stray legacy tier keys.
@@ -699,6 +700,8 @@ export const useGame = create<GameStore>((set, get) => ({
     const g = get().game;
     const c = get().candidates?.[index];
     if (!c) return false;
+    // A full roster refuses BEFORE the signing bonus is charged (the loader keeps no more).
+    if (rosterFull(g)) return false;
     const cost = hireCost(c.roleId) * derive(g).hireDiscount; // Recruiters cut signing bonuses
     if (g.resources.money.lt(cost)) return false;
     set((s) => {
