@@ -29,10 +29,15 @@ export function componentsUnlocked(state: GameState): boolean {
 /** Catalog parts visible at the current fleet size (reveal in waves, never dump).
  *  The catalog is FIXED: nothing rotates, nothing is randomized. Trophy parts
  *  are included once their milestone is complete (the UI also shows locked ones
- *  as visible chase targets — deterministic, never a slot pull). */
+ *  as visible chase targets — deterministic, never a slot pull). A part the player
+ *  already OWNS is always listed: fusion can make one before its reveal (three spare
+ *  Hopperoos → an ASIC on a 10-rack lab), and it must be fittable, not vanish until
+ *  the fleet grows. Buying still waits for the reveal (canBuyComponent). */
 export function visibleCatalog(state: GameState): ComponentDef[] {
   const racks = totalRacks(state);
-  return C.catalog.filter((d) => (d.earnedBy ? earnedSourceComplete(state, d) : racks >= d.revealAtRacks));
+  return C.catalog.filter((d) =>
+    (state.components.owned[d.id] ?? 0) > 0 ||
+    (d.earnedBy ? earnedSourceComplete(state, d) : racks >= d.revealAtRacks));
 }
 
 /** All trophy-part defs (for the UI's chase list and the grant fold). */
