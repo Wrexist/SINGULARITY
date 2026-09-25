@@ -92,7 +92,12 @@ function ensureInit(): Promise<CdvStore | null> {
     store.register([
       { id: PREMIUM_PRODUCT_ID, type: ProductType.NON_CONSUMABLE, platform: Platform.APPLE_APPSTORE },
     ]);
-    const sync = () => setPremium(store.owned(PREMIUM_PRODUCT_ID));
+    // Grant-only. CdvPurchase's owned() is false at launch until receipts load and,
+    // with no receipt validator (this app has none), it can stay false for a product
+    // bought in an earlier session: its docs say to persist non-consumable ownership
+    // ourselves. Writing that false into the flag took Premium away from paying
+    // players on every launch, so a false read means "not known yet", never "revoked".
+    const sync = () => { if (store.owned(PREMIUM_PRODUCT_ID)) setPremium(true); };
     // No server receipt validator (single non-consumable) → approve & finish
     // locally, then mirror ownership into our entitlement flag.
     store.when()
@@ -148,10 +153,10 @@ export const iap = {
   },
 
   /**
-   * Re-sync ownership from StoreKit at app launch (native only). This makes the
-   * local entitlement cache non-authoritative: CdvPurchase auto-detects an owned
-   * non-consumable on init, so premium is restored after a reinstall / on a new
-   * device without the player having to tap Restore. No-op on web/dev.
+   * Re-sync ownership from StoreKit at app launch (native only): when StoreKit
+   * reports the non-consumable owned, the local flag is granted, so premium can come
+   * back after a reinstall / on a new device without tapping Restore. It never
+   * revokes (see the grant-only sync in ensureInit). No-op on web/dev.
    */
   async refresh(): Promise<void> {
     // Fire-and-forget at app launch: a StoreKit/network failure here must never
@@ -195,9 +200,8 @@ export const iap = {
     }
     // Ownership is mirrored asynchronously by the approved/receiptUpdated
     // handlers — wait for it to settle so we don't report a false negative.
-    const owned = await settleOwnership(store);
-    setPremium(owned);
-    return owned;
+    if (await settleOwnership(store)) setPremium(true);
+    return isPremium();
   },
 
   /** Restore purchases (App Store requirement). */
@@ -209,8 +213,9 @@ export const iap = {
     } catch (e) {
       console.warn("IAP restore failed:", e);
     }
-    const owned = await settleOwnership(store);
-    setPremium(owned);
-    return owned;
+    // Same grant-only rule as the launch sync: a restore that replays nothing leaves a
+    // Premium already on this device in place.
+    if (await settleOwnership(store)) setPremium(true);
+    return isPremium();
   },
 };
