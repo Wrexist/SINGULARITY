@@ -38,12 +38,12 @@ import { EventLog } from "./EventLog";
 import { FxCanvas } from "./FxCanvas";
 import { burst as fxBurst, floatText as fxFloat, FX_PALETTES } from "./fx";
 import { ProductLaunch } from "./ProductLaunch";
-import { productsUnlocked, typeDef, retirePayout, productMetrics } from "../engine/products";
+import { productsUnlocked, typeDef, retirePayout } from "../engine/products";
 import { advisorItems, type AdvisorTab, type LabSection } from "../engine/advisor";
 import { nextGoal } from "../engine/goals";
 import { marketLeaderboard, playerMarketRank } from "../engine/market";
 import { FlaskIcon, BoxIcon, TeamIcon, GearIcon, GiftIcon, TargetIcon } from "./Icons";
-import { fmt, fmtMoney, effRate } from "./format";
+import { fmt, fmtMoney, effRate, productMarginPerSec } from "./format";
 import type { ProductTypeId } from "../engine/balance/products";
 import { iap } from "./iap";
 import { isPremium } from "../state/premium";
@@ -877,13 +877,13 @@ export function App() {
   // while climbing ~20T/s and Data showed no rate at all. Runs count once they
   // restart themselves; product margin and payroll always flow.
   const barRates = (() => {
-    const margin = game.products.active.reduce((sum, p) => sum + productMetrics(p, game.products.frontier).margin, 0);
+    const margin = productMarginPerSec(game, d);
     // Runs count only while they actually restart themselves: auto-train on AND an
     // intensity above zero (0 = training held, e.g. a "save for this" pin).
     const running = d.autoTrain && game.computeFocus > 0;
     const data = running ? effRate(d, "data", game.computeFocus) : d.dataPerSec;
     const base = running ? effRate(d, "money", game.computeFocus) : d.passiveMoneyPerSec;
-    const money = base.add(Big.of(Number.isFinite(margin) ? margin : 0)).sub(d.payrollPerSec);
+    const money = base.add(Big.of(margin)).sub(d.payrollPerSec);
     return { data, money };
   })();
 

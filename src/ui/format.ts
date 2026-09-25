@@ -1,7 +1,21 @@
 import { Big } from "../engine/math/Big";
 import { runsPerSec } from "../engine/derive";
+import { productMetrics } from "../engine/products";
 import { useSettings } from "./settings";
-import type { Derived } from "../engine/types";
+import type { Derived, GameState } from "../engine/types";
+
+/** The live portfolio's net margin per second (revenue − serving − marketing), priced
+ *  with each product's own mods — staff, the Product Company charter's ×2.5 revenue,
+ *  Heat and alignment — exactly as tick() pays it into Money. The Money/s rate and the
+ *  money ETAs used the bare figure, so a profitable Product Company lab could read as
+ *  losing money (no $/s shown, no money ETAs at all). Non-finite → 0. */
+export function productMarginPerSec(game: GameState, d: Derived): number {
+  let margin = 0;
+  for (const p of game.products.active) {
+    margin += productMetrics(p, game.products.frontier, d.productModsById[p.id]).margin;
+  }
+  return Number.isFinite(margin) ? margin : 0;
+}
 
 /** Effective income per second for a resource, amortizing per-run yields over the
  *  runs actually fired — one per run duration, or fewer when Compute can't fund them
