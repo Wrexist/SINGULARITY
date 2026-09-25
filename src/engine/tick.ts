@@ -281,7 +281,7 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     stats,
     runPeakCompute,
     runPeakMrr,
-  });
+  }, d.productModsById); // the same buffed revenue peakMrr and the cards read
   // Milestone rewards land in lifetimeMoney AFTER accrueStats already took its
   // delta for this tick (and next tick's baseline includes them), so without this
   // they'd never reach totalMoney — all-time earnings would quietly under-report,

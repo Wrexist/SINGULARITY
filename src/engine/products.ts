@@ -282,13 +282,21 @@ export function productMetrics(p: ProductState, frontier: number, mods: ProductM
 
 // ---------- Milestones (a chase ladder; pure) ----------
 
-/** Current value of a milestone metric across the portfolio (totals / peaks). */
-export function milestoneValue(state: GameState, metric: MilestoneDef["metric"]): number {
+/** Current value of a milestone metric across the portfolio (totals / peaks). Pass the
+ *  per-product mods when the caller already has them (derive's productModsById); they
+ *  are derived here otherwise. */
+export function milestoneValue(state: GameState, metric: MilestoneDef["metric"], modsById?: Record<string, ProductMods>): number {
   const ps = state.products;
   switch (metric) {
     case "users": return ps.active.reduce((s, p) => s + p.mau, 0);
     case "paid": return ps.active.reduce((s, p) => s + p.paid, 0);
-    case "mrr": return ps.active.reduce((s, p) => s + productMetrics(p, ps.frontier).mrr, 0);
+    // Revenue WITH its ARPU buffs (staff, the Product Company charter): the figure the
+    // product cards, the sponsor/contract ladder and the "$1K/s" achievement all read.
+    // The bare figure left a lab billing $1.5K/s short of the "$1K/s" rung.
+    case "mrr": {
+      const mods = modsById ?? derive(state).productModsById;
+      return ps.active.reduce((s, p) => s + productMetrics(p, ps.frontier, mods[p.id]).mrr, 0);
+    }
     case "version": return ps.active.reduce((m, p) => Math.max(m, p.version), 0);
     case "qf": return ps.active.reduce((m, p) => Math.max(m, productMetrics(p, ps.frontier).qf), 0);
     case "live": return ps.active.length;
@@ -301,12 +309,12 @@ export interface MilestoneAchievement { def: MilestoneDef; reward: number; }
 /** Award any newly-reached milestones: append their ids and pay the one-time Money
  *  reward. Pure & idempotent (an already-achieved milestone is skipped). Returns the
  *  fresh achievements so the UI can celebrate them. */
-export function applyMilestones(state: GameState): { state: GameState; achieved: MilestoneAchievement[] } {
+export function applyMilestones(state: GameState, modsById?: Record<string, ProductMods>): { state: GameState; achieved: MilestoneAchievement[] } {
   const have = new Set(state.products.milestones);
   const achieved: MilestoneAchievement[] = [];
   for (const def of productMilestones) {
     if (have.has(def.id)) continue;
-    if (milestoneValue(state, def.metric) >= def.threshold) achieved.push({ def, reward: def.reward });
+    if (milestoneValue(state, def.metric, modsById) >= def.threshold) achieved.push({ def, reward: def.reward });
   }
   if (achieved.length === 0) return { state, achieved };
   const reward = achieved.reduce((s, a) => s + a.reward, 0);
