@@ -174,19 +174,23 @@ export function planBulkUpgrade(
   state: GameState,
   id: string,
   want: number,
-): { count: number; totalCost: Big; resource: UpgradeDef["cost"]["resource"] } {
+): { count: number; totalCost: Big; resource: UpgradeDef["cost"]["resource"]; evicts: number } {
   const def = UPGRADE_BY_ID[id];
-  if (!def) return { count: 0, totalCost: Big.ZERO, resource: "money" };
+  if (!def) return { count: 0, totalCost: Big.ZERO, resource: "money", evicts: 0 };
   const cap = Math.min(want, 10000); // safety bound for low-growth infinite-max upgrades
   let s = state;
   let count = 0;
+  let evicts = 0;
   let totalCost = Big.ZERO;
   while (count < cap && canBulkBuyStep(s, id)) {
     totalCost = totalCost.add(upgradeCost(def, s.upgrades[id] ?? 0));
+    // A rack bought onto a full floor replaces a lower-tier one (see buyUpgrade), so a
+    // batch that fills the last free slots goes on to evict: the card has to say so.
+    if (isRackId(id) && floorFull(s)) evicts += 1;
     s = buyUpgrade(s, id);
     count += 1;
   }
-  return { count, totalCost, resource: def.cost.resource };
+  return { count, totalCost, resource: def.cost.resource, evicts };
 }
 
 /** Buy up to `want` levels of `id` (Infinity = as many as affordable). Stops at

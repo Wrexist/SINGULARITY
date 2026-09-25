@@ -153,6 +153,9 @@ export function UpgradePanel({ game, derived, onBuy, onFoundWing }: Props) {
       : null;
     const showBulk = !!bulk && bulk.count > 1;
     const displayCost = showBulk ? bulk!.totalCost : cost;
+    // Lower-tier racks this tap replaces: one on a full floor, or every level of a
+    // ×10 / Max batch that lands after the last free slot is filled.
+    const replaces = showBulk ? bulk!.evicts : willReplace ? 1 : 0;
     // Ring progress toward the next purchase (single-resource, accrues smoothly). Full
     // when affordable/maxed; the ring is hidden by CSS on maxed cards.
     const have = game.resources[def.cost.resource];
@@ -201,7 +204,7 @@ export function UpgradePanel({ game, derived, onBuy, onFoundWing }: Props) {
           </span>
           <EffectPill effect={def.effect} />
           <span className="card-desc">{upgradeFlavor(def.id, owned, def.desc)}</span>
-          {willReplace && <span className="card-note">↑ replaces a lower-tier rack</span>}
+          {replaces > 0 && <span className="card-note">{replaces > 1 ? `↑ replaces ${replaces} lower-tier racks` : "↑ replaces a lower-tier rack"}</span>}
         </div>
         <div className="card-cost">
           {maxed ? (
