@@ -86,7 +86,7 @@ export function canBuyReputationPerk(state: GameState, id: string): boolean {
 export function buyReputationPerk(state: GameState, id: string): GameState {
   if (!canBuyReputationPerk(state, id)) return state;
   const perk = PERK_BY_ID.get(id)!;
-  return {
+  const next: GameState = {
     ...state,
     reputation: {
       ...state.reputation,
@@ -94,6 +94,16 @@ export function buyReputationPerk(state: GameState, id: string): GameState {
       perks: [...state.reputation.perks, id],
     },
   };
+  // The Research Director holds the start-of-run window (Lab Charter + Stance) open for
+  // a grace after each ship (charter.ts `startWindowOpen`). Bought mid-run, after the
+  // player's own research had already closed that window, it reopened it — so one run
+  // could declare Safety, research, claim, buy the Director, re-declare Acceleration
+  // and claim again. Without the Director the window is closed exactly when research
+  // exists, so pin that close with the lock the "Lock in" button uses.
+  if (!autoResearchEnabled(state) && autoResearchEnabled(next) && state.research.length > 0) {
+    return { ...next, charterLocked: true };
+  }
+  return next;
 }
 
 // ---------- Endgame Reputation Endowment (post-AGI infinite sink) ----------

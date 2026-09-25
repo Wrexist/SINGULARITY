@@ -2,8 +2,9 @@ import { describe, it, expect } from "vitest";
 import { createInitialState } from "./state";
 import { prestige } from "./prestige";
 import { tick } from "./tick";
-import { canSetCharter, setCharter, charterHand, chartersBalance, startWindowOpen } from "./charter";
-import { stanceOpen, declareStance, canClaimDoctrine, doctrineBalance } from "./doctrine";
+import { canSetCharter, setCharter, charterHand, chartersBalance, startWindowOpen, runElapsedSec } from "./charter";
+import { stanceOpen, declareStance, canClaimDoctrine, claimDoctrine, doctrineBalance } from "./doctrine";
+import { buyReputationPerk } from "./reputation";
 import { buyResearch } from "./actions";
 import { Big } from "./math/Big";
 import { balance } from "./balance/config";
@@ -107,5 +108,44 @@ describe("Research Director keeps the start-of-run window open", () => {
     // A stamp from a different generation (log/ship count disagree) is not trusted.
     const stale = { ...g, prestige: { ...g.prestige, ships: g.prestige.ships + 1 } };
     expect(canSetCharter(stale)).toBe(false);
+  });
+});
+
+describe("buying the Research Director mid-run never reopens the window", () => {
+  /** A fresh run WITHOUT the Director, with enough Reputation banked to buy it. */
+  function freshNoDirector(): GameState {
+    const g = shippedRich(doctrineBalance.revealAtShips + 5, false);
+    return { ...g, stats: { ...g.stats, stakesRepEarned: 500 } };
+  }
+
+  it("keeps a stance that research already locked: no second side in the same run", () => {
+    let g = declareStance(freshNoDirector(), "doomer");
+    g = buyResearch(g, "backprop"); // the player's own first node closes the window
+    expect(stanceOpen(g)).toBe(false);
+    g = claimDoctrine(g, "doc_trust");
+    expect(g.doctrines).toContain("doc_trust");
+
+    // Seconds into the run, still inside the Director's grace, the player buys it.
+    g = buyReputationPerk(g, "rep_autoresearch");
+    expect(g.reputation.perks).toContain("rep_autoresearch");
+    expect(runElapsedSec(g)).toBeLessThan(GRACE);
+    // The purchase must not hand back the start-of-run picks…
+    expect(stanceOpen(g)).toBe(false);
+    expect(canSetCharter(g)).toBe(false);
+    // …so the run cannot be re-declared the other way and claimed a second time.
+    const flipped = declareStance(g, "accel");
+    expect(flipped.alignment).toBe(-doctrineBalance.threshold);
+    expect(canClaimDoctrine(run(flipped, GRACE + 1), "doc_scale")).toBe(false);
+  });
+
+  it("leaves a still-open window open, with the Director's grace as usual", () => {
+    let g = freshNoDirector();
+    expect(g.research.length).toBe(0);
+    g = buyReputationPerk(g, "rep_autoresearch");
+    expect(g.charterLocked).toBe(false);
+    g = tick(g, 100); // the Director buys on its first tick…
+    expect(g.research.length).toBeGreaterThan(0);
+    expect(canSetCharter(g)).toBe(true); // …and the grace keeps the picks open
+    expect(stanceOpen(g)).toBe(true);
   });
 });
