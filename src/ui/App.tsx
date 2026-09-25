@@ -36,12 +36,12 @@ import { EventLog } from "./EventLog";
 import { FxCanvas } from "./FxCanvas";
 import { burst as fxBurst, floatText as fxFloat, FX_PALETTES } from "./fx";
 import { ProductLaunch } from "./ProductLaunch";
-import { productsUnlocked, typeDef, retirePayout } from "../engine/products";
+import { productsUnlocked, typeDef, retirePayout, productMetrics } from "../engine/products";
 import { advisorItems, type AdvisorTab, type LabSection } from "../engine/advisor";
 import { nextGoal } from "../engine/goals";
 import { marketLeaderboard, playerMarketRank, rivalsBeaten } from "../engine/market";
 import { FlaskIcon, BoxIcon, TeamIcon, GearIcon, GiftIcon, TargetIcon } from "./Icons";
-import { fmt, fmtMoney } from "./format";
+import { fmt, fmtMoney, effRate } from "./format";
 import type { ProductTypeId } from "../engine/balance/products";
 import { iap } from "./iap";
 import { isPremium } from "../state/premium";
@@ -267,6 +267,13 @@ export function App() {
   // Re-validate the premium entitlement against StoreKit at launch (native only;
   // no-op on web). Keeps the localStorage cache from being the source of truth.
   useEffect(() => { void iap.refresh(); }, []);
+
+  // Sheets and modals portal into <body>, outside `.app`, so the reduce-motion class
+  // on the app root never reached them (their spring-ins kept playing with the
+  // toggle on). Mirror it on <html>, which contains everything.
+  useEffect(() => {
+    document.documentElement.classList.toggle("reduce-motion", reducedMotion);
+  }, [reducedMotion]);
 
   // The pinned resource bar paints an opaque slab far above itself so content can't
   // bleed through during iOS overscroll. At rest that slab sat on top of the brand
@@ -826,6 +833,18 @@ export function App() {
     }
   };
 
+  // What the bar's rate lines claim must match what the numbers actually do. They
+  // used to show passive-only rates, so with auto-train on Money read "$156M/s"
+  // while climbing ~20T/s and Data showed no rate at all. Runs count once they
+  // restart themselves; product margin and payroll always flow.
+  const barRates = (() => {
+    const margin = game.products.active.reduce((sum, p) => sum + productMetrics(p, game.products.frontier).margin, 0);
+    const data = d.autoTrain ? effRate(d, "data") : d.dataPerSec;
+    const base = d.autoTrain ? effRate(d, "money") : d.passiveMoneyPerSec;
+    const money = base.add(Big.of(Number.isFinite(margin) ? margin : 0)).sub(d.payrollPerSec);
+    return { data, money };
+  })();
+
   return (
     <div className={`app${reducedMotion ? " reduce-motion" : ""}${booted ? " app-booted" : ""}${tab === "lab" && section === "build" ? " app-split" : ""}`}>
       <div className="aurora" aria-hidden="true">
@@ -849,8 +868,9 @@ export function App() {
         data={game.resources.data}
         money={game.resources.money}
         computeRate={d.computePerSec}
-        dataRate={d.dataPerSec}
-        moneyRate={d.passiveMoneyPerSec}
+        dataRate={barRates.data}
+        moneyRate={barRates.money}
+        quiet={d.autoTrain}
       />
       <ModifierBar
         modifiers={game.modifiers}

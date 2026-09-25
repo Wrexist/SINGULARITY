@@ -74,7 +74,7 @@ export function GrandChallengesPanel({ game, onFund, onChooseFork, onFundMegapro
 
               <div className="challenge-bar">
                 <div className="challenge-fill" style={{ width: `${v.complete ? 100 : pct}%` }} />
-                <span className="challenge-bar-label">{v.complete ? "Complete ✓" : `${pct}%`}</span>
+                <span className={`challenge-bar-label${!v.complete && pct < 50 ? " on-track" : ""}`}>{v.complete ? "Complete ✓" : `${pct}%`}</span>
               </div>
 
               <div className="challenge-res">
@@ -132,7 +132,7 @@ export function GrandChallengesPanel({ game, onFund, onChooseFork, onFundMegapro
           </div>
           <div className="challenge-bar">
             <div className="challenge-fill" style={{ width: `${Math.round(mega.progress * 100)}%` }} />
-            <span className="challenge-bar-label">{Math.round(mega.progress * 100)}%</span>
+            <span className={`challenge-bar-label${mega.progress < 0.5 ? " on-track" : ""}`}>{Math.round(mega.progress * 100)}%</span>
           </div>
           <div className="challenge-res">
             {([["compute", mega.funded.compute, mega.cost.compute, mega.done.compute] as const,

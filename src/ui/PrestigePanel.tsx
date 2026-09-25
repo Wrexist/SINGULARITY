@@ -93,7 +93,7 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
       {!ready && (
         <div className="progress small">
           <div className="progress-fill money" style={{ width: `${progress}%` }} />
-          <span className="progress-label">
+          <span className={`progress-label${progress < 50 ? " on-track" : ""}`}>
             Research {researchedCount}/{balance.research.length} — build the Inference API to ship
           </span>
         </div>
@@ -154,9 +154,12 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
                 "you're close, hold a moment" is advice the bar can't give on its own.
                 The generic "weights have diminishing returns" paragraph was a
                 restatement of the bar directly above it, shown on every single ship. */}
-            {pct >= 0.8 && (
-              <p className="prestige-timing-note">You're close to your next weight — a little longer banks more.</p>
-            )}
+            {/* Always laid out, only shown at ≥80%: late-game weights arrive about once
+                a second, and mounting/unmounting this line made the Ship button below
+                jump ~30px every time the bar wrapped. */}
+            <p className="prestige-timing-note" style={pct >= 0.8 ? undefined : { visibility: "hidden" }} aria-hidden={pct < 0.8}>
+              You're close to your next weight — a little longer banks more.
+            </p>
           </div>
         );
       })()}

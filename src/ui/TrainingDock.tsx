@@ -37,6 +37,7 @@ export function TrainingDock({ game, derived, onStart, onClaim, onSetFocus }: Pr
   const chargeFrac = charging && derived.runComputeCost.gt(0)
     ? Math.min(1, Math.max(0, game.resources.compute.div(derived.runComputeCost).toNumber()))
     : 0;
+  const fillPct = run.readyToClaim ? 100 : run.active ? pct : charging ? chargeFrac * 100 : 0;
   let hint: string | null = null;
   if (firstRun) {
     if (run.readyToClaim) hint = "Done! Claim your first Data + Money.";
@@ -55,8 +56,8 @@ export function TrainingDock({ game, derived, onStart, onClaim, onSetFocus }: Pr
       </div>
 
       <div className={`progress ${run.readyToClaim ? "ready" : run.active ? "active" : charging ? "charging" : ""}`}>
-        <div className="progress-fill" style={{ width: `${run.readyToClaim ? 100 : run.active ? pct : charging ? chargeFrac * 100 : 0}%` }} />
-        <span className="progress-label">
+        <div className="progress-fill" style={{ width: `${fillPct}%` }} />
+        <span className={`progress-label${fillPct < 50 ? " on-track" : ""}`}>
           {run.readyToClaim ? "Complete" : run.active ? `${pct.toFixed(0)}%` : charging ? "Charging…" : "Idle"}
         </span>
       </div>
@@ -70,7 +71,7 @@ export function TrainingDock({ game, derived, onStart, onClaim, onSetFocus }: Pr
             const r = e.currentTarget.getBoundingClientRect();
             const cx = r.left + r.width / 2;
             burst(cx, r.top + r.height / 2, { count: 18, power: 1.1, colors: ["#2f7bf6", "#16b364", "#ff9f0a"] });
-            floatText(cx - 34, r.top, `+${fmt(derived.runDataYield)}`, "#2f7bf6", 17);
+            floatText(cx - 34, r.top, `+${fmt(derived.runDataYield)}`, "#9b51e0", 17);
             floatText(cx + 34, r.top - 4, `+${fmtMoney(derived.runMoneyYield)}`, "#16b364", 17);
             onClaim();
           }}

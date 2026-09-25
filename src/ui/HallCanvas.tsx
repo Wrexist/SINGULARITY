@@ -171,9 +171,12 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
     prevTotal = model.total;
 
     const resize = () => {
-      const rect = wrap.getBoundingClientRect();
-      cssW = Math.max(1, rect.width);
-      cssH = Math.max(1, rect.height);
+      // Layout size, not getBoundingClientRect: the stage's entry animation has the
+      // hall mid-scale (0.985) on a cold boot, and a transform never fires the
+      // ResizeObserver — so the shrunken size used to stick, leaving a light strip
+      // down the right and bottom edges. clientWidth also excludes the 1px border.
+      cssW = Math.max(1, wrap.clientWidth);
+      cssH = Math.max(1, wrap.clientHeight);
       dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.round(cssW * dpr);
       canvas.height = Math.round(cssH * dpr);
