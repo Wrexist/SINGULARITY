@@ -267,8 +267,10 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     // (capped); if it was retired, the brand is lost. The sim never has a flagship.
     flagship: advanceFlagship(state),
     // Your team stays with you across a ship (they're employed by the company,
-    // not the run) — but their product assignments reset since the lab is fresh.
-    employees: state.employees.map((e) => ({ ...e, assignedProductId: null })),
+    // not the run) — but their product assignments reset since the lab is fresh, and so
+    // does a hand bench: it was a choice about the old run's crews, and keeping the mark
+    // left that person skipped by the HR Autopilot in every generation after.
+    employees: state.employees.map(({ benched: _bench, ...e }) => ({ ...e, assignedProductId: null })),
     // Lifetime stats persist across the ship; the ship itself bumps its counters.
     stats: {
       ...state.stats,
