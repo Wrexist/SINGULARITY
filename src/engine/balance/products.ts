@@ -182,6 +182,14 @@ export const products = {
    *  freshly-launched product is worth almost nothing to sell. */
   retireMaturitySec: 1200,
 
+  /** A Ship resets the lab to $0 with almost no income, and a carried product's
+   *  marketing budget was dialed against the OLD lab's income. A campaign that costs
+   *  more than its product earns (a loss at the ship) is cut to this share of the
+   *  product's own gross margin (revenue − serving), leaving headroom so the product
+   *  can't slide back into a loss and pin the fresh lab's Money at $0. A campaign that
+   *  pays for itself is carried untouched. */
+  shipMarketingShareOfGross: 0.5,
+
   /** Player pricing strategy bounds (×revenue/user; higher = more $/user, less conversion). */
   priceMin: 0.5,
   priceMax: 2,

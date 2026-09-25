@@ -789,6 +789,38 @@ function settledPaid(p: ProductState, frontier: number, mods: ProductMods): numb
   return Math.max(0, Math.min(p.paid, pStar));
 }
 
+/** The marketing budget a product can carry into a fresh run: unchanged if its campaign
+ *  pays for itself, else cut to a share of the product's own gross margin (revenue −
+ *  serving) at its settled paid count. Only ever lowers. */
+function fundableMarketing(p: ProductState, frontier: number, mods: ProductMods): number {
+  const settled = { ...p, paid: settledPaid(p, frontier, mods) };
+  const m = productMetrics(settled, frontier, mods);
+  if (!(m.margin < 0)) return p.marketingPerSec;
+  const fundable = (m.mrr - m.serve) * B.shipMarketingShareOfGross;
+  return Number.isFinite(fundable) ? clamp(fundable, 0, p.marketingPerSec) : 0;
+}
+
+/** Run on the state a Ship produces. The fresh lab starts at $0 with almost no income,
+ *  and tick() floors Money at 0 after the portfolio's net, so a carried campaign that
+ *  costs more than its product earns (dialed against the OLD lab's income) took every
+ *  dollar the new lab made: it never bought its first rack and the generation stalled.
+ *  Each loss-making campaign is cut back to what its own product can fund, judged with
+ *  the fresh run's mods (assignments, Heat and the charter all reset) against the
+ *  post-ship frontier, so a "hard" ship's leap is priced in. Same ref if nothing changes. */
+export function capCarriedMarketing(state: GameState): GameState {
+  const ps = state.products;
+  if (!ps.active.some((p) => p.marketingPerSec > 0)) return state;
+  const modsById = derive(state).productModsById;
+  let changed = false;
+  const active = ps.active.map((p) => {
+    const marketingPerSec = fundableMarketing(p, ps.frontier, modsById[p.id] ?? NEUTRAL_MODS);
+    if (marketingPerSec === p.marketingPerSec) return p;
+    changed = true;
+    return { ...p, marketingPerSec };
+  });
+  return changed ? { ...state, products: { ...ps, active } } : state;
+}
+
 /** One valuation for both the sale and the price the UI shows for it. */
 function saleValue(state: GameState, p: ProductState): number {
   const mods = derive(state).productModsById[p.id] ?? NEUTRAL_MODS;

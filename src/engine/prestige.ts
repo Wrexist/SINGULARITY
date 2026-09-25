@@ -11,6 +11,7 @@ import { advanceFlagship } from "./flagship";
 import { legacyMultiplier } from "./derive";
 import { legacyAvailable } from "./legacyTree";
 import { resolveStakeOutcome } from "./market";
+import { capCarriedMarketing } from "./products";
 import type { DraftModel, GameState } from "./types";
 
 /**
@@ -175,7 +176,10 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
   // clears. The sim never stakes → repWon is 0 and this is identity.
   const stake = resolveStakeOutcome(state);
 
-  return {
+  // The fresh $0 lab can't bankroll a carried marketing campaign that loses money, so
+  // each one is cut back to what its own product funds (see capCarriedMarketing). It
+  // reads the finished post-ship state (reset staff assignments, Heat, frontier).
+  return capCarriedMarketing({
     ...fresh,
     upgrades: freshUpgrades,
     // Trophy hardware survives the ship (earned by persistent milestones); bought
@@ -324,5 +328,5 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     // Today's sponsor objective (IDEAS #9) tracks lifetime stats, so it survives
     // the reset like the contracts board it extends.
     sponsor: state.sponsor,
-  };
+  });
 }
