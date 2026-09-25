@@ -35,10 +35,12 @@ export function ModifierBar({
     if (at === undefined) { seen.set(key, chips.length); chips.push(m); }
     else if (m.remainingSec > chips[at]!.remainingSec) chips[at] = m;
   }
+  // Tone is carried by colour alone on screen; say it for screen readers.
+  const toneWord = (tone: string) => (tone === "good" ? "Buff: " : tone === "bad" ? "Setback: " : "");
   return (
-    <div className="modbar" aria-label="Active effects">
+    <div className="modbar" role="group" aria-label="Active effects">
       {status.map((s) => (
-        <span key={s.key} className={`modchip ${s.tone}`}>{s.label}</span>
+        <span key={s.key} className={`modchip ${s.tone}`}>{toneWord(s.tone) && <span className="sr-only">{toneWord(s.tone)}</span>}{s.label}</span>
       ))}
       {chips.map((m) => {
         // A bad, not-yet-worked modifier is an actionable button; everything else is
@@ -51,7 +53,7 @@ export function ModifierBar({
               className={`modchip ${m.tone} workable`}
               onClick={() => onWork!(m.id)}
               title={`Work the problem — shave ${workShaveSec}s off ${m.label}`}
-              aria-label={`${m.label}, ${Math.ceil(m.remainingSec)} seconds left. Work the problem to shave ${workShaveSec} seconds.`}
+              aria-label={`Setback: ${m.label}, ${Math.ceil(m.remainingSec)} seconds left. Work the problem to shave ${workShaveSec} seconds.`}
             >
               {m.label} <em>{Math.ceil(m.remainingSec)}s</em>
               <span className="modchip-work" aria-hidden="true"><GearIcon size={11} /> −{workShaveSec}s</span>
@@ -60,7 +62,7 @@ export function ModifierBar({
         }
         return (
           <span key={m.id} className={`modchip ${m.tone}`}>
-            {m.label} <em>{Math.ceil(m.remainingSec)}s</em>
+            <span className="sr-only">{toneWord(m.tone)}</span>{m.label} <em>{Math.ceil(m.remainingSec)}s</em>
           </span>
         );
       })}

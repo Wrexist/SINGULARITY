@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { Portal } from "./Portal";
 import type { GameState, ProductMods } from "../engine/types";
 import { products as B, productFeatures, type FeatureLane, type ProductTypeId } from "../engine/balance/products";
@@ -9,6 +9,7 @@ import {
 import { flagshipMoneyMult } from "../engine/flagship";
 import { m$, numOf as num, fmtDur } from "./format";
 import { EditableName } from "./EditableName";
+import { useDialog } from "./useDialog";
 import type { ReactNode } from "react";
 import {
   ChatIcon, CodeIcon, BrainIcon, PaletteIcon, BoltIcon, ScalesIcon, HeartIcon, AtomIcon,
@@ -90,11 +91,10 @@ const fill = (pct: number) => ({ background: `linear-gradient(90deg, #7c5cff 0%,
  *  (icon chips, segmented tabs, purple accent) so the depth stays legible. */
 export function ProductDetail({ game, productId, mods, onClose, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onSetChannelMix, onBuyFeature, onRename, onRetire, onSetFlagship }: Props) {
   const [tab, setTab] = useState<Tab>("overview");
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  // No heading here (the name is an inline rename control), so the sheet itself
+  // takes focus on open; Escape closes it as before.
+  const ref = useRef<HTMLDivElement>(null);
+  useDialog(ref, { onClose });
 
   const p = game.products.active.find((x) => x.id === productId);
   if (!p) return null;
@@ -131,7 +131,7 @@ export function ProductDetail({ game, productId, mods, onClose, onStartUpgrade, 
   return (
     <Portal>
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal pd-modal" role="dialog" aria-modal="true" aria-label={`${p.name} — manage`} onClick={(e) => e.stopPropagation()}>
+      <div ref={ref} className="modal pd-modal" role="dialog" aria-modal="true" aria-label={`${p.name} — manage`} onClick={(e) => e.stopPropagation()}>
         <div className="pd-head">
           <div className="pd-head-id">
             <span className="pd-app-icon">{TYPE_GLYPH[p.type] ?? <SparkIcon size={20} />}</span>

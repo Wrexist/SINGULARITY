@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import type { OfflineSummary } from "../engine/offline";
 import type { Big } from "../engine/math/Big";
 import { fmt, fmtPerHour, fmtTime } from "./format";
@@ -5,6 +6,7 @@ import { achievementDefs } from "../engine/achievements";
 import { productMilestones } from "../engine/balance/products";
 import { eraName } from "../engine/eras";
 import { LandmarkIcon, TrophyIcon } from "./Icons";
+import { useDialog } from "./useDialog";
 
 /** The story since last open, as at most `max` human lines (headlines first). */
 function storyLines(story: OfflineSummary["story"], max = 4): string[] {
@@ -39,6 +41,8 @@ interface Props {
 
 /** The "while you were away" screen — a designed reward beat, not a dialog (§7). */
 export function OfflineModal({ summary, onClose }: Props) {
+  const ref = useRef<HTMLDivElement>(null);
+  useDialog(ref, { onClose, labelledBy: "offline-title" });
   const { gained } = summary;
   // Projected hourly rate, so the player can reason about leaving the lab running.
   const hours = summary.appliedMs / 3_600_000;
@@ -64,8 +68,8 @@ export function OfflineModal({ summary, onClose }: Props) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h2>While you were away</h2>
+      <div ref={ref} className="modal" role="dialog" aria-modal="true" aria-labelledby="offline-title" onClick={(e) => e.stopPropagation()}>
+        <h2 id="offline-title" tabIndex={-1}>While you were away</h2>
         <p className="modal-sub">
           The lab ran for {fmtTime(summary.appliedMs)}
           {summary.capped && " (capped)"}. Here's what stacked up:

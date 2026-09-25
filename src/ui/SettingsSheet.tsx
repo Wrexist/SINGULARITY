@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSettings } from "./settings";
 import { iap, PREMIUM_PRICE } from "./iap";
 import { haptics as hpt } from "./haptics";
@@ -16,6 +16,7 @@ import { telemetryEnabled, setTelemetryEnabled, getTelemetryEvents, clearTelemet
 import { gameCenterAvailable, gameCenterShowLeaderboards } from "./gameCenter";
 import { summarize } from "../engine/telemetry";
 import { eraName } from "../engine/eras";
+import { useDialog } from "./useDialog";
 
 /** mm:ss for a duration in seconds (telemetry display). */
 function fmtDur(sec: number): string {
@@ -73,6 +74,9 @@ export function SettingsSheet({ onClose, onReset }: Props) {
     { key: "reducedMotion", label: "Reduced motion", hint: "Calm the animations", value: reducedMotion },
     { key: "scientificNotation", label: "Scientific notation", hint: "1.23e9 instead of 1.23B — for the endgame", value: scientificNotation },
   ];
+
+  const sheetRef = useRef<HTMLDivElement>(null);
+  useDialog(sheetRef, { onClose, labelledBy: "settings-title" });
 
   const [premium, setPremiumState] = useState(iap.isPremium());
   const [price, setPrice] = useState(PREMIUM_PRICE);
@@ -171,13 +175,13 @@ export function SettingsSheet({ onClose, onReset }: Props) {
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet" onClick={(e) => e.stopPropagation()}>
+      <div ref={sheetRef} className="sheet" role="dialog" aria-modal="true" aria-labelledby="settings-title" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-grip" />
         {/* Sticky header: the ✕ stays reachable however deep the sheet is
             scrolled (the Done button lives at the very bottom — "can't close
             the settings easily" was an on-device owner report). */}
         <div className="sheet-head">
-          <h2 className="sheet-title">Settings</h2>
+          <h2 id="settings-title" className="sheet-title" tabIndex={-1}>Settings</h2>
           <button className="sheet-close" onClick={onClose} aria-label="Close settings">✕</button>
         </div>
 
@@ -320,8 +324,8 @@ export function SettingsSheet({ onClose, onReset }: Props) {
                 <button className="btn btn-ghost btn-sm" onClick={() => { setImportText(""); setStatus(null); setExportText(""); }}>Clear</button>
               </div>
               {exportText && <textarea className="set-backup-text" readOnly rows={3} value={exportText} onFocus={(e) => e.currentTarget.select()} />}
-              <label className="set-backup-label">Restore from a backup</label>
-              <textarea className="set-backup-text" rows={3} placeholder="Paste a backup string here…" value={importText} onChange={(e) => setImportText(e.target.value)} />
+              <label className="set-backup-label" htmlFor="set-restore-text">Restore from a backup</label>
+              <textarea id="set-restore-text" className="set-backup-text" rows={3} placeholder="Paste a backup string here…" value={importText} onChange={(e) => setImportText(e.target.value)} />
               <button className="btn btn-primary btn-sm" disabled={!importText.trim()} onClick={doImport}>Restore this backup</button>
               {status && <p className="set-backup-status">{status}</p>}
               {/* Wiping the save used to be a link in the footer of EVERY tab, one

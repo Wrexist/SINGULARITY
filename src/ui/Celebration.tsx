@@ -5,6 +5,7 @@ import { shipHeadline, runStory, shipSubtitle } from "./headlines";
 import { shareRunCard } from "./shareCard";
 import { useReducedMotion } from "./motion";
 import { RocketIcon } from "./Icons";
+import { useDialog } from "./useDialog";
 
 export interface ShipReport {
   /** The generation number just completed (ships). */
@@ -71,6 +72,8 @@ export function Celebration({ weightsGained, totalWeights, report, ascended, onD
   const story = report ? runStory(report) : [];
 
   const reducedMotion = useReducedMotion();
+  const cardRef = useRef<HTMLDivElement>(null);
+  useDialog(cardRef, { onClose: onDone, labelledBy: "celebrate-title" });
 
   return (
     <div className="celebrate" onClick={onDone}>
@@ -89,10 +92,10 @@ export function Celebration({ weightsGained, totalWeights, report, ascended, onD
         ))}
       </div>}
 
-      <div className={`celebrate-card${ascended ? " ascended" : ""}`}>
+      <div ref={cardRef} className={`celebrate-card${ascended ? " ascended" : ""}`} role="dialog" aria-modal="true" aria-labelledby="celebrate-title">
         <div className="celebrate-rocket"><RocketIcon size={40} /></div>
         {report && <div className="celebrate-gen">Generation {report.gen}</div>}
-        <h2>{headline}</h2>
+        <h2 id="celebrate-title" tabIndex={-1}>{headline}</h2>
         <p className="celebrate-sub">{subtitle}</p>
         <div className="celebrate-weights">
           +{fmt(weightsGained)}

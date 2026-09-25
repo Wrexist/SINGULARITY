@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useRef } from "react";
 import { Portal } from "./Portal";
 import { burst, punch } from "./fx";
 import type { GameState } from "../engine/types";
@@ -11,6 +11,7 @@ import {
 import { Big } from "../engine/math/Big";
 import { fmt } from "./format";
 import { LandmarkIcon } from "./Icons";
+import { useDialog } from "./useDialog";
 
 /** Phase 3 — the Lab Reputation perk tree: spend meta-currency earned from
  *  achievements + ascensions on permanent, run-spanning boosts. Honest goals,
@@ -30,19 +31,16 @@ export function ReputationModal({ game, onBuy, onBuyEndowment, onPickDirective, 
   const earned = earnedReputation(game);
   const owned = new Set(game.reputation.perks);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  const ref = useRef<HTMLDivElement>(null);
+  useDialog(ref, { onClose });
 
   return (
     <Portal>
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal rep-modal" role="dialog" aria-modal="true" aria-label="Lab Reputation" onClick={(e) => e.stopPropagation()}>
+      <div ref={ref} className="modal rep-modal" role="dialog" aria-modal="true" aria-label="Lab Reputation" onClick={(e) => e.stopPropagation()}>
         <div className="pd-head">
           <div>
-            <h2 className="ach-title"><LandmarkIcon size={20} /> Lab Reputation</h2>
+            <h2 className="ach-title" tabIndex={-1}><LandmarkIcon size={20} /> Lab Reputation</h2>
             <div className="ach-count"><b className="rep-pts">{available}</b> available · {earned} earned all-time</div>
           </div>
           <button className="link-btn" onClick={onClose}>close</button>

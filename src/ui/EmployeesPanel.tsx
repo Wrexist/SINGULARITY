@@ -50,7 +50,7 @@ const Avatar = memo(function Avatar({ name, size = 38 }: { name: string; size?: 
 /** Level shown as filled pips out of MAX_LEVEL (the mockup's star rating). */
 const Stars = memo(function Stars({ level }: { level: number }) {
   return (
-    <span className="emp-stars" aria-label={`Level ${level} of ${MAX_LEVEL}`}>
+    <span className="emp-stars" role="img" aria-label={`Level ${level} of ${MAX_LEVEL}`}>
       {Array.from({ length: MAX_LEVEL }, (_, i) => (
         <span key={i} className={`emp-star ${i < level ? "on" : ""}`}>★</span>
       ))}
@@ -304,7 +304,7 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
 
               {balance.office.enabled && (
                 <div className="emp-perks">
-                  <button className="emp-section-head emp-perks-head" onClick={() => setPerksOpen((o) => !o)}>
+                  <button className="emp-section-head emp-perks-head" onClick={() => setPerksOpen((o) => !o)} aria-expanded={perksOpen}>
                     <span className="emp-perks-title"><BuildingIcon size={16} /> Office perks</span>
                     <span className="emp-perks-meta">morale ×{morale.toFixed(2)} <ChevronIcon size={12} dir={perksOpen ? "down" : "right"} /></span>
                   </button>

@@ -457,11 +457,14 @@ function HallCanvasImpl({ onExpand }: { onExpand: (id: string) => void }) {
           })}
         </nav>
       )}
+      {/* The rack cards echo taps on the (aria-hidden) canvas; the same facts live in
+          the accessible panels. Their × stays out of the Tab order (tabIndex -1) so
+          nothing focusable sits inside an aria-hidden subtree. Tapping still closes. */}
       {agentInfo && (
         <div className="rack-card" aria-hidden="true" onClick={() => setSelectedAgent(null)}>
           <div className="rack-card-head">
             <span className="rack-card-name">{agentInfo.name}</span>
-            <button className="rack-card-x" aria-label="Close" onClick={(e) => { e.stopPropagation(); setSelectedAgent(null); }}>×</button>
+            <button className="rack-card-x" aria-label="Close" tabIndex={-1} onClick={(e) => { e.stopPropagation(); setSelectedAgent(null); }}>×</button>
           </div>
           <p className="rack-card-desc">
             {agentInfo.role} · Lv {agentInfo.level}
@@ -474,7 +477,7 @@ function HallCanvasImpl({ onExpand }: { onExpand: (id: string) => void }) {
         <div className="rack-card" aria-hidden="true" onClick={() => setChenOpen(false)}>
           <div className="rack-card-head">
             <span className="rack-card-name">{chenInfo.name}</span>
-            <button className="rack-card-x" aria-label="Close" onClick={(e) => { e.stopPropagation(); setChenOpen(false); }}>×</button>
+            <button className="rack-card-x" aria-label="Close" tabIndex={-1} onClick={(e) => { e.stopPropagation(); setChenOpen(false); }}>×</button>
           </div>
           <p className="rack-card-desc">{chenInfo.label} — {chenInfo.blurb}</p>
           <div className="rack-card-stats"><span>Lobbying (Data Market) cools her interest. Shady buys don't.</span></div>
@@ -489,7 +492,7 @@ function HallCanvasImpl({ onExpand }: { onExpand: (id: string) => void }) {
           <div className="rack-card-head">
             <span className={`rack-swatch tier-${selected.tier}`} aria-hidden="true" />
             <span className="rack-card-name">{selected.name}</span>
-            <button className="rack-card-x" aria-label="Close" onClick={(e) => { e.stopPropagation(); setSelectedTier(null); }}>×</button>
+            <button className="rack-card-x" aria-label="Close" tabIndex={-1} onClick={(e) => { e.stopPropagation(); setSelectedTier(null); }}>×</button>
           </div>
           <p className="rack-card-desc">{selected.desc}</p>
           <div className="rack-card-stats">

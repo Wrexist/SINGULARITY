@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useReducedMotion } from "./motion";
 import { burst as fxBurst, FX_PALETTES } from "./fx";
+import { useDialog } from "./useDialog";
 
 interface Props {
   name: string;
@@ -45,6 +46,9 @@ export function ProductLaunch({ name, typeName, onDone }: Props) {
   // Reduced motion skips straight to the live state. Kept under a second so the
   // repeated mid-game launches never feel like a forced cinematic.
   const [live, setLive] = useState(reducedMotion);
+  // Escape only once it is live, the same moment a backdrop tap starts dismissing.
+  const ref = useRef<HTMLDivElement>(null);
+  useDialog(ref, { onClose: live ? onDone : undefined, labelledBy: "launch-title" });
   useEffect(() => {
     if (live) return;
     // Reduced motion flipping ON mid-sweep must still land on the live state —
@@ -62,9 +66,9 @@ export function ProductLaunch({ name, typeName, onDone }: Props) {
   }, [live, reducedMotion]);
   return (
     <div className="modal-backdrop era-backdrop launch-moment" onClick={live ? onDone : undefined}>
-      <div className="modal era-modal launch-modal" onClick={(e) => e.stopPropagation()}>
+      <div ref={ref} className="modal era-modal launch-modal" role="dialog" aria-modal="true" aria-labelledby="launch-title" onClick={(e) => e.stopPropagation()}>
         <div className="era-kicker launch-kicker">{live ? "PRODUCT LAUNCH" : "DEPLOYING"}</div>
-        <h2 className="era-title">{name}</h2>
+        <h2 id="launch-title" className="era-title" tabIndex={-1}>{name}</h2>
         {live ? (
           <>
             <div className="era-press">

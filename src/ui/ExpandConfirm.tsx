@@ -2,6 +2,8 @@ import { balance } from "../engine/balance/config";
 import { upgradeCost, canBuyUpgrade } from "../engine/actions";
 import { useGame } from "../state/store";
 import { fmtMoney } from "./format";
+import { useRef } from "react";
+import { useDialog } from "./useDialog";
 
 interface Props {
   id: string;
@@ -12,6 +14,8 @@ interface Props {
 /** Confirm/decline popup for buying a hall expansion by tapping the floor. */
 export function ExpandConfirm({ id, onConfirm, onDecline }: Props) {
   const game = useGame((s) => s.game);
+  const ref = useRef<HTMLDivElement>(null);
+  useDialog(ref, { onClose: onDecline });
   const def = balance.upgrades.find((u) => u.id === id);
   if (!def) return null;
 
@@ -30,9 +34,9 @@ export function ExpandConfirm({ id, onConfirm, onDecline }: Props) {
     <div className="modal-backdrop" onClick={onDecline}>
       {/* Same a11y contract as ConfirmSheet — the two confirm dialogs must not
           drift apart for screen readers. */}
-      <div className="modal confirm-modal" role="alertdialog" aria-modal="true" aria-label={def.name} onClick={(e) => e.stopPropagation()}>
+      <div ref={ref} className="modal confirm-modal" role="alertdialog" aria-modal="true" aria-label={def.name} onClick={(e) => e.stopPropagation()}>
         <div className="confirm-kicker">EXPAND THE HALL</div>
-        <h2>{def.name}</h2>
+        <h2 tabIndex={-1}>{def.name}</h2>
         <p className="modal-sub">{def.desc}</p>
         <div className="confirm-row">
           <span>Adds</span>

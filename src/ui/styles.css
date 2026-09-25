@@ -3815,3 +3815,113 @@ button.modchip.workable:active { transform: scale(0.94); }
   margin: 0; font-size: var(--fs-sm); font-weight: 700; color: var(--ink);
   font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+
+/* =====================================================================
+   ACCESSIBILITY LAYER (2026-09 a11y audit). Non-visual by design.
+   Kept as ONE appended block so colour / contrast work in the rules above
+   merges cleanly; nothing above was edited. Nothing here changes what a
+   sighted touch player sees. The one visible addition is the focus ring,
+   which only keyboard / Switch Control focus draws (:focus-visible).
+   ===================================================================== */
+
+/* Text for screen readers only (live-region cues, "Earned:" / "Buff:" prefixes). */
+.sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* aria-disabled buttons stay focusable (a real `disabled` throws focus to <body>
+   mid-loop), so they need the disabled look by hand. Mirrors `.btn:disabled`
+   exactly; if that rule changes, change this one with it. */
+.btn[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.3);
+  transform: none;
+}
+
+/* Focus ring: keyboard / Switch Control only. Text fields and selects are left
+   out on purpose: they match :focus-visible on every tap, and they already carry
+   their own focus styling above. */
+button:focus-visible,
+a[href]:focus-visible,
+summary:focus-visible,
+input[type="range"]:focus-visible,
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* The range sliders set `outline: none` in every state; give keyboard focus the
+   same ring back (selectors match their specificity so this wins by order). */
+.focus-slider:focus-visible,
+.pd-slider:focus-visible,
+.prod-ctl input[type="range"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* Programmatic focus targets (a dialog's heading, or the dialog box itself, see
+   useDialog.ts) are not controls and never draw a ring. */
+[tabindex="-1"]:focus {
+  outline: none;
+}
+
+/* 44pt hit areas for small controls, without moving a pixel: a transparent
+   ::after grows the box on ALL FOUR sides by exactly what it lacks to reach
+   44x44 (never shrinking a bigger box). Where a neighbouring control sits closer
+   than that, --hit-cap-x / --hit-cap-y stop the growth halfway across the gap so
+   no control ever steals a tap from the one beside it. */
+.sheet-close,
+.premium-actions .link-btn,
+.set-about a,
+.objective-lane,
+.emp-recruit,
+.hall-wing,
+.research-cat-toggle,
+.prod-ms-head,
+.emp-perks-head {
+  position: relative;
+}
+.sheet-close::after,
+.premium-actions .link-btn::after,
+.set-about a::after,
+.objective-lane::after,
+.emp-recruit::after,
+.hall-wing::after,
+.research-cat-toggle::after,
+.prod-ms-head::after,
+.emp-perks-head::after {
+  content: "";
+  position: absolute;
+  top: max(var(--hit-cap-y, -22px), min(0px, calc(50% - 22px)));
+  bottom: max(var(--hit-cap-y, -22px), min(0px, calc(50% - 22px)));
+  left: max(var(--hit-cap-x, -22px), min(0px, calc(50% - 22px)));
+  right: max(var(--hit-cap-x, -22px), min(0px, calc(50% - 22px)));
+}
+/* The two reward lanes stack 5px apart: meet in the middle, grow freely outward. */
+.objective-lane { --hit-cap-y: -2px; }
+.objective-lane:first-child::after { top: min(0px, calc(50% - 22px)); }
+.objective-lane:last-child::after { bottom: min(0px, calc(50% - 22px)); }
+/* Wing chips sit 4px apart inside a 4px-padded scroller: stay inside it. */
+.hall-wing { --hit-cap-x: -2px; --hit-cap-y: -4px; }
+/* Finished research categories stack 6px apart, and an unfolded one has its first
+   node right underneath: split the gap, and don't reach into the open track. */
+.research-cat-toggle { --hit-cap-y: -3px; }
+.research-cat-toggle[aria-expanded="true"]::after { bottom: 0; }
+/* Office perks: 12px below the roster, 10px above the first perk when open. */
+.emp-perks-head::after { top: max(-6px, min(0px, calc(50% - 22px))); }
+.emp-perks-head[aria-expanded="true"]::after { bottom: max(-5px, min(0px, calc(50% - 22px))); }
+/* Privacy / Support: ~13px under the Done button, the sheet's bottom padding
+   below. Grow down into that padding (never past it, or the sheet would scroll
+   further), and only halfway up toward Done. */
+.set-about a::after { top: -6px; bottom: -18px; }

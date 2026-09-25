@@ -65,6 +65,11 @@ export function TrainingDock({ game, derived, onStart, onClaim, onSetFocus }: Pr
     ? Math.min(1, Math.max(0, game.resources.compute.div(derived.runComputeCost).toNumber()))
     : 0;
   const fillPct = run.readyToClaim ? 100 : run.active ? pct : charging ? chargeFrac * 100 : 0;
+  const barText = run.readyToClaim ? "Complete" : run.active ? `${pct.toFixed(0)}%` : charging ? "Charging…" : "Idle";
+  // Screen-reader cue for the loop's payoff. The text only changes when a run
+  // completes, so the polite live region speaks once per run and stays quiet
+  // through the 10Hz re-renders; auto-claim takes the payout itself, so it's silent.
+  const announce = run.readyToClaim && !derived.autoClaim ? "Run complete — claim your payout" : "";
   let hint: string | null = null;
   if (firstRun) {
     if (run.readyToClaim) hint = "Done! Claim your first Data + Money.";
@@ -82,13 +87,21 @@ export function TrainingDock({ game, derived, onStart, onClaim, onSetFocus }: Pr
         </span>
       </div>
 
-      <div className={`progress ${run.readyToClaim ? "ready" : run.active ? "active" : charging ? "charging" : ""}`}>
+      <div
+        className={`progress ${run.readyToClaim ? "ready" : run.active ? "active" : charging ? "charging" : ""}`}
+        role="progressbar"
+        aria-label={derived.autoClaim ? "Training run, claims automatically" : "Training run"}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(fillPct)}
+        aria-valuetext={barText}
+      >
         <div className="progress-fill" style={{ width: `${fillPct}%` }} />
         <span className={`progress-label${fillPct < 50 ? " on-track" : ""}`}>
-          {run.readyToClaim ? "Complete" : run.active ? `${pct.toFixed(0)}%` : charging ? "Charging…" : "Idle"}
+          {barText}
         </span>
         {/* Wordless: this bar pays out by itself now. */}
-        {derived.autoClaim && <span className="progress-auto" aria-label="Claims automatically"><RepeatIcon size={13} /></span>}
+        {derived.autoClaim && <span className="progress-auto" role="img" aria-label="Claims automatically"><RepeatIcon size={13} /></span>}
       </div>
 
       {run.readyToClaim ? (
@@ -108,7 +121,14 @@ export function TrainingDock({ game, derived, onStart, onClaim, onSetFocus }: Pr
           Claim payout
         </button>
       ) : (
-        <button className={`btn btn-primary ${canStart && firstRun ? "nudge" : ""}`} disabled={!canStart} onClick={onStart}>
+        // aria-disabled, not disabled: a real `disabled` drops focus to <body> the
+        // moment a run starts, stranding keyboard / Switch Control / VoiceOver users.
+        // Same look via the [aria-disabled] rule in styles.css; the guard keeps it inert.
+        <button
+          className={`btn btn-primary ${canStart && firstRun ? "nudge" : ""}`}
+          aria-disabled={!canStart}
+          onClick={() => { if (canStart) onStart(); }}
+        >
           {run.active ? "Training…" : "Start training run"}
         </button>
       )}
@@ -138,6 +158,7 @@ export function TrainingDock({ game, derived, onStart, onClaim, onSetFocus }: Pr
       )}
 
       {hint && <p className="coach">{hint}</p>}
+      <span className="sr-only" aria-live="polite">{announce}</span>
     </div>
   );
 }

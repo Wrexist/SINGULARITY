@@ -1,5 +1,7 @@
 import { eraName, eraBlurb } from "../engine/eras";
+import { useRef } from "react";
 import { useReducedMotion } from "./motion";
+import { useDialog } from "./useDialog";
 
 interface Props {
   era: number;
@@ -20,6 +22,8 @@ const COLORS = ["#7c5cff", "#2f7bf6", "#16b364", "#ffd60a", "#ff385c"];
 export function EraTransition({ era, blurbSeed = 0, onDone }: Props) {
   const agi = era >= 5; // Post-Singularity — the capstone tentpole.
   const reducedMotion = useReducedMotion();
+  const ref = useRef<HTMLDivElement>(null);
+  useDialog(ref, { onClose: onDone, labelledBy: "era-title" });
   return (
     <div className={`modal-backdrop era-backdrop${agi ? " era-agi" : ""}`} onClick={onDone}>
       {!reducedMotion && <div className="confetti era-confetti" aria-hidden="true">
@@ -36,9 +40,9 @@ export function EraTransition({ era, blurbSeed = 0, onDone }: Props) {
           />
         ))}
       </div>}
-      <div className="modal era-modal" onClick={(e) => e.stopPropagation()}>
+      <div ref={ref} className="modal era-modal" role="dialog" aria-modal="true" aria-labelledby="era-title" onClick={(e) => e.stopPropagation()}>
         <div className="era-kicker">{agi ? "✦ SINGULARITY ✦" : "NEW ERA"}</div>
-        <h2 className="era-title">{eraName(era)}</h2>
+        <h2 id="era-title" className="era-title" tabIndex={-1}>{eraName(era)}</h2>
         <div className="era-press">
           <span className="era-press-tag">{agi ? "AUTO-GENERATED" : "PRESS RELEASE"}</span>
           <p>{eraBlurb(era, blurbSeed)}</p>

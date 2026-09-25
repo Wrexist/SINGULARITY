@@ -58,12 +58,13 @@ export function AchievementsBoard({ game }: { game: GameState }) {
         <p className="panel-capstone">Every badge earned. HR has run out of trophies — take the rest of the singularity off.</p>
       )}
 
-      <div className="pd-tabs ach-cats" role="tablist">
-        <button className={`pd-tab ${filter === "all" ? "on" : ""}`} onClick={() => setFilter("all")}>All</button>
+      <div className="pd-tabs ach-cats" role="group" aria-label="Filter achievements">
+        <button className={`pd-tab ${filter === "all" ? "on" : ""}`} aria-pressed={filter === "all"} onClick={() => setFilter("all")}>All</button>
         {CATS.map((c) => (
           <button
             key={c}
             className={`pd-tab ${filter === c ? "on" : ""}`}
+            aria-pressed={filter === c}
             onClick={() => setFilter(c)}
             aria-label={CAT_META[c].label}
             title={CAT_META[c].label}
@@ -73,14 +74,14 @@ export function AchievementsBoard({ game }: { game: GameState }) {
         ))}
       </div>
 
-      <div className="ach-grid">
+      <div className="ach-grid" role="list">
         {shown.map((def) => {
           const got = unlocked.has(def.id);
           const masked = def.secret && !got;
           const pct = got ? 1 : achievementProgress(game, def);
           const hue = CAT_META[def.cat].hue;
           return (
-            <div className={`ach-card ${got ? "got" : ""}`} key={def.id}>
+            <div className={`ach-card ${got ? "got" : ""}`} key={def.id} role="listitem">
               <span
                 className="ach-badge"
                 style={got ? { background: `hsl(${hue} 65% 90%)`, color: `hsl(${hue} 60% 35%)` } : undefined}
@@ -88,7 +89,7 @@ export function AchievementsBoard({ game }: { game: GameState }) {
                 {got ? CAT_META[def.cat].icon : masked ? <HelpIcon size={16} /> : <LockIcon size={15} />}
               </span>
               <div className="ach-card-main">
-                <div className="ach-name">{masked ? "Secret achievement" : def.label}</div>
+                <div className="ach-name"><span className="sr-only">{got ? "Earned: " : "Locked: "}</span>{masked ? "Secret achievement" : def.label}</div>
                 <div className="ach-desc">{masked ? secretTease(def.id) : def.desc}</div>
                 {!got && !masked && (
                   <div className="ach-bar"><div className="ach-bar-fill" style={{ width: `${pct * 100}%`, background: `hsl(${hue} 60% 55%)` }} /></div>
