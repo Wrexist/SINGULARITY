@@ -875,8 +875,8 @@ export function App() {
     // Runs count only while they actually restart themselves: auto-train on AND an
     // intensity above zero (0 = training held, e.g. a "save for this" pin).
     const running = d.autoTrain && game.computeFocus > 0;
-    const data = running ? effRate(d, "data") : d.dataPerSec;
-    const base = running ? effRate(d, "money") : d.passiveMoneyPerSec;
+    const data = running ? effRate(d, "data", game.computeFocus) : d.dataPerSec;
+    const base = running ? effRate(d, "money", game.computeFocus) : d.passiveMoneyPerSec;
     const money = base.add(Big.of(Number.isFinite(margin) ? margin : 0)).sub(d.payrollPerSec);
     return { data, money };
   })();

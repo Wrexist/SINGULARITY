@@ -1,17 +1,21 @@
 import { Big } from "../engine/math/Big";
+import { runsPerSec } from "../engine/derive";
 import { useSettings } from "./settings";
 import type { Derived } from "../engine/types";
 
 /** Effective income per second for a resource, amortizing per-run yields over the
- *  run duration (a rough but honest "how fast it's coming in" for ETA estimates).
+ *  runs actually fired — one per run duration, or fewer when Compute can't fund them
+ *  that fast, and none while training is held (see runsPerSec). A rough but honest
+ *  "how fast it's coming in" for ETA estimates. "compute" is gross production; a
+ *  Compute countdown should use computeBankEtaSecs, which knows what runs drain.
  *  NOTE: the "money" lane here is base income only (passive + amortized run); live
  *  product net margin and payroll fluctuate, so callers that show money ETAs add
  *  those in (see UpgradePanel). */
-export function effRate(d: Derived, resource: "compute" | "data" | "money"): Big {
-  const perRun = (yield_: Big) => (d.runDurationSec > 0 ? yield_.div(d.runDurationSec) : Big.ZERO);
+export function effRate(d: Derived, resource: "compute" | "data" | "money", computeFocus: number): Big {
   if (resource === "compute") return d.computePerSec;
-  if (resource === "data") return d.dataPerSec.add(perRun(d.runDataYield));
-  return d.passiveMoneyPerSec.add(perRun(d.runMoneyYield));
+  const rps = runsPerSec(d, computeFocus);
+  if (resource === "data") return d.dataPerSec.add(d.runDataYield.mul(rps));
+  return d.passiveMoneyPerSec.add(d.runMoneyYield.mul(rps));
 }
 
 /** A seconds-to-afford figure worth showing: finite, positive and under ~99 days; else null. */

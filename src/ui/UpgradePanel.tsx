@@ -101,8 +101,8 @@ export function UpgradePanel({ game, derived, onBuy, onFoundWing }: Props) {
   // ETA income rates. Money also flows from live products (net margin) minus payroll,
   // so a money-cost ETA isn't misleadingly long once a product business is running.
   const prodMargin = game.products.active.reduce((s, p) => s + productMetrics(p, game.products.frontier).margin, 0);
-  const moneyRate = effRate(derived, "money").add(Big.of(prodMargin)).sub(derived.payrollPerSec);
-  const rateFor = (r: "compute" | "data" | "money") => (r === "money" ? moneyRate : effRate(derived, r));
+  const moneyRate = effRate(derived, "money", game.computeFocus).add(Big.of(prodMargin)).sub(derived.payrollPerSec);
+  const rateFor = (r: "compute" | "data" | "money") => (r === "money" ? moneyRate : effRate(derived, r, game.computeFocus));
 
   type Def = (typeof balance.upgrades)[number];
   const defs = balance.upgrades

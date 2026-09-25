@@ -81,7 +81,7 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint, saving
     const legs = [
       // The bank's real climb: auto-train drains it above the level where runs fire.
       def.cost.compute > 0 ? shownEta(computeBankEtaSecs(game, derived, game.resources.compute, c.compute)) : null,
-      def.cost.data > 0 ? etaSecs(c.data, game.resources.data, effRate(derived, "data")) : null,
+      def.cost.data > 0 ? etaSecs(c.data, game.resources.data, effRate(derived, "data", game.computeFocus)) : null,
     ].filter((x): x is number => x !== null);
     return legs.length > 0 ? Math.max(...legs) : null;
   };
@@ -247,7 +247,7 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint, saving
         const eta = !canBuy && !preprintWalled
           ? Math.max(
               shownEta(computeBankEtaSecs(game, derived, game.resources.compute, c.compute)) ?? 0,
-              etaSecs(c.data, game.resources.data, effRate(derived, "data")) ?? 0,
+              etaSecs(c.data, game.resources.data, effRate(derived, "data", game.computeFocus)) ?? 0,
             )
           : null;
         return (

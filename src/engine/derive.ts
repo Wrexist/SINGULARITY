@@ -454,6 +454,20 @@ export function computeBankCeiling(state: GameState, d: Derived): Big | null {
 }
 
 /**
+ * Training runs per second the current settings sustain: one per run duration, unless
+ * Compute production can't fund them that fast (compute-bound: one per runCost /
+ * computePerSec, whatever the intensity), and none while auto-train holds training at
+ * intensity 0. The cadence tick() really fires at in steady state, so the honest divisor
+ * for any "income per second" that amortizes run payouts. Pure; display only.
+ */
+export function runsPerSec(d: Derived, computeFocus: number): number {
+  if (d.autoTrain && !(computeFocus > 0)) return 0;
+  const byDuration = d.runDurationSec > 0 ? 1 / d.runDurationSec : 0;
+  if (!d.runComputeCost.gt(0)) return byDuration;
+  return Math.min(byDuration, d.computePerSec.div(d.runComputeCost).toNumber());
+}
+
+/**
  * Seconds for the Compute bank to climb from `have` to `target` under the current
  * training settings, or null when waiting never gets there (compute-bound runs hold it
  * under computeBankCeiling). Below the level where auto-train fires the next run
