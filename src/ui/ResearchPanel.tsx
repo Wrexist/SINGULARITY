@@ -289,9 +289,12 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint, saving
           {renderNode(hero, true)}
         </div>
       )}
-      {groups.map(({ category, items }) =>
-        renderCat(category.id, category.name, items.filter((d) => isOwned(d.id)).length, items.length, items,
-          wholeByCat.get(category.id) ?? items))}
+      {groups.map(({ category, items }) => {
+        // Count the whole category, hero included (as the epoch headers do): counting
+        // only the rows left behind read "3/3" beside a node still to buy.
+        const whole = wholeByCat.get(category.id) ?? items;
+        return renderCat(category.id, category.name, whole.filter((d) => isOwned(d.id)).length, whole.length, items, whole);
+      })}
 
       {/* EPOCHS — research that only exists because a Paradigm is owned. Prestige
           clears research, so the base tree is the same 21 nodes every generation;
