@@ -8,6 +8,7 @@ import { preprintMult } from "../engine/preprints";
 import { alignmentProductionMods, alignmentHeatMult, alignmentProductMods } from "../engine/alignment";
 import { regulatorState } from "../engine/regulator";
 import { charterDef, charterMods } from "../engine/charter";
+import { charterRuleChips } from "./CharterPanel";
 import { balance } from "../engine/balance/config";
 import { ascensionMultiplier } from "../engine/prestige";
 import { totalMorale } from "../engine/derive";
@@ -50,12 +51,15 @@ function charterRow(game: GameState): Row | null {
   const def = charterDef(game.charter);
   if (!def) return null;
   const m = charterMods(game);
+  // A rule-changer's rules first (a pure rule charter has no lane tilt at all, so the
+  // row read "Research Sprint · " with nothing after the dot).
   const parts = [
+    ...charterRuleChips(def.id),
     m.computeMult !== 1 ? `${pct(m.computeMult - 1)} cmp` : null,
     m.dataMult !== 1 ? `${pct(m.dataMult - 1)} data` : null,
     m.moneyMult !== 1 ? `${pct(m.moneyMult - 1)} $` : null,
   ].filter(Boolean);
-  return { label: "Charter", value: `${def.name} · ${parts.join(" · ")}` };
+  return { label: "Charter", value: parts.length ? `${def.name} · ${parts.join(" · ")}` : def.name };
 }
 
 /** R5.5 cross-system effects, surfaced only when active (else they'd clutter the

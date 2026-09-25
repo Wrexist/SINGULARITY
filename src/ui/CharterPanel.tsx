@@ -21,15 +21,23 @@ const pct = (x: number | undefined) => (x ? `${x >= 0 ? "+" : ""}${Math.round(x 
 /** "×2.5" for a rule multiplier, "½" for a half. */
 const times = (x: number) => (x === 0.5 ? "½" : `×${x}`);
 
-function effectChips(id: string) {
-  const def = charterDef(id);
-  if (!def) return null;
-  const r = def.rule ?? {};
-  const parts = [
+/** A rule charter's rules as chips ("½ research compute", "×2.5 product revenue", …);
+ *  empty for a lane charter. Shared with Lab Stats so both name the same effects. */
+export function charterRuleChips(id: string | null): string[] {
+  const r = charterDef(id)?.rule ?? {};
+  return [
     r.researchCompute !== undefined && `${times(r.researchCompute)} research compute`,
     r.researchData !== undefined && `${times(r.researchData)} research data`,
     r.productArpu !== undefined && `${times(r.productArpu)} product revenue`,
     r.factionShift !== undefined && `${times(r.factionShift)} faction shifts`,
+  ].filter((x): x is string => !!x);
+}
+
+function effectChips(id: string) {
+  const def = charterDef(id);
+  if (!def) return null;
+  const parts = [
+    ...charterRuleChips(id),
     pct(def.computeMult) && `${pct(def.computeMult)} compute`,
     pct(def.dataMult) && `${pct(def.dataMult)} data`,
     pct(def.moneyMult) && `${pct(def.moneyMult)} $`,
