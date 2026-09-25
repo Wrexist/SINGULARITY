@@ -244,7 +244,12 @@ export function App() {
 
   // The moment queue's head: exactly ONE full-screen moment renders at a time,
   // by priority. Dismissing the head lets the next pending one show.
-  const moment = offline ? "offline"
+  // A recap raised on RESUME is uninvited too (the phone may have been locked with a
+  // sheet up), so it waits for the sheet like the era and world moments. Moments
+  // render inside `.app`, beneath every portalled sheet and Settings' backdrop: one
+  // that didn't wait was drawn under the sheet while it took keyboard focus and
+  // Escape. A cold-launch recap has nothing open to wait for.
+  const moment = offline && !sheetOpen ? "offline"
     : celebration ? "celebration"
     // An era crossing is earned by passive progress too, so like a world event it
     // is uninvited and waits for an open sheet rather than stacking on it.
