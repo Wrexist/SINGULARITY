@@ -15,7 +15,7 @@ import { challengesUnlocked } from "../engine/challenges";
 import { trialsUnlocked } from "../engine/trials";
 import { doctrineUnlocked } from "../engine/doctrine";
 import { productsUnlocked } from "../engine/products";
-import { goalsCounts } from "./goalsCount";
+import { goalsCounts, contractsShown } from "./goalsCount";
 import { TargetIcon } from "./Icons";
 
 export type GoalsSection = "now" | "long" | "collection";
@@ -24,8 +24,6 @@ interface Props {
   game: GameState;
   section: GoalsSection;
   onSection: (s: GoalsSection) => void;
-  /** Contracts appear on the same gate the Lab used before the move. */
-  showContracts: boolean;
   onClaimObjective: (id: string, target?: "computeMult" | "dataMult" | "moneyMult", at?: { x: number; y: number }) => void;
   onClaimContract: (id: string, rep: number, title: string) => void;
   onClaimSponsor: () => void;
@@ -58,12 +56,13 @@ interface Props {
  * is one door instead of seven.
  */
 export function GoalsPanel({
-  game, section, onSection, showContracts,
+  game, section, onSection,
   onClaimObjective, onClaimContract, onClaimSponsor,
   onFundChallenge, onChooseFork, onFundMegaproject, onPickMandate,
   onStartTrial, onAbandonTrial, onClaimDoctrine, onCollectionSeen,
 }: Props) {
   const counts = useMemo(() => goalsCounts(game), [game]);
+  const showContracts = contractsShown(game, counts.contracts);
 
   const hasLong = challengesUnlocked(game) || trialsUnlocked(game) || doctrineUnlocked(game);
   const showMilestones = productsUnlocked(game);

@@ -58,6 +58,18 @@ export function goalsCounts(game: GameState) {
   };
 }
 
+/**
+ * Whether GOALS renders the Contracts board. It opens with the first payout (the
+ * same wave that reveals Research) and then stays open for good: the ladder lives
+ * across Ships, while a Ship resets Data and research to zero — so keying on those
+ * alone hid the board at the very moment "Ship It" became claimable. It also always
+ * shows while anything on it is ready, because the nav badge and the advisor chip
+ * count those rows, and a badge must never promise a row the player cannot find.
+ */
+export function contractsShown(game: GameState, readyContracts: number = goalsCounts(game).contracts): boolean {
+  return readyContracts > 0 || game.prestige.ships > 0 || game.resources.data.gt(0) || game.research.length > 0;
+}
+
 /** Everything waiting on the player right now — the GOALS nav badge. */
 export function goalsClaimable(game: GameState): number {
   return goalsCounts(game).claimable;

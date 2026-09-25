@@ -982,7 +982,6 @@ export function App() {
             game={game}
             section={goalsSection}
             onSection={(next) => { haptics.tap(); if (next !== goalsSection) window.scrollTo(0, 0); setGoalsSection(next); }}
-            showContracts={showResearch}
             onClaimObjective={onClaimObjective}
             onClaimContract={onClaimContract}
             onClaimSponsor={() => { haptics.success(); sound.success(); doClaimSponsor(); }}
