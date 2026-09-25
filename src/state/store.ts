@@ -428,17 +428,22 @@ export const useGame = create<GameStore>((set, get) => ({
       if (s.savingFor && elapsedMs > 2000) {
         const pin = s.savingFor;
         const def = ALL_RESEARCH.find((r) => r.id === pin.id);
-        let needMs = Infinity;
-        if (def) {
-          const short = researchCost(start, def).compute.sub(start.resources.compute);
-          const cps = derive(start).computePerSec;
-          needMs = short.lte(0) ? 0 : cps.gt(0) ? short.div(cps).toNumber() * 1000 + 250 : Infinity;
-        }
-        if (!Number.isFinite(needMs) || needMs < elapsedMs) {
+        // The landing moment is re-estimated after each hop: a buff that lapses inside
+        // the window (the Daily Boost, a world-event surge) slows the climb, and a single
+        // estimate from the opening rate landed early and dropped the pin unbought.
+        for (let hop = 0; hop < 8 && !pinDone; hop++) {
+          let needMs = Infinity;
+          if (def) {
+            const short = researchCost(start, def).compute.sub(start.resources.compute);
+            const cps = derive(start).computePerSec;
+            needMs = short.lte(0) ? 0 : cps.gt(0) ? short.div(cps).toNumber() * 1000 + 250 : Infinity;
+          }
+          if (Number.isFinite(needMs) && needMs >= remainingMs) break; // the window ends first: keep the pin
           if (Number.isFinite(needMs)) {
             start = tick(start, needMs);
             remainingMs -= needMs;
             if (canBuyResearch(start, pin.id)) start = buyResearchByHand(start, pin.id);
+            else if (def && researchAvailable(start, pin.id) && start.resources.compute.lt(researchCost(start, def).compute)) continue; // still short on Compute: hop again
           }
           start = { ...start, computeFocus: pin.prevFocus };
           pinDone = true;
