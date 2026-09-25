@@ -14,7 +14,7 @@ import { alignmentHeatMult } from "./alignment";
 import { suspicionEventMult, regulatorIsNamed, regulatorState, clampSuspicion } from "./regulator";
 import { autoResearchEnabled, researchCostMult } from "./reputation";
 import { charterRule } from "./charter";
-import { isRackId, floorFull, evictableRackFor } from "./hall";
+import { isRackId, floorFull, evictableRackFor, floorDrawnOut } from "./hall";
 import { typeDef } from "./products";
 import { releaseEmptyTierParts } from "./components";
 import type { ActiveModifier, Derived, GameState } from "./types";
@@ -149,11 +149,26 @@ export function buyUpgrade(state: GameState, id: string): GameState {
 }
 
 /**
+ * May a ×10 / Max batch take one more level of `id`? Everything `canBuyUpgrade`
+ * checks, plus: a batch never walks a hall expansion past the draw cap. Once the
+ * floor is drawn out another level adds tiles no rack can stand on (the panel stops
+ * offering expansions there for the same reason), so a batch stops at the level
+ * that draws it out instead of charging for dead ones after it. A batch-only rule:
+ * `canBuyUpgrade` is what the balance sim reads, so it stays unchanged.
+ */
+function canBulkBuyStep(state: GameState, id: string): boolean {
+  if (!canBuyUpgrade(state, id)) return false;
+  const kind = UPGRADE_BY_ID[id]!.effect.kind;
+  return !((kind === "floorCols" || kind === "floorRows") && floorDrawnOut(state));
+}
+
+/**
  * Plan a bulk buy of `id`: how many levels you can actually buy (up to `want`,
  * or Infinity for "Max") and their total cost — honoring affordability, max
- * level, floor space and rack auto-eviction. Pure: it simulates real buys (each
- * `buyUpgrade` is cheap — no `derive`), so the plan can never diverge from what
- * `buyUpgradeBulk` does. Used by the panel to label the ×10 / Max buttons.
+ * level, floor space, rack auto-eviction and the expansion draw cap. Pure: it
+ * simulates real buys (each `buyUpgrade` is cheap — no `derive`), so the plan can
+ * never diverge from what `buyUpgradeBulk` does. Used by the panel to label the
+ * ×10 / Max buttons.
  */
 export function planBulkUpgrade(
   state: GameState,
@@ -166,7 +181,7 @@ export function planBulkUpgrade(
   let s = state;
   let count = 0;
   let totalCost = Big.ZERO;
-  while (count < cap && canBuyUpgrade(s, id)) {
+  while (count < cap && canBulkBuyStep(s, id)) {
     totalCost = totalCost.add(upgradeCost(def, s.upgrades[id] ?? 0));
     s = buyUpgrade(s, id);
     count += 1;
@@ -175,12 +190,13 @@ export function planBulkUpgrade(
 }
 
 /** Buy up to `want` levels of `id` (Infinity = as many as affordable). Stops at
- *  the first level you can't buy. No-op-safe (returns the same state if count 0). */
+ *  the first level you can't buy, or that a batch shouldn't (see canBulkBuyStep).
+ *  No-op-safe (returns the same state if count 0). */
 export function buyUpgradeBulk(state: GameState, id: string, want: number): GameState {
   const cap = Math.min(want, 10000);
   let s = state;
   let n = 0;
-  while (n < cap && canBuyUpgrade(s, id)) {
+  while (n < cap && canBulkBuyStep(s, id)) {
     s = buyUpgrade(s, id);
     n += 1;
   }
