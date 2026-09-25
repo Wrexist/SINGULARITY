@@ -259,27 +259,58 @@ export function rackTileOrder(model: HallModel): { gx: number; gy: number }[] {
   return tiles;
 }
 
-/** A tappable rack: its draw index, tier, and the floor-diamond polygon it sits
- *  on (the hit target). Built from the SAME `rackTileOrder` the renderer uses, so a
- *  tap maps to the rack the player sees. Pure — safe to compute on demand for hit-test. */
+/** A rack's drawn height (css px) at full scale. Shared by the body paint, the
+ *  incident smoke placement and the tap silhouette so they can never disagree. */
+function rackBodyHeight(tileH: number, tier: number, density: number): number {
+  return tileH * (1.1 + tier * 0.5) * (0.72 + 0.28 * density);
+}
+
+/** A tappable rack: its draw index, tier, the floor-diamond polygon it sits on, and
+ *  the silhouette of the box drawn on it. Built from the SAME `rackTileOrder` the
+ *  renderer uses, so a tap maps to the rack the player sees. Pure — safe to compute
+ *  on demand for hit-test. */
 export interface RackHit {
   index: number;
   tier: number;
   quad: [Pt, Pt, Pt, Pt];
+  /** The rack body as drawn: its base diamond extruded up to its height. A rack
+   *  stands 1–2 tiles tall, so most of what the player sees (the faces, the top, an
+   *  incident's warn light and smoke) sits over the floor tiles BEHIND it. */
+  body: Pt[];
   centroid: Pt;
 }
 
 export function rackHitAreas(model: HallModel, W: number, H: number): RackHit[] {
-  const { iso } = computeLayout(model.cols, model.rows, model.gxMin, model.gyMin, W, H);
+  const { iso, tileW, tileH } = computeLayout(model.cols, model.rows, model.gxMin, model.gyMin, W, H);
   const tiles = rackTileOrder(model);
+  const hw = (tileW / 2) * 0.64, hh = (tileH / 2) * 0.64;
   const hits: RackHit[] = [];
   for (let i = 0; i < model.racks.length && i < tiles.length; i++) {
     const { gx, gy } = tiles[i]!;
+    const rack = model.racks[i]!;
     const quad: [Pt, Pt, Pt, Pt] = [iso(gx, gy), iso(gx + 1, gy), iso(gx + 1, gy + 1), iso(gx, gy + 1)];
     const centroid = { x: (quad[0].x + quad[2].x) / 2, y: (quad[0].y + quad[2].y) / 2 };
-    hits.push({ index: i, tier: model.racks[i]!.tier, quad, centroid });
+    const c = iso(gx + 0.5, gy + 0.5); // where drawHallDynamic stands the box
+    const ph = rackBodyHeight(tileH, rack.tier, rack.density);
+    const body: Pt[] = [
+      { x: c.x - hw, y: c.y }, { x: c.x - hw, y: c.y - ph }, { x: c.x, y: c.y - hh - ph },
+      { x: c.x + hw, y: c.y - ph }, { x: c.x + hw, y: c.y }, { x: c.x, y: c.y + hh },
+    ];
+    hits.push({ index: i, tier: rack.tier, quad, body, centroid });
   }
   return hits;
+}
+
+/** The rack under a tap, honouring occlusion: racks are painted back-to-front, so
+ *  the LAST one whose body or floor tile holds the point is the one on top. Testing
+ *  only the floor tile sent a tap on a rack's upper half (or on an incident's smoke
+ *  and warn light) to the rack standing behind it. */
+export function rackAtPoint(hits: RackHit[], x: number, y: number): RackHit | undefined {
+  for (let i = hits.length - 1; i >= 0; i--) {
+    const h = hits[i]!;
+    if (pointInPoly(x, y, h.body) || pointInPoly(x, y, h.quad)) return h;
+  }
+  return undefined;
 }
 
 export function pointInPoly(x: number, y: number, poly: Pt[]): boolean {
@@ -646,7 +677,7 @@ export function drawHallDynamic(ctx: CanvasRenderingContext2D, model: HallModel,
     const c = tiles[inc.rackIndex];
     const rack = model.racks[inc.rackIndex];
     if (!c || !rack) continue;
-    const ph = tileH * (1.1 + rack.tier * 0.5) * (0.72 + 0.28 * rack.density);
+    const ph = rackBodyHeight(tileH, rack.tier, rack.density);
     drawIncident(ctx, c.x, c.y - ph, tileW, o.timeMs, inc.worked, o.reducedMotion);
   }
   if (model.crowd > 0) drawCrowd(ctx, L, model.crowd, o.timeMs, o.reducedMotion);
@@ -966,7 +997,7 @@ function drawRackBody(
   const base = skinTint(tierBase(tier), skin);
   const hw = (tileW / 2) * 0.64 * scale;
   const hh = (tileH / 2) * 0.64 * scale;
-  const ph = tileH * (1.1 + tier * 0.5) * (0.72 + 0.28 * density) * scale;
+  const ph = rackBodyHeight(tileH, tier, density) * scale;
   const detail = hw > 8.5;
   const bRight: Pt = { x: sx + hw, y: sy };
   const bBottom: Pt = { x: sx, y: sy + hh };
@@ -1053,7 +1084,7 @@ function blitRackBody(
   if (!spr) {
     if (density !== spriteDensity) { rackSprites.clear(); spriteDensity = density; }
     const hw = (tileW / 2) * 0.64, hh = (tileH / 2) * 0.64;
-    const ph = tileH * (1.1 + tier * 0.5) * (0.72 + 0.28 * density);
+    const ph = rackBodyHeight(tileH, tier, density);
     // Body bounds around the centre (css px), plus a margin for stroke antialiasing.
     const left = hw * 1.05 + 2, right = hw * 1.05 + 2;
     const top = hh + ph + 2, bottom = hh * 1.32 + 2;
@@ -1090,7 +1121,7 @@ function drawRack(
   const led = shade(base, 2.0);
   const hw = (tileW / 2) * 0.64 * scale;
   const hh = (tileH / 2) * 0.64 * scale;
-  const ph = tileH * (1.1 + tier * 0.5) * (0.72 + 0.28 * density) * scale;
+  const ph = rackBodyHeight(tileH, tier, density) * scale;
   const detail = hw > 8.5;
 
   const bRight: Pt = { x: sx + hw, y: sy };

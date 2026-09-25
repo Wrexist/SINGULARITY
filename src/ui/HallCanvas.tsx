@@ -6,7 +6,7 @@ import { haptics } from "./haptics";
 import { sound } from "./sound";
 import { floatText } from "./fx";
 import { buildHallModel, buildSkyline, heatCrateCount, POWER_IDS } from "../render/hallModel";
-import { drawHallStatic, drawHallDynamic, expansionMarkers, rackHitAreas, pointInPoly, agentSpots, chenSpot, dayPhase, type RackHit, type AgentSpot } from "../render/hallRenderer";
+import { drawHallStatic, drawHallDynamic, expansionMarkers, rackHitAreas, rackAtPoint, pointInPoly, agentSpots, chenSpot, dayPhase, type RackHit, type AgentSpot } from "../render/hallRenderer";
 import { currentEra, eraName } from "../engine/eras";
 import { hallRooms, hallWings, wingCapacity } from "../engine/hall";
 import { regulatorState } from "../engine/regulator";
@@ -323,15 +323,11 @@ function HallCanvasImpl({ onExpand }: { onExpand: (id: string) => void }) {
       const px = ev.clientX - rect.left, py = ev.clientY - rect.top;
       return markers.find((mk) => !mk.maxed && pointInPoly(px, py, mk.quad));
     };
-    // Hit-test the racks front-to-back (last drawn = frontmost wins the tap).
+    // Hit-test the racks front-to-back (last drawn = frontmost wins the tap), on the
+    // box the player sees rather than only the floor tile under it.
     const rackAt = (ev: PointerEvent): RackHit | undefined => {
       const rect = canvas.getBoundingClientRect();
-      const px = ev.clientX - rect.left, py = ev.clientY - rect.top;
-      const hits = rackHitsRef.current;
-      for (let i = hits.length - 1; i >= 0; i--) {
-        if (pointInPoly(px, py, hits[i]!.quad)) return hits[i];
-      }
-      return undefined;
+      return rackAtPoint(rackHitsRef.current, ev.clientX - rect.left, ev.clientY - rect.top);
     };
     // People hit-tests (IDEAS #2/#7): a generous box around the little figure.
     const pointOnFigure = (px: number, py: number, x: number, y: number, s: number): boolean =>
