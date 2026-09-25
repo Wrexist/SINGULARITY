@@ -6,7 +6,7 @@ import { haptics } from "./haptics";
 import { sound } from "./sound";
 import { floatText } from "./fx";
 import { buildHallModel, buildSkyline, heatCrateCount, POWER_IDS } from "../render/hallModel";
-import { drawHallStatic, drawHallDynamic, expansionMarkers, rackHitAreas, rackAtPoint, pointInPoly, agentSpots, chenSpot, dayPhase, type RackHit, type AgentSpot } from "../render/hallRenderer";
+import { drawHallStatic, drawHallDynamic, expansionMarkers, rackHitAreas, rackAtPoint, spawnFromOnChange, pointInPoly, agentSpots, chenSpot, dayPhase, type RackHit, type AgentSpot } from "../render/hallRenderer";
 import { currentEra, eraName } from "../engine/eras";
 import { hallRooms, hallWings, wingCapacity } from "../engine/hall";
 import { regulatorState } from "../engine/regulator";
@@ -128,6 +128,7 @@ function HallCanvasImpl({ onExpand }: { onExpand: (id: string) => void }) {
     const FRAME_MS = 1000 / 30;
     let lastDraw = -1e9;
     let prevTotal = 0;
+    let prevWing = 0;
     let spawnFrom = 0;
     let spawnStart = -1e9;
     const SPAWN_MS = 440;
@@ -169,6 +170,7 @@ function HallCanvasImpl({ onExpand }: { onExpand: (id: string) => void }) {
     // Seed from the hydrated hall so a saved lab doesn't replay the whole
     // spawn animation as if every owned rack were brand-new on first open.
     prevTotal = model.total;
+    prevWing = model.wing;
 
     const resize = () => {
       // Layout size, not getBoundingClientRect: the stage's entry animation has the
@@ -237,11 +239,13 @@ function HallCanvasImpl({ onExpand }: { onExpand: (id: string) => void }) {
       prevParts = parts;
       const delivery = timeMs - deliveryStart < DELIVERY_MS ? 1 - (timeMs - deliveryStart) / DELIVERY_MS : 0;
 
-      if (model.total > prevTotal) {
-        spawnFrom = prevTotal;
+      const from = spawnFromOnChange({ total: prevTotal, wing: prevWing }, { total: model.total, wing: model.wing });
+      if (from !== null) {
+        spawnFrom = from;
         spawnStart = timeMs;
       }
       prevTotal = model.total;
+      prevWing = model.wing;
       const spawnT = Math.min(1, (timeMs - spawnStart) / SPAWN_MS);
 
       // Repaint the cached static room only when its inputs change. The skyline

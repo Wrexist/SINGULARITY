@@ -27,6 +27,15 @@ export interface DrawOpts {
   delivery?: number;
 }
 
+/** The rack index the spawn ("power-on") animation should start from when the drawn
+ *  rack count moves, or null when nothing new arrived. Only racks ADDED to the floor
+ *  being watched are new hardware: switching to another wing changes which racks are
+ *  on screen, not what the lab owns, so it must not replay the install animation. */
+export function spawnFromOnChange(prev: { total: number; wing: number }, next: { total: number; wing: number }): number | null {
+  if (next.wing !== prev.wing || next.total <= prev.total) return null;
+  return prev.total;
+}
+
 type Pt = { x: number; y: number };
 type RGB = [number, number, number];
 
