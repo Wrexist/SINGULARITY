@@ -103,10 +103,46 @@ toasts landed on top of the resource values.
    counts mounted overlays (`usePortalOpen`). World events and era crossings, the two
    moments passive progress can trigger, wait while any sheet is open, including ones
    opened inside a component.
-7. **Store screenshots.** They were regenerated from this build (01–03 were stale:
-   "$" label, no Data rate). 04 had been captured with the first-ship explainer over
-   it, so the script now seeds `shipExplained`. *Owner action:* upload
-   `appstore/screenshots/` in App Store Connect; this doesn't need a new build.
+7. **Store screenshots.** All six iPhone and iPad shots are regenerated from this build
+   (01–03 were stale: "$" label, no Data rate). The script had stopped reaching the Ship
+   and Data Market scenes after the Lab split. *Owner action:* upload
+   `appstore/screenshots/` in App Store Connect; this doesn't need a new build. The
+   en-US "What's New" (`release_notes.txt`) is rewritten for this update. The other 49
+   locales still carry the launch notes and need a transcreation pass before submission.
+
+## Part 5b — Round 2: pacing, performance, retention
+
+Two more audits. One on pacing: vite-node probes drove the real engine with human-like
+players (1–1.5s reaction time, shop checks every 3–30s). The other on performance: 4×
+CPU throttle on a late-game save, measured on the built app. Everything below shipped
+with `npm run sim` byte-identical.
+
+| Finding | Evidence | Fix |
+|---|---|---|
+| The goal strip's "next goal" for most of the first hour was **"Wardrobe: unlock 6 hall themes, 67%"**, and the first Ship was never a goal | `goals.ts` picks the highest progress, and 4 free themes out of 6 = 67% from second one | "Ship your first model", measured along the capability node's prerequisite path (`shipPath`). Cosmetic collection counters are no longer goals |
+| The ship gate counted the whole tree ("Research 9/25"), so it read 36–48% at the moment shipping unlocked | probe | It now counts the Ship's own path (8 nodes) |
+| **A 23-minute dead zone** for players who never touch the intensity slider, since auto-train drains the bank before it reaches mid-tree nodes | first ship at 43m30s without the slider vs 13m03s with it | **"Save for this"**: tap a walled node and intensity eases just enough, the node is bought when affordable, and the slider is restored |
+| The first-Ship nudge fired at ~2 weights (next run ×1.03), talking players into a pointless reset | probe | The nudge now waits until the next run starts at ≥ ×1.25. Until then the strip shows "Grow your first Ship". Ship modes show "Legacy boost ×A → ×B" |
+| HQ showed "5K weights (×91)", but the real value is ×17.39 | the display used linear 1 + 1.8% × w, while derive() uses w^0.8 on uninvested weights | One `legacyMultiplier` helper now feeds both |
+| **~18 dismiss-only world-event cards an hour** ("Let's gooo") | 18.5% of the neutral pool has a choice | Only decisions get a card. The rest run as a BREAKING line on the newswire, and the full story goes to Recent activity |
+| The auto-claim hand-off (after 57–107 manual taps) passed silently | probe | A one-time burst from the training bar, plus a static loop mark afterwards |
+| First-days players had no daily objective (sponsors only after all 32 ladder rungs) | `contracts.ts` | Sponsors also run alongside the ladder from the first Ship, only on lanes the player has started |
+| The hall drew ~1,400 canvas calls/frame while scrolled off-screen | 4× throttle: 790 ms/s main thread, ~79 long tasks per 10s | IntersectionObserver pause, giving **388 ms/s and 0 long tasks** |
+| recommendedUpgrade re-derived the economy 13–16× per 10Hz render | ~20% of all React render work | Memoised: tick **~12–14 → 9.7 ms** |
+| Rolling counters ran rAF loops forever, even when settled | battery | They stop when settled and wake on change. Static components are memo'd |
+
+Rejected: a WeakMap cache on `derive()`. Test fixtures mutate a state in place after
+deriving it, and a stale `Derived` in a live game isn't worth the ~1 ms saved.
+
+Still open from these audits:
+- **Rack sprite caching.** Draw each rack's static body once into a cache and draw only
+  the LEDs live. This would cut the visible-hall cost, but it's a visual change that
+  needs a device check.
+- **Offline Compute reserve.** An 8h absence at 100% intensity can come back with a
+  near-empty Compute bank (it lands wherever the run cycle was), while 1h comes back
+  full.
+- **Expiry rings on stacked objective boosts.** When two boosts end together, Compute/s
+  drops 81% with no warning.
 
 ## Part 6 — App Store: "free to download"
 
