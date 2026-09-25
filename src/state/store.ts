@@ -281,6 +281,13 @@ function seedProductKey(game: GameState): void {
   }
 }
 
+/** The game as it should be WRITTEN anywhere (autosave or exported backup): the
+ *  player's own training intensity, never the temporary "save for this" one. Both a
+ *  relaunch and an import start with no pin, so nothing would ever restore it. */
+function persistedGame(game: GameState, savingFor: { prevFocus: number } | null): GameState {
+  return savingFor ? { ...game, computeFocus: savingFor.prevFocus } : game;
+}
+
 let empKey = 0;
 function seedEmpKey(game: GameState): void {
   for (const e of game.employees) {
@@ -651,7 +658,7 @@ export const useGame = create<GameStore>((set, get) => ({
       // Persist the player's own intensity, never the temporary "save for this" one:
       // an app killed mid-pin must not relaunch with training held.
       const { game, savingFor } = get();
-      localStorage.setItem(SAVE_KEY, serialize(savingFor ? { ...game, computeFocus: savingFor.prevFocus } : game));
+      localStorage.setItem(SAVE_KEY, serialize(persistedGame(game, savingFor)));
       localStorage.setItem(TIME_KEY, String(now()));
     } catch (err) {
       console.warn("Save failed:", err);
@@ -844,7 +851,9 @@ export const useGame = create<GameStore>((set, get) => ({
 
   // ---- Save backup (local-only; the player owns their progress) ----
   exportSave: () => {
-    const json = serialize(get().game);
+    // Same substitution as save(): a backup taken mid-pin must not restore with training held.
+    const { game, savingFor } = get();
+    const json = serialize(persistedGame(game, savingFor));
     try { return btoa(unescape(encodeURIComponent(json))); } catch { return json; }
   },
   importSave: (blob: string) => {

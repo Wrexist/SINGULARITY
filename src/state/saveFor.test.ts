@@ -113,4 +113,31 @@ describe("save for this — the review's failure modes", () => {
       (globalThis as { localStorage?: unknown }).localStorage = prev;
     }
   });
+
+  it("an exported backup carries the player's own intensity, never the eased one", () => {
+    // importSave clears the pin, so nothing would ever restore an eased value: a backup
+    // taken mid-pin used to restore a lab with training held and no sign of why.
+    const store: Record<string, string> = {};
+    const prev = (globalThis as { localStorage?: Storage }).localStorage;
+    (globalThis as { localStorage?: unknown }).localStorage = {
+      getItem: (k: string) => store[k] ?? null,
+      setItem: (k: string, v: string) => { store[k] = v; },
+      removeItem: (k: string) => { delete store[k]; },
+    };
+    try {
+      useGame.getState().doSaveFor(NODE);
+      expect(useGame.getState().game.computeFocus).toBeLessThan(1);
+      const blob = useGame.getState().exportSave();
+      expect(JSON.parse(decodeURIComponent(escape(atob(blob)))).computeFocus).toBe(1);
+      // The pin keeps running in this session: exporting doesn't touch live state.
+      expect(useGame.getState().savingFor?.id).toBe(NODE);
+      expect(useGame.getState().game.computeFocus).toBeLessThan(1);
+
+      expect(useGame.getState().importSave(blob)).toBe(true);
+      expect(useGame.getState().savingFor).toBeNull();
+      expect(useGame.getState().game.computeFocus).toBe(1);
+    } finally {
+      (globalThis as { localStorage?: unknown }).localStorage = prev;
+    }
+  });
 });
