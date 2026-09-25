@@ -209,6 +209,7 @@ export function App() {
   const markShipExplained = useSettings((s) => s.markShipExplained);
   const achievementsSeen = useSettings((s) => s.achievementsSeen);
   const markAchievementsSeen = useSettings((s) => s.markAchievementsSeen);
+  const rebaseAchievementsSeen = useSettings((s) => s.rebaseAchievementsSeen);
   const [showShipExplainer, setShowShipExplainer] = useState(false);
 
   // Rate-history sampler for the Lab Stats sparklines (session-only, UI-side).
@@ -378,6 +379,13 @@ export function App() {
   // tab. On-device only; no-op when opted out (see src/state/telemetry.ts).
   // Stable identity so GoalsPanel's effect doesn't re-fire every render.
   const onCollectionSeen = useCallback(() => markAchievementsSeen(game.achievements.length), [markAchievementsSeen, game.achievements.length]);
+  // The "seen" mark outlives the save (it lives in settings). When the save is
+  // replaced by one with fewer achievements — Hard Reset, an older backup — lower
+  // the mark to it so the badge counts new unlocks again. Waits for hydration: the
+  // pre-load placeholder state holds no achievements at all.
+  useEffect(() => {
+    if (initialized) rebaseAchievementsSeen(game.achievements.length);
+  }, [initialized, game.achievements.length, rebaseAchievementsSeen]);
   const goTab = useCallback((next: "lab" | "products" | "employees" | "goals") => {
     setTab((cur) => {
       if (cur !== next) recordTelemetry({ kind: "tab", t: Date.now(), tab: next });
