@@ -1007,6 +1007,9 @@ svg { vertical-align: middle; }
 
 /* "Recommended next" hero — a clear anchor above the list, not just a flat wall. */
 .hero-wrap { margin-bottom: 16px; }
+/* The hero is a <button>: in a block wrapper it shrink-wraps its content (it sat
+   ~36px short of the column while every card below stretched full width). */
+.hero-wrap > .card, .hero-wrap > .node { width: 100%; }
 .hero-kicker {
   font-size: var(--fs-2xs); font-weight: 850; letter-spacing: 0.13em; text-transform: uppercase;
   color: var(--ink-3); margin: 0 0 7px 3px;
