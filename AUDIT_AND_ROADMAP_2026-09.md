@@ -107,8 +107,11 @@ toasts landed on top of the resource values.
    (01–03 were stale: "$" label, no Data rate). The script had stopped reaching the Ship
    and Data Market scenes after the Lab split. *Owner action:* upload
    `appstore/screenshots/` in App Store Connect; this doesn't need a new build. The
-   en-US "What's New" (`release_notes.txt`) is rewritten for this update. The other 49
-   locales still carry the launch notes and need a transcreation pass before submission.
+   "What's New" (`release_notes.txt`) is rewritten for this update in all 50 locales
+   (`npm run validate:store` passes). en-US is the full version; the other 49 are
+   direct translations of a compact five-point version, written without the native
+   editor review the launch copy had. *Owner action:* have a native speaker spot-check
+   before submitting, at least for the Indic locales.
 
 ## Part 5b — Round 2: pacing, performance, retention
 

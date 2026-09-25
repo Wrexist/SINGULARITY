@@ -1,11 +1,9 @@
-Novedades de esta actualización:
+En esta actualización:
 
-• Grand Challenges: moonshots a muy largo plazo con recompensas permanentes.
-• Objetivos de laboratorio: una nueva ristra de metas que se mete de lleno en el endgame.
-• Automatización: pilotos automáticos para las tareas repetitivas.
-• Una bifurcación de investigación en cada partida y unos indicadores de progreso más vistosos.
-• Y la ficha de la App Store, por fin en español.
+• Objetivos más claros: ves siempre tu siguiente paso y cuándo compensa de verdad hacer Ship.
+• «Ahorrar para esto»: toca una investigación fuera de alcance y el laboratorio reserva la Compute por ti.
+• Más calma: solo te interrumpen las decisiones de verdad; lo demás va al teletipo de noticias.
+• Objetivos diarios de patrocinio desde tu primer Ship.
+• Más fluido en iPhone antiguos, tiempo sin conexión exacto y más de 20 correcciones.
 
-De propina, ajustes de equilibrio y correcciones de estabilidad.
-
-Seguimos sin anuncios. Seguimos sin pay-to-win.
+Sigue sin anuncios. Sigue sin pay-to-win.

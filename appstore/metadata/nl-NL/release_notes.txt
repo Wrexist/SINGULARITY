@@ -1,11 +1,9 @@
 In deze update:
 
-• Grand Challenges – moonshots van lange adem en permanente beloningen.
-• Lab Objectives – een verse ladder vol doelen, tot diep in de endgame.
-• Automation – autopilots voor het routinewerk.
-• Elke run z'n eigen onderzoeks-fork, plus levendigere voortgangsvisuals.
-• En deze App Store-pagina? Die is nu gewoon in het Nederlands.
-
-Daarnaast de gebruikelijke balans- en stabiliteitsfixes.
+• Duidelijkere doelen: je ziet altijd je volgende stap, en wanneer shippen echt de moeite waard is.
+• 'Hiervoor sparen': tik op onderzoek dat buiten bereik is en het lab spaart de Compute er automatisch voor.
+• Meer rust: alleen echte beslissingen onderbreken je, de rest loopt via de nieuwsticker.
+• Dagelijkse sponsordoelen vanaf je eerste Ship.
+• Soepeler op oudere iPhones, kloppende offline tijd en meer dan 20 bugfixes.
 
 Nog steeds geen advertenties. Nog steeds geen pay-to-win.

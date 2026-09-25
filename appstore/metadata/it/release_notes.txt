@@ -1,9 +1,9 @@
 In questo aggiornamento:
 
-• Grand Challenges: moonshot a lungo termine con ricompense permanenti.
-• Lab Objectives: una nuova scala di obiettivi che arriva fin dentro l'endgame.
-• Automazione: autopiloti per le faccende ripetitive.
-• Un bivio di ricerca a ogni run e animazioni di progresso più vivaci.
-• E la pagina dello store ora parla italiano.
+• Obiettivi più chiari: vedi sempre il prossimo passo e quando conviene davvero fare Ship.
+• «Risparmia per questo»: tocca una ricerca fuori portata e il laboratorio mette da parte la Compute per te.
+• Più calma: ti interrompono solo le vere decisioni, il resto scorre nel notiziario.
+• Obiettivi giornalieri degli sponsor già dal tuo primo Ship.
+• Più fluido sugli iPhone meno recenti, tempo offline preciso e oltre 20 correzioni.
 
-In più, ritocchi di bilanciamento e stabilità. Sempre senza pubblicità. Sempre senza pay-to-win.
+Ancora zero pubblicità. Ancora zero pay-to-win.

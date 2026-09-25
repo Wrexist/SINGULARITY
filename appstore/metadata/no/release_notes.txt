@@ -1,11 +1,9 @@
-Nytt i denne oppdateringen:
+I denne oppdateringen:
 
-• Grand Challenges – månelandinger med lang horisont og permanente belønninger. (Disse lander faktisk.)
-• Lab Objectives – en ny målstige som strekker seg langt inn i endgame.
-• Automation – autopilot for rutinearbeidet.
-• Forskningen forgrener seg på nytt hver runde, og fremdriften har fått livligere grafikk.
-• Butikksiden er nå på norsk – selve spillet snakker fortsatt engelsk, enn så lenge.
-
-Pluss balanse- og stabilitetsfikser.
+• Tydeligere mål: du ser alltid neste steg, og når det virkelig lønner seg å shippe.
+• «Spar til dette»: trykk på forskning utenfor rekkevidde, så sparer laben Compute til den automatisk.
+• Mer ro: bare ekte beslutninger avbryter deg, resten går på nyhetsstripen.
+• Daglige sponsormål allerede fra din første Ship.
+• Jevnere på eldre iPhoner, riktig offlinetid og over 20 feilrettinger.
 
 Fortsatt ingen reklame. Fortsatt ingen pay-to-win.

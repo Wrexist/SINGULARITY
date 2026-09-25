@@ -1,10 +1,9 @@
 Bu güncellemede:
 
-• Grand Challenges — uzun soluklu moonshot projeleri, ödülleri kalıcı.
-• Lab Objectives — endgame'in derinliklerine uzanan yepyeni bir hedef merdiveni.
-• Automation — angarya işleri devralan otopilotlar.
-• Her oyunda araştırma ağacında yeni bir yol ayrımı, daha canlı ilerleme görselleri — ve mağaza sayfası artık Türkçe.
-
-Üstüne denge ve stabilite düzeltmeleri.
+• Daha net hedefler: bir sonraki adımını ve Ship yapmanın gerçekten ne zaman değdiğini hep görürsün.
+• “Bunun için biriktir”: ulaşılamayan bir araştırmaya dokun, laboratuvar Compute'u kendiliğinden biriktirsin.
+• Daha sakin: seni yalnızca gerçek kararlar böler, gerisi haber bandında akar.
+• İlk Ship'inden itibaren günlük sponsor hedefleri.
+• Eski iPhone'larda daha akıcı, doğru çevrimdışı süre ve 20'den fazla hata düzeltmesi.
 
 Hâlâ reklam yok. Hâlâ pay-to-win yok.

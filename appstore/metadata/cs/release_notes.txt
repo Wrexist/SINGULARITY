@@ -1,11 +1,9 @@
-Tenhle update:
+V této aktualizaci:
 
-• Grand Challenges – dlouhodobé moonshoty s trvalými odměnami.
-• Lab Objectives – nový žebřík cílů, který tě dovede až hluboko do endgame.
-• Automation – autopilot na všechnu tu rutinní klikačinu.
-• Výzkumné rozcestí v každém běhu a živější vizuály postupu.
-• A stránka v App Storu teď mluví česky. Rádo se stalo.
+• Jasnější cíle: vždy vidíte další krok a kdy se Ship opravdu vyplatí.
+• „Šetřit na tohle“: klepněte na nedosažitelný výzkum a laboratoř na něj Compute našetří sama.
+• Víc klidu: vyrušují vás jen skutečná rozhodnutí, zbytek běží ve zpravodajském pásu.
+• Denní úkoly od sponzorů už od prvního Shipu.
+• Plynulejší chod na starších iPhonech, přesný čas offline a přes 20 oprav chyb.
 
-K tomu ladění balance a opravy stability.
-
-Pořád žádné reklamy. Pořád žádné pay-to-win.
+Pořád bez reklam. Pořád bez pay-to-win.

@@ -1,10 +1,9 @@
-Ova nadogradnja donosi:
+U ovom ažuriranju:
 
-• Veliki izazovi — dugoročni moonshotovi s trajnim nagradama.
-• Ciljevi laboratorija — novi niz zadataka koji seže duboko u endgame.
-• Automatizacija — autopiloti preuzimaju sitne poslove, tebi ostaje vizija.
-• Račvanje istraživanja u svakoj partiji i življi vizualni prikaz napretka.
-• Stranica u App Storeu sada je na hrvatskom — izvoli.
-• Uz to i popravci balansa i stabilnosti.
+• Jasniji ciljevi: uvijek vidite sljedeći korak i kada se Ship stvarno isplati.
+• „Štedi za ovo”: dodirnite nedostižno istraživanje i laboratorij će sam uštedjeti Compute za njega.
+• Više mira: prekidaju vas samo prave odluke, ostalo ide na traku vijesti.
+• Dnevni ciljevi sponzora već od prvog Shipa.
+• Glađe na starijim iPhoneima, točno vrijeme izvan mreže i više od 20 ispravaka.
 
-I dalje bez reklama. I dalje bez pay-to-wina.
+I dalje bez oglasa. I dalje bez pay-to-win.

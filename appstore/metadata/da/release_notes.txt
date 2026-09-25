@@ -1,9 +1,9 @@
-Denne opdatering:
+I denne opdatering:
 
-• Grand Challenges — langsigtede moonshots med permanente belønninger.
-• Lab Objectives — en helt ny stribe mål, der rækker langt ind i endgame.
-• Automation — autopiloter til rugbrødsarbejdet.
-• En ny forgrening i forskningstræet i hvert run og mere liv i fremdriften på skærmen.
-• Og så er butikssiden her nu på dansk.
+• Tydeligere mål: du kan altid se dit næste skridt, og hvornår det rigtig kan betale sig at shippe.
+• "Spar op til det": tryk på forskning uden for rækkevidde, så sparer laboratoriet Compute op til den automatisk.
+• Mere ro: kun rigtige beslutninger afbryder dig, resten kører på nyhedsbåndet.
+• Daglige sponsormål allerede fra dit første Ship.
+• Mere flydende på ældre iPhones, korrekt offlinetid og over 20 fejlrettelser.
 
-Plus balance- og stabilitetsrettelser. Stadig ingen reklamer. Stadig intet pay-to-win.
+Stadig ingen reklamer. Stadig ingen pay-to-win.

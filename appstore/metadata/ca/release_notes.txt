@@ -1,10 +1,9 @@
-Novetats d'aquesta actualització:
+En aquesta actualització:
 
-• Grans Reptes — apostes a llarg termini amb recompenses permanents.
-• Objectius de Laboratori — una nova escala de fites que s'allarga fins ben entrat el final de partida.
-• Automatització — pilots automàtics per a la feina repetitiva.
-• Una bifurcació de recerca a cada partida i visuals de progrés més vius.
-• I la fitxa de l'App Store, ara en català.
-• De regal: ajustos d'equilibri i correccions d'estabilitat.
+• Objectius més clars: sempre veus el pas següent i quan val de debò la pena fer Ship.
+• «Estalviar per a això»: toca una recerca fora d'abast i el laboratori hi reserva la Compute tot sol.
+• Més calma: només t'interrompen les decisions de debò; la resta passa pel teletip de notícies.
+• Objectius diaris de patrocinadors des del teu primer Ship.
+• Més fluid als iPhone antics, temps fora de línia exacte i més de 20 correccions.
 
-Sense anuncis, com sempre. Sense pagar per guanyar, també com sempre.
+Encara sense anuncis. Encara sense pay-to-win.

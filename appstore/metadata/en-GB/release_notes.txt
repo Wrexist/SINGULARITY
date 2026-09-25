@@ -1,9 +1,12 @@
-Welcome to Singularity Inc. v1.0 — the launch build:
+A big polish-and-fixes update:
 
-• The 2.5D data-centre hall with live rack manifestation + tap-to-buy side expansions
-• A clean Compute / Data / Money economy, training runs, and a branching AI research tree
-• "Ship the Model" prestige loop with permanent Legacy Weight boosts
-• The dark-web Data Market + Regulatory Heat, and a dozen+ satirical world events
-• Offline progress, full-screen era transitions, and a Premium unlock that's purely cosmetic / quality-of-life
+• Always know what's next: the goal bar now tracks your road to the first Ship, and shows when shipping is actually worth it
+• "Save for this": tap research that's out of reach and the lab banks Compute for it, then buys it for you
+• Calmer news: only real decisions interrupt you now; everything else runs on the Newswire
+• Daily sponsor objectives start after your first Ship, not just in the endgame
+• Offline time is counted properly even when your phone sleeps
+• Smoother on older iPhones: the hall rests when it's off-screen
+• Fixed Grand Challenges that could get stuck, Institute Fellowships that reset on ship, and 20+ other bugs
+• Cleaner screens: finished research folds away, clearer Ship choices, prices shown in your currency
 
-No ads. No pay-to-win. Tell us what to build next.
+Thanks for playing. Tell us what to build next.

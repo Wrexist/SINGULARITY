@@ -1,11 +1,9 @@
 Nesta atualização:
 
-• Grand Challenges — moonshots de longo prazo com recompensas permanentes.
-• Objetivos de Laboratório — uma nova trilha de metas que vai fundo no endgame.
-• Automação — piloto automático para a parte chata.
-• Um fork de pesquisa a cada run e visuais de progresso mais vivos.
-• E a página da loja agora fala português.
-
-De quebra: ajustes de balanceamento e estabilidade.
+• Metas mais claras: você sempre vê o próximo passo e quando vale mesmo a pena fazer Ship.
+• "Guardar para isso": toque numa pesquisa fora de alcance e o laboratório junta a Compute sozinho.
+• Mais calma: só decisões de verdade interrompem você; o resto passa no feed de notícias.
+• Objetivos diários de patrocinadores a partir do seu primeiro Ship.
+• Mais fluido em iPhones antigos, tempo offline preciso e mais de 20 correções.
 
 Continua sem anúncios. Continua sem pay-to-win.

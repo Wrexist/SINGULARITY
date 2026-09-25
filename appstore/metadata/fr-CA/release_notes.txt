@@ -1,10 +1,9 @@
 Dans cette mise à jour :
 
-• Grand Challenges — des moonshots de longue haleine, avec des récompenses permanentes.
-• Objectifs de labo — une nouvelle échelle de buts qui se rend loin dans l'endgame.
-• Automatisation — des autopilotes pour la job plate.
-• Un embranchement de recherche à chaque run, des visuels de progression plus vivants — et la fiche App Store est maintenant en français, comme il se doit.
+• Des objectifs plus clairs : voyez toujours votre prochaine étape, et le moment où shipper en vaut vraiment la peine.
+• « Économiser pour ça » : touchez une recherche hors de portée, le labo met la Compute de côté tout seul.
+• Plus de calme : seules les vraies décisions vous interrompent, le reste passe sur le fil de nouvelles.
+• Des objectifs de commanditaire quotidiens dès votre premier Ship.
+• Plus fluide sur les iPhone plus anciens, temps hors ligne exact et plus de 20 correctifs.
 
-Ainsi que des correctifs d'équilibrage et de stabilité.
-
-Toujours pas de pub. Toujours pas de pay-to-win.
+Toujours zéro pub. Toujours zéro pay-to-win.

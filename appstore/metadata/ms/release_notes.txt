@@ -1,9 +1,9 @@
-Kemas kini kali ini:
+Dalam kemas kini ini:
 
-• Grand Challenges — projek "moonshot" jangka panjang dengan ganjaran yang kekal selepas reset.
-• Lab Objectives — tangga matlamat baharu yang menjangkau jauh ke penghujung game.
-• Automation — autopilot untuk kerja remeh; anda fokus pada strategi besar.
-• Cabang penyelidikan yang berbeza pada setiap sesi permainan, dan visual kemajuan yang lebih hidup.
-• Halaman App Store kini dalam Bahasa Melayu. Sama-sama.
+• Matlamat lebih jelas: sentiasa nampak langkah seterusnya dan bila Ship benar-benar berbaloi.
+• "Simpan untuk ini": ketik penyelidikan yang belum tercapai, makmal akan menyimpan Compute dan membelinya secara automatik.
+• Lebih tenang: hanya keputusan sebenar yang mengganggu, berita lain bergerak di jalur berita.
+• Matlamat penaja harian bermula dari Ship pertama anda.
+• Lebih lancar pada iPhone lama, masa luar talian yang tepat dan lebih 20 pembetulan pepijat.
 
-Turut disertakan: pelarasan imbangan dan pembaikan kestabilan. Masih tiada iklan. Masih tiada pay-to-win.
+Masih tiada iklan. Masih tiada pay-to-win.

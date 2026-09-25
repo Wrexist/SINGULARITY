@@ -1,10 +1,9 @@
 Trong bản cập nhật này:
 
-• Grand Challenges — những cú moonshot dài hơi, phần thưởng vĩnh viễn.
-• Lab Objectives — nấc thang mục tiêu mới, kéo dài tới tận endgame.
-• Automation — dàn autopilot gánh hộ bạn đống việc vặt.
-• Mỗi ván một ngã rẽ nghiên cứu riêng, hiệu ứng tiến độ sống động hơn — và trang cửa hàng giờ đã nói tiếng Việt.
-
-Kèm nhiều tinh chỉnh cân bằng và cải thiện độ ổn định.
+• Mục tiêu rõ ràng hơn: luôn thấy bước tiếp theo và biết khi nào Ship thật sự đáng giá.
+• “Tiết kiệm cho cái này”: chạm vào nghiên cứu ngoài tầm với, phòng lab sẽ tự tích Compute rồi mua giúp bạn.
+• Yên tĩnh hơn: chỉ những quyết định thật sự mới làm gián đoạn, tin còn lại chạy trên dải tin tức.
+• Mục tiêu nhà tài trợ hằng ngày ngay từ lần Ship đầu tiên.
+• Mượt hơn trên iPhone đời cũ, tính thời gian ngoại tuyến chính xác và hơn 20 bản sửa lỗi.
 
 Vẫn không quảng cáo. Vẫn không pay-to-win.
