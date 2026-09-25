@@ -24,6 +24,7 @@ import { StatsPanel } from "./StatsPanel";
 import { Tagline } from "./Tagline";
 import { Onboarding } from "./Onboarding";
 import { FirstSteps, firstStepsVisible } from "./FirstSteps";
+import { goalDestination, nudgeDestination, type Destination } from "./wayfinding";
 import { gameCenterSubmitScores, gameCenterUnlock } from "./gameCenter";
 import { DataMarketPanel } from "./DataMarketPanel";
 import { EmployeesPanel } from "./EmployeesPanel";
@@ -382,6 +383,12 @@ export function App() {
       return next;
     });
   }, []);
+  // Land a wayfinder tap (advisor chip, goal strip) on its tab AND the pane in it.
+  const goTo = (dest: Destination) => {
+    if (dest.goalsSection) setGoalsSection(dest.goalsSection);
+    if (dest.labSection) goSection(dest.labSection);
+    goTab(dest.tab);
+  };
   const shipReady = canPrestige(game);
   // The ship CALLS (explainer sheet, gold HQ dot, pulsing Lab icon) wait until the
   // first Ship is worth the reset, matching the advisor and the goal strip, which
@@ -941,11 +948,7 @@ export function App() {
               className="advisor-chip"
               onClick={() => {
                 haptics.tap(); sound.tap();
-                goTab(nudge.tab);
-                // Only deep-link into a Lab section while the section switcher
-                // exists — before that the Lab renders Build alone, and setting a
-                // hidden section would both dead-tap now and mis-land later.
-                if (nudge.tab === "lab" && nudge.section && labSectioned) goSection(nudge.section);
+                goTo(nudgeDestination(nudge, labSectioned));
               }}
             >
               <span className="advisor-mark" aria-hidden="true">➤</span>
@@ -960,14 +963,7 @@ export function App() {
               title={goal.desc}
               onClick={() => {
                 haptics.tap();
-                if (goal.kind === "achievement" || goal.kind === "milestone") { setGoalsSection("collection"); goTab("goals"); }
-                else {
-                  goTab("lab");
-                  // The road to the first Ship and the first era both advance through research;
-                  // once shipping is possible, the ship goal lives on HQ.
-                  const toResearch = (goal.kind === "ship" && !shipReady) || (goal.kind === "era" && era === 0);
-                  if (labSectioned) goSection(toResearch ? "research" : "hq");
-                }
+                goTo(goalDestination(goal, { shipReady, era, labSectioned }));
               }}
             >
               <span className="goal-fill" style={{ width: `${Math.round(goal.progress * 100)}%` }} aria-hidden="true" />
