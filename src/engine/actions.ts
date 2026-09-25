@@ -628,7 +628,7 @@ function effectSummary(effect: WorldEventEffect): string {
 }
 
 /** Apply one effect (immediate swing, timed modifier, or product effect). */
-function applyEffect(state: GameState, effect: WorldEventEffect, id: string, tone: "good" | "bad"): GameState {
+function applyEffect(state: GameState, effect: WorldEventEffect, id: string): GameState {
   if (effect.kind === "grantPct") {
     const { resource, pct } = effect;
     // Clamp the multiplier ≥ 0 and floor at 0 so a pct ≤ −1 (a future/tampered debuff)
@@ -662,7 +662,10 @@ function applyEffect(state: GameState, effect: WorldEventEffect, id: string, ton
     factor: effect.factor,
     remainingSec: effect.durationSec,
     label: `${TARGET_LABEL[effect.target]} ×${effect.factor}`,
-    tone,
+    // The modifier's tone is what it DOES, not the headline's mood: a "bad" decision
+    // card ("Safety Team Demands a Slowdown") can pay a buff, and a buff toned "bad"
+    // became a workable incident whose shave cut the player's own boost.
+    tone: effect.factor < 1 ? "bad" : "good",
   };
   // Refresh rather than stack a repeat of the same event.
   return { ...state, modifiers: [...state.modifiers.filter((m) => m.id !== id), mod] };
@@ -706,7 +709,7 @@ export function applyWorldEvent(state: GameState, eventId: string): { state: Gam
   }
 
   const effect = def.effect!;
-  const next = applyEffect(state, effect, def.id, def.tone);
+  const next = applyEffect(state, effect, def.id);
   return {
     state: { ...next, stats: { ...next.stats, worldEventsResolved: next.stats.worldEventsResolved + 1 } },
     event: { ...base, summary: effectSummary(effect) },
@@ -714,13 +717,15 @@ export function applyWorldEvent(state: GameState, eventId: string): { state: Gam
 }
 
 /**
- * An incident: a running BAD modifier that actually bites. A factor-1 marker (the
- * regulator truce) has no effect to shorten — it only gates Chen's return — so it is
- * a status, never a burning rack, and "working" it would just hurry him back. The one
- * definition the hall, the modifier bar and workProblem all read.
+ * An incident: a running BAD modifier that actually bites (factor below 1). A factor-1
+ * marker (the regulator truce) has no effect to shorten — it only gates Chen's return —
+ * so it is a status, never a burning rack, and "working" it would just hurry him back.
+ * A buff is never one either, whatever its tone: a save from before choice buffs were
+ * toned by their effect can still hold a "bad" ×1.8, and shaving it cut the player's
+ * own boost. The one definition the hall, the modifier bar and workProblem all read.
  */
 export function isIncident(m: ActiveModifier): boolean {
-  return m.tone === "bad" && m.factor !== 1 && m.remainingSec > 0;
+  return m.tone === "bad" && m.factor < 1 && m.remainingSec > 0;
 }
 
 /**
@@ -753,7 +758,7 @@ export function applyWorldEventChoice(
   const choice = def.choices?.[choiceIndex];
   const base = { id: def.id, headline: def.headline, body: def.body, tone: def.tone, summary: "" };
   if (!choice) return { state, event: base };
-  const next = applyEffect(state, choice.effect, def.id, def.tone);
+  const next = applyEffect(state, choice.effect, def.id);
   // True Believers (rule charter) doubles how far a choice moves you; ×1 otherwise.
   const shift = choice.alignment * (charterRule(state).factionShift ?? 1);
   const alignment = Math.max(-1, Math.min(1, state.alignment + shift));
