@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { useGame } from "./store";
 import { createInitialState } from "../engine/state";
 import { derive } from "../engine/derive";
@@ -25,7 +25,11 @@ function walledLabMidRun(): GameState {
 }
 
 describe("save for this — the run already in flight", () => {
+  // advance() rolls world / product events with Math.random; a surge landing mid-test
+  // would move the numbers under test. Roll "no event" every time.
+  afterEach(() => { vi.restoreAllMocks(); });
   beforeEach(() => {
+    vi.spyOn(Math, "random").mockReturnValue(0.99);
     useGame.setState({ game: walledLabMidRun(), savingFor: null, offline: null, notice: null, event: null, worldEvent: null });
   });
 
