@@ -6,7 +6,7 @@ import { carryEarnedComponents } from "./components";
 import { startingRacks } from "./reputation";
 import { hallCapacity } from "./hall";
 import { currentEra } from "./eras";
-import { trialConditionMet, trialToStartAtShip } from "./trials";
+import { trialConditionMet, trialToStartAtShip, trialUnplugsLegacy } from "./trials";
 import { advanceFlagship } from "./flagship";
 import { legacyMultiplier } from "./derive";
 import { legacyAvailable } from "./legacyTree";
@@ -118,9 +118,29 @@ export function ascensionMultiplier(state: GameState): number {
  * the Big abstraction exists (LEARNINGS: idle curves hit 1e308 within hours).
  */
 /** The global multiplier the NEXT run would start with if the player shipped now in
- *  `mode`: today's uninvested weights plus what this ship banks. Pure display. */
+ *  `mode`: today's uninvested weights plus what this ship banks. Pure display.
+ *  A queued Unplugged Trial starts on that fresh lab and switches Legacy off for the
+ *  whole run (derive reads ×1), so that run starts at ×1 whatever the weights are. */
 export function nextRunMultiplier(state: GameState, mode: ShipMode = "deploy"): Big {
+  if (canPrestige(state) && trialUnplugsLegacy(trialStartingAtShip(state))) return Big.ONE;
   return legacyMultiplier(legacyAvailable(state).add(legacyWeightsForMode(state, mode)));
+}
+
+/** The Trials on record after shipping now: the active one is banked if its run
+ *  condition held (a failed condition just clears it, no reward). */
+function trialsBankedAtShip(state: GameState): string[] {
+  const id = state.activeTrial;
+  if (!id || state.trialsDone.includes(id)) return state.trialsDone;
+  return trialConditionMet(state) ? [...state.trialsDone, id] : state.trialsDone;
+}
+
+/** The Trial shipping now would start on the fresh lab: the queued one, if it can
+ *  start there (judged on the post-ship ship count and banked Trials). */
+function trialStartingAtShip(state: GameState, trialsDone: string[] = trialsBankedAtShip(state)): string | null {
+  return trialToStartAtShip(
+    { ...state, prestige: { ...state.prestige, ships: state.prestige.ships + 1 }, trialsDone },
+    state.queuedTrial,
+  );
 }
 
 export function legacyWeightsGain(state: GameState): Big {
@@ -195,11 +215,7 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
   // clears. The sim never stakes → repWon is 0 and this is identity.
   const stake = resolveStakeOutcome(state);
 
-  const trialsDoneNext = (() => {
-    const id = state.activeTrial;
-    if (!id || state.trialsDone.includes(id)) return state.trialsDone;
-    return trialConditionMet(state) ? [...state.trialsDone, id] : state.trialsDone;
-  })();
+  const trialsDoneNext = trialsBankedAtShip(state);
 
   // The fresh $0 lab can't bankroll a carried marketing campaign that loses money, so
   // each one is cut back to what its own product funds (see capCarriedMarketing). It
@@ -287,7 +303,7 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     // the single source for every condition; inlined import keeps prestige cycle-free.
     // A Trial QUEUED during the run starts here, on the fresh lab, so its handicap
     // is endured from the first second (see canStartTrial).
-    activeTrial: trialToStartAtShip({ ...state, prestige: { ...state.prestige, ships }, trialsDone: trialsDoneNext }, state.queuedTrial),
+    activeTrial: trialStartingAtShip(state, trialsDoneNext),
     queuedTrial: null,
     trialsDone: trialsDoneNext,
     // Grand Challenges are a career-spanning grind — funding + completions persist.

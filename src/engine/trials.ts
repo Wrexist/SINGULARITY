@@ -173,8 +173,13 @@ export function trialMods(state: GameState): { computeMult: number; dataMult: nu
 /** Is Legacy switched off for this run (an Unplugged Trial is active)? derive reads
  *  the Legacy multiplier and the Legacy Investment lanes as ×1 while it is. */
 export function legacyUnplugged(state: GameState): boolean {
-  if (!T.enabled || !state.activeTrial) return false;
-  return BY_ID.get(state.activeTrial)?.unplug === "legacy";
+  return trialUnplugsLegacy(state.activeTrial);
+}
+
+/** Does this Trial switch Legacy off for the run it constrains? */
+export function trialUnplugsLegacy(id: string | null): boolean {
+  if (!T.enabled || !id) return false;
+  return BY_ID.get(id)?.unplug === "legacy";
 }
 
 /** Sum a non-lane bonus over every banked Trial. */
