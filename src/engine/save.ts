@@ -24,6 +24,7 @@ import { automation as AUTOMATION } from "./balance/automation";
 import { freshComponents } from "./components";
 import { RACK_IDS } from "./hall";
 import { laneMet } from "./challenges";
+import { capActiveModifiers } from "./tick";
 import type { ChallengeState } from "./types";
 import type { ActiveModifier, ComponentsState, DraftModel, Employee, GameState, LifetimeStats, ModifierTarget, ProductsState, ProductState, ShipLogEntry, UpgradeState } from "./types";
 
@@ -216,7 +217,7 @@ function sanitizeChannelMix(m: unknown): Record<string, number> {
  * few thousand well-formed products push one tick past the tick interval, and the next
  * autosave writes the bloat straight back — every future launch is dead on arrival and
  * hard reset is the only escape. `modifiers` already had a cap for exactly this reason
- * (MAX_ACTIVE_MODIFIERS / the 20-entry slice); these generalise it to the rest.
+ * (tick.ts MAX_ACTIVE_MODIFIERS); these generalise it to the rest.
  *
  * All are far above any reachable legit value (portfolio caps out around 5 slots, a
  * roster in the dozens, ~52 achievements, ~21 upgrade ids), so honest saves never
@@ -629,11 +630,12 @@ export function deserialize(json: string): GameState {
       : fresh.suspicion;
   // Cap the persisted modifier list. tick() segments a frame recursively at each
   // modifier expiry (tick.ts), so an unbounded count from a crafted/shared save
-  // overflows the stack on the next tick. Legit play never exceeds a handful (a few
-  // world-event buffs + momentum/daily), so 20 is generous headroom and far below the
-  // ~50 that empirically overflows. This is the one persisted collection that lacked a cap.
+  // would deepen that recursion without limit. Apply EXACTLY the cap tick() applies
+  // (keep the soonest-expiring MAX_ACTIVE_MODIFIERS): a tighter load cap deleted real
+  // buffs — a claimed Objective backlog + the Daily Boost + open-source momentum
+  // passes 20 in honest play, and the newest claims vanished on reload.
   const modifiers = Array.isArray(raw.modifiers)
-    ? raw.modifiers.filter(isWellFormedModifier).slice(0, 20)
+    ? capActiveModifiers(raw.modifiers.filter(isWellFormedModifier))
     : fresh.modifiers;
   const alignment =
     typeof raw.alignment === "number" && Number.isFinite(raw.alignment)

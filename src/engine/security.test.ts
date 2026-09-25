@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { serialize, deserialize } from "./save";
 import { createInitialState } from "./state";
-import { tick } from "./tick";
+import { tick, MAX_ACTIVE_MODIFIERS } from "./tick";
 import { buyDataOffer, applyHeatEvent } from "./actions";
 import { releaseProduct } from "./products";
 import { earnedReputation } from "./reputation";
@@ -230,7 +230,7 @@ describe("security round 2 — display + tick degrade gracefully on non-finite",
         remainingSec: 0.01 + i * 0.001, label: "x", tone: "good",
       }));
       const s = loadMutated((r) => { r.modifiers = flood; });
-      expect(s.modifiers.length).toBeLessThanOrEqual(20);
+      expect(s.modifiers.length).toBeLessThanOrEqual(MAX_ACTIVE_MODIFIERS);
       // A 24h offline tick expires all of them (recursive segmentation) — must not overflow.
       expect(() => tick(s, 24 * 3600 * 1000)).not.toThrow();
     });

@@ -10,12 +10,21 @@ import { applyAutoResearch } from "./actions";
 import { rivalsBeaten } from "./market";
 import type { GameState } from "./types";
 
-/** Hard ceiling on simultaneously-active modifiers processed in a tick. The window-split
- *  recursion below descends once per distinct expiry, so this bounds its depth against a
- *  crafted/pathological buff stack. Sits far above any reachable legit stack. */
 /** Remaining time below this is float dust from the expiry split, not a live buff. */
 const MODIFIER_EPSILON_SEC = 1e-9;
-const MAX_ACTIVE_MODIFIERS = 48;
+/** Hard ceiling on simultaneously-active modifiers processed in a tick. The window-split
+ *  recursion below descends once per distinct expiry, so this bounds its depth against a
+ *  crafted/pathological buff stack. Sits far above any reachable legit stack. The save
+ *  loader applies the SAME cap (capActiveModifiers), so a reload never drops a buff the
+ *  running game was still honouring. */
+export const MAX_ACTIVE_MODIFIERS = 48;
+
+/** Keep at most MAX_ACTIVE_MODIFIERS, preferring the soonest-expiring ones. Returns the
+ *  input unchanged when it is already within the cap. Shared by tick() and the loader. */
+export function capActiveModifiers<T extends { remainingSec: number }>(mods: T[]): T[] {
+  if (mods.length <= MAX_ACTIVE_MODIFIERS) return mods;
+  return [...mods].sort((a, b) => a.remainingSec - b.remainingSec).slice(0, MAX_ACTIVE_MODIFIERS);
+}
 
 /**
  * Largest window applied in a single simulation step.
@@ -80,14 +89,10 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     let active = state.modifiers.filter((m) => Number.isFinite(m.remainingSec) && m.remainingSec > 0);
     // Defense-in-depth: the window-split below descends once per distinct expiry, so an
     // extreme stack of simultaneous buffs could approach the call-stack limit on a large
-    // offline/tab-resume tick. The load sanitizer caps SAVED modifiers at 20; mirror that
-    // at runtime with a generous ceiling — above any reachable legit stack (a burst of
-    // objective/daily/event buffs tops out well under this), below the danger zone — by
-    // keeping the soonest-expiring MAX so the split depth is always bounded. Legit play
-    // never trips it; only a crafted/pathological state does.
-    if (active.length > MAX_ACTIVE_MODIFIERS) {
-      active = [...active].sort((a, b) => a.remainingSec - b.remainingSec).slice(0, MAX_ACTIVE_MODIFIERS);
-    }
+    // offline/tab-resume tick. Keep the soonest-expiring MAX_ACTIVE_MODIFIERS so the split
+    // depth is always bounded — a generous ceiling above any reachable legit stack, below
+    // the danger zone. The load sanitizer applies the same cap, so the two always agree.
+    active = capActiveModifiers(active);
     if (active.length !== state.modifiers.length) {
       return tick({ ...state, modifiers: active }, elapsedMs);
     }
