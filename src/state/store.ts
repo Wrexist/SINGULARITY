@@ -51,6 +51,7 @@ import {
   canBuyFeature,
   buyFeature,
   maxActiveProducts,
+  productsUnlocked,
 } from "../engine/products";
 import { productMilestones as PRODUCT_MILESTONES, type ProductTypeId } from "../engine/balance/products";
 import { achievements as ACHIEVEMENT_DEFS } from "../engine/balance/achievements";
@@ -347,12 +348,15 @@ function mintEmployee(roleId: string, name: string, trait: string | null, level 
   empKey += 1;
   return { id: `emp-${empKey}`, name, roleId, level, trait, assignedProductId: null, training: null };
 }
-function rollCandidate(): Candidate {
+function rollCandidate(game: GameState): Candidate {
+  // Product-team roles only act on live products, which open with the first Ship: a
+  // generation-1 lab was offered (and paid for) hires that did nothing (r4 bug hunt).
+  const roles = productsUnlocked(game) ? balance.staff.roles : balance.staff.roles.filter((r) => r.team !== "product");
   const r = balance.staff.rare;
   if (Math.random() < r.chance) {
-    return { name: randomName(), roleId: pick(balance.staff.roles).id, trait: pick(r.traits), rare: true, level: r.level };
+    return { name: randomName(), roleId: pick(roles).id, trait: pick(r.traits), rare: true, level: r.level };
   }
-  return { name: randomName(), roleId: pick(balance.staff.roles).id, trait: randomTrait() };
+  return { name: randomName(), roleId: pick(roles).id, trait: randomTrait() };
 }
 
 /** One-time migration: turn legacy role-COUNTS (in the upgrades map) into individual
@@ -772,8 +776,8 @@ export const useGame = create<GameStore>((set, get) => ({
     return true;
   },
   doBuyLegacyPerk: (id) => set((s) => ({ game: buyLegacyPerk(s.game, id) })),
-  doRecruit: () => set({ candidates: [rollCandidate(), rollCandidate(), rollCandidate()] }),
-  doRefreshCandidates: () => set({ candidates: [rollCandidate(), rollCandidate(), rollCandidate()] }),
+  doRecruit: () => set((st) => ({ candidates: [rollCandidate(st.game), rollCandidate(st.game), rollCandidate(st.game)] })),
+  doRefreshCandidates: () => set((st) => ({ candidates: [rollCandidate(st.game), rollCandidate(st.game), rollCandidate(st.game)] })),
   doCloseRecruit: () => set({ candidates: null }),
   doHireCandidate: (index) => {
     const g = get().game;

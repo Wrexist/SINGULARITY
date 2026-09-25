@@ -99,7 +99,11 @@ export function UpgradePanel({ game, derived, onBuy, onFoundWing }: Props) {
   // ETA income rates. Money also flows from live products (net margin, staff buffs
   // included) minus the payroll the tick really takes, so a money-cost ETA matches
   // how fast Money actually climbs once a product business or a roster is running.
-  const moneyRate = netMoneyRate(game, derived, effRate(derived, "money", game.computeFocus));
+  // Runs count only while they restart themselves (auto-train on, intensity above 0),
+  // exactly as the top bar counts them — hand-started runs aren't income until started,
+  // and counting them made every cost read "~1s" on a fresh generation (r4 bug hunt).
+  const runsLive = derived.autoTrain && game.computeFocus > 0;
+  const moneyRate = netMoneyRate(game, derived, runsLive ? effRate(derived, "money", game.computeFocus) : derived.passiveMoneyPerSec);
   const rateFor = (r: "compute" | "data" | "money") => (r === "money" ? moneyRate : effRate(derived, r, game.computeFocus));
 
   type Def = (typeof balance.upgrades)[number];
