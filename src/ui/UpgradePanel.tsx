@@ -6,9 +6,8 @@ import { upgradeFlavor, crossedFlavorTier } from "../engine/flavor";
 import { hallCapacity, wingCapacity, hallWings, floorDrawnOut, totalRacks, isRackId, evictableRackFor } from "../engine/hall";
 import { wingCost, canFoundWing, reputationAvailable } from "../engine/reputation";
 import { powerStats } from "../engine/power";
-import { Big } from "../engine/math/Big";
 import type { Derived, GameState } from "../engine/types";
-import { fmt, effRate, fmtEta, productMarginPerSec } from "./format";
+import { fmt, effRate, fmtEta, netMoneyRate } from "./format";
 import { BoltIcon } from "./Icons";
 import { burst, punch, floatText, registerBuyStreak } from "./fx";
 import { UpgradeRingIcon, EffectPill, upgradeGroup, UP_GROUP_ORDER, rackTierMark, metaForKind } from "./effectVisual";
@@ -97,11 +96,10 @@ export function UpgradePanel({ game, derived, onBuy, onFoundWing }: Props) {
   const power = powerStats(game);
   const showPower = balance.power.enabled && power.drawKw >= balance.power.revealAtDrawKw;
 
-  // ETA income rates. Money also flows from live products (net margin, with each
-  // product's buffs) minus payroll, so a money-cost ETA isn't misleadingly long once a
-  // product business is running.
-  const prodMargin = productMarginPerSec(game, derived);
-  const moneyRate = effRate(derived, "money", game.computeFocus).add(Big.of(prodMargin)).sub(derived.payrollPerSec);
+  // ETA income rates. Money also flows from live products (net margin, staff buffs
+  // included) minus the payroll the tick really takes, so a money-cost ETA matches
+  // how fast Money actually climbs once a product business or a roster is running.
+  const moneyRate = netMoneyRate(game, derived, effRate(derived, "money", game.computeFocus));
   const rateFor = (r: "compute" | "data" | "money") => (r === "money" ? moneyRate : effRate(derived, r, game.computeFocus));
 
   type Def = (typeof balance.upgrades)[number];

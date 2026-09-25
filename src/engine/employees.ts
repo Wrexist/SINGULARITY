@@ -1,4 +1,5 @@
 import { balance } from "./balance/config";
+import { Big } from "./math/Big";
 import type { StaffRole, StaffTrait, ProductStaffLane } from "./balance/config";
 import type { SegmentSkew } from "./balance/products";
 import type { Employee, GameState, ProductMods } from "./types";
@@ -161,6 +162,14 @@ export function addEmployee(state: GameState, emp: Employee): GameState {
     employees: [...state.employees, emp],
     stats: { ...state.stats, employeesHired: state.stats.employeesHired + 1 },
   };
+}
+
+/** The payroll tick() actually takes out of `earned` Money: what is `due`, but never
+ *  more than `payrollMaxShareOfIncome` of what the lab earned (a big roster can squeeze
+ *  a run, never pin it at $0). Linear, so it works on per-second rates and on a tick's
+ *  totals alike — the UI quotes Money/s with the same rule the tick applies. */
+export function payrollPaid(due: Big, earned: Big): Big {
+  return due.min(earned.max(Big.ZERO).mul(S.payrollMaxShareOfIncome));
 }
 
 /** Hire signing-bonus cost for a candidate of a role. */

@@ -43,7 +43,7 @@ import { advisorItems, type AdvisorTab, type LabSection } from "../engine/adviso
 import { nextGoal } from "../engine/goals";
 import { marketLeaderboard, playerMarketRank } from "../engine/market";
 import { FlaskIcon, BoxIcon, TeamIcon, GearIcon, GiftIcon, TargetIcon } from "./Icons";
-import { fmt, fmtMoney, effRate, productMarginPerSec } from "./format";
+import { fmt, fmtMoney, effRate, netMoneyRate } from "./format";
 import type { ProductTypeId } from "../engine/balance/products";
 import { iap } from "./iap";
 import { isPremium } from "../state/premium";
@@ -875,16 +875,15 @@ export function App() {
   // What the bar's rate lines claim must match what the numbers actually do. They
   // used to show passive-only rates, so with auto-train on Money read "$156M/s"
   // while climbing ~20T/s and Data showed no rate at all. Runs count once they
-  // restart themselves; product margin and payroll always flow.
+  // restart themselves; product margin (with its staff buffs) and payroll (as much as
+  // the tick really takes) always flow — see netMoneyRate.
   const barRates = (() => {
-    const margin = productMarginPerSec(game, d);
     // Runs count only while they actually restart themselves: auto-train on AND an
     // intensity above zero (0 = training held, e.g. a "save for this" pin).
     const running = d.autoTrain && game.computeFocus > 0;
     const data = running ? effRate(d, "data", game.computeFocus) : d.dataPerSec;
     const base = running ? effRate(d, "money", game.computeFocus) : d.passiveMoneyPerSec;
-    const money = base.add(Big.of(margin)).sub(d.payrollPerSec);
-    return { data, money };
+    return { data, money: netMoneyRate(game, d, base) };
   })();
 
   return (

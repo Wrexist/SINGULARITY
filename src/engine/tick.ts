@@ -2,7 +2,7 @@ import { Big } from "./math/Big";
 import { balance } from "./balance/config";
 import { derive, runYieldAt } from "./derive";
 import { simulateProducts, advanceUpgrades, applyMilestones, productMetrics } from "./products";
-import { advanceTraining } from "./employees";
+import { advanceTraining, payrollPaid } from "./employees";
 import { accrueStats } from "./stats";
 import { applyAchievements } from "./achievements";
 import { grantEarnedComponents } from "./components";
@@ -223,8 +223,7 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   // Only Money is touched — lifetimeMoney tracks earnings, not net.
   if (d.payrollPerSec.gt(0)) {
     const earned = lifetimeMoney.sub(state.lifetimeMoney).max(Big.ZERO);
-    const due = d.payrollPerSec.mul(seconds);
-    const paid = due.min(earned.mul(balance.staff.payrollMaxShareOfIncome));
+    const paid = payrollPaid(d.payrollPerSec.mul(seconds), earned);
     money = money.sub(paid).max(Big.ZERO);
   }
 

@@ -1,6 +1,7 @@
 import { Big } from "../engine/math/Big";
 import { runsPerSec } from "../engine/derive";
 import { productMetrics } from "../engine/products";
+import { payrollPaid } from "../engine/employees";
 import { useSettings } from "./settings";
 import type { Derived, GameState } from "../engine/types";
 
@@ -22,14 +23,28 @@ export function productMarginPerSec(game: GameState, d: Derived): number {
  *  that fast, and none while training is held (see runsPerSec). A rough but honest
  *  "how fast it's coming in" for ETA estimates. "compute" is gross production; a
  *  Compute countdown should use computeBankEtaSecs, which knows what runs drain.
- *  NOTE: the "money" lane here is base income only (passive + amortized run); live
- *  product net margin and payroll fluctuate, so callers that show money ETAs add
- *  those in (see UpgradePanel). */
+ *  NOTE: the "money" lane here is base income only (passive + amortized run); callers
+ *  that show a Money rate or ETA fold in product margin and payroll with netMoneyRate. */
 export function effRate(d: Derived, resource: "compute" | "data" | "money", computeFocus: number): Big {
   if (resource === "compute") return d.computePerSec;
   const rps = runsPerSec(d, computeFocus);
   if (resource === "data") return d.dataPerSec.add(d.runDataYield.mul(rps));
   return d.passiveMoneyPerSec.add(d.runMoneyYield.mul(rps));
+}
+
+/** Money per second as tick() really moves it, from the caller's `base` income
+ *  (passive, plus amortized run income where runs count — see effRate). Adds the live
+ *  products' net margin WITH the per-product buffs the sim applies (assigned Sales
+ *  Execs, SREs, the Product Company charter…), then takes payroll the way tick() does:
+ *  out of what the lab earns, never more than payrollMaxShareOfIncome of it. The full
+ *  wage bill used to be subtracted instead, so a roster costing more than half the
+ *  income read as a loss — the $/s line and every Money ETA vanished while Money
+ *  climbed — and the staff product buffs never showed up in the rate at all. */
+export function netMoneyRate(game: GameState, d: Derived, base: Big): Big {
+  const margin = productMarginPerSec(game, d);
+  // tick() counts product profit toward earnings only when the portfolio nets positive.
+  const earned = base.add(Big.of(Math.max(0, margin)));
+  return base.add(Big.of(margin)).sub(payrollPaid(d.payrollPerSec, earned));
 }
 
 /** A seconds-to-afford figure worth showing: finite, positive and under ~99 days; else null. */
