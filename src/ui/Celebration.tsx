@@ -23,6 +23,8 @@ export interface ShipReport {
   alignment: number;
   productsLive: number;
   rivalsBeaten: number;
+  /** An AGI ascension ship — gives the headline, subtitle and share card their own tier. */
+  ascended?: boolean;
 }
 
 /** The Generation Report for the ship that just happened, read from the POST-ship
@@ -80,19 +82,23 @@ export function Celebration({ weightsGained, totalWeights, report, ascended, onD
     return () => { if (timer.current !== null) window.clearTimeout(timer.current); };
   }, []);
 
+  // The `ascended` prop has to reach the copy (and the share card) through the report,
+  // or an ascension reads like any other ship under the gold confetti.
+  const run = report ? { ...report, ascended: ascended === true } : undefined;
+
   const onShare = async (e: React.MouseEvent) => {
     e.stopPropagation(); // the backdrop tap dismisses — sharing must not
     if (timer.current !== null) { window.clearTimeout(timer.current); timer.current = null; }
-    if (!report) return;
-    const note = await shareRunCard(report, weightsGained, totalWeights);
+    if (!run) return;
+    const note = await shareRunCard(run, weightsGained, totalWeights);
     if (note) setShareNote(note);
   };
 
   // History-aware: the headline AND the subtitle reflect what THIS run achieved (A3);
   // an ascension overrides every tier with its own ceremony copy.
-  const headline = report ? shipHeadline(report) : "Model Shipped";
-  const subtitle = report ? shipSubtitle(report) : "Investors are “thrilled.” You banked:";
-  const story = report ? runStory(report) : [];
+  const headline = run ? shipHeadline(run) : "Model Shipped";
+  const subtitle = run ? shipSubtitle(run) : "Investors are “thrilled.” You banked:";
+  const story = run ? runStory(run) : [];
 
   const reducedMotion = useReducedMotion();
   const cardRef = useRef<HTMLDivElement>(null);
