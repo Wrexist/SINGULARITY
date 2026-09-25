@@ -1,6 +1,6 @@
 import { Big } from "./math/Big";
 import { balance } from "./balance/config";
-import { derive, runYieldAt } from "./derive";
+import { derive, runYieldAt, runsPerSec } from "./derive";
 import { simulateProducts, advanceUpgrades, applyMilestones, productMetrics } from "./products";
 import { advanceTraining, payrollPaid } from "./employees";
 import { accrueStats } from "./stats";
@@ -8,7 +8,7 @@ import { applyAchievements } from "./achievements";
 import { grantEarnedComponents } from "./components";
 import { applyAutoResearch } from "./actions";
 import { rivalsBeaten } from "./market";
-import type { GameState } from "./types";
+import type { Derived, GameState } from "./types";
 
 /** Remaining time below this is float dust from the expiry split, not a live buff. */
 const MODIFIER_EPSILON_SEC = 1e-9;
@@ -227,9 +227,17 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   // roster can squeeze a run but never pin a fresh, income-less lab at $0. Earnings =
   // what lifetimeMoney gained this tick (passive + auto-claimed runs + product profit).
   // Only Money is touched — lifetimeMoney tracks earnings, not net.
+  //
+  // The cap is set by the larger of this tick's receipts and the lab's income RATE ×
+  // the tick. Auto-claimed runs pay out in lumps every few seconds, and a cap on
+  // receipts alone forgave every frame between lumps: live 10Hz play paid 2–5% of the
+  // wage bill while a resume or offline window paid all of it, so closing the app cost
+  // money (r3 bug hunt). With the rate in the basis, a frame, a resume and an offline
+  // step all charge min(bill, share × income) per second.
   if (d.payrollPerSec.gt(0)) {
     const earned = lifetimeMoney.sub(state.lifetimeMoney).max(Big.ZERO);
-    const paid = payrollPaid(d.payrollPerSec.mul(seconds), earned);
+    const smooth = incomeRatePerSec(state, d).mul(seconds);
+    const paid = payrollPaid(d.payrollPerSec.mul(seconds), earned.max(smooth));
     money = money.sub(paid).max(Big.ZERO);
   }
 
@@ -316,4 +324,21 @@ function claimInto(y: { data: Big; money: Big }, data: Big, money: Big, lifetime
     money: money.add(y.money),
     lifetimeMoney: lifetimeMoney.add(y.money),
   };
+}
+
+/**
+ * The lab's steady Money income per second, for settling payroll: passive money, runs
+ * at the cadence auto-train really fires them (only while auto-claim banks them — a
+ * run left sitting ready pays nothing), and the product portfolio's profit when it
+ * nets positive. Pure. Mirrors the rate the top bar quotes (netMoneyRate).
+ */
+export function incomeRatePerSec(state: GameState, d: Derived): Big {
+  let rate = d.passiveMoneyPerSec;
+  if (d.autoTrain && d.autoClaim) {
+    rate = rate.add(runYieldAt(state, d, state.computeFocus).money.mul(runsPerSec(d, state.computeFocus)));
+  }
+  let margin = 0;
+  for (const p of state.products.active) margin += productMetrics(p, state.products.frontier, d.productModsById[p.id]).margin;
+  if (Number.isFinite(margin) && margin > 0) rate = rate.add(Big.of(margin));
+  return rate.max(Big.ZERO);
 }
