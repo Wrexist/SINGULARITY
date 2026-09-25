@@ -888,7 +888,10 @@ function archiveId(v: unknown): string | undefined {
  *  fields (save v35) are all optional and independently sanitized: an entry with a
  *  hostile or missing one still loads, minus that field. */
 function sanitizeShipLog(raw: unknown, totalShips: number): GameState["shipLog"] {
-  if (!Array.isArray(raw)) return [];
+  // Keep the newest `keep` valid entries. Zero is its own case: slice(-0) is slice(0),
+  // the whole array, so a save claiming no ships used to keep a log of any length.
+  const keep = Math.min(balance.prestige.shipLogCap, Math.max(0, totalShips));
+  if (!Array.isArray(raw) || keep === 0) return [];
   const MODES = new Set(Object.keys(balance.prestige.shipModes));
   return raw
     .filter((e): e is Record<string, unknown> =>
@@ -921,7 +924,7 @@ function sanitizeShipLog(raw: unknown, totalShips: number): GameState["shipLog"]
         ...opt,
       };
     })
-    .slice(-Math.min(balance.prestige.shipLogCap, Math.max(0, totalShips)));
+    .slice(-keep);
 }
 
 /** Rival counterplay is untrusted: KNOWN rival names only, strike counts clamped

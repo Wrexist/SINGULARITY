@@ -40,3 +40,22 @@ describe("product features load as the catalogue's own ids", () => {
     expect(g.products.active[0]!.features).toEqual(owned);
   });
 });
+
+describe("ship log cap", () => {
+  const entry = { mode: "deploy", era: 1, asc: false };
+
+  it("a lab with no ships on record loads no Archive entries", () => {
+    // The log is capped at min(shipLogCap, totalShips) via slice(-n) — and slice(-0)
+    // is slice(0), the WHOLE array. So a save claiming zero ships kept every entry it
+    // carried: 5K rows in the Archive, rebuilt on every tick while it was open.
+    const shipLog = Array.from({ length: 5_000 }, () => ({ ...entry }));
+    const g = deserialize(blob({ shipLog, stats: { totalShips: 0 } }));
+    expect(g.shipLog).toEqual([]);
+  });
+
+  it("still keeps the newest entries up to the ships on record", () => {
+    const shipLog = Array.from({ length: 10 }, (_, i) => ({ ...entry, gen: i + 1 }));
+    const g = deserialize(blob({ shipLog, stats: { totalShips: 3 } }));
+    expect(g.shipLog.map((e) => e.gen)).toEqual([8, 9, 10]);
+  });
+});
