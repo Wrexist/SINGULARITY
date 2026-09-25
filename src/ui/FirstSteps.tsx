@@ -31,9 +31,9 @@ function firstSteps(game: GameState): Step[] {
   const started = claimed || game.run.active || game.run.readyToClaim;
   const racked = (game.upgrades.rack_basic ?? 0) > 0;
   return [
-    { label: "Start a training run", detail: "Spend Compute in the dock below", done: started },
+    { label: "Start a training run", detail: "Spend Compute on a run in the dock", done: started },
     { label: "Claim your payout", detail: "The bar fills — collect Data + Money", done: claimed },
-    { label: "Buy a Small Rack", detail: "More Compute/sec = bigger runs", done: racked },
+    { label: "Buy a Consumer GPU Rack", detail: "More Compute/sec = bigger runs", done: racked },
   ];
 }
 

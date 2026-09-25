@@ -268,6 +268,21 @@ export function App() {
   // no-op on web). Keeps the localStorage cache from being the source of truth.
   useEffect(() => { void iap.refresh(); }, []);
 
+  // The pinned resource bar paints an opaque slab far above itself so content can't
+  // bleed through during iOS overscroll. At rest that slab sat on top of the brand
+  // header and hid it entirely, so the slab only reaches up once the page has
+  // actually scrolled past the header (see `.resource-bar::before`).
+  useEffect(() => {
+    const root = document.documentElement;
+    const onScroll = () => {
+      const past = window.scrollY > 40;
+      if (past !== root.hasAttribute("data-scrolled")) root.toggleAttribute("data-scrolled", past);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   // Return reminders (opt-in, native-only): on background, schedule ONE honest
   // notification for when the offline cap fills; on return, cancel it. Reads fresh
   // state in the handler so it always reflects the current setting / production /
@@ -993,8 +1008,11 @@ export function App() {
                 <div className="stage-left">
                   <HallCanvas onExpand={setPendingExpansion} />
                   {!firstSteps && <NewsTicker />}
-                  {firstSteps && <FirstSteps game={game} />}
+                  {/* The dock comes BEFORE the checklist: on a 390×844 phone the
+                      checklist used to push the game's one button under the bottom
+                      nav on the very first screen. */}
                   <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} onSetFocus={setComputeFocus} />
+                  {firstSteps && <FirstSteps game={game} />}
                 </div>
                 <div className="stage-right">
                   <CharterPanel
@@ -1059,9 +1077,6 @@ export function App() {
         )}
 
         <footer className="footer">
-          <button className="link-btn" onClick={() => setConfirmReset(true)}>
-            reset save
-          </button>
           <span className="footer-flavor">Singularity Inc. — disrupting disruption since today.</span>
         </footer>
       </main>
@@ -1128,7 +1143,7 @@ export function App() {
           }}
         />
       )}
-      {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} />}
+      {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} onReset={() => { setShowSettings(false); setConfirmReset(true); }} />}
       {moment === "challenge" && challengeDoneId && challengeById.get(challengeDoneId) && (
         <ChallengeComplete challenge={challengeById.get(challengeDoneId)!} onDone={() => setChallengeDoneId(null)} />
       )}

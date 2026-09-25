@@ -58,10 +58,12 @@ function ToggleRow({ label, hint, value, onToggle }: RowProps) {
 
 interface Props {
   onClose: () => void;
+  /** Ask App to confirm a hard reset (the confirm sheet lives there). */
+  onReset: () => void;
 }
 
 /** iOS-style bottom sheet for feel preferences (clean-to-play, GAMEPLAN §8). */
-export function SettingsSheet({ onClose }: Props) {
+export function SettingsSheet({ onClose, onReset }: Props) {
   const { sound, music, haptics, hapticsLight, reducedMotion, scientificNotation, notifyReminders, hallTheme, rackSkin, toggle, setHallTheme, setRackSkin, setNotifyReminders } = useSettings();
   const rows: { key: ToggleKey; label: string; hint: string; value: boolean; hidden?: boolean }[] = [
     { key: "sound", label: "Sound effects", hint: "Synthesized taps, claims & ship chimes", value: sound },
@@ -316,6 +318,10 @@ export function SettingsSheet({ onClose }: Props) {
               <textarea className="set-backup-text" rows={3} placeholder="Paste a backup string here…" value={importText} onChange={(e) => setImportText(e.target.value)} />
               <button className="btn btn-primary btn-sm" disabled={!importText.trim()} onClick={doImport}>Restore this backup</button>
               {status && <p className="set-backup-status">{status}</p>}
+              {/* Wiping the save used to be a link in the footer of EVERY tab, one
+                  stray tap from the thing the player cares most about. It lives
+                  here now, next to the backup that makes it recoverable. */}
+              <button className="btn btn-ghost btn-sm set-reset" onClick={onReset}>Start over from scratch…</button>
             </div>
           )}
         </div>

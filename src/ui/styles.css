@@ -465,6 +465,11 @@ svg { vertical-align: middle; }
   pointer-events: none;
   background: linear-gradient(180deg, var(--bg) 0%, var(--bg) 88%, rgba(238, 241, 248, 0) 100%);
 }
+/* At rest (page not scrolled) the overdraw would sit on the brand header above the
+   bar and hide it; reach only as far as the pinned gap until the page scrolls. */
+:root:not([data-scrolled]) .resource-bar::before {
+  top: calc(-8px - env(safe-area-inset-top));
+}
 .resource {
   /* Stacked + centered so all three cards are visually identical and balanced
      (symmetry pass) — icon on top, value and rate centered beneath it. */
@@ -1853,16 +1858,15 @@ button.modchip.workable:active { transform: scale(0.94); }
 
 /* ---------- First steps (interactive onboarding) ---------- */
 .firststeps {
-  /* Was `margin: 10px 12px 0` — the first-session coach card was inset 12px from the
-     hall it sits directly under, on the very first screen a new player sees. */
-  margin: 10px 0 0;
+  /* Sits under the training dock; the stage's own 16px gap spaces it. */
+  margin: 0;
   padding: 10px 12px;
   border-radius: var(--radius-xs);
   background: var(--card, rgba(255, 255, 255, 0.7));
   border: 1px solid rgba(155, 81, 224, 0.25);
 }
 .firststeps-title { font-size: var(--fs-2xs); font-weight: 800; letter-spacing: 0.08em; color: var(--accent, #9b51e0); margin-bottom: 6px; }
-.firststeps-row { display: flex; align-items: baseline; gap: 8px; padding: 3px 0; color: var(--ink-3); font-size: var(--fs-sm); }
+.firststeps-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 3px 0; color: var(--ink-3); font-size: var(--fs-sm); }
 .firststeps-row.now { color: var(--ink); font-weight: 700; }
 .firststeps-row.done { color: var(--ink-3); text-decoration: line-through; opacity: 0.75; }
 .firststeps-mark {
@@ -1874,7 +1878,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 }
 .firststeps-row.done .firststeps-mark { background: rgba(22, 179, 100, 0.15); color: #16b364; }
 .firststeps-row.now .firststeps-mark { animation: firststep-pulse 1.6s ease-in-out infinite; }
-.firststeps-detail { font-size: var(--fs-xs); font-weight: 500; color: var(--ink-3); }
+.firststeps-detail { flex-basis: 100%; padding-left: 26px; font-size: var(--fs-xs); font-weight: 500; color: var(--ink-3); }
 @keyframes firststep-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(155, 81, 224, 0.35); }
   50% { box-shadow: 0 0 0 5px rgba(155, 81, 224, 0); }
@@ -1960,6 +1964,7 @@ button.modchip.workable:active { transform: scale(0.94); }
   cursor: pointer;
 }
 .link-btn:hover { color: var(--ink-2); text-decoration: underline; }
+.set-reset { margin-top: 14px; color: var(--coral); }
 
 /* ---------- Settings bottom sheet (iOS-style) ---------- */
 .sheet-backdrop {
@@ -3506,7 +3511,7 @@ button.modchip.workable:active { transform: scale(0.94); }
    list and needs no reduced-motion special case. Only ever rendered on a row
    that is visible, unowned and not yet affordable: an actionable row already
    says so with .affordable, and a prerequisite-locked one has nothing to fill
-   toward. */
+   toward.
    Reputation perks join in via .rep-card, which is a `.card` (already
    position:relative + overflow:hidden) rather than a .meta-item — it takes the
    fill WITHOUT the meta state classes, so it gains no breathe animation. */

@@ -10,7 +10,7 @@ import type { SlotClass } from "../engine/balance/components";
 import { regulatorState, regulatorIsNamed } from "../engine/regulator";
 import { marketLeaderboard } from "../engine/market";
 import { charters } from "../engine/balance/charters";
-import { RACK_IDS, hallDims, hallCapacity, wingCapacity, hallWings, hallRoomSplit, floorDrawnOut, type Dir } from "../engine/hall";
+import { RACK_IDS, totalRacks, hallDims, hallCapacity, wingCapacity, hallWings, hallRoomSplit, floorDrawnOut, type Dir } from "../engine/hall";
 
 export { hallDims, hallExpansion, type Dir } from "../engine/hall";
 
@@ -224,6 +224,12 @@ function sideMarkers(game: GameState): SideMarker[] {
   // room itself keeps inviting a purchase that adds tiles no rack can stand on — the
   // Build panel stops offering it, and the floor has to agree.
   const drawnOut = floorDrawnOut(game);
+  // An empty closet doesn't need a "$7.0K" price tag painted on its floor. The strips
+  // appear once the room is at least half full (or already grown), which is the moment
+  // floor space becomes a real question — before that they were two unaffordable prices
+  // on the very first screen a new player sees.
+  const grown = SIDE_DEFS.some(({ id }) => (game.upgrades[id] ?? 0) > 0);
+  if (!grown && totalRacks(game) * 2 < hallCapacity(game)) return [];
   return SIDE_DEFS.map(({ dir, id }) => {
     const def = upgById(id);
     const lvl = game.upgrades[id] ?? 0;
