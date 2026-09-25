@@ -147,7 +147,10 @@ export function GrandChallengesPanel({ game, onFund, onChooseFork, onFundMegapro
             ))}
           </div>}
           <div className="challenge-foot">
-            <span className="challenge-reward"><GiftIcon size={13} /> +{mega.bonusPct.toFixed(1)}% to ALL output {mega.level > 0 ? "(held)" : "on first cycle"}</span>
+            <span className="challenge-reward"><GiftIcon size={13} /> {mega.level > 0
+              ? `+${mega.bonusPct.toFixed(1)}% to ALL output (held)`
+              // Nothing is held yet: quote what the first cycle pays (it read "+0.0%").
+              : `+${mega.nextBonusPct.toFixed(1)}% to ALL output on first cycle`}</span>
             {mega.maxed ? (
               <span className="challenge-active">Active</span>
             ) : (

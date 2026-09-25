@@ -245,6 +245,9 @@ export interface MegaprojectView {
   progress: number;
   /** The all-lane bonus a player currently holds, as a percentage (for display). */
   bonusPct: number;
+  /** What completing THIS cycle adds on top, as a percentage — the number the card
+   *  quotes before the first cycle, when the held bonus is still 0. */
+  nextBonusPct: number;
 }
 
 export function megaprojectView(state: GameState): MegaprojectView {
@@ -260,6 +263,9 @@ export function megaprojectView(state: GameState): MegaprojectView {
     done: { compute: laneMet(f.compute, cost.compute), data: laneMet(f.data, cost.data), money: laneMet(f.money, cost.money) },
     progress: Math.min(frac(f.compute, cost.compute), frac(f.data, cost.data), frac(f.money, cost.money)),
     bonusPct: (megaprojectMult(state).toNumber() - 1) * 100,
+    nextBonusPct:
+      (megaprojectMult({ ...state, megaprojects: { ...state.megaprojects, level: level + 1 } }).toNumber() -
+        megaprojectMult(state).toNumber()) * 100,
   };
 }
 
