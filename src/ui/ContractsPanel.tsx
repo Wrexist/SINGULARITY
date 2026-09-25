@@ -1,7 +1,7 @@
 import { contractBoard, contractsBalance, sponsorView } from "../engine/contracts";
 import { EmptyState } from "./EmptyState";
 import { TargetIcon } from "./Icons";
-import { fmt } from "./format";
+import { fmt, fmtFloor } from "./format";
 import { Big } from "../engine/math/Big";
 import type { GameState } from "../engine/types";
 
@@ -38,7 +38,7 @@ export function ContractsPanel({ game, onClaim, onClaimSponsor, bare = false }: 
         <div className="contract-bar">
           <div className="contract-fill" style={{ width: `${Math.round(sponsor.progress * 100)}%` }} />
         </div>
-        <span className="contract-prog">{fmt(Big.of(Math.floor(sponsor.value)))} / {fmt(Big.of(sponsor.def.target))}</span>
+        <span className="contract-prog">{fmtFloor(Big.of(Math.floor(sponsor.value)))} / {fmt(Big.of(sponsor.def.target))}</span>
       </div>
       <div className="contract-side">
         <span className="contract-rep">+{sponsor.def.rep} Rep</span>
@@ -71,7 +71,7 @@ export function ContractsPanel({ game, onClaim, onClaimSponsor, bare = false }: 
                 <div className="contract-bar">
                   <div className="contract-fill" style={{ width: `${Math.round(progress * 100)}%` }} />
                 </div>
-                <span className="contract-prog">{fmt(Big.of(Math.floor(value)))} / {fmt(Big.of(def.target))}</span>
+                <span className="contract-prog">{fmtFloor(Big.of(Math.floor(value)))} / {fmt(Big.of(def.target))}</span>
               </div>
               <div className="contract-side">
                 <span className="contract-rep">+{def.rep} Rep</span>

@@ -72,6 +72,13 @@ export function fmt(v: Big): string {
   return useSettings.getState().scientificNotation ? v.formatScientific() : v.format();
 }
 
+/** fmt, rounded DOWN at the shown precision — for the progress side of an
+ *  "X / target" counter. Rounding to nearest carried a value a hair short onto its
+ *  target's own label ("5K / 5K", "$25B / $25B") on a card that could not be claimed. */
+export function fmtFloor(v: Big): string {
+  return useSettings.getState().scientificNotation ? v.formatScientific(true) : v.format(true);
+}
+
 /** A multiplier for display (the "×" is the caller's): two decimals while small
  *  ("1.04", "0.96"), the compact format once it reaches 100 ("250B"). The resource
  *  formatter keeps one decimal under 10, which read a ×1.04 boost or a ×0.96 penalty

@@ -1,7 +1,7 @@
 import type { GameState } from "../engine/types";
 import { visibleChallenges, challengeView, canFundChallenge, pendingForkChallenge, megaprojectUnlocked, megaprojectView, canFundMegaproject, mandateDefs, mandatePicksAvailable, mandateMods } from "../engine/challenges";
 import { challenges as C } from "../engine/balance/challenges";
-import { fmt } from "./format";
+import { fmt, fmtFloor } from "./format";
 import type { Big } from "../engine/math/Big";
 import { ComputeIcon, DataIcon, MoneyIcon, GiftIcon } from "./Icons";
 import { iconFor } from "./iconRegistry";
@@ -54,7 +54,8 @@ export function GrandChallengesPanel({ game, onFund, onChooseFork, onFundMegapro
         {list.map((def) => {
           const v = challengeView(game, def.id)!;
           const canFund = canFundChallenge(game, def.id);
-          const pct = Math.round(v.progress * 100);
+          // Floored: a rounded 99.5% read "100%" on a card that still needed funding.
+          const pct = Math.floor(v.progress * 100);
           const chosenForkId = game.challenges.forks[def.id];
           const chosenFork = def.forks?.find((f) => f.id === chosenForkId);
           const forkPending = pendingForkChallenge(game, def.id);
@@ -87,7 +88,7 @@ export function GrandChallengesPanel({ game, onFund, onChooseFork, onFundMegapro
                 {res.map((r) => (
                   <span key={r.key} className={`challenge-pledge ${r.done ? "done" : ""}`}>
                     <span className="challenge-pledge-ic">{RES_ICON[r.key]}</span>
-                    {r.key === "money" ? "$" : ""}{fmt(r.funded)}<span className="challenge-pledge-sep">/</span>{r.key === "money" ? "$" : ""}{fmt(r.cost)}
+                    {r.key === "money" ? "$" : ""}{fmtFloor(r.funded)}<span className="challenge-pledge-sep">/</span>{r.key === "money" ? "$" : ""}{fmt(r.cost)}
                     {r.done && <span className="challenge-pledge-check">✓</span>}
                   </span>
                 ))}
@@ -139,7 +140,7 @@ export function GrandChallengesPanel({ game, onFund, onChooseFork, onFundMegapro
           </div>
           <div className="challenge-bar">
             <div className="challenge-fill" style={{ width: `${mega.maxed ? 100 : Math.round(mega.progress * 100)}%` }} />
-            <span className={`challenge-bar-label${!mega.maxed && mega.progress < 0.5 ? " on-track" : ""}`}>{mega.maxed ? "Complete ✓" : `${Math.round(mega.progress * 100)}%`}</span>
+            <span className={`challenge-bar-label${!mega.maxed && mega.progress < 0.5 ? " on-track" : ""}`}>{mega.maxed ? "Complete ✓" : `${Math.floor(mega.progress * 100)}%`}</span>
           </div>
           {!mega.maxed && <div className="challenge-res">
             {([["compute", mega.funded.compute, mega.cost.compute, mega.done.compute] as const,
@@ -147,7 +148,7 @@ export function GrandChallengesPanel({ game, onFund, onChooseFork, onFundMegapro
                ["money", mega.funded.money, mega.cost.money, mega.done.money] as const]).map(([key, funded, cost, done]) => (
               <span key={key} className={`challenge-pledge ${done ? "done" : ""}`}>
                 <span className="challenge-pledge-ic">{RES_ICON[key]}</span>
-                {key === "money" ? "$" : ""}{fmt(funded)}<span className="challenge-pledge-sep">/</span>{key === "money" ? "$" : ""}{fmt(cost)}
+                {key === "money" ? "$" : ""}{fmtFloor(funded)}<span className="challenge-pledge-sep">/</span>{key === "money" ? "$" : ""}{fmt(cost)}
                 {done && <span className="challenge-pledge-check">✓</span>}
               </span>
             ))}
