@@ -1,4 +1,5 @@
 import { charters as C, type CharterDef, type CharterRule } from "./balance/charters";
+import { autoResearchEnabled } from "./reputation";
 import type { GameState } from "./types";
 
 /**
@@ -21,11 +22,48 @@ export function chartersUnlocked(state: GameState): boolean {
 }
 
 /**
- * The current run's charter is changeable only while the run is fresh (no research
- * bought yet) — it's a start-of-run build choice, locked once you commit to a path.
+ * Engine seconds since this run's ship, read from the stamp prestige() writes on the
+ * Archive entry (`atSec` = playtime at the ship). Deterministic — playtime accrues in
+ * tick(), never from the wall clock — and needs no new saved field. null when the
+ * stamp can't be trusted: no ship yet, a pre-v35 entry without it, a last entry that
+ * isn't this generation's, or a stamp ahead of the clock.
+ */
+export function runElapsedSec(state: GameState): number | null {
+  const last = state.shipLog[state.shipLog.length - 1];
+  if (!last || last.atSec === undefined || last.gen !== state.prestige.ships) return null;
+  const elapsed = state.stats.playtimeSec - last.atSec;
+  return Number.isFinite(elapsed) && elapsed >= 0 ? elapsed : null;
+}
+
+/** True while a Research Director owner's run is younger than the grace (see
+ *  `directorGraceSec` in balance/charters.ts). False on an unreadable run clock. */
+function directorGrace(state: GameState): boolean {
+  if (!autoResearchEnabled(state)) return false;
+  const t = runElapsedSec(state);
+  return t !== null && t < C.directorGraceSec;
+}
+
+/**
+ * The start-of-run window the Lab Charter and the Stance share: open until the run
+ * commits to a path — an explicit Lock in, or the first research node. A Research
+ * Director owner gets a fixed grace instead of that first node: their Director buys
+ * research within moments of a ship, and an automatic purchase is not the player
+ * committing. So for them the window stays open for the first `directorGraceSec`
+ * seconds of the run whatever is researched, then closes at the first node as usual.
+ * The Director never waits on the window, so ignoring charters costs nothing.
+ */
+export function startWindowOpen(state: GameState): boolean {
+  if (state.charterLocked) return false;
+  return state.research.length === 0 || directorGrace(state);
+}
+
+/**
+ * The current run's charter is changeable only while the run is fresh (the
+ * start-of-run window above) — it's a start-of-run build choice, locked once you
+ * commit to a path.
  */
 export function canSetCharter(state: GameState): boolean {
-  return chartersUnlocked(state) && state.research.length === 0 && !state.charterLocked;
+  return chartersUnlocked(state) && startWindowOpen(state);
 }
 
 /** Explicitly lock the current pick (owner UX fix: "no way to lock it in").

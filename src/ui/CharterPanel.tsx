@@ -3,6 +3,7 @@ import { doctrineBalance, doctrineUnlocked, stanceOpen, committedSide, schismRev
 import { alignmentProductionMods, alignmentHeatMult } from "../engine/alignment";
 import { balance } from "../engine/balance/config";
 import { charterConvictionMult } from "../engine/prestige";
+import { autoResearchEnabled } from "../engine/reputation";
 import type { GameState } from "../engine/types";
 import { ShieldIcon, ScalesIcon, RocketIcon } from "./Icons";
 
@@ -134,7 +135,12 @@ export function CharterPanel({ game, onSet, onLock, onStance }: Props) {
       {/* First-encounter scaffolding only (calm-down audit 2026-08): once the player
           has run a charter, the cards + conviction pips carry the system wordlessly. */}
       {game.lastCharter == null && (
-        <p className="charter-intro">Tap a charter to adopt this run's focus (tap again to drop it). It locks when you buy research — or lock it in below.</p>
+        <p className="charter-intro">Tap a charter to adopt this run's focus (tap again to drop it). {
+          // A Research Director owner's window is time-boxed (its purchases don't lock it).
+          autoResearchEnabled(game)
+            ? `It locks ${chartersBalance.directorGraceSec} seconds into the run`
+            : "It locks when you buy research"
+        } — or lock it in below.</p>
       )}
       <div className="list">
         {/* This run's dealt hand (the Charter Draft), plus a charter already adopted

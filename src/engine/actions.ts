@@ -308,6 +308,8 @@ export function researchStalled(state: GameState, d: Derived): boolean {
  * affordable, skipping either/or fork nodes (those are the player's call). Pure; runs in tick() so it also works during offline catch-up. Does
  * exactly what an engaged player would do by hand, so it can't outrun the curve —
  * and it's off until the (deep-endgame) perk is owned, so the sim is unaffected.
+ * It never waits on the start-of-run picks: its purchases don't close the charter /
+ * stance window during the Director's grace (charter.ts `startWindowOpen`).
  */
 export function applyAutoResearch(state: GameState): GameState {
   if (!autoResearchEnabled(state)) return state;

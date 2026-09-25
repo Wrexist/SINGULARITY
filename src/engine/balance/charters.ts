@@ -52,6 +52,17 @@ export const charters = {
   unlockAtShips: 1,
   /** Cards dealt per ship. */
   handSize: 3,
+  /**
+   * The Research Director's grace, in seconds of engine run time (playtime since this
+   * run's ship). The start-of-run window (charter + stance) normally closes at the
+   * first research node, but the Director buys research from tick() — in the deep
+   * endgame within 0.2 s of a ship, while the celebration is still on screen — so
+   * for a Director owner the window instead stays open for this long whatever gets
+   * researched, then closes at the first node as usual. The Director itself never
+   * waits, so a player who ignores charters loses nothing. The sim never owns the
+   * Director, so this is inert for the tuned curve.
+   */
+  directorGraceSec: 60,
   list: [
     {
       id: "open_source",

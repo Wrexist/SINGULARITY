@@ -1,4 +1,5 @@
 import { doctrine as D, COMMITTABLE_SIDES, type DoctrinePerkDef } from "./balance/doctrine";
+import { startWindowOpen } from "./charter";
 import type { GameState } from "./types";
 
 /**
@@ -62,7 +63,8 @@ export function schismRevealed(state: GameState): boolean {
  * window the Lab Charter uses), set alignment to exactly the commit threshold on
  * either side, or back to the center. World-event choices still move it from there.
  *
- * The window closes when the charter does — first research, or "Lock in" — and
+ * The window closes when the charter does — first research (for a Research
+ * Director owner, the end of its grace), or "Lock in" — and
  * claims wait for that close (see canClaimDoctrine), so one run can never be
  * declared Safety, claimed, re-declared Acceleration and claimed again. Curve-safe:
  * the sim never declares, so it stays at alignment 0 with every stance effect off.
@@ -70,10 +72,10 @@ export function schismRevealed(state: GameState): boolean {
 export type Stance = "doomer" | "accel" | null;
 
 /** Is the stance still open for this run? Revealed, and the run not yet committed
- *  to a path — the Lab Charter's own window, so both start-of-run picks share one
- *  close. */
+ *  to a path — the Lab Charter's own window (charter.ts `startWindowOpen`, incl. the
+ *  Research Director's grace), so both start-of-run picks share one close. */
 export function stanceOpen(state: GameState): boolean {
-  return doctrineUnlocked(state) && state.research.length === 0 && !state.charterLocked;
+  return doctrineUnlocked(state) && startWindowOpen(state);
 }
 
 /** Declare this run's stance: exactly the commit threshold on that side, or the
