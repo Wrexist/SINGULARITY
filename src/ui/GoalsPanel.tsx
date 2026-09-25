@@ -129,7 +129,7 @@ export function GoalsPanel({
             </section>
           )}
           {challengesUnlocked(game) && (
-            <Collapsible title="Grand Challenges" defaultOpen={counts.forkPending} badge={counts.forkPending ? "decision" : `${counts.challengesDone}/${counts.challengesSeen}`}>
+            <Collapsible title="Grand Challenges" defaultOpen={counts.forkPending || counts.mandatePending} badge={counts.forkPending || counts.mandatePending ? "decision" : `${counts.challengesDone}/${counts.challengesSeen}`}>
               <GrandChallengesPanel bare game={game} onFund={onFundChallenge} onChooseFork={onChooseFork} onFundMegaproject={onFundMegaproject} onPickMandate={onPickMandate} />
             </Collapsible>
           )}

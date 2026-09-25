@@ -1,7 +1,7 @@
 import type { GameState } from "../engine/types";
 import { objectivesUnlocked, claimableObjectives } from "../engine/objectives";
 import { contractBoard, sponsorView } from "../engine/contracts";
-import { challengesUnlocked, visibleChallenges, pendingForkChallenge } from "../engine/challenges";
+import { challengesUnlocked, visibleChallenges, pendingForkChallenge, mandatePicksAvailable } from "../engine/challenges";
 import { doctrineUnlocked, doctrinePerks, canClaimDoctrine } from "../engine/doctrine";
 import { achievementDefs } from "../engine/achievements";
 import { productMilestones } from "../engine/balance/products";
@@ -13,8 +13,9 @@ import { productMilestones } from "../engine/balance/products";
  * player no single honest answer to "is anything waiting on me?" — and that badges
  * which are true too often teach players to ignore badges everywhere. So this
  * counts only things that are genuinely CLAIMABLE NOW: an objective you can bank,
- * a contract or sponsor that is met, a Grand Challenge waiting on your reward
- * choice, a Doctrine perk you have earned the right to take.
+ * a contract or sponsor that is met, a Grand Challenge (or a completed Megaproject
+ * cycle's Mandate) waiting on your reward choice, a Doctrine perk you have earned
+ * the right to take.
  *
  * Deliberately NOT counted: anything merely affordable or fundable (Grand
  * Challenge pours and Trials are open-ended sinks, so counting them would light
@@ -36,10 +37,13 @@ export function goalsCounts(game: GameState) {
 
   const seen = challengesUnlocked(game) ? visibleChallenges(game) : [];
   const forkPending = seen.some((c) => pendingForkChallenge(game, c.id));
+  // A completed Megaproject cycle mints a Mandate whose reward waits on the player's
+  // pick, exactly like a fork: counted once, however many picks are waiting.
+  const mandatePending = challengesUnlocked(game) && mandatePicksAvailable(game) > 0;
   const doctrine = doctrineUnlocked(game) ? doctrinePerks().filter((p) => canClaimDoctrine(game, p.id)).length : 0;
 
   const now = objectives + contracts;
-  const long = doctrine + (forkPending ? 1 : 0);
+  const long = doctrine + (forkPending ? 1 : 0) + (mandatePending ? 1 : 0);
   return {
     objectives,
     contracts,
@@ -52,6 +56,7 @@ export function goalsCounts(game: GameState) {
     challengesDone: seen.filter((c) => game.challenges.completed.includes(c.id)).length,
     challengesSeen: seen.length,
     forkPending,
+    mandatePending,
     doctrineClaimable: doctrine,
     ach: { earned: new Set(game.achievements).size, total: achievementDefs.length },
     ms: { earned: game.products.milestones.length, total: productMilestones.length },
