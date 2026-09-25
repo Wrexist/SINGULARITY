@@ -692,6 +692,12 @@ svg { vertical-align: middle; }
   box-shadow: inset 0 1px 2px rgba(16, 24, 40, 0.08);
 }
 .progress.small { height: 24px; margin-bottom: 12px; }
+.progress.slim { height: 8px; margin-bottom: 14px; }
+.ship-gate-label {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+  margin: 0 0 6px; font-size: var(--fs-sm); font-weight: 650; color: var(--ink-2);
+}
+.ship-gate-count { flex: none; font-size: var(--fs-xs); font-weight: 750; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .progress-fill {
   position: relative;
   height: 100%;
@@ -1136,6 +1142,16 @@ svg { vertical-align: middle; }
   background: rgba(0, 0, 0, 0.05); border-radius: 999px; padding: 1px 8px; font-variant-numeric: tabular-nums;
 }
 .research-track { display: flex; flex-direction: column; gap: 10px; }
+/* A finished category folds to this one tappable row. */
+.research-cat-toggle {
+  width: 100%; background: none; border: none; cursor: pointer; font: inherit; text-align: left;
+  align-items: center; padding: 6px 2px; margin-bottom: 0; color: inherit;
+}
+.research-cat-toggle .research-cat-name { flex: 1; }
+.research-cat-toggle .research-cat-count { display: inline-flex; align-items: center; gap: 4px; color: var(--money); background: rgba(22, 179, 100, 0.1); }
+.research-cat-toggle .chevron { color: var(--ink-3); display: inline-flex; }
+.research-cat.done { margin-top: 6px; }
+.research-cat.done + .research-cat:not(.done) { margin-top: 14px; }
 .node {
   text-align: left;
   background: #fff;

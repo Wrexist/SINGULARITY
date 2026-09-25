@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { balance, type ResearchDef } from "../engine/balance/config";
 import { researchTree, unlockedEpochs, isEpochNode } from "../engine/researchTree";
 import { canBuyResearch, researchAvailable, researchLockedOut, researchCost } from "../engine/actions";
@@ -7,7 +8,7 @@ import { Big } from "../engine/math/Big";
 import type { Derived, GameState } from "../engine/types";
 import { fmt, fmtDur, etaSecs, effRate } from "./format";
 import { burst, punch } from "./fx";
-import { CheckIcon, LockIcon } from "./Icons";
+import { CheckIcon, ChevronIcon, LockIcon } from "./Icons";
 import { ResearchRingIcon, EffectPill } from "./effectVisual";
 import { groupByCategory } from "../engine/researchCategories";
 
@@ -21,6 +22,15 @@ interface Props {
 
 export function ResearchPanel({ game, derived, onResearch, onBuyPreprint }: Props) {
   const isOwned = (id: string) => game.research.includes(id);
+  // Finished categories fold to their header by default. By mid-run the first
+  // groups are all "done", and rendering them as full cards put ~4 screens of
+  // spent nodes above the first one the player could act on.
+  const [openDone, setOpenDone] = useState<ReadonlySet<string>>(() => new Set());
+  const toggleDone = (id: string) => setOpenDone((cur) => {
+    const next = new Set(cur);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
   // Reveal in waves (GDD): show owned/available nodes and the NEXT wave (locked
   // nodes whose prerequisites are owned or already available) — not the whole tree.
   // researchTree() = the base tree PLUS any epoch branch whose Paradigm is owned.
@@ -134,12 +144,37 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint }: Prop
   };
 
   const rest = visible.filter((d) => d.id !== hero?.id);
+  /** A category header; a finished one is a fold toggle, an open one a plain label. */
+  // `whole` is the category's full node list — including the hero card pulled out
+  // above — so a group is only "done" when nothing in it is left to buy.
+  const renderCat = (key: string, name: string, owned: number, total: number, items: Def[], whole: Def[], extraClass = "") => {
+    const done = whole.length > 0 && whole.every((d) => isOwned(d.id) || researchLockedOut(game, d.id));
+    const open = !done || openDone.has(key);
+    return (
+      <div className={`research-cat${extraClass}${done ? " done" : ""}`} key={key}>
+        {done ? (
+          <button className="research-cat-head research-cat-toggle" onClick={() => toggleDone(key)} aria-expanded={open}>
+            <span className="research-cat-name">{name}</span>
+            <span className="research-cat-count"><CheckIcon size={11} /> {owned}/{total}</span>
+            <span className="chevron" aria-hidden="true"><ChevronIcon size={12} dir={open ? "up" : "down"} /></span>
+          </button>
+        ) : (
+          <div className="research-cat-head">
+            <span className="research-cat-name">{name}</span>
+            <span className="research-cat-count">{owned}/{total}</span>
+          </div>
+        )}
+        {open && <div className="research-track">{items.map((def) => renderNode(def))}</div>}
+      </div>
+    );
+  };
   // Group the BASE nodes under themed category headers so the growing tree reads as
   // structured waves instead of a flat wall (legibility subsystem). Epoch nodes have
   // no category — groupByCategory would drop them — and they want their own heading
   // anyway: a branch that was not there last generation should look like one.
   const groups = groupByCategory(rest.filter((d) => !isEpochNode(d.id)), (d) => d.id);
   const visibleIds = new Set(rest.map((d) => d.id));
+  const wholeByCat = new Map(groupByCategory(visible.filter((d) => !isEpochNode(d.id)), (d) => d.id).map((g) => [g.category.id, g.items]));
 
   // Capstone: every node owned or exclusive-locked-out. Maxing the core
   // progression system deserves a beat, not a silent wall of "done" tags.
@@ -215,17 +250,9 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint }: Prop
           {renderNode(hero, true)}
         </div>
       )}
-      {groups.map(({ category, items }) => (
-        <div className="research-cat" key={category.id}>
-          <div className="research-cat-head">
-            <span className="research-cat-name">{category.name}</span>
-            <span className="research-cat-count">{items.filter((d) => isOwned(d.id)).length}/{items.length}</span>
-          </div>
-          <div className="research-track">
-            {items.map((def) => renderNode(def))}
-          </div>
-        </div>
-      ))}
+      {groups.map(({ category, items }) =>
+        renderCat(category.id, category.name, items.filter((d) => isOwned(d.id)).length, items.length, items,
+          wholeByCat.get(category.id) ?? items))}
 
       {/* EPOCHS — research that only exists because a Paradigm is owned. Prestige
           clears research, so the base tree is the same 21 nodes every generation;
@@ -234,17 +261,7 @@ export function ResearchPanel({ game, derived, onResearch, onBuyPreprint }: Prop
       {epochBranches.map(({ epoch, nodes }) => {
         const shown = nodes.filter((d) => visibleIds.has(d.id));
         if (shown.length === 0) return null;
-        return (
-          <div className="research-cat research-epoch" key={epoch}>
-            <div className="research-cat-head">
-              <span className="research-cat-name">{epoch} epoch</span>
-              <span className="research-cat-count">{nodes.filter((d) => isOwned(d.id)).length}/{nodes.length}</span>
-            </div>
-            <div className="research-track">
-              {shown.map((def) => renderNode(def))}
-            </div>
-          </div>
-        );
+        return renderCat(`epoch:${epoch}`, `${epoch} epoch`, nodes.filter((d) => isOwned(d.id)).length, nodes.length, shown, nodes, " research-epoch");
       })}
     </section>
   );

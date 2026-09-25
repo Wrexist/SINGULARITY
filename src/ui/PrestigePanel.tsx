@@ -91,12 +91,17 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
       )}
 
       {!ready && (
-        <div className="progress small">
-          <div className="progress-fill money" style={{ width: `${progress}%` }} />
-          <span className={`progress-label${progress < 50 ? " on-track" : ""}`}>
-            Research {researchedCount}/{balance.research.length} — build the Inference API to ship
-          </span>
-        </div>
+        <>
+          {/* The sentence sits above a slim bar, not inside it: at phone width it
+              wrapped to two lines inside a 24px track and was clipped. */}
+          <p className="ship-gate-label">
+            <span>Build the Inference API to ship</span>
+            <span className="ship-gate-count">Research {researchedCount}/{balance.research.length}</span>
+          </p>
+          <div className="progress slim">
+            <div className="progress-fill money" style={{ width: `${progress}%` }} />
+          </div>
+        </>
       )}
 
       {(repPoints > 0 || repOwned > 0) && (

@@ -87,6 +87,10 @@ export function UpgradePanel({ game, derived, onBuy, onFoundWing }: Props) {
   const repLeft = reputationAvailable(game);
   const wings = hallWings(game);
   const perWing = wingCapacity(game);
+  // A full floor is only a wall when no bigger rack can take a smaller one's slot.
+  // While one can, "full" is the normal next step (upgrade tiers), not an alarm.
+  const canReplace = floorFull && balance.upgrades.some((u) =>
+    isRackId(u.id) && (game.upgrades[u.id] ?? 0) < u.max && !!evictableRackFor(game, u.id));
 
   // Power soft-cap (Phase 2): reveal the meter + power upgrades once the lab
   // actually draws power, so the first session stays clean.
@@ -217,10 +221,12 @@ export function UpgradePanel({ game, derived, onBuy, onFoundWing }: Props) {
   return (
     <section className="panel">
       <h2 className="panel-title">Hardware &amp; Upgrades</h2>
-      <p className={`floor-meter${floorFull ? " full" : ""}`}>
+      <p className={`floor-meter${floorFull && !canReplace ? " full" : ""}`}>
         Floor space: <b>{racks}/{capacity} racks</b>
         {wings > 1 && <span> across {wings} wings</span>}
-        {floorFull && <span> — full. {drawnOut ? "The block is leased out; found a wing." : "Expand the hall to fit more."}</span>}
+        {floorFull && <span> — full. {canReplace
+          ? "Bigger racks now replace your smallest."
+          : drawnOut ? "The block is leased out; found a wing." : "Expand the hall to fit more."}</span>}
       </p>
       {/* Found a wing. Appears only once the floor is genuinely drawn out, so it is
           never a shortcut past the hall you were meant to fill first. Funded with Lab
