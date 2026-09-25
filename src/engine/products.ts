@@ -769,10 +769,38 @@ function retireMaturity(p: ProductState): number {
   return B.retireMaturitySec > 0 ? Math.min(1, (p.ageSec ?? 0) / B.retireMaturitySec) : 1;
 }
 
+/** The paying-subscriber count a sale is valued on: today's count, but never more than
+ *  the steady state the product's CURRENT dials settle to (the same closed-form target
+ *  simulateProducts eases `paid` toward, with the product's live mods). The price and
+ *  Enterprise dials move ARPU instantly while `paid` only drifts (~5%/s), so valuing
+ *  the sale on today's count let a player max the dials and sell in the same frame at
+ *  a revenue rate those dials can't sustain (~3.9× the default-dial payout, ~2× what
+ *  the dials actually earn). A settled product (paid ≈ its steady state) or a growing
+ *  one (paid below it) is valued exactly as before. */
+function settledPaid(p: ProductState, frontier: number, mods: ProductMods): number {
+  const t = typeDef(p.type);
+  const fm = featureMods(p);
+  const qf = clamp(p.quality / Math.max(frontier, 1e-9), 0, 1);
+  const targetPaid = p.mau * tierEconomics(p, t, qf, fm).convRate;
+  const gap = Math.max(0, frontier - p.quality);
+  const churn = t.baseChurn * (1 + gap * B.stalenessChurn) * p.priceMult * (p.buzzSec > 0 ? B.buzzChurnMult : 1) * mods.churn * fm.churn;
+  const k = B.convSpeed + churn;
+  const pStar = k > 0 ? (B.convSpeed * targetPaid) / k : targetPaid;
+  return Math.max(0, Math.min(p.paid, pStar));
+}
+
+/** One valuation for both the sale and the price the UI shows for it. */
+function saleValue(state: GameState, p: ProductState): number {
+  const mods = derive(state).productModsById[p.id] ?? NEUTRAL_MODS;
+  const valued = { ...p, paid: settledPaid(p, state.products.frontier, mods) };
+  const v = productMetrics(valued, state.products.frontier).mrr * B.retireValuationSec * retireMaturity(p);
+  return Number.isFinite(v) ? Math.max(0, v) : 0;
+}
+
 export function retireProduct(state: GameState, id: string): GameState {
   const p = state.products.active.find((x) => x.id === id);
   if (!p) return state;
-  const payout = productMetrics(p, state.products.frontier).mrr * B.retireValuationSec * retireMaturity(p);
+  const payout = saleValue(state, p);
   // Releasing the product frees any employees assigned to it back to the bench.
   const employees = state.employees.some((e) => e.assignedProductId === id)
     ? state.employees.map((e) => (e.assignedProductId === id ? { ...e, assignedProductId: null } : e))
@@ -801,5 +829,5 @@ export function retireProduct(state: GameState, id: string): GameState {
 export function retirePayout(state: GameState, id: string): number {
   const p = state.products.active.find((x) => x.id === id);
   if (!p) return 0;
-  return Math.max(0, productMetrics(p, state.products.frontier).mrr * B.retireValuationSec * retireMaturity(p));
+  return saleValue(state, p);
 }
