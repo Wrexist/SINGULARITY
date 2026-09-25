@@ -69,6 +69,25 @@ describe("product growth does not depend on how the window is sliced", () => {
     expect(gained(s, off) / gained(s, open)).toBeGreaterThan(0.95);
   });
 
+  it("a heavy campaign's reach saturates the same over a short window as frame by frame", () => {
+    // Cost per user climbs with penetration, so a big budget's reach falls within the
+    // window; one straight step over 10 s overshot the open app by ~8%.
+    const s = lab(product("domain", 0, 40_000, 0));
+    const open = live(s, 10_000);
+    const resumed = tick(s, 10_000);
+    expect(users(resumed) / users(open)).toBeLessThan(1.03);
+    expect(users(resumed) / users(open)).toBeGreaterThan(0.97);
+  });
+
+  it("a throttled tab's 1 s frames grow a boosted viral product like 10 Hz frames", () => {
+    const boosted = { ...product("companion", 2_000, 0, PRODUCTS.buzzDurationSec), features: ["mobile", "referral", "localization"] };
+    const s = lab(boosted);
+    let slow = s;
+    for (let t = 0; t < 40; t++) slow = tick(slow, 1000);
+    const open = live(s, 40_000);
+    expect(users(slow) / users(open)).toBeGreaterThan(0.97);
+  });
+
   it("slicing keeps a full day's catch-up of a young portfolio cheap", () => {
     const types = ["companion", "multimodal", "general", "code", "small"] as const;
     const s = lab(product("companion", 10, 50, PRODUCTS.buzzDurationSec));

@@ -183,10 +183,13 @@ export interface ProductsSimResult {
 const MAX_GROWTH_PER_STEP = 0.02;
 /** Hard ceiling on sub-steps per call (bounds a pathological rate). */
 const MAX_PRODUCT_SUBSTEPS = 4000;
-/** Windows up to this long are never sliced: live 10 Hz frames, a throttled
- *  background tab's 1 s frames and the balance sim's product steps keep the exact
- *  single-step arithmetic they were tuned on (like tick.ts's RUN_START_SPLIT_MS). */
-const PRODUCT_SLICE_MIN_SEC = 1;
+/** The fastest-saturating marketing channel's CAC slope multiplier. */
+const MAX_SAT_MULT = Math.max(...B.channels.map((c) => c.satMult));
+/** A window whose relative growth stays under this is one step, exactly as before:
+ *  an ordinary live 10 Hz frame (a buzzing AI Companion grows ~0.01 per frame) and the
+ *  balance sim's 1 s product steps, so neither moves. Only a window that would grow a
+ *  product by more than this in one straight line is sliced. */
+const MAX_SINGLE_STEP_GROWTH = 0.1;
 
 /**
  * How many equal slices a window needs so viral growth compounds instead of being
@@ -196,11 +199,11 @@ const PRODUCT_SLICE_MIN_SEC = 1;
  * launched product came back with ~2.5K users where the app left open had ~8.6M (and
  * the marketing bill for the whole window was still charged). The rate bounded here is
  * per capita, so a product still at 0 users that marketing is seeding counts too.
- * Only windows longer than PRODUCT_SLICE_MIN_SEC are sliced (a resume, the offline
- * catch-up's 5-minute steps); a frame is one step, exactly as before.
+ * Only a window that would grow a product by more than MAX_SINGLE_STEP_GROWTH is
+ * sliced (a resume, the offline catch-up's 5-minute steps, a throttled tab's frame for
+ * a heavily boosted product); an ordinary frame is one step, exactly as before.
  */
 function productSubsteps(ps: ProductsState, seconds: number, modsById: Record<string, ProductMods>): number {
-  if (!(seconds > PRODUCT_SLICE_MIN_SEC)) return 1;
   let rate = 0;
   for (const p of ps.active) {
     const t = typeDef(p.type);
@@ -211,11 +214,18 @@ function productSubsteps(ps: ProductsState, seconds: number, modsById: Record<st
     // climbs, users only arrive), so this bounds every slice. A saturated or stale
     // product needs no slicing at all, which keeps a long offline catch-up cheap.
     const qf = clamp(p.quality / Math.max(ps.frontier, 1e-9), 0, 1);
-    const sat = Math.max(0, 1 - p.mau / (t.tam * fm.tam));
-    const r = t.virality * qf * sat * (p.buzzSec > 0 ? B.buzzAcqMult : 1) * mods.acq * fm.acq;
+    const tam = t.tam * fm.tam;
+    const sat = Math.max(0, 1 - p.mau / tam);
+    const viral = t.virality * qf * sat * (p.buzzSec > 0 ? B.buzzAcqMult : 1) * mods.acq * fm.acq;
+    // Paid acquisition saturates too: its cost per user climbs with penetration, so a
+    // heavy campaign's reach falls within the window. One straight step overshot it.
+    const paid = tam > 0 ? (channelAcq(p, tam) * mods.acq * fm.acq * B.cacSaturation * MAX_SAT_MULT) / tam : 0;
+    const r = viral + paid;
     if (Number.isFinite(r) && r > rate) rate = r;
   }
-  const n = Math.ceil((rate * seconds) / MAX_GROWTH_PER_STEP);
+  const growth = rate * seconds;
+  if (!(growth > MAX_SINGLE_STEP_GROWTH)) return 1;
+  const n = Math.ceil(growth / MAX_GROWTH_PER_STEP);
   return Number.isFinite(n) ? Math.max(1, Math.min(MAX_PRODUCT_SUBSTEPS, n)) : 1;
 }
 
