@@ -260,7 +260,9 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
                       <div className="emp-person-tags">
                         <span className="emp-tag role">{role?.name}</span>
                         {trait && <span className="emp-tag" style={{ color: TRAIT_TONE[trait.tone], background: `color-mix(in srgb, ${TRAIT_TONE[trait.tone]} 12%, #fff)` }}>{trait.name}</span>}
-                        <span className="emp-tag muted">{m$(role?.payroll ?? 0)}/s</span>
+                        {/* The salary this person will draw (role × level × trait), the same
+                            number the roster shows once hired — not the role's base pay. */}
+                        <span className="emp-tag muted">{m$(employeePayroll({ roleId: c.roleId, level: c.level ?? 1, trait: c.trait }))}/s</span>
                       </div>
                     </div>
                     <button className="emp-hire-btn" disabled={!afford || full} onClick={(e) => {

@@ -60,8 +60,9 @@ export function employeeEffectMult(emp: Employee): number {
   return levelEffectMult(emp.level) * (traitDef(emp.trait)?.effectMult ?? 1);
 }
 
-/** A person's salary (Money/sec): role base × level × trait. */
-export function employeePayroll(emp: Employee): number {
+/** A person's salary (Money/sec): role base × level × trait. Takes just the fields
+ *  that set pay, so a recruit card can quote a candidate's real salary before hire. */
+export function employeePayroll(emp: Pick<Employee, "roleId" | "level" | "trait">): number {
   const role = roleDef(emp.roleId);
   if (!role) return 0;
   return role.payroll * levelPayrollMult(emp.level) * (traitDef(emp.trait)?.payrollMult ?? 1);
