@@ -2187,6 +2187,9 @@ button.modchip.workable:active { transform: scale(0.94); }
   cursor: pointer;
   color: var(--ink);
 }
+/* A switch the device holds (Reduced motion under iOS Reduce Motion): readable, inert. */
+.set-row[aria-disabled="true"] { cursor: default; }
+.set-row[aria-disabled="true"] .switch { opacity: 0.55; }
 .set-text { display: flex; flex-direction: column; gap: 2px; }
 .set-label { font-size: var(--fs-lg); font-weight: 700; letter-spacing: -0.01em; }
 .set-hint { font-size: var(--fs-sm); color: var(--ink-2); }

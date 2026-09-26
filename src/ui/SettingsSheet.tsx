@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { useSettings } from "./settings";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useSettings, osReduceMotionNow, onOsReduceMotionChange } from "./settings";
 import { iap, PREMIUM_PRICE } from "./iap";
 import { haptics as hpt } from "./haptics";
 import { sound as snd } from "./sound";
@@ -41,11 +41,21 @@ interface RowProps {
   hint: string;
   value: boolean;
   onToggle: () => void;
+  /** Held by the device (a tap cannot change it): shown, focusable, inert. */
+  locked?: boolean;
 }
 
-function ToggleRow({ label, hint, value, onToggle }: RowProps) {
+/** The Reduced motion switch's state. Motion is reduced when the in-app toggle OR the
+ *  device's Reduce Motion is on (settings.ts `motionReduced`), so while the device asks
+ *  for it the game holds motion still whatever the toggle says: the switch reads on and
+ *  is locked, instead of reading "off" over a still game and flipping to no effect. */
+export function rowState(stored: boolean, os: boolean): { value: boolean; locked: boolean } {
+  return { value: stored || os, locked: os };
+}
+
+function ToggleRow({ label, hint, value, onToggle, locked = false }: RowProps) {
   return (
-    <button className="set-row" onClick={onToggle} role="switch" aria-checked={value}>
+    <button className="set-row" onClick={locked ? undefined : onToggle} role="switch" aria-checked={value} aria-disabled={locked || undefined}>
       <span className="set-text">
         <span className="set-label">{label}</span>
         <span className="set-hint">{hint}</span>
@@ -66,12 +76,15 @@ interface Props {
 /** iOS-style bottom sheet for feel preferences (clean-to-play, GAMEPLAN §8). */
 export function SettingsSheet({ onClose, onReset }: Props) {
   const { sound, music, haptics, hapticsLight, reducedMotion, scientificNotation, notifyReminders, hallTheme, rackSkin, toggle, setHallTheme, setRackSkin, setNotifyReminders } = useSettings();
-  const rows: { key: ToggleKey; label: string; hint: string; value: boolean; hidden?: boolean }[] = [
+  // Live device Reduce Motion (one listener, shared with motion.ts via settings.ts).
+  const osReduced = useSyncExternalStore((fn) => onOsReduceMotionChange(() => fn()), osReduceMotionNow, osReduceMotionNow);
+  const motionRow = rowState(reducedMotion, osReduced);
+  const rows: { key: ToggleKey; label: string; hint: string; value: boolean; hidden?: boolean; locked?: boolean }[] = [
     { key: "sound", label: "Sound effects", hint: "Synthesized taps, claims & ship chimes", value: sound },
     { key: "music", label: "Music", hint: "Ambient bed + era & ship swells", value: music },
     { key: "haptics", label: "Haptics", hint: "Vibration feedback on supported devices", value: haptics },
     { key: "hapticsLight", label: "Lighter haptics", hint: "Same rhythm, half the buzz", value: hapticsLight, hidden: !haptics },
-    { key: "reducedMotion", label: "Reduced motion", hint: "Calm the animations", value: reducedMotion },
+    { key: "reducedMotion", label: "Reduced motion", hint: motionRow.locked ? "On in your device settings" : "Calm the animations", value: motionRow.value, locked: motionRow.locked },
     { key: "scientificNotation", label: "Scientific notation", hint: "1.23e9 instead of 1.23B — for the endgame", value: scientificNotation },
   ];
 
@@ -217,6 +230,7 @@ export function SettingsSheet({ onClose, onReset }: Props) {
               label={r.label}
               hint={r.hint}
               value={r.value}
+              locked={r.locked === true}
               onToggle={() => toggle(r.key)}
             />
           ))}
