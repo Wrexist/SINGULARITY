@@ -43,6 +43,23 @@ function vibrate(pattern: number | number[]): void {
   }
 }
 
+/** A chord's trailing beat, `ms` later. The settings are read again when it lands,
+ *  not when the chord started: turning Haptics off (or Light on) in the ~quarter
+ *  second an epic chord takes used to leave its tail buzzing the hand anyway.
+ *  `style` returns null for a beat Light mode drops. */
+function tail(ms: number, style: (light: boolean) => ImpactStyle | null): void {
+  setTimeout(() => {
+    try {
+      const s = useSettings.getState();
+      if (!s.haptics) return;
+      const st = style(s.hapticsLight);
+      if (st !== null) fire(Haptics.impact({ style: st }));
+    } catch {
+      /* never let feedback break the game */
+    }
+  }, ms);
+}
+
 /** Native path: semantic taps via the Taptic Engine. Light mode steps every
  *  impact down one style so the rhythm survives at a softer intensity. */
 function native(kind: "tap" | "success" | "celebrate" | "epic" | "warn"): void {
@@ -60,14 +77,14 @@ function native(kind: "tap" | "success" | "celebrate" | "epic" | "warn"): void {
       case "celebrate":
         // A success chord: notification + a trailing heavy tap for weight.
         fire(Haptics.notification({ type: NotificationType.Success }));
-        if (!light) setTimeout(() => fire(Haptics.impact({ style: ImpactStyle.Heavy })), 90);
+        tail(90, (l) => (l ? null : ImpactStyle.Heavy));
         break;
       case "epic":
         // The rarest tier (ascension / era crossing / megaproject): a rising
         // three-beat chord so the hand feels the difference from a mere win.
         fire(Haptics.notification({ type: NotificationType.Success }));
-        setTimeout(() => fire(Haptics.impact({ style: light ? ImpactStyle.Medium : ImpactStyle.Heavy })), 110);
-        if (!light) setTimeout(() => fire(Haptics.impact({ style: ImpactStyle.Heavy })), 260);
+        tail(110, (l) => (l ? ImpactStyle.Medium : ImpactStyle.Heavy));
+        tail(260, (l) => (l ? null : ImpactStyle.Heavy));
         break;
       case "warn":
         fire(Haptics.notification({ type: light ? NotificationType.Warning : NotificationType.Error }));
@@ -76,6 +93,24 @@ function native(kind: "tap" | "success" | "celebrate" | "epic" | "warn"): void {
   } catch {
     /* never let feedback break the game */
   }
+}
+
+/** Web path: a vibration pattern plays out on its own once started, so switching
+ *  Haptics off mid-celebration cancels whatever is still buzzing. */
+try {
+  useSettings.subscribe((s, prev) => {
+    if (s.haptics || !prev.haptics) return;
+    try {
+      if (isNative() || typeof navigator === "undefined" || typeof navigator.vibrate !== "function") return;
+      const ua = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
+      if (ua && !ua.hasBeenActive) return;
+      navigator.vibrate(0);
+    } catch {
+      /* never let feedback break the game */
+    }
+  });
+} catch {
+  /* ignore */
 }
 
 const emit = (kind: "tap" | "success" | "celebrate" | "epic" | "warn", pattern: number | number[]): void => {
