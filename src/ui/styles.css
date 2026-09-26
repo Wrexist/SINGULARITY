@@ -2758,6 +2758,14 @@ button.modchip.workable:active { transform: scale(0.94); }
   font-size: var(--fs-sm); font-weight: 700; color: #8b909c; transition: color var(--dur-fast);
 }
 .pd-tab-ic { display: inline-flex; opacity: 0.9; }
+/* On a 320px phone the modal's content box is ~238px: four icon+label tabs need
+   ~290px, so "Upgrades" was cut to a sliver ("U") past the modal edge, and tapping
+   it scrolled the whole (overflow-x: hidden, pan-y only) modal 33px sideways with
+   no way back. The labels alone fit, so drop the icons there. */
+@media (max-width: 359px) {
+  .pd-tab-ic { display: none; }
+  .pd-tab { min-width: 0; }
+}
 .pd-tab.on { color: var(--pd-purple); }
 .pd-tab.on::after {
   content: ""; position: absolute; bottom: -1px; left: 50%; transform: translateX(-50%);
