@@ -199,6 +199,12 @@ svg { vertical-align: middle; }
   margin: 0 auto;
   /* Bottom room for the fixed bottom-nav bar (~64px + its safe-area inset). */
   padding: 0 16px calc(84px + env(safe-area-inset-bottom));
+  /* In landscape the sensor housing sits on a side (59px on a 15 Pro). The 480px
+     phone column clears it by centring, but the iPad split (min-width: 900px) is
+     1008px wide and also kicks in on a Pro Max held sideways (932x430), where the
+     brand, daily-boost bar and the Training dock ran under the Dynamic Island. */
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
 }
 
 /* ---------- Top bar ---------- */
