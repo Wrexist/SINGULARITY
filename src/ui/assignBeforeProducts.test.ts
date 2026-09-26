@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { isValidElement, type ReactElement, type ReactNode } from "react";
 import { EmployeesPanel } from "./EmployeesPanel";
 import { EmptyState } from "./EmptyState";
-import { hookHost, findElements } from "./hookHost";
+import { hookHost, findElements, expand } from "./hookHost";
 import { createInitialState } from "../engine/state";
 import { derive } from "../engine/derive";
 import { productsUnlocked } from "../engine/products";
@@ -31,11 +31,11 @@ const text = (n: ReactNode): string => {
   return "";
 };
 const noop = () => {};
-const render = (host: ReturnType<typeof hookHost>, game: GameState) => host.render(EmployeesPanel, {
+const render = (host: ReturnType<typeof hookHost>, game: GameState) => expand(host.render(EmployeesPanel, {
   game, derived: derive(game), candidates: null,
   onRecruit: noop, onRefresh: noop, onCloseRecruit: noop, onHireCandidate: () => true,
   onTrain: noop, onAssign: noop, onFire: noop, onBuyPerk: noop,
-});
+}), ["RosterRow", "AvailRow", "PersonCard"]) as ReactElement; // reach into the person rows
 const buttons = (tree: ReactElement, label: string) =>
   findElements(tree, (el) => el.type === "button" && text((el.props as { children?: ReactNode }).children).trim() === label);
 

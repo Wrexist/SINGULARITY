@@ -95,6 +95,24 @@ export function hookHost({ runEffects = false }: { runEffects?: boolean } = {}) 
   };
 }
 
+/**
+ * Render the named child components of a tree in place (their output replaces the
+ * element), so a test can reach into rows a parent delegates to. Memo wrappers are
+ * unwrapped. Only for hook-free leaves: they are called as plain functions.
+ */
+export function expand(node: unknown, names: readonly string[]): unknown {
+  if (Array.isArray(node)) return node.map((c) => expand(c, names));
+  if (!node || typeof node !== "object" || !("props" in node)) return node;
+  const el = node as ReactElement;
+  const t = el.type as unknown as { type?: unknown; name?: string };
+  const fn = (typeof t === "object" && t && typeof t.type === "function" ? t.type : t) as ((p: unknown) => unknown) & { name?: string };
+  // (the bundler may suffix a memo'd function's name: `const Row = memo(function Row…)` → "Row2")
+  if (typeof fn === "function" && names.includes((fn.name ?? "").replace(/\d+$/, ""))) return expand(fn(el.props), names);
+  const kids = (el.props as { children?: unknown }).children;
+  if (kids === undefined) return el;
+  return { ...el, props: { ...(el.props as object), children: expand(kids, names) } };
+}
+
 /** Every element in a rendered tree matching `pred`, outermost first. */
 export function findElements(node: unknown, pred: (el: ReactElement) => boolean): ReactElement[] {
   const out: ReactElement[] = [];
