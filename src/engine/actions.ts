@@ -688,7 +688,9 @@ function effectSummary(effect: WorldEventEffect): string {
     return `${sign}${Math.round(effect.pct * 100)}% ${RES_LABEL[effect.resource]}`;
   }
   if (effect.kind === "frontierJump") return "Rivals leap ahead";
-  if (effect.kind === "productBuzz") return `Product buzz · ${effect.durationSec}s`;
+  // No length: each live product rides the wave for durationSec x its type's hype
+  // (18s to 90s for a 60s event), so one number on the card was wrong for most labs.
+  if (effect.kind === "productBuzz") return "Product buzz wave";
   return `${TARGET_LABEL[effect.target]} ×${effect.factor} · ${effect.durationSec}s`;
 }
 
