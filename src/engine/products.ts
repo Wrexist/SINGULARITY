@@ -408,6 +408,13 @@ export function applyMilestones(state: GameState, modsById?: Record<string, Prod
 
 // ---------- Per-product ops events (pure; RNG passed in) ----------
 
+/** Put a product's name into every `{name}` of a line of copy. Some lines name it
+ *  twice, and the name is player-typed: a string `.replace` filled only the first
+ *  slot and read a `$` in the name ("Ca$h Cow") as a replacement pattern. */
+export function fillName(line: string, name: string): string {
+  return line.split("{name}").join(name);
+}
+
 export interface ProductEventResult {
   state: GameState;
   message: string;
@@ -456,7 +463,7 @@ export function maybeProductEvent(
       heat,
       products: { ...ps, active: ps.active.map((x) => (x.id === p.id ? np : x)) },
     },
-    message: ev.message.replace("{name}", p.name),
+    message: fillName(ev.message, p.name),
     tone: ev.tone === "good" ? "good" : "bad",
   };
 }
@@ -513,7 +520,7 @@ export function maybeChurnFlavor(
   const reason = churnReason(p, ps.frontier) as "stale" | "pricey";
   const lines = B.flavor.lines[reason];
   const line = lines[Math.min(lines.length - 1, Math.floor(rollLine * lines.length))]!;
-  return { productId: p.id, productName: p.name, reason, message: line.replace("{name}", p.name) };
+  return { productId: p.id, productName: p.name, reason, message: fillName(line, p.name) };
 }
 
 // ---------- Actions (pure; the store supplies a fresh `id`) ----------
