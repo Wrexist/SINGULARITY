@@ -6,7 +6,7 @@
  *
  * Parametric (dots + text), no image assets, one canvas, rAF sleeps when idle.
  */
-import { motionReduced } from "./settings";
+import { motionReduced, useSettings, onOsReduceMotionChange } from "./settings";
 
 export interface Particle {
   x: number; y: number; vx: number; vy: number;
@@ -42,6 +42,23 @@ function fxDisabled(): boolean {
   // Reading only the stored setting meant turning Reduce Motion on in iOS after install
   // left every burst/floater/punch firing — a CLAUDE.md hard-rule violation.
   return motionReduced();
+}
+
+/** Turning reduced motion on unmounts the FxCanvas mid-flight, and the particles and
+ *  floaters it was drawing stayed in these arrays, frozen. Turning motion back on
+ *  (in-app or in iOS) then replayed that stale spray — a claim burst from minutes
+ *  ago — at its old screen spot on the very next burst. Whatever is queued when
+ *  motion stops is dropped instead: reduced motion degrades to the static end state. */
+function dropIfReduced(): void {
+  if (!motionReduced()) return;
+  particles.length = 0;
+  floaters.length = 0;
+}
+try {
+  useSettings.subscribe(dropIfReduced);
+  onOsReduceMotionChange(dropIfReduced);
+} catch {
+  /* ignore */
 }
 
 /** Radial spray of particles at a screen point. */
