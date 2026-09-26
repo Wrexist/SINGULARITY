@@ -421,9 +421,11 @@ svg { vertical-align: middle; }
 .rep-card.owned .rep-cost { color: var(--ink-3); }
 /* Endgame Endowment block: a distinct, celebratory section below the finished tree. */
 .rep-endowment { margin-top: 12px; padding-top: 10px; border-top: 1px dashed rgba(168, 85, 247, 0.4); }
-.rep-endow-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+/* Wraps: at 320px "Level 38 · +76% all production" ran 61px past the modal's
+   (overflow-x: hidden) edge beside the title, so the effect was cut off. */
+.rep-endow-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 8px; margin-bottom: 6px; }
 .rep-endow-head .card-name { color: #a855f7; font-weight: 850; }
-.rep-endow-lvl { font-size: var(--fs-sm); font-weight: 700; color: var(--ink-3); white-space: nowrap; }
+.rep-endow-lvl { font-size: var(--fs-sm); font-weight: 700; color: var(--ink-3); }
 .rep-directives { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
 .rep-directive-summary { font-size: var(--fs-sm); font-weight: 750; color: var(--ink-3); }
 .rep-directive-respec { font-size: var(--fs-xs); color: var(--ink-3); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
