@@ -130,6 +130,7 @@ export function App() {
   const worldEvent = useGame((s) => s.worldEvent);
   const candidates = useGame((s) => s.candidates);
   const savingFor = useGame((s) => s.savingFor);
+  const saveEpoch = useGame((s) => s.saveEpoch);
   const { doStartRun, doClaim, doBuyUpgrade, doBuyUpgradeBulk, doBuyOfficePerk, doBuyReputationPerk, doBuyEndowment, doFoundWing, doPickDirective, doRespecDirective, doPlaceStake, doBuyLegacyPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
@@ -500,6 +501,28 @@ export function App() {
   // render that lands a Ship counts as busy too: its celebration is only set by the
   // ship effect below, after this one has run.
   const stageBusy = moment !== null || sheetOpen || game.prestige.ships > prevShips.current;
+  // A Hard Reset (or a Restore, before its reload) swaps the whole save under the running
+  // app (the store bumps saveEpoch). Every effect below that diffs the game across renders
+  // must take the new save as its baseline: a restored 7-ship backup is not a Ship, and a
+  // reset lab's market climbs are not measured against the old lab's #1 (nor its unlock
+  // lines already spent). Declared before them so it runs first in the same commit.
+  const epochSeen = useRef(saveEpoch);
+  useEffect(() => {
+    if (epochSeen.current === saveEpoch) return;
+    epochSeen.current = saveEpoch;
+    prevShips.current = game.prestige.ships;
+    prevWeights.current = game.prestige.legacyWeights;
+    prevAscensions.current = game.stats.ascensions;
+    seenEra.current = era;
+    eraShips.current = game.prestige.ships;
+    bestRank.current = myRank;
+    syncedRank.current = myRank != null; // a lab with no product yet baselines on its first
+    prevBadIncidents.current = new Set(game.modifiers.filter(isIncident).map((m) => m.id));
+    toastMemory.current = newTransitionMemory();
+    stepTransitionToasts(transitionToasts, toastMemory.current); // baseline only: fires nothing
+    resetHistory(); // the sparklines belong to the old save
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saveEpoch]);
   useEffect(() => {
     // Wait for the save to hydrate, then sync the "seen" baseline once so we
     // don't toast facts the player already had on a returning load.

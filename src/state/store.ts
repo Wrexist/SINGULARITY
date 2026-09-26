@@ -142,6 +142,12 @@ interface GameStore {
   /** "Save for this": a Compute-walled research node the player pinned, and the
    *  training intensity to restore once it's bought. UI state — never persisted. */
   savingFor: { id: string; prevFocus: number } | null;
+  /** Bumps each time the save is REPLACED under the running app (Restore, Hard Reset).
+   *  The App diffs the game across renders to raise its moments (a Ship, an era, a new
+   *  market rank, the unlock lines); on a bump it re-takes those baselines instead, so a
+   *  restored 7-ship backup is not celebrated as a Ship and a Hard Reset lab is not
+   *  measured against the old lab's best. Transient — never persisted. */
+  saveEpoch: number;
   // lifecycle
   init: () => void;
   dismissWorldEvent: () => void;
@@ -388,6 +394,7 @@ export const useGame = create<GameStore>((set, get) => ({
   claimBurst: 0,
   candidates: null,
   savingFor: null,
+  saveEpoch: 0,
   dismissWorldEvent: () => set({ worldEvent: null }),
   chooseWorldEvent: (choiceIndex) =>
     set((s) => {
@@ -934,7 +941,7 @@ export const useGame = create<GameStore>((set, get) => ({
     }
     // Clear transient UI state too, or a stale world-event card / claim burst
     // could survive into the fresh run.
-    set({ game: createInitialState(), offline: null, event: null, notice: null, worldEvent: null, claimBurst: 0, candidates: null, savingFor: null });
+    set((s) => ({ game: createInitialState(), offline: null, event: null, notice: null, worldEvent: null, claimBurst: 0, candidates: null, savingFor: null, saveEpoch: s.saveEpoch + 1 }));
   },
 
   // ---- Save backup (local-only; the player owns their progress) ----
@@ -967,7 +974,7 @@ export const useGame = create<GameStore>((set, get) => ({
       seedEmpKey(game);
       // Imported game = different world; drop any queued notices about the old one.
       pendingNotices = [];
-      set({ game, offline: null, event: null, notice: null, worldEvent: null, claimBurst: 0, candidates: null, savingFor: null });
+      set((s) => ({ game, offline: null, event: null, notice: null, worldEvent: null, claimBurst: 0, candidates: null, savingFor: null, saveEpoch: s.saveEpoch + 1 }));
       return true;
     } catch {
       if (prevSeen !== undefined) {
