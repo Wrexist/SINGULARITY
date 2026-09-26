@@ -1,5 +1,6 @@
 import type { GameState } from "../engine/types";
 import { trialsBalance, canQueueTrial, trialConditionMet, ladderRung, trialLadders, ladderProgress, trialRewardLabel } from "../engine/trials";
+import { CONDITION_THRESHOLDS, type TrialCondition } from "../engine/balance/trials";
 
 interface Props {
   game: GameState;
@@ -35,9 +36,9 @@ export function TrialsPanel({ game, onStart, onAbandon }: Props) {
             <div className="trial-main">
               <span className="trial-name">{active.name} — running</span>
               <span className="trial-desc">{active.desc}</span>
-              {active.condition === "solo" && (
+              {active.condition && (
                 <span className="trial-status" style={condMet ? undefined : { color: "var(--ink-3)" }}>
-                  Condition: no staff on the roster — {condMet ? "met ✓" : "not met (fire your team to qualify)"}
+                  {conditionLine(active.condition, game, condMet)}
                 </span>
               )}
               <span className="trial-status">
@@ -102,6 +103,21 @@ export function TrialsPanel({ game, onStart, onAbandon }: Props) {
       </div>
     </>
   );
+}
+
+/** The running Trial's condition and whether it holds right now, read from the same
+ *  check the Ship banks on (trialConditionMet). Only Solo Run used to show one: Running
+ *  Hot and Apolitician gave no readout, and the Heat meter rounds 59.5 up to "60%", so a
+ *  player could ship on a "60" that the "60 or higher" check refused and lose the run. */
+function conditionLine(condition: TrialCondition, game: GameState, met: boolean): string {
+  switch (condition) {
+    case "solo":
+      return `Condition: no staff on the roster — ${met ? "met ✓" : "not met (fire your team to qualify)"}`;
+    case "hot":
+      return `Condition: Heat ${CONDITION_THRESHOLDS.hot} or higher when you ship — ${met ? "met ✓" : `not met (Heat ${Math.floor(game.heat)})`}`;
+    case "neutral":
+      return `Condition: alignment inside ±${CONDITION_THRESHOLDS.neutralBand} when you ship — ${met ? "met ✓" : "not met (you have taken a side)"}`;
+  }
 }
 
 /** Trials completed / total — for the Collapsible badge. Counts RUNGS, not ladders:
