@@ -1,14 +1,11 @@
 import type { GameState } from "../engine/types";
-import { trialsBalance, canStartTrial, trialConditionMet, ladderRung, trialLadders, ladderProgress } from "../engine/trials";
-import { canPrestige } from "../engine/prestige";
+import { trialsBalance, canQueueTrial, trialConditionMet, ladderRung, trialLadders, ladderProgress, trialRewardLabel } from "../engine/trials";
 
 interface Props {
   game: GameState;
   onStart: (id: string) => void;
   onAbandon: () => void;
 }
-
-const LANE_LABEL: Record<string, string> = { compute: "Compute", data: "Data", money: "Money" };
 
 /**
  * Prestige Trials — opt-in "constrained training runs". You commit to a Trial early
@@ -21,14 +18,13 @@ const LANE_LABEL: Record<string, string> = { compute: "Compute", data: "Data", m
 export function TrialsPanel({ game, onStart, onAbandon }: Props) {
   const active = game.activeTrial ? trialsBalance.list.find((t) => t.id === game.activeTrial) : null;
   const done = new Set(game.trialsDone);
-  const shippable = canPrestige(game);
 
   return (
     <>
       {/* First-run scaffolding — hide once the player has completed a Trial. */}
       {game.trialsDone.length === 0 && (
         <p className="trials-note">
-          Constrained runs — commit before you can ship, endure the handicap, then bank a permanent edge.
+          Constrained runs — queue one, endure its handicap for your whole next run, then bank a permanent edge.
         </p>
       )}
 
@@ -45,7 +41,7 @@ export function TrialsPanel({ game, onStart, onAbandon }: Props) {
                 </span>
               )}
               <span className="trial-status">
-                Ship the Model {active.condition && !condMet ? "with the condition met " : ""}to bank +{Math.round(active.reward.value * 100)}% {LANE_LABEL[active.reward.lane]}.
+                Ship the Model {active.condition && !condMet ? "with the condition met " : ""}to bank {trialRewardLabel(active)}.
               </span>
             </div>
             <button className="trial-abandon" onClick={onAbandon}>Abandon</button>
@@ -58,14 +54,23 @@ export function TrialsPanel({ game, onStart, onAbandon }: Props) {
           // One card per LADDER, showing the rung it is currently offering. A fully
           // banked ladder falls back to its last rung so the ✓ stays on the wall.
           const rungs = trialsBalance.list.filter((d) => d.ladder === ladder);
-          const t = ladderRung(game, ladder) ?? rungs[rungs.length - 1]!;
+          const current = ladderRung(game, ladder);
+          // The current rung running is shown above; this card then offers the rung
+          // after it, which can be queued now and starts at the Ship that banks this
+          // one (a ladder's last rung has nothing after it, so no card).
+          const t = current && game.activeTrial === current.id
+            ? rungs.find((d) => d.requires === current.id)
+            : current ?? rungs[rungs.length - 1]!;
+          if (!t || game.activeTrial === t.id) return null;
           const prog = ladderProgress(game, ladder);
-          if (game.activeTrial === t.id) return null; // shown above
           const isDone = done.has(t.id);
           const locked = game.prestige.ships < t.unlockShips;
-          const canStart = canStartTrial(game, t.id);
+          // A Trial is endured from a run's first second, so it is always QUEUED for
+          // the next run; the Ship starts it on the fresh lab.
+          const queued = game.queuedTrial === t.id;
+          const canQueue = canQueueTrial(game, t.id);
           return (
-            <div key={ladder} className={`trial-card meta-item ${isDone ? "trial-done" : canStart ? "affordable" : locked ? "locked" : ""}`}>
+            <div key={ladder} className={`trial-card meta-item ${isDone ? "trial-done" : queued ? "affordable" : locked ? "locked" : ""}`}>
               <div className="trial-main">
                 <span className="trial-name">
                   {t.name}{isDone ? " ✓" : ""}
@@ -73,17 +78,23 @@ export function TrialsPanel({ game, onStart, onAbandon }: Props) {
                 </span>
                 <span className="trial-desc">{t.desc}</span>
                 {locked && <span className="trial-req">Unlocks at {t.unlockShips} ships</span>}
-                {!locked && !isDone && !canStart && !game.activeTrial && shippable && (
-                  <span className="trial-req">Start on a fresh run — before you can ship.</span>
-                )}
-                {!locked && !isDone && !canStart && game.activeTrial && (
-                  <span className="trial-req">Finish your active Trial first.</span>
-                )}
+                {queued && <span className="trial-req">Starts with your next run.</span>}
               </div>
               {isDone ? (
                 <span className="trial-owned">banked</span>
               ) : (
-                <button className="trial-attempt" disabled={!canStart} onClick={() => onStart(t.id)}>Attempt</button>
+                <button
+                  className={`trial-attempt ${queued ? "queued" : "next"}`}
+                  disabled={!canQueue && !queued}
+                  aria-pressed={queued}
+                  // Every card ends in this same pill, so its name says WHICH Trial it
+                  // queues (the text alone read "Next run" once per ladder). Steady
+                  // across states; aria-pressed carries queued / not queued.
+                  aria-label={`Queue ${t.name} for your next run`}
+                  onClick={() => onStart(t.id)}
+                >
+                  {queued ? "Queued ✓" : "Next run"}
+                </button>
               )}
             </div>
           );

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useSettings } from "./settings";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useSettings, osReduceMotionNow, onOsReduceMotionChange } from "./settings";
 import { iap, PREMIUM_PRICE } from "./iap";
 import { haptics as hpt } from "./haptics";
 import { sound as snd } from "./sound";
@@ -16,6 +16,7 @@ import { telemetryEnabled, setTelemetryEnabled, getTelemetryEvents, clearTelemet
 import { gameCenterAvailable, gameCenterShowLeaderboards } from "./gameCenter";
 import { summarize } from "../engine/telemetry";
 import { eraName } from "../engine/eras";
+import { useDialog } from "./useDialog";
 
 /** mm:ss for a duration in seconds (telemetry display). */
 function fmtDur(sec: number): string {
@@ -40,11 +41,21 @@ interface RowProps {
   hint: string;
   value: boolean;
   onToggle: () => void;
+  /** Held by the device (a tap cannot change it): shown, focusable, inert. */
+  locked?: boolean;
 }
 
-function ToggleRow({ label, hint, value, onToggle }: RowProps) {
+/** The Reduced motion switch's state. Motion is reduced when the in-app toggle OR the
+ *  device's Reduce Motion is on (settings.ts `motionReduced`), so while the device asks
+ *  for it the game holds motion still whatever the toggle says: the switch reads on and
+ *  is locked, instead of reading "off" over a still game and flipping to no effect. */
+export function rowState(stored: boolean, os: boolean): { value: boolean; locked: boolean } {
+  return { value: stored || os, locked: os };
+}
+
+function ToggleRow({ label, hint, value, onToggle, locked = false }: RowProps) {
   return (
-    <button className="set-row" onClick={onToggle} role="switch" aria-checked={value}>
+    <button className="set-row" onClick={locked ? undefined : onToggle} role="switch" aria-checked={value} aria-disabled={locked || undefined}>
       <span className="set-text">
         <span className="set-label">{label}</span>
         <span className="set-hint">{hint}</span>
@@ -58,21 +69,35 @@ function ToggleRow({ label, hint, value, onToggle }: RowProps) {
 
 interface Props {
   onClose: () => void;
+  /** Ask App to confirm a hard reset (the confirm sheet lives there). */
+  onReset: () => void;
 }
 
 /** iOS-style bottom sheet for feel preferences (clean-to-play, GAMEPLAN §8). */
-export function SettingsSheet({ onClose }: Props) {
+export function SettingsSheet({ onClose, onReset }: Props) {
   const { sound, music, haptics, hapticsLight, reducedMotion, scientificNotation, notifyReminders, hallTheme, rackSkin, toggle, setHallTheme, setRackSkin, setNotifyReminders } = useSettings();
-  const rows: { key: ToggleKey; label: string; hint: string; value: boolean; hidden?: boolean }[] = [
+  // Live device Reduce Motion (one listener, shared with motion.ts via settings.ts).
+  const osReduced = useSyncExternalStore((fn) => onOsReduceMotionChange(() => fn()), osReduceMotionNow, osReduceMotionNow);
+  const motionRow = rowState(reducedMotion, osReduced);
+  const rows: { key: ToggleKey; label: string; hint: string; value: boolean; hidden?: boolean; locked?: boolean }[] = [
     { key: "sound", label: "Sound effects", hint: "Synthesized taps, claims & ship chimes", value: sound },
     { key: "music", label: "Music", hint: "Ambient bed + era & ship swells", value: music },
     { key: "haptics", label: "Haptics", hint: "Vibration feedback on supported devices", value: haptics },
     { key: "hapticsLight", label: "Lighter haptics", hint: "Same rhythm, half the buzz", value: hapticsLight, hidden: !haptics },
-    { key: "reducedMotion", label: "Reduced motion", hint: "Calm the animations", value: reducedMotion },
+    { key: "reducedMotion", label: "Reduced motion", hint: motionRow.locked ? "On in your device settings" : "Calm the animations", value: motionRow.value, locked: motionRow.locked },
     { key: "scientificNotation", label: "Scientific notation", hint: "1.23e9 instead of 1.23B — for the endgame", value: scientificNotation },
   ];
 
+  const sheetRef = useRef<HTMLDivElement>(null);
+  useDialog(sheetRef, { onClose, labelledBy: "settings-title" });
+
   const [premium, setPremiumState] = useState(iap.isPremium());
+  const [price, setPrice] = useState(PREMIUM_PRICE);
+  useEffect(() => {
+    let live = true;
+    void iap.priceLabel().then((p) => { if (live) setPrice(p); });
+    return () => { live = false; };
+  }, []);
   // Cosmetic collection (R6.3): unlocks are derived from monotonic lifetime stats, so
   // a one-shot read at render is enough (no need to re-check at 10Hz while the sheet is open).
   const game = useGame.getState().game;
@@ -163,13 +188,13 @@ export function SettingsSheet({ onClose }: Props) {
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet" onClick={(e) => e.stopPropagation()}>
+      <div ref={sheetRef} className="sheet" role="dialog" aria-modal="true" aria-labelledby="settings-title" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-grip" />
         {/* Sticky header: the ✕ stays reachable however deep the sheet is
             scrolled (the Done button lives at the very bottom — "can't close
             the settings easily" was an on-device owner report). */}
         <div className="sheet-head">
-          <h2 className="sheet-title">Settings</h2>
+          <h2 id="settings-title" className="sheet-title" tabIndex={-1}>Settings</h2>
           <button className="sheet-close" onClick={onClose} aria-label="Close settings">✕</button>
         </div>
 
@@ -177,7 +202,7 @@ export function SettingsSheet({ onClose }: Props) {
         <div className={`premium-card ${premium ? "owned" : ""}`}>
           <div className="premium-head">
             <span className="premium-title">✦ Premium {premium && <span className="premium-badge">Founder</span>}</span>
-            {!premium && <span className="premium-price">{PREMIUM_PRICE}</span>}
+            {!premium && <span className="premium-price">{price}</span>}
           </div>
           <ul className="premium-perks">
             <li>{balance.offline.premiumMaxHours}-hour offline cap (up from {balance.offline.maxHours}h)</li>
@@ -189,7 +214,7 @@ export function SettingsSheet({ onClose }: Props) {
           ) : (
             <div className="premium-actions">
               <button className="btn btn-primary" disabled={busy} onClick={buy}>
-                {busy ? "…" : `Unlock ${PREMIUM_PRICE}`}
+                {busy ? "…" : `Unlock ${price}`}
               </button>
               <button className="link-btn" disabled={busy} onClick={restore}>
                 Restore
@@ -205,6 +230,7 @@ export function SettingsSheet({ onClose }: Props) {
               label={r.label}
               hint={r.hint}
               value={r.value}
+              locked={r.locked === true}
               onToggle={() => toggle(r.key)}
             />
           ))}
@@ -312,10 +338,14 @@ export function SettingsSheet({ onClose }: Props) {
                 <button className="btn btn-ghost btn-sm" onClick={() => { setImportText(""); setStatus(null); setExportText(""); }}>Clear</button>
               </div>
               {exportText && <textarea className="set-backup-text" readOnly rows={3} value={exportText} onFocus={(e) => e.currentTarget.select()} />}
-              <label className="set-backup-label">Restore from a backup</label>
-              <textarea className="set-backup-text" rows={3} placeholder="Paste a backup string here…" value={importText} onChange={(e) => setImportText(e.target.value)} />
+              <label className="set-backup-label" htmlFor="set-restore-text">Restore from a backup</label>
+              <textarea id="set-restore-text" className="set-backup-text" rows={3} placeholder="Paste a backup string here…" value={importText} onChange={(e) => setImportText(e.target.value)} />
               <button className="btn btn-primary btn-sm" disabled={!importText.trim()} onClick={doImport}>Restore this backup</button>
               {status && <p className="set-backup-status">{status}</p>}
+              {/* Wiping the save used to be a link in the footer of EVERY tab, one
+                  stray tap from the thing the player cares most about. It lives
+                  here now, next to the backup that makes it recoverable. */}
+              <button className="btn btn-ghost btn-sm set-reset" onClick={onReset}>Start over from scratch…</button>
             </div>
           )}
         </div>

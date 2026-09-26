@@ -64,7 +64,10 @@ export function summarizeWindow(
   const applied = Number.isFinite(appliedMs) ? Math.max(0, appliedMs) : 0;
   const hadAchievements = new Set(before.achievements);
   const hadMilestones = new Set(before.products.milestones);
-  const wasUpgrading = new Map(before.products.active.map((p) => [p.id, !!p.upgrade]));
+  // By version, not by "was upgrading, now isn't": the Version Autopilot runs between a
+  // catch-up's steps, so a version can start and ship inside the window, or ship with
+  // the next one already under way.
+  const versionBefore = new Map(before.products.active.map((p) => [p.id, p.version]));
   const wasTraining = new Map(before.employees.map((e) => [e.id, !!e.training]));
   return {
     elapsedMs: elapsed,
@@ -80,7 +83,7 @@ export function summarizeWindow(
     story: {
       milestones: after.products.milestones.filter((id) => !hadMilestones.has(id)),
       upgradesFinished: after.products.active
-        .filter((p) => wasUpgrading.get(p.id) && !p.upgrade)
+        .filter((p) => p.version > (versionBefore.get(p.id) ?? Infinity))
         .map((p) => ({ name: p.name, version: p.version })),
       leveledUp: after.employees
         .filter((e) => wasTraining.get(e.id) && !e.training)
@@ -89,6 +92,39 @@ export function summarizeWindow(
       rankAfter: playerMarketRank(after),
       eraBefore: currentEra(before),
       eraAfter: currentEra(after),
+    },
+  };
+}
+
+/**
+ * Fold a later window into a recap that is still on screen — PURE. The player can
+ * read the recap, lock the phone without collecting, and come back hours later;
+ * the loop credits that second window like any other, so the open recap has to
+ * cover it too or its gains (and its unlocks) go unreported. Totals add, the
+ * lists join without repeats, and the story runs from where the lab stood before
+ * the first window to where it stands after the last.
+ */
+export function extendSummary(open: OfflineSummary, next: OfflineSummary): OfflineSummary {
+  const join = (a: string[], b: string[]) => [...a, ...b.filter((id) => !a.includes(id))];
+  return {
+    elapsedMs: open.elapsedMs + next.elapsedMs,
+    appliedMs: open.appliedMs + next.appliedMs,
+    capped: open.capped || next.capped,
+    gained: {
+      compute: open.gained.compute.add(next.gained.compute),
+      data: open.gained.data.add(next.gained.data),
+      money: open.gained.money.add(next.gained.money),
+    },
+    achievementsUnlocked: join(open.achievementsUnlocked, next.achievementsUnlocked),
+    reputationEarned: open.reputationEarned + next.reputationEarned,
+    story: {
+      milestones: join(open.story.milestones, next.story.milestones),
+      upgradesFinished: [...open.story.upgradesFinished, ...next.story.upgradesFinished],
+      leveledUp: [...open.story.leveledUp, ...next.story.leveledUp],
+      rankBefore: open.story.rankBefore,
+      rankAfter: next.story.rankAfter,
+      eraBefore: open.story.eraBefore,
+      eraAfter: next.story.eraAfter,
     },
   };
 }

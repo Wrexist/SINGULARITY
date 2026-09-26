@@ -1,9 +1,10 @@
-Nytt i den här uppdateringen:
+I den här uppdateringen:
 
-• Grand Challenges — moonshots med lång horisont och permanenta belöningar.
-• Lab Objectives — en helt ny målstege som räcker långt in i slutspelet.
-• Automation — autopiloter som sköter rutinjobben.
-• Ett vägskäl i forskningsträdet varje runda och mer levande framstegsgrafik.
-• Butikssidan är nu på svenska. Trevligt att träffas.
+• Nytt varje generation: ta ställning med en Stance (Safety, Center eller Acceleration) och lås upp den sidans Doctrine-förmåner. Varje Ship delar dessutom ut tre Lab Charters, och vissa av dem ändrar själva reglerna.
+• Unplugged Trials: stäng av Legacy under en generation och spela en hel runda från noll igen. Dina Compute-rekord ger nu Lab Reputation.
+• Tydligare mål: du ser alltid nästa steg, och när det verkligen lönar sig att shippa.
+• ”Spara till det här”: tryck på forskning utom räckhåll så sparar labbet ihop Compute och köper den åt dig.
+• Lugnare: bara riktiga beslut avbryter dig, resten rullar i nyhetsflödet. Bättre stöd för VoiceOver och större tryckytor.
+• Smidigare på äldre iPhone, korrekt offlinetid och över 60 buggfixar.
 
-Dessutom balans- och stabilitetsfixar. Fortfarande inga annonser. Fortfarande ingen pay-to-win.
+Fortfarande inga annonser. Fortfarande ingen pay-to-win.

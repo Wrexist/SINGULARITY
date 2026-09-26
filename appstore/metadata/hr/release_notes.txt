@@ -1,10 +1,10 @@
-Ova nadogradnja donosi:
+U ovom ažuriranju:
 
-• Veliki izazovi — dugoročni moonshotovi s trajnim nagradama.
-• Ciljevi laboratorija — novi niz zadataka koji seže duboko u endgame.
-• Automatizacija — autopiloti preuzimaju sitne poslove, tebi ostaje vizija.
-• Račvanje istraživanja u svakoj partiji i življi vizualni prikaz napretka.
-• Stranica u App Storeu sada je na hrvatskom — izvoli.
-• Uz to i popravci balansa i stabilnosti.
+• Novo u svakoj generaciji: odaberite Stance (Safety, Center ili Acceleration) i otključajte Doctrine pogodnosti te strane. Svaki Ship usto dijeli tri karte Lab Charter, među njima i one koje mijenjaju pravila igre.
+• Unplugged Trials: isključite Legacy na jednu generaciju i ponovno odigrajte cijelu igru od nule. Vaši Compute rekordi sada donose Lab Reputation.
+• Jasniji ciljevi: uvijek vidite sljedeći korak i kada se Ship stvarno isplati.
+• „Štedi za ovo”: dodirnite nedostižno istraživanje i laboratorij će sam skupiti Compute za njega i kupiti ga umjesto vas.
+• Više mira: prekidaju vas samo prave odluke, ostalo ide na traku vijesti. Bolje radi s VoiceOverom i ima veće dodirne površine.
+• Glađe na starijim iPhoneima, točno vrijeme izvan mreže i više od 60 ispravaka.
 
-I dalje bez reklama. I dalje bez pay-to-wina.
+I dalje bez oglasa. I dalje bez pay-to-win.

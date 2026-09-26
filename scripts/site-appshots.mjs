@@ -22,7 +22,7 @@ async function run() {
       const s = SCENES[i];
       const app = await browser.newPage({ viewport: { width: 402, height: 874 }, deviceScaleFactor: 3 });
       try {
-      await app.addInitScript(() => localStorage.setItem("singularity.settings.v1", JSON.stringify({ sound: true, haptics: true, reducedMotion: true, onboarded: true })));
+      await app.addInitScript(() => localStorage.setItem("singularity.settings.v1", JSON.stringify({ sound: true, haptics: true, reducedMotion: true, onboarded: true, shipExplained: true })));
       await app.addInitScript(([save, now]) => {
         localStorage.setItem("singularity.save.v1", save);
         localStorage.setItem("singularity.lastSeen.v1", now);
@@ -51,11 +51,17 @@ async function run() {
         if (t) await app.mouse.click(t.x, t.y);
         await sleep(400);
       } else if (s.nav?.startsWith("scroll:")) {
-        await app.getByText(s.nav.slice(7)).first().scrollIntoViewIfNeeded().catch(() => {});
+        // Same navigation as store-screenshots.mjs: the Data Market lives in Research.
+        if (s.section) await app.locator(`.labnav .tab:has-text("${s.section}")`).first().click({ timeout: 2000 }).catch(() => {});
+        await sleep(300);
+        await app.getByText(s.nav.slice(7)).first().scrollIntoViewIfNeeded({ timeout: 3000 }).catch(() => {});
         await sleep(300);
       } else if (s.nav === "shipOpen") {
+        // The Ship panel lives in the Lab's HQ section.
+        await app.locator('.labnav .tab:has-text("HQ")').first().click({ timeout: 2000 }).catch(() => {});
+        await sleep(300);
         const b = app.getByRole("button", { name: /^Ship —/ });
-        for (let a = 0; a < 3; a++) { await b.scrollIntoViewIfNeeded().catch(() => {}); await b.click().catch(() => {}); await app.waitForSelector(".ship-mode", { timeout: 3000 }).catch(() => {}); if (await app.locator(".ship-mode").count().catch(() => 0)) break; await sleep(250); }
+        for (let a = 0; a < 3; a++) { await b.scrollIntoViewIfNeeded({ timeout: 2000 }).catch(() => {}); await b.click({ timeout: 2000 }).catch(() => {}); await app.waitForSelector(".ship-mode", { timeout: 3000 }).catch(() => {}); if (await app.locator(".ship-mode").count().catch(() => 0)) break; await sleep(250); }
         await sleep(300);
       } else if (s.nav === "settings") {
         await app.getByRole("button", { name: "Settings" }).click().catch(() => {});

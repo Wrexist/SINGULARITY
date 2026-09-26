@@ -56,18 +56,54 @@ export function ladderProgress(state: GameState, ladder: string): { done: number
   return { done: rungs.filter((d) => state.trialsDone.includes(d.id)).length, total: rungs.length };
 }
 
-/** Can the player START this Trial right now? The key rule (anti-cheese): you may
- *  only commit BEFORE the run is shippable, so the handicap is endured for a full
- *  generation rather than switched on the instant before a ship. */
+/** Could this Trial start on this state? Used by the Ship on the FRESH lab it just
+ *  built (trialToStartAtShip). The rule (anti-cheese): a Trial is endured from a
+ *  run's first second. It used to start any time before the run was shippable, which
+ *  let a player play a whole run unconstrained, stop one node short of the
+ *  capability research, Attempt, buy that node and bank the reward after zero
+ *  seconds of the handicap (Unplugged's free product slot, 2026-09 bug hunt). Even
+ *  "research 0" wasn't enough: a player could sit there banking a Legacy-on
+ *  stockpile first. So the player only ever QUEUES a Trial (queueTrial); the Ship
+ *  starts it on the untouched fresh lab. */
 export function canStartTrial(state: GameState, id: string): boolean {
+  if (!trialEligible(state, id, false)) return false;
+  if (state.activeTrial) return false; // one at a time
+  if (state.research.length > 0 || isShippable(state)) return false; // a fresh run only
+  return true;
+}
+
+/** The parts of the gate that don't depend on the run's timing. `pendingBank` lets a
+ *  queue name the next rung of a ladder whose current rung is running right now (it
+ *  banks at the same Ship that starts the queued one). */
+function trialEligible(state: GameState, id: string, pendingBank: boolean): boolean {
   const d = BY_ID.get(id);
   if (!d || !T.enabled) return false;
-  if (state.activeTrial) return false; // one at a time
   if (state.trialsDone.includes(id)) return false; // one-time reward
-  if (d.requires && !state.trialsDone.includes(d.requires)) return false; // climb the ladder in order
+  if (d.requires && !state.trialsDone.includes(d.requires)
+    && !(pendingBank && state.activeTrial === d.requires)) return false; // climb the ladder in order
   if (state.prestige.ships < d.unlockShips) return false;
-  if (isShippable(state)) return false; // must commit early, on a fresh/building run
   return true;
+}
+
+/** Can the player queue this Trial for the next run? Any time a Trial could not start
+ *  right now, as long as it could plausibly start at the next Ship. */
+export function canQueueTrial(state: GameState, id: string): boolean {
+  if (state.activeTrial === id) return false;
+  return trialEligible(state, id, true);
+}
+
+/** Queue a Trial for the next run, or clear the queue (same id again, or null). Pure. */
+export function queueTrial(state: GameState, id: string | null): GameState {
+  if (id === null || state.queuedTrial === id) return state.queuedTrial === null ? state : { ...state, queuedTrial: null };
+  if (!canQueueTrial(state, id)) return state;
+  return { ...state, queuedTrial: id };
+}
+
+/** The Trial a Ship should start on the fresh lab: the queued one, if it can start
+ *  there (checked against the post-ship ships count and banked Trials). Else null. */
+export function trialToStartAtShip(fresh: GameState, queued: string | null): string | null {
+  if (!queued) return null;
+  return canStartTrial({ ...fresh, activeTrial: null, research: [] }, queued) ? queued : null;
 }
 
 /** Commit to a Trial for this run. Pure; no-op if not allowed. */
@@ -129,7 +165,49 @@ export function trialMods(state: GameState): { computeMult: number; dataMult: nu
   // Permanent rewards from completed Trials.
   for (const id of state.trialsDone) {
     const d = BY_ID.get(id);
-    if (d) apply(d.reward.lane, 1 + d.reward.value);
+    if (d?.reward) apply(d.reward.lane, 1 + d.reward.value);
   }
   return { computeMult, dataMult, moneyMult };
+}
+
+/** Is Legacy switched off for this run (an Unplugged Trial is active)? derive reads
+ *  the Legacy multiplier and the Legacy Investment lanes as ×1 while it is. */
+export function legacyUnplugged(state: GameState): boolean {
+  return trialUnplugsLegacy(state.activeTrial);
+}
+
+/** Does this Trial switch Legacy off for the run it constrains? */
+export function trialUnplugsLegacy(id: string | null): boolean {
+  if (!T.enabled || !id) return false;
+  return BY_ID.get(id)?.unplug === "legacy";
+}
+
+/** Sum a non-lane bonus over every banked Trial. */
+function bankedBonus(state: GameState, key: "productSlots" | "rep"): number {
+  if (!T.enabled) return 0;
+  let n = 0;
+  for (const id of state.trialsDone) n += BY_ID.get(id)?.bonus?.[key] ?? 0;
+  return n;
+}
+
+/** Extra concurrent product slots banked from Trials (Unplugged I). */
+export function trialBonusProductSlots(state: GameState): number {
+  return bankedBonus(state, "productSlots");
+}
+
+/** Lab Reputation banked from Trials (Unplugged II); folded into earnedReputation. */
+export function trialBonusRep(state: GameState): number {
+  return bankedBonus(state, "rep");
+}
+
+const LANE_WORD: Record<string, string> = { compute: "Compute", data: "Data", money: "Money" };
+
+/** What banking this Trial pays, as the short phrase the panel shows after "bank". */
+export function trialRewardLabel(d: TrialDef): string {
+  const parts: string[] = [];
+  if (d.reward) parts.push(`+${Math.round(d.reward.value * 100)}% ${LANE_WORD[d.reward.lane]}`);
+  const slots = d.bonus?.productSlots ?? 0;
+  if (slots > 0) parts.push(`+${slots} product slot${slots === 1 ? "" : "s"}`);
+  if (d.bonus?.rep) parts.push(`+${d.bonus.rep} Lab Reputation`);
+  return parts.join(" and ");
 }

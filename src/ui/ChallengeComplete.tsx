@@ -1,7 +1,8 @@
-import { useEffect } from "react";
+import { useRef } from "react";
 import type { GrandChallenge } from "../engine/balance/challenges";
 import { iconFor } from "./iconRegistry";
 import { GiftIcon } from "./Icons";
+import { useDialog } from "./useDialog";
 
 interface Props {
   challenge: GrandChallenge;
@@ -13,20 +14,21 @@ interface Props {
  *  reads as a genuine milestone, not a toast. Tap anywhere / Escape / the button to dismiss. */
 export function ChallengeComplete({ challenge, onDone }: Props) {
   // Escape dismisses, matching every other modal (ReputationModal, ProductDetail, …).
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onDone(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onDone]);
+  const ref = useRef<HTMLDivElement>(null);
+  useDialog(ref, { onClose: onDone, labelledBy: "challenge-complete-title" });
 
   return (
     <div className="modal-backdrop era-backdrop" onClick={onDone}>
-      <div className="modal era-modal challenge-complete" role="dialog" aria-modal="true" aria-labelledby="challenge-complete-title" onClick={(e) => e.stopPropagation()}>
+      <div ref={ref} className="modal era-modal challenge-complete" role="dialog" aria-modal="true" aria-labelledby="challenge-complete-title" onClick={(e) => e.stopPropagation()}>
         <div className="era-kicker">GRAND CHALLENGE COMPLETE</div>
         <div className="challenge-complete-icon" aria-hidden="true">{iconFor(challenge.icon, 52)}</div>
-        <h2 className="era-title" id="challenge-complete-title">{challenge.name}</h2>
+        <h2 className="era-title" id="challenge-complete-title" tabIndex={-1}>{challenge.name}</h2>
         <div className="era-press">
-          <span className="era-press-tag"><GiftIcon size={14} /> {challenge.reward.desc}</span>
+          {/* A forked moonshot grants nothing until an arm is picked on its card, and
+              the arms differ — so name the choice rather than promise the preview. */}
+          <span className="era-press-tag"><GiftIcon size={14} /> {challenge.forks
+            ? `Choose your reward: ${challenge.forks[0].label} or ${challenge.forks[1].label}`
+            : challenge.reward.desc}</span>
           <p>{challenge.lore}</p>
         </div>
         <button className="btn btn-primary" onClick={onDone}>Onward</button>

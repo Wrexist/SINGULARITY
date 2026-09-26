@@ -1,4 +1,5 @@
 import { balance } from "../engine/balance/config";
+import { alignmentHeatMult } from "../engine/alignment";
 import { canBuyDataOffer, canBuyUpgrade, upgradeCost, effectiveRaidChance, canLobby, lobbyCost } from "../engine/actions";
 import { Big } from "../engine/math/Big";
 import type { GameState } from "../engine/types";
@@ -66,7 +67,7 @@ export function DataMarketPanel({ game, onBuyData, onBuyTool, onLobby }: Props) 
                 <span className="card-desc">{o.desc}</span>
               </div>
               <div className="card-cost">
-                <span style={{ color: "var(--data)" }}>+{fmt(Big.of(o.data))} data</span>
+                <span style={{ color: "var(--data-ink)" }}>+{fmt(Big.of(o.data))} data</span>
                 <span className="cost-sub">{fmtMoney(Big.of(o.cost))}</span>
               </div>
             </button>
@@ -104,11 +105,11 @@ export function DataMarketPanel({ game, onBuyData, onBuyTool, onLobby }: Props) 
                 </span>
                 <span className="card-desc">{o.desc}</span>
                 <span className="risk-line">
-                  <SkullIcon size={13} /> {Math.round(risk.poisonChance * 100)}% poison · <AlertTriangleIcon size={13} /> {raidPct}% raid · +{o.heat} heat
+                  <SkullIcon size={13} /> {Math.round(risk.poisonChance * 100)}% poison · <AlertTriangleIcon size={13} /> {raidPct}% raid · +{Math.round(o.heat * alignmentHeatMult(game) * 10) / 10} heat
                 </span>
               </div>
               <div className="card-cost">
-                <span style={{ color: "var(--data)" }}>~+{fmt(Big.of(o.data))} data</span>
+                <span style={{ color: "var(--data-ink)" }}>~+{fmt(Big.of(o.data))} data</span>
                 <span className="cost-sub">{fmtMoney(Big.of(o.cost))}</span>
               </div>
             </button>
@@ -137,7 +138,7 @@ export function DataMarketPanel({ game, onBuyData, onBuyTool, onLobby }: Props) 
                 <span className="card-desc">{upgradeFlavor(def.id, owned, def.desc)}</span>
               </div>
               <div className="card-cost">
-                <span style={{ color: "var(--money)" }}>{fmtMoney(cost)}</span>
+                <span style={{ color: "var(--money-ink)" }}>{fmtMoney(cost)}</span>
               </div>
             </button>
           );

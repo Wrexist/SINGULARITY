@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { useGame } from "../state/store";
 import { useSettings } from "./settings";
 import { reduceMotionNow } from "./motion";
@@ -6,7 +6,7 @@ import { haptics } from "./haptics";
 import { sound } from "./sound";
 import { floatText } from "./fx";
 import { buildHallModel, buildSkyline, heatCrateCount, POWER_IDS } from "../render/hallModel";
-import { drawHallStatic, drawHallDynamic, expansionMarkers, rackHitAreas, pointInPoly, agentSpots, chenSpot, dayPhase, type RackHit, type AgentSpot } from "../render/hallRenderer";
+import { drawHallStatic, drawHallDynamic, expansionMarkers, rackHitAreas, rackAtPoint, spawnFromOnChange, pointInPoly, agentSpots, chenSpot, dayPhase, type RackHit, type AgentSpot } from "../render/hallRenderer";
 import { currentEra, eraName } from "../engine/eras";
 import { hallRooms, hallWings, wingCapacity } from "../engine/hall";
 import { regulatorState } from "../engine/regulator";
@@ -29,7 +29,7 @@ const BUZZ_WINDOW_SEC = PRODUCTS_BAL.buzzDurationSec;
  * the room. Buying a rack manifests it here — the load-bearing dopamine (GDD §5).
  * DPR-aware, pauses when the tab is hidden, and honors reduced-motion.
  */
-export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
+function HallCanvasImpl({ onExpand }: { onExpand: (id: string) => void }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // Keep the latest callback reachable from the (mount-only) pointer handler.
@@ -128,6 +128,7 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
     const FRAME_MS = 1000 / 30;
     let lastDraw = -1e9;
     let prevTotal = 0;
+    let prevWing = 0;
     let spawnFrom = 0;
     let spawnStart = -1e9;
     const SPAWN_MS = 440;
@@ -169,11 +170,15 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
     // Seed from the hydrated hall so a saved lab doesn't replay the whole
     // spawn animation as if every owned rack were brand-new on first open.
     prevTotal = model.total;
+    prevWing = model.wing;
 
     const resize = () => {
-      const rect = wrap.getBoundingClientRect();
-      cssW = Math.max(1, rect.width);
-      cssH = Math.max(1, rect.height);
+      // Layout size, not getBoundingClientRect: the stage's entry animation has the
+      // hall mid-scale (0.985) on a cold boot, and a transform never fires the
+      // ResizeObserver — so the shrunken size used to stick, leaving a light strip
+      // down the right and bottom edges. clientWidth also excludes the 1px border.
+      cssW = Math.max(1, wrap.clientWidth);
+      cssH = Math.max(1, wrap.clientHeight);
       dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.round(cssW * dpr);
       canvas.height = Math.round(cssH * dpr);
@@ -205,7 +210,7 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       // pulses, monetize → golden beam glint) MUST be in the signature, else buying
       // them rebuilds nothing and the lab looks unchanged (2026-07: they were modeled
       // but omitted here, so a common buy like Overclock felt inert).
-      const sig = `${u.rack_basic ?? 0}|${u.rack_server ?? 0}|${u.rack_tpu ?? 0}|${u.expand_n ?? 0}|${u.expand_s ?? 0}|${u.expand_e ?? 0}|${u.expand_w ?? 0}|${u.overclock ?? 0}|${u.auto_train ?? 0}|${u.data_pipeline ?? 0}|${u.batching ?? 0}|${u.monetize ?? 0}|${powerSig}|${game.run.active ? 1 : 0}|${game.products.active.length}|${currentEra(game)}|${regulatorState(game).index}|${game.charter ?? ""}|${game.shipLog.length}|${wingRef.current}|${game.facilityWings}|${incSig}`;
+      const sig = `${u.rack_basic ?? 0}|${u.rack_server ?? 0}|${u.rack_tpu ?? 0}|${u.expand_n ?? 0}|${u.expand_s ?? 0}|${u.expand_e ?? 0}|${u.expand_w ?? 0}|${u.overclock ?? 0}|${u.auto_train ?? 0}|${u.data_pipeline ?? 0}|${u.batching ?? 0}|${u.monetize ?? 0}|${powerSig}|${game.run.active ? 1 : 0}|${game.run.readyToClaim ? 1 : 0}|${Math.round(game.alignment * 20)}|${game.products.active.map((p) => p.id).join(",")}|${currentEra(game)}|${regulatorState(game).index}|${game.charter ?? ""}|${game.shipLog.length}|${wingRef.current}|${game.facilityWings}|${incSig}`;
       if (sig !== modelSig || game.components.loadout !== rigLoadout || game.employees !== agentRoster) {
         modelSig = sig;
         rigLoadout = game.components.loadout;
@@ -234,11 +239,13 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       prevParts = parts;
       const delivery = timeMs - deliveryStart < DELIVERY_MS ? 1 - (timeMs - deliveryStart) / DELIVERY_MS : 0;
 
-      if (model.total > prevTotal) {
-        spawnFrom = prevTotal;
+      const from = spawnFromOnChange({ total: prevTotal, wing: prevWing }, { total: model.total, wing: model.wing });
+      if (from !== null) {
+        spawnFrom = from;
         spawnStart = timeMs;
       }
       prevTotal = model.total;
+      prevWing = model.wing;
       const spawnT = Math.min(1, (timeMs - spawnStart) / SPAWN_MS);
 
       // Repaint the cached static room only when its inputs change. The skyline
@@ -294,11 +301,25 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       if (raf) cancelAnimationFrame(raf);
       raf = 0;
     };
-    start();
+    // Draw only while the hall can actually be seen: the tab is visible AND the card
+    // is on screen. A late-game floor is ~1,400 canvas calls a frame, and it used to
+    // keep drawing while the player scrolled the upgrade list below it — measured at
+    // 4x CPU throttle, pausing it off-screen took the main thread from ~790 to ~330
+    // ms/s and long tasks from ~79 to ~1 per 10s. (2026-09 performance audit.)
+    let pageVisible = document.visibilityState !== "hidden";
+    let onScreen = true;
+    const sync = () => (pageVisible && onScreen ? start() : stop());
+    sync();
 
-    // Pause the loop when the tab is hidden (battery on mobile).
-    const onVis = () => (document.visibilityState === "hidden" ? stop() : start());
+    const onVis = () => { pageVisible = document.visibilityState !== "hidden"; sync(); };
     document.addEventListener("visibilitychange", onVis);
+    const io = typeof IntersectionObserver === "function"
+      ? new IntersectionObserver((entries) => {
+          const e = entries[entries.length - 1];
+          if (e) { onScreen = e.isIntersecting; sync(); }
+        })
+      : null;
+    io?.observe(wrap);
 
     // Tap a side marker to buy that expansion (the in-hall affordance).
     const markerAt = (ev: PointerEvent) => {
@@ -306,15 +327,11 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       const px = ev.clientX - rect.left, py = ev.clientY - rect.top;
       return markers.find((mk) => !mk.maxed && pointInPoly(px, py, mk.quad));
     };
-    // Hit-test the racks front-to-back (last drawn = frontmost wins the tap).
+    // Hit-test the racks front-to-back (last drawn = frontmost wins the tap), on the
+    // box the player sees rather than only the floor tile under it.
     const rackAt = (ev: PointerEvent): RackHit | undefined => {
       const rect = canvas.getBoundingClientRect();
-      const px = ev.clientX - rect.left, py = ev.clientY - rect.top;
-      const hits = rackHitsRef.current;
-      for (let i = hits.length - 1; i >= 0; i--) {
-        if (pointInPoly(px, py, hits[i]!.quad)) return hits[i];
-      }
-      return undefined;
+      return rackAtPoint(rackHitsRef.current, ev.clientX - rect.left, ev.clientY - rect.top);
     };
     // People hit-tests (IDEAS #2/#7): a generous box around the little figure.
     const pointOnFigure = (px: number, py: number, x: number, y: number, s: number): boolean =>
@@ -404,6 +421,7 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
       stop();
       ro.disconnect();
       document.removeEventListener("visibilitychange", onVis);
+      io?.disconnect();
       canvas.removeEventListener("pointerdown", onDown);
       canvas.removeEventListener("pointermove", onMove);
     };
@@ -439,11 +457,14 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
           })}
         </nav>
       )}
+      {/* The rack cards echo taps on the (aria-hidden) canvas; the same facts live in
+          the accessible panels. Their × stays out of the Tab order (tabIndex -1) so
+          nothing focusable sits inside an aria-hidden subtree. Tapping still closes. */}
       {agentInfo && (
         <div className="rack-card" aria-hidden="true" onClick={() => setSelectedAgent(null)}>
           <div className="rack-card-head">
             <span className="rack-card-name">{agentInfo.name}</span>
-            <button className="rack-card-x" aria-label="Close" onClick={(e) => { e.stopPropagation(); setSelectedAgent(null); }}>×</button>
+            <button className="rack-card-x" aria-label="Close" tabIndex={-1} onClick={(e) => { e.stopPropagation(); setSelectedAgent(null); }}>×</button>
           </div>
           <p className="rack-card-desc">
             {agentInfo.role} · Lv {agentInfo.level}
@@ -456,7 +477,7 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
         <div className="rack-card" aria-hidden="true" onClick={() => setChenOpen(false)}>
           <div className="rack-card-head">
             <span className="rack-card-name">{chenInfo.name}</span>
-            <button className="rack-card-x" aria-label="Close" onClick={(e) => { e.stopPropagation(); setChenOpen(false); }}>×</button>
+            <button className="rack-card-x" aria-label="Close" tabIndex={-1} onClick={(e) => { e.stopPropagation(); setChenOpen(false); }}>×</button>
           </div>
           <p className="rack-card-desc">{chenInfo.label} — {chenInfo.blurb}</p>
           <div className="rack-card-stats"><span>Lobbying (Data Market) cools her interest. Shady buys don't.</span></div>
@@ -471,7 +492,7 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
           <div className="rack-card-head">
             <span className={`rack-swatch tier-${selected.tier}`} aria-hidden="true" />
             <span className="rack-card-name">{selected.name}</span>
-            <button className="rack-card-x" aria-label="Close" onClick={(e) => { e.stopPropagation(); setSelectedTier(null); }}>×</button>
+            <button className="rack-card-x" aria-label="Close" tabIndex={-1} onClick={(e) => { e.stopPropagation(); setSelectedTier(null); }}>×</button>
           </div>
           <p className="rack-card-desc">{selected.desc}</p>
           <div className="rack-card-stats">
@@ -484,3 +505,7 @@ export function HallCanvas({ onExpand }: { onExpand: (id: string) => void }) {
     </div>
   );
 }
+
+/** Memoised: App re-renders at 10Hz, and this component's props are stable (it reads
+ *  the store itself where it needs live state), so those renders were pure waste. */
+export const HallCanvas = memo(HallCanvasImpl);

@@ -1,6 +1,6 @@
 import { automation as A, type AutomationDef } from "./balance/automation";
 import { objectiveBoard, claimObjective } from "./objectives";
-import { contractBoard, claimContract } from "./contracts";
+import { contractBoard, claimContract, claimSponsor } from "./contracts";
 import { assignEmployee, roleMatchesSegment, roleDef } from "./employees";
 import { canStartUpgrade, startUpgrade, productMetrics } from "./products";
 import { products as PRODUCTS, type ProductTypeId, type SegmentSkew } from "./balance/products";
@@ -58,12 +58,17 @@ export function applyAutomation(state: GameState): GameState {
 
   if (automationEnabled(s, "auto_contracts")) {
     for (const c of contractBoard(s)) if (c.ready) s = claimContract(s, c.def.id);
+    // Today's sponsor is a contract too — for a cleared-ladder veteran it's the only one
+    // left. Same-ref no-op unless it's met and unclaimed.
+    s = claimSponsor(s);
   }
 
   if (automationEnabled(s, "auto_assign") && s.products.active.length > 0) {
     // Post each idle product-team specialist to a product it synergizes with (else the first).
+    // Someone the PLAYER benched stays benched — re-posting them on the next tick made
+    // "send to Lab" appear to do nothing while the autopilot was on.
     for (const e of s.employees) {
-      if (e.assignedProductId !== null || roleDef(e.roleId)?.team !== "product") continue;
+      if (e.assignedProductId !== null || e.benched || roleDef(e.roleId)?.team !== "product") continue;
       const match = s.products.active.find((p) => roleMatchesSegment(e.roleId, SEG_BY_TYPE[p.type] ?? "consumer"));
       const target = match ?? s.products.active[0];
       if (target) s = assignEmployee(s, e.id, target.id);

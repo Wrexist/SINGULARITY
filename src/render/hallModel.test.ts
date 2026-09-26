@@ -90,10 +90,23 @@ describe("hall view-model", () => {
   it("exposes a buyable marker for each of the two open sides only", () => {
     const s = createInitialState();
     s.resources.money = Big.of(1e9);
+    s.upgrades = { ...s.upgrades, rack_basic: 20 };
     const m = buildHallModel(s);
     expect(m.sides.map((x) => x.dir).sort()).toEqual(["e", "s"]);
     expect(m.sides.every((x) => x.cost > 0)).toBe(true);
     expect(m.sides.every((x) => x.affordable)).toBe(true); // rich → all affordable
+  });
+
+  it("keeps expansion price tags off an empty room until the floor is half full", () => {
+    const s = createInitialState();
+    expect(buildHallModel(s).sides).toEqual([]);
+    s.upgrades = { ...s.upgrades, rack_basic: 14 };
+    expect(buildHallModel(s).sides).toEqual([]);
+    s.upgrades = { ...s.upgrades, rack_basic: 15 };
+    expect(buildHallModel(s).sides).toHaveLength(2);
+    // Once grown, the strips stay even if racks are later sold down / replaced.
+    s.upgrades = { rack_basic: 1, expand_s: 1 };
+    expect(buildHallModel(s).sides).toHaveLength(2);
   });
 
   it("over capacity, keeps the tier mix visible (proportional, not all-of-one-tier)", () => {

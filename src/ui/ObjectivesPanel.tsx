@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import type { GameState } from "../engine/types";
 import { objectiveBoard, claimableObjectives } from "../engine/objectives";
 import { objectives as O, objectiveRewardOptions, objectiveRewardStrength, laneLabel } from "../engine/balance/objectives";
-import { fmt } from "./format";
+import { fmt, fmtFloor } from "./format";
 import { Big } from "../engine/math/Big";
 import { GiftIcon, BoltIcon, DataIcon, CoinIcon } from "./Icons";
 
@@ -47,7 +47,7 @@ export function ObjectivesPanel({ game, onClaim }: Props) {
                 <div className="objective-fill" style={{ width: `${Math.round(progress * 100)}%` }} />
               </div>
               <span className="objective-prog">
-                {fmt(Big.of(Math.floor(value)))} / {fmt(Big.of(def.target))}
+                {fmtFloor(Big.of(Math.floor(value)))} / {fmt(Big.of(def.target))}
                   <span className="objective-reward"><GiftIcon size={13} /> {objectiveRewardStrength(def.reward)}{isReady ? " — pick a lane" : ""}</span>
               </span>
             </div>
@@ -66,7 +66,8 @@ export function ObjectivesPanel({ game, onClaim }: Props) {
                 ))}
               </div>
             ) : (
-              <button className="objective-claim" disabled>{Math.round(progress * 100)}%</button>
+              // Floored: a rounded 99.5% read "100%" on a button that can't be claimed yet.
+              <button className="objective-claim" disabled>{Math.floor(progress * 100)}%</button>
             )}
           </div>
         ))}

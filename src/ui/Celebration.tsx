@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import type { Big } from "../engine/math/Big";
+import type { GameState } from "../engine/types";
+import { playerMarketRank, rivalsBeaten } from "../engine/market";
+import { currentEra } from "../engine/eras";
 import { fmt, m$ } from "./format";
 import { shipHeadline, runStory, shipSubtitle } from "./headlines";
 import { shareRunCard } from "./shareCard";
 import { useReducedMotion } from "./motion";
 import { RocketIcon } from "./Icons";
+import { useDialog } from "./useDialog";
+import { useConfetti, confettiStyle } from "./confetti";
 
 export interface ShipReport {
   /** The generation number just completed (ships). */
@@ -18,6 +23,27 @@ export interface ShipReport {
   alignment: number;
   productsLive: number;
   rivalsBeaten: number;
+  /** An AGI ascension ship — gives the headline, subtitle and share card their own tier. */
+  ascended?: boolean;
+}
+
+/** The Generation Report for the ship that just happened, read from the POST-ship
+ *  state. Everything about the finished run comes from prestige()'s snapshot: the
+ *  fresh state has alignment 0 (every report used to read "down the middle"), no
+ *  press-blitz strikes (rank slid back), and an era counted from the new ship total.
+ *  Career stats are only a fallback for a state with no snapshot. */
+export function shipReportFor(game: GameState): ShipReport {
+  const ship = game.lastShipReport;
+  return {
+    gen: game.prestige.ships,
+    rank: ship ? ship.rank : playerMarketRank(game),
+    peakCompute: ship?.peakCompute ?? game.stats.peakComputePerSec,
+    peakMrr: ship?.peakMrr ?? game.stats.peakMrr,
+    era: ship?.era ?? currentEra(game),
+    alignment: ship?.alignment ?? game.alignment,
+    productsLive: ship?.productsLive ?? game.products.active.length,
+    rivalsBeaten: ship?.rivalsBeaten ?? rivalsBeaten(game),
+  };
 }
 
 interface Props {
@@ -31,8 +57,8 @@ interface Props {
   onDone: () => void;
 }
 
-const CONFETTI = Array.from({ length: 26 });
-const ASCENSION_CONFETTI = Array.from({ length: 48 });
+const CONFETTI_COUNT = 26;
+const ASCENSION_CONFETTI_COUNT = 48;
 const COLORS = ["#ff385c", "#2f7bf6", "#9b51e0", "#16b364", "#ff9f0a"];
 const GOLD = ["#ffd60a", "#ff9f0a", "#a855f7", "#ffe9a3", "#fff"];
 
@@ -56,43 +82,42 @@ export function Celebration({ weightsGained, totalWeights, report, ascended, onD
     return () => { if (timer.current !== null) window.clearTimeout(timer.current); };
   }, []);
 
+  // The `ascended` prop has to reach the copy (and the share card) through the report,
+  // or an ascension reads like any other ship under the gold confetti.
+  const run = report ? { ...report, ascended: ascended === true } : undefined;
+
   const onShare = async (e: React.MouseEvent) => {
     e.stopPropagation(); // the backdrop tap dismisses — sharing must not
     if (timer.current !== null) { window.clearTimeout(timer.current); timer.current = null; }
-    if (!report) return;
-    const note = await shareRunCard(report, weightsGained, totalWeights);
+    if (!run) return;
+    const note = await shareRunCard(run, weightsGained, totalWeights);
     if (note) setShareNote(note);
   };
 
   // History-aware: the headline AND the subtitle reflect what THIS run achieved (A3);
   // an ascension overrides every tier with its own ceremony copy.
-  const headline = report ? shipHeadline(report) : "Model Shipped";
-  const subtitle = report ? shipSubtitle(report) : "Investors are “thrilled.” You banked:";
-  const story = report ? runStory(report) : [];
+  const headline = run ? shipHeadline(run) : "Model Shipped";
+  const subtitle = run ? shipSubtitle(run) : "Investors are “thrilled.” You banked:";
+  const story = run ? runStory(run) : [];
 
   const reducedMotion = useReducedMotion();
+  const cardRef = useRef<HTMLDivElement>(null);
+  useDialog(cardRef, { onClose: onDone, labelledBy: "celebrate-title" });
+  const confetti = useConfetti(ascended ? ASCENSION_CONFETTI_COUNT : CONFETTI_COUNT);
+  const palette = ascended ? GOLD : COLORS;
 
   return (
     <div className="celebrate" onClick={onDone}>
       {!reducedMotion && <div className="confetti" aria-hidden="true">
-        {(ascended ? ASCENSION_CONFETTI : CONFETTI).map((_, i) => (
-          <span
-            key={i}
-            style={{
-              ["--x" as string]: `${(Math.random() * 2 - 1).toFixed(2)}`,
-              ["--d" as string]: `${(Math.random() * 0.5).toFixed(2)}s`,
-              ["--r" as string]: `${Math.floor(Math.random() * 360)}deg`,
-              left: `${Math.floor(Math.random() * 100)}%`,
-              background: (ascended ? GOLD : COLORS)[i % (ascended ? GOLD : COLORS).length],
-            }}
-          />
+        {confetti.map((p, i) => (
+          <span key={i} style={confettiStyle(p, palette[i % palette.length]!)} />
         ))}
       </div>}
 
-      <div className={`celebrate-card${ascended ? " ascended" : ""}`}>
+      <div ref={cardRef} className={`celebrate-card${ascended ? " ascended" : ""}`} role="dialog" aria-modal="true" aria-labelledby="celebrate-title">
         <div className="celebrate-rocket"><RocketIcon size={40} /></div>
         {report && <div className="celebrate-gen">Generation {report.gen}</div>}
-        <h2>{headline}</h2>
+        <h2 id="celebrate-title" tabIndex={-1}>{headline}</h2>
         <p className="celebrate-sub">{subtitle}</p>
         <div className="celebrate-weights">
           +{fmt(weightsGained)}

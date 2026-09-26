@@ -1,25 +1,76 @@
 import { Big } from "../engine/math/Big";
+import { runsPerSec } from "../engine/derive";
+import { productMetrics } from "../engine/products";
+import { payrollPaid } from "../engine/employees";
 import { useSettings } from "./settings";
-import type { Derived } from "../engine/types";
+import type { Derived, GameState } from "../engine/types";
+
+/** The live portfolio's net margin per second (revenue − serving − marketing), priced
+ *  with each product's own mods — staff, the Product Company charter's ×2.5 revenue,
+ *  Heat and alignment — exactly as tick() pays it into Money. The Money/s rate and the
+ *  money ETAs used the bare figure, so a profitable Product Company lab could read as
+ *  losing money (no $/s shown, no money ETAs at all). Non-finite → 0. */
+export function productMarginPerSec(game: GameState, d: Derived): number {
+  let margin = 0;
+  for (const p of game.products.active) {
+    margin += productMetrics(p, game.products.frontier, d.productModsById[p.id]).margin;
+  }
+  return Number.isFinite(margin) ? margin : 0;
+}
 
 /** Effective income per second for a resource, amortizing per-run yields over the
- *  run duration (a rough but honest "how fast it's coming in" for ETA estimates).
- *  NOTE: the "money" lane here is base income only (passive + amortized run); live
- *  product net margin and payroll fluctuate, so callers that show money ETAs add
- *  those in (see UpgradePanel). */
-export function effRate(d: Derived, resource: "compute" | "data" | "money"): Big {
-  const perRun = (yield_: Big) => (d.runDurationSec > 0 ? yield_.div(d.runDurationSec) : Big.ZERO);
+ *  runs actually fired — one per run duration, or fewer when Compute can't fund them
+ *  that fast, and none while training is held (see runsPerSec). A rough but honest
+ *  "how fast it's coming in" for ETA estimates. "compute" is gross production; a
+ *  Compute countdown should use computeBankEtaSecs, which knows what runs drain.
+ *  NOTE: the "money" lane here is base income only (passive + amortized run); callers
+ *  that show a Money rate or ETA fold in product margin and payroll with netMoneyRate. */
+export function effRate(d: Derived, resource: "compute" | "data" | "money", computeFocus: number): Big {
   if (resource === "compute") return d.computePerSec;
-  if (resource === "data") return d.dataPerSec.add(perRun(d.runDataYield));
-  return d.passiveMoneyPerSec.add(perRun(d.runMoneyYield));
+  const rps = runsPerSec(d, computeFocus);
+  if (resource === "data") return d.dataPerSec.add(d.runDataYield.mul(rps));
+  return d.passiveMoneyPerSec.add(d.runMoneyYield.mul(rps));
+}
+
+/** Money per second as tick() really moves it, from the caller's `base` income
+ *  (passive, plus amortized run income where runs count — see effRate). Adds the live
+ *  products' net margin WITH the per-product buffs the sim applies (assigned Sales
+ *  Execs, SREs, the Product Company charter…), then takes payroll the way tick() does:
+ *  out of what the lab earns, never more than payrollMaxShareOfIncome of it. The full
+ *  wage bill used to be subtracted instead, so a roster costing more than half the
+ *  income read as a loss — the $/s line and every Money ETA vanished while Money
+ *  climbed — and the staff product buffs never showed up in the rate at all. */
+export function netMoneyRate(game: GameState, d: Derived, base: Big): Big {
+  const margin = productMarginPerSec(game, d);
+  // tick() counts product profit toward earnings only when the portfolio nets positive.
+  const earned = base.add(Big.of(Math.max(0, margin)));
+  return base.add(Big.of(margin)).sub(payrollPaid(d.payrollPerSec, earned));
+}
+
+/** The Data and Money rates the game quotes as "how fast it's coming in" — the
+ *  resource bar's rate lines, and the Lab Stats rows that trend them. They must match
+ *  what the numbers actually do: passive-only rates read "$156M/s" while Money climbed
+ *  ~20T/s, and "Data / sec 0" while Data climbed by run payouts. Runs count only while
+ *  they restart themselves (auto-train on AND an intensity above zero; 0 = training
+ *  held, e.g. a "save for this" pin); product margin (with its staff buffs) and payroll
+ *  (as much as the tick really takes) always flow — see netMoneyRate. */
+export function barRates(game: GameState, d: Derived): { data: Big; money: Big } {
+  const running = d.autoTrain && game.computeFocus > 0;
+  const data = running ? effRate(d, "data", game.computeFocus) : d.dataPerSec;
+  const base = running ? effRate(d, "money", game.computeFocus) : d.passiveMoneyPerSec;
+  return { data, money: netMoneyRate(game, d, base) };
+}
+
+/** A seconds-to-afford figure worth showing: finite, positive and under ~99 days; else null. */
+export function shownEta(secs: number | null): number | null {
+  if (secs === null || !Number.isFinite(secs) || secs <= 0 || secs > 3600 * 24 * 99) return null;
+  return secs;
 }
 
 /** Seconds-to-afford for one resource, or null when affordable / unknowable / too far. */
 export function etaSecs(cost: Big, have: Big, rate: Big): number | null {
   if (have.gte(cost) || rate.lte(Big.ZERO)) return null;
-  const secs = cost.sub(have).div(rate).toNumber();
-  if (!Number.isFinite(secs) || secs <= 0 || secs > 3600 * 24 * 99) return null;
-  return secs;
+  return shownEta(cost.sub(have).div(rate).toNumber());
 }
 
 /** "~3m" time-to-afford, or null. */
@@ -33,6 +84,21 @@ export function fmtEta(cost: Big, have: Big, rate: Big): string | null {
  *  path routes through here, so one toggle re-skins every number in the app. */
 export function fmt(v: Big): string {
   return useSettings.getState().scientificNotation ? v.formatScientific() : v.format();
+}
+
+/** fmt, rounded DOWN at the shown precision — for the progress side of an
+ *  "X / target" counter. Rounding to nearest carried a value a hair short onto its
+ *  target's own label ("5K / 5K", "$25B / $25B") on a card that could not be claimed. */
+export function fmtFloor(v: Big): string {
+  return useSettings.getState().scientificNotation ? v.formatScientific(true) : v.format(true);
+}
+
+/** A multiplier for display (the "×" is the caller's): two decimals while small
+ *  ("1.04", "0.96"), the compact format once it reaches 100 ("250B"). The resource
+ *  formatter keeps one decimal under 10, which read a ×1.04 boost or a ×0.96 penalty
+ *  as "×1.0". */
+export function fmtMult(m: Big): string {
+  return m.isFinite() && m.lt(99.995) ? m.toNumber().toFixed(2) : fmt(m);
 }
 
 /** Money is shown as currency: $1.2K, $58, etc. */
@@ -63,10 +129,27 @@ export function fmtTime(ms: number): string {
 // ---- Product-tab number helpers (shared by the portfolio card + detail screen) ----
 
 /** Sign-aware money from a plain number: the sign sits OUTSIDE the $ (−$5K, not
- *  the ungrouped "$-5000" that overflowed cards). */
+ *  the ungrouped "$-5000" that overflowed cards). Same precision as fmtMoney — it
+ *  used to round to whole dollars first, so a $1.20/s salary read "$1/s" beside a
+ *  "$1.2" Payroll /s, and a $0.30/s loss read "-$0". Anything that shows as zero
+ *  (under a nickel) is plain "$0", never signed. */
 export function m$(n: number): string {
   const x = Number.isFinite(n) ? n : 0; // a non-finite product value can't print garbage
-  return x < 0 ? `-${fmtMoney(Big.of(Math.round(-x)))}` : fmtMoney(Big.of(Math.round(x)));
+  const a = Math.abs(x);
+  if (a < 0.05) return fmtMoney(Big.ZERO);
+  return x < 0 ? `-${fmtMoney(Big.of(a))}` : fmtMoney(Big.of(a));
+}
+
+/** A signed effect size as a percent: "+6%", "-35%", and — below one percent — one
+ *  decimal ("+0.3%", "-0.2%", "+<0.1%"). Whole-percent rounding read a real +0.3%
+ *  Compute tilt as "+0%" and a −0.2% loss as "0%" (Math.round gives −0, which prints
+ *  unsigned). Exact zero (or a non-finite input) reads "+0%". */
+export function fmtSignedPct(x: number): string {
+  if (!Number.isFinite(x) || x === 0) return "+0%";
+  const sign = x > 0 ? "+" : "-";
+  const a = Math.abs(x) * 100;
+  const body = a >= 0.95 ? String(Math.round(a)) : a >= 0.05 ? a.toFixed(1) : "<0.1";
+  return `${sign}${body}%`;
 }
 
 /** Rounded count via the K/M/B formatter. */

@@ -1,11 +1,10 @@
 In deze update:
 
-• Grand Challenges – moonshots van lange adem en permanente beloningen.
-• Lab Objectives – een verse ladder vol doelen, tot diep in de endgame.
-• Automation – autopilots voor het routinewerk.
-• Elke run z'n eigen onderzoeks-fork, plus levendigere voortgangsvisuals.
-• En deze App Store-pagina? Die is nu gewoon in het Nederlands.
-
-Daarnaast de gebruikelijke balans- en stabiliteitsfixes.
+• Nieuw in elke generatie: kies je kant (Safety, Center of Acceleration) en ontgrendel de Doctrine-perks die daarbij horen. En elke keer dat je shipt, krijg je drie Lab Charters uitgedeeld, waaronder een paar die de regels omgooien.
+• Unplugged Trials: zet Legacy één generatie uit en speel weer een volledige run. Je Compute-records leveren nu Lab Reputation op.
+• Duidelijkere doelen: je ziet altijd je volgende stap, en wanneer shippen echt de moeite waard is.
+• 'Hiervoor sparen': tik op onderzoek dat buiten bereik is, dan spaart het lab de Compute ervoor en koopt het voor je.
+• Meer rust: alleen echte beslissingen onderbreken je, de rest loopt via de nieuwsticker. Werkt beter met VoiceOver, met grotere tikvlakken.
+• Soepeler op oudere iPhones, kloppende offline tijd en meer dan 60 bugfixes.
 
 Nog steeds geen advertenties. Nog steeds geen pay-to-win.

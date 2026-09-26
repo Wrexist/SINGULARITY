@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { codexEntries, codexUnlockedCount, codexBalance, codexBody, codexUnlockHint } from "../engine/codex";
-import { BookIcon, LockIcon, ChevronIcon} from "./Icons";
+import { LockIcon, ChevronIcon } from "./Icons";
 import type { GameState } from "../engine/types";
 
 interface Props {
@@ -21,11 +21,12 @@ export function CodexPanel({ game }: Props) {
   const total = codexBalance.entries.length;
 
   return (
-    <section className="panel codex">
-      <button className="codex-head" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-        <span className="codex-title"><BookIcon size={15} /> Field Notes</span>
-        <span className="codex-count">{got}/{total}</span>
-        <span className="codex-toggle"><ChevronIcon size={13} dir={open ? "down" : "right"} /></span>
+    <section className={`panel collapsible codex ${open ? "open" : ""}`}>
+      {/* The same fold row as every other HQ board (Collapsible), not a third style. */}
+      <button className="collapsible-toggle" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        <span className="panel-title" style={{ margin: 0 }}>Field Notes</span>
+        <span className="collapsible-badge">{got}/{total}</span>
+        <span className="chevron" aria-hidden="true"><ChevronIcon size={13} dir={open ? "up" : "down"} /></span>
       </button>
       {open && (
         <div className="codex-list">

@@ -2,7 +2,10 @@ import { describe, it, expect } from "vitest";
 import {
   trialsBalance, trialsUnlocked, canStartTrial, startTrial, abandonTrial, completeActiveTrial, trialMods,
   trialDefs, trialLadders, ladderRung, ladderProgress, TRIAL_IDS,
+  legacyUnplugged, trialBonusProductSlots, trialBonusRep, trialRewardLabel,
 } from "./trials";
+import { earnedReputation } from "./reputation";
+import { maxActiveProducts } from "./products";
 import { derive } from "./derive";
 import { prestige } from "./prestige";
 import { serialize, deserialize } from "./save";
@@ -65,7 +68,7 @@ describe("prestige trials", () => {
     const withReward = derive({ ...shipped, upgrades: { rack_basic: 20 } });
     const without = derive({ ...shipped, trialsDone: [], upgrades: { rack_basic: 20 } });
     expect(withReward.computePerSec.div(without.computePerSec).toNumber())
-      .toBeCloseTo(1 + ABLATION.reward.value, 5);
+      .toBeCloseTo(1 + ABLATION.reward!.value, 5);
   });
 
   it("abandon clears the active trial with no reward; completion is idempotent", () => {
@@ -158,9 +161,13 @@ describe("Trial Ladders", () => {
     }
   });
 
+  // The generated lane ladders. Unplugged is a hand-written ladder with its own shape
+  // (it pays in `bonus`, not a lane) and has its own block below.
+  const laneRung = (d: { rung: number; unplug?: string }) => d.rung !== 1 && !d.unplug;
+
   it("ladders only the handicap Trials — a condition cannot be made tighter", () => {
     for (const d of trialDefs()) {
-      if (d.rung === 1) continue;
+      if (!laneRung(d)) continue;
       const base = trialDefs().find((b) => b.id === d.ladder)!;
       expect(base.handicap).toBeDefined();
       expect(d.condition).toBeUndefined();
@@ -170,16 +177,17 @@ describe("Trial Ladders", () => {
   it("escalates: each rung starves harder and pays more than the one below", () => {
     for (const ladder of trialLadders()) {
       const rungs = trialDefs().filter((d) => d.ladder === ladder).sort((a, b) => a.rung - b.rung);
+      if (rungs.some((d) => d.unplug)) continue; // Unplugged: see its own block
       for (let i = 1; i < rungs.length; i++) {
         const prev = rungs[i - 1]!, cur = rungs[i]!;
         expect(cur.rung).toBe(prev.rung + 1);
         expect(cur.handicap!.factor).toBeLessThan(prev.handicap!.factor);
-        expect(cur.reward.value).toBeGreaterThan(prev.reward.value);
+        expect(cur.reward!.value).toBeGreaterThan(prev.reward!.value);
         expect(cur.unlockShips).toBeGreaterThan(prev.unlockShips);
         expect(cur.requires).toBe(prev.id);
         // Same lanes as the rung below — a ladder is one discipline, tightened.
         expect(cur.handicap!.lane).toBe(prev.handicap!.lane);
-        expect(cur.reward.lane).toBe(prev.reward.lane);
+        expect(cur.reward!.lane).toBe(prev.reward!.lane);
       }
     }
   });
@@ -192,9 +200,9 @@ describe("Trial Ladders", () => {
 
   it("derives rung copy from the numbers it actually applies", () => {
     for (const d of trialDefs()) {
-      if (d.rung === 1) continue; // hand-written copy
+      if (!laneRung(d)) continue; // hand-written copy
       expect(d.desc).toContain(`${Math.round(d.handicap!.factor * 100)}%`);
-      expect(d.desc).toContain(`+${Math.round(d.reward.value * 100)}%`);
+      expect(d.desc).toContain(`+${Math.round(d.reward!.value * 100)}%`);
     }
   });
 
@@ -231,9 +239,9 @@ describe("Trial Ladders", () => {
   it("banks a rung's reward through trialMods, stacking with the rung below", () => {
     const r2 = trialDefs().find((d) => d.rung === 2)!;
     const r1 = trialDefs().find((d) => d.id === r2.requires)!;
-    const lane = `${r2.reward.lane}Mult` as "computeMult" | "dataMult" | "moneyMult";
+    const lane = `${r2.reward!.lane}Mult` as "computeMult" | "dataMult" | "moneyMult";
     const both = trialMods(veteran(999, [r1.id, r2.id]));
-    expect(both[lane]).toBeCloseTo((1 + r1.reward.value) * (1 + r2.reward.value), 9);
+    expect(both[lane]).toBeCloseTo((1 + r1.reward!.value) * (1 + r2.reward!.value), 9);
   });
 
   it("applies a rung's harder handicap while it runs", () => {
@@ -263,5 +271,89 @@ describe("Trial Ladders", () => {
     for (const d of trialDefs()) {
       if (d.rung > 1) expect(canStartTrial({ ...sim, prestige: { ...sim.prestige, ships: 999 } }, d.id)).toBe(false);
     }
+  });
+});
+
+describe("Unplugged Trials", () => {
+  const U1 = trialDefs().find((d) => d.id === "trial_unplugged")!;
+  const U2 = trialDefs().find((d) => d.id === "trial_unplugged_r2")!;
+  /** A veteran lab with a big Legacy stack, building (not yet shippable). */
+  const veteranRun = (ships = U1.unlockShips, done: string[] = []) => {
+    const s = createInitialState();
+    s.prestige = { ships, legacyWeights: Big.of(5000) };
+    s.upgrades = { rack_basic: 20 };
+    s.trialsDone = done;
+    return s;
+  };
+
+  it("switches Legacy off for the run — and only Legacy", () => {
+    const base = veteranRun();
+    const unplugged = startTrial(base, U1.id);
+    expect(unplugged.activeTrial).toBe(U1.id);
+    expect(legacyUnplugged(base)).toBe(false);
+    expect(legacyUnplugged(unplugged)).toBe(true);
+    const on = derive(base), off = derive(unplugged);
+    expect(on.legacyMult.gt(1)).toBe(true);
+    expect(off.legacyMult.eq(1)).toBe(true);
+    // Compute falls by exactly the Legacy multiplier; nothing else moved.
+    expect(on.computePerSec.div(off.computePerSec).toNumber()).toBeCloseTo(on.legacyMult.toNumber(), 6);
+  });
+
+  it("drops the Legacy Investment lanes too while unplugged", () => {
+    const invested = { ...veteranRun(), legacyInvestments: ["leg_compute1"] };
+    const plain = { ...invested, legacyInvestments: [] };
+    // Plugged in, the investment really moves Compute (so the check below isn't vacuous)…
+    expect(derive(invested).computePerSec.eq(derive(plain).computePerSec)).toBe(false);
+    // …unplugged, it reads ×1 like the rest of Legacy.
+    const off = derive(startTrial(invested, U1.id));
+    const offPlain = derive(startTrial(plain, U1.id));
+    expect(off.computePerSec.toNumber()).toBeCloseTo(offPlain.computePerSec.toNumber(), 6);
+  });
+
+  it("banks a product slot on ship, and the Legacy boost is back next run", () => {
+    let s = startTrial(veteranRun(), U1.id);
+    s.research = [CAPABILITY];
+    s.lifetimeMoney = Big.of(1e9);
+    const before = maxActiveProducts(s);
+    const shipped = prestige(s);
+    expect(shipped.trialsDone).toContain(U1.id);
+    expect(shipped.activeTrial).toBeNull();
+    expect(legacyUnplugged(shipped)).toBe(false);
+    expect(derive(shipped).legacyMult.gt(1)).toBe(true);
+    expect(trialBonusProductSlots(shipped)).toBe(1);
+    expect(maxActiveProducts(shipped)).toBe(before + 1);
+  });
+
+  it("rung II needs rung I, halves Compute on top, and pays Lab Reputation", () => {
+    expect(canStartTrial(veteranRun(999), U2.id)).toBe(false);
+    const run = veteranRun(U2.unlockShips, [U1.id]);
+    expect(canStartTrial(run, U2.id)).toBe(true);
+    const on = startTrial(run, U2.id);
+    expect(legacyUnplugged(on)).toBe(true);
+    expect(derive(on).computePerSec.div(derive(startTrial(veteranRun(U2.unlockShips), U1.id)).computePerSec).toNumber())
+      .toBeCloseTo(U2.handicap!.factor, 6);
+    const repBefore = earnedReputation(run);
+    const banked = { ...run, trialsDone: [U1.id, U2.id] };
+    expect(trialBonusRep(banked)).toBe(U2.bonus!.rep);
+    expect(earnedReputation(banked)).toBe(repBefore + U2.bonus!.rep!);
+  });
+
+  it("labels its rewards from the numbers the engine applies", () => {
+    expect(trialRewardLabel(U1)).toBe("+1 product slot");
+    expect(trialRewardLabel(U2)).toBe(`+${U2.bonus!.rep} Lab Reputation`);
+    expect(trialRewardLabel(ABLATION)).toBe(`+${Math.round(ABLATION.reward!.value * 100)}% Compute`);
+  });
+
+  it("is identity for the sim (never opted in) and survives a save", () => {
+    const sim = createInitialState();
+    expect(legacyUnplugged(sim)).toBe(false);
+    expect(trialBonusProductSlots(sim)).toBe(0);
+    expect(trialBonusRep(sim)).toBe(0);
+    const on = startTrial(veteranRun(), U1.id);
+    const back = deserialize(serialize(on));
+    expect(back.activeTrial).toBe(U1.id);
+    expect(legacyUnplugged(back)).toBe(true);
+    const done = deserialize(serialize({ ...veteranRun(), trialsDone: [U1.id, U2.id] }));
+    expect(done.trialsDone).toEqual([U1.id, U2.id]);
   });
 });

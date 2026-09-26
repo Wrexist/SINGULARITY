@@ -7,6 +7,9 @@ import {
   grantsAvailable,
 } from "./institute";
 import type { GameState } from "./types";
+import { prestige } from "./prestige";
+import { Big } from "./math/Big";
+import { balance } from "./balance/config";
 
 const ALL_WINGS = instituteBalance.perks.map((p) => p.id);
 
@@ -114,5 +117,17 @@ describe("Institute Fellowships", () => {
     const s = createInitialState();
     const crafted = JSON.parse(serialize({ ...s, stats: { ...s.stats, ascensions: 500 }, instituteFellowships: 40 }));
     expect(deserialize(JSON.stringify(crafted)).instituteFellowships).toBe(0);
+  });
+
+  it("chairs survive a ship like the wings that house them", () => {
+    let s = founded(20);
+    s = { ...s, instituteFellowships: 2 };
+    // Shippable: the capability node researched and real lifetime earnings.
+    s.research = [balance.prestige.capabilityResearch, "backprop"];
+    s.lifetimeMoney = Big.of(1e6);
+    const shipped = prestige(s);
+    expect(shipped.prestige.ships).toBe(s.prestige.ships + 1); // a real ship, not a no-op
+    expect(shipped.instituteFellowships).toBe(2);
+    expect(fellowshipMult(shipped)).toBe(fellowshipMult(s));
   });
 });

@@ -28,6 +28,7 @@ describe("hall layout + markers (pure geometry)", () => {
   it("produces a marker for each open side, with non-degenerate quads", () => {
     const s = createInitialState();
     s.resources.money = Big.of(1e9);
+    s.upgrades = { ...s.upgrades, rack_basic: 20 };
     const markers = expansionMarkers(buildHallModel(s), 390, 230);
     expect(markers).toHaveLength(2); // only the two open (wall-free) sides
     for (const m of markers) {

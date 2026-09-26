@@ -54,6 +54,15 @@ describe("training run actions", () => {
     expect(next.run.readyToClaim).toBe(false);
   });
 
+  it("claimRun counts the payout toward all-time earnings (it lands between ticks)", () => {
+    const s = createInitialState();
+    s.run = { active: false, progress: 1, readyToClaim: true };
+    const d = derive(s);
+    const next = claimRun(s);
+    expect(next.stats.totalMoney.eq(d.runMoneyYield)).toBe(true);
+    expect(next.lifetimeMoney.eq(d.runMoneyYield)).toBe(true);
+  });
+
   it("claimRun is a no-op when nothing is ready", () => {
     const s = createInitialState();
     expect(claimRun(s)).toBe(s);

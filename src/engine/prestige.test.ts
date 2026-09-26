@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { canPrestige, legacyWeightsGain, legacyWeightsForMode, prestige } from "./prestige";
+import { canPrestige, legacyWeightsGain, legacyWeightsForMode, prestige, shipPath } from "./prestige";
 import { applyOffline } from "./offline";
 import { createInitialState } from "./state";
 import { derive } from "./derive";
@@ -158,5 +158,23 @@ describe("offline progress", () => {
     const { summary } = applyOffline(s, tenDaysMs, balance.offline.premiumMaxHours);
     expect(summary.appliedMs).toBe(balance.offline.premiumMaxHours * 3600 * 1000);
     expect(balance.offline.premiumMaxHours).toBeGreaterThan(balance.offline.maxHours);
+  });
+});
+
+describe("shipPath — the research a Ship actually needs", () => {
+  it("counts the capability node's prerequisite closure, not the whole tree", () => {
+    const s = createInitialState();
+    const p0 = shipPath(s);
+    expect(p0.done).toBe(0);
+    expect(p0.total).toBeGreaterThan(1);
+    expect(p0.total).toBeLessThan(balance.research.length);
+    // Owning every node on the path is exactly what unlocks shipping.
+    s.research = balance.research.map((r) => r.id);
+    const full = shipPath(s);
+    expect(full.done).toBe(full.total);
+    // A node off the path (a post-ship upgrade) doesn't move the bar.
+    const t = createInitialState();
+    t.research = ["scaling_laws"];
+    expect(shipPath(t).done).toBe(0);
   });
 });

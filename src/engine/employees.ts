@@ -1,4 +1,5 @@
 import { balance } from "./balance/config";
+import { Big } from "./math/Big";
 import type { StaffRole, StaffTrait, ProductStaffLane } from "./balance/config";
 import type { SegmentSkew } from "./balance/products";
 import type { Employee, GameState, ProductMods } from "./types";
@@ -60,8 +61,9 @@ export function employeeEffectMult(emp: Employee): number {
   return levelEffectMult(emp.level) * (traitDef(emp.trait)?.effectMult ?? 1);
 }
 
-/** A person's salary (Money/sec): role base × level × trait. */
-export function employeePayroll(emp: Employee): number {
+/** A person's salary (Money/sec): role base × level × trait. Takes just the fields
+ *  that set pay, so a recruit card can quote a candidate's real salary before hire. */
+export function employeePayroll(emp: Pick<Employee, "roleId" | "level" | "trait">): number {
   const role = roleDef(emp.roleId);
   if (!role) return 0;
   return role.payroll * levelPayrollMult(emp.level) * (traitDef(emp.trait)?.payrollMult ?? 1);
@@ -123,12 +125,21 @@ export function advanceTraining(employees: Employee[], seconds: number): Trainin
 // ---------- Roster transitions (pure) ----------
 
 /** Assign a person to a product (or null to bench them). Infra roles ignore the
- *  product (they always work on the lab) but may still be benched/un-benched. */
+ *  product (they always work on the lab) but may still be benched/un-benched.
+ *  Benching marks the person `benched` so the HR Autopilot doesn't post them straight
+ *  back on the next tick; placing them on a product clears the mark. */
 export function assignEmployee(state: GameState, empId: string, productId: string | null): GameState {
   const target = productId && state.products.active.some((p) => p.id === productId) ? productId : null;
   return {
     ...state,
-    employees: state.employees.map((e) => (e.id === empId ? { ...e, assignedProductId: target } : e)),
+    employees: state.employees.map((e) => {
+      if (e.id !== empId) return e;
+      const { benched: _wasBenched, ...rest } = e;
+      if (target) return { ...rest, assignedProductId: target };
+      // Only an explicit bench (null) is the player's choice; a placement onto a product
+      // that has since gone away just leaves them idle for the autopilot to re-post.
+      return productId === null ? { ...rest, assignedProductId: null, benched: true } : { ...rest, assignedProductId: null };
+    }),
   };
 }
 
@@ -136,12 +147,29 @@ export function fireEmployee(state: GameState, empId: string): GameState {
   return { ...state, employees: state.employees.filter((e) => e.id !== empId) };
 }
 
+/** The roster is at the cap the save loader keeps (balance.staff.maxRoster). */
+export function rosterFull(state: GameState): boolean {
+  return state.employees.length >= S.maxRoster;
+}
+
+/** Add a hire. A full roster refuses (same-reference no-op): past the cap the person
+ *  would be deleted by the loader on the next launch. Callers that charge a signing
+ *  bonus must check rosterFull() first. */
 export function addEmployee(state: GameState, emp: Employee): GameState {
+  if (rosterFull(state)) return state;
   return {
     ...state,
     employees: [...state.employees, emp],
     stats: { ...state.stats, employeesHired: state.stats.employeesHired + 1 },
   };
+}
+
+/** The payroll tick() actually takes out of `earned` Money: what is `due`, but never
+ *  more than `payrollMaxShareOfIncome` of what the lab earned (a big roster can squeeze
+ *  a run, never pin it at $0). Linear, so it works on per-second rates and on a tick's
+ *  totals alike — the UI quotes Money/s with the same rule the tick applies. */
+export function payrollPaid(due: Big, earned: Big): Big {
+  return due.min(earned.max(Big.ZERO).mul(S.payrollMaxShareOfIncome));
 }
 
 /** Hire signing-bonus cost for a candidate of a role. */
@@ -152,11 +180,12 @@ export function hireCost(roleId: string): number {
 
 // ---------- Aggregation into derive ----------
 
-/** Extra global morale from Mentor-type traits (added to office morale). */
+/** Extra global morale from Mentor-type traits (added to office morale), capped at
+ *  `staff.maxTeamMorale` so stacking Mentors can't multiply the whole economy. */
 export function teamMorale(employees: Employee[]): number {
   let m = 0;
   for (const e of employees) m += traitDef(e.trait)?.teamMorale ?? 0;
-  return m;
+  return Math.min(S.maxTeamMorale, m);
 }
 
 export interface StaffEffects {

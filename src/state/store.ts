@@ -2,9 +2,10 @@ import { create } from "zustand";
 import type { Employee, GameState } from "../engine/types";
 import { createInitialState } from "../engine/state";
 import { tick } from "../engine/tick";
-import { derive } from "../engine/derive";
+import { derive, focusToBank } from "../engine/derive";
+import { ALL_RESEARCH } from "../engine/researchTree";
 import {
-  addEmployee, startTraining, canTrain, fireEmployee, hireCost,
+  addEmployee, rosterFull, startTraining, canTrain, fireEmployee, hireCost,
   assignEmployee as assignEmployeeToProduct, levelUpNote,
 } from "../engine/employees";
 import { versionShipNote } from "../engine/notices";
@@ -14,7 +15,10 @@ import {
   buyUpgrade,
   buyUpgradeBulk,
   buyOfficePerk,
-  buyResearch,
+  buyResearchByHand,
+  canBuyResearch,
+  researchAvailable,
+  researchCost,
   buyDataOffer,
   lobby,
   maybeHeatEvent,
@@ -47,14 +51,15 @@ import {
   canBuyFeature,
   buyFeature,
   maxActiveProducts,
+  productsUnlocked,
 } from "../engine/products";
 import { productMilestones as PRODUCT_MILESTONES, type ProductTypeId } from "../engine/balance/products";
 import { achievements as ACHIEVEMENT_DEFS } from "../engine/balance/achievements";
 import { buyReputationPerk, buyEndowment, pickEndowmentDirective, respecDirective, foundWing } from "../engine/reputation";
-import { startTrial, abandonTrial } from "../engine/trials";
+import { abandonTrial, queueTrial } from "../engine/trials";
 import { setFlagship } from "../engine/flagship";
 import { buyParadigm } from "../engine/paradigms";
-import { claimDoctrine } from "../engine/doctrine";
+import { claimDoctrine, declareStance, type Stance } from "../engine/doctrine";
 import { buyInstitute, endowFellowship } from "../engine/institute";
 import { fundChallenge, chooseFork, fundMegaproject, pickMandate } from "../engine/challenges";
 import { claimObjective } from "../engine/objectives";
@@ -67,14 +72,14 @@ import { counterRival, placeStake } from "../engine/market";
 import { negotiationDue, negotiationOffer, applyNegotiationChoice, NEGOTIATION_ID } from "../engine/negotiation";
 import { buyLegacyPerk } from "../engine/legacyTree";
 import { prestige, type ShipMode } from "../engine/prestige";
-import { applyOffline, summarizeWindow, recapWorthShowing, type OfflineSummary } from "../engine/offline";
+import { applyOffline, summarizeWindow, extendSummary, recapWorthShowing, type OfflineSummary } from "../engine/offline";
 import { serialize, deserialize } from "../engine/save";
 import { isPremium } from "./premium";
 import { balance } from "../engine/balance/config";
 import { recordTelemetry } from "./telemetry";
 import { purchaseSignature } from "../engine/telemetry";
 import { currentEra } from "../engine/eras";
-import { codexBalance, codexUnlocked } from "../engine/codex";
+import { codexBalance, codexUnlocked, codexRevealed } from "../engine/codex";
 import type { Big } from "../engine/math/Big";
 
 const SAVE_KEY = "singularity.save.v1";
@@ -134,6 +139,15 @@ interface GameStore {
   claimBurst: number;
   /** Open recruiting candidates (3 to choose from), or null when closed. */
   candidates: Candidate[] | null;
+  /** "Save for this": a Compute-walled research node the player pinned, and the
+   *  training intensity to restore once it's bought. UI state — never persisted. */
+  savingFor: { id: string; prevFocus: number } | null;
+  /** Bumps each time the save is REPLACED under the running app (Restore, Hard Reset).
+   *  The App diffs the game across renders to raise its moments (a Ship, an era, a new
+   *  market rank, the unlock lines); on a bump it re-takes those baselines instead, so a
+   *  restored 7-ship backup is not celebrated as a Ship and a Hard Reset lab is not
+   *  measured against the old lab's best. Transient — never persisted. */
+  saveEpoch: number;
   // lifecycle
   init: () => void;
   dismissWorldEvent: () => void;
@@ -166,6 +180,8 @@ interface GameStore {
   doSetCharter: (id: string | null) => void;
   /** Lock the current charter pick for this run (owner UX fix). */
   doLockCharter: () => void;
+  /** Declare this run's stance (Safety / center / Acceleration) — start of run only. */
+  doDeclareStance: (stance: Stance) => void;
   doCounterRival: (name: string) => boolean;
   doBuyLegacyPerk: (id: string) => void;
   /** Open recruiting (rolls 3 candidates) / re-roll / close. */
@@ -208,6 +224,9 @@ interface GameStore {
   /** Flip an Automation autopilot on/off (no-op if still locked). */
   doToggleAutomation: (id: string) => void;
   setComputeFocus: (v: number) => void;
+  /** Pin a Compute-walled research node: ease intensity just enough to bank for it,
+   *  buy it the moment it's affordable, then put the slider back. */
+  doSaveFor: (id: string) => void;
   /** Returns true if the release succeeded (so the UI only celebrates on a real ship). */
   doReleaseProduct: (type: ProductTypeId, name: string) => boolean;
   /** Commercialise a shipped draft model. Returns true on a real launch. */
@@ -264,16 +283,62 @@ let noticeGateMs = 0;
  *  release can't collide with a saved product (ids are React keys + find() keys). */
 function seedProductKey(game: GameState): void {
   for (const p of game.products.active) {
-    const n = Number(p.id.replace(/^prod-/, ""));
-    if (Number.isFinite(n) && n > productKey) productKey = n;
+    const n = mintedIndex(p.id, "prod-");
+    if (n > productKey) productKey = n;
   }
+}
+
+/** The counter value a loaded id claims when it has the MINTED shape (`<prefix>N`, N a
+ *  plain decimal integer), else 0. Only that shape can collide with an id the store
+ *  mints, and N is bounded so `+= 1` still moves the counter: a loaded
+ *  "emp-9007199254740993" (past 2^53) used to seed a counter that +1 no longer changed,
+ *  so every later hire got the SAME id — assigning, training or firing one hit all of
+ *  them, and the loader's keep-first dedupe deleted the rest (signing bonuses paid) on
+ *  the next launch. Saves are hostile input. */
+function mintedIndex(id: string, prefix: string): number {
+  if (!id.startsWith(prefix)) return 0;
+  const digits = id.slice(prefix.length);
+  return /^\d{1,15}$/.test(digits) ? Number(digits) : 0;
+}
+
+/**
+ * Decode a pasted backup, or null when the text doesn't hold one: a base64 backup
+ * (what exportSave writes) first, then a raw JSON save. It must decode to a save
+ * OBJECT — one carrying `version` (every save since v1) or `resources` (the
+ * pre-versioning shape). deserialize() degrades ANY parseable JSON to a fresh lab,
+ * which is right for a corrupt autosave (filter, don't wipe) but wrong for a restore:
+ * a pasted number or "null" used to preview as a valid backup of a brand-new game,
+ * and one tap on Restore replaced the player's progress with it.
+ */
+function decodeBackup(blob: string): GameState | null {
+  const raw = blob.trim();
+  if (!raw) return null;
+  const candidates: string[] = [];
+  try { candidates.push(decodeURIComponent(escape(atob(raw)))); } catch { /* not base64 */ }
+  candidates.push(raw);
+  for (const json of candidates) {
+    try {
+      const parsed: unknown = JSON.parse(json);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) continue;
+      if (!("version" in parsed) && !("resources" in parsed)) continue;
+      return deserialize(json); // migrates + sanitizes
+    } catch { /* try the next candidate */ }
+  }
+  return null;
+}
+
+/** The game as it should be WRITTEN anywhere (autosave or exported backup): the
+ *  player's own training intensity, never the temporary "save for this" one. Both a
+ *  relaunch and an import start with no pin, so nothing would ever restore it. */
+function persistedGame(game: GameState, savingFor: { prevFocus: number } | null): GameState {
+  return savingFor ? { ...game, computeFocus: savingFor.prevFocus } : game;
 }
 
 let empKey = 0;
 function seedEmpKey(game: GameState): void {
   for (const e of game.employees) {
-    const n = Number(e.id.replace(/^emp-/, ""));
-    if (Number.isFinite(n) && n > empKey) empKey = n;
+    const n = mintedIndex(e.id, "emp-");
+    if (n > empKey) empKey = n;
   }
 }
 
@@ -289,12 +354,15 @@ function mintEmployee(roleId: string, name: string, trait: string | null, level 
   empKey += 1;
   return { id: `emp-${empKey}`, name, roleId, level, trait, assignedProductId: null, training: null };
 }
-function rollCandidate(): Candidate {
+function rollCandidate(game: GameState): Candidate {
+  // Product-team roles only act on live products, which open with the first Ship: a
+  // generation-1 lab was offered (and paid for) hires that did nothing (r4 bug hunt).
+  const roles = productsUnlocked(game) ? balance.staff.roles : balance.staff.roles.filter((r) => r.team !== "product");
   const r = balance.staff.rare;
   if (Math.random() < r.chance) {
-    return { name: randomName(), roleId: pick(balance.staff.roles).id, trait: pick(r.traits), rare: true, level: r.level };
+    return { name: randomName(), roleId: pick(roles).id, trait: pick(r.traits), rare: true, level: r.level };
   }
-  return { name: randomName(), roleId: pick(balance.staff.roles).id, trait: randomTrait() };
+  return { name: randomName(), roleId: pick(roles).id, trait: randomTrait() };
 }
 
 /** One-time migration: turn legacy role-COUNTS (in the upgrades map) into individual
@@ -307,7 +375,8 @@ function migrateStaffCounts(game: GameState): GameState {
   const upgrades = { ...game.upgrades };
   for (const role of balance.staff.roles) {
     const n = upgrades[role.id] ?? 0;
-    for (let i = 0; i < n; i++) employees.push(mintEmployee(role.id, randomName(), randomTrait()));
+    // Never past the roster cap: the loader would drop the excess on the next launch.
+    for (let i = 0; i < n && employees.length < balance.staff.maxRoster; i++) employees.push(mintEmployee(role.id, randomName(), randomTrait()));
     if (n > 0) { any = true; delete upgrades[role.id]; }
   }
   // Also drop any stray legacy tier keys.
@@ -324,6 +393,8 @@ export const useGame = create<GameStore>((set, get) => ({
   worldEvent: null,
   claimBurst: 0,
   candidates: null,
+  savingFor: null,
+  saveEpoch: 0,
   dismissWorldEvent: () => set({ worldEvent: null }),
   chooseWorldEvent: (choiceIndex) =>
     set((s) => {
@@ -348,12 +419,19 @@ export const useGame = create<GameStore>((set, get) => ({
           const elapsed = now() - last;
           // Premium grants a longer offline cap (QoL perk, not power).
           const capHours = isPremium() ? balance.offline.premiumMaxHours : balance.offline.maxHours;
-          const result = applyOffline(game, elapsed, capHours);
-          game = result.state;
-          // Only surface the WIWA screen if the window earned it — real time away
-          // AND something to report. Shares one predicate with the resume path so
-          // cold launch and resume can never disagree about what deserves the screen.
-          if (recapWorthShowing(result.summary)) offline = result.summary;
+          // Offline catch-up gets its OWN guard: a throw here is an engine bug, not a
+          // corrupt save, and must never fall through to the fresh-game path below.
+          // Keep the loaded save and skip the catch-up instead.
+          try {
+            const result = applyOffline(game, elapsed, capHours);
+            game = result.state;
+            // Only surface the WIWA screen if the window earned it — real time away
+            // AND something to report. Shares one predicate with the resume path so
+            // cold launch and resume can never disagree about what deserves the screen.
+            if (recapWorthShowing(result.summary)) offline = result.summary;
+          } catch (err) {
+            console.warn("Offline catch-up failed; loading the save without it:", err);
+          }
         }
       }
     } catch (err) {
@@ -372,7 +450,10 @@ export const useGame = create<GameStore>((set, get) => ({
     seedProductKey(game);
     seedEmpKey(game);
     set({ game, offline, initialized: true });
-    localStorage.setItem(TIME_KEY, String(now()));
+    // Persist the caught-up lab AND the new lastSeen together (save() writes both).
+    // Stamping lastSeen alone left the pre-catch-up save on disk: an app killed in
+    // its first seconds relaunched with the whole time away lost (2026-09 bug hunt).
+    get().save();
     // Telemetry (R8.1): seed the diff baselines from the loaded save so a returning
     // player's first tick doesn't register a phantom purchase/era-arrival, then log
     // the session start. On-device only — see src/state/telemetry.ts.
@@ -387,9 +468,44 @@ export const useGame = create<GameStore>((set, get) => ({
       // (the engine finishes them inside tick; we surface the moment to the UI).
       const wasUpgrading = new Map(s.game.products.active.map((p) => [p.id, !!p.upgrade]));
       const wasTraining = new Map(s.game.employees.map((e) => [e.id, !!e.training]));
-      let game = tick(s.game, elapsedMs);
+      // "Save for this" across a big window (a resume from suspend): the eased
+      // intensity must not govern hours of catch-up. Tick only until the bank covers
+      // the pinned node, buy it and put the slider back, then run the rest normally;
+      // if it can never get there (no Compute production), let go of the pin first.
+      // A window that simply ends before the bank arrives keeps the pin, exactly as
+      // the app left open would: letting go there cancelled the save on every short
+      // app switch and spent what it had banked on full-size runs.
+      let start = s.game;
+      let remainingMs = elapsedMs;
+      let pinDone = false;
+      if (s.savingFor && elapsedMs > 2000) {
+        const pin = s.savingFor;
+        const def = ALL_RESEARCH.find((r) => r.id === pin.id);
+        // The landing moment is re-estimated after each hop: a buff that lapses inside
+        // the window (the Daily Boost, a world-event surge) slows the climb, and a single
+        // estimate from the opening rate landed early and dropped the pin unbought.
+        for (let hop = 0; hop < 8 && !pinDone; hop++) {
+          let needMs = Infinity;
+          if (def) {
+            const short = researchCost(start, def).compute.sub(start.resources.compute);
+            const cps = derive(start).computePerSec;
+            needMs = short.lte(0) ? 0 : cps.gt(0) ? short.div(cps).toNumber() * 1000 + 250 : Infinity;
+          }
+          if (Number.isFinite(needMs) && needMs >= remainingMs) break; // the window ends first: keep the pin
+          if (Number.isFinite(needMs)) {
+            start = tick(start, needMs);
+            remainingMs -= needMs;
+            if (canBuyResearch(start, pin.id)) start = buyResearchByHand(start, pin.id);
+            else if (def && researchAvailable(start, pin.id) && start.resources.compute.lt(researchCost(start, def).compute)) continue; // still short on Compute: hop again
+          }
+          start = { ...start, computeFocus: pin.prevFocus };
+          pinDone = true;
+        }
+      }
+      let game = tick(start, remainingMs);
       const secs = elapsedMs / 1000;
       const patch: Partial<GameStore> = { game };
+      if (pinDone) patch.savingFor = null;
 
       // "While you were away", on the RESUME path. On iOS the app is suspended and
       // resumed far more often than it is killed and cold-launched, and `init()` —
@@ -401,9 +517,16 @@ export const useGame = create<GameStore>((set, get) => ({
       // of the tick above, so the window can never be paid twice. (2026-08 §1.5.)
       const bigWindow = elapsedMs >= balance.offline.resumeRecapMinMs;
       let recapFired = false;
-      if (bigWindow && !s.offline) {
+      if (bigWindow) {
         const summary = summarizeWindow(s.game, game, rawElapsedMs ?? elapsedMs, elapsedMs);
-        if (recapWorthShowing(summary, balance.offline.resumeRecapMinMs)) {
+        if (s.offline) {
+          // A recap from an earlier window is still open (read, then the phone was
+          // locked without collecting). Fold this window into it: the window is paid
+          // either way, and skipping the recap used to credit it silently while its
+          // notices queued up behind the modal.
+          patch.offline = extendSummary(s.offline, summary);
+          recapFired = true;
+        } else if (recapWorthShowing(summary, balance.offline.resumeRecapMinMs)) {
           patch.offline = summary;
           recapFired = true;
         }
@@ -418,11 +541,19 @@ export const useGame = create<GameStore>((set, get) => ({
         earned.push({ key: noticeKey, message, tone: "good", kind });
       };
 
+      // Several can land on one tick — a first launch at the frontier is "Hello, World"
+      // and "Market Leader" at once — and each pays Money, so name them all (one notice,
+      // like the achievements below) instead of the first alone.
       const before = new Set(s.game.products.milestones);
-      const newMs = game.products.milestones.find((id) => !before.has(id));
-      if (newMs) {
-        const def = PRODUCT_MILESTONES.find((m) => m.id === newMs);
-        if (def) pushNotice(`${def.label} — ${def.desc} (+$${def.reward.toLocaleString()})`, "milestone");
+      const newMs = PRODUCT_MILESTONES.filter((m) => !before.has(m.id) && game.products.milestones.includes(m.id));
+      if (newMs.length === 1) {
+        const def = newMs[0]!;
+        pushNotice(`${def.label} — ${def.desc} (+$${def.reward.toLocaleString()})`, "milestone");
+      } else if (newMs.length > 1) {
+        const paid = newMs.reduce((sum, m) => sum + m.reward, 0);
+        const named = newMs.slice(0, 3).map((m) => m.label).join(", ");
+        const more = newMs.length > 3 ? ` and ${newMs.length - 3} more` : "";
+        pushNotice(`${newMs.length} milestones — ${named}${more} (+$${paid.toLocaleString()})`, "milestone");
       }
 
       // Several can finish in one tick (offline catch-up) — name one, count the rest.
@@ -452,7 +583,9 @@ export const useGame = create<GameStore>((set, get) => ({
       // satire wedge appeared only if you opened the panel). Surface it as a gentle
       // "new field note" toast — a good-tone notice with no special kind, so it gets
       // the soft discovery chime, not the achievement fanfare. One per tick (coalesced).
-      {
+      // Only once the Field Notes panel is on HQ (the first Ship): in generation 1 the
+      // note unlocks quietly, and the toast pointed at a panel the player couldn't find.
+      if (codexRevealed(game)) {
         const newCodex = codexBalance.entries.filter((e) => !codexUnlocked(s.game, e) && codexUnlocked(game, e));
         if (newCodex.length >= 1) {
           noticeKey += 1;
@@ -554,7 +687,10 @@ export const useGame = create<GameStore>((set, get) => ({
         if (automationEnabled(game, "auto_launch")) {
           let guard = 0;
           while (game.products.drafts.length > 0 && game.products.active.length < maxActiveProducts(game) && guard++ < 8) {
-            const draft = game.products.drafts[0]!;
+            // The strongest model on the shelf (ties → the newest). Drafts are stored
+            // oldest first, and drafts[0] turned the weakest, most out-of-date model into
+            // a product that was behind rivals on day one while the one just shipped waited.
+            const draft = game.products.drafts.reduce((best, d) => (d.quality >= best.quality ? d : best));
             const type: ProductTypeId = "general";
             if (!canLaunchDraft(game, draft.id, type)) break;
             productKey += 1;
@@ -579,12 +715,33 @@ export const useGame = create<GameStore>((set, get) => ({
       }
       lastEra = era;
 
+      // "Save for this": buy the pinned node the moment the eased bank covers it, then
+      // restore the player's intensity. Also let go if it's gone some other way.
+      if (s.savingFor && !pinDone) {
+        const pin = s.savingFor;
+        let g = patch.game ?? game;
+        if (!g.research.includes(pin.id) && canBuyResearch(g, pin.id)) g = buyResearchByHand(g, pin.id);
+        const pinDef = ALL_RESEARCH.find((r) => r.id === pin.id);
+        // Compute is there but the node still can't be bought (Data spent elsewhere, a
+        // fork taken): let go rather than hold training forever.
+        const stuck = !!pinDef && !g.research.includes(pin.id) && g.resources.compute.gte(researchCost(g, pinDef).compute);
+        if (g.research.includes(pin.id) || !researchAvailable(g, pin.id) || stuck) {
+          patch.game = { ...g, computeFocus: pin.prevFocus };
+          patch.savingFor = null;
+        } else if (g !== (patch.game ?? game)) {
+          patch.game = g;
+        }
+      }
+
       return patch;
     }),
 
   save: () => {
     try {
-      localStorage.setItem(SAVE_KEY, serialize(get().game));
+      // Persist the player's own intensity, never the temporary "save for this" one:
+      // an app killed mid-pin must not relaunch with training held.
+      const { game, savingFor } = get();
+      localStorage.setItem(SAVE_KEY, serialize(persistedGame(game, savingFor)));
       localStorage.setItem(TIME_KEY, String(now()));
     } catch (err) {
       console.warn("Save failed:", err);
@@ -615,6 +772,7 @@ export const useGame = create<GameStore>((set, get) => ({
   doBuyPreprint: () => set((s) => ({ game: buyPreprint(s.game) })),
   doSetCharter: (id) => set((s) => ({ game: setCharter(s.game, id) })),
   doLockCharter: () => set((s) => ({ game: lockCharter(s.game) })),
+  doDeclareStance: (stance) => set((s) => ({ game: declareStance(s.game, stance) })),
   // Returns whether the blitz actually landed (same-ref no-op when the guard
   // fails between render and tap), so the UI only celebrates real strikes.
   doCounterRival: (name: string) => {
@@ -625,13 +783,15 @@ export const useGame = create<GameStore>((set, get) => ({
     return true;
   },
   doBuyLegacyPerk: (id) => set((s) => ({ game: buyLegacyPerk(s.game, id) })),
-  doRecruit: () => set({ candidates: [rollCandidate(), rollCandidate(), rollCandidate()] }),
-  doRefreshCandidates: () => set({ candidates: [rollCandidate(), rollCandidate(), rollCandidate()] }),
+  doRecruit: () => set((st) => ({ candidates: [rollCandidate(st.game), rollCandidate(st.game), rollCandidate(st.game)] })),
+  doRefreshCandidates: () => set((st) => ({ candidates: [rollCandidate(st.game), rollCandidate(st.game), rollCandidate(st.game)] })),
   doCloseRecruit: () => set({ candidates: null }),
   doHireCandidate: (index) => {
     const g = get().game;
     const c = get().candidates?.[index];
     if (!c) return false;
+    // A full roster refuses BEFORE the signing bonus is charged (the loader keeps no more).
+    if (rosterFull(g)) return false;
     const cost = hireCost(c.roleId) * derive(g).hireDiscount; // Recruiters cut signing bonuses
     if (g.resources.money.lt(cost)) return false;
     set((s) => {
@@ -652,7 +812,10 @@ export const useGame = create<GameStore>((set, get) => ({
   doPickDirective: (id) => set((s) => ({ game: pickEndowmentDirective(s.game, id) })),
   doRespecDirective: (id) => set((s) => ({ game: respecDirective(s.game, id) })),
   doPlaceStake: (name) => set((s) => ({ game: placeStake(s.game, name) })),
-  doStartTrial: (id) => set((s) => ({ game: startTrial(s.game, id) })),
+  // Attempt QUEUES a Trial for the next run (a second tap clears the queue); the Ship
+  // starts it on the untouched fresh lab. Never mid-run: any in-run start, even at
+  // zero research, lets a player bank a Legacy-on stockpile first (r2 bug hunt).
+  doStartTrial: (id) => set((s) => ({ game: queueTrial(s.game, id) })),
   doAbandonTrial: () => set((s) => ({ game: abandonTrial(s.game) })),
   doSetFlagship: (id) => set((s) => ({ game: setFlagship(s.game, id) })),
   doBuyParadigm: (id) => set((s) => ({ game: buyParadigm(s.game, id) })),
@@ -681,8 +844,23 @@ export const useGame = create<GameStore>((set, get) => ({
   doPickMandate: (id) => set((s) => ({ game: pickMandate(s.game, id) })),
   doClaimObjective: (id, target) => set((s) => ({ game: claimObjective(s.game, id, target) })),
   doToggleAutomation: (id) => set((s) => ({ game: toggleAutomation(s.game, id) })),
+  // Moving the slider by hand is an explicit choice: it cancels any "save for this" pin.
   setComputeFocus: (v) =>
-    set((s) => ({ game: { ...s.game, computeFocus: Math.max(0, Math.min(1, v)) } })),
+    set((s) => ({ game: { ...s.game, computeFocus: Math.max(0, Math.min(1, v)) }, savingFor: null })),
+  doSaveFor: (id) =>
+    set((s) => {
+      const def = ALL_RESEARCH.find((r) => r.id === id);
+      if (!def || s.game.research.includes(id) || !researchAvailable(s.game, id)) return {};
+      // Only when Compute is the ONE thing missing: easing intensity (usually to a full
+      // hold) stops the runs that earn Data and Money, so a node also short on Data
+      // would never become affordable and the pin would freeze the whole lab.
+      const cost = researchCost(s.game, def);
+      if (s.game.resources.data.lt(cost.data)) return {};
+      const focus = focusToBank(s.game, derive(s.game), cost.compute);
+      // Re-pinning a different node keeps the ORIGINAL setting to restore.
+      const prevFocus = s.savingFor?.prevFocus ?? s.game.computeFocus;
+      return { game: { ...s.game, computeFocus: focus }, savingFor: { id, prevFocus } };
+    }),
   // The store mints the product id (nondeterminism stays out of the engine).
   // Guard first so a stale/double tap can't burn an id or fake a celebration.
   doReleaseProduct: (type, name) => {
@@ -709,7 +887,7 @@ export const useGame = create<GameStore>((set, get) => ({
     set((s) => (canBuyFeature(s.game, id, featureId) ? { game: buyFeature(s.game, id, featureId) } : {})),
   doRenameProduct: (id, name) => set((s) => ({ game: renameProduct(s.game, id, name) })),
   doRetireProduct: (id) => set((s) => ({ game: retireProduct(s.game, id) })),
-  doResearch: (id) => set((s) => ({ game: buyResearch(s.game, id) })),
+  doResearch: (id) => set((s) => ({ game: buyResearchByHand(s.game, id) })),
   // The wall clock isn't the only nondeterminism we keep out of the engine —
   // the risk roll lives here too and is passed in, mirroring how we pass time.
   doBuyData: (id) => {
@@ -744,49 +922,73 @@ export const useGame = create<GameStore>((set, get) => ({
       // so the reset itself isn't mis-read as a purchase/era change next tick.
       lastSig = purchaseSignature(game.upgrades, game.research);
       lastEra = currentEra(game);
-      return { game };
+      // A decision card still waiting (it holds while a sheet is open, and the give-away
+      // Ship's confirm is one) was drawn by the lab just shipped: answered on the fresh
+      // $0 lab, "Settle: −20% cash" or any "% of cash" trade was all but free.
+      return { game, savingFor: null, worldEvent: null };
     }),
   doClaimDaily: () => set((s) => ({ game: grantDailyBoost(s.game) })),
 
   hardReset: () => {
     pendingNotices = [];
-    localStorage.removeItem(SAVE_KEY);
-    localStorage.removeItem(TIME_KEY);
+    // Storage that throws (blocked, or failing) must not stop the wipe itself: a throw
+    // here left "Wipe it" doing nothing. The next autosave writes the fresh lab.
+    try {
+      localStorage.removeItem(SAVE_KEY);
+      localStorage.removeItem(TIME_KEY);
+    } catch (err) {
+      console.warn("Hard reset could not clear storage:", err);
+    }
     // Clear transient UI state too, or a stale world-event card / claim burst
-    // could survive into the fresh run.
-    set({ game: createInitialState(), offline: null, event: null, notice: null, worldEvent: null, claimBurst: 0, candidates: null });
+    // could survive into the fresh run. The recent-event memory goes too: a sequel
+    // ("Remember the shortage?") must never open a lab that never had its parent.
+    recentEventIds = [];
+    set((s) => ({ game: createInitialState(), offline: null, event: null, notice: null, worldEvent: null, claimBurst: 0, candidates: null, savingFor: null, saveEpoch: s.saveEpoch + 1 }));
   },
 
   // ---- Save backup (local-only; the player owns their progress) ----
   exportSave: () => {
-    const json = serialize(get().game);
+    // Same substitution as save(): a backup taken mid-pin must not restore with training held.
+    const { game, savingFor } = get();
+    const json = serialize(persistedGame(game, savingFor));
     try { return btoa(unescape(encodeURIComponent(json))); } catch { return json; }
   },
   importSave: (blob: string) => {
-    // Imported game = different world; drop any queued notices about the old one.
-    pendingNotices = [];
-    const raw = blob.trim();
-    if (!raw) return false;
-    // Accept either a base64 backup (preferred) or a raw JSON save.
-    const candidates: string[] = [];
-    try { candidates.push(decodeURIComponent(escape(atob(raw)))); } catch { /* not base64 */ }
-    candidates.push(raw);
-    for (const json of candidates) {
-      try {
-        let game = deserialize(json); // throws on bad shape; migrates + sanitizes
-        // Mirror init()'s post-load normalization so an imported save matches the
-        // runtime shape (legacy role-counts → people; ID counters seeded so new
-        // products/hires don't collide with existing prod-N / emp-N ids).
-        game = migrateStaffCounts(game);
-        seedProductKey(game);
-        seedEmpKey(game);
-        set({ game, offline: null, event: null, notice: null, worldEvent: null, claimBurst: 0, candidates: null });
-        localStorage.setItem(SAVE_KEY, serialize(game));
-        localStorage.setItem(TIME_KEY, String(now()));
-        return true;
-      } catch { /* try the next candidate */ }
+    const decoded = decodeBackup(blob);
+    if (!decoded) return false;
+    let prevSeen: string | null | undefined;
+    try {
+      // Mirror init()'s post-load normalization so an imported save matches the
+      // runtime shape (legacy role-counts → people; ID counters seeded so new
+      // products/hires don't collide with existing prod-N / emp-N ids).
+      const game = migrateStaffCounts(decoded);
+      // Persist BEFORE swapping the running lab: when the write throws (storage full
+      // or blocked) the sheet reports a failed restore, and the lab it leaves running
+      // must be the player's own. Swapping first replaced it with the backup anyway,
+      // and the next launch silently brought the old save back. lastSeen goes first (a
+      // save without it would load the backup with the old lab's offline gap), and is
+      // put back if the save write then fails: the old save on disk must keep its own
+      // lastSeen, or the next launch loads it against the import's timestamp.
+      prevSeen = localStorage.getItem(TIME_KEY);
+      localStorage.setItem(TIME_KEY, String(now()));
+      localStorage.setItem(SAVE_KEY, serialize(game));
+      seedProductKey(game);
+      seedEmpKey(game);
+      // Imported game = different world; drop any queued notices about the old one,
+      // and the recent world events a sequel would call back to.
+      pendingNotices = [];
+      recentEventIds = [];
+      set((s) => ({ game, offline: null, event: null, notice: null, worldEvent: null, claimBurst: 0, candidates: null, savingFor: null, saveEpoch: s.saveEpoch + 1 }));
+      return true;
+    } catch {
+      if (prevSeen !== undefined) {
+        try {
+          if (prevSeen === null) localStorage.removeItem(TIME_KEY);
+          else localStorage.setItem(TIME_KEY, prevSeen);
+        } catch { /* storage refuses every write: nothing left to restore */ }
+      }
+      return false;
     }
-    return false;
   },
 }));
 
@@ -803,24 +1005,15 @@ export interface BackupPreview {
 /** Decode + sanitize a backup without applying it. Same decode ladder as
  *  importSave (base64 first, then raw JSON); null = not a valid backup. */
 export function previewBackup(blob: string): BackupPreview | null {
-  const raw = blob.trim();
-  if (!raw) return null;
-  const candidates: string[] = [];
-  try { candidates.push(decodeURIComponent(escape(atob(raw)))); } catch { /* not base64 */ }
-  candidates.push(raw);
-  for (const json of candidates) {
-    try {
-      const g = deserialize(json);
-      return {
-        ships: g.prestige.ships,
-        era: currentEra(g),
-        money: g.resources.money,
-        playtimeSec: g.stats.playtimeSec,
-        achievements: g.achievements.length,
-      };
-    } catch { /* try the next candidate */ }
-  }
-  return null;
+  const g = decodeBackup(blob);
+  if (!g) return null;
+  return {
+    ships: g.prestige.ships,
+    era: currentEra(g),
+    money: g.resources.money,
+    playtimeSec: g.stats.playtimeSec,
+    achievements: g.achievements.length,
+  };
 }
 
 // Debug/test handle (used by the screenshot harness; harmless in prod).

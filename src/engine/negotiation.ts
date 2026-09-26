@@ -1,6 +1,7 @@
 import { balance } from "./balance/config";
 import { Big } from "./math/Big";
 import { clampSuspicion } from "./regulator";
+import { shiftAlignment } from "./alignment";
 import type { WorldEventResult } from "./actions";
 import type { ActiveModifier, GameState } from "./types";
 
@@ -49,9 +50,34 @@ export function negotiationOffer(state: GameState): WorldEventResult {
   };
 }
 
-/** A factor-1 (identity) marker so the bar shows the truce and gates a re-fire. */
-function truceMarker(label: string): ActiveModifier {
-  return { id: TRUCE_ID, target: "moneyMult", factor: 1, remainingSec: N.truceSec, label, tone: "bad" };
+/** A factor-1 (identity) marker so the bar shows the truce and gates a re-fire. It is
+ *  a status, not an incident (see actions.ts isIncident): nothing to work, no fire. */
+function truceMarker(label: string, remainingSec: number = N.truceSec): ActiveModifier {
+  return { id: TRUCE_ID, target: "moneyMult", factor: 1, remainingSec, label, tone: "bad" };
+}
+
+/**
+ * The truce as it crosses a ship. prestige() starts the fresh run's modifiers from
+ * scratch, but suspicion — the regulator's long memory — carries over, so dropping
+ * the truce put Chen back at the door on the first tick of the new run, where
+ * "Settle: −20% cash" cost 20% of ~$0. The pending paperwork carries with the
+ * memory: the same time left, floored at `shipTruceFloorSec` so the fresh lab has
+ * something in the till when he arrives. [] when no truce is pending and Chen is not
+ * due (a clean lab, and the sim, ship exactly as before).
+ */
+export function truceAcrossShip(state: GameState): ActiveModifier[] {
+  const truce = state.modifiers.find((m) => m.id === TRUCE_ID && m.remainingSec > 0);
+  // Shipping with Chen AT THE DOOR (his meeting pending, no paperwork yet) gets the same
+  // floor: the fresh lab used to meet him on its first tick, where Settle cost 20% of ~$0.
+  if (!truce) return negotiationDue(state) ? [truceMarker(`${R.name} reschedules the meeting`, N.shipTruceFloorSec)] : [];
+  return [{
+    id: TRUCE_ID,
+    target: truce.target,
+    factor: 1,
+    remainingSec: Math.max(truce.remainingSec, N.shipTruceFloorSec),
+    label: truce.label,
+    tone: truce.tone,
+  }];
 }
 
 /** Apply the chosen branch. Same-ref no-op on an unknown index. */
@@ -78,7 +104,7 @@ export function applyNegotiationChoice(state: GameState, choiceIndex: number): G
       resources: { ...state.resources, money: state.resources.money.mul(Math.max(0, 1 + N.lobby.moneyPct)).max(Big.ZERO) },
       suspicion: clampSuspicion(state.suspicion + N.lobby.suspicion),
       heat: Math.max(0, Math.min(100, state.heat + N.lobby.heat)),
-      alignment: Math.max(-1, Math.min(1, state.alignment + N.lobby.alignment)),
+      alignment: shiftAlignment(state.alignment, N.lobby.alignment),
       modifiers: mods([], `${R.name}: quietly appeased`),
       stats: { ...state.stats, worldEventsResolved: state.stats.worldEventsResolved + 1 },
     };
@@ -97,7 +123,7 @@ export function applyNegotiationChoice(state: GameState, choiceIndex: number): G
       ...state,
       suspicion: clampSuspicion(state.suspicion + N.defy.suspicion),
       heat: Math.max(0, Math.min(100, state.heat + N.defy.heat)),
-      alignment: Math.max(-1, Math.min(1, state.alignment + N.defy.alignment)),
+      alignment: shiftAlignment(state.alignment, N.defy.alignment),
       modifiers: mods([buff], `${R.name} prepares the paperwork`),
       stats: { ...state.stats, worldEventsResolved: state.stats.worldEventsResolved + 1 },
     };

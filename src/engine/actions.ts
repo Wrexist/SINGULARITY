@@ -8,13 +8,15 @@ import {
   type WorldEvent,
   type WorldEventEffect,
 } from "./balance/config";
-import { derive, computeBankCeiling } from "./derive";
+import { derive, computeBankReach, computeBankEtaSecs, runYieldAt, runsPerSec } from "./derive";
 import { ALL_RESEARCH, researchTree, epochUnlocked } from "./researchTree";
-import { alignmentHeatMult } from "./alignment";
+import { alignmentHeatMult, shiftAlignment } from "./alignment";
 import { suspicionEventMult, regulatorIsNamed, regulatorState, clampSuspicion } from "./regulator";
 import { autoResearchEnabled, researchCostMult } from "./reputation";
-import { isRackId, floorFull, evictableRackFor } from "./hall";
-import { typeDef } from "./products";
+import { charterRule, startWindowOpen, chartersUnlocked } from "./charter";
+import { isRackId, floorFull, evictableRackFor, floorDrawnOut } from "./hall";
+import { typeDef, productsUnlocked } from "./products";
+import { releaseEmptyTierParts } from "./components";
 import type { ActiveModifier, Derived, GameState } from "./types";
 
 const clampHeat = (h: number) => Math.max(0, Math.min(balance.heat.max, h));
@@ -47,22 +49,29 @@ export function startRun(state: GameState): GameState {
   return {
     ...state,
     resources: { ...state.resources, compute: state.resources.compute.sub(d.runComputeCost) },
-    run: { active: true, progress: 0, readyToClaim: false },
+    // Record the intensity this run was charged at: its payout is priced at it.
+    run: { active: true, progress: 0, readyToClaim: false, focus: state.computeFocus },
   };
 }
 
-/** Claim a finished run's Data + Money payout. No-op if nothing is ready. */
+/** Claim a finished run's Data + Money payout, priced at the intensity the run was
+ *  started at (see runYieldAt). No-op if nothing is ready. */
 export function claimRun(state: GameState): GameState {
   if (!state.run.readyToClaim) return state;
-  const d = derive(state);
+  const y = runYieldAt(state, derive(state), state.run.focus);
   return {
     ...state,
     resources: {
       ...state.resources,
-      data: state.resources.data.add(d.runDataYield),
-      money: state.resources.money.add(d.runMoneyYield),
+      data: state.resources.data.add(y.data),
+      money: state.resources.money.add(y.money),
     },
-    lifetimeMoney: state.lifetimeMoney.add(d.runMoneyYield),
+    lifetimeMoney: state.lifetimeMoney.add(y.money),
+    // tick() derives stats.totalMoney from the lifetimeMoney delta WITHIN a tick, so a
+    // claim landing between ticks was never counted: a hand-claiming opening showed
+    // $0 all-time earned and the Seed Round contract / lifetime achievements sat
+    // still until auto-claim arrived. (retireProduct already does the same.)
+    stats: { ...state.stats, totalMoney: state.stats.totalMoney.add(y.money) },
     run: { active: false, progress: 0, readyToClaim: false },
   };
 }
@@ -118,11 +127,13 @@ export function buyUpgrade(state: GameState, id: string): GameState {
   const upgrades = { ...state.upgrades, [id]: owned + 1 };
   // Full floor + a higher-tier rack → upgrade in place: evict the lowest
   // lower-tier rack to free its slot (canBuyUpgrade guaranteed one exists).
+  let emptiedTier = false;
   if (isRackId(id) && floorFull(state)) {
     const evict = evictableRackFor(state, id)!;
     upgrades[evict] = (upgrades[evict] ?? 0) - 1;
+    emptiedTier = upgrades[evict] <= 0;
   }
-  return {
+  const next: GameState = {
     ...state,
     resources: {
       ...state.resources,
@@ -132,41 +143,64 @@ export function buyUpgrade(state: GameState, id: string): GameState {
     heat,
     suspicion,
   };
+  // That eviction took a tier's LAST rack: the Rig Bay stops showing the tier, so
+  // its fitted parts go back to the inventory rather than being stranded there.
+  return emptiedTier ? releaseEmptyTierParts(next) : next;
+}
+
+/**
+ * May a ×10 / Max batch take one more level of `id`? Everything `canBuyUpgrade`
+ * checks, plus: a batch never walks a hall expansion past the draw cap. Once the
+ * floor is drawn out another level adds tiles no rack can stand on (the panel stops
+ * offering expansions there for the same reason), so a batch stops at the level
+ * that draws it out instead of charging for dead ones after it. A batch-only rule:
+ * `canBuyUpgrade` is what the balance sim reads, so it stays unchanged.
+ */
+function canBulkBuyStep(state: GameState, id: string): boolean {
+  if (!canBuyUpgrade(state, id)) return false;
+  const kind = UPGRADE_BY_ID[id]!.effect.kind;
+  return !((kind === "floorCols" || kind === "floorRows") && floorDrawnOut(state));
 }
 
 /**
  * Plan a bulk buy of `id`: how many levels you can actually buy (up to `want`,
  * or Infinity for "Max") and their total cost — honoring affordability, max
- * level, floor space and rack auto-eviction. Pure: it simulates real buys (each
- * `buyUpgrade` is cheap — no `derive`), so the plan can never diverge from what
- * `buyUpgradeBulk` does. Used by the panel to label the ×10 / Max buttons.
+ * level, floor space, rack auto-eviction and the expansion draw cap. Pure: it
+ * simulates real buys (each `buyUpgrade` is cheap — no `derive`), so the plan can
+ * never diverge from what `buyUpgradeBulk` does. Used by the panel to label the
+ * ×10 / Max buttons.
  */
 export function planBulkUpgrade(
   state: GameState,
   id: string,
   want: number,
-): { count: number; totalCost: Big; resource: UpgradeDef["cost"]["resource"] } {
+): { count: number; totalCost: Big; resource: UpgradeDef["cost"]["resource"]; evicts: number } {
   const def = UPGRADE_BY_ID[id];
-  if (!def) return { count: 0, totalCost: Big.ZERO, resource: "money" };
+  if (!def) return { count: 0, totalCost: Big.ZERO, resource: "money", evicts: 0 };
   const cap = Math.min(want, 10000); // safety bound for low-growth infinite-max upgrades
   let s = state;
   let count = 0;
+  let evicts = 0;
   let totalCost = Big.ZERO;
-  while (count < cap && canBuyUpgrade(s, id)) {
+  while (count < cap && canBulkBuyStep(s, id)) {
     totalCost = totalCost.add(upgradeCost(def, s.upgrades[id] ?? 0));
+    // A rack bought onto a full floor replaces a lower-tier one (see buyUpgrade), so a
+    // batch that fills the last free slots goes on to evict: the card has to say so.
+    if (isRackId(id) && floorFull(s)) evicts += 1;
     s = buyUpgrade(s, id);
     count += 1;
   }
-  return { count, totalCost, resource: def.cost.resource };
+  return { count, totalCost, resource: def.cost.resource, evicts };
 }
 
 /** Buy up to `want` levels of `id` (Infinity = as many as affordable). Stops at
- *  the first level you can't buy. No-op-safe (returns the same state if count 0). */
+ *  the first level you can't buy, or that a batch shouldn't (see canBulkBuyStep).
+ *  No-op-safe (returns the same state if count 0). */
 export function buyUpgradeBulk(state: GameState, id: string, want: number): GameState {
   const cap = Math.min(want, 10000);
   let s = state;
   let n = 0;
-  while (n < cap && canBuyUpgrade(s, id)) {
+  while (n < cap && canBulkBuyStep(s, id)) {
     s = buyUpgrade(s, id);
     n += 1;
   }
@@ -231,9 +265,11 @@ export function researchLockedOut(state: GameState, id: string): boolean {
  *  Mult is 1 with no perk owned, so a fresh run pays the tuned full price. */
 export function researchCost(state: GameState, def: ResearchDef): { compute: Big; data: Big } {
   const mult = researchCostMult(state) * balance.difficulty.costMult;
+  // A rule charter (Research Sprint) re-weights the two lanes; ×1 with none set.
+  const rule = charterRule(state);
   return {
-    compute: Big.of(def.cost.compute).mul(mult),
-    data: Big.of(def.cost.data).mul(mult),
+    compute: Big.of(def.cost.compute).mul(mult * (rule.researchCompute ?? 1)),
+    data: Big.of(def.cost.data).mul(mult * (rule.researchData ?? 1)),
   };
 }
 
@@ -248,7 +284,7 @@ export function canBuyResearch(state: GameState, id: string): boolean {
  * True when auto-train's Compute ceiling has STALLED research: training is draining the
  * bank (auto-train on, intensity > 0), there IS an available node to chase, yet none is
  * affordable and every available node's Compute cost exceeds what the bank can hold at
- * this intensity (see `computeBankCeiling`). In that state a `cost / rate` ETA lies — the
+ * this intensity (see `computeBankReach`). In that state a `cost / rate` ETA lies — the
  * node is unreachable by waiting — so the UI points the player at the real fix: ease the
  * training-intensity slider (which raises the ceiling) or grow Compute production. Nodes
  * blocked only on Data (Compute fits under the ceiling) are reachable by waiting, so they
@@ -256,15 +292,15 @@ export function canBuyResearch(state: GameState, id: string): boolean {
  * default early run never trips it before the mechanic exists.
  */
 export function researchStalled(state: GameState, d: Derived): boolean {
-  const ceiling = computeBankCeiling(state, d);
-  if (ceiling === null) return false; // unbounded bank (auto-train off / focus 0) → never stalled
+  const reach = computeBankReach(state, d);
+  if (reach === null) return false; // unbounded bank (auto-train off / focus 0 / duration-bound runs) → never stalled
   const avail = researchTree(state).filter((def) => researchAvailable(state, def.id));
   if (avail.length === 0) return false; // tree done / next wave locked on prereqs → not a stall
   let anyWalled = false;
   for (const def of avail) {
     if (canBuyResearch(state, def.id)) return false; // something affordable right now → not stalled
     const cost = researchCost(state, def);
-    if (!cost.compute.gt(ceiling)) return false; // reachable by waiting (Compute fits) → not stalled
+    if (!cost.compute.gt(reach)) return false; // reachable by waiting (Compute fits) → not stalled
     anyWalled = true;
   }
   return anyWalled;
@@ -273,22 +309,72 @@ export function researchStalled(state: GameState, d: Derived): boolean {
 /**
  * Auto-buy research (R5.3, gated behind the Research Director reputation perk).
  * Buys the cheapest affordable, prerequisite-met node repeatedly until none is
- * affordable. Pure; runs in tick() so it also works during offline catch-up. Does
+ * affordable, skipping either/or fork nodes (those are the player's call). Pure; runs in tick() so it also works during offline catch-up. Does
  * exactly what an engaged player would do by hand, so it can't outrun the curve —
  * and it's off until the (deep-endgame) perk is owned, so the sim is unaffected.
+ * It never waits on the start-of-run picks: its purchases don't close the charter /
+ * stance window during the Director's grace (charter.ts `startWindowOpen`).
  */
 export function applyAutoResearch(state: GameState): GameState {
   if (!autoResearchEnabled(state)) return state;
   let s = state;
   let guard = 0;
   while (guard++ < 500) {
+    // Never an either/or node: taking the cheaper side of every fork (commercialize
+    // over scale_up, closed_api over open_weights, ...) is a decision the perk made
+    // for the player, permanently locking out the other arm. Forks stay manual.
     const node = researchTree(s)
-      .filter((r) => canBuyResearch(s, r.id))
+      .filter((r) => !r.exclusiveGroup && canBuyResearch(s, r.id))
       .sort((a, b) => a.cost.compute + a.cost.data - (b.cost.compute + b.cost.data))[0];
     if (!node) break;
     s = buyResearch(s, node.id);
   }
   return s;
+}
+
+/**
+ * Seconds until the Research Director can next buy something at the current rates:
+ * the soonest any node it would buy (available, not a fork) has both its Compute (by
+ * the bank's real climb under auto-train, see computeBankEtaSecs) and its Data (passive
+ * Data plus auto-claimed run Data). Infinity when the Director is not owned or nothing
+ * it would buy is reachable by waiting. Pure; tick() cuts a long window here so the
+ * Director buys when the app left open would, not at the end of the window.
+ */
+export function autoResearchWaitSec(state: GameState, d: Derived): number {
+  if (!autoResearchEnabled(state)) return Infinity;
+  const runData = d.autoTrain && d.autoClaim
+    ? runYieldAt(state, d, state.computeFocus).data.mul(runsPerSec(d, state.computeFocus))
+    : Big.ZERO;
+  const dataRate = d.dataPerSec.add(runData);
+  let best = Infinity;
+  for (const def of researchTree(state)) {
+    if (def.exclusiveGroup || !researchAvailable(state, def.id)) continue;
+    const cost = researchCost(state, def);
+    const c = computeBankEtaSecs(state, d, state.resources.compute, cost.compute);
+    if (c === null || !Number.isFinite(c)) continue;
+    let t = Math.max(0, c);
+    if (state.resources.data.lt(cost.data)) {
+      if (!dataRate.gt(0)) continue;
+      t = Math.max(t, cost.data.sub(state.resources.data).div(dataRate).toNumber());
+    }
+    if (Number.isFinite(t) && t < best) best = t;
+  }
+  return best;
+}
+
+/**
+ * A research purchase the PLAYER made (a tap, or a "Save for this" pin they set).
+ * It commits the run to a path, so it closes the start-of-run window (charter and
+ * stance) even inside the Research Director's grace. The grace exists so the
+ * Director's own automatic buys don't count as a commitment. Without it, a Director
+ * owner could adopt Research Sprint, buy nodes at half Compute by hand, then swap to
+ * a lane charter before the lock (2026-09 bug hunt). Otherwise identical to
+ * buyResearch.
+ */
+export function buyResearchByHand(state: GameState, id: string): GameState {
+  const next = buyResearch(state, id);
+  if (next === state || !chartersUnlocked(state) || !startWindowOpen(state)) return next;
+  return { ...next, charterLocked: true };
 }
 
 export function buyResearch(state: GameState, id: string): GameState {
@@ -518,14 +604,40 @@ export interface WorldEventResult {
 
 const WORLD_EVENTS = balance.worldEvents.list as WorldEvent[];
 
+/** What the lab has for a product event to land on. A rival launch moves the market
+ *  your products and drafts compete in, which exists once Products unlock (the first
+ *  Ship); a buzz wave lifts live products and does nothing without one. */
+export interface WorldEventLab {
+  productsUnlocked: boolean;
+  liveProducts: boolean;
+}
+
+/** Every system present: the default for a caller that doesn't pass a lab. */
+const FULL_LAB: WorldEventLab = { productsUnlocked: true, liveProducts: true };
+
+export function worldEventLab(state: GameState): WorldEventLab {
+  return { productsUnlocked: productsUnlocked(state), liveProducts: state.products.active.length > 0 };
+}
+
+/** Can this event's effect land on the lab? A first-generation lab has no Products
+ *  tab, so "a rival ships, your products look dated" pointed at nothing there, and a
+ *  "good" buzz-wave event on a lab with no live product granted nothing at all. */
+function worldEventFits(e: WorldEvent, lab: WorldEventLab): boolean {
+  const kinds = [e.effect, ...(e.choices ?? []).map((c) => c.effect)].map((x) => x?.kind);
+  if (kinds.includes("frontierJump") && !lab.productsUnlocked) return false;
+  if (kinds.includes("productBuzz") && !lab.liveProducts) return false;
+  return true;
+}
+
 /** Events eligible at the player's current alignment (R6.2) and recent history
  *  (R7.2). Untagged events always qualify; a faction-tagged event needs commitment
  *  to that side; a sequel (`after`) needs its parent in the recent window — so a
  *  callback can reference "that tweet" and never fire as a non sequitur. At neutral
  *  with no history (incl. the sim) only base events are eligible → base pool. */
-function eligibleWorldEvents(alignment: number, recentIds: Set<string>): WorldEvent[] {
+function eligibleWorldEvents(alignment: number, recentIds: Set<string>, lab: WorldEventLab): WorldEvent[] {
   const t = balance.worldEvents.factionThreshold;
   return WORLD_EVENTS.filter((e) => {
+    if (!worldEventFits(e, lab)) return false;
     if (e.after && !recentIds.has(e.after)) return false;
     if (e.after && recentIds.has(e.id)) return false; // a sequel doesn't re-run inside its own window
     if (!e.faction) return true;
@@ -542,9 +654,14 @@ function chainedWeight(e: WorldEvent, recentTopics: Set<string>, recentIds: Set<
   return e.weight;
 }
 
-export function pickWorldEvent(roll: number, alignment = 0, recentIds: string[] = []): WorldEvent {
+export function pickWorldEvent(
+  roll: number,
+  alignment = 0,
+  recentIds: string[] = [],
+  lab: WorldEventLab = FULL_LAB,
+): WorldEvent {
   const ids = new Set(recentIds);
-  const pool = eligibleWorldEvents(alignment, ids);
+  const pool = eligibleWorldEvents(alignment, ids, lab);
   const recentTopics = new Set(
     recentIds.map((id) => balance.worldEvents.topics[id]).filter((t): t is string => !!t),
   );
@@ -571,12 +688,14 @@ function effectSummary(effect: WorldEventEffect): string {
     return `${sign}${Math.round(effect.pct * 100)}% ${RES_LABEL[effect.resource]}`;
   }
   if (effect.kind === "frontierJump") return "Rivals leap ahead";
-  if (effect.kind === "productBuzz") return `Product buzz · ${effect.durationSec}s`;
+  // No length: each live product rides the wave for durationSec x its type's hype
+  // (18s to 90s for a 60s event), so one number on the card was wrong for most labs.
+  if (effect.kind === "productBuzz") return "Product buzz wave";
   return `${TARGET_LABEL[effect.target]} ×${effect.factor} · ${effect.durationSec}s`;
 }
 
 /** Apply one effect (immediate swing, timed modifier, or product effect). */
-function applyEffect(state: GameState, effect: WorldEventEffect, id: string, tone: "good" | "bad"): GameState {
+function applyEffect(state: GameState, effect: WorldEventEffect, id: string): GameState {
   if (effect.kind === "grantPct") {
     const { resource, pct } = effect;
     // Clamp the multiplier ≥ 0 and floor at 0 so a pct ≤ −1 (a future/tampered debuff)
@@ -610,7 +729,10 @@ function applyEffect(state: GameState, effect: WorldEventEffect, id: string, ton
     factor: effect.factor,
     remainingSec: effect.durationSec,
     label: `${TARGET_LABEL[effect.target]} ×${effect.factor}`,
-    tone,
+    // The modifier's tone is what it DOES, not the headline's mood: a "bad" decision
+    // card ("Safety Team Demands a Slowdown") can pay a buff, and a buff toned "bad"
+    // became a workable incident whose shave cut the player's own boost.
+    tone: effect.factor < 1 ? "bad" : "good",
   };
   // Refresh rather than stack a repeat of the same event.
   return { ...state, modifiers: [...state.modifiers.filter((m) => m.id !== id), mod] };
@@ -654,11 +776,23 @@ export function applyWorldEvent(state: GameState, eventId: string): { state: Gam
   }
 
   const effect = def.effect!;
-  const next = applyEffect(state, effect, def.id, def.tone);
+  const next = applyEffect(state, effect, def.id);
   return {
     state: { ...next, stats: { ...next.stats, worldEventsResolved: next.stats.worldEventsResolved + 1 } },
     event: { ...base, summary: effectSummary(effect) },
   };
+}
+
+/**
+ * An incident: a running BAD modifier that actually bites (factor below 1). A factor-1
+ * marker (the regulator truce) has no effect to shorten — it only gates Chen's return —
+ * so it is a status, never a burning rack, and "working" it would just hurry him back.
+ * A buff is never one either, whatever its tone: a save from before choice buffs were
+ * toned by their effect can still hold a "bad" ×1.8, and shaving it cut the player's
+ * own boost. The one definition the hall, the modifier bar and workProblem all read.
+ */
+export function isIncident(m: ActiveModifier): boolean {
+  return m.tone === "bad" && m.factor < 1 && m.remainingSec > 0;
 }
 
 /**
@@ -669,7 +803,7 @@ export function applyWorldEvent(state: GameState, eventId: string): { state: Gam
  */
 export function workProblem(state: GameState, modifierId: string): GameState {
   const idx = state.modifiers.findIndex(
-    (m) => m.id === modifierId && m.tone === "bad" && m.worked !== true && m.remainingSec > 0,
+    (m) => m.id === modifierId && isIncident(m) && m.worked !== true,
   );
   if (idx === -1) return state;
   const modifiers = state.modifiers.map((m, i) =>
@@ -691,8 +825,10 @@ export function applyWorldEventChoice(
   const choice = def.choices?.[choiceIndex];
   const base = { id: def.id, headline: def.headline, body: def.body, tone: def.tone, summary: "" };
   if (!choice) return { state, event: base };
-  const next = applyEffect(state, choice.effect, def.id, def.tone);
-  const alignment = Math.max(-1, Math.min(1, state.alignment + choice.alignment));
+  const next = applyEffect(state, choice.effect, def.id);
+  // True Believers (rule charter) doubles how far a choice moves you; ×1 otherwise.
+  const shift = choice.alignment * (charterRule(state).factionShift ?? 1);
+  const alignment = shiftAlignment(state.alignment, shift);
   return {
     state: { ...next, alignment, stats: { ...next.stats, worldEventsResolved: next.stats.worldEventsResolved + 1 } },
     event: { ...base, summary: effectSummary(choice.effect) },
@@ -714,5 +850,5 @@ export function maybeWorldEvent(
   const chance = Math.min(seconds / balance.worldEvents.meanIntervalSec, 0.4);
   if (fireRoll >= chance) return null;
   // R6.2 — pool branches on alignment; A2 — recent events bias toward related topics.
-  return applyWorldEvent(state, pickWorldEvent(pickRoll, state.alignment, recentIds).id);
+  return applyWorldEvent(state, pickWorldEvent(pickRoll, state.alignment, recentIds, worldEventLab(state)).id);
 }

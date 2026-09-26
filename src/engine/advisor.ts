@@ -1,10 +1,12 @@
 import { balance } from "./balance/config";
 import { productMetrics, productsUnlocked, canStartUpgrade, maxActiveProducts } from "./products";
 import { contractBoard, sponsorView } from "./contracts";
-import { canBuyResearch, researchStalled } from "./actions";
-import { canPrestige } from "./prestige";
+import { canBuyResearch, researchStalled, researchAvailable, researchCost } from "./actions";
+import { researchTree } from "./researchTree";
+import { canPrestige, nextRunMultiplier } from "./prestige";
 import { hireCost } from "./employees";
-import { derive } from "./derive";
+import { derive, computeBankReach, runsPerSec, FIRST_SHIP_WORTH_IT } from "./derive";
+import { labReveal } from "./reveal";
 import type { Derived, GameState } from "./types";
 
 /** The first research node (no prereqs) — the new player's first capability buy. */
@@ -37,9 +39,9 @@ export interface AdvisorItem {
   priority: number;
 }
 
-/** True once the Employees tab is available (mirrors App's showStaff gate). */
+/** True once the Employees tab is available (the same gate App draws it by). */
 function staffUnlocked(state: GameState): boolean {
-  return balance.staff.enabled && state.research.length >= balance.staff.revealAtResearch;
+  return labReveal(state).staff;
 }
 
 /**
@@ -61,7 +63,19 @@ export function advisorItems(state: GameState, precomputed?: Derived): AdvisorIt
   // the one moment it matters, through the nudge channel that already exists (no popup).
   // Any run can hit this (re-climbing the tree), so it isn't gated to the first session.
   if (researchStalled(state, derived)) {
-    items.push({ tab: "lab", section: "build", text: "Ease training intensity to bank Compute", priority: 66 });
+    // When a walled node has its Data already, land on Research: tapping it eases
+    // intensity just enough ("save for this"). If every walled node is ALSO short on
+    // Data, a pin can't help (holding training stops the Data income), so point at
+    // the slider instead.
+    const reach = computeBankReach(state, derived);
+    const savable = reach !== null && researchTree(state).some((def) => {
+      if (!researchAvailable(state, def.id)) return false;
+      const c = researchCost(state, def);
+      return c.compute.gt(reach) && state.resources.data.gte(c.data);
+    });
+    items.push(savable
+      ? { tab: "lab", section: "research", text: "Research out of reach — tap a node to save for it", priority: 66 }
+      : { tab: "lab", section: "build", text: "Ease training intensity to bank Compute", priority: 66 });
   }
 
   // ---- First-session hook: until the first Ship, hand-hold the core loop so a
@@ -70,16 +84,30 @@ export function advisorItems(state: GameState, precomputed?: Derived): AdvisorIt
   if (state.prestige.ships === 0) {
     // NOTE: no "claim your finished run" item — the big bobbing Claim button IS
     // that nudge, and a chip duplicating an on-screen CTA read as noise (owner).
+    // Nudge the first Ship only once it's clearly worth the reset. It unlocks with
+    // ~2 weights (next run ×1.03) for an engaged player at ~13m, and a priority-92
+    // "ship now" there talked players into resetting for nothing. Until the boost is
+    // real, the goal strip shows it growing instead (goals.ts).
     if (canPrestige(state)) {
-      items.push({ tab: "lab", section: "hq", text: "Ship the Model — reset for a permanent boost", priority: 92 });
+      const mult = nextRunMultiplier(state).toNumber();
+      if (mult >= FIRST_SHIP_WORTH_IT) {
+        items.push({ tab: "lab", section: "hq", text: `Ship the Model — next run starts ×${mult.toFixed(2)}`, priority: 92 });
+      }
     }
     // Affordable first research outranks the idle "start a run" nudge, so it
     // actually surfaces when it becomes the meaningful next step (nextAction
     // returns only the single highest-priority item).
-    const canBuyFirstResearch = state.research.length === 0 && FIRST_RESEARCH && canBuyResearch(state, FIRST_RESEARCH);
+    // Only once the Research section is drawn (it opens with the first Data): a new
+    // player who banks the first node's Compute before claiming a run would otherwise
+    // get a chip that lands on the Build view (r3 bug hunt).
+    const canBuyFirstResearch = state.research.length === 0 && FIRST_RESEARCH && canBuyResearch(state, FIRST_RESEARCH)
+      && labReveal(state).research;
     if (canBuyFirstResearch) {
       items.push({ tab: "lab", section: "research", text: "Research your first capability", priority: 70 });
-    } else if (!state.run.active && !state.run.readyToClaim) {
+    } else if (!derived.autoTrain && !state.run.active && !state.run.readyToClaim) {
+      // Only while runs are started by hand. With Auto-Train the lab restarts them
+      // itself: an idle run is the gap between compute-bound runs (the chip flickered
+      // every cycle) or a deliberate hold, where starting one spends the banked Compute.
       items.push({ tab: "lab", section: "build", text: "Start a training run to earn Data & $", priority: 68 });
     }
   }
@@ -128,12 +156,16 @@ export function advisorItems(state: GameState, precomputed?: Derived): AdvisorIt
   }
 
   // Payroll outrunning income: a structural over-hire warning. Compares wages against
-  // GROSS revenue (passive money + product MRR, before serving/marketing costs), so a
-  // deliberate marketing-investment loss never trips it — consistent with the "don't
-  // flag investment losses" policy above. Only fires with staff actually on payroll.
-  if (state.employees.length > 0) {
+  // GROSS revenue (passive money + run income + product MRR, before serving/marketing
+  // costs), so a deliberate marketing-investment loss never trips it — consistent with
+  // the "don't flag investment losses" policy above. Only fires with staff actually on
+  // payroll, and only while the Team tab is open (a chip pointing at a hidden tab
+  // dead-ends). Run income counts at the cadence runs really fire (runsPerSec — none
+  // while training is held): leaving it out told a first-generation lab, whose Money is
+  // ALL run income, to "let someone go" the moment it hired a single $2/s specialist.
+  if (state.employees.length > 0 && staffUnlocked(state)) {
     if (derived.payrollPerSec.gt(0)) {
-      let grossIncome = derived.passiveMoneyPerSec;
+      let grossIncome = derived.passiveMoneyPerSec.add(derived.runMoneyYield.mul(runsPerSec(derived, state.computeFocus)));
       for (const p of ps.active) grossIncome = grossIncome.add(productMetrics(p, ps.frontier, derived.productModsById[p.id]).mrr);
       if (derived.payrollPerSec.gt(grossIncome)) {
         items.push({ tab: "employees", text: "Payroll is outrunning your income — grow revenue or let someone go", priority: 58 });

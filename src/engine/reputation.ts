@@ -3,6 +3,8 @@ import { reputation as R } from "./balance/reputation";
 import { contractsReputation } from "./contracts";
 import { balance } from "./balance/config";
 import { floorDrawnOut } from "./hall";
+import { trialBonusRep } from "./trials";
+import { autoResearchEnabled } from "./director";
 import type { GameState } from "./types";
 
 const shipModes = balance.prestige.shipModes;
@@ -27,7 +29,42 @@ export function earnedReputation(state: GameState): number {
   pts += state.stats.openSourceShips * shipModes.open_source.reputationBonus; // open-source goodwill
   pts += state.stats.safetyShips * R.perSafetyShip; // safety-committed ships earn standing (B1)
   pts += state.stats.stakesRepEarned; // Frontier Race stakes won (depth batch)
+  pts += recordsCount(state) * R.records.perMagnitude; // personal Compute records (2026-09)
+  pts += trialBonusRep(state); // Unplugged II and any other Rep-paying Trial
   return pts;
+}
+
+/** log10 of the career-peak Compute/sec, or −Infinity before any Compute. */
+function peakMag(state: GameState): number {
+  return state.stats.peakComputePerSec.log10();
+}
+
+/** How many Compute records you hold: powers of ten the career peak has crossed
+ *  above the floor (10K/s → 1, 100K/s → 2, …), capped. The epsilon keeps an exact
+ *  power of ten on the right side of the floor. */
+export function recordsCount(state: GameState): number {
+  const mag = Math.floor(peakMag(state) + 1e-9);
+  if (!Number.isFinite(mag)) return 0;
+  return Math.max(0, Math.min(R.records.maxRecords, mag - R.records.floorMag));
+}
+
+/** 0..1 progress of the peak toward the NEXT record, on the log scale the records
+ *  are measured on (so 50K/s reads as 70% of the way from 10K to 100K). 0 once
+ *  every record is held. */
+export function nextRecordProgress(state: GameState): number {
+  if (recordsCount(state) >= R.records.maxRecords) return 0;
+  const mag = peakMag(state);
+  if (!Number.isFinite(mag)) return 0;
+  const from = Math.max(R.records.floorMag, Math.floor(mag + 1e-9));
+  return Math.max(0, Math.min(1, mag - from));
+}
+
+/** The Compute/sec the next record needs, as a power of ten (10^n), or null when
+ *  every record is held. */
+export function nextRecordMag(state: GameState): number | null {
+  const held = recordsCount(state);
+  if (held >= R.records.maxRecords) return null;
+  return R.records.floorMag + held + 1;
 }
 
 /** Reputation available to spend right now. */
@@ -50,7 +87,7 @@ export function canBuyReputationPerk(state: GameState, id: string): boolean {
 export function buyReputationPerk(state: GameState, id: string): GameState {
   if (!canBuyReputationPerk(state, id)) return state;
   const perk = PERK_BY_ID.get(id)!;
-  return {
+  const next: GameState = {
     ...state,
     reputation: {
       ...state.reputation,
@@ -58,6 +95,16 @@ export function buyReputationPerk(state: GameState, id: string): GameState {
       perks: [...state.reputation.perks, id],
     },
   };
+  // The Research Director holds the start-of-run window (Lab Charter + Stance) open for
+  // a grace after each ship (charter.ts `startWindowOpen`). Bought mid-run, after the
+  // player's own research had already closed that window, it reopened it — so one run
+  // could declare Safety, research, claim, buy the Director, re-declare Acceleration
+  // and claim again. Without the Director the window is closed exactly when research
+  // exists, so pin that close with the lock the "Lock in" button uses.
+  if (!autoResearchEnabled(state) && autoResearchEnabled(next) && state.research.length > 0) {
+    return { ...next, charterLocked: true };
+  }
+  return next;
 }
 
 // ---------- Endgame Reputation Endowment (post-AGI infinite sink) ----------
@@ -227,12 +274,9 @@ export function reputationMods(state: GameState): ReputationMods {
   return { computeMult, dataMult, moneyMult, payrollMult };
 }
 
-/** True when the player owns the Research Director perk (auto-buys research). */
-export function autoResearchEnabled(state: GameState): boolean {
-  return R.perks.some(
-    (p) => p.effect.kind === "automate" && p.id === "rep_autoresearch" && state.reputation.perks.includes(p.id),
-  );
-}
+/** True when the player owns the Research Director perk (auto-buys research). Defined
+ *  in director.ts beside the Director's start-of-run grace. */
+export { autoResearchEnabled } from "./director";
 
 /** Research-cost multiplier from owned `researchDiscount` perks (≤ 1). Neutral = 1,
  *  so a fresh run (no perks) pays full price and the early curve is untouched. The

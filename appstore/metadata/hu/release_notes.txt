@@ -1,11 +1,10 @@
 Ebben a frissítésben:
 
-• Grand Challenges — hosszú távra szóló moonshotok, maradandó jutalmakkal.
-• Lab Objectives — vadonatúj célranglétra, egészen az endgame mélyéig.
-• Automation — robotpilóta a favágómunkához.
-• Kutatási elágazás minden egyes menetben, plusz élénkebb haladásjelzés.
-• És az App Store-oldal mostantól magyarul beszél.
+• Újdonság minden generációban: válassz Stance-et (Safety, Center vagy Acceleration), és oldd fel az adott oldal Doctrine-előnyeit. Minden Ship ráadásul három Lab Chartert oszt le, köztük olyanokat is, amelyek magukat a szabályokat írják át.
+• Unplugged Trials: kapcsold ki egy generációra a Legacyt, és játssz végig újra egy teljes kört a nulláról. A Compute-rekordjaid mostantól Lab Reputationt hoznak.
+• Világosabb célok: mindig látod a következő lépést, és azt is, mikor éri meg igazán a Ship.
+• „Spórolj erre”: koppints egy elérhetetlen kutatásra, és a labor magától félreteszi rá a Compute-ot, majd meg is veszi helyetted.
+• Nagyobb nyugalom: csak a valódi döntések szakítanak félbe, minden más a hírszalagon fut. Jobban működik VoiceOverrel, és nagyobbak a koppintható felületek.
+• Gördülékenyebb a régebbi iPhone-okon, pontos offline idő és több mint 60 hibajavítás.
 
-Emellett balansz- és stabilitásjavítások.
-
-Reklám továbbra sincs. Pay-to-win továbbra sincs.
+Továbbra sincs reklám. Továbbra sincs pay-to-win.

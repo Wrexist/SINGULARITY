@@ -32,7 +32,7 @@ export function EditableName({ value, onCommit, className, max = 32 }: {
         onBlur={commit}
         onKeyDown={(e) => {
           if (e.key === "Enter") commit();
-          else if (e.key === "Escape") cancel();
+          else if (e.key === "Escape") { e.preventDefault(); cancel(); }
         }}
       />
     );

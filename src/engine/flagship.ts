@@ -36,6 +36,18 @@ export function setFlagship(state: GameState, id: string | null): GameState {
   return { ...state, flagship: { productId: id, tenure: 0 } };
 }
 
+/** The built-up brand the flag would leave behind if `nextId` became the flagship (or,
+ *  with null, if the current flagship stopped being one — a sale does that): the
+ *  current flagship and the revenue bonus its tenure pays. null when nothing is lost —
+ *  no flagship, no tenure yet, or `nextId` already is the flagship. The UI asks before
+ *  a move that would throw a brand away, and names it on the sale confirm. Pure. */
+export function flagshipBrandLost(state: GameState, nextId: string | null): { productId: string; tenure: number; pct: number } | null {
+  const cur = state.flagship.productId;
+  const tenure = flagshipTenure(state);
+  if (!cur || cur === nextId || tenure <= 0) return null;
+  return { productId: cur, tenure, pct: Math.round(tenure * F.perShip * 100) };
+}
+
 /** Advance the flagship across a ship (called from prestige): if the designated product
  *  is still active, bump tenure (capped); otherwise the brand is lost (reset). */
 export function advanceFlagship(state: GameState): { productId: string | null; tenure: number } {

@@ -1,5 +1,5 @@
 import { balance } from "../engine/balance/config";
-import { canBuyUpgrade, upgradeCost } from "../engine/actions";
+import { canBuyUpgrade, upgradeCost, isIncident } from "../engine/actions";
 import type { GameState } from "../engine/types";
 import { currentEra } from "../engine/eras";
 import { powerStats } from "../engine/power";
@@ -10,7 +10,7 @@ import type { SlotClass } from "../engine/balance/components";
 import { regulatorState, regulatorIsNamed } from "../engine/regulator";
 import { marketLeaderboard } from "../engine/market";
 import { charters } from "../engine/balance/charters";
-import { RACK_IDS, hallDims, hallCapacity, wingCapacity, hallWings, hallRoomSplit, floorDrawnOut, type Dir } from "../engine/hall";
+import { RACK_IDS, totalRacks, hallDims, hallCapacity, wingCapacity, hallWings, hallRoomSplit, floorDrawnOut, type Dir } from "../engine/hall";
 
 export { hallDims, hallExpansion, type Dir } from "../engine/hall";
 
@@ -224,6 +224,15 @@ function sideMarkers(game: GameState): SideMarker[] {
   // room itself keeps inviting a purchase that adds tiles no rack can stand on — the
   // Build panel stops offering it, and the floor has to agree.
   const drawnOut = floorDrawnOut(game);
+  // An empty closet doesn't need a "$7.0K" price tag painted on its floor. The strips
+  // appear once the room is at least half full (or already grown), which is the moment
+  // floor space becomes a real question — before that they were two unaffordable prices
+  // on the very first screen a new player sees. "The room" is ONE floor: measured
+  // against the whole facility, a lab with Wings (they survive a ship; the expansions
+  // don't) lost the strips until half of every floor was full — wing A packed solid and
+  // the room still not offering to grow. Identical to the facility total at one wing.
+  const grown = SIDE_DEFS.some(({ id }) => (game.upgrades[id] ?? 0) > 0);
+  if (!grown && totalRacks(game) * 2 < wingCapacity(game)) return [];
   return SIDE_DEFS.map(({ dir, id }) => {
     const def = upgById(id);
     const lvl = game.upgrades[id] ?? 0;
@@ -385,7 +394,7 @@ export function buildHallModel(game: GameState, wing = 0): HallModel {
     incidents:
       racks.length > 0
         ? game.modifiers
-            .filter((m) => m.tone === "bad" && m.remainingSec > 0)
+            .filter(isIncident)
             .map((m) => ({ id: m.id, rackIndex: hashStr(m.id) % racks.length, worked: m.worked === true }))
         : [],
     crowd: Math.min(6, game.modifiers.filter((m) => m.tone === "good" && m.remainingSec > 0).length * 2),

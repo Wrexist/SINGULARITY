@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { charterMods, setCharter, canSetCharter, chartersUnlocked, chartersBalance, lockCharter } from "./charter";
+import { charterMods, setCharter, canSetCharter, chartersUnlocked, chartersBalance, lockCharter, charterHand, charterRule } from "./charter";
+import { researchCost, applyWorldEventChoice } from "./actions";
+import { ALL_RESEARCH } from "./researchTree";
+const RESEARCH_BY_ID = Object.fromEntries(ALL_RESEARCH.map((r) => [r.id, r]));
 import { derive } from "./derive";
 import { prestige, legacyWeightsForMode, charterConvictionMult } from "./prestige";
 import { serialize, deserialize } from "./save";
@@ -13,6 +16,17 @@ function shipped() {
   return s;
 }
 const firstCharter = chartersBalance.list[0]!; // open_source: +data, -money
+
+/** A just-shipped lab whose dealt hand is certain to hold `id`: last run flew it, and
+ *  the hand always keeps last run's charter. */
+function dealt(id: string, ships = 1) {
+  const s = shipped();
+  s.prestige.ships = Math.max(ships, chartersBalance.list.find((c) => c.id === id)?.minShips ?? 0);
+  s.lastCharter = id;
+  return s;
+}
+/** Adopt a charter directly (mods tests don't care which hand dealt it). */
+const adopted = (id: string) => ({ ...shipped(), charter: id });
 
 describe("R6.1 — Lab Charters", () => {
   it("are locked until the first ship", () => {
@@ -47,7 +61,7 @@ describe("R6.1 — Lab Charters", () => {
   });
 
   it("resets to null on prestige (fresh run, fresh choice)", () => {
-    let s = setCharter(shipped(), "moonshot");
+    let s = setCharter(dealt("moonshot"), "moonshot");
     expect(s.charter).toBe("moonshot");
     s = { ...s, research: ["inference_api"] }; // commit a path → locks charter + meets ship gate
     const next = prestige(s);
@@ -56,7 +70,7 @@ describe("R6.1 — Lab Charters", () => {
   });
 
   it("survives a save round-trip and migrates from a pre-charter save", () => {
-    const s = setCharter(shipped(), "bootstrapped");
+    const s = setCharter(dealt("bootstrapped"), "bootstrapped");
     expect(deserialize(serialize(s)).charter).toBe("bootstrapped");
     const old = JSON.parse(serialize(s));
     delete old.charter; old.version = 12;
@@ -68,22 +82,24 @@ describe("R6.1 — Lab Charters", () => {
     expect(new Set(ids).size).toBe(ids.length); // no dup ids
     expect(ids.length).toBeGreaterThanOrEqual(7); // expanded pool (more build options)
     for (const c of chartersBalance.list) {
-      const m = charterMods(setCharter(shipped(), c.id));
+      const m = charterMods(adopted(c.id));
       // finite, positive lane mults
       for (const v of [m.computeMult, m.dataMult, m.moneyMult]) {
         expect(Number.isFinite(v)).toBe(true);
         expect(v).toBeGreaterThan(0);
       }
-      // at least one lane actually tilts (it's a real choice, not a no-op)
-      expect(m.computeMult !== 1 || m.dataMult !== 1 || m.moneyMult !== 1).toBe(true);
+      // at least one lane tilts OR a rule changes (it's a real choice, not a no-op)
+      const rule = Object.values(charterRule(adopted(c.id)));
+      for (const v of rule) expect(Number.isFinite(v) && v > 0 && v !== 1).toBe(true);
+      expect(m.computeMult !== 1 || m.dataMult !== 1 || m.moneyMult !== 1 || rule.length > 0).toBe(true);
     }
   });
 
   it("new charters tilt the lanes they advertise", () => {
-    expect(charterMods(setCharter(shipped(), "data_monopoly")).dataMult).toBeGreaterThan(1);
-    expect(charterMods(setCharter(shipped(), "data_monopoly")).computeMult).toBeLessThan(1);
-    expect(charterMods(setCharter(shipped(), "cash_machine")).moneyMult).toBeGreaterThan(1);
-    expect(charterMods(setCharter(shipped(), "mad_science")).computeMult).toBeGreaterThan(1);
+    expect(charterMods(adopted("data_monopoly")).dataMult).toBeGreaterThan(1);
+    expect(charterMods(adopted("data_monopoly")).computeMult).toBeLessThan(1);
+    expect(charterMods(adopted("cash_machine")).moneyMult).toBeGreaterThan(1);
+    expect(charterMods(adopted("mad_science")).computeMult).toBeGreaterThan(1);
   });
 
   describe("B1 — charter conviction prestige bonus", () => {
@@ -167,5 +183,90 @@ describe("charter explicit lock (owner UX fix)", () => {
     picked.research = ["inference_api"]; // meet the ship gate
     const shipped = prestige(picked);
     expect(shipped.charterLocked).toBe(false);
+  });
+});
+
+describe("Charter draft (2026-09)", () => {
+  const H = chartersBalance.handSize;
+  const RULES = chartersBalance.list.filter((c) => c.rule);
+  const isRule = (id: string) => RULES.some((c) => c.id === id);
+  const at = (ships: number, lastCharter: string | null = null) => {
+    const s = shipped();
+    s.prestige.ships = ships;
+    s.lastCharter = lastCharter;
+    return s;
+  };
+
+  it("deals a hand of distinct known charters, the same hand for the same ship", () => {
+    expect(charterHand(createInitialState())).toEqual([]); // before the unlock
+    for (let ships = 1; ships <= 40; ships++) {
+      const hand = charterHand(at(ships));
+      expect(hand.length).toBe(H);
+      expect(new Set(hand).size).toBe(H);
+      for (const id of hand) expect(chartersBalance.list.some((c) => c.id === id)).toBe(true);
+      expect(charterHand(at(ships))).toEqual(hand);
+    }
+  });
+
+  it("varies from ship to ship", () => {
+    const hands = new Set<string>();
+    for (let ships = 1; ships <= 20; ships++) hands.add(charterHand(at(ships)).slice().sort().join(","));
+    expect(hands.size).toBeGreaterThan(8);
+  });
+
+  it("always keeps last run's charter, so a conviction streak can continue", () => {
+    for (const c of chartersBalance.list) {
+      const ships = Math.max(8, c.minShips ?? 0);
+      expect(charterHand(at(ships, c.id))).toContain(c.id);
+    }
+  });
+
+  it("deals no rule charter before its unlock, and exactly one wild card after", () => {
+    const unlock = Math.min(...RULES.map((c) => c.minShips ?? 0));
+    for (let ships = 1; ships < unlock; ships++) expect(charterHand(at(ships)).some(isRule)).toBe(false);
+    for (let ships = unlock; ships <= unlock + 30; ships++) {
+      expect(charterHand(at(ships)).filter(isRule).length).toBe(1);
+      expect(charterHand(at(ships, "moonshot")).filter(isRule).length).toBe(1);
+    }
+  });
+
+  it("only adopts a charter from the hand (or the one already adopted)", () => {
+    const s = at(3);
+    const hand = charterHand(s);
+    const outside = chartersBalance.list.find((c) => !hand.includes(c.id) && (c.minShips ?? 0) <= 3)!;
+    expect(setCharter(s, outside.id)).toBe(s);
+    const picked = setCharter(s, hand[0]!);
+    expect(picked.charter).toBe(hand[0]);
+    // A charter already adopted (e.g. from a save made before the draft) stays settable.
+    const legacy = { ...s, charter: outside.id };
+    expect(setCharter(legacy, outside.id).charter).toBe(outside.id);
+    expect(setCharter(legacy, null).charter).toBeNull();
+  });
+
+  it("Research Sprint halves research Compute and raises its Data", () => {
+    const def = RESEARCH_BY_ID["backprop"]!;
+    const plain = researchCost(shipped(), def);
+    const sprint = researchCost(adopted("research_sprint"), def);
+    expect(sprint.compute.toNumber()).toBeCloseTo(plain.compute.toNumber() * 0.5, 6);
+    expect(sprint.data.toNumber()).toBeCloseTo(plain.data.toNumber() * 1.8, 6);
+  });
+
+  it("Product Company multiplies product ARPU", () => {
+    const base = derive(shipped()).productMods.arpu;
+    expect(derive(adopted("product_company")).productMods.arpu).toBeCloseTo(base * 2.5, 9);
+  });
+
+  it("True Believers doubles how far a faction choice moves you", () => {
+    const ev = balance.worldEvents.list.find((e) => e.choices?.length)!;
+    const plain = applyWorldEventChoice(shipped(), ev.id, 0).state.alignment;
+    const doubled = applyWorldEventChoice(adopted("true_believers"), ev.id, 0).state.alignment;
+    expect(doubled).toBeCloseTo(Math.max(-1, Math.min(1, plain * 2)), 9);
+  });
+
+  it("is identity with no charter (the sim's state)", () => {
+    const s = createInitialState();
+    expect(charterRule(s)).toEqual({});
+    const def = RESEARCH_BY_ID["backprop"]!;
+    expect(researchCost(s, def).compute.toNumber()).toBe(def.cost.compute * balance.difficulty.costMult);
   });
 });

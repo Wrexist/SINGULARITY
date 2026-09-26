@@ -1,9 +1,10 @@
-Ce aduce update-ul:
+În această actualizare:
 
-• Grand Challenges — pariuri moonshot pe termen lung, cu recompense permanente.
-• Lab Objectives — o scară nouă de obiective care ține până adânc în endgame.
-• Automatizare — autopilot pentru toată corvoada.
-• O bifurcație în arborele de cercetare la fiecare rundă și vizualuri de progres mai vii.
-• Iar pagina din App Store vorbește de-acum românește.
+• Nou în fiecare generație: alege-ți tabăra (Safety, Center sau Acceleration) și deblochează perk-urile Doctrine ale acesteia. Iar fiecare Ship îți împarte trei Lab Charters, inclusiv unele care schimbă regulile jocului.
+• Unplugged Trials: oprește Legacy pentru o generație și joacă din nou o partidă completă. Recordurile tale de Compute aduc acum Lab Reputation.
+• Obiective mai clare: vezi mereu pasul următor și când merită cu adevărat să faci Ship.
+• „Economisește pentru asta”: atinge o cercetare prea scumpă, iar laboratorul strânge Compute pentru ea și o cumpără în locul tău.
+• Mai multă liniște: te întrerup doar deciziile reale, restul rulează în fluxul de știri. Plus suport mai bun pentru VoiceOver și zone de atingere mai mari.
+• Mai fluid pe iPhone-urile mai vechi, timp offline corect și peste 60 de remedieri.
 
-Plus reglaje de echilibru și stabilitate. Tot fără reclame. Tot fără pay-to-win.
+În continuare fără reclame. În continuare fără pay-to-win.

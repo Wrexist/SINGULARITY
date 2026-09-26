@@ -549,8 +549,10 @@ describe("products — rename + retire payout", () => {
 
   it("retiring pays out a buyout (≈ retireValuationSec of MRR) into Money + lifetime", () => {
     let s = release();
-    // Seed a profitable book so MRR > 0, and mature it so it's worth full value.
-    s = { ...s, products: { ...s.products, active: [{ ...s.products.active[0]!, paid: 5000, ageSec: B.retireMaturitySec }] } };
+    // Seed a profitable book so MRR > 0, and mature it so it's worth full value. The
+    // paying subs need a user base behind them (paid ≤ MAU is a sim/save invariant, and
+    // a sale is valued on no more subs than the product's users sustain).
+    s = { ...s, products: { ...s.products, active: [{ ...s.products.active[0]!, mau: 1_000_000, paid: 5000, ageSec: B.retireMaturitySec }] } };
     const quote = retirePayout(s, "p1");
     expect(quote).toBeGreaterThan(0);
     const before = s.resources.money;

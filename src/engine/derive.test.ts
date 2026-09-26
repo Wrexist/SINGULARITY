@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { derive } from "./derive";
+import { derive, focusToBank, computeBankCeiling } from "./derive";
 import { createInitialState } from "./state";
 import { balance } from "./balance/config";
 import { Big } from "./math/Big";
@@ -84,5 +84,30 @@ describe("run-yield curve pin (DELIBERATE global-mult double-apply — do not 'f
     // As-built: ×lm² (once inside runComputeCost, once via moneyMult/dataMult).
     expect(d.runMoneyYield.div(base.runMoneyYield).toNumber()).toBeCloseTo(lm * lm, 3);
     expect(d.runDataYield.div(base.runDataYield).toNumber()).toBeCloseTo(lm * lm, 3);
+  });
+});
+
+describe("focusToBank — how far to ease intensity for a Compute-walled node", () => {
+  it("returns an intensity whose bank ceiling clears the cost, never above the current one", () => {
+    const s = createInitialState();
+    // Fast (compute-bound) runs, so the full-intensity ceiling genuinely binds.
+    s.upgrades = { ...s.upgrades, rack_basic: 20, auto_claim: 1, auto_train: 1, batching: 12 };
+    s.research = ["caching", "distillation"];
+    s.computeFocus = 1;
+    const d = derive(s);
+    const ceiling = computeBankCeiling(s, d)!;
+    // Already within reach → no change.
+    expect(focusToBank(s, d, ceiling.mul(0.5))).toBe(1);
+    // Twice the ceiling → a lower intensity whose own ceiling clears it.
+    const cost = ceiling.mul(2);
+    const f = focusToBank(s, d, cost);
+    expect(f).toBeGreaterThan(0);
+    expect(f).toBeLessThan(1);
+    // At the eased intensity no run fires until the bank reaches runCost / f, so it
+    // climbs at full production all the way to the cost.
+    const eased = { ...s, computeFocus: f };
+    expect(derive(eased).runComputeCost.div(f).gte(cost)).toBe(true);
+    // Unreachable at any running intensity → hold training (0, unbounded bank).
+    expect(focusToBank(s, d, ceiling.mul(1e6))).toBe(0);
   });
 });

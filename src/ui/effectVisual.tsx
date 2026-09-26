@@ -64,7 +64,9 @@ export function effectLabel(e: AnyEffect): string {
 export function EffectPill({ effect }: { effect: AnyEffect }) {
   const { tint } = metaForKind(effect.kind);
   return (
-    <span className="eff-pill" style={{ color: tint, background: `color-mix(in srgb, ${tint} 10%, transparent)` }}>
+    // Text in a 60%-towards-black shade of the lane tint (>= 4.7:1 for every lane);
+    // the soft tinted background keeps the colour coding. Was the raw tint: 1.6-3.4:1.
+    <span className="eff-pill" style={{ color: `color-mix(in srgb, ${tint} 60%, #000)`, background: `color-mix(in srgb, ${tint} 10%, transparent)` }}>
       {effectLabel(effect)}
     </span>
   );

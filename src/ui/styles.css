@@ -10,7 +10,7 @@
   --bg-2: #e7ebf5;
   --ink: #14161b;
   --ink-2: #454b59;
-  --ink-3: #69707f;
+  --ink-3: #596070; /* was #69707f: 4.40:1 on --bg, under AA for the 105 rules using it */
 
   /* Glass material */
   --glass: rgba(255, 255, 255, 0.55);
@@ -23,6 +23,14 @@
   --compute: #2f7bf6;
   --data: #9b51e0;
   --money: #16b364;
+  /* TEXT shades of the resource colours (2026-09 accessibility pass). The bright
+     tokens above stay for fills, rings, icons and bars; as small text on the light
+     surfaces they measured 2.3-4.0:1. These clear WCAG AA (4.5:1) on --bg and white. */
+  --compute-ink: #1d5fd6;
+  --data-ink: #7c3aed;
+  --money-ink: #0b7a43;
+  --coral-ink: #d6304f;
+  --amber-ink: #a1620f;
 
   /* Brand CTA (Airbnb-coral lineage) */
   --coral: #ff385c;
@@ -361,7 +369,7 @@ svg { vertical-align: middle; }
 .ach-desc { font-size: var(--fs-xs); color: var(--ink-2); line-height: 1.35; }
 .ach-bar { height: 4px; border-radius: 2px; background: var(--glass); overflow: hidden; margin-top: 6px; }
 .ach-bar-fill { height: 100%; transition: width 0.3s var(--ease-out); }
-.ach-check { flex: 0 0 auto; display: inline-flex; align-items: center; color: var(--money); }
+.ach-check { flex: 0 0 auto; display: inline-flex; align-items: center; color: var(--money-ink); }
 
 /* ---------- AGI ascension (Post-Singularity) ---------- */
 .agi-banner {
@@ -392,6 +400,20 @@ svg { vertical-align: middle; }
 .rep-strip-text b { font-weight: 850; }
 .rep-strip-go { font-size: var(--fs-sm); font-weight: 750; color: var(--data); white-space: nowrap; }
 .rep-modal { max-width: 440px; }
+/* Personal Compute records — one quiet row + a slim log-scale bar in the sheet. */
+.rep-records { margin: 0 0 12px; }
+.rep-records-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 6px; font-size: var(--fs-sm); font-weight: 650; color: var(--ink-2); }
+.rep-records-row b { color: var(--ink); font-weight: 850; }
+.rep-records-next { flex: none; font-size: var(--fs-xs); font-weight: 750; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+/* The HQ strip's mark carries a ring that fills toward the next record — ambient,
+   wordless; the sheet above says what it is. Reuses the icon-ring's --pct dial. */
+.rep-strip-mark.rec-ring { position: relative; width: 30px; height: 30px; justify-content: center; transition: --pct 0.5s var(--ease-out); }
+.rep-strip-mark.rec-ring::before {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(from -90deg, var(--data) calc(var(--pct, 0) * 360deg), color-mix(in srgb, var(--data) 14%, transparent) 0);
+  -webkit-mask: radial-gradient(farthest-side, #0000 calc(100% - 3px), #000 calc(100% - 2.5px));
+          mask: radial-gradient(farthest-side, #0000 calc(100% - 3px), #000 calc(100% - 2.5px));
+}
 .rep-pts { color: var(--data); font-weight: 850; }
 .rep-list { margin-top: 6px; }
 .rep-card .card-note.rep-req { color: var(--coral); }
@@ -465,6 +487,11 @@ svg { vertical-align: middle; }
   pointer-events: none;
   background: linear-gradient(180deg, var(--bg) 0%, var(--bg) 88%, rgba(238, 241, 248, 0) 100%);
 }
+/* At rest (page not scrolled) the overdraw would sit on the brand header above the
+   bar and hide it; reach only as far as the pinned gap until the page scrolls. */
+:root:not([data-scrolled]) .resource-bar::before {
+  top: calc(-8px - env(safe-area-inset-top));
+}
 .resource {
   /* Stacked + centered so all three cards are visually identical and balanced
      (symmetry pass) — icon on top, value and rate centered beneath it. */
@@ -520,7 +547,7 @@ svg { vertical-align: middle; }
 .resource-rate {
   font-size: var(--fs-2xs);
   font-weight: 600;
-  color: var(--c);
+  color: var(--ci, var(--c));
   margin-top: 1px;
 }
 /* Juice overlay — particles + floating numbers (FxCanvas). Above content, below modals. */
@@ -687,6 +714,17 @@ svg { vertical-align: middle; }
   box-shadow: inset 0 1px 2px rgba(16, 24, 40, 0.08);
 }
 .progress.small { height: 24px; margin-bottom: 12px; }
+.progress-auto {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  display: inline-flex; color: var(--ink-3); opacity: 0.8; pointer-events: none;
+}
+.progress.ready .progress-auto { color: rgba(255, 255, 255, 0.85); }
+.progress.slim { height: 8px; margin-bottom: 14px; }
+.ship-gate-label {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+  margin: 0 0 6px; font-size: var(--fs-sm); font-weight: 650; color: var(--ink-2);
+}
+.ship-gate-count { flex: none; font-size: var(--fs-xs); font-weight: 750; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .progress-fill {
   position: relative;
   height: 100%;
@@ -698,6 +736,10 @@ svg { vertical-align: middle; }
 .progress-fill.money {
   background: linear-gradient(90deg, var(--money), #4fe0a0);
   box-shadow: 0 0 18px -2px rgba(22, 179, 100, 0.5);
+}
+.progress-fill.data {
+  background: linear-gradient(90deg, var(--data), #b794ff);
+  box-shadow: 0 0 18px -2px color-mix(in srgb, var(--data) 50%, transparent);
 }
 /* moving sheen */
 .progress.active .progress-fill::after {
@@ -753,6 +795,10 @@ svg { vertical-align: middle; }
   text-shadow: 0 0 3px rgba(9, 12, 20, 0.55), 0 1px 2px rgba(9, 12, 20, 0.45);
   letter-spacing: 0.01em;
 }
+/* While the fill hasn't reached the centred label, the glyphs sit on the pale track:
+   plain ink reads cleanly there, where haloed white looked embossed and grey. */
+.progress-label.on-track,
+.challenge-bar-label.on-track { color: var(--ink-2); text-shadow: none; }
 
 .coach {
   font-size: var(--fs-sm);
@@ -843,11 +889,13 @@ svg { vertical-align: middle; }
   transform: none;
 }
 .btn-primary {
-  background: linear-gradient(135deg, var(--coral), var(--coral-2));
+  /* Deeper coral stops: white on the old --coral/--coral-2 measured 3.3/2.7:1. */
+  background: linear-gradient(135deg, #d92d52, #e02d52);
   box-shadow: 0 10px 24px -10px rgba(255, 56, 92, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 .btn-claim {
-  background: linear-gradient(135deg, var(--money), #2fe08a);
+  /* The most-pressed button in the game: white on the old green measured 2.1:1. */
+  background: linear-gradient(135deg, #0c8047, #0f8a4d);
   box-shadow: 0 10px 24px -10px rgba(22, 179, 100, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.4);
   animation: bob 1.1s ease-in-out infinite;
 }
@@ -856,7 +904,7 @@ svg { vertical-align: middle; }
   50% { transform: translateY(-2px); }
 }
 .btn-ship {
-  background: linear-gradient(135deg, var(--ship), var(--coral));
+  background: linear-gradient(135deg, #cf4a1c, #d92d52);
   box-shadow: 0 12px 28px -10px rgba(255, 90, 60, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 .btn-ghost {
@@ -944,7 +992,7 @@ svg { vertical-align: middle; }
 }
 @keyframes badge-pop {
   0% { transform: scale(1); }
-  40% { transform: scale(1.35); color: var(--money); background: rgba(22, 179, 100, 0.22); }
+  40% { transform: scale(1.35); color: var(--money-ink); background: rgba(22, 179, 100, 0.22); }
   100% { transform: scale(1); }
 }
 .card-desc { font-size: var(--fs-sm); color: var(--ink-2); line-height: 1.35; }
@@ -959,6 +1007,9 @@ svg { vertical-align: middle; }
 
 /* "Recommended next" hero — a clear anchor above the list, not just a flat wall. */
 .hero-wrap { margin-bottom: 16px; }
+/* The hero is a <button>: in a block wrapper it shrink-wraps its content (it sat
+   ~36px short of the column while every card below stretched full width). */
+.hero-wrap > .card, .hero-wrap > .node { width: 100%; }
 .hero-kicker {
   font-size: var(--fs-2xs); font-weight: 850; letter-spacing: 0.13em; text-transform: uppercase;
   color: var(--ink-3); margin: 0 0 7px 3px;
@@ -978,14 +1029,19 @@ svg { vertical-align: middle; }
   color: var(--ink-3); margin: 0 0 9px 3px;
 }
 .card-cost { font-size: var(--fs-md); font-weight: 750; white-space: nowrap; text-align: right; display: flex; flex-direction: column; gap: 2px; align-items: flex-end; }
-.cost-max { color: var(--ship); }
+/* A finished upgrade is done, not in trouble: quiet ink, not the alert orange. */
+.cost-max { color: var(--ink-3); font-weight: 800; letter-spacing: 0.04em; }
 .cost-eta { font-size: var(--fs-2xs); font-weight: 650; color: var(--ink-3); }
 .node-cost .cost-eta { margin-left: 6px; }
 /* Walled: the auto-train bank can't hold this node's Compute at the current intensity,
    so instead of a lying countdown we point at the real lever. Warm amber (a nudge, not
    an error), a hair bolder than a plain ETA so the eye lands on the fix. */
 .cost-eta.walled { color: var(--amber, #c67c1e); font-weight: 750; }
-.cost-sub { font-size: var(--fs-xs); font-weight: 700; color: var(--money); }
+/* A pinned "save for this" node: the ring on its icon fills as Compute banks; the
+   tag just says what's happening, in the accent, with no animation of its own. */
+.cost-eta.saving { color: var(--accent); font-weight: 750; }
+.node.saving { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.cost-sub { font-size: var(--fs-xs); font-weight: 700; color: var(--money-ink); }
 .cost-blocked { color: var(--coral); font-size: var(--fs-sm); font-weight: 750; }
 
 /* Floor-capacity readout above the hardware list (rack purchases are gated by it). */
@@ -1126,6 +1182,16 @@ svg { vertical-align: middle; }
   background: rgba(0, 0, 0, 0.05); border-radius: 999px; padding: 1px 8px; font-variant-numeric: tabular-nums;
 }
 .research-track { display: flex; flex-direction: column; gap: 10px; }
+/* A finished category folds to this one tappable row. */
+.research-cat-toggle {
+  width: 100%; background: none; border: none; cursor: pointer; font: inherit; text-align: left;
+  align-items: center; padding: 6px 2px; margin-bottom: 0; color: inherit;
+}
+.research-cat-toggle .research-cat-name { flex: 1; }
+.research-cat-toggle .research-cat-count { display: inline-flex; align-items: center; gap: 4px; color: var(--money-ink); background: rgba(22, 179, 100, 0.1); }
+.research-cat-toggle .chevron { color: var(--ink-3); display: inline-flex; }
+.research-cat.done { margin-top: 6px; }
+.research-cat.done + .research-cat:not(.done) { margin-top: 14px; }
 .node {
   text-align: left;
   background: #fff;
@@ -1253,7 +1319,8 @@ svg { vertical-align: middle; }
   gap: 8px;
   padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(10, 14, 28, 0.5);
+  /* 0.75, not 0.5: bright ceiling-lamp dots on the canvas showed through the text. */
+  background: rgba(10, 14, 28, 0.75);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -1330,18 +1397,29 @@ svg { vertical-align: middle; }
   background: linear-gradient(180deg, #1c2233, #171b28);
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  overflow: hidden; white-space: nowrap;
+  overflow: hidden;
 }
 .news-wire {
   flex: 0 0 auto; font-size: var(--fs-2xs); font-weight: 850; letter-spacing: 0.05em;
-  color: #ff5c73; text-transform: uppercase;
+  color: #ff5c73; text-transform: uppercase; white-space: nowrap;
 }
 .news-line {
-  flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  /* Two lines, not one: the median headline is ~82 characters, so a single
+     ellipsised line cut almost every joke before its punchline. The min-height
+     reserves both lines so a short headline doesn't shift the dock below. */
+  flex: 1 1 auto; min-width: 0; overflow: hidden;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
+  line-height: 1.3; min-height: 2.6em;
   font-size: var(--fs-sm); font-weight: 600; color: rgba(255, 255, 255, 0.82);
   animation: news-in 0.5s var(--ease-out) both;
 }
 .reduce-motion .news-line { animation: none; }
+/* A world event on the wire: the label and a soft full-card tint carry the tone
+   (house rule: never a left-edge bar). No extra motion beyond the line's own fade. */
+.news-ticker.breaking.good { border-color: rgba(22, 179, 100, 0.45); background: linear-gradient(180deg, #17302a, #131f1d); }
+.news-ticker.breaking.bad { border-color: rgba(255, 92, 115, 0.45); background: linear-gradient(180deg, #321c24, #22151b); }
+.news-ticker.breaking.good .news-wire { color: #4fe0a0; }
+.news-ticker.breaking .news-line { color: #fff; }
 @keyframes news-in { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
 
 /* Tappable-rack info card (R2.1) — a tap on a rack opens this; tap to dismiss. */
@@ -1373,7 +1451,7 @@ svg { vertical-align: middle; }
 .rack-card-stats b { color: #fff; font-weight: 750; }
 
 /* ---------- Lab Stats (collapsible) ---------- */
-.stats { padding: 6px 18px; }
+.stats { padding-top: 4px; padding-bottom: 4px; }
 .stats.open { padding-bottom: 16px; }
 .stats-toggle {
   display: flex;
@@ -1382,7 +1460,8 @@ svg { vertical-align: middle; }
   width: 100%;
   background: none;
   border: none;
-  padding: 14px 0;
+  /* Same 8px row as .collapsible-toggle, so every fold on HQ is one height. */
+  padding: 8px 2px;
   cursor: pointer;
   color: var(--ink-3);
 }
@@ -1423,7 +1502,7 @@ svg { vertical-align: middle; }
 .log-row:last-child { border-radius: 0 0 var(--radius-2xs) var(--radius-2xs); }
 .log-ic { flex: 0 0 auto; display: inline-flex; color: var(--ink-3); transform: translateY(2px); }
 .log-ic svg { width: 14px; height: 14px; }
-.log-good .log-ic { color: var(--money); }
+.log-good .log-ic { color: var(--money-ink); }
 .log-bad .log-ic { color: var(--coral); }
 .log-text { flex: 1; }
 .log-time { flex: 0 0 auto; font-size: var(--fs-2xs); color: var(--ink-3); font-variant-numeric: tabular-nums; }
@@ -1449,7 +1528,7 @@ svg { vertical-align: middle; }
    the app speaks, so the sheet reads as the lab's dashboard, not a spreadsheet. */
 .stat-value.t-compute { color: var(--compute); }
 .stat-value.t-data { color: var(--data); }
-.stat-value.t-money { color: var(--money); }
+.stat-value.t-money { color: var(--money-ink); }
 .stat-value.t-good { color: var(--accent); }
 
 /* ---------- Prestige ---------- */
@@ -1493,12 +1572,13 @@ svg { vertical-align: middle; }
 .ship-mode-ic { flex: 0 0 auto; width: 38px; height: 38px; border-radius: var(--radius-xs); display: inline-flex; align-items: center; justify-content: center; font-size: var(--fs-2xl); background: color-mix(in srgb, var(--ship) 12%, #fff); }
 .ship-mode-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .ship-mode-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.ship-mode-next { font-size: var(--fs-xs); font-weight: 750; color: var(--ink-2); font-variant-numeric: tabular-nums; margin-top: 1px; }
 .ship-mode-label { font-size: var(--fs-base); font-weight: 800; color: var(--ink); }
 .ship-mode-gain { flex: 0 0 auto; font-size: var(--fs-md); font-weight: 800; color: var(--ship); font-variant-numeric: tabular-nums; }
 .ship-mode-blurb { font-size: var(--fs-xs); color: var(--ink-2); line-height: 1.35; }
 .ship-mode-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
 .ship-tag { font-size: var(--fs-2xs); font-weight: 750; padding: 2px 8px; border-radius: 999px; }
-.ship-tag.good { color: var(--money); background: rgba(22, 179, 100, 0.1); }
+.ship-tag.good { color: var(--money-ink); background: rgba(22, 179, 100, 0.1); }
 .ship-tag.muted { color: var(--ink-3); background: rgba(16, 24, 40, 0.05); }
 .ship-tag.warn { color: #c2410c; background: rgba(249, 115, 22, 0.12); }
 
@@ -1514,7 +1594,9 @@ svg { vertical-align: middle; }
   align-items: center;
   justify-content: center;
   z-index: 50;
-  padding: 24px;
+  /* The app runs viewport-fit=cover, so a tall modal must clear the Dynamic Island
+     and the home indicator itself. */
+  padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
   animation: fade 0.25s ease;
 }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
@@ -1525,7 +1607,7 @@ svg { vertical-align: middle; }
   box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.7);
   animation: rise-modal 0.4s var(--spring);
   /* Scroll inside tall modals on short screens without chaining to the page. */
-  max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   overflow-y: auto;
   overflow-x: hidden; /* keep overflow-x from computing to `auto` and panning sideways */
   touch-action: pan-y;
@@ -1612,7 +1694,7 @@ svg { vertical-align: middle; }
 .premium-perks li { font-size: var(--fs-sm); color: var(--ink-2); line-height: 1.5; }
 .premium-actions { display: flex; align-items: center; gap: 12px; }
 .premium-actions .btn { flex: 1; }
-.premium-owned-tag { font-size: var(--fs-md); font-weight: 700; color: var(--money); }
+.premium-owned-tag { font-size: var(--fs-md); font-weight: 700; color: var(--money-ink); }
 
 /* ---------- Expansion confirm popup ---------- */
 .confirm-modal { max-width: 340px; }
@@ -1639,7 +1721,7 @@ svg { vertical-align: middle; }
    and the hard line read as an ugly seam against the rounded card. */
 .world-modal { text-align: left; max-width: 380px; }
 .world-kicker { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.16em; color: var(--ink-3); margin-bottom: 6px; }
-.world-good .world-kicker { color: var(--money); }
+.world-good .world-kicker { color: var(--money-ink); }
 .world-bad .world-kicker { color: var(--coral); }
 .world-headline { font-size: var(--fs-3xl); font-weight: 800; letter-spacing: -0.02em; margin: 0 0 10px; }
 .world-body { font-size: var(--fs-base); line-height: 1.5; color: var(--ink-2); margin: 0 0 16px; }
@@ -1691,6 +1773,8 @@ svg { vertical-align: middle; }
 .modchip em { font-style: normal; font-variant-numeric: tabular-nums; opacity: 0.7; }
 .modchip.good { color: #0b7a43; background: rgba(22, 179, 100, 0.12); border-color: rgba(22, 179, 100, 0.3); }
 .modchip.bad { color: #b3243f; background: rgba(255, 56, 92, 0.1); border-color: rgba(255, 56, 92, 0.28); }
+/* A status, not a setback (e.g. the regulator truce): quiet ink, no alarm colour. */
+.modchip.neutral { color: var(--ink-2); background: rgba(16, 24, 40, 0.05); border-color: rgba(16, 24, 40, 0.12); }
 /* A BAD modifier the player can "work" (shave time) is now a real, accessible button
    (previously only tappable on the aria-hidden hall canvas). Reset the native button
    chrome so it matches the span chips; the dashed edge hints it's actionable. */
@@ -1745,7 +1829,7 @@ button.modchip.workable:active { transform: scale(0.94); }
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
   background: radial-gradient(120% 80% at 50% 0%, rgba(255, 90, 60, 0.26), rgba(28, 30, 36, 0.45));
   backdrop-filter: blur(10px) saturate(160%);
   -webkit-backdrop-filter: blur(10px) saturate(160%);
@@ -1853,16 +1937,15 @@ button.modchip.workable:active { transform: scale(0.94); }
 
 /* ---------- First steps (interactive onboarding) ---------- */
 .firststeps {
-  /* Was `margin: 10px 12px 0` — the first-session coach card was inset 12px from the
-     hall it sits directly under, on the very first screen a new player sees. */
-  margin: 10px 0 0;
+  /* Sits under the training dock; the stage's own 16px gap spaces it. */
+  margin: 0;
   padding: 10px 12px;
   border-radius: var(--radius-xs);
   background: var(--card, rgba(255, 255, 255, 0.7));
   border: 1px solid rgba(155, 81, 224, 0.25);
 }
 .firststeps-title { font-size: var(--fs-2xs); font-weight: 800; letter-spacing: 0.08em; color: var(--accent, #9b51e0); margin-bottom: 6px; }
-.firststeps-row { display: flex; align-items: baseline; gap: 8px; padding: 3px 0; color: var(--ink-3); font-size: var(--fs-sm); }
+.firststeps-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 3px 0; color: var(--ink-3); font-size: var(--fs-sm); }
 .firststeps-row.now { color: var(--ink); font-weight: 700; }
 .firststeps-row.done { color: var(--ink-3); text-decoration: line-through; opacity: 0.75; }
 .firststeps-mark {
@@ -1874,7 +1957,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 }
 .firststeps-row.done .firststeps-mark { background: rgba(22, 179, 100, 0.15); color: #16b364; }
 .firststeps-row.now .firststeps-mark { animation: firststep-pulse 1.6s ease-in-out infinite; }
-.firststeps-detail { font-size: var(--fs-xs); font-weight: 500; color: var(--ink-3); }
+.firststeps-detail { flex-basis: 100%; padding-left: 26px; font-size: var(--fs-xs); font-weight: 500; color: var(--ink-3); }
 @keyframes firststep-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(155, 81, 224, 0.35); }
   50% { box-shadow: 0 0 0 5px rgba(155, 81, 224, 0); }
@@ -1891,7 +1974,10 @@ button.modchip.workable:active { transform: scale(0.94); }
 /* ---------- Toasts ---------- */
 .toast-stack {
   position: fixed;
-  top: calc(72px + env(safe-area-inset-top));
+  /* Just under the resource bar, pinned or not (it ends at ~173px at rest, ~113px
+     pinned). At 72px a toast sat squarely on the Compute/Data/Money values — the
+     very numbers a decision toast ("pay the fine: −20% cash") is about. */
+  top: calc(182px + env(safe-area-inset-top));
   left: 0;
   right: 0;
   /* Below modal/sheet backdrops (50/60) so an open pop-up covers toasts rather
@@ -1960,6 +2046,7 @@ button.modchip.workable:active { transform: scale(0.94); }
   cursor: pointer;
 }
 .link-btn:hover { color: var(--ink-2); text-decoration: underline; }
+.set-reset { margin-top: 14px; color: var(--coral); }
 
 /* ---------- Settings bottom sheet (iOS-style) ---------- */
 .sheet-backdrop {
@@ -2082,7 +2169,7 @@ button.modchip.workable:active { transform: scale(0.94); }
   border-radius: var(--radius-xs); padding: 9px 11px; outline: none; word-break: break-all;
 }
 .set-backup-text:focus { border-color: color-mix(in srgb, var(--data) 50%, transparent); }
-.set-backup-status { font-size: var(--fs-sm); font-weight: 650; color: var(--money); margin: 2px; line-height: 1.4; }
+.set-backup-status { font-size: var(--fs-sm); font-weight: 650; color: var(--money-ink); margin: 2px; line-height: 1.4; }
 .set-diag-grid { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }
 .set-diag-row { display: flex; justify-content: space-between; gap: 12px; font-size: var(--fs-sm); padding: 5px 2px; border-bottom: 1px solid rgba(0,0,0,0.05); }
 .set-diag-row span:first-child { color: var(--ink-2); }
@@ -2100,6 +2187,9 @@ button.modchip.workable:active { transform: scale(0.94); }
   cursor: pointer;
   color: var(--ink);
 }
+/* A switch the device holds (Reduced motion under iOS Reduce Motion): readable, inert. */
+.set-row[aria-disabled="true"] { cursor: default; }
+.set-row[aria-disabled="true"] .switch { opacity: 0.55; }
 .set-text { display: flex; flex-direction: column; gap: 2px; }
 .set-label { font-size: var(--fs-lg); font-weight: 700; letter-spacing: -0.01em; }
 .set-hint { font-size: var(--fs-sm); color: var(--ink-2); }
@@ -2150,7 +2240,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 .botnav-badge {
   position: absolute; top: 0; right: 50%; margin-right: -22px;
   min-width: 15px; height: 15px; padding: 0 4px; border-radius: 999px;
-  background: var(--accent); color: #fff; font-size: var(--fs-micro); font-weight: 800;
+  background: color-mix(in srgb, var(--accent) 85%, #000); color: #fff; font-size: var(--fs-micro); font-weight: 800;
   display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px #fff;
 }
 .botnav-badge.alt { background: #f5b40a; }
@@ -2180,7 +2270,10 @@ button.modchip.workable:active { transform: scale(0.94); }
   flex: 1;
   border: none;
   background: none;
-  padding: 10px;
+  /* nowrap + slimmer side padding: "Long game" plus its count badge wrapped onto
+     two lines, making the Goals switcher taller than the Lab one. */
+  padding: 10px 4px;
+  white-space: nowrap;
   border-radius: var(--radius-2xs);
   font-size: var(--fs-base);
   font-weight: 700;
@@ -2195,7 +2288,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 .tab-dot {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 17px; height: 17px; padding: 0 4px; margin-left: 5px;
-  border-radius: var(--radius-2xs); background: var(--accent); color: #fff;
+  border-radius: var(--radius-2xs); background: color-mix(in srgb, var(--accent) 85%, #000); color: #fff;
   font-size: var(--fs-xs); font-weight: 800; vertical-align: middle;
 }
 /* The golden "a ship is waiting" pill on the HQ segment (mirrors the nav badge). */
@@ -2285,7 +2378,19 @@ button.modchip.workable:active { transform: scale(0.94); }
 .daily-ic { display: inline-flex; align-items: center; color: var(--accent); }
 .daily-text { flex: 1; min-width: 0; font-size: clamp(12px, 3.2vw, 13px); font-weight: 650; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .daily-text b { font-weight: 800; }
-.daily-go { font-size: var(--fs-sm); font-weight: 800; color: #fff; background: var(--accent); border-radius: 999px; padding: 4px 12px; white-space: nowrap; }
+.daily-go { font-size: var(--fs-sm); font-weight: 800; color: #fff; background: color-mix(in srgb, var(--accent) 85%, #000); border-radius: 999px; padding: 4px 12px; white-space: nowrap; }
+
+/* Maxed upgrades fold into a quiet pill row (icon · name · ✓) under their group —
+   nothing left to decide, so no full card. Tinted by the upgrade's own effect. */
+.up-maxed { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.up-maxed-pill {
+  display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 999px;
+  font-size: var(--fs-xs); font-weight: 750; color: var(--ink-2);
+  background: color-mix(in srgb, var(--tint, var(--accent)) 8%, #fff);
+  border: 1px solid color-mix(in srgb, var(--tint, var(--accent)) 22%, transparent);
+}
+.up-maxed-ic { display: inline-flex; color: var(--tint, var(--accent)); }
+.up-maxed-check { color: var(--money-ink); font-weight: 850; }
 
 /* Buy-quantity selector (×1 / ×10 / Max) for the Hardware panel. */
 .buy-qty { display: flex; gap: 6px; margin: 2px 0 4px; }
@@ -2295,7 +2400,7 @@ button.modchip.workable:active { transform: scale(0.94); }
   color: var(--ink-2); background: rgba(16, 24, 40, 0.04);
   border: 1px solid rgba(16, 24, 40, 0.08);
 }
-.buy-qty-btn.on { color: #fff; background: #2f7bf6; border-color: #2f7bf6; }
+.buy-qty-btn.on { color: #fff; background: #2563eb; border-color: #2563eb; } /* was #2f7bf6: 3.97:1 */
 .cost-mult { font-weight: 800; opacity: 0.8; font-size: 0.86em; }
 
 /* ---------- Contracts (Phase 4) ---------- */
@@ -2321,7 +2426,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 .contract-rep { font-size: var(--fs-sm); font-weight: 800; color: var(--gold); white-space: nowrap; }
 .contract-claim {
   min-height: 36px; padding: 7px 14px; border-radius: var(--radius-2xs); font-size: var(--fs-md); font-weight: 800;
-  color: #fff; background: #16b364; border: none; cursor: pointer; white-space: nowrap;
+  color: #fff; background: #0c8047; border: none; cursor: pointer; white-space: nowrap;
 }
 .contract-claim:disabled { color: var(--ink-3); background: rgba(16, 24, 40, 0.06); cursor: default; }
 .contracts-empty { font-size: var(--fs-md); color: var(--ink-2); padding: 6px 2px; }
@@ -2335,10 +2440,13 @@ button.modchip.workable:active { transform: scale(0.94); }
   padding: var(--pad-card); box-shadow: var(--shadow-xs);
 }
 .charter-card.on { border-color: color-mix(in srgb, var(--accent) 55%, transparent); background: linear-gradient(100deg, color-mix(in srgb, var(--accent) 8%, transparent), rgba(255, 255, 255, 0.6)); }
+/* The draft's wild card (a rule-changer): a faint whole-card wash, so the one card
+   that changes how the run PLAYS reads as different without a label. */
+.charter-card.wild:not(.on) { background: linear-gradient(100deg, color-mix(in srgb, var(--data) 7%, #fff), #fff); border-color: color-mix(in srgb, var(--data) 22%, transparent); }
 .charter-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .charter-name { font-weight: 800; font-size: var(--fs-base); color: var(--ink); }
 .charter-pick { color: var(--accent); }
-.charter-conviction { color: var(--money); font-size: var(--fs-xs); font-weight: 800; }
+.charter-conviction { color: var(--money-ink); font-size: var(--fs-xs); font-weight: 800; }
 /* Conviction ladder pips — the streak's escalation, wordless: one pip per rung,
    filled as far as this ship's bonus reaches. */
 .charter-streak-pips { display: inline-flex; gap: 3px; margin-left: 5px; vertical-align: middle; }
@@ -2349,9 +2457,44 @@ button.modchip.workable:active { transform: scale(0.94); }
 .charter-locked { font-size: var(--fs-sm); color: var(--ink-2); }
 .charter-locked-note { color: var(--ink-3); }
 
+/* Declare a Stance (2026-09) — a three-way segmented pick under the charters.
+   The chosen side is a full soft tint in its hall colour (Safety cool, Acceleration
+   warm, matching the room wash), never an edge bar. */
+.stance { margin-top: 12px; }
+.stance-head { font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 6px; }
+.stance-opts { display: flex; gap: 6px; }
+.stance-opt {
+  flex: 1 1 auto; min-width: 0; min-height: 44px; padding: 7px 8px; border-radius: var(--radius-2xs);
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  font-size: var(--fs-sm); font-weight: 800; cursor: pointer;
+  color: var(--ink-2); background: rgba(16, 24, 40, 0.04); border: 1px solid rgba(16, 24, 40, 0.08);
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+.stance-opt span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Content-sized so "Acceleration" keeps its width; on the narrowest phones the
+   icon stacks over the label instead of truncating it. */
+@media (max-width: 359px) { .stance-opt { flex-direction: column; gap: 2px; padding: 6px 4px; } }
+.stance-opt.on.center { color: var(--ink); background: rgba(16, 24, 40, 0.09); border-color: rgba(16, 24, 40, 0.22); }
+.stance-opt.on.doomer { color: #1d4ed8; background: color-mix(in srgb, #3c78f0 13%, #fff); border-color: color-mix(in srgb, #3c78f0 55%, transparent); }
+.stance-opt.on.accel { color: #8a4f06; background: color-mix(in srgb, #ff963c 16%, #fff); border-color: color-mix(in srgb, #e07b1a 60%, transparent); }
+.stance-fx { font-size: var(--fs-xs); font-weight: 700; color: var(--ink-2); margin: 6px 0 0; }
+.stance-hint { font-weight: 600; color: var(--ink-3); }
+.stance-locked { display: flex; flex-wrap: wrap; align-items: center; column-gap: 4px; font-size: var(--fs-sm); color: var(--ink-2); margin: 6px 0 0; }
+.stance-chip { display: inline-flex; align-items: center; gap: 4px; font-weight: 800; }
+.stance-chip.doomer { color: #1d4ed8; }
+.stance-chip.accel { color: #8a4f06; }
+.stance-chip svg { flex: none; }
+.stance-locked-fx { font-size: var(--fs-xs); color: var(--ink-3); }
+
 /* ---------- Legacy Investments tree (Phase 4 / R5.4) ---------- */
 .legacy-tree { margin: 10px 0; display: flex; flex-direction: column; gap: 7px; }
 .legacy-tree-head { font-size: var(--fs-md); font-weight: 800; color: var(--ink); }
+.legacy-tree-toggle {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; padding: 12px 2px 4px; background: none; border: none; border-top: 1px solid var(--line);
+  font: inherit; font-size: var(--fs-md); font-weight: 800; color: var(--ink); text-align: left; cursor: pointer;
+}
+.legacy-tree-toggle .chevron { color: var(--ink-3); display: inline-flex; }
 .legacy-tree-note { font-size: var(--fs-xs); color: var(--ink-3); margin: -2px 0 4px; }
 .legacy-perk {
   display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; cursor: pointer;
@@ -2413,7 +2556,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 }
 .prod-sold-badge { font-weight: 700; color: #6d28d9; white-space: nowrap; }
 .prod-attention-badge { font-weight: 800; color: var(--coral); white-space: nowrap; }
-.prod-mrr { font-size: var(--fs-lg); font-weight: 800; color: var(--money); font-variant-numeric: tabular-nums; }
+.prod-mrr { font-size: var(--fs-lg); font-weight: 800; color: var(--money-ink); font-variant-numeric: tabular-nums; }
 .prod-sub { display: flex; gap: 8px; align-items: center; }
 .prod-badge {
   font-size: var(--fs-2xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
@@ -2421,7 +2564,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 }
 .prod-ver { font-size: var(--fs-xs); font-weight: 700; color: var(--ink-3); }
 .prod-profit { font-size: var(--fs-xs); font-weight: 750; margin-left: auto; font-variant-numeric: tabular-nums; }
-.prod-profit.pos { color: var(--money); }
+.prod-profit.pos { color: var(--money-ink); }
 .prod-profit.neg { color: var(--coral); }
 .prod-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .prod-stat {
@@ -2444,7 +2587,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 .prod-manage {
   display: flex; flex-direction: column; align-items: center; gap: 1px;
   width: 100%; padding: 12px; margin-top: 2px; border-radius: var(--radius-xs); cursor: pointer; border: none;
-  background: var(--accent); color: #fff;
+  background: color-mix(in srgb, var(--accent) 85%, #000); color: #fff;
   box-shadow: 0 8px 18px -9px color-mix(in srgb, var(--accent) 70%, transparent);
   transition: transform var(--dur-fast) var(--spring), filter var(--dur);
 }
@@ -2528,7 +2671,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 }
 .prod-ms-count { color: var(--ink-2); font-weight: 650; }
 .prod-ms-toggle { margin-left: auto; color: var(--ink-2); }
-.prod-ms-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.prod-ms-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .prod-ms {
   padding: 9px 11px; border-radius: var(--radius-sm);
   background: var(--glass-strong); border: 1px solid var(--glass-hairline); opacity: 0.7;
@@ -2539,8 +2682,8 @@ button.modchip.workable:active { transform: scale(0.94); }
   border-color: color-mix(in srgb, var(--money) 40%, transparent);
 }
 .prod-ms-top { display: flex; justify-content: space-between; gap: 6px; align-items: baseline; }
-.prod-ms-name { font-size: var(--fs-md); font-weight: 750; }
-.prod-ms-reward { font-size: var(--fs-xs); font-weight: 700; color: var(--money); white-space: nowrap; }
+.prod-ms-name { font-size: var(--fs-md); font-weight: 750; overflow-wrap: anywhere; }
+.prod-ms-reward { font-size: var(--fs-xs); font-weight: 700; color: var(--money-ink); white-space: nowrap; }
 .prod-ms-desc { font-size: var(--fs-xs); color: var(--ink-2); line-height: 1.3; margin-top: 1px; }
 .prod-ms-bar { margin-top: 6px; height: 5px; }
 
@@ -2619,7 +2762,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 .market-rank { display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: var(--fs-base); font-weight: 800; color: var(--ink-3); width: 20px; text-align: center; flex: 0 0 auto; }
 /* Rank movement since the player's last visit to the board — the market moves. */
 .market-move { font-style: normal; font-size: var(--fs-micro); line-height: 1; }
-.market-move.up { color: var(--money); }
+.market-move.up { color: var(--money-ink); }
 .market-move.down { color: var(--coral); }
 .market-row.you .market-rank { color: var(--accent); }
 .market-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -2670,16 +2813,16 @@ button.modchip.workable:active { transform: scale(0.94); }
 }
 .lobby-btn:disabled { opacity: 0.5; cursor: default; }
 .lobby-text { font-size: var(--fs-sm); font-weight: 700; color: var(--ink); }
-.lobby-cost { font-size: var(--fs-sm); font-weight: 800; color: var(--money); white-space: nowrap; }
+.lobby-cost { font-size: var(--fs-sm); font-weight: 800; color: var(--money-ink); white-space: nowrap; }
 .pd-sub-row { margin-top: 10px; font-size: var(--fs-sm); color: #69707f; font-weight: 600; }
 .pd-track { margin-top: 10px; height: 7px; border-radius: 999px; background: var(--pd-track); overflow: hidden; }
 .pd-track-fill { height: 100%; border-radius: 999px; }
 
 /* Overview stat grid */
-.pd-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.pd-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .pd-stat { display: flex; flex-direction: column; gap: 2px; padding: var(--pad-card); background: #fff; border-radius: var(--radius-xs); box-shadow: var(--shadow-xs); }
 .pd-stat-v { font-size: var(--fs-xl); font-weight: 800; color: #14161b; letter-spacing: -0.02em; }
-.pd-stat-v.pos { color: var(--money); }
+.pd-stat-v.pos { color: var(--money-ink); }
 .pd-stat-v.neg { color: var(--coral); }
 .pd-stat-l { font-size: var(--fs-xs); color: #8b909c; font-weight: 600; }
 
@@ -2726,6 +2869,8 @@ button.modchip.workable:active { transform: scale(0.94); }
   background: color-mix(in srgb, var(--accent) 12%, transparent);
   color: var(--accent); font-weight: 800;
 }
+/* The flagship's own line is a status (not a tap target): same card, centred, inert. */
+p.pd-flagship { cursor: default; text-align: center; margin-top: 0; }
 
 /* Pricing — enterprise toggle + iOS-style switch */
 .pd-toggle-row { display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
@@ -2760,10 +2905,10 @@ button.modchip.workable:active { transform: scale(0.94); }
 .pd-total-label { font-size: var(--fs-base); font-weight: 750; color: #14161b; }
 .pd-total-sub { font-size: var(--fs-sm); color: #8b909c; }
 .pd-total-status { flex: 0 0 auto; font-size: var(--fs-sm); font-weight: 750; }
-.pd-total-status.ok { color: var(--money); }
+.pd-total-status.ok { color: var(--money-ink); }
 .pd-total-status.warn { color: #f97316; }
 .pd-mix-status { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; font-size: var(--fs-sm); font-weight: 700; }
-.pd-mix-status.ok { color: var(--money); }
+.pd-mix-status.ok { color: var(--money-ink); }
 .pd-mix-status.warn { color: #f97316; }
 
 /* Upgrades — feature rows */
@@ -2773,7 +2918,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 .pd-feature-name { font-size: var(--fs-base); font-weight: 750; color: #14161b; }
 .pd-feature-desc { font-size: var(--fs-xs); color: #8b909c; line-height: 1.35; }
 .pd-feature-fx { font-size: var(--fs-xs); font-weight: 700; color: var(--pd-purple); margin-top: 1px; }
-.pd-feature-owned { flex: 0 0 auto; font-size: var(--fs-sm); font-weight: 750; color: var(--money); }
+.pd-feature-owned { flex: 0 0 auto; font-size: var(--fs-sm); font-weight: 750; color: var(--money-ink); }
 .pd-feature-buy { flex: 0 0 auto; padding: 8px 14px; border-radius: var(--radius-2xs); border: none; cursor: pointer; background: var(--pd-purple); color: #fff; font-size: var(--fs-md); font-weight: 800; font-variant-numeric: tabular-nums; transition: filter var(--dur-fast), transform var(--dur-tap); }
 .pd-feature-buy:hover:not(:disabled) { filter: brightness(1.05); }
 .pd-feature-buy:active:not(:disabled) { transform: scale(0.96); }
@@ -2855,7 +3000,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 .emp-cand-name { font-size: var(--fs-base); font-weight: 750; }
 .emp-cand-role { font-size: var(--fs-sm); color: var(--ink-2); }
 .emp-cand-cost { display: flex; flex-direction: column; align-items: flex-end; flex: 0 0 auto; }
-.emp-cand-cost span { font-size: var(--fs-base); font-weight: 750; color: var(--money); }
+.emp-cand-cost span { font-size: var(--fs-base); font-weight: 750; color: var(--money-ink); }
 .emp-cand-sal { font-size: var(--fs-xs) !important; font-weight: 600 !important; color: var(--ink-2) !important; }
 
 /* ---------- Employees page (individual people) ---------- */
@@ -2876,7 +3021,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 .emp-lvl { font-size: var(--fs-xs); font-weight: 700; color: var(--ink-2); flex: 0 0 auto; }
 .emp-role { font-size: var(--fs-sm); color: var(--ink-2); }
 .emp-trait { font-weight: 700; }
-.emp-pay { font-size: var(--fs-xs); color: var(--money); font-weight: 650; }
+.emp-pay { font-size: var(--fs-xs); color: var(--money-ink); font-weight: 650; }
 .emp-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
 .emp-assign {
   font-size: var(--fs-sm); padding: 4px 8px; border-radius: var(--radius-2xs);
@@ -2924,7 +3069,7 @@ button.modchip.workable:active { transform: scale(0.94); }
   font-size: var(--fs-md); font-weight: 750; color: var(--ink-2); transition: background var(--dur-fast), color var(--dur-fast), box-shadow var(--dur-fast);
 }
 .emp-seg-btn.on { background: #fff; color: var(--ink); box-shadow: var(--shadow-xs); }
-.emp-seg-badge { font-size: var(--fs-2xs); font-weight: 800; color: #fff; background: var(--accent); border-radius: 999px; padding: 1px 6px; min-width: 16px; }
+.emp-seg-badge { font-size: var(--fs-2xs); font-weight: 800; color: #fff; background: color-mix(in srgb, var(--accent) 85%, #000); border-radius: 999px; padding: 1px 6px; min-width: 16px; }
 
 /* Avatars + level pips */
 .emp-av { flex: 0 0 auto; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; letter-spacing: -0.02em; }
@@ -2933,12 +3078,18 @@ button.modchip.workable:active { transform: scale(0.94); }
 .emp-star.on { color: #f5b40a; }
 
 .emp-section-head { display: flex; align-items: center; justify-content: space-between; font-size: var(--fs-md); font-weight: 800; color: #2b2f38; margin: 4px 2px 2px; }
-.emp-recruit { font-size: var(--fs-sm); font-weight: 750; color: #fff; background: var(--accent); border: none; border-radius: 999px; padding: 6px 13px; cursor: pointer; transition: filter var(--dur-fast); }
+.emp-recruit { font-size: var(--fs-sm); font-weight: 750; color: #fff; background: color-mix(in srgb, var(--accent) 85%, #000); border: none; border-radius: 999px; padding: 6px 13px; cursor: pointer; transition: filter var(--dur-fast); }
 .emp-recruit:hover { filter: brightness(1.06); }
+.emp-recruit:disabled { background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink-3); cursor: default; filter: none; }
 
 /* Person card (roster · available · candidate) */
 .emp-person-wrap { display: flex; flex-direction: column; }
 .emp-person { display: flex; align-items: center; gap: 11px; background: #fff; border-radius: var(--radius-xs); padding: var(--pad-row); box-shadow: var(--shadow-xs); cursor: pointer; transition: box-shadow var(--dur-fast), border-color var(--dur-fast); border: 1px solid transparent; }
+/* A late-game roster runs to hundreds of cards: let the browser skip laying out and
+   painting the ones far off screen (the ticking numbers above repaint the page's layer
+   every tick, and that paint walked every card). `auto` keeps each card's last
+   measured height, so the scroll length does not jump. */
+.emp-person { content-visibility: auto; contain-intrinsic-size: auto 64px; }
 .emp-person.sel { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent); }
 .emp-person.rare { border-color: rgba(245, 180, 10, 0.55); background: linear-gradient(100deg, rgba(245, 180, 10, 0.08), #fff 60%); }
 .emp-rare-badge { font-size: var(--fs-2xs); font-weight: 800; letter-spacing: 0.02em; color: var(--gold); background: rgba(245, 180, 10, 0.16); border-radius: 999px; padding: 2px 7px; }
@@ -2948,7 +3099,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 .emp-person-tags { display: flex; flex-wrap: wrap; gap: 5px; }
 .emp-tag { font-size: var(--fs-2xs); font-weight: 700; padding: 2px 8px; border-radius: 999px; background: #f0f0f5; color: var(--ink-2); }
 .emp-tag.role { background: color-mix(in srgb, var(--accent) 10%, transparent); color: #5a43c8; }
-.emp-tag.muted { color: var(--money); background: rgba(22, 179, 100, 0.1); }
+.emp-tag.muted { color: var(--money-ink); background: rgba(22, 179, 100, 0.1); }
 .emp-tag.train { background: rgba(47, 123, 246, 0.1); color: #2f7bf6; }
 .emp-tag.train, .emp-act-train, .emp-inline-ic { display: inline-flex; align-items: center; gap: 4px; }
 .emp-person-right { flex: 0 0 auto; }
@@ -2959,7 +3110,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 .emp-act:disabled { opacity: 0.45; cursor: not-allowed; }
 .emp-act.danger { color: var(--coral); border-color: color-mix(in srgb, var(--coral) 30%, transparent); }
 .emp-act-train { font-size: var(--fs-sm); font-weight: 700; color: #2f7bf6; padding: 7px 4px; }
-.emp-hire-btn { flex: 0 0 auto; font-size: var(--fs-md); font-weight: 800; color: #fff; background: var(--money); border: none; border-radius: var(--radius-2xs); padding: 8px 13px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.emp-hire-btn { flex: 0 0 auto; font-size: var(--fs-md); font-weight: 800; color: #fff; background: #0c8047; border: none; border-radius: var(--radius-2xs); padding: 8px 13px; cursor: pointer; font-variant-numeric: tabular-nums; }
 .emp-hire-btn:disabled { background: #cfd2da; cursor: not-allowed; }
 .emp-assign-btn { flex: 0 0 auto; font-size: var(--fs-sm); font-weight: 750; color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); border: none; border-radius: var(--radius-2xs); padding: 7px 13px; cursor: pointer; }
 
@@ -2973,8 +3124,8 @@ button.modchip.workable:active { transform: scale(0.94); }
 .emp-perk-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .emp-perk-name { font-size: var(--fs-md); font-weight: 750; color: var(--ink); }
 .emp-perk-desc { font-size: var(--fs-xs); color: var(--ink-3); line-height: 1.3; }
-.emp-perk-fx { font-size: var(--fs-xs); font-weight: 700; color: var(--money); margin-top: 1px; }
-.emp-perk-cost { flex: 0 0 auto; font-size: var(--fs-md); font-weight: 800; color: var(--money); white-space: nowrap; }
+.emp-perk-fx { font-size: var(--fs-xs); font-weight: 700; color: var(--money-ink); margin-top: 1px; }
+.emp-perk-cost { flex: 0 0 auto; font-size: var(--fs-md); font-weight: 800; color: var(--money-ink); white-space: nowrap; }
 
 /* Projects pane */
 .emp-place-hint { font-size: var(--fs-sm); font-weight: 650; color: var(--ink); background: color-mix(in srgb, var(--accent) 10%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent); border-radius: var(--radius-xs); padding: 9px 12px; line-height: 1.4; }
@@ -2986,7 +3137,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 .emp-proj-name { font-size: var(--fs-lg); font-weight: 800; color: var(--ink); letter-spacing: -0.01em; }
 .emp-proj-sub { font-size: var(--fs-xs); color: var(--ink-3); font-weight: 600; }
 .emp-proj-badge { flex: 0 0 auto; font-size: var(--fs-2xs); font-weight: 800; padding: 3px 9px; border-radius: 999px; }
-.emp-proj-badge.high { color: var(--money); background: rgba(22, 179, 100, 0.12); }
+.emp-proj-badge.high { color: var(--money-ink); background: rgba(22, 179, 100, 0.12); }
 .emp-proj-badge.mid { color: #f97316; background: rgba(249, 115, 22, 0.12); }
 .emp-proj-badge.low { color: var(--coral); background: rgba(255, 56, 92, 0.12); }
 .emp-proj-bar { height: 7px; border-radius: 999px; background: #ededf3; overflow: hidden; }
@@ -3086,6 +3237,20 @@ button.modchip.workable:active { transform: scale(0.94); }
 .rig-slot-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .rig-slot-label { font-size: var(--fs-md); font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rig-slot .rig-slot-sub { font-size: var(--fs-xs); color: var(--ink-3); }
+/* A tier's empty slots: one row of small dashed chips instead of a card each. */
+/* Rows 10px apart so each 36px chip's hit area can grow to 44pt (5px a side from
+   inside its 1px border, below) without reaching into the wrapped row under it. */
+.rig-empties { display: flex; flex-wrap: wrap; gap: 10px 6px; margin-top: 8px; }
+.rig-slots + .rig-empties { margin-top: 8px; }
+.rig-slots:first-child, .rig-tier-head + .rig-empties { margin-top: 0; }
+.rig-empty {
+  display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 6px 12px;
+  border-radius: 999px; border: 1px dashed rgba(16, 24, 40, 0.22); background: rgba(255, 255, 255, 0.6);
+  font-size: var(--fs-sm); font-weight: 700; color: var(--ink-2); cursor: pointer;
+  --hit-cap-y: -5px; --hit-cap-x: -3px;
+}
+.rig-empty:hover { border-color: color-mix(in srgb, var(--accent) 45%, transparent); color: var(--ink); }
+.rig-empty-plus { font-weight: 850; color: var(--accent); }
 .rig-slot.filled .rig-slot-sub { color: #0b7a43; font-weight: 650; }
 
 /* Chooser sheet */
@@ -3111,7 +3276,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 .rig-option-stat { font-size: var(--fs-sm); font-weight: 750; color: #0b7a43; }
 .rig-option-desc { font-size: var(--fs-xs); color: var(--ink-3); }
 .rig-option-owned { font-size: var(--fs-2xs); font-weight: 700; color: var(--ink-3); }
-.rig-option-go { flex: none; font-size: var(--fs-sm); font-weight: 800; color: var(--money); }
+.rig-option-go { flex: none; font-size: var(--fs-sm); font-weight: 800; color: var(--money-ink); }
 .rig-option.current .rig-option-go { color: #0b7a43; }
 .rig-clear { border-style: dashed; color: var(--ink-2); font-size: var(--fs-sm); font-weight: 650; }
 .rig-chooser-tip { margin: 2px 0 0; font-size: var(--fs-xs); color: var(--ink-3); text-align: center; }
@@ -3182,7 +3347,7 @@ button.modchip.workable:active { transform: scale(0.94); }
   font-size: var(--fs-xs); font-weight: 700; color: var(--ink-2);
   background: rgba(16, 24, 40, 0.04); border-radius: 999px; padding: 3px 9px;
 }
-.challenge-pledge.done { color: var(--money); background: color-mix(in srgb, var(--money) 12%, transparent); }
+.challenge-pledge.done { color: var(--money-ink); background: color-mix(in srgb, var(--money) 12%, transparent); }
 .challenge-pledge-ic { display: inline-flex; opacity: 0.7; }
 .challenge-pledge.done .challenge-pledge-ic { opacity: 1; }
 .challenge-pledge-sep { opacity: 0.45; margin: 0 1px; }
@@ -3200,7 +3365,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 .challenge-fund:disabled { background: #cfc9e6; color: #fff; box-shadow: none; opacity: 0.85; }
 .challenge-fund:not(:disabled):active { transform: scale(0.98); }
 .challenge-active {
-  font-size: var(--fs-sm); font-weight: 800; color: var(--money); text-align: center;
+  font-size: var(--fs-sm); font-weight: 800; color: var(--money-ink); text-align: center;
   padding: 7px; border-radius: var(--radius-2xs);
   background: color-mix(in srgb, var(--money) 10%, transparent);
 }
@@ -3285,7 +3450,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 .institute-desc { font-size: var(--fs-sm); color: var(--ink-2, #4a4a55); }
 .institute-req { font-size: var(--fs-xs); color: var(--ink-3); }
 .institute-cost { flex-shrink: 0; font-size: var(--fs-sm); font-weight: 800; color: var(--accent); }
-.institute-wing.owned .institute-cost { color: var(--money); }
+.institute-wing.owned .institute-cost { color: var(--money-ink); }
 
 /* ---------- Doctrine Consequences ---------- */
 .doctrine-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
@@ -3304,6 +3469,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 }
 .doctrine-schism .doctrine-track-head { color: var(--accent); }
 .doctrine-track-head { font-size: var(--fs-sm); font-weight: 800; color: var(--ink-2, #4a4a55); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+.doctrine-track-hint { font-size: var(--fs-xs); color: var(--ink-3); margin: -2px 0 8px; }
 .doctrine-active { color: var(--accent); font-weight: 800; margin-left: 6px; text-transform: none; letter-spacing: 0; }
 .doctrine-perk {
   width: 100%; display: flex; align-items: center; gap: 10px; margin-bottom: 6px; text-align: left; cursor: pointer;
@@ -3316,7 +3482,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 .doctrine-desc { font-size: var(--fs-sm); color: var(--ink-2, #4a4a55); }
 .doctrine-req { font-size: var(--fs-xs); color: var(--ink-3); }
 .doctrine-claim { flex-shrink: 0; font-size: var(--fs-sm); font-weight: 800; color: var(--accent); }
-.doctrine-perk.owned .doctrine-claim { color: var(--money); }
+.doctrine-perk.owned .doctrine-claim { color: var(--money-ink); }
 .doctrine-perk:not(.owned):disabled .doctrine-claim { color: var(--ink-3); }
 
 /* ---------- Paradigm Research ---------- */
@@ -3335,7 +3501,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 .paradigm-desc { font-size: var(--fs-sm); color: var(--ink-2, #4a4a55); }
 .paradigm-req { font-size: var(--fs-xs); color: var(--ink-3); }
 .paradigm-cost { flex-shrink: 0; font-size: var(--fs-sm); font-weight: 800; color: var(--accent); }
-.paradigm-node.owned .paradigm-cost { color: var(--money); }
+.paradigm-node.owned .paradigm-cost { color: var(--money-ink); }
 
 /* ---------- Prestige Trials ---------- */
 .trials-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
@@ -3362,11 +3528,15 @@ button.modchip.workable:active { transform: scale(0.94); }
   background: linear-gradient(180deg, var(--accent), #7b5cff); border-radius: 999px; padding: 7px 14px;
 }
 .trial-attempt:disabled { background: rgba(16, 24, 40, 0.12); color: var(--ink-3); }
+/* Mid-run the button queues the Trial for the next run: a quieter outline, and a
+   soft accent tint once queued (tap again to clear). */
+.trial-attempt.next:not(:disabled) { background: #fff; color: color-mix(in srgb, var(--accent) 85%, #000); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent); }
+.trial-attempt.queued { background: color-mix(in srgb, var(--accent) 14%, #fff); color: color-mix(in srgb, var(--accent) 85%, #000); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 45%, transparent); }
 .trial-abandon {
   flex-shrink: 0; font-size: var(--fs-sm); font-weight: 700; color: var(--ink-3);
   background: rgba(16, 24, 40, 0.06); border: none; border-radius: 999px; padding: 7px 12px;
 }
-.trial-owned { flex-shrink: 0; font-size: var(--fs-sm); font-weight: 800; color: var(--money); }
+.trial-owned { flex-shrink: 0; font-size: var(--fs-sm); font-weight: 800; color: var(--money-ink); }
 .objective-card {
   display: flex; align-items: center; gap: 10px;
   transition: border-color var(--dur), background var(--dur);
@@ -3401,7 +3571,8 @@ button.modchip.workable:active { transform: scale(0.94); }
 .objective-lane {
   min-width: 74px; padding: 6px 10px; font-size: var(--fs-xs); font-weight: 800; white-space: nowrap;
   border-radius: var(--radius-2xs); cursor: pointer;
-  color: var(--lane, var(--accent));
+  /* Text in a darker shade of the lane (the raw money green read 2.4:1 here). */
+  color: color-mix(in srgb, var(--lane, var(--accent)) 62%, #000);
   background: color-mix(in srgb, var(--lane, var(--accent)) 13%, #fff);
   border: 1px solid color-mix(in srgb, var(--lane, var(--accent)) 40%, transparent);
   transition: transform var(--dur-tap) var(--ease-out), background var(--dur-tap);
@@ -3431,7 +3602,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 
 /* Automation — mid/late "let the AI run the lab" toggles. A row per autopilot with a switch. */
 .automation-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.automation-count { font-size: var(--fs-sm); font-weight: 800; color: var(--money); background: color-mix(in srgb, var(--money) 12%, transparent); border-radius: 999px; padding: 2px 10px; }
+.automation-count { font-size: var(--fs-sm); font-weight: 800; color: var(--money-ink); background: color-mix(in srgb, var(--money) 12%, transparent); border-radius: 999px; padding: 2px 10px; }
 .automation-intro { font-size: var(--fs-sm); line-height: 1.45; color: var(--ink-3); margin: 2px 0 10px; }
 .automation-row {
   display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
@@ -3506,7 +3677,7 @@ button.modchip.workable:active { transform: scale(0.94); }
    list and needs no reduced-motion special case. Only ever rendered on a row
    that is visible, unowned and not yet affordable: an actionable row already
    says so with .affordable, and a prerequisite-locked one has nothing to fill
-   toward. */
+   toward.
    Reputation perks join in via .rep-card, which is a `.card` (already
    position:relative + overflow:hidden) rather than a .meta-item — it takes the
    fill WITHOUT the meta state classes, so it gains no breathe animation. */
@@ -3690,3 +3861,119 @@ button.modchip.workable:active { transform: scale(0.94); }
   margin: 0; font-size: var(--fs-sm); font-weight: 700; color: var(--ink);
   font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+
+/* =====================================================================
+   ACCESSIBILITY LAYER (2026-09 a11y audit). Non-visual by design.
+   Kept as ONE appended block so colour / contrast work in the rules above
+   merges cleanly; nothing above was edited. Nothing here changes what a
+   sighted touch player sees. The one visible addition is the focus ring,
+   which only keyboard / Switch Control focus draws (:focus-visible).
+   ===================================================================== */
+
+/* Text for screen readers only (live-region cues, "Earned:" / "Buff:" prefixes). */
+.sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* aria-disabled buttons stay focusable (a real `disabled` throws focus to <body>
+   mid-loop), so they need the disabled look by hand. Mirrors `.btn:disabled`
+   exactly; if that rule changes, change this one with it. */
+.btn[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.3);
+  transform: none;
+}
+
+/* Focus ring: keyboard / Switch Control only. Text fields and selects are left
+   out on purpose: they match :focus-visible on every tap, and they already carry
+   their own focus styling above. */
+button:focus-visible,
+a[href]:focus-visible,
+summary:focus-visible,
+input[type="range"]:focus-visible,
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* The range sliders set `outline: none` in every state; give keyboard focus the
+   same ring back (selectors match their specificity so this wins by order). */
+.focus-slider:focus-visible,
+.pd-slider:focus-visible,
+.prod-ctl input[type="range"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* Programmatic focus targets (a dialog's heading, or the dialog box itself, see
+   useDialog.ts) are not controls and never draw a ring. */
+[tabindex="-1"]:focus {
+  outline: none;
+}
+
+/* 44pt hit areas for small controls, without moving a pixel: a transparent
+   ::after grows the box on ALL FOUR sides by exactly what it lacks to reach
+   44x44 (never shrinking a bigger box). Where a neighbouring control sits closer
+   than that, --hit-cap-x / --hit-cap-y stop the growth halfway across the gap so
+   no control ever steals a tap from the one beside it. */
+.sheet-close,
+.premium-actions .link-btn,
+.set-about a,
+.objective-lane,
+.emp-recruit,
+.hall-wing,
+.research-cat-toggle,
+.prod-ms-head,
+.emp-perks-head,
+.trial-attempt,
+.trial-abandon,
+.rig-empty {
+  position: relative;
+}
+.sheet-close::after,
+.premium-actions .link-btn::after,
+.set-about a::after,
+.objective-lane::after,
+.emp-recruit::after,
+.hall-wing::after,
+.research-cat-toggle::after,
+.prod-ms-head::after,
+.emp-perks-head::after,
+.trial-attempt::after,
+.trial-abandon::after,
+.rig-empty::after {
+  content: "";
+  position: absolute;
+  top: max(var(--hit-cap-y, -22px), min(0px, calc(50% - 22px)));
+  bottom: max(var(--hit-cap-y, -22px), min(0px, calc(50% - 22px)));
+  left: max(var(--hit-cap-x, -22px), min(0px, calc(50% - 22px)));
+  right: max(var(--hit-cap-x, -22px), min(0px, calc(50% - 22px)));
+}
+/* The two reward lanes stack 5px apart: meet in the middle, grow freely outward. */
+.objective-lane { --hit-cap-y: -2px; }
+.objective-lane:first-child::after { top: min(0px, calc(50% - 22px)); }
+.objective-lane:last-child::after { bottom: min(0px, calc(50% - 22px)); }
+/* Wing chips sit 4px apart inside a 4px-padded scroller: stay inside it. */
+.hall-wing { --hit-cap-x: -2px; --hit-cap-y: -4px; }
+/* Finished research categories stack 6px apart, and an unfolded one has its first
+   node right underneath: split the gap, and don't reach into the open track. */
+.research-cat-toggle { --hit-cap-y: -3px; }
+.research-cat-toggle[aria-expanded="true"]::after { bottom: 0; }
+/* Office perks: 12px below the roster, 10px above the first perk when open. */
+.emp-perks-head::after { top: max(-6px, min(0px, calc(50% - 22px))); }
+.emp-perks-head[aria-expanded="true"]::after { bottom: max(-5px, min(0px, calc(50% - 22px))); }
+/* Privacy / Support: ~13px under the Done button, the sheet's bottom padding
+   below. Grow down into that padding (never past it, or the sheet would scroll
+   further), and only halfway up toward Done. */
+.set-about a::after { top: -6px; bottom: -18px; }

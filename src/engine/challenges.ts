@@ -41,6 +41,49 @@ function costOf(def: GrandChallenge) {
   return { compute: Big.of(def.cost.compute), data: Big.of(def.cost.data), money: Big.of(def.cost.money) };
 }
 
+type Lanes = { compute: Big; data: Big; money: Big };
+const LANES = ["compute", "data", "money"] as const;
+
+/**
+ * Big keeps ~15 significant digits, so paying a cost in instalments can leave a lane
+ * a hair under it (9999999999999.97 against 1e13) while `cost.sub(funded)` already
+ * rounds to 0. The next payment is then 0, the early return fires, and the challenge
+ * or megaproject cycle can never complete — reproduced on real instalment patterns.
+ * Anything within a part-per-billion of the cost counts as met.
+ */
+export function laneMet(funded: Big, cost: Big): boolean {
+  return funded.gte(cost) || cost.sub(funded).lte(cost.mul(1e-9));
+}
+
+function allMet(f: Lanes, cost: Lanes): boolean {
+  return LANES.every((k) => laneMet(f[k], cost[k]));
+}
+
+/** Pay min(available, remaining need) into each unmet lane. A lane that closes is
+ *  snapped to EXACTLY its cost, so no precision residue is ever persisted. */
+function contribute(cur: Lanes, cost: Lanes, r: Lanes): { give: Lanes; next: Lanes; paid: boolean; complete: boolean } {
+  const give = { compute: Big.ZERO, data: Big.ZERO, money: Big.ZERO };
+  const next = { ...cur };
+  let paid = false;
+  for (const k of LANES) {
+    if (laneMet(cur[k], cost[k])) { next[k] = cost[k]; continue; }
+    const need = cost[k].sub(cur[k]).max(Big.ZERO);
+    const g = r[k].min(need).max(Big.ZERO);
+    if (g.gt(0)) paid = true;
+    give[k] = g;
+    const after = cur[k].add(g);
+    next[k] = g.gte(need) || laneMet(after, cost[k]) ? cost[k] : after;
+  }
+  return { give, next, paid, complete: allMet(next, cost) };
+}
+
+/** Is there a contribution to make: an unmet lane the player holds some of, or every
+ *  lane already met (a pre-fix stuck save — the next tap completes it for free)? */
+function canContribute(f: Lanes, cost: Lanes, r: Lanes): boolean {
+  if (allMet(f, cost)) return true;
+  return LANES.some((k) => !laneMet(f[k], cost[k]) && r[k].gt(0));
+}
+
 export function challengeView(state: GameState, id: string): ChallengeView | null {
   const def = BY_ID.get(id);
   if (!def) return null;
@@ -52,7 +95,7 @@ export function challengeView(state: GameState, id: string): ChallengeView | nul
     def,
     funded: f,
     cost,
-    done: { compute: f.compute.gte(cost.compute), data: f.data.gte(cost.data), money: f.money.gte(cost.money) },
+    done: { compute: laneMet(f.compute, cost.compute), data: laneMet(f.data, cost.data), money: laneMet(f.money, cost.money) },
     progress: complete ? 1 : Math.min(frac(f.compute, cost.compute), frac(f.data, cost.data), frac(f.money, cost.money)),
     complete,
   };
@@ -63,13 +106,7 @@ export function canFundChallenge(state: GameState, id: string): boolean {
   const def = BY_ID.get(id);
   if (!def || state.challenges.completed.includes(id)) return false;
   const f = state.challenges.funded[id] ?? zeroFund();
-  const cost = costOf(def);
-  const r = state.resources;
-  return (
-    (f.compute.lt(cost.compute) && r.compute.gt(0)) ||
-    (f.data.lt(cost.data) && r.data.gt(0)) ||
-    (f.money.lt(cost.money) && r.money.gt(0))
-  );
+  return canContribute(f, costOf(def), state.resources);
 }
 
 /**
@@ -83,23 +120,8 @@ export function fundChallenge(state: GameState, id: string): { state: GameState;
   const cur = state.challenges.funded[id] ?? zeroFund();
   const cost = costOf(def);
   const r = state.resources;
-  // Give min(available, remaining need) of each resource.
-  const give = {
-    compute: r.compute.min(cost.compute.sub(cur.compute).max(Big.ZERO)),
-    data: r.data.min(cost.data.sub(cur.data).max(Big.ZERO)),
-    money: r.money.min(cost.money.sub(cur.money).max(Big.ZERO)),
-  };
-  if (!(give.compute.gt(0) || give.data.gt(0) || give.money.gt(0))) return { state, justCompleted: false };
-
-  const nextFunded = {
-    compute: cur.compute.add(give.compute),
-    data: cur.data.add(give.data),
-    money: cur.money.add(give.money),
-  };
-  // The early return above already bailed on an id in `completed`, so reaching here
-  // means it isn't complete yet — no need to re-check `already`.
-  const complete =
-    nextFunded.compute.gte(cost.compute) && nextFunded.data.gte(cost.data) && nextFunded.money.gte(cost.money);
+  const { give, next: nextFunded, paid, complete } = contribute(cur, cost, r);
+  if (!paid && !complete) return { state, justCompleted: false };
 
   return {
     state: {
@@ -208,14 +230,24 @@ export function megaprojectMult(state: GameState): Big {
   return Big.of(1 + sum);
 }
 
+/** Every cycle the loop allows is complete (level == maxLevel): nothing left to fund. */
+export function megaprojectMaxed(state: GameState): boolean {
+  return state.megaprojects.level >= M.maxLevel;
+}
+
 export interface MegaprojectView {
   level: number;
+  /** The final cycle is complete — the card shows a finished state, not a Fund button. */
+  maxed: boolean;
   funded: { compute: Big; data: Big; money: Big };
   cost: { compute: Big; data: Big; money: Big };
   done: { compute: boolean; data: boolean; money: boolean };
   progress: number;
   /** The all-lane bonus a player currently holds, as a percentage (for display). */
   bonusPct: number;
+  /** What completing THIS cycle adds on top, as a percentage — the number the card
+   *  quotes before the first cycle, when the held bonus is still 0. */
+  nextBonusPct: number;
 }
 
 export function megaprojectView(state: GameState): MegaprojectView {
@@ -225,45 +257,34 @@ export function megaprojectView(state: GameState): MegaprojectView {
   const frac = (a: Big, b: Big) => (b.gt(0) ? Math.max(0, Math.min(1, a.div(b).toNumber())) : 1);
   return {
     level,
+    maxed: megaprojectMaxed(state),
     funded: f,
     cost,
-    done: { compute: f.compute.gte(cost.compute), data: f.data.gte(cost.data), money: f.money.gte(cost.money) },
+    done: { compute: laneMet(f.compute, cost.compute), data: laneMet(f.data, cost.data), money: laneMet(f.money, cost.money) },
     progress: Math.min(frac(f.compute, cost.compute), frac(f.data, cost.data), frac(f.money, cost.money)),
     bonusPct: (megaprojectMult(state).toNumber() - 1) * 100,
+    nextBonusPct:
+      (megaprojectMult({ ...state, megaprojects: { ...state.megaprojects, level: level + 1 } }).toNumber() -
+        megaprojectMult(state).toNumber()) * 100,
   };
 }
 
 export function canFundMegaproject(state: GameState): boolean {
-  if (!megaprojectUnlocked(state)) return false;
-  const f = state.megaprojects.funded;
-  const cost = megaprojectCost(state.megaprojects.level);
-  const r = state.resources;
-  return (
-    (f.compute.lt(cost.compute) && r.compute.gt(0)) ||
-    (f.data.lt(cost.data) && r.data.gt(0)) ||
-    (f.money.lt(cost.money) && r.money.gt(0))
-  );
+  if (!megaprojectUnlocked(state) || megaprojectMaxed(state)) return false;
+  return canContribute(state.megaprojects.funded, megaprojectCost(state.megaprojects.level), state.resources);
 }
 
 /** Contribute every affordable resource toward the current cycle; completing a cycle bumps
  *  the level and resets funding for the (more expensive) next one. Pure. */
 export function fundMegaproject(state: GameState): { state: GameState; justCompleted: boolean } {
-  if (!megaprojectUnlocked(state)) return { state, justCompleted: false };
+  // Past the last cycle nothing can complete, so take nothing (the loader clamps the
+  // level to the same maxLevel — a cycle minted past it would vanish on reload).
+  if (!megaprojectUnlocked(state) || megaprojectMaxed(state)) return { state, justCompleted: false };
   const cur = state.megaprojects.funded;
   const cost = megaprojectCost(state.megaprojects.level);
   const r = state.resources;
-  const give = {
-    compute: r.compute.min(cost.compute.sub(cur.compute).max(Big.ZERO)),
-    data: r.data.min(cost.data.sub(cur.data).max(Big.ZERO)),
-    money: r.money.min(cost.money.sub(cur.money).max(Big.ZERO)),
-  };
-  if (!(give.compute.gt(0) || give.data.gt(0) || give.money.gt(0))) return { state, justCompleted: false };
-  const next = {
-    compute: cur.compute.add(give.compute),
-    data: cur.data.add(give.data),
-    money: cur.money.add(give.money),
-  };
-  const complete = next.compute.gte(cost.compute) && next.data.gte(cost.data) && next.money.gte(cost.money);
+  const { give, next, paid, complete } = contribute(cur, cost, r);
+  if (!paid && !complete) return { state, justCompleted: false };
   return {
     state: {
       ...state,

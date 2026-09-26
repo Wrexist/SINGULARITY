@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { balance } from "../engine/balance/config";
 import { upgradeCost, canBuyUpgrade, planBulkUpgrade } from "../engine/actions";
 import { recommendedUpgrade } from "../engine/recommend";
@@ -6,13 +6,11 @@ import { upgradeFlavor, crossedFlavorTier } from "../engine/flavor";
 import { hallCapacity, wingCapacity, hallWings, floorDrawnOut, totalRacks, isRackId, evictableRackFor } from "../engine/hall";
 import { wingCost, canFoundWing, reputationAvailable } from "../engine/reputation";
 import { powerStats } from "../engine/power";
-import { productMetrics } from "../engine/products";
-import { Big } from "../engine/math/Big";
 import type { Derived, GameState } from "../engine/types";
-import { fmt, effRate, fmtEta } from "./format";
+import { fmt, effRate, fmtEta, netMoneyRate } from "./format";
 import { BoltIcon } from "./Icons";
 import { burst, punch, floatText, registerBuyStreak } from "./fx";
-import { UpgradeRingIcon, EffectPill, upgradeGroup, UP_GROUP_ORDER, rackTierMark } from "./effectVisual";
+import { UpgradeRingIcon, EffectPill, upgradeGroup, UP_GROUP_ORDER, rackTierMark, metaForKind } from "./effectVisual";
 
 const RES_HEX: Record<string, string> = { compute: "#2f7bf6", data: "#9b51e0", money: "#16b364" };
 // Rack tiers finally read as three distinct pieces of hardware (the ramp already lives
@@ -36,10 +34,11 @@ const WING_LETTER = (i: number) => (i < 26 ? `Wing ${String.fromCharCode(65 + i)
 /** Buy-quantity for the panel: one, ten, or as many as affordable. */
 type BuyQty = 1 | 10 | "max";
 
+// Cost text colour per resource: the AA-contrast "ink" shades (see styles.css).
 const RESOURCE_VAR: Record<string, string> = {
-  money: "--money",
-  data: "--data",
-  compute: "--compute",
+  money: "--money-ink",
+  data: "--data-ink",
+  compute: "--compute-ink",
 };
 
 /** Power soft-cap meter (Phase 2): draw vs capacity; warns when throttling. */
@@ -87,17 +86,25 @@ export function UpgradePanel({ game, derived, onBuy, onFoundWing }: Props) {
   const repLeft = reputationAvailable(game);
   const wings = hallWings(game);
   const perWing = wingCapacity(game);
+  // A full floor is only a wall when no bigger rack can take a smaller one's slot.
+  // While one can, "full" is the normal next step (upgrade tiers), not an alarm.
+  const canReplace = floorFull && balance.upgrades.some((u) =>
+    isRackId(u.id) && (game.upgrades[u.id] ?? 0) < u.max && !!evictableRackFor(game, u.id));
 
   // Power soft-cap (Phase 2): reveal the meter + power upgrades once the lab
   // actually draws power, so the first session stays clean.
   const power = powerStats(game);
   const showPower = balance.power.enabled && power.drawKw >= balance.power.revealAtDrawKw;
 
-  // ETA income rates. Money also flows from live products (net margin) minus payroll,
-  // so a money-cost ETA isn't misleadingly long once a product business is running.
-  const prodMargin = game.products.active.reduce((s, p) => s + productMetrics(p, game.products.frontier).margin, 0);
-  const moneyRate = effRate(derived, "money").add(Big.of(prodMargin)).sub(derived.payrollPerSec);
-  const rateFor = (r: "compute" | "data" | "money") => (r === "money" ? moneyRate : effRate(derived, r));
+  // ETA income rates. Money also flows from live products (net margin, staff buffs
+  // included) minus the payroll the tick really takes, so a money-cost ETA matches
+  // how fast Money actually climbs once a product business or a roster is running.
+  // Runs count only while they restart themselves (auto-train on, intensity above 0),
+  // exactly as the top bar counts them — hand-started runs aren't income until started,
+  // and counting them made every cost read "~1s" on a fresh generation (r4 bug hunt).
+  const runsLive = derived.autoTrain && game.computeFocus > 0;
+  const moneyRate = netMoneyRate(game, derived, runsLive ? effRate(derived, "money", game.computeFocus) : derived.passiveMoneyPerSec);
+  const rateFor = (r: "compute" | "data" | "money") => (r === "money" ? moneyRate : effRate(derived, r, game.computeFocus));
 
   type Def = (typeof balance.upgrades)[number];
   const defs = balance.upgrades
@@ -117,7 +124,15 @@ export function UpgradePanel({ game, derived, onBuy, onFoundWing }: Props) {
   // Recommended next buy: the best-VALUE upgrade you can afford (most marginal
   // benefit per cost), NOT merely the cheapest — so it never points you at a
   // strictly-worse rack. Pure/tested in the engine. Null if nothing's buyable.
-  const heroId = recommendedUpgrade(game);
+  //
+  // Memoised: it re-derives the economy once per candidate (13-16 derive() calls a
+  // tick on a late save, ~20% of all React render work at 4x CPU throttle). The
+  // answer only moves when what you own or can afford changes, so recompute on
+  // those, plus a 2s heartbeat for slow drifts (modifiers, heat, power).
+  const affordKey = balance.upgrades.filter((u) => canBuyUpgrade(game, u.id)).map((u) => u.id).join(",");
+  const beat = Math.floor(game.stats.playtimeSec / 2);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const heroId = useMemo(() => recommendedUpgrade(game), [game.upgrades, game.research, affordKey, beat]);
   const hero = heroId ? (defs.find((d) => d.id === heroId) ?? null) : null;
 
   const rest = defs.filter((def) => def.id !== hero?.id);
@@ -142,6 +157,9 @@ export function UpgradePanel({ game, derived, onBuy, onFoundWing }: Props) {
       : null;
     const showBulk = !!bulk && bulk.count > 1;
     const displayCost = showBulk ? bulk!.totalCost : cost;
+    // Lower-tier racks this tap replaces: one on a full floor, or every level of a
+    // ×10 / Max batch that lands after the last free slot is filled.
+    const replaces = showBulk ? bulk!.evicts : willReplace ? 1 : 0;
     // Ring progress toward the next purchase (single-resource, accrues smoothly). Full
     // when affordable/maxed; the ring is hidden by CSS on maxed cards.
     const have = game.resources[def.cost.resource];
@@ -190,7 +208,7 @@ export function UpgradePanel({ game, derived, onBuy, onFoundWing }: Props) {
           </span>
           <EffectPill effect={def.effect} />
           <span className="card-desc">{upgradeFlavor(def.id, owned, def.desc)}</span>
-          {willReplace && <span className="card-note">↑ replaces a lower-tier rack</span>}
+          {replaces > 0 && <span className="card-note">{replaces > 1 ? `↑ replaces ${replaces} lower-tier racks` : "↑ replaces a lower-tier rack"}</span>}
         </div>
         <div className="card-cost">
           {maxed ? (
@@ -217,10 +235,12 @@ export function UpgradePanel({ game, derived, onBuy, onFoundWing }: Props) {
   return (
     <section className="panel">
       <h2 className="panel-title">Hardware &amp; Upgrades</h2>
-      <p className={`floor-meter${floorFull ? " full" : ""}`}>
+      <p className={`floor-meter${floorFull && !canReplace ? " full" : ""}`}>
         Floor space: <b>{racks}/{capacity} racks</b>
         {wings > 1 && <span> across {wings} wings</span>}
-        {floorFull && <span> — full. {drawnOut ? "The block is leased out; found a wing." : "Expand the hall to fit more."}</span>}
+        {floorFull && <span> — full. {canReplace
+          ? "Bigger racks now replace your smallest."
+          : drawnOut ? "The block is leased out; found a wing." : "Expand the hall to fit more."}</span>}
       </p>
       {/* Found a wing. Appears only once the floor is genuinely drawn out, so it is
           never a shortcut past the hall you were meant to fill first. Funded with Lab
@@ -268,12 +288,33 @@ export function UpgradePanel({ game, derived, onBuy, onFoundWing }: Props) {
           {renderCard(hero, true)}
         </div>
       )}
-      {groups.map(({ g, items }) => (
-        <div className="up-group" key={g}>
-          <div className="up-group-head">{g}</div>
-          <div className="list">{items.map((d) => renderCard(d))}</div>
-        </div>
-      ))}
+      {groups.map(({ g, items }) => {
+        // A maxed upgrade has nothing left to decide, so it folds into a quiet pill
+        // row (icon · name · ✓) instead of a full MAX card. Late-game Build tabs
+        // were mostly MAX cards; a fully maxed group is now one line.
+        const live = items.filter((d) => (game.upgrades[d.id] ?? 0) < d.max);
+        const maxed = items.filter((d) => (game.upgrades[d.id] ?? 0) >= d.max);
+        return (
+          <div className="up-group" key={g}>
+            <div className="up-group-head">{g}</div>
+            {live.length > 0 && <div className="list">{live.map((d) => renderCard(d))}</div>}
+            {maxed.length > 0 && (
+              <ul className="up-maxed" aria-label={`${g} — maxed`}>
+                {maxed.map((d) => {
+                  const m = metaForKind(d.effect.kind, 14);
+                  return (
+                    <li key={d.id} className="up-maxed-pill" style={{ ["--tint" as string]: m.tint }} title={d.desc}>
+                      <span className="up-maxed-ic" aria-hidden="true">{m.icon}</span>
+                      {d.name}
+                      <span className="up-maxed-check" aria-label="maxed">✓</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        );
+      })}
     </section>
   );
 }

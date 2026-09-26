@@ -1,6 +1,7 @@
 import type { GameState } from "../engine/types";
 import { productMilestones } from "../engine/balance/products";
 import { milestoneValue } from "../engine/products";
+import { derive } from "../engine/derive";
 import { m$ } from "./format";
 
 
@@ -14,11 +15,12 @@ import { m$ } from "./format";
  */
 export function MilestonesBoard({ game }: { game: GameState }) {
   const done = new Set(game.products.milestones);
+  const mods = derive(game).productModsById; // once for the revenue rungs, not per card
   return (
     <div className="prod-ms-grid">
       {productMilestones.map((mDef) => {
         const isDone = done.has(mDef.id);
-        const val = milestoneValue(game, mDef.metric);
+        const val = milestoneValue(game, mDef.metric, mods);
         const pct = Math.max(0, Math.min(1, val / mDef.threshold));
         return (
           <div className={`prod-ms ${isDone ? "done" : ""}`} key={mDef.id} title={mDef.desc}>

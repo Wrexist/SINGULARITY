@@ -1,4 +1,5 @@
 import { components as C, SLOTS_BY_TIER, type ComponentDef, type SlotClass } from "./balance/components";
+import { contracts as CONTRACTS } from "./balance/contracts";
 import { RACK_IDS, totalRacks } from "./hall";
 import type { ComponentsState, GameState } from "./types";
 
@@ -29,10 +30,15 @@ export function componentsUnlocked(state: GameState): boolean {
 /** Catalog parts visible at the current fleet size (reveal in waves, never dump).
  *  The catalog is FIXED: nothing rotates, nothing is randomized. Trophy parts
  *  are included once their milestone is complete (the UI also shows locked ones
- *  as visible chase targets — deterministic, never a slot pull). */
+ *  as visible chase targets — deterministic, never a slot pull). A part the player
+ *  already OWNS is always listed: fusion can make one before its reveal (three spare
+ *  Hopperoos → an ASIC on a 10-rack lab), and it must be fittable, not vanish until
+ *  the fleet grows. Buying still waits for the reveal (canBuyComponent). */
 export function visibleCatalog(state: GameState): ComponentDef[] {
   const racks = totalRacks(state);
-  return C.catalog.filter((d) => (d.earnedBy ? earnedSourceComplete(state, d) : racks >= d.revealAtRacks));
+  return C.catalog.filter((d) =>
+    (state.components.owned[d.id] ?? 0) > 0 ||
+    (d.earnedBy ? earnedSourceComplete(state, d) : racks >= d.revealAtRacks));
 }
 
 /** All trophy-part defs (for the UI's chase list and the grant fold). */
@@ -67,6 +73,22 @@ export function grantEarnedComponents(state: GameState): GameState {
   return { ...state, components: { ...state.components, owned } };
 }
 
+/** How a trophy part is earned, as the Rig Bay's locked row says it. A contract pays its
+ *  part when it is CLAIMED, not when its goal is met, so a contract-earned part names the
+ *  contract to claim: "Ship your first model" on a lab that had shipped five times read
+ *  as a promise already broken (Ship It sits below three earlier rungs of the ladder,
+ *  and until they are claimed it is not even on the board). An achievement is awarded
+ *  on its own, so its goal is the hint. */
+export function trophyEarnHint(def: ComponentDef): string {
+  const by = def.earnedBy;
+  if (!by) return "";
+  if (by.kind === "contract") {
+    const title = CONTRACTS.pool.find((c) => c.id === by.id)?.title;
+    if (title) return `Claim the "${title}" contract`;
+  }
+  return by.label;
+}
+
 /** The trophy copies to carry through a prestige reset (loadout still clears). */
 export function carryEarnedComponents(state: GameState): ComponentsState {
   const fresh = freshComponents();
@@ -85,15 +107,23 @@ export function equippedCount(state: GameState, id: string): number {
   return n;
 }
 
-export function canBuyComponent(state: GameState, id: string): boolean {
+/** Is another copy of this part on sale right now, money aside? Not for a trophy (earned,
+ *  never sold), a part the fleet hasn't revealed yet (one made early by fusion is owned
+ *  but not yet stocked), or a stack at the copy cap. The slot picker reads it to tell a
+ *  part it can't sell you from one you just can't afford. */
+export function componentOnSale(state: GameState, id: string): boolean {
   const def = BY_ID.get(id);
   if (!def || !componentsUnlocked(state)) return false;
   if (def.earnedBy) return false; // trophies are earned, never sold
   if (totalRacks(state) < def.revealAtRacks) return false;
   // The save-load clamp caps owned at maxCopies — enforce the same cap here so
   // a copy (and its price) bought past the cap can't silently vanish on reload.
-  if ((state.components.owned[id] ?? 0) >= C.maxCopies) return false;
-  return state.resources.money.gte(def.cost);
+  return (state.components.owned[id] ?? 0) < C.maxCopies;
+}
+
+export function canBuyComponent(state: GameState, id: string): boolean {
+  const def = BY_ID.get(id);
+  return !!def && componentOnSale(state, id) && state.resources.money.gte(def.cost);
 }
 
 // ---------- Fusion (C3) ----------
@@ -151,6 +181,8 @@ export function equipComponent(state: GameState, tier: number, slot: SlotClass, 
   const current = state.components.loadout[tier]?.[slot];
   if (id === (current ?? null)) return state;
   if (id !== null) {
+    // A tier with no racks can't hold a part (see releaseEmptyTierParts).
+    if ((state.upgrades[RACK_IDS[tier]!] ?? 0) <= 0) return state;
     const def = BY_ID.get(id);
     if (!def || def.class !== slot) return state;
     // A copy already slotted elsewhere can't be slotted twice. (Re-slotting the
@@ -164,6 +196,25 @@ export function equipComponent(state: GameState, tier: number, slot: SlotClass, 
     else next[slot] = id;
     return next;
   });
+  return { ...state, components: { ...state.components, loadout } };
+}
+
+/**
+ * Return every part fitted to a rack tier that no longer has a rack back to the
+ * inventory (the copies stay owned; they just stop counting as slotted). A tier with
+ * no racks is not shown in the Rig Bay, so a part left in it could not be removed,
+ * re-fitted or fused, and it adds nothing. Same-ref no-op when nothing is stranded.
+ */
+export function releaseEmptyTierParts(state: GameState): GameState {
+  let loadout: ComponentsState["loadout"] | null = null;
+  for (let tier = 0; tier < RACK_IDS.length; tier++) {
+    if ((state.upgrades[RACK_IDS[tier]!] ?? 0) > 0) continue;
+    const slots = state.components.loadout[tier];
+    if (!slots || !Object.values(slots).some(Boolean)) continue;
+    loadout = loadout ?? state.components.loadout.slice();
+    loadout[tier] = {};
+  }
+  if (!loadout) return state;
   return { ...state, components: { ...state.components, loadout } };
 }
 

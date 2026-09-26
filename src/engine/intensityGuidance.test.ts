@@ -6,10 +6,14 @@ import { advisorItems } from "./advisor";
 import { balance } from "./balance/config";
 import { Big } from "./math/Big";
 
-/** A state with auto-train owned (so the Compute bank has a ceiling) at a given focus. */
+/** A state with auto-train owned (so the Compute bank has a ceiling) at a given focus.
+ *  A maxed Batch Scheduler makes its runs COMPUTE-bound (a ~2.4s run refills less than
+ *  the next one costs) — the regime where the ceiling binds. With longer runs the bank
+ *  climbs past it on its own; bankCeiling.test.ts covers that case. */
 function autoTrainingAt(focus: number) {
   const s = createInitialState();
   s.upgrades["auto_train"] = 1; // enables the autoTrain effect in derive
+  s.upgrades["batching"] = 12;
   s.computeFocus = focus;
   return s;
 }
@@ -82,15 +86,15 @@ describe("researchStalled", () => {
 });
 
 describe("advisor surfaces the intensity lever exactly when research stalls", () => {
-  it("nudges to ease training intensity when the bank is walled, and stays quiet otherwise", () => {
+  it("points at \"save for this\" when the bank is walled, and stays quiet otherwise", () => {
     const walled = autoTrainingAt(1);
     walled.resources.compute = Big.of(1);
     walled.resources.data = Big.of(1e9);
-    expect(advisorItems(walled).some((i) => i.text.toLowerCase().includes("training intensity"))).toBe(true);
+    expect(advisorItems(walled).some((i) => i.text.toLowerCase().includes("save for it"))).toBe(true);
 
     // Auto-train not owned → no ceiling → no nudge (the mechanic doesn't exist yet).
     const early = createInitialState();
     early.resources.compute = Big.of(1);
-    expect(advisorItems(early).some((i) => i.text.toLowerCase().includes("training intensity"))).toBe(false);
+    expect(advisorItems(early).some((i) => i.text.toLowerCase().includes("save for it"))).toBe(false);
   });
 });

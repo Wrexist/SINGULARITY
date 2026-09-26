@@ -15,8 +15,14 @@ export type ObjectiveMetric =
   | "research"
   | "racks"
   | "ships"
+  /** Lifetime products ever launched ("Launch your first product"). */
   | "products"
+  /** Products live RIGHT NOW ("Run N live products"). */
+  | "liveProducts"
+  /** Lifetime specialists ever hired ("Hire your first specialist"). */
   | "employees"
+  /** Specialists on the roster RIGHT NOW ("Employ N specialists"). */
+  | "staff"
   | "mau"
   | "mrr"
   | "events"
@@ -69,10 +75,10 @@ export const objectives = {
     { id: "o_ship2", desc: "Ship 3 models.", metric: "ships", target: 3, reward: boost("dataMult", 2.6, 90) },
     { id: "o_rack3", desc: "Run 25 GPU racks.", metric: "racks", target: 25, reward: boost("computeMult", 2.6, 90) },
     { id: "o_mrr1", desc: "Reach $100/sec product revenue.", metric: "mrr", target: 100, reward: boost("moneyMult", 2.6, 90) },
-    { id: "o_emp2", desc: "Employ 4 specialists.", metric: "employees", target: 4, reward: boost("dataMult", 2.6, 95) },
+    { id: "o_emp2", desc: "Employ 4 specialists.", metric: "staff", target: 4, reward: boost("dataMult", 2.6, 95) },
     { id: "o_money4", desc: "Earn $1,000,000 lifetime.", metric: "lifetimeMoney", target: 1_000_000, reward: boost("moneyMult", 2.7, 100) },
     { id: "o_events1", desc: "Resolve 5 world events.", metric: "events", target: 5, reward: boost("dataMult", 2.7, 100) },
-    { id: "o_prod2", desc: "Run 2 live products.", metric: "products", target: 2, reward: boost("moneyMult", 2.8, 100) },
+    { id: "o_prod2", desc: "Run 2 live products.", metric: "liveProducts", target: 2, reward: boost("moneyMult", 2.8, 100) },
     { id: "o_cmp4", desc: "Reach 100,000 Compute/sec.", metric: "compute", target: 100_000, reward: boost("computeMult", 2.8, 100) },
     { id: "o_contract1", desc: "Complete 3 contracts.", metric: "contracts", target: 3, reward: boost("computeMult", 2.8, 105) },
     { id: "o_mau2", desc: "Reach 1,000,000 total users.", metric: "mau", target: 1_000_000, reward: boost("moneyMult", 2.9, 110) },
@@ -87,8 +93,8 @@ export const objectives = {
     // curve-safe. Escalating factor/duration continues the existing ramp.
     { id: "o_ship4", desc: "Ship 12 models.", metric: "ships", target: 12, reward: boost("computeMult", 3.1, 120) },
     { id: "o_cmp5", desc: "Reach 2,000,000 Compute/sec.", metric: "compute", target: 2_000_000, reward: boost("computeMult", 3.1, 120) },
-    { id: "o_emp3", desc: "Employ 8 specialists.", metric: "employees", target: 8, reward: boost("dataMult", 3.1, 125) },
-    { id: "o_prod3", desc: "Run 3 live products.", metric: "products", target: 3, reward: boost("moneyMult", 3.2, 125) },
+    { id: "o_emp3", desc: "Employ 8 specialists.", metric: "staff", target: 8, reward: boost("dataMult", 3.1, 125) },
+    { id: "o_prod3", desc: "Run 3 live products.", metric: "liveProducts", target: 3, reward: boost("moneyMult", 3.2, 125) },
     { id: "o_mrr3", desc: "Reach $20,000/sec product revenue.", metric: "mrr", target: 20_000, reward: boost("moneyMult", 3.2, 130) },
     { id: "o_ship5", desc: "Ship 15 models.", metric: "ships", target: 15, reward: boost("computeMult", 3.3, 130) },
     { id: "o_contract2", desc: "Complete 8 contracts.", metric: "contracts", target: 8, reward: boost("computeMult", 3.3, 135) },
@@ -99,7 +105,7 @@ export const objectives = {
     // compute, revenue, contracts, lifetime money) and keep the ramp going. Still claim-only
     // temp boosts, so curve-safe; factor/duration continue the existing escalation.
     { id: "o_ship6", desc: "Ship 20 models.", metric: "ships", target: 20, reward: boost("computeMult", 3.5, 145) },
-    { id: "o_emp4", desc: "Employ 16 specialists.", metric: "employees", target: 16, reward: boost("dataMult", 3.5, 148) },
+    { id: "o_emp4", desc: "Employ 16 specialists.", metric: "staff", target: 16, reward: boost("dataMult", 3.5, 148) },
     { id: "o_cmp6", desc: "Reach 50,000,000 Compute/sec.", metric: "compute", target: 50_000_000, reward: boost("computeMult", 3.6, 150) },
     { id: "o_mrr4", desc: "Reach $200,000/sec product revenue.", metric: "mrr", target: 200_000, reward: boost("moneyMult", 3.6, 153) },
     { id: "o_contract3", desc: "Complete 15 contracts.", metric: "contracts", target: 15, reward: boost("computeMult", 3.7, 156) },

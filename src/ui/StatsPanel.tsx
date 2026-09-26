@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { ChevronIcon } from "./Icons";
 import type { Derived, GameState } from "../engine/types";
-import { fmt, fmtMoney, m$, numOf, fmtDur } from "./format";
+import { fmt, fmtMoney, fmtMult, m$, numOf, fmtDur, fmtSignedPct, barRates } from "./format";
 import { achievementDefs } from "../engine/achievements";
 import { reputationAvailable, endowmentMult } from "../engine/reputation";
 import { preprintMult } from "../engine/preprints";
 import { alignmentProductionMods, alignmentHeatMult, alignmentProductMods } from "../engine/alignment";
 import { regulatorState } from "../engine/regulator";
 import { charterDef, charterMods } from "../engine/charter";
+import { charterRuleChips } from "./CharterPanel";
 import { balance } from "../engine/balance/config";
 import { ascensionMultiplier } from "../engine/prestige";
 import { totalMorale } from "../engine/derive";
@@ -35,7 +36,7 @@ type Row = { label: string; value: string; tone?: "compute" | "data" | "money" |
  *  lifetime career: peaks, totals, and meta-progression earned across every run). */
 /** Compact "+9% cmp · −6% $ · +30% heat" summary of the active stance, or null
  *  at neutral. Makes the (now real) faction tilt legible instead of invisible. */
-const pct = (x: number) => `${x >= 0 ? "+" : ""}${Math.round(x * 100)}%`;
+const pct = fmtSignedPct;
 
 function stanceEffects(game: GameState): string | null {
   if (game.alignment === 0) return null;
@@ -50,12 +51,15 @@ function charterRow(game: GameState): Row | null {
   const def = charterDef(game.charter);
   if (!def) return null;
   const m = charterMods(game);
+  // A rule-changer's rules first (a pure rule charter has no lane tilt at all, so the
+  // row read "Research Sprint · " with nothing after the dot).
   const parts = [
+    ...charterRuleChips(def.id),
     m.computeMult !== 1 ? `${pct(m.computeMult - 1)} cmp` : null,
     m.dataMult !== 1 ? `${pct(m.dataMult - 1)} data` : null,
     m.moneyMult !== 1 ? `${pct(m.moneyMult - 1)} $` : null,
   ].filter(Boolean);
-  return { label: "Charter", value: `${def.name} · ${parts.join(" · ")}` };
+  return { label: "Charter", value: parts.length ? `${def.name} · ${parts.join(" · ")}` : def.name };
 }
 
 /** R5.5 cross-system effects, surfaced only when active (else they'd clutter the
@@ -103,11 +107,13 @@ export function StatsPanel({ game, derived }: Props) {
     // ResourceBar — the sparklines resurrect them as TREND rows: the ~3-minute
     // trace is information the bar doesn't carry.
     { label: "Compute / sec", value: fmt(derived.computePerSec), tone: "compute" as const, spark: history.compute },
-    { label: "Data / sec", value: fmt(derived.dataPerSec), tone: "data" as const, spark: history.data },
-    { label: "Compute multiplier", value: `×${fmt(derived.computeMult)}` },
-    { label: "Data multiplier", value: `×${fmt(derived.dataMult)}` },
-    { label: "$ multiplier", value: `×${fmt(derived.moneyMult)}` },
-    { label: "Legacy boost", value: `×${fmt(derived.legacyMult)}`, tone: "good" as const },
+    // The bar's Data rate (runs included once they restart themselves), not only the
+    // passive scraper lane: an auto-training lab read "Data / sec 0" while Data climbed.
+    { label: "Data / sec", value: fmt(barRates(game, derived).data), tone: "data" as const, spark: history.data },
+    { label: "Compute multiplier", value: `×${fmtMult(derived.computeMult)}` },
+    { label: "Data multiplier", value: `×${fmtMult(derived.dataMult)}` },
+    { label: "$ multiplier", value: `×${fmtMult(derived.moneyMult)}` },
+    { label: "Legacy boost", value: `×${fmtMult(derived.legacyMult)}`, tone: "good" as const },
     // Endgame boosts that were previously invisible — surface them the moment they're
     // non-identity so the "small compounding boosts" actually read as working.
     ...(game.preprints > 0 ? [{ label: "Preprints", value: `×${preprintMult(game).toNumber().toFixed(2)} · ${game.preprints} paper${game.preprints === 1 ? "" : "s"}` }] : []),

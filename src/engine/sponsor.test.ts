@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { rollSponsor, claimSponsor, sponsorView, sponsorIdFor, contractsReputation, contractsBalance } from "./contracts";
 import { serialize, deserialize } from "./save";
 import { createInitialState } from "./state";
+import { applyAutomation, automationEnabled, toggleAutomation } from "./automation";
 import { Big } from "./math/Big";
 
 const DAY = 20_640; // an arbitrary local day number
@@ -80,5 +81,109 @@ describe("sponsor contracts (IDEAS #9)", () => {
     const tampered = JSON.parse(serialize(s));
     tampered.sponsor.rep = 9_999;
     expect(deserialize(JSON.stringify(tampered)).sponsor!.rep).toBe(contractsBalance.sponsor.rep);
+  });
+
+  it("a year and more of dailies keeps every point of Reputation through a reload", () => {
+    const s = clearedLadder();
+    const days = 450; // past the old 400 cap, which trimmed 300 Rep on every load
+    s.contracts = { completed: [...s.contracts.completed, ...Array.from({ length: days }, (_, i) => sponsorIdFor(DAY + i))] };
+    const before = contractsReputation(s);
+    expect(contractsReputation(deserialize(serialize(s)))).toBe(before);
+  });
+});
+
+
+describe("sponsors run alongside the ladder from the first Ship", () => {
+  it("rolls for a shipped lab mid-ladder, only on lanes it has started", () => {
+    const s = createInitialState();
+    s.prestige.ships = contractsBalance.sponsor.openAtShips;
+    s.stats.totalShips = s.prestige.ships;
+    s.stats.peakComputePerSec = Big.of(50_000);
+    s.stats.totalMoney = Big.of(2e6);
+    // No products yet → peak MAU / MRR are 0 and must never be the lane.
+    for (let day = DAY; day < DAY + 40; day++) {
+      const r = rollSponsor(s, day);
+      expect(r.sponsor).not.toBeNull();
+      expect(["peakComputePerSec", "totalMoney"]).toContain(r.sponsor!.metric);
+    }
+  });
+
+  it("still waits for the ladder in the first generation", () => {
+    const s = createInitialState();
+    s.stats.peakComputePerSec = Big.of(50_000);
+    expect(rollSponsor(s, DAY).sponsor).toBeNull();
+  });
+});
+
+describe("a met sponsor is never lost", () => {
+  /** A veteran lab past the Contract Autopilot's unlock with today's sponsor rolled. */
+  function veteranSponsor() {
+    const s = clearedLadder();
+    s.prestige.ships = 10;
+    s.stats.peakComputePerSec = Big.of(5_000);
+    s.stats.totalMoney = Big.of(5e6);
+    s.stats.peakMau = 200_000;
+    s.stats.peakMrr = 800;
+    return rollSponsor(s, DAY);
+  }
+  /** …and met: every lane blown past, whichever one the day rolled. */
+  function metSponsor() {
+    const rolled = veteranSponsor();
+    const met = { ...rolled, stats: { ...rolled.stats } };
+    met.stats.peakComputePerSec = Big.of(1e12);
+    met.stats.totalMoney = Big.of(1e15);
+    met.stats.peakMau = 1e12;
+    met.stats.peakMrr = 1e12;
+    expect(sponsorView(met)!.ready).toBe(true);
+    return met;
+  }
+
+  it("the Contract Autopilot claims it like any other met contract", () => {
+    const s = toggleAutomation(metSponsor(), "auto_contracts");
+    expect(automationEnabled(s, "auto_contracts")).toBe(true);
+    const before = contractsReputation(s);
+    const after = applyAutomation(s);
+    expect(after.contracts.completed).toContain(sponsorIdFor(DAY));
+    expect(contractsReputation(after)).toBe(before + contractsBalance.sponsor.rep);
+    // Idempotent on the next tick.
+    expect(applyAutomation(after).contracts.completed).toEqual(after.contracts.completed);
+  });
+
+  it("the Autopilot leaves an unmet sponsor (and a switched-off Autopilot a met one) alone", () => {
+    const unmet = toggleAutomation(veteranSponsor(), "auto_contracts");
+    expect(sponsorView(unmet)!.ready).toBe(false);
+    expect(applyAutomation(unmet).contracts.completed).not.toContain(sponsorIdFor(DAY));
+    expect(applyAutomation(metSponsor()).contracts.completed).not.toContain(sponsorIdFor(DAY));
+  });
+
+  it("the day rollover banks yesterday's met-but-unclaimed sponsor before rolling today's", () => {
+    const s = metSponsor();
+    const before = contractsReputation(s);
+    const next = rollSponsor(s, DAY + 1);
+    expect(next.contracts.completed).toContain(sponsorIdFor(DAY));
+    expect(contractsReputation(next)).toBe(before + contractsBalance.sponsor.rep);
+    expect(next.sponsor!.dayKey).toBe(DAY + 1);
+    // Banked once: a stale re-roll of the old day and back never pays it twice.
+    const again = rollSponsor(rollSponsor(next, DAY), DAY + 1);
+    expect(again.contracts.completed.filter((id) => id === sponsorIdFor(DAY))).toHaveLength(1);
+  });
+
+  it("an unmet sponsor simply expires at the rollover, and a claimed one isn't paid twice", () => {
+    const unmet = veteranSponsor();
+    expect(sponsorView(unmet)!.ready).toBe(false);
+    expect(rollSponsor(unmet, DAY + 1).contracts.completed).not.toContain(sponsorIdFor(DAY));
+
+    const claimed = claimSponsor(metSponsor());
+    const next = rollSponsor(claimed, DAY + 1);
+    expect(next.contracts.completed.filter((id) => id === sponsorIdFor(DAY))).toHaveLength(1);
+  });
+
+  it("a met sponsor is banked even when the board closes instead of rolling over", () => {
+    const s = metSponsor();
+    // A rung reopening in a first-generation lab closes the sponsor slot.
+    const closing = { ...s, prestige: { ...s.prestige, ships: 0 }, contracts: { completed: s.contracts.completed.slice(1) } };
+    const next = rollSponsor(closing, DAY + 1);
+    expect(next.sponsor).toBeNull();
+    expect(next.contracts.completed).toContain(sponsorIdFor(DAY));
   });
 });

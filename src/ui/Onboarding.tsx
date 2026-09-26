@@ -1,4 +1,6 @@
+import { useRef } from "react";
 import { ComputeIcon, DataIcon, MoneyIcon } from "./Icons";
+import { useDialog } from "./useDialog";
 
 interface Props {
   onDone: () => void;
@@ -12,10 +14,13 @@ const STEPS = [
 
 /** One-screen first-run welcome. Skippable, shown exactly once (clean-to-play). */
 export function Onboarding({ onDone }: Props) {
+  // One action and no choice to make: Escape takes it, same as the button.
+  const ref = useRef<HTMLDivElement>(null);
+  useDialog(ref, { onClose: onDone, labelledBy: "onboard-title" });
   return (
     <div className="modal-backdrop">
-      <div className="modal onboard" onClick={(e) => e.stopPropagation()}>
-        <h2>Welcome to Singularity Inc.</h2>
+      <div ref={ref} className="modal onboard" role="dialog" aria-modal="true" aria-labelledby="onboard-title" onClick={(e) => e.stopPropagation()}>
+        <h2 id="onboard-title" tabIndex={-1}>Welcome to Singularity Inc.</h2>
         <p className="modal-sub">
           You raised a seed round and rented a server closet. Time to build God —
           or at least a profitable API. Three resources, one loop:

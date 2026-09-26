@@ -203,3 +203,14 @@ describe("advisor", () => {
     expect(advisorItems(s).some((i) => i.text.includes("first specialist"))).toBe(false);
   });
 });
+
+describe("first-Ship nudge waits until the reset is worth it", () => {
+  it("stays quiet at ~2 weights and speaks once the next run starts clearly faster", () => {
+    const s = createInitialState();
+    s.research = [balance.prestige.capabilityResearch, "backprop"];
+    s.lifetimeMoney = Big.of(4e5); // ~2 weights → next run ×1.03
+    expect(advisorItems(s).some((i) => i.text.startsWith("Ship the Model"))).toBe(false);
+    s.lifetimeMoney = Big.of(1e9); // ~100 weights
+    expect(advisorItems(s).some((i) => i.text.startsWith("Ship the Model"))).toBe(true);
+  });
+});

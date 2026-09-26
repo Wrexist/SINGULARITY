@@ -91,7 +91,9 @@ export const SCENES = [
     focus: [{ sel: ".confirm-modal" }, { sel: "canvas.hall-canvas", pre: true }],
   },
   {
-    name: "03-research", seed: RICH, nav: "scroll:Distributed Training", tag: "PROGRESSION SPINE", pin: "RESEARCH",
+    // Research lives in the Lab's Research section since the Lab split, and finished
+    // categories fold away — so open the section and aim at the hero, which always renders.
+    name: "03-research", seed: RICH, nav: "scroll:Recommended next", section: "Research", tag: "PROGRESSION SPINE", pin: "RESEARCH",
     head: "Climb the <em>tree</em>", sub: "An absurd AI research tree across every era",
     glow: "#a86bff", accent: "#c9a4ff",
     focus: [{ sel: ".node-hero" }, { sel: ".node", nth: 4 }, { sel: ".node", nth: 1 }],
@@ -103,7 +105,7 @@ export const SCENES = [
     focus: [{ sel: ".ship-mode", nth: 0 }, { sel: ".ship-mode", nth: 1 }, { sel: ".ship-mode", nth: 2 }],
   },
   {
-    name: "05-market", seed: RICH, nav: "scroll:The Data Bazaar", tag: "RISK & REWARD", pin: "DARK WEB",
+    name: "05-market", seed: RICH, nav: "scroll:The Data Bazaar", section: "Research", tag: "RISK & REWARD", pin: "DARK WEB",
     head: "Bend the <em>rules</em>", sub: "Buy data legally… or risk the dark-web Bazaar",
     glow: "#7c5cff", accent: "#ad93ff",
     focus: [{ sel: ".card:has-text('Scraped Data Pack')" }, { sel: ".card:has-text('Forum Firehose')" }, { sel: ".heat" }],
@@ -283,12 +285,16 @@ async function grab(app, item) {
   for (const loc of candidates) {
     // center the element so the sticky resource bar (top) and bottom nav don't
     // get baked into the element screenshot when it sits under them
-    await loc.evaluate((el) => el.scrollIntoView({ block: "center", inline: "center" })).catch(() => {});
-    await loc.scrollIntoViewIfNeeded().catch(() => {});
+    // Short timeouts: a focus element that isn't on the page must be skipped in a
+    // couple of seconds, not waited on for Playwright's 30s default per call (that
+    // turned one missing card into a multi-minute hang).
+    if (!(await loc.count().catch(() => 0))) continue;
+    await loc.evaluate((el) => el.scrollIntoView({ block: "center", inline: "center" }), null, { timeout: 2000 }).catch(() => {});
+    await loc.scrollIntoViewIfNeeded({ timeout: 2000 }).catch(() => {});
     await sleep(150);
-    const box = await loc.boundingBox().catch(() => null);
+    const box = await loc.boundingBox({ timeout: 2000 }).catch(() => null);
     if (!box || box.width < 40 || box.height < 40) continue;
-    const buf = await loc.screenshot().catch(() => null);
+    const buf = await loc.screenshot({ timeout: 5000 }).catch(() => null);
     if (!buf) continue;
     return { b64: buf.toString("base64"), aspect: box.width / box.height };
   }
@@ -299,7 +305,7 @@ async function grab(app, item) {
 // screenshot compositor and the preview-video builder.
 export async function captureScene(browser, scene, port) {
   const app = await browser.newPage({ viewport: { width: 402, height: 874 }, deviceScaleFactor: 3 });
-  await app.addInitScript(() => localStorage.setItem("singularity.settings.v1", JSON.stringify({ sound: true, haptics: true, reducedMotion: true, onboarded: true })));
+  await app.addInitScript(() => localStorage.setItem("singularity.settings.v1", JSON.stringify({ sound: true, haptics: true, reducedMotion: true, onboarded: true, shipExplained: true })));
   await app.addInitScript(([save, now]) => {
     localStorage.setItem("singularity.save.v1", save);
     localStorage.setItem("singularity.lastSeen.v1", now);
@@ -354,15 +360,21 @@ export async function captureScene(browser, scene, port) {
     if (t) await app.mouse.click(t.x, t.y);
     await sleep(400);
   } else if (scene.nav?.startsWith("scroll:")) {
-    await app.getByText(scene.nav.slice(7)).first().scrollIntoViewIfNeeded().catch(() => {});
+    // Research and the Data Market live in the Lab's Research section since the Lab split.
+    if (scene.section) await app.locator(`.labnav .tab:has-text("${scene.section}")`).first().click({ timeout: 2000 }).catch(() => {});
+    await sleep(300);
+    await app.getByText(scene.nav.slice(7)).first().scrollIntoViewIfNeeded({ timeout: 3000 }).catch(() => {});
     await sleep(300);
   } else if (scene.nav === "shipOpen") {
     // open the prestige choices and WAIT for them — clicking + a fixed sleep is
     // flaky (the button may not be in view yet), which left the ship beat empty
+    // The Ship panel lives in the Lab's HQ section; open it first.
+    await app.locator('.labnav .tab:has-text("HQ")').first().click({ timeout: 2000 }).catch(() => {});
+    await sleep(300);
     const shipBtn = app.getByRole("button", { name: /^Ship —/ });
     for (let a = 0; a < 3; a++) {
-      await shipBtn.scrollIntoViewIfNeeded().catch(() => {});
-      await shipBtn.click().catch(() => {});
+      await shipBtn.scrollIntoViewIfNeeded({ timeout: 2000 }).catch(() => {});
+      await shipBtn.click({ timeout: 2000 }).catch(() => {});
       await app.waitForSelector(".ship-mode", { timeout: 3500 }).catch(() => {});
       if (await app.locator(".ship-mode").count().catch(() => 0)) break;
       await sleep(300);

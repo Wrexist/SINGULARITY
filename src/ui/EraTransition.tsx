@@ -1,5 +1,8 @@
 import { eraName, eraBlurb } from "../engine/eras";
+import { useRef } from "react";
 import { useReducedMotion } from "./motion";
+import { useDialog } from "./useDialog";
+import { useConfetti, confettiStyle } from "./confetti";
 
 interface Props {
   era: number;
@@ -9,7 +12,7 @@ interface Props {
   onDone: () => void;
 }
 
-const CONFETTI = Array.from({ length: 22 });
+const CONFETTI_COUNT = 22;
 const COLORS = ["#7c5cff", "#2f7bf6", "#16b364", "#ffd60a", "#ff385c"];
 
 /**
@@ -20,25 +23,19 @@ const COLORS = ["#7c5cff", "#2f7bf6", "#16b364", "#ffd60a", "#ff385c"];
 export function EraTransition({ era, blurbSeed = 0, onDone }: Props) {
   const agi = era >= 5; // Post-Singularity — the capstone tentpole.
   const reducedMotion = useReducedMotion();
+  const ref = useRef<HTMLDivElement>(null);
+  useDialog(ref, { onClose: onDone, labelledBy: "era-title" });
+  const confetti = useConfetti(CONFETTI_COUNT);
   return (
     <div className={`modal-backdrop era-backdrop${agi ? " era-agi" : ""}`} onClick={onDone}>
       {!reducedMotion && <div className="confetti era-confetti" aria-hidden="true">
-        {CONFETTI.map((_, i) => (
-          <span
-            key={i}
-            style={{
-              ["--x" as string]: `${(Math.random() * 2 - 1).toFixed(2)}`,
-              ["--d" as string]: `${(Math.random() * 0.5).toFixed(2)}s`,
-              ["--r" as string]: `${Math.floor(Math.random() * 360)}deg`,
-              left: `${Math.floor(Math.random() * 100)}%`,
-              background: agi ? "#ffd60a" : COLORS[i % COLORS.length],
-            }}
-          />
+        {confetti.map((p, i) => (
+          <span key={i} style={confettiStyle(p, agi ? "#ffd60a" : COLORS[i % COLORS.length]!)} />
         ))}
       </div>}
-      <div className="modal era-modal" onClick={(e) => e.stopPropagation()}>
+      <div ref={ref} className="modal era-modal" role="dialog" aria-modal="true" aria-labelledby="era-title" onClick={(e) => e.stopPropagation()}>
         <div className="era-kicker">{agi ? "✦ SINGULARITY ✦" : "NEW ERA"}</div>
-        <h2 className="era-title">{eraName(era)}</h2>
+        <h2 id="era-title" className="era-title" tabIndex={-1}>{eraName(era)}</h2>
         <div className="era-press">
           <span className="era-press-tag">{agi ? "AUTO-GENERATED" : "PRESS RELEASE"}</span>
           <p>{eraBlurb(era, blurbSeed)}</p>

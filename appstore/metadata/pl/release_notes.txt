@@ -1,11 +1,10 @@
-W tym wydaniu:
+W tej aktualizacji:
 
-• Grand Challenges — moonshoty na długi dystans z trwałymi nagrodami.
-• Lab Objectives — nowa drabinka celów, sięgająca głęboko w endgame.
-• Automation — autopilot od całej papierologii.
-• Fork badań w każdym podejściu, do tego żywsze animacje postępu.
-• No i strona w App Store mówi już po polsku.
+• Nowość w każdej generacji: zadeklaruj Stance (Safety, Center lub Acceleration) i odblokuj perki Doctrine tej strony. Każdy Ship rozdaje też trzy karty Lab Charter, w tym takie, które zmieniają zasady gry.
+• Unplugged Trials: wyłącz Legacy na jedną generację i znów zagraj pełną rozgrywkę od zera. Twoje rekordy Compute dają teraz Lab Reputation.
+• Czytelniejsze cele: zawsze widzisz kolejny krok i moment, w którym Ship naprawdę się opłaca.
+• „Odkładaj na to”: stuknij badanie poza zasięgiem, a laboratorium samo odłoży na nie Compute i kupi je za ciebie.
+• Więcej spokoju: przerywają ci tylko prawdziwe decyzje, reszta leci na pasku wiadomości. Lepsza obsługa VoiceOver i większe przyciski.
+• Płynniej na starszych iPhone’ach, dokładny czas offline i ponad 60 poprawek błędów.
 
-Poza tym poprawki balansu i stabilności.
-
-Reklam wciąż zero. Pay-to-win wciąż zero.
+Nadal bez reklam. Nadal bez pay-to-win.

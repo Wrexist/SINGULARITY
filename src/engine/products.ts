@@ -5,6 +5,7 @@ import {
 import { balance } from "./balance/config";
 import type { GameState, ProductMods, ProductState, ProductsState, UpgradeState } from "./types";
 import { bonusProductSlots } from "./reputation";
+import { trialBonusProductSlots } from "./trials";
 import { legacyBonusProductSlots } from "./legacyTree";
 import { derive } from "./derive";
 
@@ -15,7 +16,7 @@ export const NEUTRAL_MODS: ProductMods = { upgradeSpeed: 1, serveCost: 1, churn:
  *  the Legacy tree's Product Division unlock node. Both are player-only meta
  *  unlocks, so the deploy-only balance sim always sees just the base cap. */
 export function maxActiveProducts(state: GameState): number {
-  return B.maxActive + bonusProductSlots(state) + legacyBonusProductSlots(state);
+  return B.maxActive + bonusProductSlots(state) + legacyBonusProductSlots(state) + trialBonusProductSlots(state);
 }
 
 /**
@@ -99,8 +100,11 @@ export function versionCostFor(state: GameState, version: number): { compute: nu
   // Fall back to the flat base when Data output is so large the term overflows JS
   // number (>~1e308): at that scale the player's Data is effectively unbounded, so a
   // cheaper push is the gameplay-safe choice (an Infinity cost would just block pushes).
-  const economyData = Number.isFinite(dataPerSec) ? Math.max(0, dataPerSec) * B.versionDataSecondsOfOutput : 0;
-  return { compute: base.compute, data: base.data + economyData };
+  // The product can overflow even when dataPerSec itself is finite (≈3e305 × 600).
+  const scaled = Math.max(0, dataPerSec) * B.versionDataSecondsOfOutput;
+  const economyData = Number.isFinite(scaled) ? scaled : 0;
+  const data = base.data + economyData;
+  return { compute: base.compute, data: Number.isFinite(data) ? data : base.data };
 }
 
 /** Whether a state has shipped enough to OFFER the Enterprise tier. */
@@ -175,10 +179,87 @@ export interface ProductsSimResult {
   heatDelta: number;
 }
 
+/** Largest per-capita viral growth one sub-step may apply (users × rate × dt). */
+const MAX_GROWTH_PER_STEP = 0.02;
+/** Hard ceiling on sub-steps per call (bounds a pathological rate). */
+const MAX_PRODUCT_SUBSTEPS = 4000;
+/** The fastest-saturating marketing channel's CAC slope multiplier. */
+const MAX_SAT_MULT = Math.max(...B.channels.map((c) => c.satMult));
+/** A window whose relative growth stays under this is one step, exactly as before:
+ *  an ordinary live 10 Hz frame (a buzzing AI Companion grows ~0.01 per frame) and the
+ *  balance sim's 1 s product steps, so neither moves. Only a window that would grow a
+ *  product by more than this in one straight line is sliced. */
+const MAX_SINGLE_STEP_GROWTH = 0.1;
+
+/**
+ * How many equal slices a window needs so viral growth compounds instead of being
+ * applied as one straight line. Word of mouth is per-capita (users × virality), so
+ * the portfolio grows exponentially until it saturates its market; one forward step
+ * over a long window grew it linearly instead. After a 5-minute app switch a freshly
+ * launched product came back with ~2.5K users where the app left open had ~8.6M (and
+ * the marketing bill for the whole window was still charged). The rate bounded here is
+ * per capita, so a product still at 0 users that marketing is seeding counts too.
+ * Only a window that would grow a product by more than MAX_SINGLE_STEP_GROWTH is
+ * sliced (a resume, the offline catch-up's 5-minute steps, a throttled tab's frame for
+ * a heavily boosted product); an ordinary frame is one step, exactly as before.
+ */
+export function productSubsteps(ps: ProductsState, seconds: number, modsById: Record<string, ProductMods>): number {
+  let rate = 0;
+  for (const p of ps.active) {
+    const t = typeDef(p.type);
+    const mods = modsById[p.id] ?? NEUTRAL_MODS;
+    const fm = featureMods(p);
+    // The same per-capita rate simulateProductsStep applies, at the window's start:
+    // competitiveness and market headroom only fall across a window (the frontier
+    // climbs, users only arrive), so this bounds every slice. A saturated or stale
+    // product needs no slicing at all, which keeps a long offline catch-up cheap.
+    const tam = t.tam * fm.tam;
+    const sat = tam > 0 ? Math.max(0, 1 - p.mau / tam) : 0;
+    const bought = tam > 0 ? channelAcq(p, tam) * mods.acq * fm.acq : 0;
+    // No users and no campaign seeding any (a launch left at $0 marketing): nothing
+    // can grow, so nothing to slice however long the window.
+    if (!(sat > 0) || (p.mau <= 0 && !(bought > 0))) continue;
+    const qf = clamp(p.quality / Math.max(ps.frontier, 1e-9), 0, 1);
+    const viral = t.virality * qf * sat * (p.buzzSec > 0 ? B.buzzAcqMult : 1) * mods.acq * fm.acq;
+    // Paid acquisition saturates too: its cost per user climbs with penetration, so a
+    // heavy campaign's reach falls within the window. One straight step overshot it.
+    // Only while there is market left to take: a product at its TAM is clamped there
+    // however the window is cut, so a campaign kept running on it needs no slicing.
+    const paid = (bought * B.cacSaturation * MAX_SAT_MULT * sat) / tam;
+    const r = viral + paid;
+    if (Number.isFinite(r) && r > rate) rate = r;
+  }
+  const growth = rate * seconds;
+  if (!(growth > MAX_SINGLE_STEP_GROWTH)) return 1;
+  const n = Math.ceil(growth / MAX_GROWTH_PER_STEP);
+  return Number.isFinite(n) ? Math.max(1, Math.min(MAX_PRODUCT_SUBSTEPS, n)) : 1;
+}
+
 export function simulateProducts(
   ps: ProductsState,
   seconds: number,
   modsById: Record<string, ProductMods> = {},
+): ProductsSimResult {
+  const n = ps.active.length > 0 ? productSubsteps(ps, seconds, modsById) : 1;
+  if (n <= 1) return simulateProductsStep(ps, seconds, modsById);
+  const dt = seconds / n;
+  let cur = ps;
+  let moneyDelta = 0;
+  let heatDelta = 0;
+  for (let i = 0; i < n; i++) {
+    const r = simulateProductsStep(cur, dt, modsById);
+    cur = r.products;
+    moneyDelta += r.moneyDelta;
+    heatDelta += r.heatDelta;
+  }
+  return { products: cur, moneyDelta, heatDelta };
+}
+
+/** One forward step of the portfolio over `seconds` (see simulateProducts). */
+function simulateProductsStep(
+  ps: ProductsState,
+  seconds: number,
+  modsById: Record<string, ProductMods>,
 ): ProductsSimResult {
   if (ps.active.length === 0) {
     // Frontier still drifts so a future product launches against current state.
@@ -278,13 +359,21 @@ export function productMetrics(p: ProductState, frontier: number, mods: ProductM
 
 // ---------- Milestones (a chase ladder; pure) ----------
 
-/** Current value of a milestone metric across the portfolio (totals / peaks). */
-export function milestoneValue(state: GameState, metric: MilestoneDef["metric"]): number {
+/** Current value of a milestone metric across the portfolio (totals / peaks). Pass the
+ *  per-product mods when the caller already has them (derive's productModsById); they
+ *  are derived here otherwise. */
+export function milestoneValue(state: GameState, metric: MilestoneDef["metric"], modsById?: Record<string, ProductMods>): number {
   const ps = state.products;
   switch (metric) {
     case "users": return ps.active.reduce((s, p) => s + p.mau, 0);
     case "paid": return ps.active.reduce((s, p) => s + p.paid, 0);
-    case "mrr": return ps.active.reduce((s, p) => s + productMetrics(p, ps.frontier).mrr, 0);
+    // Revenue WITH its ARPU buffs (staff, the Product Company charter): the figure the
+    // product cards, the sponsor/contract ladder and the "$1K/s" achievement all read.
+    // The bare figure left a lab billing $1.5K/s short of the "$1K/s" rung.
+    case "mrr": {
+      const mods = modsById ?? derive(state).productModsById;
+      return ps.active.reduce((s, p) => s + settledMrr(p, ps.frontier, mods[p.id]), 0);
+    }
     case "version": return ps.active.reduce((m, p) => Math.max(m, p.version), 0);
     case "qf": return ps.active.reduce((m, p) => Math.max(m, productMetrics(p, ps.frontier).qf), 0);
     case "live": return ps.active.length;
@@ -297,12 +386,12 @@ export interface MilestoneAchievement { def: MilestoneDef; reward: number; }
 /** Award any newly-reached milestones: append their ids and pay the one-time Money
  *  reward. Pure & idempotent (an already-achieved milestone is skipped). Returns the
  *  fresh achievements so the UI can celebrate them. */
-export function applyMilestones(state: GameState): { state: GameState; achieved: MilestoneAchievement[] } {
+export function applyMilestones(state: GameState, modsById?: Record<string, ProductMods>): { state: GameState; achieved: MilestoneAchievement[] } {
   const have = new Set(state.products.milestones);
   const achieved: MilestoneAchievement[] = [];
   for (const def of productMilestones) {
     if (have.has(def.id)) continue;
-    if (milestoneValue(state, def.metric) >= def.threshold) achieved.push({ def, reward: def.reward });
+    if (milestoneValue(state, def.metric, modsById) >= def.threshold) achieved.push({ def, reward: def.reward });
   }
   if (achieved.length === 0) return { state, achieved };
   const reward = achieved.reduce((s, a) => s + a.reward, 0);
@@ -318,6 +407,13 @@ export function applyMilestones(state: GameState): { state: GameState; achieved:
 }
 
 // ---------- Per-product ops events (pure; RNG passed in) ----------
+
+/** Put a product's name into every `{name}` of a line of copy. Some lines name it
+ *  twice, and the name is player-typed: a string `.replace` filled only the first
+ *  slot and read a `$` in the name ("Ca$h Cow") as a replacement pattern. */
+export function fillName(line: string, name: string): string {
+  return line.split("{name}").join(name);
+}
 
 export interface ProductEventResult {
   state: GameState;
@@ -353,7 +449,9 @@ export function maybeProductEvent(
     mau,
     // Bound paid by the CAPPED mau (not the uncapped growth) so paid ≤ mau always holds.
     paid: Math.max(0, Math.min(p.paid * (ev.paidMult ?? 1), mau)),
-    buzzSec: ev.buzz ? B.buzzDurationSec : p.buzzSec,
+    // Arm the standard wave, but never cut a longer one short (an industry-hype wave on
+    // a trendy type runs up to 1.5× as long) — the same max the hype event itself uses.
+    buzzSec: ev.buzz ? Math.max(p.buzzSec, B.buzzDurationSec) : p.buzzSec,
   };
   // Clamp like every other Heat write — [0, max] both bounds — so an event at near-max
   // Heat can't push it over the ceiling, and a (future) cooling event can't drive it
@@ -365,7 +463,7 @@ export function maybeProductEvent(
       heat,
       products: { ...ps, active: ps.active.map((x) => (x.id === p.id ? np : x)) },
     },
-    message: ev.message.replace("{name}", p.name),
+    message: fillName(ev.message, p.name),
     tone: ev.tone === "good" ? "good" : "bad",
   };
 }
@@ -422,7 +520,7 @@ export function maybeChurnFlavor(
   const reason = churnReason(p, ps.frontier) as "stale" | "pricey";
   const lines = B.flavor.lines[reason];
   const line = lines[Math.min(lines.length - 1, Math.floor(rollLine * lines.length))]!;
-  return { productId: p.id, productName: p.name, reason, message: line.replace("{name}", p.name) };
+  return { productId: p.id, productName: p.name, reason, message: fillName(line, p.name) };
 }
 
 // ---------- Actions (pure; the store supplies a fresh `id`) ----------
@@ -484,7 +582,7 @@ export function pushVersion(state: GameState, id: string): GameState {
   const c = versionCostFor(state, p.version);
   const active = state.products.active.map((x) =>
     x.id === id
-      ? { ...x, version: x.version + 1, quality: state.products.frontier, buzzSec: B.buzzDurationSec }
+      ? { ...x, version: x.version + 1, quality: state.products.frontier, buzzSec: Math.max(x.buzzSec, B.buzzDurationSec) }
       : x,
   );
   return {
@@ -598,6 +696,15 @@ export function startUpgrade(state: GameState, id: string): GameState {
   };
 }
 
+/** Real seconds `researchSec` of upgrade research takes on a product with these mods.
+ *  An upgrade's timer (remainingSec, upgradeDurationSec) counts RESEARCH seconds, and
+ *  advanceUpgrades moves it by real seconds × upgradeSpeed (ML Scientists), so a
+ *  countdown shown to the player divides by that speed. Neutral mods → unchanged. */
+export function upgradeWallSec(researchSec: number, mods: ProductMods = NEUTRAL_MODS): number {
+  const speed = mods.upgradeSpeed > 0 && Number.isFinite(mods.upgradeSpeed) ? mods.upgradeSpeed : 1;
+  return researchSec / speed;
+}
+
 /** Progress fraction [0,1] of an in-flight upgrade (for the UI bar). */
 export function upgradeProgress(u: UpgradeState): number {
   return u.totalSec > 0 ? clamp(1 - u.remainingSec / u.totalSec, 0, 1) : 1;
@@ -660,7 +767,7 @@ export function advanceUpgrades(
         ...p,
         version: u.targetVersion,
         quality: Math.max(p.quality, ps.frontier),
-        buzzSec: B.buzzDurationSec,
+        buzzSec: Math.max(p.buzzSec, B.buzzDurationSec), // keep a longer hype wave running
         upgrade: null,
       };
     }
@@ -765,10 +872,83 @@ function retireMaturity(p: ProductState): number {
   return B.retireMaturitySec > 0 ? Math.min(1, (p.ageSec ?? 0) / B.retireMaturitySec) : 1;
 }
 
+/** The paying-subscriber count a sale is valued on: today's count, but never more than
+ *  the steady state the product's CURRENT dials settle to (the same closed-form target
+ *  simulateProducts eases `paid` toward, with the product's live mods). The price and
+ *  Enterprise dials move ARPU instantly while `paid` only drifts (~5%/s), so valuing
+ *  the sale on today's count let a player max the dials and sell in the same frame at
+ *  a revenue rate those dials can't sustain (~3.9× the default-dial payout, ~2× what
+ *  the dials actually earn). A settled product (paid ≈ its steady state) or a growing
+ *  one (paid below it) is valued exactly as before. */
+function settledPaid(p: ProductState, frontier: number, mods: ProductMods): number {
+  const t = typeDef(p.type);
+  const fm = featureMods(p);
+  const qf = clamp(p.quality / Math.max(frontier, 1e-9), 0, 1);
+  const targetPaid = p.mau * tierEconomics(p, t, qf, fm).convRate;
+  const gap = Math.max(0, frontier - p.quality);
+  const churn = t.baseChurn * (1 + gap * B.stalenessChurn) * p.priceMult * (p.buzzSec > 0 ? B.buzzChurnMult : 1) * mods.churn * fm.churn;
+  const k = B.convSpeed + churn;
+  const pStar = k > 0 ? (B.convSpeed * targetPaid) / k : targetPaid;
+  return Math.max(0, Math.min(p.paid, pStar));
+}
+
+/** Revenue per second at the product's SETTLED paid count (settledPaid) — what its
+ *  current dials can actually hold. The revenue ladders (peakMrr → contracts,
+ *  objectives, achievements; the $/s product milestones) are measured on this, not the
+ *  instantaneous figure: a one-frame flick of the price/Enterprise dials used to clear
+ *  rungs ~1.7× above anything the product could sustain, then flick back (r3 bug hunt).
+ *  A settled or growing product reads exactly its live revenue. */
+export function settledMrr(p: ProductState, frontier: number, mods: ProductMods = NEUTRAL_MODS): number {
+  const m = productMetrics({ ...p, paid: settledPaid(p, frontier, mods) }, frontier, mods).mrr;
+  return Number.isFinite(m) ? m : 0;
+}
+
+/** The marketing budget a product can carry into a fresh run: unchanged if its campaign
+ *  pays for itself, else cut to a share of the product's own gross margin (revenue −
+ *  serving) at its settled paid count. Only ever lowers. */
+function fundableMarketing(p: ProductState, frontier: number, mods: ProductMods): number {
+  const settled = { ...p, paid: settledPaid(p, frontier, mods) };
+  const m = productMetrics(settled, frontier, mods);
+  if (!(m.margin < 0)) return p.marketingPerSec;
+  const fundable = (m.mrr - m.serve) * B.shipMarketingShareOfGross;
+  return Number.isFinite(fundable) ? clamp(fundable, 0, p.marketingPerSec) : 0;
+}
+
+/** Run on the state a Ship produces. The fresh lab starts at $0 with almost no income,
+ *  and tick() floors Money at 0 after the portfolio's net, so a carried campaign that
+ *  costs more than its product earns (dialed against the OLD lab's income) took every
+ *  dollar the new lab made: it never bought its first rack and the generation stalled.
+ *  Each loss-making campaign is cut back to what its own product can fund, judged with
+ *  the fresh run's mods (assignments, Heat and the charter all reset) against the
+ *  post-ship frontier, so a "hard" ship's leap is priced in. Same ref if nothing changes. */
+export function capCarriedMarketing(state: GameState): GameState {
+  const ps = state.products;
+  if (!ps.active.some((p) => p.marketingPerSec > 0)) return state;
+  const modsById = derive(state).productModsById;
+  let changed = false;
+  const active = ps.active.map((p) => {
+    const marketingPerSec = fundableMarketing(p, ps.frontier, modsById[p.id] ?? NEUTRAL_MODS);
+    if (marketingPerSec === p.marketingPerSec) return p;
+    changed = true;
+    return { ...p, marketingPerSec };
+  });
+  return changed ? { ...state, products: { ...ps, active } } : state;
+}
+
+/** One valuation for both the sale and the price the UI shows for it. */
+function saleValue(state: GameState, p: ProductState): number {
+  // Valued on the revenue the product really earns: its settled paid count AND its live
+  // ARPU buffs (Product Company charter, assigned staff). Pricing the sale on unbuffed
+  // ARPU paid out well under the "N seconds of revenue" the product was earning.
+  const mods = derive(state).productModsById[p.id] ?? NEUTRAL_MODS;
+  const v = settledMrr(p, state.products.frontier, mods) * B.retireValuationSec * retireMaturity(p);
+  return Number.isFinite(v) ? Math.max(0, v) : 0;
+}
+
 export function retireProduct(state: GameState, id: string): GameState {
   const p = state.products.active.find((x) => x.id === id);
   if (!p) return state;
-  const payout = productMetrics(p, state.products.frontier).mrr * B.retireValuationSec * retireMaturity(p);
+  const payout = saleValue(state, p);
   // Releasing the product frees any employees assigned to it back to the bench.
   const employees = state.employees.some((e) => e.assignedProductId === id)
     ? state.employees.map((e) => (e.assignedProductId === id ? { ...e, assignedProductId: null } : e))
@@ -782,6 +962,9 @@ export function retireProduct(state: GameState, id: string): GameState {
     // would otherwise never count it toward all-time earnings.
     stats: { ...state.stats, totalMoney: state.stats.totalMoney.add(Math.max(0, payout)) },
     employees,
+    // Selling the flagship ends its reign: the brand bonus went on paying for a product
+    // that no longer existed until the loader quietly dropped the dangling id.
+    flagship: state.flagship.productId === id ? { productId: null, tenure: 0 } : state.flagship,
     products: {
       ...state.products,
       active: state.products.active.filter((x) => x.id !== id),
@@ -794,5 +977,5 @@ export function retireProduct(state: GameState, id: string): GameState {
 export function retirePayout(state: GameState, id: string): number {
   const p = state.products.active.find((x) => x.id === id);
   if (!p) return 0;
-  return Math.max(0, productMetrics(p, state.products.frontier).mrr * B.retireValuationSec * retireMaturity(p));
+  return saleValue(state, p);
 }

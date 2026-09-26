@@ -1,14 +1,15 @@
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { Portal } from "./Portal";
 import type { GameState, ProductMods } from "../engine/types";
 import { products as B, productFeatures, type FeatureLane, type ProductTypeId } from "../engine/balance/products";
 import {
   typeDef, productMetrics, canStartUpgrade, canBuyFeature, versionCostFor, featureMods,
-  upgradeDurationSec, upgradeProgress, retirePayout, enterpriseUnlocked, suggestChannelMix,
+  upgradeDurationSec, upgradeWallSec, upgradeProgress, retirePayout, enterpriseUnlocked, suggestChannelMix,
 } from "../engine/products";
 import { flagshipMoneyMult } from "../engine/flagship";
 import { m$, numOf as num, fmtDur } from "./format";
 import { EditableName } from "./EditableName";
+import { useDialog } from "./useDialog";
 import type { ReactNode } from "react";
 import {
   ChatIcon, CodeIcon, BrainIcon, PaletteIcon, BoltIcon, ScalesIcon, HeartIcon, AtomIcon,
@@ -61,7 +62,7 @@ interface Props {
   onBuyFeature: (id: string, featureId: string) => void;
   onRename: (id: string, name: string) => void;
   onRetire: (id: string) => void;
-  onSetFlagship: (id: string | null) => void;
+  onSetFlagship: (id: string) => void;
 }
 
 function featureEffect(lane: FeatureLane, factor: number): string {
@@ -90,11 +91,10 @@ const fill = (pct: number) => ({ background: `linear-gradient(90deg, #7c5cff 0%,
  *  (icon chips, segmented tabs, purple accent) so the depth stays legible. */
 export function ProductDetail({ game, productId, mods, onClose, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onSetChannelMix, onBuyFeature, onRename, onRetire, onSetFlagship }: Props) {
   const [tab, setTab] = useState<Tab>("overview");
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  // No heading here (the name is an inline rename control), so the sheet itself
+  // takes focus on open; Escape closes it as before.
+  const ref = useRef<HTMLDivElement>(null);
+  useDialog(ref, { onClose });
 
   const p = game.products.active.find((x) => x.id === productId);
   if (!p) return null;
@@ -131,7 +131,7 @@ export function ProductDetail({ game, productId, mods, onClose, onStartUpgrade, 
   return (
     <Portal>
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal pd-modal" role="dialog" aria-modal="true" aria-label={`${p.name} — manage`} onClick={(e) => e.stopPropagation()}>
+      <div ref={ref} className="modal pd-modal" role="dialog" aria-modal="true" aria-label={`${p.name} — manage`} onClick={(e) => e.stopPropagation()}>
         <div className="pd-head">
           <div className="pd-head-id">
             <span className="pd-app-icon">{TYPE_GLYPH[p.type] ?? <SparkIcon size={20} />}</span>
@@ -172,13 +172,13 @@ export function ProductDetail({ game, productId, mods, onClose, onStartUpgrade, 
             {me.qf < 0.5 && <p className="pd-hint"><TrendDownIcon size={14} /> Rivals are pulling ahead — research a new version to catch up.</p>}
             {up ? (
               <div className="pd-card">
-                <div className="pd-card-row"><span className="pd-card-label"><AtomIcon size={14} /> Researching v{up.targetVersion}</span><span className="pd-card-value">{Math.round(upgradeProgress(up) * 100)}% · ~{fmtDur(up.remainingSec)}</span></div>
+                <div className="pd-card-row"><span className="pd-card-label"><AtomIcon size={14} /> Researching v{up.targetVersion}</span><span className="pd-card-value">{Math.round(upgradeProgress(up) * 100)}% · ~{fmtDur(upgradeWallSec(up.remainingSec, mods))}</span></div>
                 <div className="pd-track"><div className="pd-track-fill" style={{ width: `${upgradeProgress(up) * 100}%`, background: "#7c5cff" }} /></div>
               </div>
             ) : (
               <button className="pd-primary" disabled={!canStartUpgrade(game, p.id)} onClick={() => onStartUpgrade(p.id)}>
                 <span>Research v{p.version + 1}</span>
-                <span className="pd-primary-sub">{num(versionCostFor(game, p.version).compute * B.upgrade.upfrontFrac)}+{num(versionCostFor(game, p.version).data * B.upgrade.upfrontFrac)} upfront · ~{fmtDur(upgradeDurationSec(p.version))}</span>
+                <span className="pd-primary-sub">{num(versionCostFor(game, p.version).compute * B.upgrade.upfrontFrac)}+{num(versionCostFor(game, p.version).data * B.upgrade.upfrontFrac)} upfront · ~{fmtDur(upgradeWallSec(upgradeDurationSec(p.version), mods))}</span>
               </button>
             )}
             {crew.length > 0 && (
@@ -190,15 +190,15 @@ export function ProductDetail({ game, productId, mods, onClose, onStartUpgrade, 
             {B.flagship.enabled && (() => {
               const isFlagship = game.flagship.productId === p.id;
               const pct = Math.round((flagshipMoneyMult(game) - 1) * 100);
-              return (
-                <button
-                  className={`pd-flagship ${isFlagship ? "on" : ""}`}
-                  onClick={() => onSetFlagship(isFlagship ? null : p.id)}
-                >
-                  {isFlagship
-                    ? `★ Flagship · +${pct}% revenue — grows each ship you keep it`
-                    : "☆ Make this your flagship"}
-                </button>
+              // The flagship's own line is a status, not a switch. Un-designating gains
+              // nothing and threw the tenure away (up to +30% revenue, built over ten
+              // ships) with one tap on a line that reads like a badge. Moving the flag
+              // is offered on the other products' sheets, and App confirms that move
+              // whenever it would reset a built-up brand.
+              return isFlagship ? (
+                <p className="pd-flagship on">{`★ Flagship · +${pct}% revenue — grows each ship you keep it`}</p>
+              ) : (
+                <button className="pd-flagship" onClick={() => onSetFlagship(p.id)}>☆ Make this your flagship</button>
               );
             })()}
             {/* onRetire asks for confirmation upstream; the sheet stays open on
@@ -213,7 +213,8 @@ export function ProductDetail({ game, productId, mods, onClose, onStartUpgrade, 
             <div className="pd-card">
               <div className="pd-card-row">
                 <span className="pd-card-label">Pro price{p.priceMult > 1 ? " · premium" : p.priceMult < 1 ? " · value" : ""}</span>
-                <span className="pd-card-value">{perUserPrice(t.baseArpu * p.priceMult * p.quality * featureMods(p).arpu)} <span className="pd-mult-note">×{p.priceMult.toFixed(1)}</span></span>
+                {/* With the product's revenue buffs (staff, the Product Company charter), as billed. */}
+                <span className="pd-card-value">{perUserPrice(t.baseArpu * p.priceMult * p.quality * featureMods(p).arpu * (mods?.arpu ?? 1))} <span className="pd-mult-note">×{p.priceMult.toFixed(1)}</span></span>
               </div>
               <input className="pd-slider" type="range" min={Math.round(B.priceMin * 10)} max={Math.round(B.priceMax * 10)} step={1}
                 style={fill(((p.priceMult - B.priceMin) / (B.priceMax - B.priceMin)) * 100)}
@@ -243,8 +244,11 @@ export function ProductDetail({ game, productId, mods, onClose, onStartUpgrade, 
         )}
 
         {tab === "marketing" && (() => {
-          const totalW = B.channels.reduce((s, c) => s + Math.max(0, p.channelMix[c.id] ?? 0), 0) || 1;
-          const activeCount = B.channels.filter((c) => (p.channelMix[c.id] ?? 0) > 0).length;
+          const totalW = B.channels.reduce((s, c) => s + Math.max(0, p.channelMix[c.id] ?? 0), 0);
+          // The share of the budget each channel really gets. An all-zero split doesn't stop
+          // the campaign: the sim spends it all on Paid Ads (channelAcq's fallback), so show that.
+          const shareOf = (id: string) => (totalW > 0 ? Math.max(0, p.channelMix[id] ?? 0) / totalW : id === "ads" ? 1 : 0);
+          const activeCount = B.channels.filter((c) => shareOf(c.id) > 0).length;
           const budgetPct = mktCap > 0 ? (Math.min(p.marketingPerSec, mktCap) / mktCap) * 100 : 0;
           return (
             <div className="pd-pane">
@@ -261,7 +265,7 @@ export function ProductDetail({ game, productId, mods, onClose, onStartUpgrade, 
               </div>
               {B.channels.map((c) => {
                 const w = Math.max(0, p.channelMix[c.id] ?? 0);
-                const pct = Math.round((w / totalW) * 100);
+                const pct = Math.round(shareOf(c.id) * 100);
                 const meta = CH_META[c.id] ?? { glyph: <MegaphoneIcon size={16} />, tint: "#7c5cff" };
                 return (
                   <label className="pd-channel-card" key={c.id}>

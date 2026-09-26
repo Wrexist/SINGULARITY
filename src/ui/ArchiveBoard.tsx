@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import type { GameState, ShipLogEntry } from "../engine/types";
 import { balance } from "../engine/balance/config";
 import { charters } from "../engine/balance/charters";
@@ -107,10 +107,13 @@ export function careerArc(game: GameState): { mags: number[]; from: number; to: 
   return { mags: tail.map((e) => e.legacyMag!), from, to };
 }
 
-export function ArchiveBoard({ game }: { game: GameState }) {
+// Everything the board shows comes from the ship log, which only changes on a Ship,
+// so a 10Hz tick (a new `game` every time) skips the up-to-60-row re-render.
+export const ArchiveBoard = memo(function ArchiveBoard({ game }: { game: GameState }) {
   // Newest first: the question a player opens the Archive with is almost always
   // about the recent past, and a forty-row scroll to reach it is a wall.
-  const rows = useMemo(() => archiveRows(game).slice().reverse(), [game]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- archiveRows reads only the log
+  const rows = useMemo(() => archiveRows(game).slice().reverse(), [game.shipLog]);
 
   if (rows.length === 0) {
     return (
@@ -168,7 +171,7 @@ export function ArchiveBoard({ game }: { game: GameState }) {
       })}
     </div>
   );
-}
+}, (a, b) => a.game.shipLog === b.game.shipLog);
 
 /** Generations on record / the depth the Archive keeps — for the Collapsible badge. */
 export function archiveCount(game: GameState): number {

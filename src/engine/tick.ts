@@ -1,19 +1,32 @@
 import { Big } from "./math/Big";
 import { balance } from "./balance/config";
-import { derive } from "./derive";
-import { simulateProducts, advanceUpgrades, applyMilestones, productMetrics } from "./products";
-import { advanceTraining } from "./employees";
+import { derive, runYieldAt, runsPerSec } from "./derive";
+import { simulateProducts, advanceUpgrades, applyMilestones, productMetrics, settledMrr } from "./products";
+import { advanceTraining, payrollPaid } from "./employees";
 import { accrueStats } from "./stats";
 import { applyAchievements } from "./achievements";
 import { grantEarnedComponents } from "./components";
-import { applyAutoResearch } from "./actions";
+import { applyAutoResearch, autoResearchWaitSec } from "./actions";
+import { autoResearchEnabled } from "./director";
+import { applyAutomation } from "./automation";
 import { rivalsBeaten } from "./market";
 import type { Derived, GameState } from "./types";
 
+/** Remaining time below this is float dust from the expiry split, not a live buff. */
+const MODIFIER_EPSILON_SEC = 1e-9;
 /** Hard ceiling on simultaneously-active modifiers processed in a tick. The window-split
  *  recursion below descends once per distinct expiry, so this bounds its depth against a
- *  crafted/pathological buff stack. Sits far above any reachable legit stack. */
-const MAX_ACTIVE_MODIFIERS = 48;
+ *  crafted/pathological buff stack. Sits far above any reachable legit stack. The save
+ *  loader applies the SAME cap (capActiveModifiers), so a reload never drops a buff the
+ *  running game was still honouring. */
+export const MAX_ACTIVE_MODIFIERS = 48;
+
+/** Keep at most MAX_ACTIVE_MODIFIERS, preferring the soonest-expiring ones. Returns the
+ *  input unchanged when it is already within the cap. Shared by tick() and the loader. */
+export function capActiveModifiers<T extends { remainingSec: number }>(mods: T[]): T[] {
+  if (mods.length <= MAX_ACTIVE_MODIFIERS) return mods;
+  return [...mods].sort((a, b) => a.remainingSec - b.remainingSec).slice(0, MAX_ACTIVE_MODIFIERS);
+}
 
 /**
  * Largest window applied in a single simulation step.
@@ -39,6 +52,14 @@ const MAX_ACTIVE_MODIFIERS = 48;
 const MAX_STEP_MS = 300_000;
 
 /**
+ * A window longer than this starts an auto-trained run at the moment the bank reached
+ * its firing level and trains it through the rest of the window. Shorter ones (a live
+ * 10Hz frame, the balance sim's 250ms step) start it at 0% at the end, as always: the
+ * lag is under one frame there, and the tuned curve was built on it.
+ */
+const RUN_START_SPLIT_MS = 500;
+
+/**
  * The deterministic heartbeat. Given a state and elapsed time, returns the next
  * state. The engine never reads the wall clock (CLAUDE.md hard rule) — time is
  * passed in, which makes offline progress "just a tick with a big elapsedMs".
@@ -55,6 +76,12 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   // Sub-step a large catch-up window (see MAX_STEP_MS). Iterative rather than
   // recursive so a premium 24h window can't approach the call-stack limit. Every
   // inner call gets <= MAX_STEP_MS, so this can't re-enter itself.
+  //
+  // The autopilots (applyAutomation) run between the steps. The store runs them after
+  // every frame, but a catch-up is one call: they used to wake only at its end, so a
+  // Version Autopilot owner came back from a night away to every product still on the
+  // version it had at bedtime. Pure, and a no-op until the player switches one on (the
+  // balance sim never does), so the tuned curve can't move.
   if (elapsedMs > MAX_STEP_MS) {
     let s = state;
     let remaining = elapsedMs;
@@ -62,11 +89,10 @@ export function tick(state: GameState, elapsedMs: number): GameState {
       const step = Math.min(MAX_STEP_MS, remaining);
       s = tick(s, step);
       remaining -= step;
+      if (remaining > 0) s = applyAutomation(s);
     }
     return s;
   }
-
-  const seconds = elapsedMs / 1000;
 
   // Segment the window at the next modifier expiry. Otherwise a large frame
   // (tab-resume) or an offline catch-up would apply an about-to-expire buff to
@@ -78,25 +104,80 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     let active = state.modifiers.filter((m) => Number.isFinite(m.remainingSec) && m.remainingSec > 0);
     // Defense-in-depth: the window-split below descends once per distinct expiry, so an
     // extreme stack of simultaneous buffs could approach the call-stack limit on a large
-    // offline/tab-resume tick. The load sanitizer caps SAVED modifiers at 20; mirror that
-    // at runtime with a generous ceiling — above any reachable legit stack (a burst of
-    // objective/daily/event buffs tops out well under this), below the danger zone — by
-    // keeping the soonest-expiring MAX so the split depth is always bounded. Legit play
-    // never trips it; only a crafted/pathological state does.
-    if (active.length > MAX_ACTIVE_MODIFIERS) {
-      active = [...active].sort((a, b) => a.remainingSec - b.remainingSec).slice(0, MAX_ACTIVE_MODIFIERS);
-    }
+    // offline/tab-resume tick. Keep the soonest-expiring MAX_ACTIVE_MODIFIERS so the split
+    // depth is always bounded — a generous ceiling above any reachable legit stack, below
+    // the danger zone. The load sanitizer applies the same cap, so the two always agree.
+    active = capActiveModifiers(active);
     if (active.length !== state.modifiers.length) {
       return tick({ ...state, modifiers: active }, elapsedMs);
     }
     let minRem = Infinity;
     for (const m of active) if (m.remainingSec < minRem) minRem = m.remainingSec;
-    if (minRem > 0 && minRem < seconds) {
-      const firstMs = minRem * 1000;
+    // Compare in the SAME unit as the recursive argument. Comparing seconds let the
+    // inner call re-split forever: for ~2% of doubles, (r*1000)/1000 rounds one ulp
+    // above r, so `minRem < seconds` held again with the same firstMs and the stack
+    // overflowed — every frame, and on the offline catch-up (2026-09 bug hunt).
+    const firstMs = minRem * 1000;
+    if (minRem > 0 && firstMs < elapsedMs) {
       return tick(tick(state, firstMs), elapsedMs - firstMs);
     }
   }
 
+  // The Research Director buys at the END of a window (applyAutoResearch below), so a
+  // long one — a resume, each 5-minute offline step — must be cut where it can next
+  // buy, or it waits out the whole window. Right after a Ship that is when the tree is
+  // cheap and every node compounds the next: five minutes away earned ~1% of what the
+  // app left open did. A live frame is one step, as before (and the balance sim never
+  // owns the Director, so the tuned curve can't move).
+  if (elapsedMs > DIRECTOR_SPLIT_MIN_MS && autoResearchEnabled(state)) return tickWithDirector(state, elapsedMs);
+  return tickSegment(state, elapsedMs);
+}
+
+/** Minimum slice of a window cut for the Research Director (see tick). */
+const DIRECTOR_SPLIT_MIN_MS = 1000;
+/** Most cuts one window gets for the Director: a bound on work, far above a real tree. */
+const DIRECTOR_MAX_HOPS = 64;
+/** Cuts in a row that may land before the Director can buy, before the rest of the
+ *  window is ticked whole. */
+const DIRECTOR_MAX_MISSES = 8;
+
+/**
+ * Tick a window (already inside one modifier segment) in slices that end where the
+ * Research Director can next buy. The estimate comes from the current rates; when it
+ * lands early (Data arrives in run-sized lumps) the next slice backs off, doubling, so
+ * a window costs a handful of extra steps, never one per frame.
+ */
+function tickWithDirector(state: GameState, elapsedMs: number): GameState {
+  let s = state;
+  let remaining = elapsedMs;
+  let minStep = DIRECTOR_SPLIT_MIN_MS;
+  let misses = 0;
+  for (let hop = 0; hop < DIRECTOR_MAX_HOPS; hop++) {
+    const waitMs = autoResearchWaitSec(s, derive(s)) * 1000;
+    if (!(waitMs < remaining)) break; // nothing it can buy inside this window
+    const step = Math.max(minStep, waitMs);
+    if (step >= remaining - DIRECTOR_SPLIT_MIN_MS) break;
+    const next = tickSegment(s, step);
+    const bought = next.research.length > s.research.length;
+    s = next;
+    remaining -= step;
+    if (bought) {
+      minStep = DIRECTOR_SPLIT_MIN_MS;
+      misses = 0;
+    } else if (++misses >= DIRECTOR_MAX_MISSES) {
+      break;
+    } else {
+      // Landed early (Data arrives in run-sized lumps, the bank swings by a run's
+      // cost): back off, doubling. A stubborn estimate gives up (above).
+      minStep *= 2;
+    }
+  }
+  return tickSegment(s, remaining);
+}
+
+/** One step of the simulation over a window with no modifier expiry inside it. */
+function tickSegment(state: GameState, elapsedMs: number): GameState {
+  const seconds = elapsedMs / 1000;
   const d = derive(state);
 
   // Compute-focus gate (Phase 2): auto-train only fires once Compute reaches
@@ -113,10 +194,32 @@ export function tick(state: GameState, elapsedMs: number): GameState {
 
   let run = { ...state.run };
 
+  // Seconds of this window the run trains for: all of it for a run already in flight.
+  let runSecs = run.active ? seconds : 0;
+  if (!run.active && run.readyToClaim && d.autoClaim) {
+    // A run finished last tick before auto-claim existed; claim it now.
+    ({ data, money, lifetimeMoney } = claimInto(runYieldAt(state, d, run.focus), data, money, lifetimeMoney));
+    run = { active: false, progress: 0, readyToClaim: false };
+  } else if (!run.active && !run.readyToClaim && autoTrainReady(compute)) {
+    // Idle + auto-train (and focus allows): kick off a fresh run.
+    compute = compute.sub(d.runComputeCost);
+    run = { active: true, progress: 0, readyToClaim: false, focus: state.computeFocus };
+    // In a long window (a resume, an offline catch-up step) the run starts when the bank
+    // reached its firing level, not at the end: it trains through the rest of the window.
+    // It used to sit at 0% for all of it, so a window that began between two
+    // compute-bound runs paid no run at all. A live-sized tick keeps the old behaviour
+    // (the lag is under one frame, and the balance sim's curve was tuned on it).
+    if (elapsedMs > RUN_START_SPLIT_MS) {
+      const short = d.runComputeCost.div(state.computeFocus).sub(state.resources.compute);
+      const startedAt = short.gt(0) ? short.div(d.computePerSec).toNumber() : 0;
+      runSecs = seconds - Math.min(seconds, Math.max(0, startedAt));
+    }
+  }
+
   // Advance the active run; it may complete (and, with automation, re-loop)
   // multiple times within one big offline tick.
-  if (run.active) {
-    let remaining = seconds;
+  if (run.active && runSecs > 0) {
+    let remaining = runSecs;
     // Guard against pathological loops on huge offline deltas. Sized to the window:
     // the most runs that can legitimately complete is (elapsed / shortest run), so a
     // premium 24h catch-up at the run-duration floor (86400/0.5 = 172800 runs) no
@@ -132,15 +235,16 @@ export function tick(state: GameState, elapsedMs: number): GameState {
       guard++;
       const secsToFinish = (1 - run.progress) * d.runDurationSec;
       if (remaining >= secsToFinish) {
-        // Run completes.
+        // Run completes. It keeps the intensity it was started at: that is what its
+        // Compute was charged at, so that is what it pays (see runYieldAt).
         remaining -= secsToFinish;
-        run = { active: false, progress: 1, readyToClaim: true };
+        run = { ...run, active: false, progress: 1, readyToClaim: true };
         if (d.autoClaim) {
-          ({ data, money, lifetimeMoney } = claimInto(d, data, money, lifetimeMoney));
+          ({ data, money, lifetimeMoney } = claimInto(runYieldAt(state, d, run.focus), data, money, lifetimeMoney));
           run = { active: false, progress: 0, readyToClaim: false };
           if (autoTrainReady(compute)) {
             compute = compute.sub(d.runComputeCost);
-            run = { active: true, progress: 0, readyToClaim: false };
+            run = { active: true, progress: 0, readyToClaim: false, focus: state.computeFocus };
           } else {
             break;
           }
@@ -152,24 +256,11 @@ export function tick(state: GameState, elapsedMs: number): GameState {
         remaining = 0;
       }
     }
-  } else if (run.readyToClaim && d.autoClaim) {
-    // A run finished last tick before auto-claim existed; claim it now.
-    ({ data, money, lifetimeMoney } = claimInto(d, data, money, lifetimeMoney));
-    run = { active: false, progress: 0, readyToClaim: false };
-  } else if (!run.active && !run.readyToClaim && autoTrainReady(compute)) {
-    // Idle + auto-train (and focus allows): kick off a fresh run.
-    compute = compute.sub(d.runComputeCost);
-    run = { active: true, progress: 0, readyToClaim: false };
-  }
-
-  // Staff payroll (Phase 2): an ongoing Money drain, floored at zero so it never
-  // goes negative. Only Money is touched — lifetimeMoney tracks earnings, not net.
-  if (d.payrollPerSec.gt(0)) {
-    money = money.sub(d.payrollPerSec.mul(seconds)).max(Big.ZERO);
   }
 
   // Regulatory Heat cools passively when you're not buying shady data.
-  let heat = Math.max(0, state.heat - balance.heat.coolPerSec * seconds);
+  const cooled = state.heat - balance.heat.coolPerSec * seconds;
+  let heat = Math.max(0, cooled);
 
   // Phase 3 — released products earn Money (subs − serving − marketing) and may
   // add Heat. Money-based, so they keep running across a prestige reset. We run
@@ -185,7 +276,31 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     const heatDelta = Number.isFinite(sim.heatDelta) ? sim.heatDelta : 0;
     money = money.add(moneyDelta).max(Big.ZERO);
     if (moneyDelta > 0) lifetimeMoney = lifetimeMoney.add(moneyDelta);
-    heat = Math.max(0, Math.min(balance.heat.max, heat + heatDelta));
+    // Products heat the lab WHILE it cools, so the two net out over the window before
+    // the zero floor applies. Flooring the cooling first threw it away against zero and
+    // left a long window (a resume, each offline step) at heatPerSec × window: a Domain
+    // portfolio that live play keeps at 0 came back from 3 minutes away at ~11 Heat,
+    // and the resume's audit roll fined it at up to 50% odds.
+    heat = Math.max(0, Math.min(balance.heat.max, (heatDelta > 0 ? cooled : heat) + heatDelta));
+  }
+
+  // Staff payroll (Phase 2): an ongoing Money drain, paid out of this tick's EARNINGS
+  // and capped at a share of them (balance.staff.payrollMaxShareOfIncome), so a big
+  // roster can squeeze a run but never pin a fresh, income-less lab at $0. Earnings =
+  // what lifetimeMoney gained this tick (passive + auto-claimed runs + product profit).
+  // Only Money is touched — lifetimeMoney tracks earnings, not net.
+  //
+  // The cap is set by the larger of this tick's receipts and the lab's income RATE ×
+  // the tick. Auto-claimed runs pay out in lumps every few seconds, and a cap on
+  // receipts alone forgave every frame between lumps: live 10Hz play paid 2–5% of the
+  // wage bill while a resume or offline window paid all of it, so closing the app cost
+  // money (r3 bug hunt). With the rate in the basis, a frame, a resume and an offline
+  // step all charge min(bill, share × income) per second.
+  if (d.payrollPerSec.gt(0)) {
+    const earned = lifetimeMoney.sub(state.lifetimeMoney).max(Big.ZERO);
+    const smooth = incomeRatePerSec(state, d).mul(seconds);
+    const paid = payrollPaid(d.payrollPerSec.mul(seconds), earned.max(smooth));
+    money = money.sub(paid).max(Big.ZERO);
   }
 
   // Timed version upgrades drain Compute+Data over their research window. Run after
@@ -203,7 +318,8 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   if (modifiers.length > 0) {
     modifiers = modifiers
       .map((m) => ({ ...m, remainingSec: m.remainingSec - seconds }))
-      .filter((m) => m.remainingSec > 0);
+      // A sliver left by float rounding (the split above lands a hair short) is spent.
+      .filter((m) => m.remainingSec > MODIFIER_EPSILON_SEC);
   }
 
   // Employee training advances on the wall clock (completions level them up).
@@ -222,7 +338,7 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   // Generation-scoped peaks (reset by prestige) for the Generation Report: this run's
   // high-water Compute/sec and total product revenue/sec, NOT the all-time career peaks.
   let curMrr = 0;
-  for (const p of products.active) curMrr += productMetrics(p, products.frontier, d.productModsById[p.id]).mrr;
+  for (const p of products.active) curMrr += settledMrr(p, products.frontier, d.productModsById[p.id]);
   const runPeakCompute = state.runPeakCompute.max(d.computePerSec);
   const runPeakMrr = Math.max(state.runPeakMrr, curMrr);
 
@@ -240,7 +356,7 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     stats,
     runPeakCompute,
     runPeakMrr,
-  });
+  }, d.productModsById); // the same buffed revenue peakMrr and the cards read
   // Milestone rewards land in lifetimeMoney AFTER accrueStats already took its
   // delta for this tick (and next tick's baseline includes them), so without this
   // they'd never reach totalMoney — all-time earnings would quietly under-report,
@@ -264,10 +380,27 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   return applyAutoResearch(granted);
 }
 
-function claimInto(d: Derived, data: Big, money: Big, lifetimeMoney: Big) {
+function claimInto(y: { data: Big; money: Big }, data: Big, money: Big, lifetimeMoney: Big) {
   return {
-    data: data.add(d.runDataYield),
-    money: money.add(d.runMoneyYield),
-    lifetimeMoney: lifetimeMoney.add(d.runMoneyYield),
+    data: data.add(y.data),
+    money: money.add(y.money),
+    lifetimeMoney: lifetimeMoney.add(y.money),
   };
+}
+
+/**
+ * The lab's steady Money income per second, for settling payroll: passive money, runs
+ * at the cadence auto-train really fires them (only while auto-claim banks them — a
+ * run left sitting ready pays nothing), and the product portfolio's profit when it
+ * nets positive. Pure. Mirrors the rate the top bar quotes (netMoneyRate).
+ */
+export function incomeRatePerSec(state: GameState, d: Derived): Big {
+  let rate = d.passiveMoneyPerSec;
+  if (d.autoTrain && d.autoClaim) {
+    rate = rate.add(runYieldAt(state, d, state.computeFocus).money.mul(runsPerSec(d, state.computeFocus)));
+  }
+  let margin = 0;
+  for (const p of state.products.active) margin += productMetrics(p, state.products.frontier, d.productModsById[p.id]).margin;
+  if (Number.isFinite(margin) && margin > 0) rate = rate.add(Big.of(margin));
+  return rate.max(Big.ZERO);
 }

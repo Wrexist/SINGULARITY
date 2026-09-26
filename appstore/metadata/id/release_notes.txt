@@ -1,9 +1,10 @@
-Update kali ini:
+Di pembaruan ini:
 
-• Grand Challenges — moonshot jangka panjang dengan reward permanen.
-• Lab Objectives — rangkaian tujuan baru yang membentang sampai endgame.
-• Automation — autopilot untuk urusan remeh, biar kamu fokus jadi visioner.
-• Cabang riset baru di tiap run, visual progres yang lebih hidup — dan halaman App Store kini berbahasa Indonesia.
-• Plus perbaikan balance dan stabilitas.
+• Tiap generasi ada pilihan baru: tentukan sikapmu (Safety, Center, atau Acceleration) untuk membuka perk Doctrine kubu itu. Tiap Ship juga membagikan tiga Lab Charter, termasuk yang bisa mengubah aturan main.
+• Unplugged Trials: matikan Legacy selama satu generasi dan mainkan lagi satu run penuh dari awal. Rekor Compute-mu kini juga menghasilkan Lab Reputation.
+• Tujuan lebih jelas: selalu lihat langkah berikutnya dan kapan Ship benar-benar menguntungkan.
+• "Menabung untuk ini": ketuk riset yang belum terjangkau, lab akan menabung Compute dan membelinya otomatis.
+• Lebih tenang: hanya keputusan sungguhan yang menyela, berita lainnya berjalan di pita berita. Kini lebih ramah VoiceOver, dengan area ketuk yang lebih besar.
+• Lebih mulus di iPhone lama, waktu offline akurat, dan lebih dari 60 perbaikan bug.
 
 Tetap tanpa iklan. Tetap tanpa pay-to-win.

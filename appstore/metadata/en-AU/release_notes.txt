@@ -1,9 +1,13 @@
-Welcome to Singularity Inc. v1.0 — the launch build:
+A big update — more to decide every generation:
 
-• The 2.5D data-centre hall with live rack manifestation + tap-to-buy side expansions
-• A clean Compute / Data / Money economy, training runs, and a branching AI research tree
-• "Ship the Model" prestige loop with permanent Legacy Weight boosts
-• The dark-web Data Market + Regulatory Heat, and a dozen+ satirical world events
-• Offline progress, full-screen era transitions, and a Premium unlock that's purely cosmetic / quality-of-life
+• Declare a Stance: pick Safety, Center or Acceleration at the start of a run and unlock the Doctrine perks for that side
+• Charter draft: every Ship deals three Lab Charters, including rule-changers like Research Sprint and Product Company
+• Unplugged Trials: veterans can switch Legacy off for one generation and play a real, full run again
+• Personal records: every new power of ten in your peak Compute earns Lab Reputation
+• Always know what's next: the goal bar tracks your road to the first Ship, and shows when shipping is actually worth it
+• "Save for this": tap research that's out of reach and the lab banks Compute for it, then buys it for you
+• Calmer news: only real decisions interrupt you; everything else runs on the Newswire
+• Works better with VoiceOver and keyboards, with bigger tap targets and clearer text
+• Smoother on older iPhones, offline time counted properly, and 60+ fixes, including a rare freeze when a boost expired
 
-No ads. No pay-to-win. Tell us what to build next.
+Thanks for playing. Tell us what to build next.

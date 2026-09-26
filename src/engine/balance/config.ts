@@ -1386,6 +1386,12 @@ export const balance = {
   /** PHASE 2 — Staff. Opt-in depth: hire to multiply a lane, pay payroll forever. */
   staff: {
     enabled: true,
+    /** Payroll is paid out of what the lab EARNS each tick, at most this share of it.
+     *  Staff carry across a Ship but the fresh lab starts at $0, so an uncapped drain
+     *  pinned a new run at $0: one $2/s hire pushed the first rack to ~89 minutes, and
+     *  three hires meant no rack in 3 hours (2026-09 generations audit). The balance
+     *  sim never hires, so this cannot move the tuned curve. */
+    payrollMaxShareOfIncome: 0.5,
     /** Assigned product-staff are this much more effective than unassigned, but only
      *  on their one product (the spread-vs-concentrate trade-off). */
     assignFocusMult: 2,
@@ -1400,6 +1406,10 @@ export const balance = {
     /** Seniority levels (1 = junior). Each level above 1 multiplies a person's
      *  output (+levelEffectStep) and salary (+levelPayrollStep). */
     maxLevel: 4,
+    /** Largest roster the lab can hold. The save loader keeps at most this many people
+     *  (per-tick cost is linear in headcount), so hiring stops here too — a hire past it
+     *  would be paid for and then silently deleted on the next launch. */
+    maxRoster: 512,
     levelEffectStep: 0.5,
     levelPayrollStep: 0.6,
     /** Timed training to the NEXT level: duration grows per level; cost in Money. */
@@ -1419,6 +1429,14 @@ export const balance = {
      *  diminishes but payroll does NOT — so a small, trained, high-trait team beats
      *  zerg-hiring a wall of juniors. perLaneRate 0 = old linear behaviour. */
     diminishing: { perLaneRate: 0.18 },
+    /** Ceiling on the morale that Mentor-type traits add together (5 Mentors at +0.06).
+     *  Morale scales EVERY specialist's output and the Compute/Data/Money lanes multiply
+     *  those contributions, so an uncapped Mentor stack (free re-rolls, flat signing
+     *  bonus, payroll capped at half of income) turned the diminishing returns above
+     *  into runaway growth: 100 cheap Mentors took the Data lane past ×5,000. A handful
+     *  of Mentors still pays in full; the sixth adds nothing. Curve-safe: the balance
+     *  sim never hires, so it never has a Mentor. */
+    maxTeamMorale: 0.3,
     /** Rare "legendary" recruits: occasionally a candidate rolls in already trained
      *  (higher start level) with a guaranteed elite trait — a satisfying chase on
      *  re-roll. Same signing bonus, so they're a genuine score (not pay-to-win;
@@ -1918,6 +1936,10 @@ export const balance = {
       /** After ANY branch a truce marker (factor-1 identity modifier) sits in
        *  the bar this long — Chen doesn't come back mid-paperwork. */
       truceSec: 240,
+      /** A ship carries a pending truce into the fresh run (suspicion carries too),
+       *  with at least this long left: Chen never meets a lab seconds old, whose
+       *  "−20% cash" would be 20% of nothing. The sim's clean lab never has a truce. */
+      shipTruceFloorSec: 60,
     },
   },
 

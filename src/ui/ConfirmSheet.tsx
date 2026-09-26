@@ -1,4 +1,6 @@
+import { useRef } from "react";
 import { Portal } from "./Portal";
+import { useDialog } from "./useDialog";
 
 interface Props {
   kicker: string;
@@ -18,12 +20,17 @@ interface Props {
  *  being synchronous — freezes the game loop, so the next tick after dismissal
  *  advanced by the whole time the dialog sat open. */
 export function ConfirmSheet({ kicker, title, body, confirmLabel, danger, hideCancel, onConfirm, onCancel }: Props) {
+  const ref = useRef<HTMLDivElement>(null);
+  useDialog(ref, { onClose: onCancel });
   return (
     <Portal>
-      <div className="modal-backdrop" onClick={onCancel}>
-        <div className="modal confirm-modal" role="alertdialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
+      {/* The backdrop tap is the confirm's own: React bubbles a click through its
+          tree, portal or not, so without the stop it also reached the sheet that
+          opened this confirm (Settings' Restore) and closed that as well. */}
+      <div className="modal-backdrop" onClick={(e) => { e.stopPropagation(); onCancel(); }}>
+        <div ref={ref} className="modal confirm-modal" role="alertdialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
           <div className="confirm-kicker">{kicker}</div>
-          <h2>{title}</h2>
+          <h2 tabIndex={-1}>{title}</h2>
           {body && <p className="modal-sub">{body}</p>}
           <div className="confirm-actions">
             {!hideCancel && <button className="btn btn-ghost" onClick={onCancel}>Cancel</button>}

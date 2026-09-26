@@ -1,11 +1,10 @@
-Tämä päivitys vie labran uudelle tasolle:
+Tässä päivityksessä:
 
-• Grand Challenges — pitkän tähtäimen kuuhankkeita, joista jää pysyvät palkinnot.
-• Lab Objectives — tuore tavoiteportaikko, joka kantaa syvälle endgameen asti.
-• Automation — autopilotit hoitavat rutiinit, jotta sinä saat keskittyä imperiumiin.
-• Tutkimuspuu haarautuu nyt joka pelikerralla, ja edistyminen näkyy ruudussa entistä elävämmin.
-• Ja se tärkein: kauppasivu on nyt suomeksi. (Peli itse puhuu vielä englantia — sujuvaa Piilaakson murretta.)
-
-Lisäksi tasapaino- ja vakauskorjauksia.
+• Uutta joka sukupolvessa: valitse Stance (Safety, Center tai Acceleration) ja avaa sen puolen Doctrine-edut. Jokainen Ship jakaa myös kolme Lab Charter -korttia, ja osa niistä muuttaa itse pelin sääntöjä.
+• Unplugged Trials: kytke Legacy pois yhdeksi sukupolveksi ja pelaa taas kokonainen kierros alusta asti. Compute-ennätyksesi tuovat nyt Lab Reputationia.
+• Selkeämmät tavoitteet: näet aina seuraavan askeleen ja sen, milloin Ship todella kannattaa.
+• ”Säästä tähän”: napauta ulottumattomissa olevaa tutkimusta, niin labra säästää siihen Computea ja ostaa sen puolestasi.
+• Rauhallisempaa: vain oikeat päätökset keskeyttävät sinut, muu näkyy uutisnauhalla. Parempi VoiceOver-tuki ja isommat napautusalueet.
+• Sujuvampi vanhemmilla iPhoneilla, tarkka offline-aika ja yli 60 virhekorjausta.
 
 Edelleen ei mainoksia. Edelleen ei pay-to-winiä.

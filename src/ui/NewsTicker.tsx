@@ -1,9 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { useGame } from "../state/store";
 import { useReducedMotion } from "./motion";
-import { buildNews } from "../engine/news";
-import { currentEra } from "../engine/eras";
-import { playerMarketRank } from "../engine/market";
+import { buildNews, reactiveNews } from "../engine/news";
 
 /**
  * The AI Industry Newswire — an ambient satirical ticker under the hall, so idle
@@ -21,15 +19,23 @@ function shuffled<T>(arr: T[]): T[] {
   return a;
 }
 
-export function NewsTicker() {
+/** A world event running on the wire instead of as a card (see App.tsx). */
+export interface Breaking {
+  key: number;
+  text: string;
+  tone: "good" | "bad";
+}
+
+/** How long a BREAKING line holds the wire before the feed resumes (App clears it). */
+export const BREAKING_MS = 14000;
+
+function NewsTickerImpl({ breaking = null }: { breaking?: Breaking | null }) {
   const reduced = useReducedMotion();
-  // Coarse signature: era · ships · faction lean · market rank. The ticker only
-  // reshuffles (and re-renders) when one of these changes — never on the 10Hz trickle.
-  const sig = useGame((s) => {
-    const g = s.game;
-    const a = g.alignment >= 0.4 ? "a" : g.alignment <= -0.4 ? "d" : "n";
-    return `${currentEra(g)}|${g.prestige.ships}|${a}|${playerMarketRank(g) ?? 0}`;
-  });
+  // Signature: the lines about the player's lab themselves. The ticker reshuffles (and
+  // re-renders) only when one of them changes, never on the 10Hz trickle. A hand-picked
+  // key (era · ships · lean · rank) missed Heat, headcount, the Endowment, preprints
+  // and the product count, so those lines came late or outlived what they reported.
+  const sig = useGame((s) => reactiveNews(s.game).join("\n"));
   const pool = useMemo(() => shuffled(buildNews(useGame.getState().game)), [sig]);
   const [n, setN] = useState(0);
   const i = n % pool.length;
@@ -40,10 +46,19 @@ export function NewsTicker() {
     return () => window.clearInterval(t);
   }, [reduced]);
 
+  // A BREAKING line holds the wire while App keeps it (it clears it after BREAKING_MS).
+  const live = breaking;
+
   return (
-    <div className="news-ticker" aria-label="AI industry newswire">
-      <span className="news-wire" aria-hidden="true">◉ WIRE</span>
-      <span className="news-line" key={`${sig}|${i}`}>{pool[i]}</span>
+    <div className={`news-ticker${live ? ` breaking ${live.tone}` : ""}`} aria-label="AI industry newswire" aria-live={live ? "polite" : undefined}>
+      <span className="news-wire" aria-hidden="true">{live ? "◉ BREAKING" : "◉ WIRE"}</span>
+      {live
+        ? <span className="news-line" key={`b${live.key}`}>{live.text}</span>
+        : <span className="news-line" key={`${sig}|${i}`}>{pool[i]}</span>}
     </div>
   );
 }
+
+/** Memoised: App re-renders at 10Hz, and this component's props are stable (it reads
+ *  the store itself where it needs live state), so those renders were pure waste. */
+export const NewsTicker = memo(NewsTickerImpl);

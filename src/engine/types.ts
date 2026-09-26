@@ -23,6 +23,12 @@ export interface TrainingRun {
   progress: number;
   /** Completed and awaiting a claim (the dopamine beat). */
   readyToClaim: boolean;
+  /** The Training intensity (computeFocus) this run was STARTED at — the size its
+   *  Compute was charged at, so the size its payout is priced at (see runYieldAt), not
+   *  wherever the slider sits when it lands. Set on every run that starts; absent on an
+   *  idle run. Absent on an in-flight run only from a hand-built state, which then falls
+   *  back to the live slider. Persisted since save v37. */
+  focus?: number;
 }
 
 export interface PrestigeState {
@@ -104,6 +110,10 @@ export interface GameState {
    *  Both empty through the whole tuned game, so identity for the sim. `trialsDone`
    *  survives prestige; `activeTrial` completes on ship. */
   activeTrial: string | null;
+  /** A Trial queued for the NEXT run (2026-09): Attempt mid-run queues it, and the
+   *  Ship starts it on the fresh lab, so a Trial is always endured from a run's first
+   *  second. Null when none. Persisted since save v39. */
+  queuedTrial: string | null;
   trialsDone: string[];
   /** Paradigm Research (2026-07): owned deep-endgame capability node ids, bought with
    *  Reputation (charged to reputation.spent). Empty until the deep endgame → identity
@@ -175,9 +185,19 @@ export interface GameState {
   runPeakCompute: Big;
   /** Peak total product revenue/sec since the last ship (generation-scoped). */
   runPeakMrr: number;
-  /** Snapshot of the just-finished run's peaks, captured by prestige() before the
-   *  reset so the post-reset UI can show an accurate Generation Report. Transient. */
-  lastShipReport: { peakCompute: Big; peakMrr: number } | null;
+  /** Snapshot of the just-finished run, captured by prestige() before the reset so
+   *  the post-reset UI can show an accurate Generation Report: its peaks, and the
+   *  standing the reset wipes or moves (alignment returns to 0, blitz strikes clear,
+   *  the era is counted from the new ship total). Transient — never persisted. */
+  lastShipReport: {
+    peakCompute: Big;
+    peakMrr: number;
+    era: number;
+    alignment: number;
+    rank: number | null;
+    rivalsBeaten: number;
+    productsLive: number;
+  } | null;
   /** IDEAS #6 — the Legacy Wall: one small record per shipped generation (how it
    *  shipped, the era it reached, whether it ascended). Persists across prestige —
    *  it IS the prestige history — capped (balance.prestige.shipLogCap) so a
@@ -329,6 +349,11 @@ export interface Employee {
   assignedProductId: string | null;
   /** In-progress timed training, or null. On completion: level + 1. */
   training: { remainingSec: number; totalSec: number } | null;
+  /** The PLAYER benched this person ("send to Lab"), so the HR Autopilot leaves them
+   *  there. Cleared the next time the player places them on a product. Absent = not
+   *  benched by hand (a fresh hire, or freed by a sold product / a new generation).
+   *  Save v38; only ever stored as `true`. */
+  benched?: true;
 }
 
 /** A released AI product (Phase 3). Economic fields are plain numbers; net margin

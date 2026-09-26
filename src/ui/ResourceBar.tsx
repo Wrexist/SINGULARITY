@@ -10,11 +10,13 @@ interface ResourceProps {
   icon: ReactNode;
   value: Big;
   rate?: Big | undefined;
+  /** Suppress the "+X" jump pop (see the effect below). */
+  quiet?: boolean;
   ratePrefix?: string;
 }
 
 /** A single resource readout with a number-pop on increase (micro-feedback, §7). */
-function Resource({ label, cssVar, icon, value, rate, ratePrefix = "" }: ResourceProps) {
+function Resource({ label, cssVar, icon, value, rate, ratePrefix = "", quiet = false }: ResourceProps) {
   const prev = useRef<Big>(value);
   const [pop, setPop] = useState<{ id: number; text: string } | null>(null);
   const popId = useRef(0);
@@ -23,7 +25,10 @@ function Resource({ label, cssVar, icon, value, rate, ratePrefix = "" }: Resourc
     if (value.gt(prev.current)) {
       const delta = value.sub(prev.current);
       // Only pop on meaningful, discrete jumps (claims/buys), not the tick trickle.
-      if (delta.gt(prev.current.mul(0.02)) || prev.current.eq(0)) {
+      // `quiet` once runs restart themselves: auto-claims land every few seconds,
+      // and a "+X" rising over the label that often was constant flicker on the
+      // most-watched row. The rate line already says the same thing, calmly.
+      if (!quiet && (delta.gt(prev.current.mul(0.02)) || prev.current.eq(0))) {
         popId.current += 1;
         setPop({ id: popId.current, text: `+${fmt(delta)}` });
       }
@@ -36,7 +41,7 @@ function Resource({ label, cssVar, icon, value, rate, ratePrefix = "" }: Resourc
   const display = useEasedBig(value);
 
   return (
-    <div className="resource" style={{ ["--c" as string]: `var(${cssVar})` }}>
+    <div className="resource" style={{ ["--c" as string]: `var(${cssVar})`, ["--ci" as string]: `var(${cssVar}-ink)` }}>
       <div className="resource-icon">{icon}</div>
       <div className="resource-body">
         <div className="resource-label">{label}</div>
@@ -66,18 +71,21 @@ interface BarProps {
   computeRate: Big;
   dataRate: Big;
   moneyRate: Big;
+  /** Auto-train is on: payouts are routine, so the jump pops stay quiet. */
+  quiet?: boolean;
 }
 
-export function ResourceBar({ compute, data, money, computeRate, dataRate, moneyRate }: BarProps) {
+export function ResourceBar({ compute, data, money, computeRate, dataRate, moneyRate, quiet = false }: BarProps) {
   return (
     <div className="resource-bar">
-      <Resource label="Compute" cssVar="--compute" icon={<ComputeIcon />} value={compute} rate={computeRate} />
+      <Resource label="Compute" cssVar="--compute" icon={<ComputeIcon />} value={compute} rate={computeRate} quiet={quiet} />
       <Resource
         label="Data"
         cssVar="--data"
         icon={<DataIcon />}
         value={data}
         rate={dataRate.gt(0) ? dataRate : undefined}
+        quiet={quiet}
       />
       <Resource
         /* "Money", not "$" — the other two micro-labels are words, and a lone glyph in
@@ -89,6 +97,7 @@ export function ResourceBar({ compute, data, money, computeRate, dataRate, money
         value={money}
         rate={moneyRate.gt(0) ? moneyRate : undefined}
         ratePrefix="$"
+        quiet={quiet}
       />
     </div>
   );

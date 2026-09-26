@@ -16,6 +16,17 @@ export function Collapsible({ title, badge, defaultOpen = false, children }: {
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  // `defaultOpen` is the "something in here needs you" signal (a contract due, a
+  // perk to claim). It used to count only at mount, so a fold already on screen
+  // stayed shut when its need arrived, and the advisor chip pointing at it landed
+  // on a closed header. Open it on the arrival; never close it when the need is met
+  // (that would snap it shut under the player's thumb), and a player who folds it
+  // again keeps it folded until the next need arrives.
+  const [needed, setNeeded] = useState(defaultOpen);
+  if (defaultOpen !== needed) {
+    setNeeded(defaultOpen);
+    if (defaultOpen) setOpen(true);
+  }
   return (
     <section className={`panel collapsible ${open ? "open" : ""}`}>
       <button className="collapsible-toggle" onClick={() => setOpen((o) => !o)} aria-expanded={open}>

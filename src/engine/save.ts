@@ -1,7 +1,7 @@
 import { Big } from "./math/Big";
 import { SAVE_VERSION, createInitialState } from "./state";
 import { initialStats } from "./stats";
-import { products as PRODUCTS } from "./balance/products";
+import { products as PRODUCTS, productFeatures } from "./balance/products";
 import { contracts as CONTRACTS } from "./balance/contracts";
 import { legacyTree as LEGACY } from "./balance/legacyTree";
 import { reputation as REPUTATION } from "./balance/reputation";
@@ -22,6 +22,10 @@ import { challenges as CHALLENGES } from "./balance/challenges";
 import { objectives as OBJECTIVES } from "./balance/objectives";
 import { automation as AUTOMATION } from "./balance/automation";
 import { freshComponents } from "./components";
+import { RACK_IDS } from "./hall";
+import { laneMet } from "./challenges";
+import { shiftAlignment } from "./alignment";
+import { capActiveModifiers } from "./tick";
 import type { ChallengeState } from "./types";
 import type { ActiveModifier, ComponentsState, DraftModel, Employee, GameState, LifetimeStats, ModifierTarget, ProductsState, ProductState, ShipLogEntry, UpgradeState } from "./types";
 
@@ -52,6 +56,8 @@ const DOCTRINE_IDS = new Set(DOCTRINE.perks.map((p) => p.id));
 const ROLE_IDS = new Set(balance.staff.roles.map((r) => r.id));
 const TRAIT_IDS = new Set(balance.staff.traits.map((t) => t.id));
 const INSTITUTE_IDS = new Set(INSTITUTE.perks.map((p) => p.id));
+/** Per-product feature ids: only the catalogue's (buyFeature sells nothing else). */
+const FEATURE_IDS = new Set(productFeatures.map((f) => f.id));
 
 /** Keep only known ids, each at most once (order preserved). Closes the duplicate /
  *  unknown-id save-edit class for contracts / legacy investments / reputation perks. */
@@ -155,6 +161,10 @@ function isWellFormedProduct(p: unknown): p is ProductState {
   return (
     !!o &&
     typeof o.id === "string" &&
+    // The id keys per-product staff buffs in plain objects (derive/employees), where
+    // `obj["__proto__"] = …` sets the prototype instead of a key — that product then
+    // read Object.prototype as its buffs and went NaN. Runtime ids are always prod-N.
+    o.id !== "__proto__" &&
     typeof o.name === "string" &&
     typeof o.type === "string" &&
     (PRODUCT_TYPE_IDS as string[]).includes(o.type) &&
@@ -214,17 +224,21 @@ function sanitizeChannelMix(m: unknown): Record<string, number> {
  * few thousand well-formed products push one tick past the tick interval, and the next
  * autosave writes the bloat straight back — every future launch is dead on arrival and
  * hard reset is the only escape. `modifiers` already had a cap for exactly this reason
- * (MAX_ACTIVE_MODIFIERS / the 20-entry slice); these generalise it to the rest.
+ * (tick.ts MAX_ACTIVE_MODIFIERS); these generalise it to the rest.
  *
- * All are far above any reachable legit value (portfolio caps out around 5 slots, a
- * roster in the dozens, ~52 achievements, ~21 upgrade ids), so honest saves never
- * notice — only crafted ones are truncated.
+ * All are far above any reachable legit value (portfolio caps out around 5 slots,
+ * ~52 achievements, ~21 upgrade ids), so honest saves never notice — only crafted ones
+ * are truncated. Where deep play CAN reach a cap (the roster, megaproject cycles), the
+ * runtime enforces the same value, so a reload never deletes what was earned.
  */
 const MAX_SAVED_PRODUCTS = 64;
-const MAX_SAVED_EMPLOYEES = 512;
+/** The same roster cap hiring enforces (employees.rosterFull), so a reload never
+ *  deletes a hire the player paid for. */
+const MAX_SAVED_EMPLOYEES = balance.staff.maxRoster;
 const MAX_SAVED_IDS = 512;
-/** Ceiling on megaproject cycles — see sanitizeMegaprojects. */
-const MAX_MEGA_LEVEL = 512;
+/** Ceiling on megaproject cycles — see sanitizeMegaprojects. The SAME value the runtime
+ *  stops funding at (canFundMegaproject), so a reload never deletes an earned cycle. */
+const MAX_MEGA_LEVEL = CHALLENGES.megaproject.maxLevel;
 
 /** Drafts are untrusted; keep only well-formed entries. Quality is clamped to the
  *  same product cap loaded products get — an unclamped draft launches into a live
@@ -250,12 +264,10 @@ function sanitizeDrafts(d: unknown): DraftModel[] {
  *  frontier) back to fresh — same per-entry policy as employees/drafts. */
 function isWellFormedProducts(p: unknown): p is ProductsState {
   const o = p as Partial<ProductsState> | null;
-  return (
-    !!o &&
-    Array.isArray(o.active) &&
-    typeof o.frontier === "number" &&
-    Number.isFinite(o.frontier)
-  );
+  // The frontier is NOT part of the shape: it has its own clamp (and fallback) at load,
+  // and demanding it here wiped every product, draft and milestone when it alone was
+  // unreadable (a NaN frontier serializes as null).
+  return !!o && Array.isArray(o.active);
 }
 
 /** Employees are untrusted; keep only well-formed people, sanitizing training.
@@ -263,8 +275,12 @@ function isWellFormedProducts(p: unknown): p is ProductsState {
  *  linear and uncapped, so a crafted 1e9 would mint a 1e9× staff multiplier);
  *  roleId/trait must be KNOWN ids (an unknown role renders raw; an unknown trait
  *  could smuggle morale effects past the balance data); ids dedupe keep-first so
- *  fire/assign/train targeting and React keys stay well-defined. */
-function sanitizeEmployees(e: unknown): Employee[] {
+ *  fire/assign/train targeting and React keys stay well-defined. An assignment to a
+ *  product that did not survive the load (the product sanitizer dropped it) is cleared
+ *  like the flagship's: the person otherwise sat in no project's crew and off the
+ *  Available list, and the HR Autopilot, which only posts people with no assignment,
+ *  never picked them up again. */
+function sanitizeEmployees(e: unknown, productIds: ReadonlySet<string>): Employee[] {
   if (!Array.isArray(e)) return [];
   const seen = new Set<string>();
   const out: Employee[] = [];
@@ -285,13 +301,16 @@ function sanitizeEmployees(e: unknown): Employee[] {
       roleId: x.roleId,
       level: Math.min(balance.staff.maxLevel, Math.max(1, Math.floor(x.level))),
       trait: typeof x.trait === "string" && TRAIT_IDS.has(x.trait) ? x.trait : null,
-      assignedProductId: typeof x.assignedProductId === "string" ? x.assignedProductId : null,
+      assignedProductId: typeof x.assignedProductId === "string" && productIds.has(x.assignedProductId) ? x.assignedProductId : null,
       training:
         x.training && typeof x.training.remainingSec === "number" && Number.isFinite(x.training.remainingSec) &&
         typeof x.training.totalSec === "number" && Number.isFinite(x.training.totalSec) && x.training.totalSec > 0 &&
         x.training.remainingSec > 0
           ? { remainingSec: x.training.remainingSec, totalSec: x.training.totalSec }
           : null,
+      // v37: a hand-bench only ever means literal `true`; anything else is "not benched"
+      // (omitted, so pre-v37 people and crafted junk load exactly as before).
+      ...(x.benched === true ? { benched: true as const } : {}),
     });
   }
   return out;
@@ -338,12 +357,30 @@ function isWellFormedModifier(m: unknown): m is ActiveModifier {
     MODIFIER_TARGETS.includes(mod.target as ModifierTarget) &&
     typeof mod.factor === "number" &&
     Number.isFinite(mod.factor) &&
+    // Every buff and debuff the game grants is a positive factor; ≤ 0 would flip
+    // production negative and drain the resource banks below zero.
+    mod.factor > 0 &&
     typeof mod.remainingSec === "number" &&
     Number.isFinite(mod.remainingSec) &&
     mod.remainingSec > 0 &&
     typeof mod.label === "string" &&
     (mod.tone === "good" || mod.tone === "bad")
   );
+}
+
+/** One live modifier per id, the LAST occurrence (order otherwise kept): granting a
+ *  buff replaces any live one with its id (see grantDailyBoost, claimObjective), so a
+ *  save repeating an id is one the runtime never wrote — it would stack the factor. */
+function lastPerId<T extends { id: string }>(mods: T[]): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (let i = mods.length - 1; i >= 0; i--) {
+    const m = mods[i]!;
+    if (seen.has(m.id)) continue;
+    seen.add(m.id);
+    out.push(m);
+  }
+  return out.reverse();
 }
 
 /**
@@ -379,6 +416,7 @@ interface SavedShape {
   /** Prestige Trials: the active Trial id (or null) + completed ids. Sanitized to
    *  known ids + migrated at v25. */
   activeTrial: string | null;
+  queuedTrial?: string | null;
   trialsDone: string[];
   /** Paradigm Research — owned node ids (Reputation cost reconciled into spent). v29. */
   paradigms: string[];
@@ -471,6 +509,7 @@ export function serialize(state: GameState): string {
     repEndowment: state.repEndowment,
     endowmentDirectives: state.endowmentDirectives,
     activeTrial: state.activeTrial,
+    queuedTrial: state.queuedTrial,
     trialsDone: state.trialsDone,
     paradigms: state.paradigms,
     doctrines: state.doctrines,
@@ -542,7 +581,7 @@ function sanitizeChallenges(raw: unknown): ChallengeState {
     const data = safeBig(f.data).min(cost.data);
     const money = safeBig(f.money).min(cost.money);
     if (compute.gt(0) || data.gt(0) || money.gt(0)) out.funded[def.id] = { compute, data, money };
-    if (compute.gte(cost.compute) && data.gte(cost.data) && money.gte(cost.money)) out.completed.push(def.id);
+    if (laneMet(compute, cost.compute) && laneMet(data, cost.data) && laneMet(money, cost.money)) out.completed.push(def.id);
   }
   // Forks: a chosen arm is legitimate ONLY for a COMPLETED forked challenge and must be
   // a real arm id of that challenge (else a crafted save could pick a phantom reward).
@@ -563,9 +602,10 @@ function sanitizeMegaprojects(raw: unknown, completedChallenges: string[]): Game
   // checks megaprojectUnlocked), so a level on a save that has completed none was
   // never earned — and each level mints a permanent Mandate pick. Drop it.
   const unlocked = CHALLENGES.list.every((c) => completedChallenges.includes(c.id));
-  // Generous ceiling, far above any reachable value, for the same reason the other
-  // MAX_SAVED_* caps exist: `level` drives Math.pow (which overflows to Infinity and
-  // then poisons the cost clamp) and the number of unspent Mandate picks.
+  // Bounded for the same reason the other MAX_SAVED_* caps exist: `level` drives
+  // Math.pow (which overflows to Infinity and then poisons the cost clamp) and the
+  // number of unspent Mandate picks. Deep play DOES reach it, so the runtime enforces
+  // the same maxLevel (fundMegaproject) — this clamp only ever trims a crafted save.
   const rawLevel = Math.max(0, Math.floor(Number(r.level) || 0));
   const level = unlocked ? Math.min(rawLevel, MAX_MEGA_LEVEL) : 0;
   const M = CHALLENGES.megaproject;
@@ -577,8 +617,9 @@ function sanitizeMegaprojects(raw: unknown, completedChallenges: string[]): Game
   // Bound the array BEFORE filtering it: mandateMods walks this list on every
   // derive() (10Hz), so an oversized pasted save would cost real frames — the same
   // "a crafted save bricks the install" class the 2026-08 save-limits pass fixed.
+  // Bounded by the level cap: mandates never outnumber completed cycles.
   const rawMandates = Array.isArray((r as { mandates?: unknown }).mandates)
-    ? ((r as { mandates: unknown[] }).mandates).slice(0, MAX_SAVED_IDS)
+    ? ((r as { mandates: unknown[] }).mandates).slice(0, MAX_MEGA_LEVEL)
     : [];
   const mandates = rawMandates
     .filter((c): c is string => typeof c === "string" && MEGA_MANDATE_IDS.has(c))
@@ -592,6 +633,22 @@ function sanitizeMegaprojects(raw: unknown, completedChallenges: string[]): Game
     },
     mandates,
   };
+}
+
+/** The training run, sanitized. A run that is in flight or awaiting its claim carries
+ *  the intensity it was started at (its payout is priced at it — see runYieldAt),
+ *  clamped to the slider's [0, 1]; a missing or non-numeric one falls back to the saved
+ *  slider, which is exactly what that run would have been paid at before v37. An idle
+ *  run carries none. */
+function sanitizeRun(raw: unknown, computeFocus: number): GameState["run"] {
+  const r = (raw && typeof raw === "object" ? raw : {}) as Partial<GameState["run"]>;
+  const run: GameState["run"] = {
+    active: r.active === true,
+    progress: clampNum(r.progress, 0, 1, 0),
+    readyToClaim: r.readyToClaim === true,
+  };
+  if (run.active || run.readyToClaim) run.focus = clampNum(r.focus, 0, 1, computeFocus);
+  return run;
 }
 
 export function deserialize(json: string): GameState {
@@ -611,15 +668,18 @@ export function deserialize(json: string): GameState {
       : fresh.suspicion;
   // Cap the persisted modifier list. tick() segments a frame recursively at each
   // modifier expiry (tick.ts), so an unbounded count from a crafted/shared save
-  // overflows the stack on the next tick. Legit play never exceeds a handful (a few
-  // world-event buffs + momentum/daily), so 20 is generous headroom and far below the
-  // ~50 that empirically overflows. This is the one persisted collection that lacked a cap.
+  // would deepen that recursion without limit. Apply EXACTLY the cap tick() applies
+  // (keep the soonest-expiring MAX_ACTIVE_MODIFIERS): a tighter load cap deleted real
+  // buffs — a claimed Objective backlog + the Daily Boost + open-source momentum
+  // passes 20 in honest play, and the newest claims vanished on reload.
   const modifiers = Array.isArray(raw.modifiers)
-    ? raw.modifiers.filter(isWellFormedModifier).slice(0, 20)
+    ? capActiveModifiers(lastPerId(raw.modifiers.filter(isWellFormedModifier)))
     : fresh.modifiers;
+  // Clamped and snapped like every runtime shift (shiftAlignment), so a save that
+  // already drifted to 0.39999999999999997 gets its declared stance back on load.
   const alignment =
     typeof raw.alignment === "number" && Number.isFinite(raw.alignment)
-      ? Math.max(-1, Math.min(1, raw.alignment))
+      ? shiftAlignment(raw.alignment, 0)
       : fresh.alignment;
   const computeFocus =
     typeof raw.computeFocus === "number" && Number.isFinite(raw.computeFocus)
@@ -690,8 +750,10 @@ export function deserialize(json: string): GameState {
         marketingPerSec: clampNum(o.marketingPerSec, 0, quality * PRODUCTS.marketingCapPerQuality, 0),
         buzzSec: clampNum(o.buzzSec, 0, PROD_CAPS.buzzSec, 0),
         upgrade: sanitizeUpgrade(o.upgrade),
-        // Dedupe features — a hand-edited save could repeat an id to stack its multiplier.
-        features: Array.isArray(o.features) ? [...new Set(o.features.filter((s): s is string => typeof s === "string"))] : [],
+        // Known feature ids, each once: a repeat would stack its multiplier, and an
+        // unknown id buys nothing yet costs every tick (featureMods walks the list per
+        // product per tick and per render), so a pasted flood of them froze the game.
+        features: dedupeKnownIds(o.features, FEATURE_IDS),
         enterprise: o.enterprise === true,
         enterprisePrice: clampNum(o.enterprisePrice, PRODUCTS.enterprise.priceMin, PRODUCTS.enterprise.priceMax, 1),
         channelMix: sanitizeChannelMix(o.channelMix),
@@ -712,6 +774,19 @@ export function deserialize(json: string): GameState {
       ? (loadedProducts as ProductsState).milestones.filter((m): m is string => typeof m === "string").slice(0, MAX_SAVED_IDS)
       : [],
   };
+  // An unreadable frontier falls back to the highest quality on record rather than the
+  // start value: every product and draft launched at (or below) the frontier of its day,
+  // and the frontier only climbs, so the real one was at least this high — the start
+  // value would hand the whole portfolio a free competitiveness buff.
+  if (!Number.isFinite(loadedProducts.frontier)) {
+    products.frontier = Math.min(
+      PROD_CAPS.frontier,
+      Math.max(PRODUCTS.frontierStart, ...products.active.map((p) => p.quality), ...products.drafts.map((d) => d.quality)),
+    );
+  }
+  // Hoisted: the Rig Bay sanitizer needs the rack counts (a tier with no racks
+  // can't hold a fitted part).
+  const upgrades = sanitizeUpgrades(raw.upgrades);
   return {
     version: SAVE_VERSION,
     resources: {
@@ -719,7 +794,7 @@ export function deserialize(json: string): GameState {
       data: safeBig(res.data),
       money: safeBig(res.money),
     },
-    upgrades: sanitizeUpgrades(raw.upgrades),
+    upgrades,
     // research: known node ids, each at most once. A dup (e.g. ["backprop","backprop"])
     // would inflate state.research.length, which tick() accrues into peakResearchCount
     // and any reward derived from it — so dedupe + known-id filter like contracts/perks.
@@ -732,11 +807,7 @@ export function deserialize(json: string): GameState {
       const ep = epochNode(id);
       return !ep || paradigms.includes(ep.requiresParadigm);
     }),
-    run: {
-      active: (raw.run as GameState["run"] | undefined)?.active === true,
-      progress: clampNum((raw.run as GameState["run"] | undefined)?.progress, 0, 1, 0),
-      readyToClaim: (raw.run as GameState["run"] | undefined)?.readyToClaim === true,
-    },
+    run: sanitizeRun(raw.run, computeFocus),
     prestige: {
       legacyWeights: safeBig(pres.legacyWeights),
       // Ceiling as well as floor: ships is submitted verbatim to the Game Center
@@ -751,7 +822,7 @@ export function deserialize(json: string): GameState {
     alignment,
     computeFocus,
     products,
-    employees: sanitizeEmployees(raw.employees),
+    employees: sanitizeEmployees(raw.employees, new Set(products.active.map((p) => p.id))),
     stats,
     achievements,
     reputation: sanitizeReputation(raw.reputation, repEndowment, paradigmOwed + wingCostSum(facilityWings)),
@@ -769,6 +840,9 @@ export function deserialize(json: string): GameState {
     // Prestige Trials: the active id must be a known Trial (else no active run), and
     // completed ids are filtered to known, deduped (the reward folds per unique id).
     activeTrial: typeof raw.activeTrial === "string" && TRIAL_IDS.has(raw.activeTrial) ? raw.activeTrial : null,
+    // A queued Trial must be a real, not-yet-banked Trial (hostile input: filter).
+    queuedTrial: typeof raw.queuedTrial === "string" && TRIAL_IDS.has(raw.queuedTrial)
+      && !(Array.isArray(raw.trialsDone) && raw.trialsDone.includes(raw.queuedTrial)) ? raw.queuedTrial : null,
     trialsDone: dedupeKnownIds(raw.trialsDone, TRIAL_IDS),
     // Flagship: the id must point at a real (sanitized) active product, else it's
     // cleared; tenure is clamped to [0, cap] so a crafted save can't over-brand.
@@ -795,8 +869,8 @@ export function deserialize(json: string): GameState {
     // KNOWN legacy-perk ids, deduped — a dupe would apply the lane bias twice for free
     // (legacyTreeMods sums per entry and never checks prereqs on load).
     legacyInvestments: dedupeKnownIds(raw.legacyInvestments, LEGACY_IDS),
-    components: sanitizeComponents(raw.components, contracts.completed, achievements),
-    rivalOps: sanitizeRivalOps(raw.rivalOps),
+    components: sanitizeComponents(raw.components, contracts.completed, achievements, upgrades),
+    rivalOps: sanitizeRivalOps(raw.rivalOps, stats.playtimeSec),
     // Legacy Wall records are display-only history, but still validated per-entry
     // (sanitizer policy: filter, don't wipe) and capped like prestige() caps them.
     shipLog: sanitizeShipLog(raw.shipLog, stats.totalShips),
@@ -851,7 +925,10 @@ function archiveId(v: unknown): string | undefined {
  *  fields (save v35) are all optional and independently sanitized: an entry with a
  *  hostile or missing one still loads, minus that field. */
 function sanitizeShipLog(raw: unknown, totalShips: number): GameState["shipLog"] {
-  if (!Array.isArray(raw)) return [];
+  // Keep the newest `keep` valid entries. Zero is its own case: slice(-0) is slice(0),
+  // the whole array, so a save claiming no ships used to keep a log of any length.
+  const keep = Math.min(balance.prestige.shipLogCap, Math.max(0, totalShips));
+  if (!Array.isArray(raw) || keep === 0) return [];
   const MODES = new Set(Object.keys(balance.prestige.shipModes));
   return raw
     .filter((e): e is Record<string, unknown> =>
@@ -866,7 +943,9 @@ function sanitizeShipLog(raw: unknown, totalShips: number): GameState["shipLog"]
       const put = <K extends keyof ShipLogEntry>(k: K, v: ShipLogEntry[K] | undefined) => {
         if (v !== undefined) opt[k] = v;
       };
-      put("gen", archiveCount(e.gen, MAX_SAVED_IDS));
+      // A generation NUMBER, not a list length: capping it at MAX_SAVED_IDS (512)
+      // renamed every entry past Gen 512 to "Gen 512" on the next load.
+      put("gen", archiveCount(e.gen, 10_000_000)); // same ceiling as prestige.ships
       put("legacyMag", archiveMag(e.legacyMag));
       put("peakComputeMag", archiveMag(e.peakComputeMag));
       put("research", archiveCount(e.research, MAX_SAVED_IDS));
@@ -882,13 +961,13 @@ function sanitizeShipLog(raw: unknown, totalShips: number): GameState["shipLog"]
         ...opt,
       };
     })
-    .slice(-Math.min(balance.prestige.shipLogCap, Math.max(0, totalShips)));
+    .slice(-keep);
 }
 
 /** Rival counterplay is untrusted: KNOWN rival names only, strike counts clamped
  *  to the per-run max (a crafted save could otherwise zero every rival), and the
  *  cooldown stamp bounded so it can't push the next blitz into next century. */
-function sanitizeRivalOps(r: unknown): GameState["rivalOps"] {
+function sanitizeRivalOps(r: unknown, playtimeSec: number): GameState["rivalOps"] {
   const o = (r ?? {}) as Partial<GameState["rivalOps"]>;
   const strikes: Record<string, number> = {};
   if (o.strikes && typeof o.strikes === "object") {
@@ -899,7 +978,9 @@ function sanitizeRivalOps(r: unknown): GameState["rivalOps"] {
     }
   }
   const last = o.lastStrikeSec;
-  const lastStrikeSec = typeof last === "number" && Number.isFinite(last) && last >= 0 ? last : null;
+  // A stamp can never be later than the playtime it was taken at: one past it read as
+  // a cooldown of years. Clamped to now, the blitz waits one full press cycle.
+  const lastStrikeSec = typeof last === "number" && Number.isFinite(last) && last >= 0 ? Math.min(last, Math.max(0, playtimeSec)) : null;
   return { strikes, lastStrikeSec };
 }
 
@@ -949,9 +1030,12 @@ function sanitizeSponsor(s: unknown): GameState["sponsor"] {
 /** Rig Bay components are untrusted: keep KNOWN ids with sane integer counts, and
  *  a loadout whose every slot holds a class-matching, actually-owned id — equips
  *  beyond the owned copy count are dropped (a crafted save can't run one GPU in
- *  three tiers), per-entry like every other sanitizer here. */
+ *  three tiers), per-entry like every other sanitizer here. A part fitted to a tier
+ *  with no racks is unslotted too (the copy stays owned): an in-place rack upgrade
+ *  that replaced a tier's last rack used to strand it there, where the Rig Bay
+ *  (which only shows tiers with racks) could never reach it again. */
 const COMPONENT_BY_ID = new Map(COMPONENTS.catalog.map((d) => [d.id, d]));
-function sanitizeComponents(c: unknown, completedContracts: string[], achievements: string[]): ComponentsState {
+function sanitizeComponents(c: unknown, completedContracts: string[], achievements: string[], upgrades: Record<string, number>): ComponentsState {
   const out = freshComponents();
   const o = c as Partial<ComponentsState> | null;
   if (!o || typeof o !== "object") return out;
@@ -971,6 +1055,7 @@ function sanitizeComponents(c: unknown, completedContracts: string[], achievemen
   if (Array.isArray(o.loadout)) {
     const used: Record<string, number> = {};
     for (let tier = 0; tier < SLOTS_BY_TIER.length; tier++) {
+      if ((upgrades[RACK_IDS[tier]!] ?? 0) <= 0) continue; // no racks → nothing to fit
       const slots = (o.loadout[tier] ?? {}) as Partial<Record<SlotClass, unknown>>;
       for (const slot of SLOTS_BY_TIER[tier]!) {
         const id = slots[slot];
@@ -1274,6 +1359,27 @@ export function migrate(raw: any): SavedShape {
     // capacity is exactly what it was — hallCapacity multiplies by wings+1, and
     // wings is 0 here. The Reputation already spent is untouched.
     s = { ...s, version: 36, facilityWings: s.facilityWings ?? 0 };
+  }
+  if (s.version === 36) {
+    // v36 → v37: a training run records the intensity it was started at, and its
+    // payout is priced at that instead of the live slider. A run already in flight
+    // (or waiting for its claim) was always priced at the saved slider, so that is
+    // its value here — the returning player's in-flight run pays exactly what it
+    // would have. The sanitizer clamps it; an idle run carries none.
+    const run = s.run && typeof s.run === "object" ? s.run : undefined;
+    const inFlight = !!run && (run.active === true || run.readyToClaim === true);
+    s = { ...s, version: 37, run: inFlight && run.focus === undefined ? { ...run, focus: s.computeFocus } : run };
+  }
+  if (s.version === 37) {
+    // v37 → v38: an employee may carry `benched: true` — the player sent them to the
+    // Lab, so the HR Autopilot leaves them there. Nobody in an older save was benched
+    // by hand as far as the save can tell (the autopilot re-posted them within a tick
+    // anyway), so the identity default is "absent" and there is nothing to rewrite.
+    s = { ...s, version: 38 };
+  }
+  if (s.version === 38) {
+    // v38 → v39: Trials queue for the next run. Nobody had one queued.
+    s = { ...s, version: 39, queuedTrial: null };
   }
   return s as SavedShape;
 }

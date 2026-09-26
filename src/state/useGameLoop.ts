@@ -13,6 +13,7 @@ export function useGameLoop(tickHz = 10, saveEverySec = 5) {
   const save = useGame((s) => s.save);
   const init = useGame((s) => s.init);
   const last = useRef<number>(performance.now());
+  const lastWall = useRef<number>(Date.now());
 
   useEffect(() => {
     init();
@@ -33,9 +34,19 @@ export function useGameLoop(tickHz = 10, saveEverySec = 5) {
       // enforces. A normal tick is ~100ms, so this only ever bites a long suspend, and
       // it's never more generous than simply closing the tab would have been.
       const capMs = (isPremium() ? balance.offline.premiumMaxHours : balance.offline.maxHours) * 3_600_000;
-      const raw = t - last.current;
+      // performance.now() is monotonic (immune to clock changes) but on iOS it can
+      // stop advancing while the device is asleep, so a suspend with the screen
+      // locked was credited as seconds instead of hours. When the wall clock saw
+      // clearly more time pass than the monotonic clock, trust it: that gap is
+      // exactly the sleep. A backwards clock change falls back to the monotonic
+      // delta, and the cap below bounds a forward one (as closing the app would).
+      const w = Date.now();
+      const perfRaw = t - last.current;
+      const wallRaw = w - lastWall.current;
+      const raw = wallRaw > perfRaw + 2000 ? wallRaw : perfRaw;
       const elapsed = Math.min(raw, capMs);
       last.current = t;
+      lastWall.current = w;
       try {
         // Pass the raw (unclamped) window too: when this tick IS a resume from a
         // long suspend, the store turns it into the "while you were away" recap,

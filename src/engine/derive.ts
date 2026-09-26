@@ -3,9 +3,9 @@ import { balance } from "./balance/config";
 import { computeStaffEffects, teamMorale, type StaffEffects } from "./employees";
 import { reputationMods } from "./reputation";
 import { alignmentProductionMods, alignmentProductMods } from "./alignment";
-import { charterMods } from "./charter";
+import { charterMods, charterRule } from "./charter";
 import { legacyAvailable, legacyTreeMods } from "./legacyTree";
-import { trialMods } from "./trials";
+import { trialMods, legacyUnplugged } from "./trials";
 import { flagshipMoneyMult } from "./flagship";
 import { paradigmMods } from "./paradigms";
 import { doctrineMods } from "./doctrine";
@@ -67,6 +67,13 @@ export function officePayrollMult(state: GameState): number {
   return mult;
 }
 
+/** What every person's salary is multiplied by before it is charged: the office perks
+ *  × the Lab Reputation payroll perk — the same two derive() folds into payrollPerSec.
+ *  For the per-person pay a roster or candidate card quotes. Pure. */
+export function payrollMultiplier(state: GameState): number {
+  return officePayrollMult(state) * reputationMods(state).payrollMult;
+}
+
 /**
  * Fold owned upgrades, research, and prestige into the stats the sim and UI use.
  * Pure and cheap — safe to call every frame. Keeping this the single source of
@@ -81,6 +88,18 @@ export function trainingIntensity(focus: number): number {
   const floor = balance.run.focusCostFloor;
   return floor + (1 - floor) * Math.max(0, Math.min(1, focus));
 }
+
+/** The permanent global multiplier a pool of (uninvested) Legacy Weights grants:
+ *  1 + perPoint × weights^exponent. Single source for derive() and every display
+ *  of it (the HQ panel used to show the linear 1 + perPoint × weights, overstating
+ *  a 5K-weight lab as ×91 when it was really ×17). Pure. */
+export function legacyMultiplier(weights: Big): Big {
+  return Big.ONE.add(weights.max(Big.ZERO).pow(balance.prestige.multiplierExponent).mul(balance.prestige.multiplierPerPoint));
+}
+
+/** First-Ship value: the global multiplier the NEXT run would start with if the
+ *  player shipped now (deploy), vs. the threshold where it is clearly worth it. */
+export const FIRST_SHIP_WORTH_IT = 1.25;
 
 export function derive(state: GameState): Derived {
   let computeFlat = Big.of(balance.baseComputePerSec);
@@ -201,11 +220,14 @@ export function derive(state: GameState): Derived {
   // neutral/cold, so a fresh run's product economics — and the sim — are untouched.
   const ap = alignmentProductMods(state);
   const heatChurnMult = 1 + (state.heat / balance.heat.max) * balance.heat.productChurnAtMax;
+  // Product Company (rule charter) multiplies every product's ARPU; ×1 otherwise.
+  const charterArpu = charterRule(state).productArpu ?? 1;
   const applyCross = (m: typeof fx.productMods) => ({
     ...m,
     acq: m.acq * ap.acq,
     heat: m.heat * ap.heat,
     churn: m.churn * heatChurnMult,
+    arpu: m.arpu * charterArpu,
   });
   const productMods = applyCross(fx.productMods);
   const productModsById = Object.fromEntries(
@@ -230,9 +252,9 @@ export function derive(state: GameState): Derived {
   // doesn't collapse to sub-minute ships. R5.4: weights INVESTED in the legacy tree
   // are removed from this pool (legacyAvailable) — the focus-vs-breadth trade-off.
   // With nothing invested, available === total, so the curve is unchanged.
-  const legacyMult = Big.ONE.add(
-    legacyAvailable(state).pow(balance.prestige.multiplierExponent).mul(balance.prestige.multiplierPerPoint),
-  );
+  // An Unplugged Trial switches Legacy off for the run (×1); the sim never opts in.
+  const unplugged = legacyUnplugged(state);
+  const legacyMult = unplugged ? Big.ONE : legacyMultiplier(legacyAvailable(state));
   computeMult = computeMult.mul(legacyMult);
   dataMult = dataMult.mul(legacyMult);
   moneyMult = moneyMult.mul(legacyMult);
@@ -324,7 +346,7 @@ export function derive(state: GameState): Derived {
 
   // Legacy Investments (R5.4): owned prestige-tree lane biases. All 1.0 with
   // nothing invested, so this is identity until the player spends weights.
-  const lt = legacyTreeMods(state);
+  const lt = unplugged ? { computeMult: 1, dataMult: 1, moneyMult: 1 } : legacyTreeMods(state);
   computeMult = computeMult.mul(lt.computeMult);
   dataMult = dataMult.mul(lt.dataMult);
   moneyMult = moneyMult.mul(lt.moneyMult);
@@ -333,11 +355,13 @@ export function derive(state: GameState): Derived {
   // must be applied to it directly: Legacy, ascension, reputation-data, the charter /
   // legacy-tree data perks, AND any active world-event data buff (`scraperDataMult`)
   // — that last one was previously missed, so a data-event lifted run-data but not the
-  // passive lane. Computed here, after every data multiplier is known. Identity (1.0)
-  // on a fresh run with no active events.
+  // passive lane. The same was true of Grand Challenge / Megaproject / Mandate rewards
+  // (`chMods.data`: "+30% to ALL output, forever", "+12% Data, permanently"), which
+  // reached run Data only. Computed here, after every data multiplier is known.
+  // Identity (1.0) on a fresh run with no active events or completed challenges.
   const dataPerSec = dataPerSecFlat
     .mul(scraperDataMult)
-    .mul(legacyMult).mul(ascensionMult).mul(ppMult).mul(rep.dataMult).mul(ch.dataMult).mul(lt.dataMult).mul(tr.dataMult).mul(para.dataMult).mul(doc.dataMult).mul(inst.dataMult)
+    .mul(legacyMult).mul(ascensionMult).mul(ppMult).mul(chMods.data).mul(rep.dataMult).mul(ch.dataMult).mul(lt.dataMult).mul(tr.dataMult).mul(para.dataMult).mul(doc.dataMult).mul(inst.dataMult)
     .mul(balance.difficulty.productionMult); // global production dilation (see computePerSec)
 
   let computePerSec = computeFlat.mul(computeMult);
@@ -356,9 +380,7 @@ export function derive(state: GameState): Derived {
   // Training intensity (computeFocus) scales the INVESTMENT: at low intensity a
   // run sips Compute (and pays proportionally less), so the bank can actually
   // climb — identity at focus 1, so the tuned curve and the sim are unchanged.
-  const runComputeCost = computePerSec
-    .mul(balance.run.costSeconds * trainingIntensity(state.computeFocus))
-    .max(balance.run.minCompute);
+  const runComputeCost = runCostAt(computePerSec, state.computeFocus);
 
   return {
     computePerSec,
@@ -387,18 +409,128 @@ export function derive(state: GameState): Derived {
   };
 }
 
+/** Compute one training run invests at a given intensity: `costSeconds` of production
+ *  scaled by trainingIntensity(focus), floored at minCompute. The single formula behind
+ *  derive()'s runComputeCost, a run's claim-time payout and focusToBank. Pure. */
+function runCostAt(computePerSec: Big, focus: number): Big {
+  return computePerSec.mul(balance.run.costSeconds * trainingIntensity(focus)).max(balance.run.minCompute);
+}
+
+/**
+ * The Data + Money a finishing run pays, priced at the intensity it was STARTED at
+ * (`run.focus`). A run's Compute is charged when it starts, so pricing its payout at
+ * the live slider let a mid-run slider move rewrite a run already paid for: easing
+ * intensity ("Save for this", the advisor's nudge) cut the in-flight run by up to 70%,
+ * and starting a light run then cranking the slider paid 3.3x its cost. Everything
+ * else (production, multipliers) is still read at claim time, exactly as before.
+ *
+ * When the run's intensity is unknown or equal to the live slider — always, in the
+ * balance sim — this returns derive()'s own yields untouched, so the tuned curve
+ * cannot move. Pure.
+ */
+export function runYieldAt(state: GameState, d: Derived, focus: number | undefined): { data: Big; money: Big } {
+  if (focus === undefined || !Number.isFinite(focus) || focus === state.computeFocus) {
+    return { data: d.runDataYield, money: d.runMoneyYield };
+  }
+  const cost = runCostAt(d.computePerSec, focus);
+  return {
+    data: cost.mul(balance.run.dataPerCompute).mul(d.dataMult),
+    money: cost.mul(balance.run.moneyPerCompute).mul(d.moneyMult),
+  };
+}
+
 /**
  * The ceiling the Compute bank floats to while auto-train is running. A fresh run
  * fires — draining `runComputeCost` — the instant Compute reaches `runComputeCost /
- * focus` (see tick.ts's `autoTrainReady`), so under auto-train the bank can never
- * climb past that point. Anything costing more is unreachable by waiting: the player
- * must ease training intensity (a lower focus raises the ceiling) or grow Compute
- * production. Returns null when the bank is unbounded — auto-train off, or focus 0,
- * which halts training so Compute accrues freely. Pure; the honest input to the
- * research/upgrade ETAs (a raw `cost / computePerSec` estimate silently lies here,
- * promising a countdown for a node the drained bank will never reach).
+ * focus` (see tick.ts's `autoTrainReady`). While runs are COMPUTE-bound (a run's own
+ * duration refills less than the next one costs) every refill is drained again, so
+ * the bank can never climb past that point: anything costing more is unreachable by
+ * waiting, and the player must ease training intensity (a lower focus raises the
+ * ceiling) or grow Compute production.
+ *
+ * Returns null when the bank is unbounded: auto-train off, focus 0 (training halts,
+ * so Compute accrues freely), or DURATION-bound runs. Once a run lasts longer than
+ * the Compute it costs takes to produce (the base 5s run against a 2s cost), each
+ * cycle banks the surplus and the bank climbs without limit, just slower than
+ * production (see computeBankEtaSecs). Pure; the honest input to research walls.
  */
 export function computeBankCeiling(state: GameState, d: Derived): Big | null {
   if (!d.autoTrain || !Number.isFinite(state.computeFocus) || state.computeFocus <= 0) return null;
+  if (d.computePerSec.mul(d.runDurationSec).gt(d.runComputeCost)) return null;
   return d.runComputeCost.div(state.computeFocus);
+}
+
+/** Margin between the bank's ceiling and what it can be counted on to show. Auto-train
+ *  fires in the same tick the bank reaches runCost / focus, so no frame ever shows the
+ *  bank AT its ceiling: at full intensity a 10Hz frame tops out ~5% under it. */
+const BANK_HEADROOM = 1.05;
+
+/**
+ * The most Compute the bank can be counted on to reach while auto-train runs: the
+ * ceiling less BANK_HEADROOM. A research node costing more is walled at this intensity.
+ * Judged against the ceiling itself, a node in that last ~5% read "~1s" with a full ring
+ * (often as "Recommended next") yet never became affordable, and since it was not
+ * "walled" the advisor stayed silent and its card could not be tapped to save for it.
+ * Null exactly when computeBankCeiling is (the bank is unbounded). Pure; display only.
+ */
+export function computeBankReach(state: GameState, d: Derived): Big | null {
+  const ceiling = computeBankCeiling(state, d);
+  return ceiling === null ? null : ceiling.div(BANK_HEADROOM);
+}
+
+/**
+ * Training runs per second the current settings sustain: one per run duration, unless
+ * Compute production can't fund them that fast (compute-bound: one per runCost /
+ * computePerSec, whatever the intensity), and none while auto-train holds training at
+ * intensity 0. The cadence tick() really fires at in steady state, so the honest divisor
+ * for any "income per second" that amortizes run payouts. Pure; display only.
+ */
+export function runsPerSec(d: Derived, computeFocus: number): number {
+  if (d.autoTrain && !(computeFocus > 0)) return 0;
+  const byDuration = d.runDurationSec > 0 ? 1 / d.runDurationSec : 0;
+  if (!d.runComputeCost.gt(0)) return byDuration;
+  return Math.min(byDuration, d.computePerSec.div(d.runComputeCost).toNumber());
+}
+
+/**
+ * Seconds for the Compute bank to climb from `have` to `target` under the current
+ * training settings, or null when waiting never gets there (compute-bound runs hold it
+ * under computeBankCeiling). Below the level where auto-train fires the next run
+ * (runCost / focus) nothing drains it, so it climbs at full production; above it,
+ * duration-bound runs fire back to back and it climbs only by the surplus
+ * (production − runCost / runDuration). A raw `cost / computePerSec` ignores that
+ * drain and promised countdowns up to many times too short. Pure; display only.
+ */
+export function computeBankEtaSecs(state: GameState, d: Derived, have: Big, target: Big): number | null {
+  if (have.gte(target)) return 0;
+  const cps = d.computePerSec;
+  if (cps.lte(0)) return null;
+  if (!d.autoTrain || !Number.isFinite(state.computeFocus) || state.computeFocus <= 0) {
+    return target.sub(have).div(cps).toNumber();
+  }
+  const firesAt = d.runComputeCost.div(state.computeFocus);
+  if (target.lte(firesAt)) return target.sub(have).div(cps).toNumber();
+  const surplus = cps.sub(d.runComputeCost.div(d.runDurationSec));
+  if (surplus.lte(0)) return null;
+  const toFire = firesAt.gt(have) ? firesAt.sub(have).div(cps).toNumber() : 0;
+  return toFire + target.sub(have.max(firesAt)).div(surplus).toNumber();
+}
+
+/**
+ * "Save for this": the highest training intensity (in the slider's 5% steps, never
+ * above the current one) whose auto-train firing level (runCost / focus — below it no
+ * run fires, so the bank climbs at full production) clears `computeCost` with a
+ * little headroom — i.e. how far to ease the slider so a Compute-walled node is
+ * reached at full speed. 0 (training held, bank unbounded) when no running intensity
+ * gets there. Returns the current focus when it already clears. Pure.
+ */
+export function focusToBank(state: GameState, d: Derived, computeCost: Big): number {
+  const current = Math.max(0, Math.min(1, state.computeFocus));
+  const need = computeCost.mul(BANK_HEADROOM); // i.e. within computeBankReach at f
+  for (let step = Math.round(current * 20); step >= 1; step--) {
+    const f = step / 20;
+    const runCost = runCostAt(d.computePerSec, f);
+    if (runCost.div(f).gte(need)) return f;
+  }
+  return 0;
 }

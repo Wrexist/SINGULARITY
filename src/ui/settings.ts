@@ -114,6 +114,8 @@ interface SettingsStore extends Settings {
   markShipExplained: () => void;
   markBackedUp: () => void;
   markAchievementsSeen: (count: number) => void;
+  /** Lower the mark to a save that holds fewer achievements (never raises it). */
+  rebaseAchievementsSeen: (count: number) => void;
 }
 
 /** Player feel preferences. Persisted locally; read by sound/haptics/motion. */
@@ -151,6 +153,14 @@ export const useSettings = create<SettingsStore>((set, get) => ({
     // Monotonic — a stale smaller count (e.g. from a second tab) never re-badges.
     if (count <= get().achievementsSeen) return;
     set({ achievementsSeen: count });
+    persist(get());
+  },
+  rebaseAchievementsSeen: (count) => {
+    // Achievements only grow within a save, so a save holding FEWER than the mark
+    // is a different save (Hard Reset, an older backup imported). Anchor the mark
+    // to it, or nothing new would badge until the old total was passed.
+    if (!Number.isFinite(count) || count < 0 || count >= get().achievementsSeen) return;
+    set({ achievementsSeen: Math.floor(count) });
     persist(get());
   },
 }));

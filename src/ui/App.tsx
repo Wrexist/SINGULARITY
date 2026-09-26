@@ -17,13 +17,15 @@ import { UpgradePanel } from "./UpgradePanel";
 import { ResearchPanel } from "./ResearchPanel";
 import { PrestigePanel } from "./PrestigePanel";
 import { OfflineModal } from "./OfflineModal";
-import { Celebration, type ShipReport } from "./Celebration";
+import { Celebration, shipReportFor, type ShipReport } from "./Celebration";
 import { SettingsSheet } from "./SettingsSheet";
 import { ToastStack, type ToastData } from "./Toast";
 import { StatsPanel } from "./StatsPanel";
 import { Tagline } from "./Tagline";
 import { Onboarding } from "./Onboarding";
 import { FirstSteps, firstStepsVisible } from "./FirstSteps";
+import { goalDestination, nudgeDestination, type Destination } from "./wayfinding";
+import { newTransitionMemory, stepTransitionToasts, type TransitionToast } from "./transitionToasts";
 import { gameCenterSubmitScores, gameCenterUnlock } from "./gameCenter";
 import { DataMarketPanel } from "./DataMarketPanel";
 import { EmployeesPanel } from "./EmployeesPanel";
@@ -32,27 +34,36 @@ import { GoalsPanel, type GoalsSection } from "./GoalsPanel";
 import { goalsCounts } from "./goalsCount";
 import { CharterPanel } from "./CharterPanel";
 import { CodexPanel } from "./CodexPanel";
+import { codexRevealed } from "../engine/codex";
 import { EventLog } from "./EventLog";
 import { FxCanvas } from "./FxCanvas";
 import { burst as fxBurst, floatText as fxFloat, FX_PALETTES } from "./fx";
 import { ProductLaunch } from "./ProductLaunch";
+import { draftLaunchable, shipLeftModelToLaunch } from "./shipLanding";
 import { productsUnlocked, typeDef, retirePayout } from "../engine/products";
+import { flagshipBrandLost } from "../engine/flagship";
 import { advisorItems, type AdvisorTab, type LabSection } from "../engine/advisor";
+import { labReveal } from "../engine/reveal";
 import { nextGoal } from "../engine/goals";
-import { marketLeaderboard, playerMarketRank, rivalsBeaten } from "../engine/market";
+import { marketLeaderboard, playerMarketRank } from "../engine/market";
 import { FlaskIcon, BoxIcon, TeamIcon, GearIcon, GiftIcon, TargetIcon } from "./Icons";
-import { fmt, fmtMoney } from "./format";
+import { fmt, fmtMoney, barRates } from "./format";
 import type { ProductTypeId } from "../engine/balance/products";
 import { iap } from "./iap";
 import { isPremium } from "../state/premium";
-import { scheduleReturnReminder, cancelReturnReminder } from "./notifications";
+import { watchReturnReminders } from "./notifications";
 import { balance } from "../engine/balance/config";
 import { ALL_RESEARCH } from "../engine/researchTree";
 import { HallCanvas } from "./HallCanvas";
 import { sampleHistory, resetHistory, SAMPLE_MS } from "./history";
-import { NewsTicker } from "./NewsTicker";
+import { NewsTicker, BREAKING_MS, type Breaking } from "./NewsTicker";
 import { ExpandConfirm } from "./ExpandConfirm";
 import { ConfirmSheet } from "./ConfirmSheet";
+import { usePortalOpen } from "./Portal";
+import type { FiredWorldEvent } from "../state/store";
+
+/** A world event that asks the player to choose — the only kind that earns a card. */
+const worldEventIsDecision = (e: FiredWorldEvent) => (e.choices?.length ?? 0) > 0;
 import { RigBayPanel } from "./RigBayPanel";
 import { componentsUnlocked, earnedDefs } from "../engine/components";
 
@@ -88,12 +99,14 @@ import { EraTransition } from "./EraTransition";
 import { WorldEventCard } from "./WorldEventCard";
 import { ModifierBar } from "./ModifierBar";
 import { regulatorIsNamed, regulatorState } from "../engine/regulator";
-import { canPrestige } from "../engine/prestige";
+import { canPrestige, nextRunMultiplier } from "../engine/prestige";
+import { FIRST_SHIP_WORTH_IT } from "../engine/derive";
 import { chartersUnlocked } from "../engine/charter";
+import { doctrineUnlocked } from "../engine/doctrine";
 import { preprintsUnlocked } from "../engine/preprints";
 import { legacyAvailable } from "../engine/legacyTree";
 import { endowmentUnlocked } from "../engine/reputation";
-import { canBuyOfficePerk } from "../engine/actions";
+import { canBuyOfficePerk, isIncident } from "../engine/actions";
 import { modelReadyNote, researchStartNote, soldNote, hireWelcome, fireSendoff } from "../engine/notices";
 import { challengeById } from "../engine/challenges";
 import { ParadigmPanel } from "./ParadigmPanel";
@@ -116,11 +129,13 @@ export function App() {
   const notice = useGame((s) => s.notice);
   const worldEvent = useGame((s) => s.worldEvent);
   const candidates = useGame((s) => s.candidates);
+  const savingFor = useGame((s) => s.savingFor);
+  const saveEpoch = useGame((s) => s.saveEpoch);
   const { doStartRun, doClaim, doBuyUpgrade, doBuyUpgradeBulk, doBuyOfficePerk, doBuyReputationPerk, doBuyEndowment, doFoundWing, doPickDirective, doRespecDirective, doPlaceStake, doBuyLegacyPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
     doClaimContract, doClaimSponsor, doBuyPreprint, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
-    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doCounterRival, doFundChallenge, doChooseFork, doFundMegaproject, doClaimObjective, doToggleAutomation, doStartTrial, doAbandonTrial, doSetFlagship, doBuyParadigm, doClaimDoctrine, doBuyInstitute, doEndowFellowship, doPickMandate } =
+    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doDeclareStance, doCounterRival, doFundChallenge, doChooseFork, doFundMegaproject, doClaimObjective, doToggleAutomation, doStartTrial, doAbandonTrial, doSetFlagship, doBuyParadigm, doClaimDoctrine, doBuyInstitute, doEndowFellowship, doPickMandate } =
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
@@ -170,8 +185,11 @@ export function App() {
   const [launch, setLaunch] = useState<{ type: ProductTypeId; name: string } | null>(null);
   const [pendingExpansion, setPendingExpansion] = useState<string | null>(null);
   const [pendingRetire, setPendingRetire] = useState<string | null>(null);
+  const [pendingFlagship, setPendingFlagship] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const portalOpen = usePortalOpen();
+  const [breaking, setBreaking] = useState<Breaking | null>(null);
   const [challengeDoneId, setChallengeDoneId] = useState<string | null>(null); // Grand Challenge just completed → moment
   const [flash, setFlash] = useState(0); // AGI ascension screen flash (key replays the anim)
   const [dailyOn, setDailyOn] = useState(() => dailyAvailable());
@@ -197,15 +215,20 @@ export function App() {
   const markShipExplained = useSettings((s) => s.markShipExplained);
   const achievementsSeen = useSettings((s) => s.achievementsSeen);
   const markAchievementsSeen = useSettings((s) => s.markAchievementsSeen);
+  const rebaseAchievementsSeen = useSettings((s) => s.rebaseAchievementsSeen);
   const [showShipExplainer, setShowShipExplainer] = useState(false);
 
   // Rate-history sampler for the Lab Stats sparklines (session-only, UI-side).
-  // Reads this render's derive via a ref so the interval never re-arms.
+  // Reads this render's game + derive via refs so the interval never re-arms. Data is
+  // the rate the bar and the Lab Stats row quote (runs included once they restart
+  // themselves), so the trace trends the number printed beside it.
   const dRef = useRef(d);
   dRef.current = d;
+  const gRef = useRef(game);
+  gRef.current = game;
   useEffect(() => {
     const t = window.setInterval(
-      () => sampleHistory(dRef.current.computePerSec, dRef.current.dataPerSec, dRef.current.passiveMoneyPerSec),
+      () => sampleHistory(dRef.current.computePerSec, barRates(gRef.current, dRef.current).data, dRef.current.passiveMoneyPerSec),
       SAMPLE_MS,
     );
     return () => window.clearInterval(t);
@@ -227,16 +250,23 @@ export function App() {
   // consequence of something the player just did; this is the only uninvited one, so
   // it's the only one that waits. The store holds it in a single slot, so it simply
   // shows once the sheet closes. (2026-08 — reproduced in a seeded smoke run.)
-  const sheetOpen = showSettings || !!pendingExpansion || confirmReset || !!pendingRetire;
+  const sheetOpen = showSettings || !!pendingExpansion || confirmReset || !!pendingRetire || !!pendingFlagship || portalOpen;
 
   // The moment queue's head: exactly ONE full-screen moment renders at a time,
   // by priority. Dismissing the head lets the next pending one show.
-  const moment = offline ? "offline"
+  // A recap raised on RESUME is uninvited too (the phone may have been locked with a
+  // sheet up), so it waits for the sheet like the era and world moments. Moments
+  // render inside `.app`, beneath every portalled sheet and Settings' backdrop: one
+  // that didn't wait was drawn under the sheet while it took keyboard focus and
+  // Escape. A cold-launch recap has nothing open to wait for.
+  const moment = offline && !sheetOpen ? "offline"
     : celebration ? "celebration"
-    : eraMoment !== null ? "era"
+    // An era crossing is earned by passive progress too, so like a world event it
+    // is uninvited and waits for an open sheet rather than stacking on it.
+    : eraMoment !== null && !sheetOpen ? "era"
     : challengeDoneId ? "challenge"
     : launch ? "launch"
-    : worldEvent && !sheetOpen ? "world"
+    : worldEvent && worldEventIsDecision(worldEvent) && !sheetOpen ? "world"
     : null;
 
   const era = currentEra(game);
@@ -268,25 +298,40 @@ export function App() {
   // no-op on web). Keeps the localStorage cache from being the source of truth.
   useEffect(() => { void iap.refresh(); }, []);
 
+  // Sheets and modals portal into <body>, outside `.app`, so the reduce-motion class
+  // on the app root never reached them (their spring-ins kept playing with the
+  // toggle on). Mirror it on <html>, which contains everything.
+  useEffect(() => {
+    document.documentElement.classList.toggle("reduce-motion", reducedMotion);
+  }, [reducedMotion]);
+
+  // The pinned resource bar paints an opaque slab far above itself so content can't
+  // bleed through during iOS overscroll. At rest that slab sat on top of the brand
+  // header and hid it entirely, so the slab only reaches up once the page has
+  // actually scrolled past the header (see `.resource-bar::before`).
+  useEffect(() => {
+    const root = document.documentElement;
+    const onScroll = () => {
+      const past = window.scrollY > 40;
+      if (past !== root.hasAttribute("data-scrolled")) root.toggleAttribute("data-scrolled", past);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   // Return reminders (opt-in, native-only): on background, schedule ONE honest
   // notification for when the offline cap fills; on return, cancel it. Reads fresh
   // state in the handler so it always reflects the current setting / production /
   // premium cap. A safe no-op on web and until the player enables the toggle.
-  useEffect(() => {
-    const onVis = () => {
-      if (document.visibilityState === "hidden") {
-        if (!useSettings.getState().notifyReminders) return;
-        const g = useGame.getState().game;
-        const producing = derive(g).computePerSec.gt(0) || g.products.active.length > 0;
-        const capHours = isPremium() ? balance.offline.premiumMaxHours : balance.offline.maxHours;
-        void scheduleReturnReminder(capHours, producing);
-      } else {
-        void cancelReturnReminder();
-      }
+  useEffect(() => watchReturnReminders(() => {
+    const g = useGame.getState().game;
+    return {
+      enabled: useSettings.getState().notifyReminders,
+      producing: derive(g).computePerSec.gt(0) || g.products.active.length > 0,
+      capHours: isPremium() ? balance.offline.premiumMaxHours : balance.offline.maxHours,
     };
-    document.addEventListener("visibilitychange", onVis);
-    return () => document.removeEventListener("visibilitychange", onVis);
-  }, []);
+  }), []);
 
   // The daily boost was only checked at mount, so a session left open across the
   // day rollover never saw the bar reappear. Re-check on a slow tick and whenever
@@ -316,10 +361,13 @@ export function App() {
 
   // Progressive disclosure (reveal depth in waves — GDD): Research appears after
   // your first payout (you need Data to research); Prestige once you're on the path.
-  const showResearch = game.resources.data.gt(0) || game.research.length > 0;
-  const showPrestige = game.research.length > 0;
-  const showMarket = game.research.length > 0;
-  const showStaff = balance.staff.enabled && game.research.length >= balance.staff.revealAtResearch;
+  // A lab that has shipped keeps them all (see labReveal), and the advisor reads the
+  // same gates, so a chip never points at a tab that isn't drawn.
+  const reveal = labReveal(game);
+  const showResearch = reveal.research;
+  const showPrestige = reveal.prestige;
+  const showMarket = reveal.market;
+  const showStaff = reveal.staff;
   const showProducts = productsUnlocked(game);
   const [tab, setTab] = useState<"lab" | "products" | "employees" | "goals">("lab");
   // GOALS remembers which horizon you were reading, like the Lab remembers its section.
@@ -342,13 +390,30 @@ export function App() {
   // tab. On-device only; no-op when opted out (see src/state/telemetry.ts).
   // Stable identity so GoalsPanel's effect doesn't re-fire every render.
   const onCollectionSeen = useCallback(() => markAchievementsSeen(game.achievements.length), [markAchievementsSeen, game.achievements.length]);
+  // The "seen" mark outlives the save (it lives in settings). When the save is
+  // replaced by one with fewer achievements — Hard Reset, an older backup — lower
+  // the mark to it so the badge counts new unlocks again. Waits for hydration: the
+  // pre-load placeholder state holds no achievements at all.
+  useEffect(() => {
+    if (initialized) rebaseAchievementsSeen(game.achievements.length);
+  }, [initialized, game.achievements.length, rebaseAchievementsSeen]);
   const goTab = useCallback((next: "lab" | "products" | "employees" | "goals") => {
     setTab((cur) => {
       if (cur !== next) recordTelemetry({ kind: "tab", t: Date.now(), tab: next });
       return next;
     });
   }, []);
+  // Land a wayfinder tap (advisor chip, goal strip) on its tab AND the pane in it.
+  const goTo = (dest: Destination) => {
+    if (dest.goalsSection) setGoalsSection(dest.goalsSection);
+    if (dest.labSection) goSection(dest.labSection);
+    goTab(dest.tab);
+  };
   const shipReady = canPrestige(game);
+  // The ship CALLS (explainer sheet, gold HQ dot, pulsing Lab icon) wait until the
+  // first Ship is worth the reset, matching the advisor and the goal strip, which
+  // say "grow it" until then. After the first ship, ready means ready.
+  const shipCalls = shipReady && (game.prestige.ships > 0 || nextRunMultiplier(game).toNumber() >= FIRST_SHIP_WORTH_IT);
 
   // Transient unlock toasts.
   const [toasts, setToasts] = useState<ToastData[]>([]);
@@ -384,15 +449,22 @@ export function App() {
   // and no way to add a toast but forget its hydration baseline (which would
   // re-toast returning players). The faction row keys on the tilt DIRECTION
   // (doomer/accel), so a lab that later flips sides is told about the flip too.
-  const alignDir = game.alignment === 0 ? "" : game.alignment > 0 ? "accel" : "doomer";
-  const transitionToasts: { key: string; fact: string | boolean; when: string | boolean; text: string; tone: ToastData["tone"] }[] = [
-    { key: "research", fact: showResearch, when: true, text: "Research unlocked", tone: "good" },
-    { key: "market", fact: showMarket, when: true, text: "Data Market unlocked", tone: "good" },
-    { key: "prestige", fact: showPrestige, when: true, text: "The path to shipping is open", tone: "good" },
+  // From the Doctrine reveal on, the player DECLARES a stance in the Lab Charter —
+  // telling them their choices "tilt" the lab every run would narrate their own tap.
+  const alignDir = game.alignment === 0 || doctrineUnlocked(game) ? "" : game.alignment > 0 ? "accel" : "doomer";
+  // Unlock lines fire once per session (stepTransitionToasts spends them); only rows
+  // marked `repeat` re-arm. The first Ship needs research, so a lab that has shipped
+  // has had the three opening reveals — keying them on ships too keeps them quiet
+  // after a relaunch in the gap between a Ship and the next payout.
+  const shipped = game.prestige.ships > 0;
+  const transitionToasts: TransitionToast[] = [
+    { key: "research", fact: showResearch || shipped, when: true, text: "Research unlocked", tone: "good" },
+    { key: "market", fact: showMarket || shipped, when: true, text: "Data Market unlocked", tone: "good" },
+    { key: "prestige", fact: showPrestige || shipped, when: true, text: "The path to shipping is open", tone: "good" },
     // (No "You can Ship the Model!" toast — the same state change already opens the
     // one-time ship explainer sheet and lights the HQ dot. 2026-08 noise sweep.)
-    { key: "align", fact: alignDir, when: "accel", text: "Your choices tilt the lab accelerationist — faster, hotter. See Lab Stats.", tone: "neutral" },
-    { key: "align", fact: alignDir, when: "doomer", text: "Your choices tilt the lab doomer — safer, steadier. See Lab Stats.", tone: "neutral" },
+    { key: "align", fact: alignDir, when: "accel", text: "Your choices tilt the lab accelerationist — faster, hotter. See Lab Stats.", tone: "neutral", repeat: true },
+    { key: "align", fact: alignDir, when: "doomer", text: "Your choices tilt the lab doomer — safer, steadier. See Lab Stats.", tone: "neutral", repeat: true },
     { key: "autoTrain", fact: d.autoTrain, when: true, text: "Auto-train online — runs restart themselves. Set your training intensity.", tone: "good" },
     { key: "hired", fact: game.stats.employeesHired > 0, when: true, text: "First hire aboard — specialists level up as they work", tone: "good" },
     // Systems that used to appear as unexplained new panels (onboarding audit): one
@@ -403,7 +475,7 @@ export function App() {
     { key: "legacytree", fact: legacyAvailable(game).gt(0), when: true, text: "Legacy Investments unlocked — spend Legacy Weights on a permanent lane focus in HQ → Prestige.", tone: "good" },
     { key: "endowment", fact: endowmentUnlocked(game), when: true, text: "Reputation Endowment unlocked — you own the whole perk tree; pour surplus Reputation into a permanent, escalating boost in HQ → Lab Reputation.", tone: "good" },
     // Heat used to explain itself only by punishing you (pre-launch audit).
-    { key: "heat", fact: game.heat >= 25, when: true, text: "Regulatory Heat is rising — fines and raids get likelier. Time and lobbying cool it.", tone: "neutral" },
+    { key: "heat", fact: game.heat >= 25, when: true, text: "Regulatory Heat is rising — fines and raids get likelier. Time and lobbying cool it.", tone: "neutral", repeat: true },
     // Gentle backup nudge (R8.2): once real progress exists and no backup ever
     // has, say it ONCE. No timers, no urgency — a fact-transition like the rest.
     { key: "backup", fact: game.prestige.ships >= 2 && lastBackupAt === null, when: true, text: "Two generations banked — your save lives only on this device. Back it up in More → Back up.", tone: "neutral" },
@@ -418,29 +490,54 @@ export function App() {
       tone: "good" as const,
     })),
   ];
-  const seenFacts = useRef<Record<string, string | boolean>>({});
-  const syncedToSave = useRef(false);
+  const toastMemory = useRef(newTransitionMemory());
   // Effect dep: a compact signature of all facts, so the effect runs exactly when
   // one of them changes (not on every 10Hz render).
   const factSignature = transitionToasts.map((t) => `${t.key}=${t.fact}`).join("|");
+  // Toasts sit under every modal and sheet backdrop, and a line lives ~4s. The first
+  // Ship flips the Charter and Legacy Investments facts inside its own celebration, so
+  // their one-time lines played out unread behind it and were spent for the session.
+  // Hold the lines (the facts are re-read, not lost) until the stage is clear. The
+  // render that lands a Ship counts as busy too: its celebration is only set by the
+  // ship effect below, after this one has run.
+  const stageBusy = moment !== null || sheetOpen || game.prestige.ships > prevShips.current;
+  // A Hard Reset (or a Restore, before its reload) swaps the whole save under the running
+  // app (the store bumps saveEpoch). Every effect below that diffs the game across renders
+  // must take the new save as its baseline: a restored 7-ship backup is not a Ship, and a
+  // reset lab's market climbs are not measured against the old lab's #1 (nor its unlock
+  // lines already spent). Declared before them so it runs first in the same commit.
+  const epochSeen = useRef(saveEpoch);
+  useEffect(() => {
+    if (epochSeen.current === saveEpoch) return;
+    epochSeen.current = saveEpoch;
+    prevShips.current = game.prestige.ships;
+    prevWeights.current = game.prestige.legacyWeights;
+    prevAscensions.current = game.stats.ascensions;
+    seenEra.current = era;
+    eraShips.current = game.prestige.ships;
+    bestRank.current = myRank;
+    syncedRank.current = myRank != null; // a lab with no product yet baselines on its first
+    prevBadIncidents.current = new Set(game.modifiers.filter(isIncident).map((m) => m.id));
+    toastMemory.current = newTransitionMemory();
+    stepTransitionToasts(transitionToasts, toastMemory.current); // baseline only: fires nothing
+    resetHistory(); // the sparklines belong to the old save
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saveEpoch]);
   useEffect(() => {
     // Wait for the save to hydrate, then sync the "seen" baseline once so we
     // don't toast facts the player already had on a returning load.
     if (!initialized) return;
-    // Check ALL rows before updating the seen-map — rows can share a key (the
-    // two faction directions), and an interleaved write would mask the second.
-    if (syncedToSave.current) {
-      for (const t of transitionToasts) {
-        if (seenFacts.current[t.key] !== t.fact && t.fact === t.when) pushToast(t.text, t.tone);
-      }
-    }
-    for (const t of transitionToasts) seenFacts.current[t.key] = t.fact;
-    syncedToSave.current = true;
+    if (stageBusy && toastMemory.current.synced) return;
+    for (const t of stepTransitionToasts(transitionToasts, toastMemory.current)) pushToast(t.text, t.tone);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialized, factSignature]);
+  }, [initialized, factSignature, stageBusy]);
 
   // First-ever ship-ready: queue the one-time explainer (settings-persisted).
   // Only for a first-generation lab — veterans already know what shipping does.
+  // Uninvited like the era and world moments (a "Save for this" pin or the Research
+  // Director buys the Ship node on its own, and the boost crosses the line as Money
+  // comes in), so it waits for an open sheet instead of stacking on it. Once up it
+  // stays up: its own sheet counts as open, and must not send it back to waiting.
   useEffect(() => {
     if (!initialized || shipExplained) return;
     if (game.prestige.ships > 0) {
@@ -450,8 +547,8 @@ export function App() {
       markShipExplained();
       return;
     }
-    if (shipReady) setShowShipExplainer(true);
-  }, [initialized, shipReady, shipExplained, game.prestige.ships, markShipExplained]);
+    if (shipCalls && !sheetOpen) setShowShipExplainer(true);
+  }, [initialized, shipCalls, shipExplained, game.prestige.ships, markShipExplained, sheetOpen]);
 
   // Era transitions: a full-screen tentpole moment when the lab crosses an era.
   // Guarded by the same hydration sync so it never fires on a returning load.
@@ -504,11 +601,26 @@ export function App() {
     }
   }, [initialized, myRank]);
 
-  // Ambient world events: feedback when a new card appears.
+  // World events. Only a DECISION earns a full-screen card. The rest (about four in
+  // five fired, each of which used to take over the screen just to be dismissed with
+  // "Let's gooo") run on the newswire under the hall as a BREAKING line. Their effect
+  // already landed at fire time, and a timed one shows as a chip in the modifier bar.
+  // The full story goes to Recent activity. (2026-09 pacing audit.)
   useEffect(() => {
     if (!worldEvent) return;
-    if (worldEvent.tone === "good") { haptics.success(); sound.success(); }
-    else { haptics.warn(); sound.alert(); }
+    if (worldEventIsDecision(worldEvent)) {
+      if (worldEvent.tone === "good") { haptics.success(); sound.success(); }
+      else { haptics.warn(); sound.alert(); }
+      return;
+    }
+    logEvent(`${worldEvent.headline} — ${worldEvent.body} (${worldEvent.summary})`, worldEvent.tone);
+    setBreaking({ key: worldEvent.key, text: `${worldEvent.headline} · ${worldEvent.summary}`, tone: worldEvent.tone });
+    // App owns the expiry: the ticker unmounts on section switches, so a timer kept
+    // inside it restarted and re-announced an old story on every return to Build.
+    const key = worldEvent.key;
+    window.setTimeout(() => setBreaking((b) => (b && b.key === key ? null : b)), BREAKING_MS);
+    if (worldEvent.tone === "bad") haptics.warn(); // a setback is felt, not announced
+    dismissWorldEvent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [worldEvent?.key]);
 
@@ -589,7 +701,7 @@ export function App() {
   const incidentsSynced = useRef(false);
   useEffect(() => {
     if (!initialized) return;
-    const now = new Set(game.modifiers.filter((m) => m.tone === "bad" && m.remainingSec > 0).map((m) => m.id));
+    const now = new Set(game.modifiers.filter(isIncident).map((m) => m.id));
     const before = prevBadIncidents.current;
     if (incidentsSynced.current && before.size > 0 && now.size === 0 && game.prestige.ships === prevShips.current) {
       sound.incidentCleared();
@@ -614,20 +726,9 @@ export function App() {
     }
     if (game.prestige.ships > prevShips.current) {
       const gained = game.prestige.legacyWeights.sub(prevWeights.current);
-      // Prefer the just-finished run's peaks (captured by prestige before the reset)
-      // so the report reflects THIS generation, not all-time career bests. Fall back
-      // to career stats only if the snapshot is somehow absent.
-      const ship = game.lastShipReport;
-      const report = {
-        gen: game.prestige.ships,
-        rank: playerMarketRank(game),
-        peakCompute: ship?.peakCompute ?? game.stats.peakComputePerSec,
-        peakMrr: ship?.peakMrr ?? game.stats.peakMrr,
-        era: currentEra(game),
-        alignment: game.alignment,
-        productsLive: game.products.active.length,
-        rivalsBeaten: rivalsBeaten(game),
-      };
+      // Read the just-finished run from prestige()'s snapshot (taken before the reset)
+      // so the report reflects THIS generation, not the fresh lab it left behind.
+      const report = shipReportFor(game);
       const ascended = game.stats.ascensions > prevAscensions.current;
       resetHistory(); // the new generation's sparklines start from its own floor
       setCelebration({ gained, total: game.prestige.legacyWeights, report, ascended });
@@ -636,7 +737,8 @@ export function App() {
       void gameCenterSubmitScores(game);
       // The flagship you just shipped is waiting as a free-to-launch product —
       // make sure the player knows (a ship that "gave nothing" was the #1 confusion).
-      if (game.products.drafts.length > 0) {
+      // Only when this ship really left one to launch by hand (see shipLanding.ts).
+      if (shipLeftModelToLaunch(game)) {
         pushToast(modelReadyNote(game.prestige.ships), "good");
       }
       // An AGI ascension (a ship in the Post-Singularity era) gets the grander beat:
@@ -732,6 +834,22 @@ export function App() {
   // — native panel, and it froze the game loop while open). Cancelling leaves the
   // product-management sheet exactly as it was.
   const onRetireProductFx = (id: string) => setPendingRetire(id);
+  // Moving the flag resets the brand to zero: a built-up one (up to +30% revenue, earned
+  // over ten ships) is gone for good, so that move asks first. A first flag, or a move
+  // off a brand with no tenure yet, happens on the tap.
+  const onSetFlagship = (id: string) => {
+    if (flagshipBrandLost(game, id)) { setPendingFlagship(id); return; }
+    haptics.tap(); sound.tap(); doSetFlagship(id);
+  };
+  const flagshipTarget = pendingFlagship ? game.products.active.find((x) => x.id === pendingFlagship) ?? null : null;
+  const flagshipLoss = flagshipTarget ? flagshipBrandLost(game, flagshipTarget.id) : null;
+  const flagshipFrom = flagshipLoss ? game.products.active.find((x) => x.id === flagshipLoss.productId) ?? null : null;
+  // Nothing left to ask about (the target was sold, the brand already moved): drop the
+  // question rather than leave an empty sheet holding the moment queue.
+  const flagshipAsk = !!flagshipTarget && !!flagshipLoss && !!flagshipFrom;
+  useEffect(() => {
+    if (pendingFlagship && !flagshipAsk) setPendingFlagship(null);
+  }, [pendingFlagship, flagshipAsk]);
   const retireTarget = pendingRetire ? game.products.active.find((x) => x.id === pendingRetire) ?? null : null;
   const confirmRetire = () => {
     const id = pendingRetire;
@@ -811,6 +929,9 @@ export function App() {
     }
   };
 
+  // The bar's rate lines: what the numbers actually do (see barRates in format.ts).
+  const rates = barRates(game, d);
+
   return (
     <div className={`app${reducedMotion ? " reduce-motion" : ""}${booted ? " app-booted" : ""}${tab === "lab" && section === "build" ? " app-split" : ""}`}>
       <div className="aurora" aria-hidden="true">
@@ -834,8 +955,9 @@ export function App() {
         data={game.resources.data}
         money={game.resources.money}
         computeRate={d.computePerSec}
-        dataRate={d.dataPerSec}
-        moneyRate={d.passiveMoneyPerSec}
+        dataRate={rates.data}
+        moneyRate={rates.money}
+        quiet={d.autoTrain && game.computeFocus > 0}
       />
       <ModifierBar
         modifiers={game.modifiers}
@@ -870,11 +992,7 @@ export function App() {
               className="advisor-chip"
               onClick={() => {
                 haptics.tap(); sound.tap();
-                goTab(nudge.tab);
-                // Only deep-link into a Lab section while the section switcher
-                // exists — before that the Lab renders Build alone, and setting a
-                // hidden section would both dead-tap now and mis-land later.
-                if (nudge.tab === "lab" && nudge.section && labSectioned) goSection(nudge.section);
+                goTo(nudgeDestination(nudge, labSectioned));
               }}
             >
               <span className="advisor-mark" aria-hidden="true">➤</span>
@@ -889,11 +1007,7 @@ export function App() {
               title={goal.desc}
               onClick={() => {
                 haptics.tap();
-                if (goal.kind === "achievement" || goal.kind === "milestone") { setGoalsSection("collection"); goTab("goals"); }
-                else {
-                  goTab("lab");
-                  if (labSectioned) goSection(goal.kind === "era" && era === 0 ? "research" : "hq");
-                }
+                goTo(goalDestination(goal, { shipReady, era, labSectioned }));
               }}
             >
               <span className="goal-fill" style={{ width: `${Math.round(goal.progress * 100)}%` }} aria-hidden="true" />
@@ -908,7 +1022,6 @@ export function App() {
             game={game}
             section={goalsSection}
             onSection={(next) => { haptics.tap(); if (next !== goalsSection) window.scrollTo(0, 0); setGoalsSection(next); }}
-            showContracts={showResearch}
             onClaimObjective={onClaimObjective}
             onClaimContract={onClaimContract}
             onClaimSponsor={() => { haptics.success(); sound.success(); doClaimSponsor(); }}
@@ -939,7 +1052,7 @@ export function App() {
             onBuyFeature={doBuyFeature}
             onRename={doRenameProduct}
             onRetire={onRetireProductFx}
-            onSetFlagship={(id) => { haptics.tap(); sound.tap(); doSetFlagship(id); }}
+            onSetFlagship={onSetFlagship}
             onCounterRival={(name) => {
               if (!doCounterRival(name)) return;
               haptics.success(); sound.alert();
@@ -977,7 +1090,7 @@ export function App() {
                   Research{labAttention.research > 0 && <span className="tab-dot">{labAttention.research}</span>}
                 </button>
                 <button className={`tab ${section === "hq" ? "on" : ""}`} aria-current={section === "hq" ? "true" : undefined} onClick={() => { haptics.tap(); goSection("hq"); }}>
-                  HQ{shipReady && section !== "hq"
+                  HQ{shipCalls && section !== "hq"
                     ? <span className="tab-dot ship-ready" role="status" aria-label="Ship ready" />
                     : labAttention.hq > 0 && <span className="tab-dot">{labAttention.hq}</span>}
                 </button>
@@ -992,15 +1105,19 @@ export function App() {
                     layout-invisible (same flat stage as before). */}
                 <div className="stage-left">
                   <HallCanvas onExpand={setPendingExpansion} />
-                  {!firstSteps && <NewsTicker />}
-                  {firstSteps && <FirstSteps game={game} />}
+                  {!firstSteps && <NewsTicker breaking={breaking} />}
+                  {/* The dock comes BEFORE the checklist: on a 390×844 phone the
+                      checklist used to push the game's one button under the bottom
+                      nav on the very first screen. */}
                   <TrainingDock game={game} derived={d} onStart={onStart} onClaim={onClaim} onSetFocus={setComputeFocus} />
+                  {firstSteps && <FirstSteps game={game} />}
                 </div>
                 <div className="stage-right">
                   <CharterPanel
                     game={game}
                     onSet={(id) => { haptics.tap(); sound.tap(); doSetCharter(id); }}
                     onLock={() => { haptics.success(); sound.purchase(); doLockCharter(); }}
+                    onStance={(st) => { haptics.tap(); sound.tap(); doDeclareStance(st); }}
                   />
                   <UpgradePanel game={game} derived={d} onBuy={onBuy} onFoundWing={() => { haptics.celebrate(); sound.purchase(); doFoundWing(); }} />
                   {componentsUnlocked(game) && (
@@ -1016,7 +1133,16 @@ export function App() {
             )}
             {section === "research" && (
               <>
-                {showResearch && <ResearchPanel game={game} derived={d} onResearch={onResearch} onBuyPreprint={() => { haptics.success(); sound.purchase(); doBuyPreprint(); }} />}
+                {showResearch && (
+                  <ResearchPanel
+                    game={game}
+                    derived={d}
+                    onResearch={onResearch}
+                    onBuyPreprint={() => { haptics.success(); sound.purchase(); doBuyPreprint(); }}
+                    savingFor={savingFor?.id ?? null}
+                    onSaveFor={(id) => { haptics.tap(); sound.tap(); useGame.getState().doSaveFor(id); }}
+                  />
+                )}
                 {paradigmsUnlocked(game) && <ParadigmPanel game={game} onBuy={(id) => { haptics.celebrate(); sound.purchase(); doBuyParadigm(id); }} />}
                 {showMarket && <DataMarketPanel game={game} onBuyData={onBuyData} onBuyTool={onBuy} onLobby={() => { haptics.tap(); sound.purchase(); doLobby(); }} />}
               </>
@@ -1043,7 +1169,7 @@ export function App() {
                   </Collapsible>
                 )}
                 <StatsPanel game={game} derived={d} />
-                {game.prestige.ships > 0 && <CodexPanel game={game} />}
+                {codexRevealed(game) && <CodexPanel game={game} />}
                 <EventLog log={log} />
               </>
             )}
@@ -1059,9 +1185,6 @@ export function App() {
         )}
 
         <footer className="footer">
-          <button className="link-btn" onClick={() => setConfirmReset(true)}>
-            reset save
-          </button>
           <span className="footer-flavor">Singularity Inc. — disrupting disruption since today.</span>
         </footer>
       </main>
@@ -1069,7 +1192,7 @@ export function App() {
       <nav className="botnav" aria-label="Primary">
         {/* Destinations use aria-current; Awards/More are actions (open modals),
             so this is a nav bar, not a tablist (the panes aren't tab panels). */}
-        <button className={`botnav-item ${tab === "lab" ? "on" : ""} ${shipReady && tab !== "lab" ? "ship-ready" : ""}`} aria-current={tab === "lab" ? "page" : undefined} aria-label={shipReady && tab !== "lab" ? "Lab — ready to ship" : undefined} onClick={() => { haptics.tap(); if (shipReady && tab !== "lab") goSection("hq"); goTab("lab"); }}>
+        <button className={`botnav-item ${tab === "lab" ? "on" : ""} ${shipCalls && tab !== "lab" ? "ship-ready" : ""}`} aria-current={tab === "lab" ? "page" : undefined} aria-label={shipCalls && tab !== "lab" ? "Lab — ready to ship" : undefined} onClick={() => { haptics.tap(); if (shipCalls && tab !== "lab") goSection("hq"); goTab("lab"); }}>
           <span className="botnav-ic"><FlaskIcon size={23} /></span><span className="botnav-lbl">Lab</span>
           {/* Ship-ready is signalled AMBIENTLY here by the pulsing icon (the
               `ship-ready` class) — the word "Ship" was a redundant text badge on
@@ -1123,12 +1246,13 @@ export function App() {
             // A fresh run starts at the hall — don't leave the Lab parked on HQ.
             setLabSection("build");
             // Land the player on their reward: a freshly-shipped model waiting to
-            // be commercialised. Removes the "I shipped and got nothing" dead-end.
-            if (productsUnlocked(game) && game.products.drafts.length > 0) setTab("products");
+            // be commercialised. Removes the "I shipped and got nothing" dead-end —
+            // but only when a slot is free, or it lands on a wall of "Slots full".
+            if (draftLaunchable(game)) setTab("products");
           }}
         />
       )}
-      {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} />}
+      {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} onReset={() => { setShowSettings(false); setConfirmReset(true); }} />}
       {moment === "challenge" && challengeDoneId && challengeById.get(challengeDoneId) && (
         <ChallengeComplete challenge={challengeById.get(challengeDoneId)!} onDone={() => setChallengeDoneId(null)} />
       )}
@@ -1139,15 +1263,30 @@ export function App() {
           onDecline={() => setPendingExpansion(null)}
         />
       )}
-      {retireTarget && (
+      {retireTarget && (() => {
+        // Selling the flagship ends its brand too (retireProduct clears it): say so.
+        const brand = game.flagship.productId === retireTarget.id ? flagshipBrandLost(game, null) : null;
+        return (
         <ConfirmSheet
           kicker="SELL PRODUCT"
           title={`Sell ${retireTarget.name}?`}
-          body={`Take the ${fmtMoney(Big.of(Math.round(retirePayout(game, retireTarget.id))))} buyout. This is permanent — the product and its users are gone.`}
+          body={`Take the ${fmtMoney(Big.of(Math.round(retirePayout(game, retireTarget.id))))} buyout. This is permanent — the product and its users are gone${brand ? `, and so is its flagship brand (+${brand.pct}% revenue)` : ""}.`}
           confirmLabel="Sell it"
           danger
           onConfirm={confirmRetire}
           onCancel={() => setPendingRetire(null)}
+        />
+        );
+      })()}
+      {flagshipAsk && (
+        <ConfirmSheet
+          kicker="FLAGSHIP"
+          title={`Make ${flagshipTarget!.name} your flagship?`}
+          body={`${flagshipFrom!.name}'s brand — +${flagshipLoss!.pct}% revenue, built over ${flagshipLoss!.tenure} ship${flagshipLoss!.tenure === 1 ? "" : "s"} — is lost. ${flagshipTarget!.name} starts its own from zero.`}
+          confirmLabel="Move the flag"
+          danger
+          onConfirm={() => { const id = flagshipTarget!.id; setPendingFlagship(null); haptics.tap(); sound.tap(); doSetFlagship(id); }}
+          onCancel={() => setPendingFlagship(null)}
         />
       )}
       {confirmReset && (
@@ -1201,7 +1340,7 @@ export function App() {
         <ConfirmSheet
           kicker="SHIP THE MODEL"
           title="Your first Ship is ready"
-          body="Shipping resets this run — Compute, Data, $, racks, parts and research — and banks Legacy Weights: a permanent boost to every future run. Your team, products, trophies, achievements and Reputation all stay. Shipping is how you grow."
+          body="Shipping resets this run — Compute, Data, $, racks, parts, office perks and research — and banks Legacy Weights: a permanent boost to every future run. Your team, products, trophies, achievements and Reputation all stay. Shipping is how you grow."
           confirmLabel="Got it"
           hideCancel
           onConfirm={() => { markShipExplained(); setShowShipExplainer(false); }}
@@ -1211,7 +1350,8 @@ export function App() {
       {/* Onboarding waits for a clear stage: any full-screen moment (offline,
           launch, celebration…) plays first — never two overlays stacked. */}
       {!onboarded && moment === null && <Onboarding onDone={completeOnboarding} />}
-      <ToastStack toasts={toasts} onDone={dropToast} />
+      {/* Covered toasts keep their life for when the stage clears (see Toast). */}
+      <ToastStack toasts={toasts} onDone={dropToast} paused={stageBusy} />
       <FxCanvas reducedMotion={reducedMotion} />
       {flash > 0 && !reducedMotion && <div key={flash} className="screen-flash" aria-hidden="true" onAnimationEnd={() => setFlash(0)} />}
     </div>

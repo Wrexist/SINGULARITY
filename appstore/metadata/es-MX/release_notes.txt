@@ -1,11 +1,10 @@
 En esta actualización:
 
-• Grand Challenges — moonshots de largo aliento con recompensas permanentes.
-• Objetivos de laboratorio — una nueva escalera de metas que llega hasta lo más profundo del endgame.
-• Automatización — pilotos automáticos para la talacha.
-• Un fork de investigación en cada run y visuales de progreso más vivos.
-• Y esta página de la tienda, ahora en español.
+• Nuevo en cada generación: declara tu postura (Safety, Center o Acceleration) y desbloquea las ventajas de Doctrina de ese lado. Además, cada Ship te reparte tres Cartas del Laboratorio, incluidas algunas que cambian las reglas.
+• Pruebas Unplugged: apaga el Legacy durante una generación y vuelve a jugar una partida completa. Tus récords de Compute ahora te dan Reputación del Laboratorio.
+• Objetivos más claros: siempre ves tu siguiente paso y cuándo realmente conviene hacer Ship.
+• «Ahorrar para esto»: toca una investigación fuera de alcance y el laboratorio junta la Compute y la compra por ti.
+• Más calma: solo te interrumpen las decisiones reales; lo demás corre en el teletipo de noticias. Funciona mejor con VoiceOver y tiene áreas táctiles más grandes.
+• Más fluido en iPhone anteriores, tiempo sin conexión exacto y más de 60 correcciones.
 
-De pilón: ajustes de balance y estabilidad.
-
-Seguimos sin anuncios. Seguimos sin pay-to-win.
+Sigue sin anuncios. Sigue sin pay-to-win.
