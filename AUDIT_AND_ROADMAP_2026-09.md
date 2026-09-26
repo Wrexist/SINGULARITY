@@ -319,6 +319,58 @@ Deferred, owner's call:
   weakens saves already at ×1e6+. Unplugged Trials give veterans a real run without
   touching it.
 
+**Round 4b and PR review.** A re-run of the app-lifecycle checks, plus fixes for two
+Codex review findings on the PR:
+- **Premium can no longer be lost at launch.** StoreKit reports "not owned" until
+  receipts load, and that used to be read as a revocation. The trade-off is that a
+  refund no longer revokes Premium on the device, because there is no receipt check.
+- **Restore says when the store is unreachable,** instead of "no purchase found".
+- **The return reminder never fires while the app is open.**
+- **Storage failures are handled.** Restore and Hard Reset stay honest when a write is
+  refused, and a failed Restore puts the old lastSeen back.
+- **The Team tab no longer re-renders every row every frame.** With 512 staff it used to
+  keep the main thread about 94% busy.
+- **A product sale is valued on its buffed revenue.** Product Company and staff ARPU
+  buffs were being left out.
+
+**Round 5** covered four areas: offline versus online parity, a store-level invariant
+fuzzer (now `src/state/storeFuzz.test.ts`), world events and news, and reduced motion
+plus accessibility. The round landed 16 fixes. The suite is at 1503 tests and the sim
+is still identical. Highlights:
+- **The Research Director buys on time while the app is away.** A lab left right after a
+  Ship used to come back with about 1% of the app-open Money after 5 minutes; now it is
+  about 75%, and about 98.5% after an hour. Offline still trails live play slightly in the
+  first minutes after a Ship, because a long window trains runs in slices.
+- **The autopilots (Version, Objective, Contract) run through an offline catch-up.** An
+  8-hour night used to leave every product on its bedtime version. The away recap now
+  names every version shipped.
+- **A world decision raised behind the give-away Ship confirm is not answered on the
+  fresh lab.** After a Hard Reset or Restore, the App re-takes its baselines and forgets
+  recent world events.
+- **Event copy reads true.**
+  - Product toasts name the product; a `$` in a player-typed name no longer corrupts them.
+  - No product events in a lab without Products.
+  - Buzz waves no longer quote one length for every product.
+  - Newswire lines about the lab update as the lab changes.
+- **Accessibility.**
+  - The Reduced motion switch shows the device's iOS setting.
+  - Each Trial queue button is named.
+  - Trial and Rig Bay chips get 44pt hit areas.
+  - Charter draft cards expose their pressed state.
+  - The motion audit itself was clean: 0 running animations and 0 changed canvas pixels
+    under either the OS or the in-app reduce-motion setting.
+
+Round 5, left for the owner:
+- **Reduced motion default.** A fresh install seeds the in-app Reduced motion setting
+  from the OS. Since the OS preference is now read live, consider defaulting it to off.
+- **Small tap targets elsewhere.** Several controls are under 44pt: Lab section tabs,
+  buy-quantity buttons, contract Claim buttons, People/Projects segments and the
+  Settings backup buttons.
+- **Hard Reset and the activity log.** Should a Hard Reset also clear the activity log
+  and toasts?
+- **Milestone Money at $0 cash.** Offline keeps a milestone payout that live play spends
+  on marketing when cash is at $0. It favours the player and is bounded.
+
 ## Part 6 — App Store: "free to download"
 
 The listing copy already says "free" (`appstore/metadata/en-US/description.txt`:
