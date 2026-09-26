@@ -3235,13 +3235,16 @@ p.pd-flagship { cursor: default; text-align: center; margin-top: 0; }
 .rig-slot-label { font-size: var(--fs-md); font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rig-slot .rig-slot-sub { font-size: var(--fs-xs); color: var(--ink-3); }
 /* A tier's empty slots: one row of small dashed chips instead of a card each. */
-.rig-empties { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+/* Rows 10px apart so each 36px chip's hit area can grow to 44pt (5px a side from
+   inside its 1px border, below) without reaching into the wrapped row under it. */
+.rig-empties { display: flex; flex-wrap: wrap; gap: 10px 6px; margin-top: 8px; }
 .rig-slots + .rig-empties { margin-top: 8px; }
 .rig-slots:first-child, .rig-tier-head + .rig-empties { margin-top: 0; }
 .rig-empty {
   display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 6px 12px;
   border-radius: 999px; border: 1px dashed rgba(16, 24, 40, 0.22); background: rgba(255, 255, 255, 0.6);
   font-size: var(--fs-sm); font-weight: 700; color: var(--ink-2); cursor: pointer;
+  --hit-cap-y: -5px; --hit-cap-x: -3px;
 }
 .rig-empty:hover { border-color: color-mix(in srgb, var(--accent) 45%, transparent); color: var(--ink); }
 .rig-empty-plus { font-weight: 850; color: var(--accent); }
@@ -3929,7 +3932,10 @@ input[type="radio"]:focus-visible,
 .hall-wing,
 .research-cat-toggle,
 .prod-ms-head,
-.emp-perks-head {
+.emp-perks-head,
+.trial-attempt,
+.trial-abandon,
+.rig-empty {
   position: relative;
 }
 .sheet-close::after,
@@ -3940,7 +3946,10 @@ input[type="radio"]:focus-visible,
 .hall-wing::after,
 .research-cat-toggle::after,
 .prod-ms-head::after,
-.emp-perks-head::after {
+.emp-perks-head::after,
+.trial-attempt::after,
+.trial-abandon::after,
+.rig-empty::after {
   content: "";
   position: absolute;
   top: max(var(--hit-cap-y, -22px), min(0px, calc(50% - 22px)));
