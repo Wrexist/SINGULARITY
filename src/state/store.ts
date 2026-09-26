@@ -915,7 +915,10 @@ export const useGame = create<GameStore>((set, get) => ({
       // so the reset itself isn't mis-read as a purchase/era change next tick.
       lastSig = purchaseSignature(game.upgrades, game.research);
       lastEra = currentEra(game);
-      return { game, savingFor: null };
+      // A decision card still waiting (it holds while a sheet is open, and the give-away
+      // Ship's confirm is one) was drawn by the lab just shipped: answered on the fresh
+      // $0 lab, "Settle: −20% cash" or any "% of cash" trade was all but free.
+      return { game, savingFor: null, worldEvent: null };
     }),
   doClaimDaily: () => set((s) => ({ game: grantDailyBoost(s.game) })),
 
