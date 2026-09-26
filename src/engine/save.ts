@@ -870,7 +870,7 @@ export function deserialize(json: string): GameState {
     // (legacyTreeMods sums per entry and never checks prereqs on load).
     legacyInvestments: dedupeKnownIds(raw.legacyInvestments, LEGACY_IDS),
     components: sanitizeComponents(raw.components, contracts.completed, achievements, upgrades),
-    rivalOps: sanitizeRivalOps(raw.rivalOps),
+    rivalOps: sanitizeRivalOps(raw.rivalOps, stats.playtimeSec),
     // Legacy Wall records are display-only history, but still validated per-entry
     // (sanitizer policy: filter, don't wipe) and capped like prestige() caps them.
     shipLog: sanitizeShipLog(raw.shipLog, stats.totalShips),
@@ -967,7 +967,7 @@ function sanitizeShipLog(raw: unknown, totalShips: number): GameState["shipLog"]
 /** Rival counterplay is untrusted: KNOWN rival names only, strike counts clamped
  *  to the per-run max (a crafted save could otherwise zero every rival), and the
  *  cooldown stamp bounded so it can't push the next blitz into next century. */
-function sanitizeRivalOps(r: unknown): GameState["rivalOps"] {
+function sanitizeRivalOps(r: unknown, playtimeSec: number): GameState["rivalOps"] {
   const o = (r ?? {}) as Partial<GameState["rivalOps"]>;
   const strikes: Record<string, number> = {};
   if (o.strikes && typeof o.strikes === "object") {
@@ -978,7 +978,9 @@ function sanitizeRivalOps(r: unknown): GameState["rivalOps"] {
     }
   }
   const last = o.lastStrikeSec;
-  const lastStrikeSec = typeof last === "number" && Number.isFinite(last) && last >= 0 ? last : null;
+  // A stamp can never be later than the playtime it was taken at: one past it read as
+  // a cooldown of years. Clamped to now, the blitz waits one full press cycle.
+  const lastStrikeSec = typeof last === "number" && Number.isFinite(last) && last >= 0 ? Math.min(last, Math.max(0, playtimeSec)) : null;
   return { strikes, lastStrikeSec };
 }
 
