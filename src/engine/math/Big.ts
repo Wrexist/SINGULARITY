@@ -126,7 +126,9 @@ export class Big {
     const d = this.d;
     if (Number.isNaN(d.mantissa)) return "0";
     if (d.exponent >= 1e15) return d.mantissa < 0 ? "-∞" : "∞";
-    if (d.lt(1000)) return this.format(down);
+    // 999.5 up rounds onto 1000: carry it into "1.00e3" rather than handing format()
+    // a value it would print as "1K" in a scientific-notation lab.
+    if (d.lt(down ? 1000 : 999.5)) return this.format(down);
     let exp = Math.floor(d.e);
     let mant = d.div(new Decimal(10).pow(exp)).toNumber();
     if (down) return `${floorTo(mant, 2).toFixed(2)}e${exp}`;
@@ -146,12 +148,17 @@ function formatBig(d: Decimal, down = false): string {
   // path is now sanitized, but a display helper must degrade gracefully regardless.
   if (Number.isNaN(d.mantissa)) return "0";
   if (d.exponent >= 1e15) return d.mantissa < 0 ? "-∞" : "∞";
-  if (d.lt(1000)) {
+  // Sub-thousand (999.5 up rounds onto 1000, so it takes the "1K" tier below).
+  if (d.lt(down ? 1000 : 999.5)) {
     // Sub-thousand: show integers cleanly, small decimals with one place.
     const n = d.toNumber();
     if (Number.isInteger(n)) return n.toString();
     if (down) return n < 10 ? floorTo(n, 1).toFixed(1) : String(floorTo(n, 0));
-    return n.toFixed(n < 10 ? 1 : 0);
+    if (n >= 10) return n.toFixed(0);
+    // Judge the precision on the ROUNDED value: 9.96 rounds to 10, which reads "10"
+    // like every other value from ten up, not "10.0".
+    const s = n.toFixed(1);
+    return s === "10.0" ? "10" : s;
   }
   // Determine which 1000-power bucket we land in.
   let exp = Math.floor(d.e); // base-10 exponent

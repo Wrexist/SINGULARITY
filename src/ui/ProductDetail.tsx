@@ -72,9 +72,11 @@ function featureEffect(lane: FeatureLane, factor: number): string {
 
 /** Revenue per paying user as a real $/sec figure (the dial used to show only an
  *  abstract ×multiplier, so "35 users → $1/s" was a mystery). */
-function perUserPrice(arpuPerSec: number): string {
-  if (arpuPerSec >= 1) return `$${arpuPerSec.toFixed(arpuPerSec >= 10 ? 0 : 1)}/s ea.`;
-  if (arpuPerSec >= 0.01) return `$${arpuPerSec.toFixed(2)}/s ea.`;
+export function perUserPrice(arpuPerSec: number): string {
+  // Each band starts where the finer one would round onto it: 9.96 is "$10", not
+  // "$10.0"; 0.9996 is "$1.0", not "$1.00".
+  if (arpuPerSec >= 0.95) return `$${arpuPerSec.toFixed(arpuPerSec >= 9.95 ? 0 : 1)}/s ea.`;
+  if (arpuPerSec >= 0.0095) return `$${arpuPerSec.toFixed(2)}/s ea.`;
   return `$${arpuPerSec.toFixed(3)}/s ea.`;
 }
 
