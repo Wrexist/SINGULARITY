@@ -8,6 +8,7 @@ import { applyAchievements } from "./achievements";
 import { grantEarnedComponents } from "./components";
 import { applyAutoResearch, autoResearchWaitSec } from "./actions";
 import { autoResearchEnabled } from "./director";
+import { applyAutomation } from "./automation";
 import { rivalsBeaten } from "./market";
 import type { Derived, GameState } from "./types";
 
@@ -75,6 +76,12 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   // Sub-step a large catch-up window (see MAX_STEP_MS). Iterative rather than
   // recursive so a premium 24h window can't approach the call-stack limit. Every
   // inner call gets <= MAX_STEP_MS, so this can't re-enter itself.
+  //
+  // The autopilots (applyAutomation) run between the steps. The store runs them after
+  // every frame, but a catch-up is one call: they used to wake only at its end, so a
+  // Version Autopilot owner came back from a night away to every product still on the
+  // version it had at bedtime. Pure, and a no-op until the player switches one on (the
+  // balance sim never does), so the tuned curve can't move.
   if (elapsedMs > MAX_STEP_MS) {
     let s = state;
     let remaining = elapsedMs;
@@ -82,6 +89,7 @@ export function tick(state: GameState, elapsedMs: number): GameState {
       const step = Math.min(MAX_STEP_MS, remaining);
       s = tick(s, step);
       remaining -= step;
+      if (remaining > 0) s = applyAutomation(s);
     }
     return s;
   }

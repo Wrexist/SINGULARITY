@@ -31,7 +31,7 @@ import { buyParadigm } from "./paradigms";
 import { buyInstitute, endowFellowship } from "./institute";
 import { fundChallenge, chooseFork, fundMegaproject, pickMandate } from "./challenges";
 import { claimObjective } from "./objectives";
-import { toggleAutomation, applyAutomation } from "./automation";
+import { toggleAutomation, applyAutomation, automationEnabled } from "./automation";
 import { buyComponent, equipComponent, fuseComponents } from "./components";
 import { applyNegotiationChoice, negotiationDue } from "./negotiation";
 import { applyOffline } from "./offline";
@@ -263,6 +263,9 @@ const relDiff = (a: Big, b: Big): number => {
  */
 function additivityViolations(s: GameState, r: () => number): string[] {
   if (s.reputation.perks.includes("rep_autoresearch")) return [];
+  // The autopilots act between a long window's 5-minute steps (claiming Objective
+  // boosts, starting versions), so where the cut falls decides when they act.
+  if (AUTOMATION.list.some((a) => automationEnabled(s, a.id))) return [];
   const sizes = [100, 700, 5_000, 60_000, 400_000];
   const a = sizes[Math.floor(r() * sizes.length)]!;
   const b = sizes[Math.floor(r() * sizes.length)]!;
