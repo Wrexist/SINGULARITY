@@ -170,7 +170,7 @@ export function CharterPanel({ game, onSet, onLock, onStance }: Props) {
           const rung = mult > 1 ? ladder.indexOf(mult) : -1;
           const convPct = mult > 1 ? Math.round((mult - 1) * 100) : null;
           return (
-            <button key={c.id} className={`charter-card ${on ? "on" : ""} ${c.rule ? "wild" : ""}`} onClick={() => onSet(on ? null : c.id)}>
+            <button key={c.id} className={`charter-card ${on ? "on" : ""} ${c.rule ? "wild" : ""}`} aria-pressed={on} onClick={() => onSet(on ? null : c.id)}>
               <div className="charter-main">
                 <span className="charter-name">{c.name}{on && <span className="charter-pick"> ✓ adopted</span>}{conviction && convPct !== null && (
                   <span className="charter-conviction">
