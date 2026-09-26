@@ -87,6 +87,10 @@ export function TrialsPanel({ game, onStart, onAbandon }: Props) {
                   className={`trial-attempt ${queued ? "queued" : "next"}`}
                   disabled={!canQueue && !queued}
                   aria-pressed={queued}
+                  // Every card ends in this same pill, so its name says WHICH Trial it
+                  // queues (the text alone read "Next run" once per ladder). Steady
+                  // across states; aria-pressed carries queued / not queued.
+                  aria-label={`Queue ${t.name} for your next run`}
                   onClick={() => onStart(t.id)}
                 >
                   {queued ? "Queued ✓" : "Next run"}
