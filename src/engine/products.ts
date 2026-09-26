@@ -456,7 +456,9 @@ export function maybeProductEvent(
   // Clamp like every other Heat write — [0, max] both bounds — so an event at near-max
   // Heat can't push it over the ceiling, and a (future) cooling event can't drive it
   // negative, even for the frame before the next tick re-clamps.
-  const heat = ev.heat ? Math.max(0, Math.min(balance.heat.max, state.heat + ev.heat)) : state.heat;
+  // A product's own Heat lane (Trust & Safety) scales the Heat its incidents raise, like
+  // its steady Heat: five of the eight types have none, so the feature did nothing there.
+  const heat = ev.heat ? Math.max(0, Math.min(balance.heat.max, state.heat + ev.heat * featureMods(p).heat)) : state.heat;
   return {
     state: {
       ...state,
