@@ -48,6 +48,7 @@ import { nextGoal } from "../engine/goals";
 import { marketLeaderboard, playerMarketRank } from "../engine/market";
 import { FlaskIcon, BoxIcon, TeamIcon, GearIcon, GiftIcon, TargetIcon } from "./Icons";
 import { fmt, fmtMoney, barRates } from "./format";
+import { decisionToast } from "./decisionToast";
 import type { ProductTypeId } from "../engine/balance/products";
 import { iap } from "./iap";
 import { isPremium } from "../state/premium";
@@ -1327,8 +1328,9 @@ export function App() {
             const choice = worldEvent.choices?.[i];
             chooseWorldEvent(i);
             if (choice) {
-              const decision = choice.label.replace(/\s*\([^)]*\)\s*$/, "");
-              pushToast(choice.summary ? `${decision} — ${choice.summary}` : `Decided: ${decision}`, "good");
+              // Toned by what the pick does: "Back them — -12% $" is no win.
+              const t = decisionToast(choice);
+              pushToast(t.text, t.tone);
             }
           }}
         />

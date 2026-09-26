@@ -43,9 +43,10 @@ export function negotiationOffer(state: GameState): WorldEventResult {
     tone: "bad",
     summary: "",
     choices: [
-      { label: `Settle — pay the fine (−${settlePct}% cash)`, summary: "Suspicion drops sharply" },
-      { label: `Lobby quietly (−${lobbyPct}% cash)`, summary: "Some suspicion + heat relief" },
-      { label: "Defy — see you in court", summary: `Compute ×${N.defy.buffFactor} · ${N.defy.buffSec}s, but Chen escalates` },
+      // Every branch is a trade: cash for relief, or a rally that thickens the file.
+      { label: `Settle — pay the fine (−${settlePct}% cash)`, summary: "Suspicion drops sharply", tone: "neutral" },
+      { label: `Lobby quietly (−${lobbyPct}% cash)`, summary: "Some suspicion + heat relief", tone: "neutral" },
+      { label: "Defy — see you in court", summary: `Compute ×${N.defy.buffFactor} · ${N.defy.buffSec}s, but Chen escalates`, tone: "neutral" },
     ],
   };
 }
