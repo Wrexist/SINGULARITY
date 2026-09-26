@@ -1,6 +1,6 @@
 import { Big } from "./math/Big";
 import { balance } from "./balance/config";
-import { derive, runYieldAt, runsPerSec } from "./derive";
+import { derive, runYieldAt, runsPerSec, committedProductMods } from "./derive";
 import { simulateProducts, advanceUpgrades, applyMilestones, productMetrics, settledMrr } from "./products";
 import { advanceTraining, payrollPaid } from "./employees";
 import { accrueStats } from "./stats";
@@ -330,15 +330,18 @@ function tickSegment(state: GameState, elapsedMs: number): GameState {
   // rivalsBeaten reads only .products, so evaluate it against THIS tick's updated
   // products (best-so-far is tracked monotonically inside accrueStats).
   const rivalsNow = rivalsBeaten({ ...state, products });
+  // The revenue ladders value revenue as a sale does: a charter the player can still
+  // take back this run doesn't count yet (committedProductMods; identity otherwise).
+  const ladderMods = committedProductMods(state, d);
   const stats = accrueStats(
     state.stats, products, state.research.length, d.computePerSec,
-    lifetimeMoney.sub(state.lifetimeMoney), seconds, rivalsNow, d.productModsById,
+    lifetimeMoney.sub(state.lifetimeMoney), seconds, rivalsNow, ladderMods,
   );
 
   // Generation-scoped peaks (reset by prestige) for the Generation Report: this run's
   // high-water Compute/sec and total product revenue/sec, NOT the all-time career peaks.
   let curMrr = 0;
-  for (const p of products.active) curMrr += settledMrr(p, products.frontier, d.productModsById[p.id]);
+  for (const p of products.active) curMrr += settledMrr(p, products.frontier, ladderMods[p.id]);
   const runPeakCompute = state.runPeakCompute.max(d.computePerSec);
   const runPeakMrr = Math.max(state.runPeakMrr, curMrr);
 
@@ -356,7 +359,7 @@ function tickSegment(state: GameState, elapsedMs: number): GameState {
     stats,
     runPeakCompute,
     runPeakMrr,
-  }, d.productModsById); // the same buffed revenue peakMrr and the cards read
+  }, ladderMods); // the same buffed revenue peakMrr reads
   // Milestone rewards land in lifetimeMoney AFTER accrueStats already took its
   // delta for this tick (and next tick's baseline includes them), so without this
   // they'd never reach totalMoney — all-time earnings would quietly under-report,

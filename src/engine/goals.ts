@@ -5,7 +5,7 @@ import { currentEra, eraName } from "./eras";
 import { productMilestones } from "./balance/products";
 import { milestoneValue, productsUnlocked } from "./products";
 import { canPrestige, shipPath, nextRunMultiplier } from "./prestige";
-import { FIRST_SHIP_WORTH_IT, derive } from "./derive";
+import { FIRST_SHIP_WORTH_IT, committedProductMods } from "./derive";
 import type { GameState } from "./types";
 
 /**
@@ -105,7 +105,7 @@ export function goalCandidates(state: GameState): Goal[] {
   // Product milestones: mid-game carrots once the business exists. The board's
   // achieved list persists, so only unreached ladder rungs are candidates.
   if (productsUnlocked(state)) {
-    const mods = derive(state).productModsById; // once, not per revenue rung
+    const mods = committedProductMods(state); // once, not per revenue rung
     for (const m of productMilestones) {
       if (state.products.milestones.includes(m.id)) continue;
       const v = milestoneValue(state, m.metric, mods);

@@ -31,6 +31,9 @@ function labWithProduct(): GameState {
   s.products = { ...s.products, active: [p] };
   // Product Company: every product's ARPU ×2.5, so the cards read $1.5K/s.
   s.charter = "product_company";
+  // Flown, not just picked: a charter still open to change doesn't count toward the
+  // revenue ladders yet (charterSaleFlick.test.ts).
+  s.charterLocked = true;
   return s;
 }
 

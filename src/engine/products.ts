@@ -7,7 +7,7 @@ import type { GameState, ProductMods, ProductState, ProductsState, UpgradeState 
 import { bonusProductSlots } from "./reputation";
 import { trialBonusProductSlots } from "./trials";
 import { legacyBonusProductSlots } from "./legacyTree";
-import { derive } from "./derive";
+import { derive, committedProductMods } from "./derive";
 
 /** No employees hired → no product buffs. */
 export const NEUTRAL_MODS: ProductMods = { upgradeSpeed: 1, serveCost: 1, churn: 1, acq: 1, arpu: 1, heat: 1 };
@@ -371,7 +371,7 @@ export function milestoneValue(state: GameState, metric: MilestoneDef["metric"],
     // product cards, the sponsor/contract ladder and the "$1K/s" achievement all read.
     // The bare figure left a lab billing $1.5K/s short of the "$1K/s" rung.
     case "mrr": {
-      const mods = modsById ?? derive(state).productModsById;
+      const mods = modsById ?? committedProductMods(state);
       return ps.active.reduce((s, p) => s + settledMrr(p, ps.frontier, mods[p.id]), 0);
     }
     case "version": return ps.active.reduce((m, p) => Math.max(m, p.version), 0);
@@ -939,8 +939,9 @@ export function capCarriedMarketing(state: GameState): GameState {
 function saleValue(state: GameState, p: ProductState): number {
   // Valued on the revenue the product really earns: its settled paid count AND its live
   // ARPU buffs (Product Company charter, assigned staff). Pricing the sale on unbuffed
-  // ARPU paid out well under the "N seconds of revenue" the product was earning.
-  const mods = derive(state).productModsById[p.id] ?? NEUTRAL_MODS;
+  // ARPU paid out well under the "N seconds of revenue" the product was earning. A
+  // charter still open to change is not counted yet (see committedProductMods).
+  const mods = committedProductMods(state)[p.id] ?? NEUTRAL_MODS;
   const v = settledMrr(p, state.products.frontier, mods) * B.retireValuationSec * retireMaturity(p);
   return Number.isFinite(v) ? Math.max(0, v) : 0;
 }

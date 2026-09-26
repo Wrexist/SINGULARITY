@@ -36,8 +36,9 @@ function pumpDials(s: GameState): GameState {
 describe("selling a product", () => {
   it("values the sale on the revenue the product earns with its live ARPU buffs", () => {
     const plain = matureProduct();
-    // Product Company multiplies every product's ARPU; the sale must price that in.
-    const boosted: GameState = { ...plain, charter: "product_company" };
+    // Product Company multiplies every product's ARPU; the sale must price that in once
+    // the run has committed to it (see charterSaleFlick.test.ts for the open window).
+    const boosted: GameState = { ...plain, charter: "product_company", charterLocked: true };
     const mods = derive(boosted).productModsById["prod-1"]!;
     expect(mods.arpu).toBeGreaterThan(1);
     const p = boosted.products.active[0]!;
