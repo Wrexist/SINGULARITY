@@ -5,6 +5,7 @@ import { reduceMotionNow } from "./motion";
 import { haptics } from "./haptics";
 import { sound } from "./sound";
 import { floatText } from "./fx";
+import { wingAtX } from "./wingSlop";
 import { buildHallModel, buildSkyline, heatCrateCount, POWER_IDS } from "../render/hallModel";
 import { drawHallStatic, drawHallDynamic, expansionMarkers, rackHitAreas, rackAtPoint, spawnFromOnChange, pointInPoly, agentSpots, chenSpot, dayPhase, type RackHit, type AgentSpot } from "../render/hallRenderer";
 import { currentEra, eraName } from "../engine/eras";
@@ -440,6 +441,18 @@ function HallCanvasImpl({ onExpand }: { onExpand: (id: string) => void }) {
       {/* Wing switcher — only once a second floor exists. A single wing is just "the
           hall", and a control that never has a second option is noise. */}
       {wings > 1 && (
+        // The frame is 2px wider than the pill on every side and hands a tap that
+        // misses every chip to the chip nearest it (see wingSlop.ts): the scroller
+        // clips a chip's own hit area to the pill, which stopped each chip at 41px.
+        <div
+          className="hall-wings-hit"
+          onClick={(e) => {
+            if ((e.target as Element).closest(".hall-wing")) return;
+            const chips = Array.from(e.currentTarget.querySelectorAll(".hall-wing"), (c) => c.getBoundingClientRect());
+            const i = wingAtX(chips, e.clientX);
+            if (i >= 0) { setWing(i); haptics.tap(); }
+          }}
+        >
         <nav className="hall-wings" aria-label="Facility wings">
           {Array.from({ length: wings }, (_, i) => {
             const filled = Math.max(0, Math.min(perWing, rackCount - i * perWing));
@@ -456,6 +469,7 @@ function HallCanvasImpl({ onExpand }: { onExpand: (id: string) => void }) {
             );
           })}
         </nav>
+        </div>
       )}
       {/* The rack cards echo taps on the (aria-hidden) canvas; the same facts live in
           the accessible panels. Their × stays out of the Tab order (tabIndex -1) so

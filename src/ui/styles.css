@@ -1370,6 +1370,19 @@ svg { vertical-align: middle; }
   overflow-x: auto;
   scrollbar-width: none;
 }
+/* A transparent frame 2px bigger than the pill on every side, holding it in exactly
+   the same spot. The scroller clips each chip's hit area to the pill (41px tall); the
+   frame's extra 2px a side, handed to the chip under the tap (HallCanvas), make 45. */
+.hall-wings-hit {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  padding: 2px;
+  display: flex;
+  max-width: calc(100% - 20px);
+  z-index: 2;
+}
+.hall-wings-hit > .hall-wings { position: relative; bottom: auto; left: auto; max-width: 100%; min-width: 0; }
 .hall-wings::-webkit-scrollbar { display: none; }
 .hall-wing {
   flex-shrink: 0;
@@ -3973,9 +3986,32 @@ input[type="radio"]:focus-visible,
 .emp-perks-head,
 .trial-attempt,
 .trial-abandon,
-.rig-empty {
+.rig-empty,
+.tab,
+.buy-qty-btn,
+.collapsible-toggle,
+.stats-toggle,
+.legacy-tree-toggle,
+.emp-seg-btn,
+.contract-claim,
+.challenge-fund,
+.market-blitz,
+.market-stake,
+.set-backup .btn-sm,
+.prod-name,
+.pd-name,
+.pd-close,
+.pd-flagship,
+.pd-sell,
+.pd-toggle-row,
+.pd-suggest,
+.pd-feature-buy,
+.rig-chooser-head .link-btn {
   position: relative;
 }
+/* ::before on product tabs: their ::after draws the active underline. Listed first:
+   rigEmptyHitArea.test.ts reads the ::after run that ends at the brace. */
+.pd-tab::before,
 .sheet-close::after,
 .premium-actions .link-btn::after,
 .set-about a::after,
@@ -3987,7 +4023,27 @@ input[type="radio"]:focus-visible,
 .emp-perks-head::after,
 .trial-attempt::after,
 .trial-abandon::after,
-.rig-empty::after {
+.rig-empty::after,
+.tab::after,
+.buy-qty-btn::after,
+.collapsible-toggle::after,
+.stats-toggle::after,
+.legacy-tree-toggle::after,
+.emp-seg-btn::after,
+.contract-claim::after,
+.challenge-fund::after,
+.market-blitz::after,
+.market-stake::after,
+.set-backup .btn-sm::after,
+.prod-name::after,
+.pd-name::after,
+.pd-close::after,
+.pd-flagship::after,
+.pd-sell::after,
+.pd-toggle-row::after,
+.pd-suggest::after,
+.pd-feature-buy::after,
+.rig-chooser-head .link-btn::after {
   content: "";
   position: absolute;
   top: max(var(--hit-cap-y, -22px), min(0px, calc(50% - 22px)));
@@ -3995,16 +4051,26 @@ input[type="radio"]:focus-visible,
   left: max(var(--hit-cap-x, -22px), min(0px, calc(50% - 22px)));
   right: max(var(--hit-cap-x, -22px), min(0px, calc(50% - 22px)));
 }
-/* The two reward lanes stack 5px apart: meet in the middle, grow freely outward. */
-.objective-lane { --hit-cap-y: -2px; }
+/* The two reward lanes stack 5px apart: meet in the middle, grow freely outward.
+   The ::after is placed from inside the lane's 1px border, so -3.5px is what reaches
+   2.5px past it (-2px stopped 1px out and left a 3px strip no lane took). */
+.objective-lane { --hit-cap-y: -3.5px; }
 .objective-lane:first-child::after { top: min(0px, calc(50% - 22px)); }
 .objective-lane:last-child::after { bottom: min(0px, calc(50% - 22px)); }
-/* Wing chips sit 4px apart inside a 4px-padded scroller: stay inside it. */
+/* Wing chips sit 4px apart inside a 4px-padded scroller: stay inside it (the
+   scroller clips anything further; .hall-wings-hit takes the taps beyond). */
 .hall-wing { --hit-cap-x: -2px; --hit-cap-y: -4px; }
 /* Finished research categories stack 6px apart, and an unfolded one has its first
    node right underneath: split the gap, and don't reach into the open track. */
 .research-cat-toggle { --hit-cap-y: -3px; }
 .research-cat-toggle[aria-expanded="true"]::after { bottom: 0; }
+/* Collection filter tabs sit 2px apart: a hair each, so neither takes the gap. */
+.pd-tab { --hit-cap-x: -1px; }
+/* The first category sits 16px under the "Recommended next" card: take half. */
+.hero-wrap + .research-cat .research-cat-toggle::after { top: max(-8px, min(0px, calc(50% - 22px))); }
+/* Press blitz sits 4px above Stake this race. Stake is later in the page, so its hit
+   area would paint over the blitz: stop it halfway (-3px from inside its 1px border). */
+.market-blitz + .market-stake::after { top: -3px; }
 /* Office perks: 12px below the roster, 10px above the first perk when open. */
 .emp-perks-head::after { top: max(-6px, min(0px, calc(50% - 22px))); }
 .emp-perks-head[aria-expanded="true"]::after { bottom: max(-5px, min(0px, calc(50% - 22px))); }
