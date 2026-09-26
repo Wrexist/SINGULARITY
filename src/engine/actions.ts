@@ -15,7 +15,7 @@ import { suspicionEventMult, regulatorIsNamed, regulatorState, clampSuspicion } 
 import { autoResearchEnabled, researchCostMult } from "./reputation";
 import { charterRule, startWindowOpen, chartersUnlocked } from "./charter";
 import { isRackId, floorFull, evictableRackFor, floorDrawnOut } from "./hall";
-import { typeDef } from "./products";
+import { typeDef, productsUnlocked } from "./products";
 import { releaseEmptyTierParts } from "./components";
 import type { ActiveModifier, Derived, GameState } from "./types";
 
@@ -604,14 +604,40 @@ export interface WorldEventResult {
 
 const WORLD_EVENTS = balance.worldEvents.list as WorldEvent[];
 
+/** What the lab has for a product event to land on. A rival launch moves the market
+ *  your products and drafts compete in, which exists once Products unlock (the first
+ *  Ship); a buzz wave lifts live products and does nothing without one. */
+export interface WorldEventLab {
+  productsUnlocked: boolean;
+  liveProducts: boolean;
+}
+
+/** Every system present: the default for a caller that doesn't pass a lab. */
+const FULL_LAB: WorldEventLab = { productsUnlocked: true, liveProducts: true };
+
+export function worldEventLab(state: GameState): WorldEventLab {
+  return { productsUnlocked: productsUnlocked(state), liveProducts: state.products.active.length > 0 };
+}
+
+/** Can this event's effect land on the lab? A first-generation lab has no Products
+ *  tab, so "a rival ships, your products look dated" pointed at nothing there, and a
+ *  "good" buzz-wave event on a lab with no live product granted nothing at all. */
+function worldEventFits(e: WorldEvent, lab: WorldEventLab): boolean {
+  const kinds = [e.effect, ...(e.choices ?? []).map((c) => c.effect)].map((x) => x?.kind);
+  if (kinds.includes("frontierJump") && !lab.productsUnlocked) return false;
+  if (kinds.includes("productBuzz") && !lab.liveProducts) return false;
+  return true;
+}
+
 /** Events eligible at the player's current alignment (R6.2) and recent history
  *  (R7.2). Untagged events always qualify; a faction-tagged event needs commitment
  *  to that side; a sequel (`after`) needs its parent in the recent window — so a
  *  callback can reference "that tweet" and never fire as a non sequitur. At neutral
  *  with no history (incl. the sim) only base events are eligible → base pool. */
-function eligibleWorldEvents(alignment: number, recentIds: Set<string>): WorldEvent[] {
+function eligibleWorldEvents(alignment: number, recentIds: Set<string>, lab: WorldEventLab): WorldEvent[] {
   const t = balance.worldEvents.factionThreshold;
   return WORLD_EVENTS.filter((e) => {
+    if (!worldEventFits(e, lab)) return false;
     if (e.after && !recentIds.has(e.after)) return false;
     if (e.after && recentIds.has(e.id)) return false; // a sequel doesn't re-run inside its own window
     if (!e.faction) return true;
@@ -628,9 +654,14 @@ function chainedWeight(e: WorldEvent, recentTopics: Set<string>, recentIds: Set<
   return e.weight;
 }
 
-export function pickWorldEvent(roll: number, alignment = 0, recentIds: string[] = []): WorldEvent {
+export function pickWorldEvent(
+  roll: number,
+  alignment = 0,
+  recentIds: string[] = [],
+  lab: WorldEventLab = FULL_LAB,
+): WorldEvent {
   const ids = new Set(recentIds);
-  const pool = eligibleWorldEvents(alignment, ids);
+  const pool = eligibleWorldEvents(alignment, ids, lab);
   const recentTopics = new Set(
     recentIds.map((id) => balance.worldEvents.topics[id]).filter((t): t is string => !!t),
   );
@@ -817,5 +848,5 @@ export function maybeWorldEvent(
   const chance = Math.min(seconds / balance.worldEvents.meanIntervalSec, 0.4);
   if (fireRoll >= chance) return null;
   // R6.2 — pool branches on alignment; A2 — recent events bias toward related topics.
-  return applyWorldEvent(state, pickWorldEvent(pickRoll, state.alignment, recentIds).id);
+  return applyWorldEvent(state, pickWorldEvent(pickRoll, state.alignment, recentIds, worldEventLab(state)).id);
 }
