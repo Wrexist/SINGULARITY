@@ -1,9 +1,7 @@
 import { memo, useEffect, useMemo, useState } from "react";
 import { useGame } from "../state/store";
 import { useReducedMotion } from "./motion";
-import { buildNews } from "../engine/news";
-import { currentEra } from "../engine/eras";
-import { playerMarketRank } from "../engine/market";
+import { buildNews, reactiveNews } from "../engine/news";
 
 /**
  * The AI Industry Newswire — an ambient satirical ticker under the hall, so idle
@@ -33,13 +31,11 @@ export const BREAKING_MS = 14000;
 
 function NewsTickerImpl({ breaking = null }: { breaking?: Breaking | null }) {
   const reduced = useReducedMotion();
-  // Coarse signature: era · ships · faction lean · market rank. The ticker only
-  // reshuffles (and re-renders) when one of these changes — never on the 10Hz trickle.
-  const sig = useGame((s) => {
-    const g = s.game;
-    const a = g.alignment >= 0.4 ? "a" : g.alignment <= -0.4 ? "d" : "n";
-    return `${currentEra(g)}|${g.prestige.ships}|${a}|${playerMarketRank(g) ?? 0}`;
-  });
+  // Signature: the lines about the player's lab themselves. The ticker reshuffles (and
+  // re-renders) only when one of them changes, never on the 10Hz trickle. A hand-picked
+  // key (era · ships · lean · rank) missed Heat, headcount, the Endowment, preprints
+  // and the product count, so those lines came late or outlived what they reported.
+  const sig = useGame((s) => reactiveNews(s.game).join("\n"));
   const pool = useMemo(() => shuffled(buildNews(useGame.getState().game)), [sig]);
   const [n, setN] = useState(0);
   const i = n % pool.length;
