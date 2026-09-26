@@ -58,4 +58,14 @@ describe("the autopilots keep working through an offline catch-up", () => {
       expect(versions(live)[i]! - versions(away)[i]!).toBeLessThanOrEqual(1);
     }
   });
+
+  it("the away recap names the versions the autopilot shipped", () => {
+    // A version started AND finished inside the window, or finished with the next one
+    // already under way, is still a version shipped while the player was away.
+    const { state, summary } = applyOffline(autopilotLab(), 8 * 3_600_000);
+    const shipped = summary.story.upgradesFinished.map((u) => `${u.name} v${u.version}`).sort();
+    const expected = state.products.active.filter((p) => p.version > 1).map((p) => `${p.name} v${p.version}`).sort();
+    expect(expected.length).toBeGreaterThan(0);
+    expect(shipped).toEqual(expected);
+  });
 });

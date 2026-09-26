@@ -64,7 +64,10 @@ export function summarizeWindow(
   const applied = Number.isFinite(appliedMs) ? Math.max(0, appliedMs) : 0;
   const hadAchievements = new Set(before.achievements);
   const hadMilestones = new Set(before.products.milestones);
-  const wasUpgrading = new Map(before.products.active.map((p) => [p.id, !!p.upgrade]));
+  // By version, not by "was upgrading, now isn't": the Version Autopilot runs between a
+  // catch-up's steps, so a version can start and ship inside the window, or ship with
+  // the next one already under way.
+  const versionBefore = new Map(before.products.active.map((p) => [p.id, p.version]));
   const wasTraining = new Map(before.employees.map((e) => [e.id, !!e.training]));
   return {
     elapsedMs: elapsed,
@@ -80,7 +83,7 @@ export function summarizeWindow(
     story: {
       milestones: after.products.milestones.filter((id) => !hadMilestones.has(id)),
       upgradesFinished: after.products.active
-        .filter((p) => wasUpgrading.get(p.id) && !p.upgrade)
+        .filter((p) => p.version > (versionBefore.get(p.id) ?? Infinity))
         .map((p) => ({ name: p.name, version: p.version })),
       leveledUp: after.employees
         .filter((e) => wasTraining.get(e.id) && !e.training)
