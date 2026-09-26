@@ -930,9 +930,11 @@ export function capCarriedMarketing(state: GameState): GameState {
 
 /** One valuation for both the sale and the price the UI shows for it. */
 function saleValue(state: GameState, p: ProductState): number {
+  // Valued on the revenue the product really earns: its settled paid count AND its live
+  // ARPU buffs (Product Company charter, assigned staff). Pricing the sale on unbuffed
+  // ARPU paid out well under the "N seconds of revenue" the product was earning.
   const mods = derive(state).productModsById[p.id] ?? NEUTRAL_MODS;
-  const valued = { ...p, paid: settledPaid(p, state.products.frontier, mods) };
-  const v = productMetrics(valued, state.products.frontier).mrr * B.retireValuationSec * retireMaturity(p);
+  const v = settledMrr(p, state.products.frontier, mods) * B.retireValuationSec * retireMaturity(p);
   return Number.isFinite(v) ? Math.max(0, v) : 0;
 }
 

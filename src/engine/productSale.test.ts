@@ -3,6 +3,7 @@ import {
   launchDraft, retirePayout, retireProduct, setProductPrice, setEnterprise, setEnterprisePrice, productMetrics,
 } from "./products";
 import { tick } from "./tick";
+import { derive } from "./derive";
 import { createInitialState } from "./state";
 import { products as B } from "./balance/products";
 import type { GameState } from "./types";
@@ -33,6 +34,21 @@ function pumpDials(s: GameState): GameState {
 }
 
 describe("selling a product", () => {
+  it("values the sale on the revenue the product earns with its live ARPU buffs", () => {
+    const plain = matureProduct();
+    // Product Company multiplies every product's ARPU; the sale must price that in.
+    const boosted: GameState = { ...plain, charter: "product_company" };
+    const mods = derive(boosted).productModsById["prod-1"]!;
+    expect(mods.arpu).toBeGreaterThan(1);
+    const p = boosted.products.active[0]!;
+    const live = productMetrics(p, boosted.products.frontier, mods).mrr * B.retireValuationSec;
+    expect(retirePayout(boosted, "prod-1") / live).toBeCloseTo(1, 6);
+    expect(retirePayout(boosted, "prod-1")).toBeGreaterThan(retirePayout(plain, "prod-1") * 2);
+    // The credit matches the quote.
+    const sold = retireProduct(boosted, "prod-1");
+    expect(sold.resources.money.sub(boosted.resources.money).toNumber() / live).toBeCloseTo(1, 6);
+  });
+
   it("values a settled product exactly as before: its revenue/sec × the valuation window", () => {
     const s = matureProduct();
     const p = s.products.active[0]!;
