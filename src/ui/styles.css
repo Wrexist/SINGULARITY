@@ -626,14 +626,23 @@ svg { vertical-align: middle; }
     gap: 16px;
     min-width: 0;
   }
-  /* The hall column holds its ground while the shop side scrolls. */
-  .app-split .stage-left {
-    position: sticky;
-    top: 12px;
-  }
   /* The split column has vertical room to spare — let the centrepiece breathe. */
   .app-split .stage-left .hall {
     height: 372px;
+  }
+}
+/* The hall column holds its ground while the shop side scrolls — pinned just BELOW
+   the sticky resource bar (8px + ~105px bar + the 16px stage gap). It used to pin at
+   12px, i.e. under the bar, which then covered the top ~100px of the hall (the era
+   chip and the back of the floor) for as long as the page was scrolled. Only pin it
+   when the whole column (hall + wire + training dock, ~750px with FIRST STEPS) fits
+   between the bar and the bottom nav; on shorter landscape screens (an 11" iPad at
+   820px, a Pro Max phone at 430px) a pinned column held the dock's button and
+   intensity slider under the nav, so there it scrolls with the page. */
+@media (min-width: 900px) and (min-height: 940px) {
+  .app-split .stage-left {
+    position: sticky;
+    top: calc(129px + env(safe-area-inset-top));
   }
 }
 .stage > *:nth-child(1) { animation-delay: 0.04s; }
