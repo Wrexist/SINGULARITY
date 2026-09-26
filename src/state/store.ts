@@ -466,9 +466,12 @@ export const useGame = create<GameStore>((set, get) => ({
 
   advance: (elapsedMs, rawElapsedMs) =>
     set((s) => {
-      // Snapshot which products are mid-upgrade so we can celebrate completions
+      // Snapshot each product's version so we can celebrate completions
       // (the engine finishes them inside tick; we surface the moment to the UI).
-      const wasUpgrading = new Map(s.game.products.active.map((p) => [p.id, !!p.upgrade]));
+      // By version, not by "was upgrading, now isn't" (as summarizeWindow does): the
+      // Version Autopilot runs between a resume window's 5-minute steps, so a version
+      // can start AND ship inside it, or ship with the next already under way.
+      const versionBefore = new Map(s.game.products.active.map((p) => [p.id, p.version]));
       const wasTraining = new Map(s.game.employees.map((e) => [e.id, !!e.training]));
       // "Save for this" across a big window (a resume from suspend): the eased
       // intensity must not govern hours of catch-up. Tick only until the bank covers
@@ -559,7 +562,7 @@ export const useGame = create<GameStore>((set, get) => ({
       }
 
       // Several can finish in one tick (offline catch-up) — name one, count the rest.
-      const finished = game.products.active.filter((p) => wasUpgrading.get(p.id) && !p.upgrade);
+      const finished = game.products.active.filter((p) => p.version > (versionBefore.get(p.id) ?? Infinity));
       if (finished.length === 1) pushNotice(versionShipNote(finished[0]!.name, finished[0]!.version), "ship");
       else if (finished.length > 1) pushNotice(`${finished.length} products shipped new versions — back at the frontier`, "ship");
 
