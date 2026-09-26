@@ -921,8 +921,14 @@ export const useGame = create<GameStore>((set, get) => ({
 
   hardReset: () => {
     pendingNotices = [];
-    localStorage.removeItem(SAVE_KEY);
-    localStorage.removeItem(TIME_KEY);
+    // Storage that throws (blocked, or failing) must not stop the wipe itself: a throw
+    // here left "Wipe it" doing nothing. The next autosave writes the fresh lab.
+    try {
+      localStorage.removeItem(SAVE_KEY);
+      localStorage.removeItem(TIME_KEY);
+    } catch (err) {
+      console.warn("Hard reset could not clear storage:", err);
+    }
     // Clear transient UI state too, or a stale world-event card / claim burst
     // could survive into the fresh run.
     set({ game: createInitialState(), offline: null, event: null, notice: null, worldEvent: null, claimBurst: 0, candidates: null, savingFor: null });
@@ -936,8 +942,6 @@ export const useGame = create<GameStore>((set, get) => ({
     try { return btoa(unescape(encodeURIComponent(json))); } catch { return json; }
   },
   importSave: (blob: string) => {
-    // Imported game = different world; drop any queued notices about the old one.
-    pendingNotices = [];
     const decoded = decodeBackup(blob);
     if (!decoded) return false;
     try {
@@ -945,11 +949,18 @@ export const useGame = create<GameStore>((set, get) => ({
       // runtime shape (legacy role-counts → people; ID counters seeded so new
       // products/hires don't collide with existing prod-N / emp-N ids).
       const game = migrateStaffCounts(decoded);
+      // Persist BEFORE swapping the running lab: when the write throws (storage full
+      // or blocked) the sheet reports a failed restore, and the lab it leaves running
+      // must be the player's own. Swapping first replaced it with the backup anyway,
+      // and the next launch silently brought the old save back. lastSeen goes first:
+      // stamping it for the lab still running is harmless if the save write then fails.
+      localStorage.setItem(TIME_KEY, String(now()));
+      localStorage.setItem(SAVE_KEY, serialize(game));
       seedProductKey(game);
       seedEmpKey(game);
+      // Imported game = different world; drop any queued notices about the old one.
+      pendingNotices = [];
       set({ game, offline: null, event: null, notice: null, worldEvent: null, claimBurst: 0, candidates: null, savingFor: null });
-      localStorage.setItem(SAVE_KEY, serialize(game));
-      localStorage.setItem(TIME_KEY, String(now()));
       return true;
     } catch {
       return false;
