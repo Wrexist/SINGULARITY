@@ -940,7 +940,9 @@ export const useGame = create<GameStore>((set, get) => ({
       console.warn("Hard reset could not clear storage:", err);
     }
     // Clear transient UI state too, or a stale world-event card / claim burst
-    // could survive into the fresh run.
+    // could survive into the fresh run. The recent-event memory goes too: a sequel
+    // ("Remember the shortage?") must never open a lab that never had its parent.
+    recentEventIds = [];
     set((s) => ({ game: createInitialState(), offline: null, event: null, notice: null, worldEvent: null, claimBurst: 0, candidates: null, savingFor: null, saveEpoch: s.saveEpoch + 1 }));
   },
 
@@ -972,8 +974,10 @@ export const useGame = create<GameStore>((set, get) => ({
       localStorage.setItem(SAVE_KEY, serialize(game));
       seedProductKey(game);
       seedEmpKey(game);
-      // Imported game = different world; drop any queued notices about the old one.
+      // Imported game = different world; drop any queued notices about the old one,
+      // and the recent world events a sequel would call back to.
       pendingNotices = [];
+      recentEventIds = [];
       set((s) => ({ game, offline: null, event: null, notice: null, worldEvent: null, claimBurst: 0, candidates: null, savingFor: null, saveEpoch: s.saveEpoch + 1 }));
       return true;
     } catch {
