@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeAll, afterEach } from "vitest";
-import { installMiniDom, type MiniElement } from "./miniDom";
+import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
+import { installMiniDom, uninstallMiniDom, type MiniElement } from "./miniDom";
 import { createInitialState } from "../engine/state";
 import { Big } from "../engine/math/Big";
 import { balance } from "../engine/balance/config";
@@ -99,6 +99,7 @@ function mount() {
 }
 let mounted: import("react-dom/client").Root | null = null;
 afterEach(() => { if (mounted) { const r = mounted; mounted = null; React.act(() => r.unmount()); } });
+afterAll(() => uninstallMiniDom());
 const tickN = (n: number) => { for (let k = 0; k < n; k++) React.act(() => useGame.getState().advance(100)); };
 const find = (pred: (el: MiniElement) => boolean): MiniElement[] => {
   const out: MiniElement[] = [];

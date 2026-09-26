@@ -134,3 +134,10 @@ export function installMiniDom(): MiniElement {
   const doc = g.document as MiniDocument;
   return doc.body.appendChild(doc.createElement("div"));
 }
+
+/** Remove the globals `installMiniDom` added, so no later suite sees a fake DOM. */
+export function uninstallMiniDom(): void {
+  const g = globalThis as Record<string, unknown>;
+  if (!(g.document instanceof MiniDocument)) return;
+  for (const k of ["window", "document", "IS_REACT_ACT_ENVIRONMENT", "__REACT_DEVTOOLS_GLOBAL_HOOK__"]) delete g[k];
+}
