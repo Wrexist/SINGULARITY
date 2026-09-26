@@ -3082,6 +3082,11 @@ p.pd-flagship { cursor: default; text-align: center; margin-top: 0; }
 /* Person card (roster · available · candidate) */
 .emp-person-wrap { display: flex; flex-direction: column; }
 .emp-person { display: flex; align-items: center; gap: 11px; background: #fff; border-radius: var(--radius-xs); padding: var(--pad-row); box-shadow: var(--shadow-xs); cursor: pointer; transition: box-shadow var(--dur-fast), border-color var(--dur-fast); border: 1px solid transparent; }
+/* A late-game roster runs to hundreds of cards: let the browser skip laying out and
+   painting the ones far off screen (the ticking numbers above repaint the page's layer
+   every tick, and that paint walked every card). `auto` keeps each card's last
+   measured height, so the scroll length does not jump. */
+.emp-person { content-visibility: auto; contain-intrinsic-size: auto 64px; }
 .emp-person.sel { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent); }
 .emp-person.rare { border-color: rgba(245, 180, 10, 0.55); background: linear-gradient(100deg, rgba(245, 180, 10, 0.08), #fff 60%); }
 .emp-rare-badge { font-size: var(--fs-2xs); font-weight: 800; letter-spacing: 0.02em; color: var(--gold); background: rgba(245, 180, 10, 0.16); border-radius: 999px; padding: 2px 7px; }
