@@ -371,6 +371,46 @@ Round 5, left for the owner:
 - **Milestone Money at $0 cash.** Offline keeps a milestone payout that live play spends
   on marketing when cash is at $0. It favours the player and is bounded.
 
+**Round 6** covered tap targets, earlier rounds' reported-only defects, layout across form
+factors, and an economic exploit hunt. It landed 15 fixes. The suite is at 1535 tests;
+the sim is unchanged except one printed label ("10.0 c/s" now reads "10 c/s"), which is
+the formatter fix itself. Highlights:
+- **Exploit closed.** Picking the Product Company charter for one frame sold a product
+  at 2.5x and lifted the permanent revenue ladders. A charter's product ARPU now counts
+  toward sales and ladders only once the run commits to it (Lock in or the first
+  research). Product income is untouched.
+- **44pt hit areas.** 94 controls across the app missed taps just outside their visible
+  box. They now share the transparent hit-area rule, so nothing moved on screen, and a
+  probe confirmed no control steals a neighbour's tap. Hall wing chips get a tap frame
+  that snaps to the nearest chip.
+- **Form factors.**
+  - The Ship celebration scrolls on landscape phones and the SE.
+  - The iPad landscape hall column stays below the resource bar.
+  - The product sheet's four tabs fit at 320px.
+  - The wide Build layout clears the Dynamic Island in landscape.
+- **Leftover fixes.**
+  - Number labels no longer round past their unit (9.96 read "10.0", 999.6 read
+    "1000").
+  - A decision's toast takes the tone of its effect.
+  - Chen's waiting card is withdrawn when suspicion falls back.
+  - The newswire names the model actually shipped.
+  - Versions shipped inside a short resume are announced.
+  - Hard Reset clears the old lab's toasts and activity log.
+  - Haptic tails stop once Haptics is switched off.
+  - In-flight particles are dropped when reduced motion turns on.
+- **One flaky test fixed.** The save-for resume test checked cash on hand, and a random
+  cash-costing world event failed it about 1 run in 27. It now checks earnings.
+
+Round 6, left for the owner:
+- **Staff lane multipliers grow without bound** with headcount: 512 L4 10x Engineers give
+  x3,725 Compute, while payroll is capped at half of income. Proposal: fold additively
+  within a lane, or add an escalating signing bonus.
+- **Rig Bay fusion is an 82x discount path.** 243 Refurb Cards ($34K) fuse into a
+  Dyson-Adjacent Cluster listed at $2.8M.
+- **iPad hall pin on 11-inch.** The pinned hall column now stays only on 12.9/13-inch
+  iPads in landscape. Pinning it on 11-inch needs a measured bar height.
+- **Long Contract titles** run into the card gap at 320px.
+
 ## Part 6 — App Store: "free to download"
 
 The listing copy already says "free" (`appstore/metadata/en-US/description.txt`:
