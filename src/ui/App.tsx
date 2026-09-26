@@ -522,6 +522,11 @@ export function App() {
     toastMemory.current = newTransitionMemory();
     stepTransitionToasts(transitionToasts, toastMemory.current); // baseline only: fires nothing
     resetHistory(); // the sparklines belong to the old save
+    // So do the feed's entries: the toasts on screen, the Recent activity log and the
+    // newswire's breaking line all described the old lab to the new one.
+    setToasts([]);
+    setLog([]);
+    setBreaking(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saveEpoch]);
   useEffect(() => {
