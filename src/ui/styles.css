@@ -1873,6 +1873,16 @@ button.modchip.workable:active { transform: scale(0.94); }
   border: 1px solid var(--glass-edge);
   box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.75);
   animation: rise-modal 0.5s var(--spring);
+  /* Same contract as .modal: the Generation Report makes this card ~600px tall, so on
+     a phone in landscape (390px) or an SE it was cut off top and bottom by the
+     overflow:hidden overlay, with "Begin next generation" and "Share this run" out of
+     reach. Fit it to the safe viewport and scroll inside. */
+  max-height: calc(100dvh - 48px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overflow-x: hidden;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 /* Ascension super-ceremony: the same card, gilded — a gold edge, a warm glow,
    and a golden rocket. Full-card tint + glow (no accent bar), per the hard rules. */
