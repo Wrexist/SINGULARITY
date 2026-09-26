@@ -65,7 +65,7 @@ export const challenges = {
       unlockShips: 6,
       forks: [
         { id: "grid_independence", label: "Grid Independence", reward: { kind: "computeMult", magnitude: 0.35, desc: "+35% Compute, forever" } },
-        { id: "sell_surplus", label: "Sell the Surplus", reward: { kind: "moneyMult", magnitude: 0.35, desc: "+35% all revenue, forever" } },
+        { id: "sell_surplus", label: "Sell the Surplus", reward: { kind: "moneyMult", magnitude: 0.35, desc: "+35% Money, forever" } },
       ],
     },
     {
@@ -79,7 +79,7 @@ export const challenges = {
       unlockShips: 9,
       forks: [
         { id: "scale_foundry", label: "Scale the Foundry", reward: { kind: "dataMult", magnitude: 0.4, desc: "+40% Data yield, forever" } },
-        { id: "license_method", label: "License the Method", reward: { kind: "moneyMult", magnitude: 0.38, desc: "+38% all revenue, forever" } },
+        { id: "license_method", label: "License the Method", reward: { kind: "moneyMult", magnitude: 0.38, desc: "+38% Money, forever" } },
       ],
     },
     {
@@ -98,11 +98,11 @@ export const challenges = {
       blurb: "A safety proof so airtight even the doomers went quiet. Briefly.",
       icon: "shield",
       cost: { compute: 4e11, data: 2e11, money: 2e11 },
-      reward: { kind: "moneyMult", magnitude: 0.5, desc: "+50% all revenue, forever" },
+      reward: { kind: "moneyMult", magnitude: 0.5, desc: "+50% Money, forever" },
       lore: "Two hundred pages of formal verification, one press release, and a standing ovation from a room that came to heckle. Enterprise procurement departments weep with relief and sign three-year contracts.",
       unlockShips: 16,
       forks: [
-        { id: "enterprise_trust", label: "Enterprise Trust", reward: { kind: "moneyMult", magnitude: 0.5, desc: "+50% all revenue, forever" } },
+        { id: "enterprise_trust", label: "Enterprise Trust", reward: { kind: "moneyMult", magnitude: 0.5, desc: "+50% Money, forever" } },
         { id: "open_the_proof", label: "Open the Proof", reward: { kind: "legacyMult", magnitude: 0.28, desc: "+28% to ALL output, forever" } },
       ],
     },
@@ -112,7 +112,7 @@ export const challenges = {
       blurb: "Latency: zero. Margins: obscene. Regulators: notified.",
       icon: "network",
       cost: { compute: 1.5e12, data: 4e11, money: 1e12 },
-      reward: { kind: "moneyMult", magnitude: 0.55, desc: "+55% all revenue, forever" },
+      reward: { kind: "moneyMult", magnitude: 0.55, desc: "+55% Money, forever" },
       lore: "Every device on Earth is now one hop from your models. You bill in fractions of a cent, a trillion times a second. The number on the dashboard stops meaning anything and starts meaning everything.",
       unlockShips: 22,
     },
