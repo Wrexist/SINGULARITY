@@ -6,7 +6,8 @@ import { advanceTraining, payrollPaid } from "./employees";
 import { accrueStats } from "./stats";
 import { applyAchievements } from "./achievements";
 import { grantEarnedComponents } from "./components";
-import { applyAutoResearch } from "./actions";
+import { applyAutoResearch, autoResearchWaitSec } from "./actions";
+import { autoResearchEnabled } from "./director";
 import { rivalsBeaten } from "./market";
 import type { Derived, GameState } from "./types";
 
@@ -85,8 +86,6 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     return s;
   }
 
-  const seconds = elapsedMs / 1000;
-
   // Segment the window at the next modifier expiry. Otherwise a large frame
   // (tab-resume) or an offline catch-up would apply an about-to-expire buff to
   // the WHOLE window — e.g. a buff with 5s left doubling 8h of offline output.
@@ -116,6 +115,61 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     }
   }
 
+  // The Research Director buys at the END of a window (applyAutoResearch below), so a
+  // long one — a resume, each 5-minute offline step — must be cut where it can next
+  // buy, or it waits out the whole window. Right after a Ship that is when the tree is
+  // cheap and every node compounds the next: five minutes away earned ~1% of what the
+  // app left open did. A live frame is one step, as before (and the balance sim never
+  // owns the Director, so the tuned curve can't move).
+  if (elapsedMs > DIRECTOR_SPLIT_MIN_MS && autoResearchEnabled(state)) return tickWithDirector(state, elapsedMs);
+  return tickSegment(state, elapsedMs);
+}
+
+/** Minimum slice of a window cut for the Research Director (see tick). */
+const DIRECTOR_SPLIT_MIN_MS = 1000;
+/** Most cuts one window gets for the Director: a bound on work, far above a real tree. */
+const DIRECTOR_MAX_HOPS = 64;
+/** Cuts in a row that may land before the Director can buy, before the rest of the
+ *  window is ticked whole. */
+const DIRECTOR_MAX_MISSES = 8;
+
+/**
+ * Tick a window (already inside one modifier segment) in slices that end where the
+ * Research Director can next buy. The estimate comes from the current rates; when it
+ * lands early (Data arrives in run-sized lumps) the next slice backs off, doubling, so
+ * a window costs a handful of extra steps, never one per frame.
+ */
+function tickWithDirector(state: GameState, elapsedMs: number): GameState {
+  let s = state;
+  let remaining = elapsedMs;
+  let minStep = DIRECTOR_SPLIT_MIN_MS;
+  let misses = 0;
+  for (let hop = 0; hop < DIRECTOR_MAX_HOPS; hop++) {
+    const waitMs = autoResearchWaitSec(s, derive(s)) * 1000;
+    if (!(waitMs < remaining)) break; // nothing it can buy inside this window
+    const step = Math.max(minStep, waitMs);
+    if (step >= remaining - DIRECTOR_SPLIT_MIN_MS) break;
+    const next = tickSegment(s, step);
+    const bought = next.research.length > s.research.length;
+    s = next;
+    remaining -= step;
+    if (bought) {
+      minStep = DIRECTOR_SPLIT_MIN_MS;
+      misses = 0;
+    } else if (++misses >= DIRECTOR_MAX_MISSES) {
+      break;
+    } else {
+      // Landed early (Data arrives in run-sized lumps, the bank swings by a run's
+      // cost): back off, doubling. A stubborn estimate gives up (above).
+      minStep *= 2;
+    }
+  }
+  return tickSegment(s, remaining);
+}
+
+/** One step of the simulation over a window with no modifier expiry inside it. */
+function tickSegment(state: GameState, elapsedMs: number): GameState {
+  const seconds = elapsedMs / 1000;
   const d = derive(state);
 
   // Compute-focus gate (Phase 2): auto-train only fires once Compute reaches

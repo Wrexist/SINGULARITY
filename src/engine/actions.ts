@@ -8,7 +8,7 @@ import {
   type WorldEvent,
   type WorldEventEffect,
 } from "./balance/config";
-import { derive, computeBankReach, runYieldAt } from "./derive";
+import { derive, computeBankReach, computeBankEtaSecs, runYieldAt, runsPerSec } from "./derive";
 import { ALL_RESEARCH, researchTree, epochUnlocked } from "./researchTree";
 import { alignmentHeatMult, shiftAlignment } from "./alignment";
 import { suspicionEventMult, regulatorIsNamed, regulatorState, clampSuspicion } from "./regulator";
@@ -330,6 +330,36 @@ export function applyAutoResearch(state: GameState): GameState {
     s = buyResearch(s, node.id);
   }
   return s;
+}
+
+/**
+ * Seconds until the Research Director can next buy something at the current rates:
+ * the soonest any node it would buy (available, not a fork) has both its Compute (by
+ * the bank's real climb under auto-train, see computeBankEtaSecs) and its Data (passive
+ * Data plus auto-claimed run Data). Infinity when the Director is not owned or nothing
+ * it would buy is reachable by waiting. Pure; tick() cuts a long window here so the
+ * Director buys when the app left open would, not at the end of the window.
+ */
+export function autoResearchWaitSec(state: GameState, d: Derived): number {
+  if (!autoResearchEnabled(state)) return Infinity;
+  const runData = d.autoTrain && d.autoClaim
+    ? runYieldAt(state, d, state.computeFocus).data.mul(runsPerSec(d, state.computeFocus))
+    : Big.ZERO;
+  const dataRate = d.dataPerSec.add(runData);
+  let best = Infinity;
+  for (const def of researchTree(state)) {
+    if (def.exclusiveGroup || !researchAvailable(state, def.id)) continue;
+    const cost = researchCost(state, def);
+    const c = computeBankEtaSecs(state, d, state.resources.compute, cost.compute);
+    if (c === null || !Number.isFinite(c)) continue;
+    let t = Math.max(0, c);
+    if (state.resources.data.lt(cost.data)) {
+      if (!dataRate.gt(0)) continue;
+      t = Math.max(t, cost.data.sub(state.resources.data).div(dataRate).toNumber());
+    }
+    if (Number.isFinite(t) && t < best) best = t;
+  }
+  return best;
 }
 
 /**
