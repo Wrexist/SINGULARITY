@@ -944,6 +944,7 @@ export const useGame = create<GameStore>((set, get) => ({
   importSave: (blob: string) => {
     const decoded = decodeBackup(blob);
     if (!decoded) return false;
+    let prevSeen: string | null | undefined;
     try {
       // Mirror init()'s post-load normalization so an imported save matches the
       // runtime shape (legacy role-counts → people; ID counters seeded so new
@@ -952,8 +953,11 @@ export const useGame = create<GameStore>((set, get) => ({
       // Persist BEFORE swapping the running lab: when the write throws (storage full
       // or blocked) the sheet reports a failed restore, and the lab it leaves running
       // must be the player's own. Swapping first replaced it with the backup anyway,
-      // and the next launch silently brought the old save back. lastSeen goes first:
-      // stamping it for the lab still running is harmless if the save write then fails.
+      // and the next launch silently brought the old save back. lastSeen goes first (a
+      // save without it would load the backup with the old lab's offline gap), and is
+      // put back if the save write then fails: the old save on disk must keep its own
+      // lastSeen, or the next launch loads it against the import's timestamp.
+      prevSeen = localStorage.getItem(TIME_KEY);
       localStorage.setItem(TIME_KEY, String(now()));
       localStorage.setItem(SAVE_KEY, serialize(game));
       seedProductKey(game);
@@ -963,6 +967,12 @@ export const useGame = create<GameStore>((set, get) => ({
       set({ game, offline: null, event: null, notice: null, worldEvent: null, claimBurst: 0, candidates: null, savingFor: null });
       return true;
     } catch {
+      if (prevSeen !== undefined) {
+        try {
+          if (prevSeen === null) localStorage.removeItem(TIME_KEY);
+          else localStorage.setItem(TIME_KEY, prevSeen);
+        } catch { /* storage refuses every write: nothing left to restore */ }
+      }
       return false;
     }
   },
