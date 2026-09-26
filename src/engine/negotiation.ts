@@ -29,6 +29,13 @@ export function negotiationDue(state: GameState): boolean {
   return state.suspicion >= N.at && !state.modifiers.some((m) => m.id === TRUCE_ID || m.id === NEGOTIATION_ID);
 }
 
+/** Chen's meeting, once raised, still stands: suspicion is still over the line. A card
+ *  that waited behind a sheet while the player lobbied suspicion back under it would
+ *  otherwise still ask −20% cash to settle a case that is no longer open. */
+export function negotiationStands(state: GameState): boolean {
+  return state.suspicion >= N.at;
+}
+
 /** The card content (WorldEventCard-compatible; branch order = apply order). */
 export function negotiationOffer(state: GameState): WorldEventResult {
   const settlePct = Math.round(-N.settle.moneyPct * 100);

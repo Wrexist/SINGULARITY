@@ -69,7 +69,7 @@ import { claimContract, rollSponsor, claimSponsor } from "../engine/contracts";
 import { buyPreprint } from "../engine/preprints";
 import { setCharter, lockCharter } from "../engine/charter";
 import { counterRival, placeStake } from "../engine/market";
-import { negotiationDue, negotiationOffer, applyNegotiationChoice, NEGOTIATION_ID } from "../engine/negotiation";
+import { negotiationDue, negotiationOffer, applyNegotiationChoice, negotiationStands, NEGOTIATION_ID } from "../engine/negotiation";
 import { buyLegacyPerk } from "../engine/legacyTree";
 import { prestige, type ShipMode } from "../engine/prestige";
 import { applyOffline, summarizeWindow, extendSummary, recapWorthShowing, type OfflineSummary } from "../engine/offline";
@@ -401,6 +401,8 @@ export const useGame = create<GameStore>((set, get) => ({
       if (!s.worldEvent) return {};
       // The regulator negotiation has its own (multi-lane) effect application.
       if (s.worldEvent.id === NEGOTIATION_ID) {
+        // The case closed while the card waited: withdraw it, charge nothing.
+        if (!negotiationStands(s.game)) return { worldEvent: null };
         return { game: applyNegotiationChoice(s.game, choiceIndex), worldEvent: null };
       }
       const { state } = applyWorldEventChoice(s.game, s.worldEvent.id, choiceIndex);
@@ -633,6 +635,9 @@ export const useGame = create<GameStore>((set, get) => ({
       // Regulator negotiation (IMPROVEMENTS #9): deterministic, outranks the
       // ambient pool. Fires only past the suspicion line with no truce pending —
       // a clean lab (and the balance sim) never sees it.
+      // A meeting card still waiting (it holds behind an open sheet) is withdrawn once
+      // suspicion is back under the line — lobbying Heat also buys suspicion down.
+      if (s.worldEvent?.id === NEGOTIATION_ID && !negotiationStands(game)) patch.worldEvent = null;
       if (!s.worldEvent && negotiationDue(game)) {
         worldKey += 1;
         patch.worldEvent = { key: worldKey, ...negotiationOffer(game) };
