@@ -8,7 +8,7 @@ import {
   type WorldEvent,
   type WorldEventEffect,
 } from "./balance/config";
-import { derive, computeBankReach, computeBankEtaSecs, runYieldAt, runsPerSec } from "./derive";
+import { derive, boostFreeDerive, computeBankReach, computeBankEtaSecs, runYieldAt, runsPerSec } from "./derive";
 import { ALL_RESEARCH, researchTree, epochUnlocked } from "./researchTree";
 import { alignmentHeatMult, shiftAlignment } from "./alignment";
 import { suspicionEventMult, regulatorIsNamed, regulatorState, clampSuspicion } from "./regulator";
@@ -58,7 +58,11 @@ export function startRun(state: GameState): GameState {
  *  started at (see runYieldAt). No-op if nothing is ready. */
 export function claimRun(state: GameState): GameState {
   if (!state.run.readyToClaim) return state;
-  const y = runYieldAt(state, derive(state), state.run.focus);
+  const d = derive(state);
+  const y = runYieldAt(state, d, state.run.focus);
+  // The Legacy base is priced boost-free (see boostFreeDerive); the Money is paid in full.
+  const dFree = boostFreeDerive(state, d);
+  const legacyY = dFree === d ? y.money : runYieldAt(state, dFree, state.run.focus).money.min(y.money);
   return {
     ...state,
     resources: {
@@ -66,7 +70,7 @@ export function claimRun(state: GameState): GameState {
       data: state.resources.data.add(y.data),
       money: state.resources.money.add(y.money),
     },
-    lifetimeMoney: state.lifetimeMoney.add(y.money),
+    lifetimeMoney: state.lifetimeMoney.add(legacyY),
     // tick() derives stats.totalMoney from the lifetimeMoney delta WITHIN a tick, so a
     // claim landing between ticks was never counted: a hand-claiming opening showed
     // $0 all-time earned and the Seed Round contract / lifetime achievements sat

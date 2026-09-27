@@ -97,6 +97,28 @@ export function legacyMultiplier(weights: Big): Big {
   return Big.ONE.add(weights.max(Big.ZERO).pow(balance.prestige.multiplierExponent).mul(balance.prestige.multiplierPerPoint));
 }
 
+/** A live timed BUFF: a modifier that raises a lane for a while (Daily Boost, an
+ *  Objective's reward, a world-event buff, ship momentum). Debuffs and factor-1
+ *  status markers (the regulator truce) are not buffs. */
+function isTimedBuff(m: GameState["modifiers"][number]): boolean {
+  return m.remainingSec > 0 && m.factor > 1;
+}
+
+/**
+ * The economy as it would run with every timed buff divided out: what the Legacy base
+ * (lifetimeMoney) is priced on. A lane boost reaches run payouts through Compute AND
+ * Money (squared, see runMoneyYield), so a x2 boost taken while lingering at a
+ * ship-ready lab used to quadruple the Legacy that lingering added. The boost still
+ * pays its Money in full; it just can't buy permanent Legacy.
+ *
+ * Returns `d` itself when no buff is live, so boost-free play (and the balance sim,
+ * which never claims a boost) runs exactly as before. Pure.
+ */
+export function boostFreeDerive(state: GameState, d: Derived): Derived {
+  if (!state.modifiers.some(isTimedBuff)) return d;
+  return derive({ ...state, modifiers: state.modifiers.filter((m) => !isTimedBuff(m)) });
+}
+
 /** First-Ship value: the global multiplier the NEXT run would start with if the
  *  player shipped now (deploy), vs. the threshold where it is clearly worth it. */
 export const FIRST_SHIP_WORTH_IT = 1.25;

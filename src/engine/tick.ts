@@ -1,6 +1,6 @@
 import { Big } from "./math/Big";
 import { balance } from "./balance/config";
-import { derive, runYieldAt, runsPerSec, committedProductMods } from "./derive";
+import { derive, boostFreeDerive, runYieldAt, runsPerSec, committedProductMods } from "./derive";
 import { simulateProducts, advanceUpgrades, applyMilestones, productMetrics, settledMrr, rivalLead } from "./products";
 import { advanceTraining, payrollPaid } from "./employees";
 import { accrueStats } from "./stats";
@@ -192,13 +192,28 @@ function tickSegment(state: GameState, elapsedMs: number): GameState {
   let money = state.resources.money.add(d.passiveMoneyPerSec.mul(seconds));
   let lifetimeMoney = state.lifetimeMoney.add(d.passiveMoneyPerSec.mul(seconds));
 
+  // The Legacy base is priced boost-free (see boostFreeDerive): `lifetimeMoney` here
+  // tracks what the lab EARNED (payroll's basis and the all-time stats), and
+  // `boostShave` is the part of it a live timed buff paid, which the Legacy base
+  // leaves out. Stays exactly zero (never touched) when no buff is live.
+  const dFree = boostFreeDerive(state, d);
+  let boostShave = Big.ZERO;
+  if (dFree !== d) boostShave = d.passiveMoneyPerSec.sub(dFree.passiveMoneyPerSec).max(Big.ZERO).mul(seconds);
+
   let run = { ...state.run };
+  // Pay a finished run at its intensity (see runYieldAt), shaving any buff's share
+  // off the Legacy base.
+  const claimRunInto = () => {
+    const y = runYieldAt(state, d, run.focus);
+    if (dFree !== d) boostShave = boostShave.add(y.money.sub(runYieldAt(state, dFree, run.focus).money).max(Big.ZERO));
+    ({ data, money, lifetimeMoney } = claimInto(y, data, money, lifetimeMoney));
+  };
 
   // Seconds of this window the run trains for: all of it for a run already in flight.
   let runSecs = run.active ? seconds : 0;
   if (!run.active && run.readyToClaim && d.autoClaim) {
     // A run finished last tick before auto-claim existed; claim it now.
-    ({ data, money, lifetimeMoney } = claimInto(runYieldAt(state, d, run.focus), data, money, lifetimeMoney));
+    claimRunInto();
     run = { active: false, progress: 0, readyToClaim: false };
   } else if (!run.active && !run.readyToClaim && autoTrainReady(compute)) {
     // Idle + auto-train (and focus allows): kick off a fresh run.
@@ -240,7 +255,7 @@ function tickSegment(state: GameState, elapsedMs: number): GameState {
         remaining -= secsToFinish;
         run = { ...run, active: false, progress: 1, readyToClaim: true };
         if (d.autoClaim) {
-          ({ data, money, lifetimeMoney } = claimInto(runYieldAt(state, d, run.focus), data, money, lifetimeMoney));
+          claimRunInto();
           run = { active: false, progress: 0, readyToClaim: false };
           if (autoTrainReady(compute)) {
             compute = compute.sub(d.runComputeCost);
@@ -345,12 +360,16 @@ function tickSegment(state: GameState, elapsedMs: number): GameState {
   const runPeakCompute = state.runPeakCompute.max(d.computePerSec);
   const runPeakMrr = Math.max(state.runPeakMrr, curMrr);
 
+  // The Legacy base: what the lab earned, less the share a timed buff paid (same
+  // reference when no buff is live, so boost-free play is untouched).
+  const legacyBase = dFree === d ? lifetimeMoney : lifetimeMoney.sub(boostShave).max(state.lifetimeMoney);
+
   // Award any newly-reached product milestones (one-time Money rewards). Folded in
   // last so it sees this tick's fresh user/MRR/version totals.
   const ms = applyMilestones({
     ...state,
     resources: { compute, data, money },
-    lifetimeMoney,
+    lifetimeMoney: legacyBase,
     run,
     heat,
     modifiers,
@@ -365,7 +384,7 @@ function tickSegment(state: GameState, elapsedMs: number): GameState {
   // they'd never reach totalMoney — all-time earnings would quietly under-report,
   // making totalMoney-gated achievements/contracts/cosmetics harder than tuned.
   let msState = ms.state;
-  const milestoneGain = msState.lifetimeMoney.sub(lifetimeMoney);
+  const milestoneGain = msState.lifetimeMoney.sub(legacyBase);
   if (milestoneGain.gt(0)) {
     msState = { ...msState, stats: { ...msState.stats, totalMoney: msState.stats.totalMoney.add(milestoneGain) } };
   }

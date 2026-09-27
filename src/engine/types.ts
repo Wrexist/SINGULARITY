@@ -61,7 +61,8 @@ export interface GameState {
   research: string[];
   run: TrainingRun;
   prestige: PrestigeState;
-  /** Lifetime money earned this run — feeds the prestige capability gate. */
+  /** Money earned this run, priced with timed buffs divided out (boostFreeDerive): the
+   *  Legacy base a Ship is priced on. All-time earnings live in stats.totalMoney. */
   lifetimeMoney: Big;
   /** Regulatory Heat (0..100). Rises with dark-web use, cools over time. */
   heat: number;
