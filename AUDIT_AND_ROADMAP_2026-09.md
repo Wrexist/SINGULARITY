@@ -498,6 +498,38 @@ Round 8, still for the owner:
   - `components` minFuseValueShare
   - the Hard ship lead
 
+**Round 9 reviewed round 8 adversarially** and found three regressions in it, all now
+fixed. The suite is at 1984 tests and the sim is still identical.
+- **A suspend's offline window could be lost.** If the 5 s autosave woke before the game
+  loop (about 1 wake in 50), save() moved the clock guard's live mark, and the whole
+  locked-phone window paid nothing. Now saves only record the mark into the persisted
+  copy; the loop, init and import move the live one. A clock-guard fuzz test
+  (`clockGuardFuzz.test.ts`) pins honest play paid in full and clock moves never
+  double-paid.
+- **A Hard ship's rival lead became a permanent product gain.** It was added to the
+  frontier and never taken back out, so the next generation out-earned Deploy by 62%. It
+  now ends at the next Ship, and a Hard generation's draft is minted at the reachable
+  quality.
+- **Rig Bay fusion was unreachable.** Round 8's fair counts exceeded the spares a
+  player could ever hold. The picker now offers "Buy a spare" (with n/N progress) on an
+  owned part while its fusion result is revealed.
+- **Smaller fixes:**
+  - The return reminder fires when the offline cap has really filled after a clock
+    correction.
+  - Unearned Team stars are no longer near-white in Dark.
+  - The pinned iPad hall stays below the bar at the end of the Build page.
+- **Clean on review:** every reader of the new boost-free Legacy base (payroll,
+  milestones, stats, objectives, UI), and softcap agreement across every ship mode and
+  extreme stocks.
+
+Round 9, left for the owner:
+- **UTC day rollover.** The Daily Boost and sponsor day roll over at UTC midnight, not
+  local midnight (as before round 8).
+- **Records Rep from boosts.** A timed boost can still pull a Compute record, and its
+  Rep, forward a little.
+- **Reinstall reopens the daily.** Reinstalling and restoring a backup reopens that day's
+  Daily Boost, because the claim key lives outside the save.
+
 ## Part 6 — App Store: "free to download"
 
 The listing copy already says "free" (`appstore/metadata/en-US/description.txt`:
