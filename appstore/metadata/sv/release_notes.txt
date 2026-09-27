@@ -1,10 +1,11 @@
 I den här uppdateringen:
 
+• Mörkt läge: välj Light, Dark eller Match device i Inställningar.
 • Nytt varje generation: ta ställning med en Stance (Safety, Center eller Acceleration) och lås upp den sidans Doctrine-förmåner. Varje Ship delar dessutom ut tre Lab Charters, och vissa av dem ändrar själva reglerna.
 • Unplugged Trials: stäng av Legacy under en generation och spela en hel runda från noll igen. Dina Compute-rekord ger nu Lab Reputation.
 • Tydligare mål: du ser alltid nästa steg, och när det verkligen lönar sig att shippa.
 • ”Spara till det här”: tryck på forskning utom räckhåll så sparar labbet ihop Compute och köper den åt dig.
 • Lugnare: bara riktiga beslut avbryter dig, resten rullar i nyhetsflödet. Bättre stöd för VoiceOver och större tryckytor.
-• Smidigare på äldre iPhone, korrekt offlinetid och över 60 buggfixar.
+• Smidigare på äldre iPhone, korrekt offlinetid och över 150 buggfixar.
 
 Fortfarande inga annonser. Fortfarande ingen pay-to-win.
