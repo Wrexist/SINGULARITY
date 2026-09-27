@@ -1628,6 +1628,17 @@ export const balance = {
      * prestige unchanged); the meta-loop past the first ship is what this retunes.
      */
     multiplierExponent: 0.8,
+    /**
+     * Legacy softcap (owner-approved 2026-09, round 8). Past this Legacy multiplier the
+     * weights a Ship EARNS meet diminishing returns; the weights a player already holds
+     * are never reduced, so no save's multiplier goes down. Veterans had reached x1e6+
+     * and seconds-long runs. The balance sim peaks at about x2.9, so it never gets here.
+     * Above the cap each earned weight pays (capWeights / weights)^power of a weight
+     * (integrated over the Ship, see softcapLegacyGain): with power 0.5 a fresh climb
+     * past x10 grows the multiplier roughly as the 2/3 power of what it would have.
+     */
+    legacySoftcapAt: 10,
+    legacySoftcapPower: 0.5,
 
     /**
      * GDD §4 — shipping is a player-flavored choice with minor different bonuses.
