@@ -81,6 +81,7 @@ import { purchaseSignature } from "../engine/telemetry";
 import { currentEra } from "../engine/eras";
 import { codexBalance, codexUnlocked, codexRevealed } from "../engine/codex";
 import type { Big } from "../engine/math/Big";
+import { enqueueNotices } from "./noticeQueue";
 
 const SAVE_KEY = "singularity.save.v1";
 const TIME_KEY = "singularity.lastSeen.v1";
@@ -616,14 +617,15 @@ export const useGame = create<GameStore>((set, get) => ({
       }
 
       // One queue, oldest first — a notice earned this tick never jumps ahead of
-      // one still waiting from a previous tick. Cap the backlog so an extreme
-      // offline catch-up can't toast for minutes.
+      // one still waiting from a previous tick. Every notice is kept (it used to be
+      // cut to six, dropping the 7th+ of a burst); only a runaway backlog folds its
+      // overflow into one summary notice, so a catch-up can't toast for minutes.
       // A fired recap SUPERSEDES the notice backlog: every achievement, milestone,
       // version ship and level-up this catch-up tick produced is already a line in
       // the "while you were away" screen, so queuing them as toasts too would tell
       // the same story twice — once behind a modal the player can't read past.
       if (recapFired) pendingNotices = [];
-      else if (earned.length > 0) pendingNotices = [...pendingNotices, ...earned].slice(0, 6);
+      else if (earned.length > 0) pendingNotices = enqueueNotices(pendingNotices, earned);
       // Drain at most one per NOTICE_GATE_MS of real time (not one per 100ms tick), so a
       // same-tick burst / catch-up backlog surfaces as readable, staggered toasts; and hold
       // while a heat event claimed this tick. The gate idles at 0, so a single notice after
