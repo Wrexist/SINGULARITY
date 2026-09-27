@@ -3285,7 +3285,7 @@ p.pd-flagship { cursor: default; text-align: center; margin-top: 0; }
 /* Avatars + level pips */
 .emp-av { flex: 0 0 auto; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; letter-spacing: -0.02em; }
 .emp-stars { display: inline-flex; gap: 1px; flex: 0 0 auto; }
-.emp-star { font-size: var(--fs-xs); color: #d8d8e0; line-height: 1; }
+.emp-star { font-size: var(--fs-xs); color: var(--star-off); line-height: 1; }
 .emp-star.on { color: #f5b40a; }
 
 .emp-section-head { display: flex; align-items: center; justify-content: space-between; font-size: var(--fs-md); font-weight: 800; color: var(--ink-soft); margin: 4px 2px 2px; }
