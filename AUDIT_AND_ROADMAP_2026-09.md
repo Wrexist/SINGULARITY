@@ -411,6 +411,37 @@ Round 6, left for the owner:
   iPads in landscape. Pinning it on 11-inch needs a measured bar height.
 - **Long Contract titles** run into the card gap at 320px.
 
+**Round 7** covered three areas: long-session health, goal copy parity and hostile text
+input. It landed 10 fixes. The suite is at 1845 tests and the sim is still identical.
+- **Long sessions are clean.** Over a simulated 5-hour session plus an interaction-churn
+  loop, heap growth was V8 JIT warm-up only. Listeners, intervals, rAF loops, DOM nodes
+  and audio nodes stayed flat, and every module-level collection is capped.
+- **Goal copy parity is now a permanent table test** (`src/engine/goalCopyParity.test.ts`).
+  It derives each goal's numbers, units and lane from the effect data and checks the copy
+  against them. It found:
+  - Grand Challenge and Lean Budget rewards promised "all revenue" but only touch the
+    Money lane; the copy now says Money.
+  - A Field Note said "Ten contracts" at a threshold of 5.
+  - The Inference API card read "+$0.3/s" but pays $0.30 per Compute/s.
+  - Trust & Safety did nothing on 5 of 8 product types; it now cuts incident Heat.
+  - Running Hot and Apolitician had no readout, and the Heat meter rounded 59.5 up to
+    60%.
+- **Product names are safe.**
+  - Rename survives IME composition.
+  - Names are cleaned: no split emoji, bidi overrides or control characters.
+  - A save with a junk name keeps the product.
+  - Long one-word names wrap instead of scrolling the page sideways.
+  - A product named like a rival no longer takes the rival's tags.
+- **The product sheet's title** no longer sits in the browser's grey button box.
+
+Round 7, left for the owner:
+- **"Revenue" versus "Money".** The Objective lane buttons, world-event chips and about a
+  dozen event bodies say "Revenue" for the Money lane, which never touches product
+  revenue. Either rename the label to Money everywhere, or let the Money lane reach
+  products.
+- **Staff PR's "-10% product Heat"** has the same incident-Heat blind spot that Trust &
+  Safety had.
+
 ## Part 6 — App Store: "free to download"
 
 The listing copy already says "free" (`appstore/metadata/en-US/description.txt`:
