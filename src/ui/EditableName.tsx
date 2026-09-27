@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { PencilIcon } from "./Icons";
+import { PRODUCT_NAME_MAX } from "../engine/products";
 
 /**
  * Tap-to-rename in place. Replaces window.prompt (which is unreliable / ugly on
@@ -7,7 +8,7 @@ import { PencilIcon } from "./Icons";
  * and cancels on Escape (keys that confirm or dismiss an IME candidate do neither).
  * The committed value is trimmed and length-capped.
  */
-export function EditableName({ value, onCommit, className, max = 32 }: {
+export function EditableName({ value, onCommit, className, max = PRODUCT_NAME_MAX }: {
   value: string;
   onCommit: (next: string) => void;
   className?: string;

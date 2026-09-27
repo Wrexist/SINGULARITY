@@ -544,7 +544,7 @@ export function releaseProduct(
   if (!canReleaseProduct(state, opts.type)) return state;
   const product: ProductState = {
     id: opts.id,
-    name: opts.name,
+    name: cleanProductName(opts.name),
     type: opts.type,
     version: 1,
     quality: state.products.frontier, // launch at the current frontier
@@ -623,7 +623,7 @@ export function launchDraft(
   const draft = state.products.drafts.find((d) => d.id === opts.draftId)!;
   const product: ProductState = {
     id: opts.id,
-    name: opts.name,
+    name: cleanProductName(opts.name),
     type: opts.type,
     version: 1,
     quality: Math.max(1, draft.quality),
@@ -855,8 +855,47 @@ export function setChannelMix(state: GameState, id: string, channelId: string, w
   };
 }
 
+/** Longest product name kept, in UTF-16 units (what an <input maxLength> counts, so
+ *  the rename field can never hold more than the rename keeps). */
+export const PRODUCT_NAME_MAX = 24;
+
+// C0/C1 controls (tab, newline, NUL…) read as a space; the bidi embedding/override/
+// isolate controls are dropped. A name has no closing mark for an override, so a
+// pasted U+202E flipped the rest of every toast that named the product. Plain RTL
+// letters (and the LRM/RLM marks) are untouched.
+const NAME_CONTROLS = /[\u0000-\u001f\u007f-\u009f]/g;
+const NAME_BIDI = /[\u202a-\u202e\u2066-\u2069]/g;
+
+/** Split into user-perceived characters (an emoji ZWJ sequence or a letter plus its
+ *  combining marks stays whole); code points where Intl.Segmenter is missing. */
+function graphemes(text: string): string[] {
+  const Seg = (Intl as { Segmenter?: new (l?: string, o?: { granularity: "grapheme" }) => { segment(t: string): Iterable<{ segment: string }> } }).Segmenter;
+  return Seg ? Array.from(new Seg(undefined, { granularity: "grapheme" }).segment(text), (x) => x.segment) : Array.from(text);
+}
+
+/** A player-typed (or save-loaded) product name, made safe to store and show:
+ *  controls become spaces, runs of whitespace collapse, lone surrogates go, and the
+ *  length cap only ever cuts between whole characters. Empty → "Untitled". */
+export function cleanProductName(name: unknown): string {
+  if (typeof name !== "string") return "Untitled";
+  // Bound the work on a hostile paste before segmenting it.
+  const flat = Array.from(name.slice(0, PRODUCT_NAME_MAX * 16))
+    .filter((c) => !/^[\ud800-\udfff]$/.test(c)) // a lone surrogate (a pair is one element)
+    .join("")
+    .replace(NAME_BIDI, "")
+    .replace(NAME_CONTROLS, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  let out = "";
+  for (const g of graphemes(flat)) {
+    if (out.length + g.length > PRODUCT_NAME_MAX) break;
+    out += g;
+  }
+  return out.trim() || "Untitled";
+}
+
 export function renameProduct(state: GameState, id: string, name: string): GameState {
-  const clean = name.trim().slice(0, 24) || "Untitled";
+  const clean = cleanProductName(name);
   return {
     ...state,
     products: {
