@@ -70,6 +70,27 @@ export function buyFeature(state: GameState, productId: string, featureId: strin
   };
 }
 
+/** How far rivals lead your lab this generation. A Hard ship leaps the competitive
+ *  frontier ("your products start behind"), and that lead holds until the next Ship:
+ *  version pushes, finished upgrades and new launches reach the frontier minus it.
+ *  (It used to vanish on the first push, which left the product at a HIGHER quality
+ *  than a Deploy lab's, so Hard beat Deploy on both Legacy and products.) Read from
+ *  the Archive entry prestige() writes for this generation, so it needs no saved
+ *  field; 0 for every other mode, for an entry that isn't this generation's, and on
+ *  the balance sim's deploy-only curve. */
+export function rivalLead(state: GameState): number {
+  const last = state.shipLog[state.shipLog.length - 1];
+  if (!last || last.gen !== state.prestige.ships) return 0;
+  const lead = (balance.prestige.shipModes as Record<string, { frontierPenalty: number } | undefined>)[last.mode]?.frontierPenalty ?? 0;
+  return Number.isFinite(lead) && lead > 0 ? lead : 0;
+}
+
+/** The quality a release, version push or finished upgrade reaches right now: the
+ *  competitive frontier, less any rivals' lead this generation (see rivalLead). */
+export function reachableQuality(state: GameState): number {
+  return Math.max(1, state.products.frontier - rivalLead(state));
+}
+
 /** Products unlock once you've shipped at least `unlockAtShips` models. */
 export function productsUnlocked(state: GameState): boolean {
   return state.prestige.ships >= B.unlockAtShips;
@@ -547,7 +568,7 @@ export function releaseProduct(
     name: cleanProductName(opts.name),
     type: opts.type,
     version: 1,
-    quality: state.products.frontier, // launch at the current frontier
+    quality: reachableQuality(state), // launch at the current frontier (less a Hard lead)
     priceMult: 1,
     enterprise: false,
     enterprisePrice: 1,
@@ -584,7 +605,7 @@ export function pushVersion(state: GameState, id: string): GameState {
   const c = versionCostFor(state, p.version);
   const active = state.products.active.map((x) =>
     x.id === id
-      ? { ...x, version: x.version + 1, quality: state.products.frontier, buzzSec: Math.max(x.buzzSec, B.buzzDurationSec) }
+      ? { ...x, version: x.version + 1, quality: reachableQuality(state), buzzSec: Math.max(x.buzzSec, B.buzzDurationSec) }
       : x,
   );
   return {
@@ -725,13 +746,14 @@ export interface UpgradeTickResult {
  *  (a tick you can't afford the drain stalls that upgrade). Pure: resource pools
  *  are passed in as numbers and the amounts spent are returned for the caller (tick)
  *  to subtract from the Big resources. On completion: version bumps, quality jumps
- *  to the current frontier, and launch buzz fires. */
+ *  to the current frontier (less `rivalLead`, see rivalLead()), and launch buzz fires. */
 export function advanceUpgrades(
   ps: ProductsState,
   computeAvail: number,
   dataAvail: number,
   seconds: number,
   modsById: Record<string, ProductMods> = {},
+  rivalLeadNow = 0,
 ): UpgradeTickResult {
   if (seconds <= 0 || !ps.active.some((p) => p.upgrade)) {
     return { products: ps, computeSpent: 0, dataSpent: 0, completed: [] };
@@ -768,7 +790,7 @@ export function advanceUpgrades(
       return {
         ...p,
         version: u.targetVersion,
-        quality: Math.max(p.quality, ps.frontier),
+        quality: Math.max(p.quality, ps.frontier - rivalLeadNow),
         buzzSec: Math.max(p.buzzSec, B.buzzDurationSec), // keep a longer hype wave running
         upgrade: null,
       };

@@ -259,7 +259,8 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     },
     // Phase 3 — released products are your standing business; they survive the
     // reset and keep earning Money into the next run (the meta-reward for shipping).
-    // A "hard" ship leaps the competitive frontier so carried products start behind.
+    // A "hard" ship leaps the competitive frontier so carried products start behind,
+    // and stay behind for this generation (see rivalLead in products.ts).
     // A version upgrade still in flight is dropped, not carried: its remaining cost was
     // priced from the OLD run's Data rate, so in the fresh lab it drained every bit of
     // Data (and a share of Compute) each tick and froze research for the whole

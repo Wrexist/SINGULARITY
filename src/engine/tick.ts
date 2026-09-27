@@ -1,7 +1,7 @@
 import { Big } from "./math/Big";
 import { balance } from "./balance/config";
 import { derive, runYieldAt, runsPerSec, committedProductMods } from "./derive";
-import { simulateProducts, advanceUpgrades, applyMilestones, productMetrics, settledMrr } from "./products";
+import { simulateProducts, advanceUpgrades, applyMilestones, productMetrics, settledMrr, rivalLead } from "./products";
 import { advanceTraining, payrollPaid } from "./employees";
 import { accrueStats } from "./stats";
 import { applyAchievements } from "./achievements";
@@ -307,7 +307,7 @@ function tickSegment(state: GameState, elapsedMs: number): GameState {
   // the economy sim (so completions catch up to the freshly-drifted frontier) and
   // pass the live pools so an unaffordable tick just stalls that upgrade.
   if (products.active.some((p) => p.upgrade)) {
-    const upg = advanceUpgrades(products, compute.toNumber(), data.toNumber(), seconds, d.productModsById);
+    const upg = advanceUpgrades(products, compute.toNumber(), data.toNumber(), seconds, d.productModsById, rivalLead(state));
     products = upg.products;
     if (upg.computeSpent > 0) compute = compute.sub(upg.computeSpent).max(Big.ZERO);
     if (upg.dataSpent > 0) data = data.sub(upg.dataSpent).max(Big.ZERO);

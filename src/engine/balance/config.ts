@@ -1665,7 +1665,7 @@ export const balance = {
       // bank +50% Legacy. Lives in the same chooser — no new screen/mechanic.
       hard: {
         id: "hard", label: "Hard ship (challenge)",
-        blurb: "Rivals leap ahead — your products start behind — but bank +50% Legacy. For when the easy money bores you.",
+        blurb: "Rivals lead all run — your products stay behind, even after new versions — but bank +50% Legacy.",
         legacyMult: 1.5, keepsDraft: true, moneyKickstartPerShip: 0, frontierPenalty: 6, unlockShips: 3,
         reputationBonus: 0, momentum: null as null | { factor: number; durationSec: number },
       },
