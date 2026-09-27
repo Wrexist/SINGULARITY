@@ -6,9 +6,11 @@
  *
  *   node scripts/trailer/compose.mjs <captureDir> <score.wav> <out.mp4> [--format landscape|portrait] [--from s --to s]
  *
- * landscape: 1920x1080, 42 s — the trailer (web, YouTube, socials).
- * portrait:  886x1920, 30 s — an App Store app preview: full-screen captures of the
- *            app only (no device frames, no collage), text overlays, no price.
+ * landscape: 1920x1080, 42 s — the trailer (web, YouTube, press).
+ * portrait:  886x1920, 30 s — a vertical cut for TikTok / Reels / Shorts. It is NOT
+ *            the App Store app preview: the hall footage sits over a composited
+ *            background, which App Review's 2.3.4 capture-only rule may reject, so
+ *            appstore/preview.mp4 (scripts/store-preview-video.mjs) stays the preview.
  */
 import { chromium } from "playwright";
 import { execFileSync } from "node:child_process";
@@ -52,7 +54,8 @@ body{font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;c
 .glow{position:absolute;border-radius:50%;filter:blur(90px);opacity:0}
 .txt{position:absolute;opacity:0;white-space:nowrap}
 .txt .w{display:inline-block;will-change:transform,opacity,filter}
-.kick{font-size:${FORMAT === "portrait" ? 26 : 22}px;font-weight:650;letter-spacing:.34em;text-transform:uppercase}
+.kick{font-size:${FORMAT === "portrait" ? 30 : 27}px;font-weight:700;letter-spacing:.32em;text-transform:uppercase}
+.mark{font-size:${FORMAT === "portrait" ? 76 : 92}px;font-weight:800;letter-spacing:.08em;line-height:1}
 .head{font-size:${FORMAT === "portrait" ? 92 : 104}px;font-weight:800;letter-spacing:-.04em;line-height:1.02}
 .mega{font-size:${FORMAT === "portrait" ? 150 : 176}px;font-weight:850;letter-spacing:-.05em;line-height:.95}
 .sub{font-size:${FORMAT === "portrait" ? 40 : 38}px;font-weight:400;letter-spacing:-.01em;color:rgba(232,236,255,.78)}
@@ -61,7 +64,7 @@ body{font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;c
 #flash{position:absolute;inset:0;background:radial-gradient(60% 60% at 50% 50%,#fff,rgba(255,236,220,.6) 40%,rgba(255,200,160,0) 75%);opacity:0;mix-blend-mode:screen}
 #dim{position:absolute;inset:0;background:#04050a;opacity:0}
 #vig{position:absolute;inset:0;background:radial-gradient(120% 95% at 50% 45%,transparent 55%,rgba(0,0,0,.55) 100%);pointer-events:none}
-#grain{position:absolute;inset:0;width:100%;height:100%;opacity:.07;mix-blend-mode:overlay;image-rendering:pixelated}
+#grain{position:absolute;inset:0;width:100%;height:100%;opacity:.045;mix-blend-mode:overlay;image-rendering:pixelated}
 #logo{position:absolute;opacity:0;border-radius:22.5%;box-shadow:0 40px 100px -20px rgba(0,0,0,.8)}
 #pill{position:absolute;opacity:0;padding:16px 30px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.06);
   font-size:26px;font-weight:600;letter-spacing:.01em;color:#eef1ff;white-space:nowrap}
@@ -99,7 +102,8 @@ function grain(frame){let s=(frame*2654435761)>>>0;const d=gimg.data;for(let i=0
 function text(id,cfg,t){
   const e=el("texts","txt "+cfg.cls,id);
   if(!e.dataset.b){e.dataset.b=1;e.innerHTML=cfg.text.split(" ").map((w)=>'<span class="w">'+w+'</span>').join(" ");
-    if(cfg.grad){e.querySelectorAll(".w").forEach((w)=>{w.style.background=cfg.grad;w.style.webkitBackgroundClip="text";w.style.backgroundClip="text";w.style.webkitTextFillColor="transparent"})}
+    if(cfg.grad){e.style.textShadow="none";e.style.filter="drop-shadow(0 10px 30px rgba(0,0,0,.55)) drop-shadow(0 0 40px "+(cfg.glowC??"rgba(143,176,255,.35)")+")";
+      e.querySelectorAll(".w").forEach((w)=>{w.style.background=cfg.grad;w.style.webkitBackgroundClip="text";w.style.backgroundClip="text";w.style.webkitTextFillColor="transparent";w.style.paddingBottom=".08em"})}
     if(cfg.color)e.style.color=cfg.color;}
   const inP=seg(t,cfg.a,cfg.a+.01),out=cfg.b?eInOut(seg(t,cfg.b-(cfg.outDur??.45),cfg.b)):0;
   e.style.opacity=inP*(1-out);
@@ -124,6 +128,7 @@ function layer(id,cfg,t){
   const z=lerp(cfg.zoom?.[0]??1,cfg.zoom?.[1]??1,cfg.ease?cfg.ease(p):p);
   const px=lerp(cfg.pan?.[0]??0,cfg.pan?.[2]??0,p),py=lerp(cfg.pan?.[1]??0,cfg.pan?.[3]??0,p);
   img.style.objectPosition=cfg.objPos??"50% 50%";
+  img.style.transformOrigin=cfg.origin??(cfg.shot.startsWith("hall_")?"8% 6%":"50% 50%");
   img.style.transform="translate("+px+"px,"+py+"px) scale("+z+")";
   const fi=cfg.fadeIn?eInOut(seg(t,cfg.a,cfg.a+cfg.fadeIn)):1,fo=cfg.fadeOut?1-eInOut(seg(t,cfg.b,cfg.b+cfg.fadeOut)):1;
   e.style.opacity=fi*fo*(cfg.opacity??1);
@@ -165,7 +170,7 @@ window.render=async function(t,frame,plan){
 const LANDSCAPE_PLAN = `(() => {
 const BAR=2.4, bar=(n,b=0)=>n*BAR+b*.6;
 const C={blue:"rgba(63,134,240,.55)",violet:"rgba(124,92,255,.55)",purple:"rgba(155,81,224,.5)",green:"rgba(22,179,100,.45)",orange:"rgba(255,122,60,.55)",deep:"rgba(20,24,60,.6)"};
-const grad=(a,b)=>"linear-gradient(100deg,"+a+" 0%,#ffffff 55%,"+b+" 100%)";
+const grad=(a,b)=>"linear-gradient(100deg,"+a+" 0%,#ffffff 42%,#ffffff 58%,"+b+" 100%)";
 const layers=[
   // the closet: one rack, a slow push in from black
   ["closet",{shot:"hall_closet",a:bar(2),b:bar(4),zoom:[1.02,1.16],fadeIn:1.1,ease:(p)=>p,offset:.4}],
@@ -189,7 +194,7 @@ const phones=[
   ["pS",{shot:"ui_ship",a:bar(10),b:bar(12),x:1290,y:560,w:420,ry:-10,speed:1,hold:118,glow:C.orange,inDur:.6,drift:4}],
 ];
 const texts=[
-  ["t1",{text:"EVERY AI LAB",cls:"kick",a:.7,b:bar(1,3),at:[960,470,"c"],color:"rgba(190,200,255,.75)",stagger:.12}],
+  ["t1",{text:"EVERY AI LAB",cls:"kick",a:.7,b:bar(1,3),at:[960,470,"c"],color:"rgba(205,214,255,.92)",stagger:.12}],
   ["t2",{text:"starts in a closet.",cls:"head shadow",a:1.6,b:bar(1,3.3),at:[960,560,"c"],stagger:.13,dur:.8}],
   ["t3",{text:"One rack. Big plans.",cls:"head shadow",a:bar(2,3),b:bar(3,3.6),at:[120,860,"l"],stagger:.1}],
   ["m1",{text:"Rack it.",cls:"mega shadow",a:bar(4),b:bar(4,2),at:[110,800,"l"],stagger:.05,dur:.35,outDur:.12,rise:40}],
@@ -197,18 +202,18 @@ const texts=[
   ["m3",{text:"Wire it.",cls:"mega shadow",a:bar(5),b:bar(5,2),at:[110,800,"l"],stagger:.05,dur:.35,outDur:.12,rise:40}],
   ["m4",{text:"Scale it.",cls:"mega shadow",a:bar(5,2),b:bar(6),at:[110,800,"l"],stagger:.05,dur:.35,outDur:.2,rise:40,grad:grad("#8fb0ff","#5cead9")}],
   ["f1",{text:"Run the whole lab.",cls:"head shadow",a:bar(6,.2),b:bar(8),at:[960,110,"cb"],stagger:.08}],
-  ["d0",{text:"EVERY GENERATION",cls:"kick",a:bar(8,.3),b:bar(9,3.3),at:[1060,330,"l"],color:"rgba(200,180,255,.8)"}],
+  ["d0",{text:"EVERY GENERATION",cls:"kick",a:bar(8,.3),b:bar(9,3.3),at:[1060,330,"l"],color:"rgba(214,196,255,.95)"}],
   ["d1",{text:"Pick a charter.",cls:"head shadow",a:bar(8,.6),b:bar(9,3.3),at:[1060,390,"l"]}],
   ["d2",{text:"Take a stance.",cls:"head shadow",a:bar(8,2.2),b:bar(9,3.3),at:[1060,510,"l"]}],
   ["d3",{text:"Bend the rules.",cls:"head shadow",a:bar(9,.2),b:bar(9,3.3),at:[1060,630,"l"],grad:grad("#c9a4ff","#ff8fb3")}],
-  ["s0",{text:"THEN",cls:"kick",a:bar(10,.05),b:bar(11,3.5),at:[130,380,"l"],color:"rgba(255,190,150,.85)"}],
+  ["s0",{text:"THEN",cls:"kick",a:bar(10,.05),b:bar(11,3.5),at:[130,380,"l"],color:"rgba(255,200,165,.95)"}],
   ["s1",{text:"Ship the model.",cls:"head shadow",a:bar(10,.1),b:bar(11,3.5),at:[130,440,"l"],grad:grad("#ffb066","#ff5c7a"),stagger:.09}],
   ["s2",{text:"Bank Legacy. Start faster.",cls:"sub shadow",a:bar(10,2),b:bar(11,3.5),at:[134,580,"l"],stagger:.08}],
   ["s3",{text:"Go again.",cls:"sub shadow",a:bar(11,.4),b:bar(11,3.5),at:[134,634,"l"],stagger:.08}],
   ["g1",{text:"From a server closet",cls:"sub shadow",a:bar(12,.4),b:bar(14,1),at:[960,840,"cb"],stagger:.08}],
   ["g2",{text:"to a planet-scale cluster.",cls:"head shadow",a:bar(12,1.6),b:bar(14,1),at:[960,890,"cb"],stagger:.09,grad:grad("#8fb0ff","#c9a4ff")}],
-  ["e1",{text:"SINGULARITY INC.",cls:"head",a:bar(15,.35),b:41.4,at:[960,640,"cb"],stagger:.02,dur:.9,rise:18}],
-  ["e2",{text:"Build the singularity.",cls:"sub",a:bar(15,1.3),b:41.4,at:[960,772,"cb"],stagger:.08}],
+  ["e1",{text:"SINGULARITY INC.",cls:"mark",a:bar(15,.35),b:41.4,at:[960,560,"cb"],stagger:.02,dur:.9,rise:18}],
+  ["e2",{text:"Build the singularity.",cls:"sub",a:bar(15,1.3),b:41.4,at:[960,684,"cb"],stagger:.08}],
 ];
 const mood=(t)=>t<bar(4)?[C.deep,"rgba(40,50,110,.35)",C.deep]:t<bar(8)?[C.blue,C.violet,C.green]:t<bar(10)?[C.purple,C.violet,"rgba(255,90,140,.35)"]:t<bar(12)?[C.orange,"rgba(255,80,110,.45)",C.violet]:[C.violet,C.blue,C.purple];
 function extra(t){
@@ -224,11 +229,11 @@ function extra(t){
   dim.style.opacity=d;
   // end card
   const lp=Math.max(0,Math.min(1,(t-bar(15))/1.1)),le=1-Math.pow(1-lp,4);
-  logo.style.width=logo.style.height="210px";logo.style.left=(960-105)+"px";logo.style.top=(370-105)+"px";
+  logo.style.width=logo.style.height="210px";logo.style.left=(960-105)+"px";logo.style.top=(390-105)+"px";
   logo.style.opacity=le;logo.style.transform="scale("+(0.72+0.28*le)+")";
   logo.style.boxShadow="0 40px 100px -20px rgba(0,0,0,.8),0 0 "+(60+80*le)+"px -10px rgba(143,176,255,"+(.6*le)+")";
   const pp=Math.max(0,Math.min(1,(t-bar(15,2.6))/.8)),pe=1-Math.pow(1-pp,3);
-  pill.style.opacity=pe*(1-Math.max(0,(t-40.9)/.6));pill.style.left="960px";pill.style.top="870px";pill.style.transform="translate(-50%,"+((1-pe)*20)+"px)";
+  pill.style.opacity=pe*(1-Math.max(0,(t-40.9)/.6));pill.style.left="960px";pill.style.top="790px";pill.style.transform="translate(-50%,"+((1-pe)*20)+"px)";
   document.getElementById("vig").style.opacity=t>bar(15)?.8:1;
 }
 return {layers,phones,texts,mood,extra};
@@ -237,7 +242,7 @@ return {layers,phones,texts,mood,extra};
 // The App Store preview: 30 s, portrait, only full-screen captures of the app.
 const PORTRAIT_PLAN = `(() => {
 const C={blue:"rgba(63,134,240,.55)",violet:"rgba(124,92,255,.55)",purple:"rgba(155,81,224,.5)",green:"rgba(22,179,100,.45)",orange:"rgba(255,122,60,.55)",deep:"rgba(20,24,60,.6)"};
-const grad=(a,b)=>"linear-gradient(100deg,"+a+" 0%,#ffffff 55%,"+b+" 100%)";
+const grad=(a,b)=>"linear-gradient(100deg,"+a+" 0%,#ffffff 42%,#ffffff 58%,"+b+" 100%)";
 // Hall footage is 16:9; in portrait it fills the middle band over the aurora.
 const hall=(shot,a,b,o={})=>({shot,a,b,zoom:o.zoom??[1.0,1.08],offset:o.offset??.3,fadeIn:o.fadeIn??.25,fadeOut:o.fadeOut??.25,objPos:"50% 50%",...o});
 const layers=[
@@ -256,7 +261,7 @@ const layers=[
 // Hall layers are letterboxed into a centred 16:9 band: object-fit contain.
 for(const [id,c] of layers)if(c.shot.startsWith("hall_"))c.hallBand=true;
 const texts=[
-  ["t1",{text:"EVERY AI LAB",cls:"kick",a:.3,b:3.4,at:[443,380,"c"],color:"rgba(190,200,255,.8)"}],
+  ["t1",{text:"EVERY AI LAB",cls:"kick",a:.3,b:3.4,at:[443,380,"c"],color:"rgba(205,214,255,.92)"}],
   ["t2",{text:"starts in a closet.",cls:"head shadow",a:.8,b:3.4,at:[443,470,"c"],stagger:.1}],
   ["m1",{text:"Scale it",cls:"mega shadow",a:3.7,b:9.2,at:[443,1360,"cb"],stagger:.06,grad:grad("#8fb0ff","#5cead9")}],
   ["m2",{text:"to a planet.",cls:"head shadow",a:5.0,b:9.2,at:[443,1520,"cb"],stagger:.08}],
@@ -266,11 +271,16 @@ const texts=[
   ["u4",{text:"Pick your charter.",cls:"head shadow",a:17.8,b:20.0,at:[443,1580,"cb"]}],
   ["s1",{text:"Ship the model.",cls:"head shadow",a:20.4,b:23.8,at:[443,1640,"cb"],grad:grad("#ffb066","#ff5c7a")}],
   ["g1",{text:"Go again. Bigger.",cls:"head shadow",a:24.4,b:27.4,at:[443,1420,"cb"],grad:grad("#8fb0ff","#c9a4ff")}],
-  ["e1",{text:"SINGULARITY INC.",cls:"head",a:27.9,b:29.8,at:[443,1060,"cb"],stagger:.02,rise:18}],
+  ["e1",{text:"SINGULARITY INC.",cls:"mark",a:27.9,b:29.8,at:[443,1060,"cb"],stagger:.02,rise:18}],
 ];
 const mood=(t)=>t<9.4?[C.deep,C.blue,C.violet]:t<20?[C.blue,C.violet,C.green]:t<24?[C.orange,C.violet,C.purple]:[C.violet,C.blue,C.purple];
 function extra(t){
-  for(const img of document.querySelectorAll("#layers .layer img")){const id=img.parentElement.id;if(/closet|garage|floor|hallA|campus/.test(id)){img.style.objectFit="contain";img.parentElement.style.top="560px";img.parentElement.style.height="500px"}}
+  // Hall footage: a tall centred band (cover crops the empty sides, the room stays whole).
+  for(const img of document.querySelectorAll("#layers .layer img")){const id=img.parentElement.id;if(/closet|garage|floor|hallA|campus/.test(id)){img.style.objectFit="cover";img.parentElement.style.top="500px";img.parentElement.style.height="780px";
+    img.parentElement.style.webkitMaskImage=img.parentElement.style.maskImage="linear-gradient(180deg,transparent 0,#000 12%,#000 88%,transparent 100%)"}}
+  // A scrim under the captions while the app's own screens are on camera.
+  let sc=document.getElementById("scrim");if(!sc){sc=document.createElement("div");sc.id="scrim";sc.style.cssText="position:absolute;left:0;right:0;bottom:0;height:720px;background:linear-gradient(180deg,rgba(4,5,10,0),rgba(4,5,10,.82) 45%,rgba(4,5,10,.94));pointer-events:none";document.getElementById("layers").after(sc)}
+  const ui=Math.min(1,Math.max(0,(t-9.4)/.4))*(1-Math.min(1,Math.max(0,(t-23.6)/.4)));sc.style.opacity=ui;
   const flash=document.getElementById("flash"),dim=document.getElementById("dim"),logo=document.getElementById("logo");
   const hits=[[3.6,.3],[4.8,.3],[6.0,.3],[7.2,.35],[20.2,.9],[27.6,.7]];
   let f=0;for(const [h,a] of hits){if(t>=h)f=Math.max(f,a*Math.exp(-(t-h)*(a>.6?2.6:7)))}
@@ -296,6 +306,17 @@ async function run() {
   await page.goto(pathToFileURL(html).href);
   await page.evaluate(() => document.fonts.ready);
   await page.evaluate(`window.PLAN=${FORMAT === "portrait" ? PORTRAIT_PLAN : LANDSCAPE_PLAN}`);
+  const STILLS = flag("--stills", "");
+  if (STILLS) {
+    for (const ts of STILLS.split(",")) {
+      const t = Number(ts);
+      await page.evaluate(([t, f]) => window.render(t, f, window.PLAN), [t, Math.round(t * FPS)]);
+      await page.screenshot({ path: join(dir, `still-${ts}.png`) });
+    }
+    await browser.close();
+    console.log(`stills in ${dir}`);
+    return;
+  }
   const f0 = Math.round(FROM * FPS), f1 = Math.round(TO * FPS);
   const t0 = Date.now();
   for (let f = f0; f < f1; f++) {
@@ -312,7 +333,7 @@ async function run() {
   const afilter = `atrim=${FROM}:${TO},asetpts=PTS-STARTPTS,afade=t=out:st=${Math.max(0, dur - 1.2)}:d=1.2,loudnorm=I=-14:TP=-1:LRA=11`;
   execFileSync("ffmpeg", [
     "-y", "-v", "error", "-framerate", String(FPS), "-i", join(dir, "%05d.jpg"), "-i", SCORE,
-    "-filter:a", afilter, "-c:v", "libx264", "-profile:v", "high", "-preset", "slow", "-crf", "16",
+    "-filter:a", afilter, "-c:v", "libx264", "-profile:v", "high", "-preset", "slow", "-crf", "20", "-tune", "film",
     "-pix_fmt", "yuv420p", "-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709",
     "-c:a", "aac", "-b:a", "256k", "-ar", "48000", "-t", String(dur), "-movflags", "+faststart", OUT,
   ], { stdio: "inherit" });
