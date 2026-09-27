@@ -33,6 +33,7 @@ import { ProductsPanel } from "./ProductsPanel";
 import { GoalsPanel, type GoalsSection } from "./GoalsPanel";
 import { goalsCounts } from "./goalsCount";
 import { directivePickWaiting } from "./repSignal";
+import { useHallPin } from "./hallPin";
 import { CharterPanel } from "./CharterPanel";
 import { CodexPanel } from "./CodexPanel";
 import { codexRevealed } from "../engine/codex";
@@ -391,6 +392,8 @@ export function App() {
       return next;
     });
   }, []);
+  // iPad split: pin the hall column under the measured resource bar when it fits.
+  const hallPinned = useHallPin(tab === "lab" && section === "build");
   // Telemetry (R8.1): count a tab switch when the player navigates to a *different*
   // tab. On-device only; no-op when opted out (see src/state/telemetry.ts).
   // Stable identity so GoalsPanel's effect doesn't re-fire every render.
@@ -943,7 +946,7 @@ export function App() {
   const rates = barRates(game, d);
 
   return (
-    <div className={`app${reducedMotion ? " reduce-motion" : ""}${booted ? " app-booted" : ""}${tab === "lab" && section === "build" ? " app-split" : ""}`}>
+    <div className={`app${reducedMotion ? " reduce-motion" : ""}${booted ? " app-booted" : ""}${tab === "lab" && section === "build" ? " app-split" : ""}${hallPinned ? " hall-pin" : ""}`}>
       <div className="aurora" aria-hidden="true">
         <span className="blob blob-a" />
         <span className="blob blob-b" />
