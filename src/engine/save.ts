@@ -450,6 +450,8 @@ interface SavedShape {
   sponsor: GameState["sponsor"];
   /** Offline clock guard — the latest wall time the app has seen (ms). Migrated at v40. */
   clockMark: number;
+  /** Daily Boost — the local day it was last claimed on (0 = never). Migrated at v41. */
+  dailyDay: number;
   /** IDEAS #10 — preprints published this run. Sanitizer-defaulted (0). */
   preprints: number;
   /** Grand Challenges — funded amounts (Big → strings) + completed ids. Migrated at v21. */
@@ -534,6 +536,7 @@ export function serialize(state: GameState): string {
     shipLog: state.shipLog,
     sponsor: state.sponsor,
     clockMark: state.clockMark,
+    dailyDay: state.dailyDay,
     preprints: state.preprints,
     challenges: {
       funded: Object.fromEntries(
@@ -885,6 +888,7 @@ export function deserialize(json: string): GameState {
     shipLog: sanitizeShipLog(raw.shipLog, stats.totalShips),
     sponsor: sanitizeSponsor(raw.sponsor),
     clockMark: sanitizeClockMark(raw.clockMark),
+    dailyDay: sanitizeDailyDay(raw.dailyDay),
     // Preprints multiply into derive, so the count is clamped to the per-run cap.
     preprints: Math.min(balance.preprints.maxPerRun, safeCount(raw.preprints)),
     // Grand Challenge rewards are permanent multipliers, so anti-cheat like reputation:
@@ -1021,6 +1025,13 @@ function sanitizeContracts(c: unknown): { completed: string[] } {
  *  behaviour, never a lock-out). The store also bounds it by its trust window. */
 function sanitizeClockMark(v: unknown): number {
   return typeof v === "number" && Number.isFinite(v) && v > 0 && v <= 8.64e15 ? Math.floor(v) : 0;
+}
+
+/** The Daily Boost's last claimed day: a whole day index no later than the last
+ *  representable Date's, else 0 ("never claimed" — junk can never lock the boost).
+ *  A real but far-future day is kept; the store bounds it by the trust window. */
+function sanitizeDailyDay(v: unknown): number {
+  return typeof v === "number" && Number.isFinite(v) && v >= 1 && v <= 1e8 ? Math.floor(v) : 0;
 }
 
 /** Today's sponsor objective (IDEAS #9): validate every field or drop to null —
@@ -1402,6 +1413,13 @@ export function migrate(raw: any): SavedShape {
     // v39 → v40: the offline clock guard's high-water mark. An older save never
     // recorded one; 0 means "none", and the store falls back to its lastSeen stamp.
     s = { ...s, version: 40, clockMark: 0 };
+  }
+  if (s.version === 40) {
+    // v40 → v41: the Daily Boost's claim day moves into the save (it lived in its own
+    // localStorage key, so a reinstall restoring a backup re-opened the day). The save
+    // never held it: 0 ("never") here, and on the launch that loads a pre-v41 save
+    // the store imports the old key's claim, so updating never re-opens a claimed boost.
+    s = { ...s, version: 41, dailyDay: 0 };
   }
   return s as SavedShape;
 }

@@ -31,11 +31,15 @@ beforeEach(() => {
     removeItem: (k: string) => { delete storage[k]; },
   };
   vi.useFakeTimers({ toFake: ["Date"] });
+  // The dailies roll over at LOCAL midnight: pin the device to UTC so these day
+  // numbers hold on any machine (dailyLocal.test.ts covers other zones).
+  vi.spyOn(Date.prototype, "getTimezoneOffset").mockReturnValue(0);
   vi.setSystemTime(T0);
 });
 afterEach(() => {
   (globalThis as { localStorage?: unknown }).localStorage = prevStorage;
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 const S = () => useGame.getState();

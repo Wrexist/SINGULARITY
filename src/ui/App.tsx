@@ -198,7 +198,9 @@ export function App() {
   const [breaking, setBreaking] = useState<Breaking | null>(null);
   const [challengeDoneId, setChallengeDoneId] = useState<string | null>(null); // Grand Challenge just completed → moment
   const [flash, setFlash] = useState(0); // AGI ascension screen flash (key replays the anim)
-  const [dailyOn, setDailyOn] = useState(() => dailyAvailable());
+  // The claim lives in the save (v41), so it is only known once init() has loaded it:
+  // the check effect below runs right after useGameLoop's init() on mount.
+  const [dailyOn, setDailyOn] = useState(false);
   // The "next goal" carrot: the era/contract/achievement closest to popping
   // (see engine/goals.ts). Only computed when the notice slot would actually
   // show it (slot priority is daily > nudge > goal) — no point scanning 50+
@@ -348,7 +350,7 @@ export function App() {
   // Both key off the clock guard's day, so a clock set back never re-opens one.
   useEffect(() => {
     const check = () => {
-      setDailyOn((on) => on || dailyAvailable());
+      setDailyOn(dailyAvailable());
       useGame.getState().doRollSponsor(guardedDay());
     };
     check();
@@ -356,6 +358,8 @@ export function App() {
     document.addEventListener("visibilitychange", check);
     return () => { clearInterval(t); document.removeEventListener("visibilitychange", check); };
   }, []);
+  // A restored backup carries its own claim (v41): re-read it when the save is replaced.
+  useEffect(() => { setDailyOn(dailyAvailable()); }, [saveEpoch]);
 
   // Hall theme drives an app-wide accent (--accent) so picking a theme visibly
   // recolours the chrome (nav, selection rings, accent surfaces) — not just the
@@ -773,12 +777,14 @@ export function App() {
   const onStart = () => { haptics.tap(); sound.tap(); doStartRun(); };
   const onClaim = () => { haptics.success(); sound.success(); doClaim(); };
   const onClaimDaily = () => {
+    // A restored backup may already hold today's claim: the bar can be stale.
+    if (!dailyAvailable()) { setDailyOn(false); return; }
     haptics.celebrate(); sound.success(); doClaimDaily(); markDailyClaimed(); setDailyOn(false);
     // Confirm the claim in words — the confetti was pretty but wordless. Vary the line
     // by local day so returning tomorrow reads as a fresh day, not a repeat.
     const pct = Math.round((balance.daily.factor - 1) * 100);
     const min = Math.round(balance.daily.durationSec / 60);
-    const quip = DAILY_QUIPS[Math.floor(Date.now() / 86_400_000) % DAILY_QUIPS.length]!;
+    const quip = DAILY_QUIPS[guardedDay() % DAILY_QUIPS.length]!;
     logEvent(`${quip} · +${pct}% output for ${min} min`, "good");
     if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.32, { count: 30, power: 1.5, colors: [...FX_PALETTES.brand] });
   };

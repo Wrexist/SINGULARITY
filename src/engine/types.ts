@@ -216,6 +216,11 @@ export interface GameState {
    *  live value (src/state/clockGuard.ts); the engine never reads it — it is only
    *  carried through the save, so the tuned curve cannot see it. Persisted since v40. */
   clockMark: number;
+  /** The local day (days since the epoch, from the player's own midnight) the Daily
+   *  Boost was last claimed on, 0 = never. Like `clockMark`, the STORE owns the live
+   *  value and writes it at save time; the engine never reads it. In the save since
+   *  v41, so a reinstall that restores a backup cannot re-open a claimed day. */
+  dailyDay: number;
   /** IDEAS #10 — frontier preprints published THIS run (post-tree repeatable
    *  research). Hard-capped (balance.preprints.maxPerRun); resets on prestige
    *  like the research tree it extends. */

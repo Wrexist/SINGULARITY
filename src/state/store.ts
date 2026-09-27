@@ -65,7 +65,7 @@ import { fundChallenge, chooseFork, fundMegaproject, pickMandate } from "../engi
 import { claimObjective } from "../engine/objectives";
 import { applyAutomation, automationUnlockedAny, automationEnabled, toggleAutomation } from "../engine/automation";
 import { automation as AUTOMATION } from "../engine/balance/automation";
-import { claimContract, rollSponsor, claimSponsor } from "../engine/contracts";
+import { claimContract, rollSponsor, claimSponsor, lastSponsorDay } from "../engine/contracts";
 import { buyPreprint } from "../engine/preprints";
 import { setCharter, lockCharter } from "../engine/charter";
 import { counterRival, placeStake } from "../engine/market";
@@ -82,7 +82,7 @@ import { currentEra } from "../engine/eras";
 import { codexBalance, codexUnlocked, codexRevealed } from "../engine/codex";
 import type { Big } from "../engine/math/Big";
 import { enqueueNotices } from "./noticeQueue";
-import { creditableMs, guardedDayOf, nextMark, sanitizeMark, trustedMark } from "./clockGuard";
+import { boundClaimDay, creditableMs, dayOpen, guardedDayOf, legacyClaimDay, nextMark, sanitizeMark, sanitizeOffset, sponsorDayFor, trustedMark } from "./clockGuard";
 
 const SAVE_KEY = "singularity.save.v1";
 const TIME_KEY = "singularity.lastSeen.v1";
@@ -92,6 +92,9 @@ const TIME_KEY = "singularity.lastSeen.v1";
 // corrupt it won't even parse — so the raw bytes survive for later recovery
 // instead of being silently overwritten by the next autosave.
 const CORRUPT_KEY = "singularity.save.corrupt.v1";
+/** Where the Daily Boost's claim (a UTC day) lived before v41 moved it into the save.
+ *  Read on the launch that loads a pre-v41 save, and never written again. */
+const LEGACY_DAILY_KEY = "singularity.daily.v1";
 
 /** Last-seen progress signature + era for telemetry purchase/era-arrival detection.
  *  Module-level (like the event-key counters) — diffed across ticks in advance(). */
@@ -286,11 +289,53 @@ export function claimWallTime(from: number, wall: number = now()): number {
   return credit;
 }
 
-/** The guarded day (UTC days since epoch) the Daily Boost and the sponsor objective
- *  key off: the latest day the app has seen, so a clock set back never returns to
- *  a day already played. Read-only: the loop moves the mark. */
+/** The device's offset from UTC at `wall` (ms, east positive), from its time zone —
+ *  daylight saving included. The engine never sees the zone; it is given day numbers. */
+function localOffsetMs(wall: number): number {
+  return sanitizeOffset(-new Date(wall).getTimezoneOffset() * 60_000);
+}
+
+/** The guarded day the Daily Boost and the sponsor objective key off, in the
+ *  player's LOCAL days (they roll over at the player's own midnight): the latest day
+ *  the app has seen, so a clock set back never returns to a day already played.
+ *  Read-only: the loop moves the mark. */
 export function guardedDay(wall: number = now()): number {
-  return guardedDayOf(clockMark, wall);
+  return guardedDayOf(clockMark, wall, localOffsetMs(wall));
+}
+
+/**
+ * The local day the Daily Boost was last claimed on (0 = never; day 0 is in 1970).
+ * Like the mark, the store owns it and writes it into the save (`dailyDay`, v41), so
+ * a backup carries it: a reinstall that restores one can no longer re-open the day.
+ * Loaded by init() from the save, raised (never lowered) by an import, kept by a
+ * Hard Reset.
+ */
+let dailyClaimDay = 0;
+
+/** Whether today's Daily Boost is still unclaimed (the clock guard's rules: only a
+ *  LATER local day than the one claimed opens it). A claim dated past the trust
+ *  window (a clock that was far ahead) is pulled back to its edge and remembered
+ *  there, so it locks for at most a week. */
+export function dailyBoostOpen(wall: number = now()): boolean {
+  const offset = localOffsetMs(wall);
+  const bounded = boundClaimDay(dailyClaimDay, wall, offset);
+  if (bounded >= 0 && bounded < dailyClaimDay) dailyClaimDay = bounded;
+  return dayOpen(bounded, clockMark, wall, offset);
+}
+
+/** Record today's Daily Boost as claimed (the next save persists it). */
+export function recordDailyClaim(wall: number = now()): void {
+  dailyClaimDay = Math.max(dailyClaimDay, guardedDay(wall));
+}
+
+/** The version a stored save was written at (0 when unreadable). */
+function storedVersion(json: string): number {
+  try {
+    const v: unknown = (JSON.parse(json) as { version?: unknown } | null)?.version;
+    return typeof v === "number" && Number.isFinite(v) ? v : 0;
+  } catch {
+    return 0;
+  }
 }
 
 /** When offline time away from `wall` starts to count: now, or later while the mark
@@ -298,11 +343,6 @@ export function guardedDay(wall: number = now()): number {
  *  real time catches up). The return reminder fires a full cap after it. */
 export function offlineAccruesFrom(wall: number = now()): number {
   return Math.max(wall, trustedMark(clockMark, wall));
-}
-
-/** The live high-water mark (read by the Daily Boost's day check). */
-export function currentClockMark(): number {
-  return clockMark;
 }
 
 let eventKey = 0;
@@ -375,8 +415,10 @@ function decodeBackup(blob: string): GameState | null {
  *  player's own training intensity, never the temporary "save for this" one. Both a
  *  relaunch and an import start with no pin, so nothing would ever restore it. */
 function persistedGame(game: GameState, savingFor: { prevFocus: number } | null, mark: number): GameState {
-  // The clock guard's mark is the store's (the in-memory game keeps the loaded one).
-  return savingFor ? { ...game, computeFocus: savingFor.prevFocus, clockMark: mark } : { ...game, clockMark: mark };
+  // The clock guard's mark and the Daily Boost's claim day are the store's (the
+  // in-memory game keeps the loaded ones).
+  const own = { clockMark: mark, dailyDay: dailyClaimDay };
+  return savingFor ? { ...game, computeFocus: savingFor.prevFocus, ...own } : { ...game, ...own };
 }
 
 let empKey = 0;
@@ -458,15 +500,22 @@ export const useGame = create<GameStore>((set, get) => ({
     let game = createInitialState();
     let offline: OfflineSummary | null = null;
     const wall = now();
-    // A cold launch: the mark is the save's (a fresh install has none yet).
+    // A cold launch: the mark and the daily claim are the save's (a fresh install has none yet).
     clockMark = 0;
+    dailyClaimDay = 0;
     try {
       const saved = localStorage.getItem(SAVE_KEY);
+      // Before v41 the Daily Boost's claim lived in its own key, as a UTC day. The
+      // launch that loads such a save (or finds none) takes it in, as the latest local
+      // day the claim can have been made on, so updating re-opens nothing.
+      const legacyDaily = saved && storedVersion(saved) >= 41 ? null : localStorage.getItem(LEGACY_DAILY_KEY);
+      let seen = 0;
       if (saved) {
         game = deserialize(saved);
+        dailyClaimDay = game.dailyDay;
         const last = sanitizeMark(Number(localStorage.getItem(TIME_KEY) ?? "0"));
         // The lastSeen stamp is a time the app saw too (the only one a pre-v40 save has).
-        const seen = Math.max(game.clockMark, last);
+        seen = Math.max(game.clockMark, last);
         clockMark = seen;
         if (last > 0) {
           // Offline clock guard: only wall time beyond the latest the app has ever seen
@@ -490,6 +539,9 @@ export const useGame = create<GameStore>((set, get) => ({
             console.warn("Offline catch-up failed; loading the save without it:", err);
           }
         }
+      }
+      if (legacyDaily !== null && legacyDaily.trim() !== "") {
+        dailyClaimDay = Math.max(dailyClaimDay, legacyClaimDay(Number(legacyDaily), seen, localOffsetMs(wall)));
       }
     } catch (err) {
       console.warn("Save load failed, starting fresh:", err);
@@ -833,7 +885,11 @@ export const useGame = create<GameStore>((set, get) => ({
   doClaimContract: (id) => set((s) => ({ game: claimContract(s.game, id) })),
   doWorkProblem: (id) => set((s) => ({ game: workProblem(s.game, id) })),
   doRollSponsor: (dayKey) => set((s) => {
-    const next = rollSponsor(s.game, dayKey);
+    // Never back to an earlier day than the latest sponsor rolled or completed: a zone
+    // change west, or the switch from UTC days to local ones, keeps today's sponsor
+    // (and its claim) instead of rolling an earlier day's over it.
+    const wall = now();
+    const next = rollSponsor(s.game, sponsorDayFor(lastSponsorDay(s.game), dayKey, wall, localOffsetMs(wall)));
     return next === s.game ? {} : { game: next };
   }),
   doClaimSponsor: () => set((s) => ({ game: claimSponsor(s.game) })),
@@ -1027,6 +1083,7 @@ export const useGame = create<GameStore>((set, get) => ({
     if (!decoded) return false;
     let prevSeen: string | null | undefined;
     let restoreMark: number | undefined;
+    let restoreDaily: number | undefined;
     try {
       // Mirror init()'s post-load normalization so an imported save matches the
       // runtime shape (legacy role-counts → people; ID counters seeded so new
@@ -1034,8 +1091,11 @@ export const useGame = create<GameStore>((set, get) => ({
       // The backup's clock mark joins this device's: restoring a backup taken after a
       // clock jump must not reopen the window that jump already paid.
       restoreMark = clockMark;
+      restoreDaily = dailyClaimDay;
       clockMark = nextMark(Math.max(clockMark, decoded.clockMark), now());
-      const game = { ...migrateStaffCounts(decoded), clockMark };
+      // Likewise its Daily Boost claim: an older backup never re-opens today's boost.
+      dailyClaimDay = Math.max(dailyClaimDay, decoded.dailyDay);
+      const game = { ...migrateStaffCounts(decoded), clockMark, dailyDay: dailyClaimDay };
       // Persist BEFORE swapping the running lab: when the write throws (storage full
       // or blocked) the sheet reports a failed restore, and the lab it leaves running
       // must be the player's own. Swapping first replaced it with the backup anyway,
@@ -1057,6 +1117,7 @@ export const useGame = create<GameStore>((set, get) => ({
     } catch {
       // The running lab stays the player's own, with its own mark.
       if (restoreMark !== undefined) clockMark = restoreMark;
+      if (restoreDaily !== undefined) dailyClaimDay = restoreDaily;
       if (prevSeen !== undefined) {
         try {
           if (prevSeen === null) localStorage.removeItem(TIME_KEY);

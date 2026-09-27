@@ -4,7 +4,7 @@ import { initialStats } from "./stats";
 import { freshComponents } from "./components";
 import type { GameState } from "./types";
 
-export const SAVE_VERSION = 40;
+export const SAVE_VERSION = 41;
 
 /** A fresh lab: empty closet, a trickle of free Compute, nothing owned. */
 export function createInitialState(): GameState {
@@ -69,6 +69,8 @@ export function createInitialState(): GameState {
     sponsor: null,
     // Offline clock guard — no wall time seen yet (the store stamps it on save).
     clockMark: 0,
+    // Daily Boost — never claimed (the store records the claim day on save).
+    dailyDay: 0,
     // IDEAS #10 — no preprints published; resets each run like research.
     preprints: 0,
     // Grand Challenges — no funding yet; persists across prestige once started.

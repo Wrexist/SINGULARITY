@@ -33,12 +33,16 @@ beforeEach(() => {
     removeItem: (k: string) => { delete storage[k]; },
   };
   vi.useFakeTimers({ toFake: ["Date"] });
+  // The dailies roll over at LOCAL midnight: pin the device to UTC so these day
+  // numbers hold on any machine (dailyLocal.test.ts covers other zones).
+  vi.spyOn(Date.prototype, "getTimezoneOffset").mockReturnValue(0);
   vi.setSystemTime(T0);
 });
 
 afterEach(() => {
   (globalThis as { localStorage?: unknown }).localStorage = prevStorage;
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 const S = () => useGame.getState();
@@ -198,7 +202,7 @@ describe("offline clock guard — the live loop", () => {
 describe("offline clock guard — dailies", () => {
   it("the Daily Boost cannot be claimed twice for one day", () => {
     installAt(T0);
-    storage["singularity.daily.v1"] = String(Math.floor(T0 / DAY)); // claimed today
+    markDailyClaimed(); // claimed today
     expect(dailyAvailable()).toBe(false);
     relaunchAt(T0 + DAY); // clock forward a day: tomorrow's boost
     expect(dailyAvailable()).toBe(true);
@@ -227,7 +231,10 @@ describe("offline clock guard — dailies", () => {
 
   it("a claim dated years ahead locks the boost for at most the trust window", () => {
     installAt(T0);
-    storage["singularity.daily.v1"] = String(Math.floor(T0 / DAY) + 400);
+    const raw = JSON.parse(storage[SAVE_KEY]!);
+    raw.dailyDay = Math.floor(T0 / DAY) + 400; // claimed on a clock a year ahead
+    storage[SAVE_KEY] = JSON.stringify(raw);
+    S().init();
     expect(dailyAvailable()).toBe(false);
     relaunchAt(T0 + 8 * DAY + H);
     expect(dailyAvailable()).toBe(true);
