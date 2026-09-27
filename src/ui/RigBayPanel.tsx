@@ -3,7 +3,7 @@ import { Portal } from "./Portal";
 import { Big } from "../engine/math/Big";
 import {
   componentsBalance, SLOTS_BY_TIER, componentDef, visibleCatalog, canBuyComponent, componentOnSale, equippedCount,
-  earnedDefs, earnedSourceComplete, canFuse, freeCopies, tierSetMatched, trophyEarnHint,
+  earnedDefs, earnedSourceComplete, canFuse, fuseCountFor, freeCopies, tierSetMatched, trophyEarnHint,
 } from "../engine/components";
 import type { SlotClass, ComponentDef, ComponentGrade } from "../engine/balance/components";
 import { RACK_IDS } from "../engine/hall";
@@ -129,7 +129,7 @@ export function RigBayPanel({ game, onBuy, onEquip, onFuse }: Props) {
               </button>
               {fusable && def.fusesInto && (
                 <button className="rig-fuse" onClick={() => onFuse(def.id)}>
-                  <SparkIcon size={13} /> Fuse {componentsBalance.fuseCount} spares → 1× {componentDef(def.fusesInto)?.name}
+                  <SparkIcon size={13} /> Fuse {fuseCountFor(def.id)} spares → 1× {componentDef(def.fusesInto)?.name}
                 </button>
               )}
             </div>

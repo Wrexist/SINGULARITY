@@ -13,7 +13,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { RigBayPanel } from "./RigBayPanel";
 import { createInitialState } from "../engine/state";
-import { buyComponent, equipComponent, fuseComponents, grantEarnedComponents, componentDef, freeCopies } from "../engine/components";
+import { buyComponent, equipComponent, grantEarnedComponents, componentDef, freeCopies } from "../engine/components";
 import { Big } from "../engine/math/Big";
 import type { GameState } from "../engine/types";
 
@@ -61,12 +61,11 @@ describe("a part fitted elsewhere is not priced in another tier's picker", () =>
     expect(r!.go).toMatch(/in use/i);
   });
 
-  it("an ASIC fused before the fleet stocks it", () => {
+  it("an ASIC a save fused before the fleet stocks it", () => {
+    // Fusion now waits for the reveal; a save from before that rule keeps its part.
     let s = lab();
     s.upgrades = { rack_basic: 4, rack_server: 3, rack_tpu: 3 };
-    for (const tier of [0, 1, 2]) s = equipComponent(buyComponent(s, "acc_hopperoo"), tier, "accelerator", "acc_hopperoo");
-    for (const tier of [0, 1, 2]) s = equipComponent(s, tier, "accelerator", null);
-    s = fuseComponents(s, "acc_hopperoo");
+    s.components = { ...s.components, owned: { acc_asic: 1 } };
     s = equipComponent(s, 0, "accelerator", "acc_asic");
     expect(freeCopies(s, "acc_asic")).toBe(0);
     const r = row(render(s), componentDef("acc_asic")!.name);

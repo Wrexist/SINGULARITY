@@ -51,8 +51,13 @@ export const components = {
   enabled: true,
   /** The Rig Bay reveals once the hall runs this many racks (~2 min in). */
   revealAtRacks: 3,
-  /** C3 fusion: this many copies of a part combine into one of `fusesInto`. */
+  /** C3 fusion: at least this many copies of a part combine into one of `fusesInto`. */
   fuseCount: 3,
+  /** Fusion is a trade-in, not a discount path: a rung needs enough spares that the
+   *  cheapest all-Money route to the result (the whole ladder below it included) costs
+   *  at least this share of its list price. At a flat 3 spares, 243 Refurb Cards ($34K)
+   *  climbed into a $2.8M Dyson-Adjacent Cluster. See fuseCountFor(). */
+  minFuseValueShare: 0.5,
   /** Sanity ceiling on owned copies of one part (save-load clamp). */
   maxCopies: 99,
   /** C4 matched rig: a tier whose EVERY slot (2+) is filled with parts of the

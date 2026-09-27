@@ -31,9 +31,9 @@ export function componentsUnlocked(state: GameState): boolean {
  *  The catalog is FIXED: nothing rotates, nothing is randomized. Trophy parts
  *  are included once their milestone is complete (the UI also shows locked ones
  *  as visible chase targets — deterministic, never a slot pull). A part the player
- *  already OWNS is always listed: fusion can make one before its reveal (three spare
- *  Hopperoos → an ASIC on a 10-rack lab), and it must be fittable, not vanish until
- *  the fleet grows. Buying still waits for the reveal (canBuyComponent). */
+ *  already OWNS is always listed: a save from before fusion waited for the reveal can
+ *  hold one early (three spare Hopperoos → an ASIC on a 10-rack lab), and it must be
+ *  fittable, not vanish until the fleet grows. Buying still waits for the reveal. */
 export function visibleCatalog(state: GameState): ComponentDef[] {
   const racks = totalRacks(state);
   return C.catalog.filter((d) =>
@@ -108,8 +108,8 @@ export function equippedCount(state: GameState, id: string): number {
 }
 
 /** Is another copy of this part on sale right now, money aside? Not for a trophy (earned,
- *  never sold), a part the fleet hasn't revealed yet (one made early by fusion is owned
- *  but not yet stocked), or a stack at the copy cap. The slot picker reads it to tell a
+ *  never sold), a part the fleet hasn't revealed yet (one an older save fused early is
+ *  owned but not yet stocked), or a stack at the copy cap. The slot picker reads it to tell a
  *  part it can't sell you from one you just can't afford. */
 export function componentOnSale(state: GameState, id: string): boolean {
   const def = BY_ID.get(id);
@@ -133,14 +133,46 @@ export function freeCopies(state: GameState, id: string): number {
   return (state.components.owned[id] ?? 0) - equippedCount(state, id);
 }
 
-/** Fusion needs `fuseCount` FREE copies (slotted parts are never consumed) and a
- *  ladder target. Trophy parts have no `fusesInto` — they never fuse away. */
+/** Spares each rung needs, and the cheapest all-Money route to each part (buy it, or
+ *  fuse the rung below). A rung takes at least `fuseCount` spares, and more when that
+ *  route would cost under `minFuseValueShare` of the result's list price — so the
+ *  whole ladder, not just one step, stays a trade-in rather than a discount path.
+ *  Static catalog data, computed once. */
+const FUSE_COUNT = new Map<string, number>();
+const CHEAPEST = new Map<string, number>();
+function cheapestRoute(id: string): number {
+  const known = CHEAPEST.get(id);
+  if (known !== undefined) return known;
+  const def = BY_ID.get(id)!;
+  let best = def.cost;
+  for (const below of C.catalog) {
+    if (below.fusesInto !== id) continue;
+    const unit = cheapestRoute(below.id);
+    const n = Math.max(C.fuseCount, Math.ceil((C.minFuseValueShare * def.cost) / unit));
+    FUSE_COUNT.set(below.id, n);
+    best = Math.min(best, n * unit);
+  }
+  CHEAPEST.set(id, best);
+  return best;
+}
+for (const d of C.catalog) cheapestRoute(d.id);
+
+/** How many free copies of a part one fusion takes. */
+export function fuseCountFor(id: string): number {
+  return FUSE_COUNT.get(id) ?? C.fuseCount;
+}
+
+/** Fusion needs `fuseCountFor(id)` FREE copies (slotted parts are never consumed) and
+ *  a ladder target the fleet has already revealed — fusion never hands over a part
+ *  ahead of the catalog. Trophy parts have no `fusesInto` — they never fuse away. */
 export function canFuse(state: GameState, id: string): boolean {
   const def = BY_ID.get(id);
-  if (!def?.fusesInto || !BY_ID.has(def.fusesInto)) return false;
+  const target = def?.fusesInto ? BY_ID.get(def.fusesInto) : undefined;
+  if (!def || !target) return false;
+  if (totalRacks(state) < target.revealAtRacks) return false;
   // Same reload-clamp rule as buying: never fuse into a stack already at cap.
-  if ((state.components.owned[def.fusesInto] ?? 0) >= C.maxCopies) return false;
-  return freeCopies(state, id) >= C.fuseCount;
+  if ((state.components.owned[target.id] ?? 0) >= C.maxCopies) return false;
+  return freeCopies(state, id) >= fuseCountFor(id);
 }
 
 /** Combine fuseCount copies of a part into one of the next rung up its class
@@ -149,7 +181,7 @@ export function fuseComponents(state: GameState, id: string): GameState {
   if (!canFuse(state, id)) return state;
   const def = BY_ID.get(id)!;
   const owned = { ...state.components.owned };
-  owned[id] = (owned[id] ?? 0) - C.fuseCount;
+  owned[id] = (owned[id] ?? 0) - fuseCountFor(id);
   if (owned[id]! <= 0) delete owned[id];
   owned[def.fusesInto!] = (owned[def.fusesInto!] ?? 0) + 1;
   return { ...state, components: { ...state.components, owned } };

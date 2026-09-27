@@ -3,7 +3,7 @@ import {
   componentsBalance, SLOTS_BY_TIER, componentDef, freshComponents, componentsUnlocked,
   visibleCatalog, canBuyComponent, buyComponent, equipComponent, equippedCount,
   tierComputeMult, tierPowerMult, loadoutDataPerSec, tierLoadoutFill,
-  grantEarnedComponents, carryEarnedComponents, earnedDefs, canFuse, fuseComponents, freeCopies, tierSetMatched,
+  grantEarnedComponents, carryEarnedComponents, earnedDefs, canFuse, fuseComponents, fuseCountFor, freeCopies, tierSetMatched,
 } from "./components";
 import { createInitialState } from "./state";
 import { derive } from "./derive";
@@ -271,7 +271,7 @@ describe("Rig Bay — fusion (C3)", () => {
 
   it("fuses N free copies into one of the next rung", () => {
     let s = richLab();
-    for (let i = 0; i < componentsBalance.fuseCount; i++) s = buyComponent(s, "acc_refurb");
+    for (let i = 0; i < fuseCountFor("acc_refurb"); i++) s = buyComponent(s, "acc_refurb");
     expect(canFuse(s, "acc_refurb")).toBe(true);
     s = fuseComponents(s, "acc_refurb");
     expect(s.components.owned.acc_refurb).toBeUndefined();
@@ -280,9 +280,9 @@ describe("Rig Bay — fusion (C3)", () => {
 
   it("never consumes slotted copies (fusion needs FREE copies)", () => {
     let s = richLab();
-    for (let i = 0; i < componentsBalance.fuseCount; i++) s = buyComponent(s, "acc_refurb");
+    for (let i = 0; i < fuseCountFor("acc_refurb"); i++) s = buyComponent(s, "acc_refurb");
     s = equipComponent(s, 0, "accelerator", "acc_refurb");
-    expect(freeCopies(s, "acc_refurb")).toBe(componentsBalance.fuseCount - 1);
+    expect(freeCopies(s, "acc_refurb")).toBe(fuseCountFor("acc_refurb") - 1);
     expect(canFuse(s, "acc_refurb")).toBe(false);
     expect(fuseComponents(s, "acc_refurb")).toBe(s);
   });
@@ -295,7 +295,7 @@ describe("Rig Bay — maxCopies cap (reload-clamp parity)", () => {
     expect(canBuyComponent(s, "acc_refurb")).toBe(false); // stack full
     // Fusion into a full target stack is blocked too.
     const t = richLab();
-    t.components.owned.acc_refurb = 3;
+    t.components.owned.acc_refurb = fuseCountFor("acc_refurb");
     t.components.owned.acc_blower = componentsBalance.maxCopies;
     expect(canFuse(t, "acc_refurb")).toBe(false);
     expect(fuseComponents(t, "acc_refurb")).toBe(t); // same-ref no-op
