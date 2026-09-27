@@ -28,3 +28,6 @@ WHO IT'S FOR
 If you love idle, incremental, clicker, and tycoon games but want a cleaner economy, a world that visibly grows, and a sharp sense of humor about the AI industry — this one's for you.
 
 Definitely not a bubble.
+
+Privacy Policy: https://wrexist.github.io/SINGULARITY/privacy/
+Terms of Use (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/

@@ -1,13 +1,19 @@
-A big update — more to decide every generation:
+The biggest update since launch. Your lab now runs far deeper than GPUs and racks:
 
-• Declare a Stance: pick Safety, Center or Acceleration at the start of a run and unlock the Doctrine perks for that side
-• Charter draft: every Ship deals three Lab Charters, including rule-changers like Research Sprint and Product Company
-• Unplugged Trials: veterans can switch Legacy off for one generation and play a real, full run again
-• Personal records: every new power of ten in your peak Compute earns Lab Reputation
-• Always know what's next: the goal bar tracks your road to the first Ship, and shows when shipping is actually worth it
-• "Save for this": tap research that's out of reach and the lab banks Compute for it, then buys it for you
+• Hire a team: researchers, engineers and more, each with a role, morale and a salary
+• Launch AI products: grow their users and revenue, then ship new versions
+• Rig Bay: fit your racks with parts, fuse better ones, and win trophies from Contracts
+• Grand Challenges and Megaprojects: long-term goals with big payoffs
+• Objectives, Contracts and a daily sponsor give every session a clear goal
+• Automation: a Research Director and autopilots keep the lab working, even while you're away
+• Declare a Stance: pick Safety, Center or Acceleration and unlock that side's Doctrine perks
+• Charter draft: every Ship deals three Lab Charters, including rule-changers like Research Sprint
+• Unplugged Trials: switch Legacy off for one generation and play a real, full run again
+• Personal records: every new power of ten in peak Compute earns Lab Reputation
+• Publish preprints, collect Field Notes and chase new achievements
+• "Save for this": tap research that's out of reach and the lab banks Compute, then buys it for you
 • Calmer news: only real decisions interrupt you; everything else runs on the Newswire
-• Works better with VoiceOver and keyboards, with bigger tap targets and clearer text
-• Smoother on older iPhones, offline time counted properly, and 60+ fixes, including a rare freeze when a boost expired
+• Better with VoiceOver, keyboards and Reduce Motion, with bigger tap targets and clearer text
+• Smoother on older iPhones, offline time counted properly, and 100+ fixes
 
 Thanks for playing. Tell us what to build next.
