@@ -26,6 +26,7 @@ import { RACK_IDS } from "./hall";
 import { laneMet } from "./challenges";
 import { shiftAlignment } from "./alignment";
 import { capActiveModifiers } from "./tick";
+import { cleanProductName } from "./products";
 import type { ChallengeState } from "./types";
 import type { ActiveModifier, ComponentsState, DraftModel, Employee, GameState, LifetimeStats, ModifierTarget, ProductsState, ProductState, ShipLogEntry, UpgradeState } from "./types";
 
@@ -165,7 +166,8 @@ function isWellFormedProduct(p: unknown): p is ProductState {
     // `obj["__proto__"] = …` sets the prototype instead of a key — that product then
     // read Object.prototype as its buffs and went NaN. Runtime ids are always prod-N.
     o.id !== "__proto__" &&
-    typeof o.name === "string" &&
+    // (No name check: a missing or junk name is only a label, cleaned at load —
+    // it used to drop the whole product with its users and crew.)
     typeof o.type === "string" &&
     (PRODUCT_TYPE_IDS as string[]).includes(o.type) &&
     [o.version, o.quality, o.priceMult, o.marketingPerSec, o.mau, o.paid, o.buzzSec].every(
@@ -742,6 +744,9 @@ export function deserialize(json: string): GameState {
       const mau = clampNum(o.mau, 0, PROD_CAPS.mau, 0);
       return {
         ...p,
+        // Player-typed text: cleaned and capped exactly like a rename (a crafted save
+        // carried 10,000-character or bidi-override names into every card and toast).
+        name: cleanProductName(o.name),
         quality,
         mau,
         paid: clampNum(o.paid, 0, mau, 0), // paid can never exceed MAU (sim invariant)
