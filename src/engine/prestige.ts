@@ -11,7 +11,7 @@ import { advanceFlagship } from "./flagship";
 import { legacyMultiplier } from "./derive";
 import { legacyAvailable } from "./legacyTree";
 import { resolveStakeOutcome, playerMarketRank, rivalsBeaten } from "./market";
-import { capCarriedMarketing, maxActiveProducts } from "./products";
+import { capCarriedMarketing, maxActiveProducts, rivalLead, reachableQuality } from "./products";
 import { truceAcrossShip } from "./negotiation";
 import type { DraftModel, GameState } from "./types";
 
@@ -268,10 +268,12 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
   // into a standing business. Its strength = the competitive frontier at ship time,
   // so a longer run yields a stronger starting product. Oldest drafts drop off the cap.
   // Deploy keeps the flagship as a commercialisable draft; open-source/sell give
-  // the model away, so no new draft lands in the Products tab.
+  // the model away, so no new draft lands in the Products tab. In a Hard generation
+  // the lab builds to the frontier less the rivals' lead (reachableQuality), so its
+  // draft does too — the leapt frontier is the rivals' strength, not the model's.
   const draft: DraftModel = {
     id: `draft-${ships}`,
-    quality: Math.max(1, state.products.frontier),
+    quality: reachableQuality(state),
     ships,
   };
   const drafts = modeDef.keepsDraft
@@ -337,7 +339,11 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
       ...state.products,
       active: state.products.active.map((p) => (p.upgrade ? { ...p, upgrade: null } : p)),
       drafts,
-      frontier: state.products.frontier + modeDef.frontierPenalty,
+      // The ending generation's rivals' lead is taken back out first: it lasts one
+      // generation. Left in, it became a permanent gain — every later push reached a
+      // frontier 6 higher than a Deploy lab's (revenue scales with quality), and each
+      // Hard ship stacked another 6. 0 outside a Hard generation.
+      frontier: Math.max(P.frontierStart, state.products.frontier - rivalLead(state)) + modeDef.frontierPenalty,
     },
     // Flagship brand: if the designated product survived to this ship, its tenure grows
     // (capped); if it was retired, the brand is lost. The sim never has a flagship.
