@@ -87,7 +87,7 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 /** Purple-filled slider track up to `pct` (0..100), matching the design. */
-const fill = (pct: number) => ({ background: `linear-gradient(90deg, #7c5cff 0%, #7c5cff ${pct}%, #e7e4f3 ${pct}%, #e7e4f3 100%)` });
+const fill = (pct: number) => ({ background: `linear-gradient(90deg, #7c5cff 0%, #7c5cff ${pct}%, var(--pd-track) ${pct}%, var(--pd-track) 100%)` });
 
 /** Phase 3 — per-product management, redesigned into a clean, soft, card-based sheet
  *  (icon chips, segmented tabs, purple accent) so the depth stays legible. */
@@ -117,7 +117,7 @@ export function ProductDetail({ game, productId, mods, onClose, onStartUpgrade, 
   );
   const barCard = (label: string, pct: number, color: string, right: string) => (
     <div className="pd-card">
-      <div className="pd-card-row"><span className="pd-card-label">{label}</span><span className="pd-card-value" style={{ color }}>{right}</span></div>
+      <div className="pd-card-row"><span className="pd-card-label">{label}</span><span className="pd-card-value tint-text" style={{ color, ["--c" as string]: color }}>{right}</span></div>
       <div className="pd-track"><div className="pd-track-fill" style={{ width: `${Math.min(100, pct)}%`, background: color }} /></div>
     </div>
   );

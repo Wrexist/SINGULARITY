@@ -1,5 +1,14 @@
 import { create } from "zustand";
 
+/** Appearance (2026-09): Light is the default so no existing player sees a change
+ *  until they opt in; "system" follows the device's prefers-color-scheme live. */
+export type Appearance = "light" | "dark" | "system";
+export const APPEARANCES: readonly Appearance[] = ["light", "dark", "system"];
+/** Stored settings are hostile input like the save: an unknown value reads as Light. */
+export function sanitizeAppearance(v: unknown): Appearance {
+  return (APPEARANCES as readonly unknown[]).includes(v) ? (v as Appearance) : "light";
+}
+
 export interface Settings {
   sound: boolean;
   /** Ambient music bed + era/ship stingers (separate from SFX so each is opt-out). */
@@ -28,6 +37,8 @@ export interface Settings {
    *  shows only NEW unlocks since, so it matches the other badges' "needs you"
    *  semantics instead of being a permanently-large lifetime total. */
   achievementsSeen: number;
+  /** Colour scheme: Light (default) / Dark / Match device. Cosmetic, local only. */
+  appearance: Appearance;
 }
 
 const KEY = "singularity.settings.v1";
@@ -46,12 +57,15 @@ function prefersReducedMotion(): boolean {
 // honoured live by motionReduced(); seeding the toggle from it baked a device setting
 // into the stored settings, so turning Reduce Motion off in iOS later kept the game
 // still. A saved value (either way) is kept as stored.
-const DEFAULTS: Settings = { sound: true, music: true, haptics: true, reducedMotion: false, hallTheme: "classic", rackSkin: "classic", onboarded: false, shipExplained: false, hapticsLight: false, scientificNotation: false, lastBackupAt: null, achievementsSeen: 0, notifyReminders: false };
+const DEFAULTS: Settings = { sound: true, music: true, haptics: true, reducedMotion: false, hallTheme: "classic", rackSkin: "classic", onboarded: false, shipExplained: false, hapticsLight: false, scientificNotation: false, lastBackupAt: null, achievementsSeen: 0, notifyReminders: false, appearance: "light" };
 
 function load(): Settings {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return { ...DEFAULTS, ...JSON.parse(raw) };
+    if (raw) {
+      const s = { ...DEFAULTS, ...JSON.parse(raw) } as Settings;
+      return { ...s, appearance: sanitizeAppearance(s.appearance) };
+    }
   } catch {
     /* ignore */
   }
@@ -62,7 +76,7 @@ function persist(s: Settings): void {
   try {
     localStorage.setItem(
       KEY,
-      JSON.stringify({ sound: s.sound, music: s.music, haptics: s.haptics, reducedMotion: s.reducedMotion, hallTheme: s.hallTheme, rackSkin: s.rackSkin, onboarded: s.onboarded, shipExplained: s.shipExplained, hapticsLight: s.hapticsLight, scientificNotation: s.scientificNotation, lastBackupAt: s.lastBackupAt, achievementsSeen: s.achievementsSeen, notifyReminders: s.notifyReminders }),
+      JSON.stringify({ sound: s.sound, music: s.music, haptics: s.haptics, reducedMotion: s.reducedMotion, hallTheme: s.hallTheme, rackSkin: s.rackSkin, onboarded: s.onboarded, shipExplained: s.shipExplained, hapticsLight: s.hapticsLight, scientificNotation: s.scientificNotation, lastBackupAt: s.lastBackupAt, achievementsSeen: s.achievementsSeen, notifyReminders: s.notifyReminders, appearance: s.appearance }),
     );
   } catch {
     /* ignore */
@@ -112,6 +126,7 @@ interface SettingsStore extends Settings {
   setRackSkin: (id: string) => void;
   /** Return-reminder toggle (permission handling lives in the UI before this is set). */
   setNotifyReminders: (on: boolean) => void;
+  setAppearance: (a: Appearance) => void;
   completeOnboarding: () => void;
   markShipExplained: () => void;
   markBackedUp: () => void;
@@ -137,6 +152,10 @@ export const useSettings = create<SettingsStore>((set, get) => ({
   },
   setNotifyReminders: (on) => {
     set({ notifyReminders: on });
+    persist(get());
+  },
+  setAppearance: (a) => {
+    set({ appearance: sanitizeAppearance(a) });
     persist(get());
   },
   completeOnboarding: () => {

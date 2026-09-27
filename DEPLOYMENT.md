@@ -167,3 +167,21 @@ if you like, or leave it.
 will likely need a tweak (runner Xcode version, the export `method` string, or the
 app record). Create the app record, run the workflow, and paste me the log — I'll
 iterate from the real errors. **TestFlight isn't "ready" until that first green run.**
+
+## 8. Known limitation — Dark appearance and the iOS status bar
+
+Settings → Appearance (Light / Dark / Match device, default Light) is pure web: it
+sets `data-theme` on `<html>` and the stylesheet swaps its colour tokens. The strip
+behind the iOS status bar is **not** web content: with `ios.contentInset: "always"`
+in `capacitor.config.ts`, WKWebView is inset below it and the native view behind it
+is painted from `ios.backgroundColor` (`#eef1f8`). So in Dark the status-bar strip
+stays light.
+
+Deliberately **not** changed yet, because it needs an on-device test:
+- either add `@capacitor/status-bar` and set the style/background from
+  `src/ui/appearance.ts` whenever the theme changes (`THEME_BG` holds both colours), or
+- switch to `contentInset: "never"` and pad the top chrome with
+  `env(safe-area-inset-top)` so the web page paints under the status bar itself.
+
+Either way, check Light, Dark and Match device (flip iOS appearance with the app open)
+on a notched and a non-notched iPhone before shipping.
