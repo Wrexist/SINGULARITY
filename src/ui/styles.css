@@ -794,6 +794,17 @@ svg { vertical-align: middle; }
   .app-split.hall-pin .stage-left .hall {
     height: var(--hall-pin-h, 372px);
   }
+  /* A sticky column can't leave the stage, so at the end of the page the stage's
+     bottom is its floor. Pad the page by exactly the nav's height (measured,
+     --hall-pin-pad) so that floor is the nav's top, where the fit put the column's
+     end; the phone padding left it 22px higher and shoved the hall under the bar.
+     The footer line moves under the shop column, clear of the pinned one. */
+  .app.app-split.hall-pin {
+    padding-bottom: var(--hall-pin-pad, calc(84px + env(safe-area-inset-bottom)));
+  }
+  .app-split.hall-pin .stage > .footer {
+    grid-column: 2;
+  }
 }
 .stage > *:nth-child(1) { animation-delay: 0.04s; }
 .stage > *:nth-child(2) { animation-delay: 0.1s; }

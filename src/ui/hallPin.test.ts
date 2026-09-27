@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { hallPinFit, SPLIT_HALL_H, MIN_PIN_HALL_H } from "./hallPin";
+import { hallPinFit, hallPinBottomPad, SPLIT_HALL_H, MIN_PIN_HALL_H } from "./hallPin";
 
 /**
  * The iPad split pins the hall column below the resource bar only when the whole
@@ -54,6 +54,30 @@ describe("the hall column pins only where it fits", () => {
   it("junk measurements never pin", () => {
     expect(hallPinFit({ pinTop: NaN, navTop: 758, ...veteran }).pin).toBe(false);
     expect(hallPinFit({ pinTop: 129, navTop: Infinity, ...veteran }).pin).toBe(false);
+  });
+
+  it("at the very end of the page the pinned column still starts below the bar (11-inch)", () => {
+    // A sticky column can't leave the stage: at the end of the scroll the stage's bottom
+    // (viewport bottom − the page's bottom padding) is its floor. With the phone padding
+    // (84px on an 820px screen whose nav starts at 758) the floor sat at 736, and the
+    // 629px column the fit placed at 129..758 was shoved up to 107: under the bar (bottom
+    // 113), with the footer line drawn over the Training dock.
+    for (const [viewportH, navTop] of [[820, 758], [834, 772], [1024, 962]] as const) {
+      const fit = hallPinFit({ pinTop: 129, navTop, ...veteran });
+      expect(fit.pin).toBe(true);
+      const column = veteran.columnH - veteran.hallH + fit.hallH;
+      const floor = viewportH - hallPinBottomPad(viewportH, navTop)!;
+      const topAtEnd = Math.min(129, floor - column);
+      expect(topAtEnd, `${viewportH}px screen`).toBe(129);
+    }
+    expect(hallPinBottomPad(NaN, 758)).toBeNull();
+    expect(hallPinBottomPad(820, Infinity)).toBeNull();
+  });
+
+  it("the pinned page pads by the measured nav, and the footer leaves the pinned column", () => {
+    const css = readFileSync(fileURLToPath(new URL("./styles.css", import.meta.url)), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(css).toMatch(/\.app\.app-split\.hall-pin\s*\{[^}]*padding-bottom:\s*var\(--hall-pin-pad/);
+    expect(css).toMatch(/\.app-split\.hall-pin \.stage > \.footer\s*\{[^}]*grid-column:\s*2/);
   });
 
   it("the CSS pins from the measured bar height, not a hardcoded gate", () => {

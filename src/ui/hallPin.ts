@@ -43,8 +43,24 @@ export function hallPinFit(m: HallPinMeasure): { pin: boolean; hallH: number } {
 }
 
 /**
+ * The page's bottom padding while the column is pinned: exactly the strip the bottom
+ * nav covers. A sticky column cannot leave the stage, so at the very end of the page
+ * the stage's bottom edge is the column's floor. With the phone padding (84px, 22px
+ * more than the nav) that floor sat 22px above the nav, and the column hallPinFit
+ * fitted down to the nav was shoved 22px up at the end of the scroll: the hall slid
+ * under the resource bar and the footer line was drawn over the Training dock.
+ * Padding the page by the nav's own height puts the floor at the nav, where the fit
+ * assumed it. Junk measures fall back to the stylesheet (null).
+ */
+export function hallPinBottomPad(viewportH: number, navTop: number): number | null {
+  if (!Number.isFinite(viewportH) || !Number.isFinite(navTop)) return null;
+  return Math.max(0, Math.round(viewportH - navTop));
+}
+
+/**
  * Measure the resource bar, the bottom nav and the hall column, publish
- * `--resbar-h` and `--hall-pin-h` on the root, and say whether the column pins.
+ * `--resbar-h`, `--hall-pin-h` and `--hall-pin-pad` on the root, and say whether the
+ * column pins.
  * `active` is the Lab Build pane (the only split layout).
  */
 export function useHallPin(active: boolean): boolean {
@@ -70,8 +86,12 @@ export function useHallPin(active: boolean): boolean {
       const barH = bar.offsetHeight;
       root.style.setProperty("--resbar-h", `${barH}px`);
       const pinTop = (parseFloat(getComputedStyle(bar).top) || 0) + barH + PIN_GAP;
-      const fit = hallPinFit({ pinTop, navTop: nav.getBoundingClientRect().top, columnH: col.offsetHeight, hallH: hall.offsetHeight });
+      const navTop = nav.getBoundingClientRect().top;
+      const fit = hallPinFit({ pinTop, navTop, columnH: col.offsetHeight, hallH: hall.offsetHeight });
       root.style.setProperty("--hall-pin-h", `${fit.hallH}px`);
+      const pad = hallPinBottomPad(window.innerHeight, navTop);
+      if (pad === null) root.style.removeProperty("--hall-pin-pad");
+      else root.style.setProperty("--hall-pin-pad", `${pad}px`);
       setPin(fit.pin);
     };
     const schedule = () => {
