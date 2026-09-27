@@ -309,7 +309,8 @@ export interface ShipLogEntry {
 export interface LifetimeStats {
   /** Money earned across all runs (cumulative). */
   totalMoney: Big;
-  /** Best Compute/sec ever reached. */
+  /** Best Compute/sec ever reached, measured with timed buffs divided out
+   *  (boostFreeDerive): it pays permanent Rep through the records ladder. */
   peakComputePerSec: Big;
   /** Best total product MRR/s ever reached. */
   peakMrr: number;

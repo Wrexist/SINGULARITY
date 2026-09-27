@@ -348,8 +348,11 @@ function tickSegment(state: GameState, elapsedMs: number): GameState {
   // The revenue ladders value revenue as a sale does: a charter the player can still
   // take back this run doesn't count yet (committedProductMods; identity otherwise).
   const ladderMods = committedProductMods(state, d);
+  // The career Compute peak is measured boost-free (dFree; `d` itself when no timed
+  // buff is live): it pays permanent Rep through the records ladder, and a stacked
+  // boost must not pull a record forward. Same rule as the Legacy base above.
   const stats = accrueStats(
-    state.stats, products, state.research.length, d.computePerSec,
+    state.stats, products, state.research.length, dFree.computePerSec,
     lifetimeMoney.sub(state.lifetimeMoney), seconds, rivalsNow, ladderMods,
   );
 

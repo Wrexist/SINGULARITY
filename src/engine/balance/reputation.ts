@@ -45,7 +45,9 @@ export const reputation = {
    * sinks sat out of reach through gens 2–20. A record is each power of ten your
    * career-peak Compute/sec crosses above `floorMag` (10K/s is the first, 100K/s the
    * second, …), worth `perMagnitude` each. It is computed from `stats.peakComputePerSec`,
-   * which is already saved, so there is no new field. `maxRecords` bounds a crafted or
+   * which is already saved, so there is no new field. That peak is measured with
+   * timed buffs divided out (boostFreeDerive), so a stacked boost can't pull a record
+   * forward; a record already held stays held. `maxRecords` bounds a crafted or
    * runaway peak. Curve-safe: the sim earns Rep but never spends it.
    */
   records: {
