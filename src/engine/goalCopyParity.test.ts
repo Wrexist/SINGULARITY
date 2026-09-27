@@ -10,6 +10,7 @@ import { paradigms } from "./balance/paradigms";
 import { institute } from "./balance/institute";
 import { doctrine } from "./balance/doctrine";
 import { challenges } from "./balance/challenges";
+import { charters } from "./balance/charters";
 import { trials, CONDITION_THRESHOLDS } from "./balance/trials";
 import { codex } from "./balance/codex";
 import { market } from "./balance/market";
@@ -335,6 +336,20 @@ describe("'Revenue' never labels the Money lane", () => {
     const viral = applyWorldEvent(s, "viral_demo");
     expect(viral.state.modifiers[0]!.label).toBe("Money ×2");
     expect(viral.event.summary).toMatch(/^Money ×2/);
+  });
+  it("the Money lane's proper names say Money: Legacy nodes, the Mandate, the charter pitch", () => {
+    // Legacy Investment nodes and Megaproject Mandates are named after their lane; the
+    // Money ones read "Revenue Specialist / Mastery / Frontier" and "Revenue Mandate"
+    // though they raise run income, not product revenue. Ids stay put (saves hold them).
+    const moneyNodes = legacyTree.perks.filter((p) => "lane" in p.effect && p.effect.lane === "money");
+    expect(moneyNodes.map((p) => p.name)).toEqual(["Money Specialist", "Money Mastery", "Money Frontier"]);
+    expect(moneyNodes.map((p) => p.id)).toEqual(["leg_money1", "leg_money2", "leg_money3"]);
+    const mandate = challenges.megaproject.mandates.defs.find((m) => m.lane === "money")!;
+    expect(mandate.id).toBe("mand_money");
+    expect(mandate.name).toBe("Money Mandate");
+    for (const p of legacyTree.perks) expect(`${p.name} ${p.desc}`).not.toMatch(/Revenue/);
+    for (const m of challenges.megaproject.mandates.defs) expect(`${m.name} ${m.desc}`).not.toMatch(/Revenue/);
+    for (const c of charters.list.filter((x) => (x.moneyMult ?? 0) !== 0)) expect(`${c.name} ${c.blurb}`).not.toMatch(/Revenue/);
   });
   it("the owned-Directive summary names the Money lane Money", () => {
     const money = reputation.endowment.directives.defs.find((d) => d.lane === "money")!;

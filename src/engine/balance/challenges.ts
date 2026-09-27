@@ -209,7 +209,7 @@ export const challenges = {
       defs: [
         { id: "mand_compute", name: "Compute Mandate", lane: "compute", value: 0.12, desc: "+12% Compute, permanently." },
         { id: "mand_data", name: "Data Mandate", lane: "data", value: 0.12, desc: "+12% Data, permanently." },
-        { id: "mand_money", name: "Revenue Mandate", lane: "money", value: 0.12, desc: "+12% Money, permanently." },
+        { id: "mand_money", name: "Money Mandate", lane: "money", value: 0.12, desc: "+12% Money, permanently." },
         { id: "mand_all", name: "Synthesis Mandate", lane: "all", value: 0.05, desc: "+5% to ALL output, permanently." },
       ] as { id: string; name: string; lane: "compute" | "data" | "money" | "all"; value: number; desc: string }[],
     },
