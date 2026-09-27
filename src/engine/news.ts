@@ -29,7 +29,8 @@ export function reactiveNews(state: GameState): string[] {
   if (align <= -0.4) out.push("Safety community praises Singularity Inc.'s caution; e/acc forums log off in disgust.");
   else if (align >= 0.4) out.push("e/acc forums crown Singularity Inc. 'based'; a safety researcher writes a concerned thread.");
 
-  if (ships >= 10) out.push(`Singularity Inc. ships model #${ships + 1}; the press release was written by model #${ships}.`);
+  // `ships` counts models already out the door: the latest is #ships, not #ships + 1.
+  if (ships >= 10) out.push(`Singularity Inc. ships model #${ships}; the press release was written by model #${ships - 1}.`);
   else if (ships >= 1) out.push("Singularity Inc. ships another model; the benchmarks never saw it coming.");
 
   const beaten = rivalsBeaten(state);

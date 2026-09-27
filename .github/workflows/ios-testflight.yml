@@ -99,6 +99,10 @@ jobs:
           PLIST=ios/App/App/Info.plist
           /usr/libexec/PlistBuddy -c "Set :ITSAppUsesNonExemptEncryption false" "$PLIST" \
             || /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PLIST"
+          # @capacitor/status-bar sets the text colour per view controller, which needs
+          # this YES (Capacitor's template already has it; pin it so it can't drift).
+          /usr/libexec/PlistBuddy -c "Set :UIViewControllerBasedStatusBarAppearance true" "$PLIST" \
+            || /usr/libexec/PlistBuddy -c "Add :UIViewControllerBasedStatusBarAppearance bool true" "$PLIST"
           # Build number (CFBundleVersion): the run number — always unique + rising.
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${RUN_NUMBER}" "$PLIST"
           # Marketing version (CFBundleShortVersionString): MUST exceed the last

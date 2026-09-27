@@ -65,7 +65,7 @@ export const challenges = {
       unlockShips: 6,
       forks: [
         { id: "grid_independence", label: "Grid Independence", reward: { kind: "computeMult", magnitude: 0.35, desc: "+35% Compute, forever" } },
-        { id: "sell_surplus", label: "Sell the Surplus", reward: { kind: "moneyMult", magnitude: 0.35, desc: "+35% all revenue, forever" } },
+        { id: "sell_surplus", label: "Sell the Surplus", reward: { kind: "moneyMult", magnitude: 0.35, desc: "+35% Money, forever" } },
       ],
     },
     {
@@ -79,7 +79,7 @@ export const challenges = {
       unlockShips: 9,
       forks: [
         { id: "scale_foundry", label: "Scale the Foundry", reward: { kind: "dataMult", magnitude: 0.4, desc: "+40% Data yield, forever" } },
-        { id: "license_method", label: "License the Method", reward: { kind: "moneyMult", magnitude: 0.38, desc: "+38% all revenue, forever" } },
+        { id: "license_method", label: "License the Method", reward: { kind: "moneyMult", magnitude: 0.38, desc: "+38% Money, forever" } },
       ],
     },
     {
@@ -98,11 +98,11 @@ export const challenges = {
       blurb: "A safety proof so airtight even the doomers went quiet. Briefly.",
       icon: "shield",
       cost: { compute: 4e11, data: 2e11, money: 2e11 },
-      reward: { kind: "moneyMult", magnitude: 0.5, desc: "+50% all revenue, forever" },
+      reward: { kind: "moneyMult", magnitude: 0.5, desc: "+50% Money, forever" },
       lore: "Two hundred pages of formal verification, one press release, and a standing ovation from a room that came to heckle. Enterprise procurement departments weep with relief and sign three-year contracts.",
       unlockShips: 16,
       forks: [
-        { id: "enterprise_trust", label: "Enterprise Trust", reward: { kind: "moneyMult", magnitude: 0.5, desc: "+50% all revenue, forever" } },
+        { id: "enterprise_trust", label: "Enterprise Trust", reward: { kind: "moneyMult", magnitude: 0.5, desc: "+50% Money, forever" } },
         { id: "open_the_proof", label: "Open the Proof", reward: { kind: "legacyMult", magnitude: 0.28, desc: "+28% to ALL output, forever" } },
       ],
     },
@@ -112,7 +112,7 @@ export const challenges = {
       blurb: "Latency: zero. Margins: obscene. Regulators: notified.",
       icon: "network",
       cost: { compute: 1.5e12, data: 4e11, money: 1e12 },
-      reward: { kind: "moneyMult", magnitude: 0.55, desc: "+55% all revenue, forever" },
+      reward: { kind: "moneyMult", magnitude: 0.55, desc: "+55% Money, forever" },
       lore: "Every device on Earth is now one hop from your models. You bill in fractions of a cent, a trillion times a second. The number on the dashboard stops meaning anything and starts meaning everything.",
       unlockShips: 22,
     },
@@ -179,8 +179,10 @@ export const challenges = {
     growth: 2.2,
     /** Last cycle that can be completed. The save loader clamps a loaded level to this
      *  same value (it bounds the Math.pow in the cost and the Mandate list derive walks),
-     *  so funding stops here instead of minting cycles a reload would delete. */
-    maxLevel: 512,
+     *  so funding stops here instead of minting cycles a reload would delete. 890 (was
+     *  512): growth^level must stay a finite double (2.2^901 overflows), so this keeps
+     *  headroom; the last cycle, 890, costs ~1e319 of each resource. */
+    maxLevel: 890,
     /** Per-cycle bonus magnitude, decayed by decay^level. Lifetime bonus converges. */
     baseMag: 0.05,
     decay: 0.85,
@@ -207,7 +209,7 @@ export const challenges = {
       defs: [
         { id: "mand_compute", name: "Compute Mandate", lane: "compute", value: 0.12, desc: "+12% Compute, permanently." },
         { id: "mand_data", name: "Data Mandate", lane: "data", value: 0.12, desc: "+12% Data, permanently." },
-        { id: "mand_money", name: "Revenue Mandate", lane: "money", value: 0.12, desc: "+12% Money, permanently." },
+        { id: "mand_money", name: "Money Mandate", lane: "money", value: 0.12, desc: "+12% Money, permanently." },
         { id: "mand_all", name: "Synthesis Mandate", lane: "all", value: 0.05, desc: "+5% to ALL output, permanently." },
       ] as { id: string; name: string; lane: "compute" | "data" | "money" | "all"; value: number; desc: string }[],
     },

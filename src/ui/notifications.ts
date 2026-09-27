@@ -49,17 +49,24 @@ export async function ensureReminderPermission(): Promise<boolean> {
 }
 
 /**
- * Schedule the single return reminder `capHours` from now — call this when the app
- * goes to the background. Silently cancels any existing one first (so leaving twice
- * doesn't stack). No-op unless native + already permitted + the lab is producing.
+ * Schedule the single return reminder for when the offline cap fills: `capHours` after
+ * the lab starts accruing — now, or `accruesFrom` when the offline clock guard pays
+ * nothing before a later time (a clock that was ahead and got corrected). Call this
+ * when the app goes to the background. Silently cancels any existing one first (so
+ * leaving twice doesn't stack). No-op unless native + already permitted + the lab is
+ * producing.
  */
-export async function scheduleReturnReminder(capHours: number, producing: boolean): Promise<void> {
+export async function scheduleReturnReminder(capHours: number, producing: boolean, accruesFrom?: number): Promise<void> {
   if (!isNative() || !producing || !Number.isFinite(capHours) || capHours <= 0) return;
   const mine = generation;
   try {
     const perm = await LocalNotifications.checkPermissions();
     if (perm.display !== "granted" || mine !== generation) return;
-    const at = new Date(Date.now() + capHours * 3_600_000);
+    // "At capacity" must be true when it lands: the cap fills `capHours` after the lab
+    // starts accruing, which the clock guard can put later than now.
+    const wall = Date.now();
+    const from = typeof accruesFrom === "number" && Number.isFinite(accruesFrom) ? Math.max(wall, accruesFrom) : wall;
+    const at = new Date(from + capHours * 3_600_000);
     await LocalNotifications.schedule({
       notifications: [
         {
@@ -92,6 +99,8 @@ export interface ReminderPlan {
   enabled: boolean;
   capHours: number;
   producing: boolean;
+  /** When offline time starts to count (the clock guard's; absent = now). */
+  accruesFrom?: number;
 }
 
 /**
@@ -107,7 +116,7 @@ export function watchReturnReminders(plan: () => ReminderPlan): () => void {
     if (document.visibilityState === "hidden") {
       const p = plan();
       if (!p.enabled) return;
-      void scheduleReturnReminder(p.capHours, p.producing);
+      void scheduleReturnReminder(p.capHours, p.producing, p.accruesFrom);
     } else {
       void cancelReturnReminder();
     }

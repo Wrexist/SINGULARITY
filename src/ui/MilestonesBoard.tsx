@@ -1,7 +1,7 @@
 import type { GameState } from "../engine/types";
 import { productMilestones } from "../engine/balance/products";
 import { milestoneValue } from "../engine/products";
-import { derive } from "../engine/derive";
+import { committedProductMods } from "../engine/derive";
 import { m$ } from "./format";
 
 
@@ -15,7 +15,7 @@ import { m$ } from "./format";
  */
 export function MilestonesBoard({ game }: { game: GameState }) {
   const done = new Set(game.products.milestones);
-  const mods = derive(game).productModsById; // once for the revenue rungs, not per card
+  const mods = committedProductMods(game); // once for the revenue rungs, not per card
   return (
     <div className="prod-ms-grid">
       {productMilestones.map((mDef) => {

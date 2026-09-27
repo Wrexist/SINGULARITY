@@ -91,8 +91,12 @@ describe("save for this — the review's failure modes", () => {
     expect(after.savingFor).toBeNull();
     expect(after.game.research).toContain(NODE);
     expect(after.game.computeFocus).toBe(1);
-    // The window was NOT spent with training held: runs paid out Money.
-    expect(after.game.resources.money.gt(Big.of(1e9))).toBe(true);
+    // The window was NOT spent with training held: runs paid out Money. Measured on
+    // what the lab earned, not cash on hand: the store rolls world events over the
+    // window, and a cash-costing one (a market crash, a power bill) can take more than
+    // the runs paid, which made a cash check fail about one run in 27. A window with
+    // training held all the way earns exactly 0.
+    expect(after.game.lifetimeMoney.gt(Big.ZERO)).toBe(true);
   });
 
   it("persists the player's own intensity, never the eased one", () => {

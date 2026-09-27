@@ -29,6 +29,13 @@ export function negotiationDue(state: GameState): boolean {
   return state.suspicion >= N.at && !state.modifiers.some((m) => m.id === TRUCE_ID || m.id === NEGOTIATION_ID);
 }
 
+/** Chen's meeting, once raised, still stands: suspicion is still over the line. A card
+ *  that waited behind a sheet while the player lobbied suspicion back under it would
+ *  otherwise still ask −20% cash to settle a case that is no longer open. */
+export function negotiationStands(state: GameState): boolean {
+  return state.suspicion >= N.at;
+}
+
 /** The card content (WorldEventCard-compatible; branch order = apply order). */
 export function negotiationOffer(state: GameState): WorldEventResult {
   const settlePct = Math.round(-N.settle.moneyPct * 100);
@@ -43,9 +50,10 @@ export function negotiationOffer(state: GameState): WorldEventResult {
     tone: "bad",
     summary: "",
     choices: [
-      { label: `Settle — pay the fine (−${settlePct}% cash)`, summary: "Suspicion drops sharply" },
-      { label: `Lobby quietly (−${lobbyPct}% cash)`, summary: "Some suspicion + heat relief" },
-      { label: "Defy — see you in court", summary: `Compute ×${N.defy.buffFactor} · ${N.defy.buffSec}s, but Chen escalates` },
+      // Every branch is a trade: cash for relief, or a rally that thickens the file.
+      { label: `Settle — pay the fine (−${settlePct}% cash)`, summary: "Suspicion drops sharply", tone: "neutral" },
+      { label: `Lobby quietly (−${lobbyPct}% cash)`, summary: "Some suspicion + heat relief", tone: "neutral" },
+      { label: "Defy — see you in court", summary: `Compute ×${N.defy.buffFactor} · ${N.defy.buffSec}s, but Chen escalates`, tone: "neutral" },
     ],
   };
 }

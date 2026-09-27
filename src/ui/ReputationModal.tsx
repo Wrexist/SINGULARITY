@@ -5,7 +5,7 @@ import type { GameState } from "../engine/types";
 import {
   reputationBalance, reputationAvailable, earnedReputation, canBuyReputationPerk,
   endowmentUnlocked, endowmentCost, canBuyEndowment, endowmentMult,
-  directivePicksAvailable, endowmentDirectiveMods, canRespecDirective, directiveRespecCost,
+  directivePicksAvailable, directiveSummary, canRespecDirective, directiveRespecCost,
   recordsCount, nextRecordProgress, nextRecordMag,
 } from "../engine/reputation";
 import { Big } from "../engine/math/Big";
@@ -136,11 +136,7 @@ export function ReputationModal({ game, onBuy, onBuyEndowment, onPickDirective, 
                 Owned doctrines fold into the lane summary; an unclaimed pick shows the
                 three options. Only ever visible in the deep endgame. */}
             {(() => {
-              const dir = endowmentDirectiveMods(game);
-              const owned: string[] = [];
-              if (dir.computeMult > 1) owned.push(`Compute +${Math.round((dir.computeMult - 1) * 100)}%`);
-              if (dir.dataMult > 1) owned.push(`Data +${Math.round((dir.dataMult - 1) * 100)}%`);
-              if (dir.moneyMult > 1) owned.push(`Revenue +${Math.round((dir.moneyMult - 1) * 100)}%`);
+              const owned = directiveSummary(game);
               const picks = directivePicksAvailable(game);
               // Respec: distinct owned doctrines get a refund affordance (the freed
               // pick is re-choosable above). Fee escalates per respec — a rebuild,

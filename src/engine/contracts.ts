@@ -74,6 +74,18 @@ export const SPONSOR_ID_RE = /^sponsor_\d{1,7}$/;
 
 export const sponsorIdFor = (dayKey: number): string => `sponsor_${dayKey}`;
 
+/** The latest sponsor day this lab has rolled or completed (-1 = none). Saves from
+ *  before round 10 keyed sponsors by UTC day and later ones by local day; both are
+ *  plain day numbers, so the store keeps new rolls from going back past this one
+ *  (a zone change west must not roll an earlier day's sponsor over today's). */
+export function lastSponsorDay(state: GameState): number {
+  let last = state.sponsor?.dayKey ?? -1;
+  for (const id of state.contracts.completed) {
+    if (SPONSOR_ID_RE.test(id)) last = Math.max(last, Number(id.slice(8)));
+  }
+  return last;
+}
+
 /** Small deterministic day hash (Knuth multiplicative). */
 const dayHash = (dayKey: number): number => (dayKey * 2654435761) >>> 0;
 

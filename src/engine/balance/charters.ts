@@ -74,7 +74,7 @@ export const charters = {
     {
       id: "bootstrapped",
       name: "Bootstrapped",
-      blurb: "Revenue first, vibes later. Rich and cautious — and a little slow.",
+      blurb: "Money first, vibes later. Rich and cautious — and a little slow.",
       moneyMult: 0.35,
       computeMult: -0.15,
     },

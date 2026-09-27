@@ -88,7 +88,7 @@ function PersonCard({ e, sel, action, onTap }: { e: Employee; sel: boolean; acti
         </div>
         <div className="emp-person-tags">
           <span className="emp-tag role">{role?.name}</span>
-          {trait && <span className="emp-tag" style={{ color: TRAIT_TONE[trait.tone], background: `color-mix(in srgb, ${TRAIT_TONE[trait.tone]} 12%, #fff)` }}>{trait.name}</span>}
+          {trait && <span className="emp-tag tint-text" style={{ color: TRAIT_TONE[trait.tone], ["--c" as string]: TRAIT_TONE[trait.tone], background: `color-mix(in srgb, ${TRAIT_TONE[trait.tone]} 12%, var(--surface))` }}>{trait.name}</span>}
           {affinity.length > 0 && (
             <span className="emp-tag synergy" title={`Assign to a ${affinity.join(" or ")} product for a +${Math.round((balance.staff.segmentSynergy - 1) * 100)}% synergy bonus`}>★ {affinity.join(" · ")}</span>
           )}
@@ -379,7 +379,7 @@ export function EmployeesPanel({ game, derived, candidates, onRecruit, onRefresh
                       </div>
                       <div className="emp-person-tags">
                         <span className="emp-tag role">{role?.name}</span>
-                        {trait && <span className="emp-tag" style={{ color: TRAIT_TONE[trait.tone], background: `color-mix(in srgb, ${TRAIT_TONE[trait.tone]} 12%, #fff)` }}>{trait.name}</span>}
+                        {trait && <span className="emp-tag tint-text" style={{ color: TRAIT_TONE[trait.tone], ["--c" as string]: TRAIT_TONE[trait.tone], background: `color-mix(in srgb, ${TRAIT_TONE[trait.tone]} 12%, var(--surface))` }}>{trait.name}</span>}
                         {/* The salary this person will draw (role × level × trait, after the
                             payroll perks), the same number the roster shows once hired. */}
                         <span className="emp-tag muted">{m$(employeePayroll({ roleId: c.roleId, level: c.level ?? 1, trait: c.trait }) * payMult)}/s</span>

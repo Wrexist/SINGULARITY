@@ -8,13 +8,16 @@ import { fmt, fmtMoney } from "./format";
 import { SkullIcon, AlertTriangleIcon, ScalesIcon } from "./Icons";
 
 function HeatMeter({ heat }: { heat: number }) {
+  // Floored for the label: a rounded 59.5 read "60%" while "Heat 60 or higher" (the
+  // Running Hot Trial) still refused it. The bar keeps the exact width.
   const pct = Math.min(100, (heat / balance.heat.max) * 100);
+  const shown = Math.floor(pct);
   const { label, color } = balance.heat.tiers.find((t) => heat < t.upTo) ?? balance.heat.tiers[balance.heat.tiers.length - 1]!;
   return (
     <div className="heat">
       <div className="heat-head">
         <span>Regulatory Heat</span>
-        <span className="heat-label" style={{ color }}>{label} · {Math.round(pct)}%</span>
+        <span className="heat-label" style={{ color }}>{label} · {shown}%</span>
       </div>
       <div
         className="heat-bar"
@@ -22,8 +25,8 @@ function HeatMeter({ heat }: { heat: number }) {
         aria-label="Regulatory heat"
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-valuenow={Math.round(pct)}
-        aria-valuetext={`${label}, ${Math.round(pct)} percent`}
+        aria-valuenow={shown}
+        aria-valuetext={`${label}, ${shown} percent`}
       >
         <div className="heat-fill" style={{ width: `${pct}%`, background: color }} />
       </div>

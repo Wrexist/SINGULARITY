@@ -71,13 +71,13 @@ describe("R5.4 — Legacy Investments tree", () => {
     expect(canBuyLegacyPerk(withWeights(100), "leg_compute3")).toBe(false);
   });
 
-  it("the Product Division unlock node gates on Revenue Mastery and grants a slot (no lane leak)", async () => {
+  it("the Product Division unlock node gates on Money Mastery and grants a slot (no lane leak)", async () => {
     const { maxActiveProducts } = await import("./products");
     const { legacyBonusProductSlots } = await import("./legacyTree");
     const base = createInitialState();
     const baseSlots = maxActiveProducts(base);
     const s = withWeights(200);
-    // Gated behind leg_money2 (Revenue Mastery).
+    // Gated behind leg_money2 (Money Mastery).
     expect(canBuyLegacyPerk(s, "leg_slot")).toBe(false);
     const m1 = buyLegacyPerk(s, "leg_money1");
     const m2 = buyLegacyPerk(m1, "leg_money2");

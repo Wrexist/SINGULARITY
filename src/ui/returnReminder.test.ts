@@ -107,4 +107,29 @@ describe("return reminder lifecycle", () => {
     expect(fake.pending.size).toBe(0);
     stop();
   });
+
+  it("fires when the cap actually fills, not while the clock guard is still paying nothing", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      const T = 1_800_000_000_000;
+      vi.setSystemTime(T);
+      const fake = fakeNotifications();
+      const n = await load(fake);
+      const d = fakeDocument("visible");
+      (globalThis as Record<string, unknown>).document = d.doc;
+      // The phone's clock was 3 hours ahead and has been corrected: the lab earns
+      // nothing for 3 hours, so an 8-hour cap fills 11 hours from now, not 8.
+      const stop = n.watchReturnReminders(() => ({ enabled: true, capHours: 8, producing: true, accruesFrom: T + 3 * 3_600_000 }));
+      d.set("hidden");
+      await flush();
+      const at = (fake.pending.get(4207) as { schedule: { at: Date } }).schedule.at.getTime();
+      expect(at).toBe(T + 11 * 3_600_000);
+      stop();
+      // An honest clock (or a stale value in the past) still means cap hours from now.
+      await n.scheduleReturnReminder(8, true, T - 5_000);
+      expect((fake.pending.get(4207) as { schedule: { at: Date } }).schedule.at.getTime()).toBe(T + 8 * 3_600_000);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

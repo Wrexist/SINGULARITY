@@ -167,3 +167,57 @@ if you like, or leave it.
 will likely need a tweak (runner Xcode version, the export `method` string, or the
 app record). Create the app record, run the workflow, and paste me the log — I'll
 iterate from the real errors. **TestFlight isn't "ready" until that first green run.**
+
+## 8. Dark appearance and the iOS status bar
+
+Settings → Appearance (Light / Dark / Match device, default Light) is pure web: it
+sets `data-theme` on `<html>` and the stylesheet swaps its colour tokens. The iOS
+shell is set up so the status bar follows it:
+
+- **Edge to edge.** `capacitor.config.ts` has `ios.contentInset: "never"`, so
+  WKWebView runs under the status bar and the page paints that strip itself — light
+  in Light, dark in Dark. (It used to be `"always"`: the web view sat below a native
+  strip painted from `ios.backgroundColor`, which stayed light in Dark.)
+- **Safe areas in CSS.** The header, the sticky resource bar (and its opaque slab),
+  the pinned iPad hall column, toasts, modals, the celebration card and the bottom
+  nav all pad with `env(safe-area-inset-*)`, read through overridable custom
+  properties: `var(--sat, env(safe-area-inset-top, 0px))` (and `--sab`, `--sal`,
+  `--sar`). Nothing in the app sets `--sat`; a browser layout check sets it on
+  `<html>` to fake a notch, since `env()` can't be faked outside a device.
+- **Status text colour.** `@capacitor/status-bar` (6.x, matching `@capacitor/core` 6)
+  is called from `src/ui/appearance.ts` at startup and on every theme change, on
+  device only: Light → `Style.Light` (dark text), Dark → `Style.Dark` (light text).
+  Without it iOS picks the text colour from the SYSTEM appearance, i.e. white text
+  over the Light app on a phone in dark mode. The CI Info.plist step pins
+  `UIViewControllerBasedStatusBarAppearance` to YES, which the plugin needs.
+- **Native background.** `ios.backgroundColor` stays `#eef1f8` (the Light surface
+  and the launch splash). It only shows before the page's first paint and wherever
+  WKWebView shows its own background, e.g. a rubber-band bounce the page doesn't
+  cover. The page sets `overscroll-behavior-y: none` and the pinned bar overdraws
+  120px above itself, so a Dark player should not see it; the checklist confirms.
+
+### TestFlight check list (before shipping this build)
+
+On one notch iPhone (e.g. 13/14) and one Dynamic Island iPhone (14 Pro or later), and
+once on a home-button iPhone (SE) if you have one:
+
+1. **Status text, system in light mode:** app in Light → dark text; switch to Dark
+   → light text; Match device → dark text.
+2. **Status text, system in dark mode:** app in Light → dark text (this is the case
+   that used to show white text on the light app); Dark → light text; Match device →
+   light text.
+3. **Live flip:** with Match device on, open Control Center and toggle Dark Mode with
+   the app open — the page and the status text flip together.
+4. **Notch / Dynamic Island:** at rest the brand sits fully below the island; scroll
+   the Lab — the resource bar pins just below it, and nothing (cards, the hall)
+   shows through the strip behind the clock and battery, in both themes.
+5. **Overlays:** open Settings, a product detail, the offline recap (background the
+   app for a few minutes) and ship a model — no card, close button or title under the
+   island or the home indicator.
+6. **Landscape:** rotate — nothing under the island on the side, the bottom nav
+   clears the home indicator. On a Pro Max (split layout) the brand and the resource
+   bar clear the island, with no seam beside the bar.
+7. **Overscroll bounce colour:** pull down hard at the top and push up at the bottom
+   in both themes — the bounce shows the page colour, never a light band in Dark.
+8. **Launch:** cold start in Dark — note whether a light flash shows between the
+   splash and the first frame (that's `ios.backgroundColor`; acceptable if brief).

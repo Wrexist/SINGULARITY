@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useGame } from "../state/store";
+import { useGame, guardedDay, offlineAccruesFrom } from "../state/store";
 import { useGameLoop } from "../state/useGameLoop";
 import { derive } from "../engine/derive";
 import { Big } from "../engine/math/Big";
@@ -32,6 +32,8 @@ import { EmployeesPanel } from "./EmployeesPanel";
 import { ProductsPanel } from "./ProductsPanel";
 import { GoalsPanel, type GoalsSection } from "./GoalsPanel";
 import { goalsCounts } from "./goalsCount";
+import { directivePickWaiting } from "./repSignal";
+import { useHallPin } from "./hallPin";
 import { CharterPanel } from "./CharterPanel";
 import { CodexPanel } from "./CodexPanel";
 import { codexRevealed } from "../engine/codex";
@@ -48,6 +50,7 @@ import { nextGoal } from "../engine/goals";
 import { marketLeaderboard, playerMarketRank } from "../engine/market";
 import { FlaskIcon, BoxIcon, TeamIcon, GearIcon, GiftIcon, TargetIcon } from "./Icons";
 import { fmt, fmtMoney, barRates } from "./format";
+import { decisionToast } from "./decisionToast";
 import type { ProductTypeId } from "../engine/balance/products";
 import { iap } from "./iap";
 import { isPremium } from "../state/premium";
@@ -175,6 +178,9 @@ export function App() {
   // One scan behind every GOALS badge: the nav count, the horizon dots and the
   // fold counts all read the same numbers, so they cannot disagree.
   const goalsCount = useMemo(() => goalsCounts(game), [game]);
+  // An earned Endowment Directive pick waits on the player: a wordless dot marks the
+  // path to it (Lab nav → HQ segment → Reputation strip) until it is chosen.
+  const directivePick = directivePickWaiting(game);
 
   // Detect a ship (prestige) and fire the celebration moment + haptics.
   const prevShips = useRef(game.prestige.ships);
@@ -192,7 +198,9 @@ export function App() {
   const [breaking, setBreaking] = useState<Breaking | null>(null);
   const [challengeDoneId, setChallengeDoneId] = useState<string | null>(null); // Grand Challenge just completed → moment
   const [flash, setFlash] = useState(0); // AGI ascension screen flash (key replays the anim)
-  const [dailyOn, setDailyOn] = useState(() => dailyAvailable());
+  // The claim lives in the save (v41), so it is only known once init() has loaded it:
+  // the check effect below runs right after useGameLoop's init() on mount.
+  const [dailyOn, setDailyOn] = useState(false);
   // The "next goal" carrot: the era/contract/achievement closest to popping
   // (see engine/goals.ts). Only computed when the notice slot would actually
   // show it (slot priority is daily > nudge > goal) — no point scanning 50+
@@ -330,6 +338,7 @@ export function App() {
       enabled: useSettings.getState().notifyReminders,
       producing: derive(g).computePerSec.gt(0) || g.products.active.length > 0,
       capHours: isPremium() ? balance.offline.premiumMaxHours : balance.offline.maxHours,
+      accruesFrom: offlineAccruesFrom(),
     };
   }), []);
 
@@ -338,16 +347,19 @@ export function App() {
   // the app returns to the foreground (the common idle-game resume path).
   // The sponsor contract (IDEAS #9) rides the same cadence: the store rolls a
   // fresh objective when the local day changes (no-op until the ladder clears).
+  // Both key off the clock guard's day, so a clock set back never re-opens one.
   useEffect(() => {
     const check = () => {
-      setDailyOn((on) => on || dailyAvailable());
-      useGame.getState().doRollSponsor(Math.floor(Date.now() / 86_400_000));
+      setDailyOn(dailyAvailable());
+      useGame.getState().doRollSponsor(guardedDay());
     };
     check();
     const t = setInterval(check, 60_000);
     document.addEventListener("visibilitychange", check);
     return () => { clearInterval(t); document.removeEventListener("visibilitychange", check); };
   }, []);
+  // A restored backup carries its own claim (v41): re-read it when the save is replaced.
+  useEffect(() => { setDailyOn(dailyAvailable()); }, [saveEpoch]);
 
   // Hall theme drives an app-wide accent (--accent) so picking a theme visibly
   // recolours the chrome (nav, selection rings, accent surfaces) — not just the
@@ -386,6 +398,8 @@ export function App() {
       return next;
     });
   }, []);
+  // iPad split: pin the hall column under the measured resource bar when it fits.
+  const hallPinned = useHallPin(tab === "lab" && section === "build");
   // Telemetry (R8.1): count a tab switch when the player navigates to a *different*
   // tab. On-device only; no-op when opted out (see src/state/telemetry.ts).
   // Stable identity so GoalsPanel's effect doesn't re-fire every render.
@@ -521,6 +535,11 @@ export function App() {
     toastMemory.current = newTransitionMemory();
     stepTransitionToasts(transitionToasts, toastMemory.current); // baseline only: fires nothing
     resetHistory(); // the sparklines belong to the old save
+    // So do the feed's entries: the toasts on screen, the Recent activity log and the
+    // newswire's breaking line all described the old lab to the new one.
+    setToasts([]);
+    setLog([]);
+    setBreaking(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saveEpoch]);
   useEffect(() => {
@@ -758,12 +777,14 @@ export function App() {
   const onStart = () => { haptics.tap(); sound.tap(); doStartRun(); };
   const onClaim = () => { haptics.success(); sound.success(); doClaim(); };
   const onClaimDaily = () => {
+    // A restored backup may already hold today's claim: the bar can be stale.
+    if (!dailyAvailable()) { setDailyOn(false); return; }
     haptics.celebrate(); sound.success(); doClaimDaily(); markDailyClaimed(); setDailyOn(false);
     // Confirm the claim in words — the confetti was pretty but wordless. Vary the line
     // by local day so returning tomorrow reads as a fresh day, not a repeat.
     const pct = Math.round((balance.daily.factor - 1) * 100);
     const min = Math.round(balance.daily.durationSec / 60);
-    const quip = DAILY_QUIPS[Math.floor(Date.now() / 86_400_000) % DAILY_QUIPS.length]!;
+    const quip = DAILY_QUIPS[guardedDay() % DAILY_QUIPS.length]!;
     logEvent(`${quip} · +${pct}% output for ${min} min`, "good");
     if (!reducedMotion) fxBurst(window.innerWidth / 2, window.innerHeight * 0.32, { count: 30, power: 1.5, colors: [...FX_PALETTES.brand] });
   };
@@ -933,7 +954,7 @@ export function App() {
   const rates = barRates(game, d);
 
   return (
-    <div className={`app${reducedMotion ? " reduce-motion" : ""}${booted ? " app-booted" : ""}${tab === "lab" && section === "build" ? " app-split" : ""}`}>
+    <div className={`app${reducedMotion ? " reduce-motion" : ""}${booted ? " app-booted" : ""}${tab === "lab" && section === "build" ? " app-split" : ""}${hallPinned ? " hall-pin" : ""}`}>
       <div className="aurora" aria-hidden="true">
         <span className="blob blob-a" />
         <span className="blob blob-b" />
@@ -1092,7 +1113,9 @@ export function App() {
                 <button className={`tab ${section === "hq" ? "on" : ""}`} aria-current={section === "hq" ? "true" : undefined} onClick={() => { haptics.tap(); goSection("hq"); }}>
                   HQ{shipCalls && section !== "hq"
                     ? <span className="tab-dot ship-ready" role="status" aria-label="Ship ready" />
-                    : labAttention.hq > 0 && <span className="tab-dot">{labAttention.hq}</span>}
+                    : labAttention.hq > 0
+                      ? <span className="tab-dot">{labAttention.hq}</span>
+                      : directivePick && section !== "hq" && <span className="tab-dot pick-dot" role="status" aria-label="Directive pick waiting" />}
                 </button>
               </nav>
             )}
@@ -1200,7 +1223,9 @@ export function App() {
               CLAUDE.md). The value framing + wayfinding still live in the advisor
               chip and the HQ "Ship" pill; screen readers get the aria-label above.
               The numeric attention badge still surfaces other pulls in the Lab. */}
-          {attention.lab > 0 && <span className="botnav-badge">{attention.lab}</span>}
+          {attention.lab > 0
+            ? <span className="botnav-badge">{attention.lab}</span>
+            : directivePick && <span className="botnav-badge pick-dot" role="status" aria-label="Directive pick waiting" />}
         </button>
         {showProducts && (
           <button className={`botnav-item ${tab === "products" ? "on" : ""}`} aria-current={tab === "products" ? "page" : undefined} onClick={() => { haptics.tap(); goTab("products"); }}>
@@ -1327,8 +1352,9 @@ export function App() {
             const choice = worldEvent.choices?.[i];
             chooseWorldEvent(i);
             if (choice) {
-              const decision = choice.label.replace(/\s*\([^)]*\)\s*$/, "");
-              pushToast(choice.summary ? `${decision} — ${choice.summary}` : `Decided: ${decision}`, "good");
+              // Toned by what the pick does: "Back them — -12% $" is no win.
+              const t = decisionToast(choice);
+              pushToast(t.text, t.tone);
             }
           }}
         />

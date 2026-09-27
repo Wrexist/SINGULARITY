@@ -79,6 +79,8 @@ function FxCanvasImpl({ reducedMotion }: { reducedMotion: boolean }) {
       raf = requestAnimationFrame(frame);
     };
     const off = _onFxWake(start);
+    // A burst fired between motion coming back on and this mount woke no one.
+    if (particles.length > 0 || floaters.length > 0) start();
 
     return () => { off(); cancelAnimationFrame(raf); window.removeEventListener("resize", resize); running.current = false; };
   }, [reducedMotion]);

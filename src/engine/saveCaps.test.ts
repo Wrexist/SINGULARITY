@@ -46,7 +46,8 @@ describe("active modifiers: the loader keeps what tick() keeps", () => {
 
 describe("megaproject level: the runtime stops where the loader does", () => {
   const MAX = C.megaproject.maxLevel;
-  const rich = Big.of("1e300");
+  // Rich enough to complete any cycle up to the cap in one tap (cycle 890 costs ~1e319).
+  const rich = Big.of("1e330");
   /** Every Grand Challenge funded to cost (the sanitizer recomputes completion from
    *  funding), at `level` completed cycles with every mandate taken, rich enough to
    *  complete any cycle in one tap. */

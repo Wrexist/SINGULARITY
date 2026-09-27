@@ -26,6 +26,7 @@ import { RACK_IDS } from "./hall";
 import { laneMet } from "./challenges";
 import { shiftAlignment } from "./alignment";
 import { capActiveModifiers } from "./tick";
+import { cleanProductName, priceMinFor } from "./products";
 import type { ChallengeState } from "./types";
 import type { ActiveModifier, ComponentsState, DraftModel, Employee, GameState, LifetimeStats, ModifierTarget, ProductsState, ProductState, ShipLogEntry, UpgradeState } from "./types";
 
@@ -165,7 +166,8 @@ function isWellFormedProduct(p: unknown): p is ProductState {
     // `obj["__proto__"] = …` sets the prototype instead of a key — that product then
     // read Object.prototype as its buffs and went NaN. Runtime ids are always prod-N.
     o.id !== "__proto__" &&
-    typeof o.name === "string" &&
+    // (No name check: a missing or junk name is only a label, cleaned at load —
+    // it used to drop the whole product with its users and crew.)
     typeof o.type === "string" &&
     (PRODUCT_TYPE_IDS as string[]).includes(o.type) &&
     [o.version, o.quality, o.priceMult, o.marketingPerSec, o.mau, o.paid, o.buzzSec].every(
@@ -446,6 +448,10 @@ interface SavedShape {
   shipLog: GameState["shipLog"];
   /** IDEAS #9 — today's rolled sponsor objective. Sanitizer-defaulted (null). */
   sponsor: GameState["sponsor"];
+  /** Offline clock guard — the latest wall time the app has seen (ms). Migrated at v40. */
+  clockMark: number;
+  /** Daily Boost — the local day it was last claimed on (0 = never). Migrated at v41. */
+  dailyDay: number;
   /** IDEAS #10 — preprints published this run. Sanitizer-defaulted (0). */
   preprints: number;
   /** Grand Challenges — funded amounts (Big → strings) + completed ids. Migrated at v21. */
@@ -529,6 +535,8 @@ export function serialize(state: GameState): string {
     rivalOps: state.rivalOps,
     shipLog: state.shipLog,
     sponsor: state.sponsor,
+    clockMark: state.clockMark,
+    dailyDay: state.dailyDay,
     preprints: state.preprints,
     challenges: {
       funded: Object.fromEntries(
@@ -742,11 +750,15 @@ export function deserialize(json: string): GameState {
       const mau = clampNum(o.mau, 0, PROD_CAPS.mau, 0);
       return {
         ...p,
+        // Player-typed text: cleaned and capped exactly like a rename (a crafted save
+        // carried 10,000-character or bidi-override names into every card and toast).
+        name: cleanProductName(o.name),
         quality,
         mau,
         paid: clampNum(o.paid, 0, mau, 0), // paid can never exceed MAU (sim invariant)
         version: Math.floor(clampNum(o.version, 1, PROD_CAPS.version, 1)),
-        priceMult: clampNum(o.priceMult, PRODUCTS.priceMin, PRODUCTS.priceMax, 1),
+        // The type's own floor (priceMinFor), exactly what the price setter allows.
+        priceMult: clampNum(o.priceMult, priceMinFor(o.type), PRODUCTS.priceMax, 1),
         marketingPerSec: clampNum(o.marketingPerSec, 0, quality * PRODUCTS.marketingCapPerQuality, 0),
         buzzSec: clampNum(o.buzzSec, 0, PROD_CAPS.buzzSec, 0),
         upgrade: sanitizeUpgrade(o.upgrade),
@@ -875,6 +887,8 @@ export function deserialize(json: string): GameState {
     // (sanitizer policy: filter, don't wipe) and capped like prestige() caps them.
     shipLog: sanitizeShipLog(raw.shipLog, stats.totalShips),
     sponsor: sanitizeSponsor(raw.sponsor),
+    clockMark: sanitizeClockMark(raw.clockMark),
+    dailyDay: sanitizeDailyDay(raw.dailyDay),
     // Preprints multiply into derive, so the count is clamped to the per-run cap.
     preprints: Math.min(balance.preprints.maxPerRun, safeCount(raw.preprints)),
     // Grand Challenge rewards are permanent multipliers, so anti-cheat like reputation:
@@ -1004,6 +1018,20 @@ function sanitizeContracts(c: unknown): { completed: string[] } {
     }
   }
   return { completed: [...known, ...sponsors.slice(-CONTRACTS.sponsor.maxCompleted)] };
+}
+
+/** The offline clock guard's high-water mark: a finite, positive whole ms no later
+ *  than the last representable Date, else 0 ("none seen" — exactly the pre-guard
+ *  behaviour, never a lock-out). The store also bounds it by its trust window. */
+function sanitizeClockMark(v: unknown): number {
+  return typeof v === "number" && Number.isFinite(v) && v > 0 && v <= 8.64e15 ? Math.floor(v) : 0;
+}
+
+/** The Daily Boost's last claimed day: a whole day index no later than the last
+ *  representable Date's, else 0 ("never claimed" — junk can never lock the boost).
+ *  A real but far-future day is kept; the store bounds it by the trust window. */
+function sanitizeDailyDay(v: unknown): number {
+  return typeof v === "number" && Number.isFinite(v) && v >= 1 && v <= 1e8 ? Math.floor(v) : 0;
 }
 
 /** Today's sponsor objective (IDEAS #9): validate every field or drop to null —
@@ -1380,6 +1408,18 @@ export function migrate(raw: any): SavedShape {
   if (s.version === 38) {
     // v38 → v39: Trials queue for the next run. Nobody had one queued.
     s = { ...s, version: 39, queuedTrial: null };
+  }
+  if (s.version === 39) {
+    // v39 → v40: the offline clock guard's high-water mark. An older save never
+    // recorded one; 0 means "none", and the store falls back to its lastSeen stamp.
+    s = { ...s, version: 40, clockMark: 0 };
+  }
+  if (s.version === 40) {
+    // v40 → v41: the Daily Boost's claim day moves into the save (it lived in its own
+    // localStorage key, so a reinstall restoring a backup re-opened the day). The save
+    // never held it: 0 ("never") here, and on the launch that loads a pre-v41 save
+    // the store imports the old key's claim, so updating never re-opens a claimed boost.
+    s = { ...s, version: 41, dailyDay: 0 };
   }
   return s as SavedShape;
 }

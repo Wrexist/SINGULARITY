@@ -201,7 +201,7 @@ export function UpgradePanel({ game, derived, onBuy, onFoundWing }: Props) {
         <UpgradeRingIcon id={def.id} kind={def.effect.kind} pct={pct} showPct={isHero && !affordable && !maxed} />
         <div className="card-main">
           <span className="card-name">
-            {rackTierMark(def.id) && <span className="rack-tier-mark" style={{ color: buyColorFor(def.id, def.cost.resource) }} aria-hidden="true">{rackTierMark(def.id)}</span>}
+            {rackTierMark(def.id) && <span className="rack-tier-mark tint-text" style={{ color: buyColorFor(def.id, def.cost.resource), ["--c" as string]: buyColorFor(def.id, def.cost.resource) }} aria-hidden="true">{rackTierMark(def.id)}</span>}
             {def.name}
             {def.max !== Infinity && <span key={owned} className="card-owned">{owned}/{def.max}</span>}
             {def.max === Infinity && owned > 0 && <span key={owned} className="card-owned">×{owned}</span>}

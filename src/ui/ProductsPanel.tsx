@@ -20,6 +20,8 @@ const FUN_NAMES = ["Nimbus", "Oracle", "Synthia", "Cortex", "Lumen", "Vertex", "
 // this tab — the board shows ▲/▼ movement "since you last looked", so the race
 // reads as a moving field, not a fixed table. UI-only; the engine knows nothing.
 const seenRanks = new Map<string, number>();
+// A product may be named like a rival, so a board row is keyed by name AND side.
+const rankKey = (e: { name: string; isYou: boolean }) => `${e.isYou ? "you" : "rival"}:${e.name}`;
 
 interface Props {
   game: GameState;
@@ -67,14 +69,14 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
   if (movement.current === null) {
     const m = new Map<string, number>();
     board.forEach((e, i) => {
-      const prev = seenRanks.get(e.name);
-      if (prev != null && prev !== i + 1) m.set(e.name, prev - (i + 1));
+      const prev = seenRanks.get(rankKey(e));
+      if (prev != null && prev !== i + 1) m.set(rankKey(e), prev - (i + 1));
     });
     movement.current = m;
   }
   useEffect(() => () => {
     seenRanks.clear();
-    boardRef.current.forEach((e: { name: string }, i: number) => seenRanks.set(e.name, i + 1));
+    boardRef.current.forEach((e, i) => seenRanks.set(rankKey(e), i + 1));
   }, []);
   const myRank = playerMarketRank(game);
   const frontier = ps.frontier;
@@ -257,13 +259,14 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
               // you've already passed).
               const stakeable = !e.isYou && onPlaceStake != null && game.rivalStake == null
                 && game.products.active.length > 0 && e.users > myBest;
-              const staked = game.rivalStake === e.name;
+              // A player's product may share a rival's name: only a rival row is staked.
+              const staked = !e.isYou && game.rivalStake === e.name;
               return (
                 <div className={`market-row ${e.isYou ? "you" : ""}`} key={`${e.name}-${i}`}>
                   <span className="market-rank">
                     {i + 1}
                     {(() => {
-                      const mv = movement.current?.get(e.name) ?? 0;
+                      const mv = movement.current?.get(rankKey(e)) ?? 0;
                       if (mv === 0) return null;
                       return <i className={`market-move ${mv > 0 ? "up" : "down"}`} title={`${mv > 0 ? "Up" : "Down"} ${Math.abs(mv)} since your last visit`}>{mv > 0 ? "▲" : "▼"}</i>;
                     })()}
