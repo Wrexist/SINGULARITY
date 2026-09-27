@@ -479,7 +479,11 @@ export function maybeProductEvent(
   // negative, even for the frame before the next tick re-clamps.
   // A product's own Heat lane (Trust & Safety) scales the Heat its incidents raise, like
   // its steady Heat: five of the eight types have none, so the feature did nothing there.
-  const heat = ev.heat ? Math.max(0, Math.min(balance.heat.max, state.heat + ev.heat * featureMods(p).heat)) : state.heat;
+  // The product's Heat multiplier (Staff PR & Legal, benched or assigned — the lane its
+  // steady Heat is scaled by) cuts it too, for the same reason. Only derived when an
+  // event actually raises Heat.
+  const heatMult = ev.heat ? featureMods(p).heat * (derive(state).productModsById[p.id]?.heat ?? 1) : 1;
+  const heat = ev.heat ? Math.max(0, Math.min(balance.heat.max, state.heat + ev.heat * heatMult)) : state.heat;
   return {
     state: {
       ...state,
