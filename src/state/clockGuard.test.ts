@@ -160,6 +160,30 @@ describe("offline clock guard — the live loop", () => {
     expect(loopTick(T0, T0 + H, 50)).toBeCloseTo(3600, 0);
     expect(loopTick(T0 + H, T0 + H + 100, 100)).toBeCloseTo(0.1, 5);
   });
+
+  it("an autosave that fires before the loop after a suspend does not eat the window", () => {
+    installAt(T0);
+    loopTick(T0, T0 + 100);
+    // Locked with the app open for 8 hours. On waking, both overdue timers fire: when
+    // the 5-second autosave happens to be due before the 100 ms loop tick, it runs
+    // first. It only saw the time; the loop must still pay the suspend.
+    vi.setSystemTime(T0 + 8 * H);
+    S().save();
+    expect(loopTick(T0 + 100, T0 + 8 * H + 50, 50)).toBeCloseTo(8 * 3600, -1);
+    // …and paid once: the clock set back and forward again pays nothing more.
+    expect(loopTick(T0 + 8 * H + 50, T0 + 1000, 50)).toBeCloseTo(0.05, 5);
+    expect(loopTick(T0 + 1000, T0 + 8 * H + 5000, 50)).toBeCloseTo(4.95, 0);
+  });
+
+  it("the save's mark still covers every time a save has seen", () => {
+    installAt(T0);
+    loopTick(T0, T0 + 100);
+    vi.setSystemTime(T0 + 8 * H);
+    S().save(); // the device was killed right after this save (the loop never ran)
+    // Clock set back, cold launch, then forward to the same reading: nothing to pay.
+    expect(relaunchAt(T0 + 60_000)).toBe(0);
+    expect(relaunchAt(T0 + 8 * H + 120_000)).toBeCloseTo(120, 0);
+  });
 });
 
 describe("offline clock guard — dailies", () => {

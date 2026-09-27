@@ -264,10 +264,13 @@ function now(): number {
 }
 
 /**
- * Offline clock guard (see clockGuard.ts): the latest wall time this app has seen.
- * The store owns the live value — the loop and every save move it forward — and
- * writes it into the save (`clockMark`), so a backup carries it too. Loaded by
+ * Offline clock guard (see clockGuard.ts): the latest wall time this app has paid
+ * (or given up) up to. The store owns the live value — the loop moves it forward —
+ * and writes it into the save (`clockMark`), so a backup carries it too. Loaded by
  * init() from the save (a cold launch), raised by an import, kept by a Hard Reset.
+ * A save writes the time it saw into the save's mark but does NOT move the live one:
+ * an autosave that fires first on waking from a suspend only saw the time, and
+ * moving the live mark there left the loop's tick right after it nothing to pay.
  */
 let clockMark = 0;
 
@@ -285,7 +288,7 @@ export function claimWallTime(from: number, wall: number = now()): number {
 
 /** The guarded day (UTC days since epoch) the Daily Boost and the sponsor objective
  *  key off: the latest day the app has seen, so a clock set back never returns to
- *  a day already played. Read-only: the loop and saves move the mark. */
+ *  a day already played. Read-only: the loop moves the mark. */
 export function guardedDay(wall: number = now()): number {
   return guardedDayOf(clockMark, wall);
 }
@@ -364,9 +367,9 @@ function decodeBackup(blob: string): GameState | null {
 /** The game as it should be WRITTEN anywhere (autosave or exported backup): the
  *  player's own training intensity, never the temporary "save for this" one. Both a
  *  relaunch and an import start with no pin, so nothing would ever restore it. */
-function persistedGame(game: GameState, savingFor: { prevFocus: number } | null): GameState {
+function persistedGame(game: GameState, savingFor: { prevFocus: number } | null, mark: number): GameState {
   // The clock guard's mark is the store's (the in-memory game keeps the loaded one).
-  return savingFor ? { ...game, computeFocus: savingFor.prevFocus, clockMark } : { ...game, clockMark };
+  return savingFor ? { ...game, computeFocus: savingFor.prevFocus, clockMark: mark } : { ...game, clockMark: mark };
 }
 
 let empKey = 0;
@@ -796,9 +799,10 @@ export const useGame = create<GameStore>((set, get) => ({
       // Persist the player's own intensity, never the temporary "save for this" one:
       // an app killed mid-pin must not relaunch with training held.
       const { game, savingFor } = get();
+      // The save records the time it saw (a relaunch credits only beyond it), but the
+      // live mark stays where the loop left it: the loop has not paid up to `wall` yet.
       const wall = now();
-      clockMark = nextMark(clockMark, wall);
-      localStorage.setItem(SAVE_KEY, serialize(persistedGame(game, savingFor)));
+      localStorage.setItem(SAVE_KEY, serialize(persistedGame(game, savingFor, nextMark(clockMark, wall))));
       localStorage.setItem(TIME_KEY, String(wall));
     } catch (err) {
       console.warn("Save failed:", err);
@@ -1007,7 +1011,8 @@ export const useGame = create<GameStore>((set, get) => ({
   exportSave: () => {
     // Same substitution as save(): a backup taken mid-pin must not restore with training held.
     const { game, savingFor } = get();
-    const json = serialize(persistedGame(game, savingFor));
+    // Its mark is the time it was taken, exactly as save() writes it.
+    const json = serialize(persistedGame(game, savingFor, nextMark(clockMark, now())));
     try { return btoa(unescape(encodeURIComponent(json))); } catch { return json; }
   },
   importSave: (blob: string) => {
