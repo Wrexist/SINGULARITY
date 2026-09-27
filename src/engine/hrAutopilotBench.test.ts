@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createInitialState } from "./state";
+import { SAVE_VERSION, createInitialState } from "./state";
 import { applyAutomation, toggleAutomation } from "./automation";
 import { assignEmployee } from "./employees";
 import { launchDraft, retireProduct } from "./products";
@@ -111,7 +111,7 @@ describe("save v38: the hand-bench flag", () => {
     raw.version = 36;
     for (const e of raw.employees) delete e.benched;
     const loaded = deserialize(JSON.stringify(raw));
-    expect(loaded.version).toBe(39);
+    expect(loaded.version).toBe(SAVE_VERSION);
     expect(loaded.employees.every((e) => e.benched === undefined)).toBe(true);
     expect(where(applyAutomation(loaded), "emp-1")).toBe("prod-1");
   });

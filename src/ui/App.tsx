@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useGame } from "../state/store";
+import { useGame, guardedDay } from "../state/store";
 import { useGameLoop } from "../state/useGameLoop";
 import { derive } from "../engine/derive";
 import { Big } from "../engine/math/Big";
@@ -344,10 +344,11 @@ export function App() {
   // the app returns to the foreground (the common idle-game resume path).
   // The sponsor contract (IDEAS #9) rides the same cadence: the store rolls a
   // fresh objective when the local day changes (no-op until the ladder clears).
+  // Both key off the clock guard's day, so a clock set back never re-opens one.
   useEffect(() => {
     const check = () => {
       setDailyOn((on) => on || dailyAvailable());
-      useGame.getState().doRollSponsor(Math.floor(Date.now() / 86_400_000));
+      useGame.getState().doRollSponsor(guardedDay());
     };
     check();
     const t = setInterval(check, 60_000);

@@ -211,6 +211,11 @@ export interface GameState {
    *  recorded in contracts.completed as `sponsor_<dayKey>`. Persists across
    *  prestige (metrics are lifetime stats). */
   sponsor: SponsorContract | null;
+  /** Offline clock guard (round 8): the latest wall-clock time (ms since epoch) the
+   *  app has ever seen, 0 = none yet. The STORE writes it at save time and owns the
+   *  live value (src/state/clockGuard.ts); the engine never reads it — it is only
+   *  carried through the save, so the tuned curve cannot see it. Persisted since v40. */
+  clockMark: number;
   /** IDEAS #10 — frontier preprints published THIS run (post-tree repeatable
    *  research). Hard-capped (balance.preprints.maxPerRun); resets on prestige
    *  like the research tree it extends. */

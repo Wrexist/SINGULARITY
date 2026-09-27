@@ -82,6 +82,7 @@ import { currentEra } from "../engine/eras";
 import { codexBalance, codexUnlocked, codexRevealed } from "../engine/codex";
 import type { Big } from "../engine/math/Big";
 import { enqueueNotices } from "./noticeQueue";
+import { creditableMs, guardedDayOf, nextMark, sanitizeMark } from "./clockGuard";
 
 const SAVE_KEY = "singularity.save.v1";
 const TIME_KEY = "singularity.lastSeen.v1";
@@ -262,6 +263,38 @@ function now(): number {
   return Date.now();
 }
 
+/**
+ * Offline clock guard (see clockGuard.ts): the latest wall time this app has seen.
+ * The store owns the live value — the loop and every save move it forward — and
+ * writes it into the save (`clockMark`), so a backup carries it too. Loaded by
+ * init() from the save (a cold launch), raised by an import, kept by a Hard Reset.
+ */
+let clockMark = 0;
+
+/**
+ * Wall-clock ms the guard credits for a window that began at `from` and ends at
+ * `wall` — only the time beyond the latest the app has seen — and move the mark
+ * up to `wall`. The game loop calls this once per interval for a suspend's extra
+ * wall time, so a clock moved forward, back and forward again pays nothing twice.
+ */
+export function claimWallTime(from: number, wall: number = now()): number {
+  const credit = creditableMs(from, clockMark, wall);
+  clockMark = nextMark(clockMark, wall);
+  return credit;
+}
+
+/** The guarded day (UTC days since epoch) the Daily Boost and the sponsor objective
+ *  key off: the latest day the app has seen, so a clock set back never returns to
+ *  a day already played. Read-only: the loop and saves move the mark. */
+export function guardedDay(wall: number = now()): number {
+  return guardedDayOf(clockMark, wall);
+}
+
+/** The live high-water mark (read by the Daily Boost's day check). */
+export function currentClockMark(): number {
+  return clockMark;
+}
+
 let eventKey = 0;
 let noticeKey = 0;
 let worldKey = 0;
@@ -332,7 +365,8 @@ function decodeBackup(blob: string): GameState | null {
  *  player's own training intensity, never the temporary "save for this" one. Both a
  *  relaunch and an import start with no pin, so nothing would ever restore it. */
 function persistedGame(game: GameState, savingFor: { prevFocus: number } | null): GameState {
-  return savingFor ? { ...game, computeFocus: savingFor.prevFocus } : game;
+  // The clock guard's mark is the store's (the in-memory game keeps the loaded one).
+  return savingFor ? { ...game, computeFocus: savingFor.prevFocus, clockMark } : { ...game, clockMark };
 }
 
 let empKey = 0;
@@ -413,13 +447,23 @@ export const useGame = create<GameStore>((set, get) => ({
   init: () => {
     let game = createInitialState();
     let offline: OfflineSummary | null = null;
+    const wall = now();
+    // A cold launch: the mark is the save's (a fresh install has none yet).
+    clockMark = 0;
     try {
       const saved = localStorage.getItem(SAVE_KEY);
       if (saved) {
         game = deserialize(saved);
-        const last = Number(localStorage.getItem(TIME_KEY) ?? "0");
+        const last = sanitizeMark(Number(localStorage.getItem(TIME_KEY) ?? "0"));
+        // The lastSeen stamp is a time the app saw too (the only one a pre-v40 save has).
+        const seen = Math.max(game.clockMark, last);
+        clockMark = seen;
         if (last > 0) {
-          const elapsed = now() - last;
+          // Offline clock guard: only wall time beyond the latest the app has ever seen
+          // is credited. A clock set forward, back and forward again pays once; one set
+          // back credits nothing (it used to credit nothing too, then the next save
+          // stamped the earlier time and re-opened the whole window).
+          const elapsed = creditableMs(last, seen, wall);
           // Premium grants a longer offline cap (QoL perk, not power).
           const capHours = isPremium() ? balance.offline.premiumMaxHours : balance.offline.maxHours;
           // Offline catch-up gets its OWN guard: a throw here is an engine bug, not a
@@ -452,6 +496,7 @@ export const useGame = create<GameStore>((set, get) => ({
     game = migrateStaffCounts(game); // legacy role-counts → individual people
     seedProductKey(game);
     seedEmpKey(game);
+    clockMark = nextMark(clockMark, wall);
     set({ game, offline, initialized: true });
     // Persist the caught-up lab AND the new lastSeen together (save() writes both).
     // Stamping lastSeen alone left the pre-catch-up save on disk: an app killed in
@@ -751,8 +796,10 @@ export const useGame = create<GameStore>((set, get) => ({
       // Persist the player's own intensity, never the temporary "save for this" one:
       // an app killed mid-pin must not relaunch with training held.
       const { game, savingFor } = get();
+      const wall = now();
+      clockMark = nextMark(clockMark, wall);
       localStorage.setItem(SAVE_KEY, serialize(persistedGame(game, savingFor)));
-      localStorage.setItem(TIME_KEY, String(now()));
+      localStorage.setItem(TIME_KEY, String(wall));
     } catch (err) {
       console.warn("Save failed:", err);
     }
@@ -967,11 +1014,16 @@ export const useGame = create<GameStore>((set, get) => ({
     const decoded = decodeBackup(blob);
     if (!decoded) return false;
     let prevSeen: string | null | undefined;
+    let restoreMark: number | undefined;
     try {
       // Mirror init()'s post-load normalization so an imported save matches the
       // runtime shape (legacy role-counts → people; ID counters seeded so new
       // products/hires don't collide with existing prod-N / emp-N ids).
-      const game = migrateStaffCounts(decoded);
+      // The backup's clock mark joins this device's: restoring a backup taken after a
+      // clock jump must not reopen the window that jump already paid.
+      restoreMark = clockMark;
+      clockMark = nextMark(Math.max(clockMark, decoded.clockMark), now());
+      const game = { ...migrateStaffCounts(decoded), clockMark };
       // Persist BEFORE swapping the running lab: when the write throws (storage full
       // or blocked) the sheet reports a failed restore, and the lab it leaves running
       // must be the player's own. Swapping first replaced it with the backup anyway,
@@ -991,6 +1043,8 @@ export const useGame = create<GameStore>((set, get) => ({
       set((s) => ({ game, offline: null, event: null, notice: null, worldEvent: null, claimBurst: 0, candidates: null, savingFor: null, saveEpoch: s.saveEpoch + 1 }));
       return true;
     } catch {
+      // The running lab stays the player's own, with its own mark.
+      if (restoreMark !== undefined) clockMark = restoreMark;
       if (prevSeen !== undefined) {
         try {
           if (prevSeen === null) localStorage.removeItem(TIME_KEY);

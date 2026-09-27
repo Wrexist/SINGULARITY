@@ -448,6 +448,8 @@ interface SavedShape {
   shipLog: GameState["shipLog"];
   /** IDEAS #9 — today's rolled sponsor objective. Sanitizer-defaulted (null). */
   sponsor: GameState["sponsor"];
+  /** Offline clock guard — the latest wall time the app has seen (ms). Migrated at v40. */
+  clockMark: number;
   /** IDEAS #10 — preprints published this run. Sanitizer-defaulted (0). */
   preprints: number;
   /** Grand Challenges — funded amounts (Big → strings) + completed ids. Migrated at v21. */
@@ -531,6 +533,7 @@ export function serialize(state: GameState): string {
     rivalOps: state.rivalOps,
     shipLog: state.shipLog,
     sponsor: state.sponsor,
+    clockMark: state.clockMark,
     preprints: state.preprints,
     challenges: {
       funded: Object.fromEntries(
@@ -881,6 +884,7 @@ export function deserialize(json: string): GameState {
     // (sanitizer policy: filter, don't wipe) and capped like prestige() caps them.
     shipLog: sanitizeShipLog(raw.shipLog, stats.totalShips),
     sponsor: sanitizeSponsor(raw.sponsor),
+    clockMark: sanitizeClockMark(raw.clockMark),
     // Preprints multiply into derive, so the count is clamped to the per-run cap.
     preprints: Math.min(balance.preprints.maxPerRun, safeCount(raw.preprints)),
     // Grand Challenge rewards are permanent multipliers, so anti-cheat like reputation:
@@ -1010,6 +1014,13 @@ function sanitizeContracts(c: unknown): { completed: string[] } {
     }
   }
   return { completed: [...known, ...sponsors.slice(-CONTRACTS.sponsor.maxCompleted)] };
+}
+
+/** The offline clock guard's high-water mark: a finite, positive whole ms no later
+ *  than the last representable Date, else 0 ("none seen" — exactly the pre-guard
+ *  behaviour, never a lock-out). The store also bounds it by its trust window. */
+function sanitizeClockMark(v: unknown): number {
+  return typeof v === "number" && Number.isFinite(v) && v > 0 && v <= 8.64e15 ? Math.floor(v) : 0;
 }
 
 /** Today's sponsor objective (IDEAS #9): validate every field or drop to null —
@@ -1386,6 +1397,11 @@ export function migrate(raw: any): SavedShape {
   if (s.version === 38) {
     // v38 → v39: Trials queue for the next run. Nobody had one queued.
     s = { ...s, version: 39, queuedTrial: null };
+  }
+  if (s.version === 39) {
+    // v39 → v40: the offline clock guard's high-water mark. An older save never
+    // recorded one; 0 means "none", and the store falls back to its lastSeen stamp.
+    s = { ...s, version: 40, clockMark: 0 };
   }
   return s as SavedShape;
 }
