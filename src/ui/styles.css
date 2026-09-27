@@ -3525,6 +3525,9 @@ p.pd-flagship { cursor: default; text-align: center; margin-top: 0; }
   color: var(--purple-ink); font-size: var(--fs-xs); font-weight: 750;
   border-radius: 999px; padding: 5px 11px; cursor: pointer;
 }
+/* A spare toward a fusion: the same quiet pill as Fuse, without the dashed "ready" edge. */
+.rig-fuse.rig-spare { border-style: solid; border-color: rgba(155, 81, 224, 0.25); background: transparent; }
+.rig-fuse.rig-spare:disabled { opacity: 0.5; cursor: default; }
 .rig-option.rig-locked { opacity: 0.75; cursor: default; background: rgba(var(--shade-rgb), 0.03); border-style: dashed; }
 .rig-option.rig-locked .rig-option-name { color: var(--ink-2); }
 .rig-earn { color: var(--gold); font-size: var(--fs-xs); letter-spacing: 0.04em; text-transform: uppercase; }

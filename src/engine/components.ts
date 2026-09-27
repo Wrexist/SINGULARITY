@@ -166,13 +166,31 @@ export function fuseCountFor(id: string): number {
  *  a ladder target the fleet has already revealed — fusion never hands over a part
  *  ahead of the catalog. Trophy parts have no `fusesInto` — they never fuse away. */
 export function canFuse(state: GameState, id: string): boolean {
+  return fusionOpen(state, id) && freeCopies(state, id) >= fuseCountFor(id);
+}
+
+/** Can this part fuse at all right now, spares aside: it has a next rung, the fleet has
+ *  revealed that rung, and the rung's stack is under the copy cap (the same reload-clamp
+ *  rule as buying: never fuse into a stack already at cap). */
+export function fusionOpen(state: GameState, id: string): boolean {
   const def = BY_ID.get(id);
   const target = def?.fusesInto ? BY_ID.get(def.fusesInto) : undefined;
   if (!def || !target) return false;
   if (totalRacks(state) < target.revealAtRacks) return false;
-  // Same reload-clamp rule as buying: never fuse into a stack already at cap.
-  if ((state.components.owned[target.id] ?? 0) >= C.maxCopies) return false;
-  return freeCopies(state, id) >= fuseCountFor(id);
+  return (state.components.owned[target.id] ?? 0) < C.maxCopies;
+}
+
+/** Should the picker offer a spare copy toward this part's fusion? Fusion takes
+ *  `fuseCountFor(id)` FREE copies, but fitting a part uses its free copy at once, so
+ *  without a way to buy one that isn't fitted the free count never passed the class's
+ *  slot count (3 accelerators) and no fusion was reachable in play (round 9 review).
+ *  Offered only for a part already owned, while the fusion is open, the part is on sale
+ *  and more spares are still needed; affordability is the caller's (canBuyComponent). */
+export function spareWanted(state: GameState, id: string): boolean {
+  // Only for a part the player already runs: a row they don't own yet buys its first
+  // copy from its own button, so a second "buy" there is just noise.
+  if (!((state.components.owned[id] ?? 0) > 0)) return false;
+  return fusionOpen(state, id) && componentOnSale(state, id) && freeCopies(state, id) < fuseCountFor(id);
 }
 
 /** Combine fuseCount copies of a part into one of the next rung up its class
