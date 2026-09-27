@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 import { useSettings, type Appearance } from "./settings";
 
 /**
@@ -10,11 +11,11 @@ import { useSettings, type Appearance } from "./settings";
  *   - Dark: `data-theme="dark"`.
  *   - Match device: follows `prefers-color-scheme`, live, while the app is open.
  *
- * Known limitation (documented, deliberately not fixed here): on iOS the status-bar
- * strip is painted natively from capacitor.config.ts `ios.backgroundColor` (#eef1f8)
- * with `contentInset: "always"`, so in Dark that strip stays light until a native
- * change (@capacitor/status-bar, or contentInset "never" + safe-area CSS) has been
- * device-tested.
+ * iOS status bar: the web view runs edge to edge (capacitor.config.ts
+ * `contentInset: "never"`), so the page itself paints the strip behind the status bar
+ * in either theme. What the page can't paint is the status TEXT: left alone, iOS picks
+ * it from the SYSTEM appearance, i.e. white text over the Light app on a dark-mode
+ * phone. So on device every resolved theme is also pushed to @capacitor/status-bar.
  */
 
 export type Theme = "light" | "dark";
@@ -59,9 +60,54 @@ export function applyTheme(theme: Theme, doc: Document | undefined = typeof docu
  * before the first render, so a Dark player never sees a light flash.
  * Returns an unsubscribe (tests).
  */
+function isNative(): boolean {
+  try {
+    return Capacitor.isNativePlatform();
+  } catch {
+    return false;
+  }
+}
+
+let statusBarShown: Theme | null = null;
+let statusBarQueue: Promise<void> = Promise.resolve();
+
+/**
+ * Match the iOS status-bar text to `theme` — on device only, once per change.
+ * Capacitor names the styles by the BACKGROUND they suit (@capacitor/status-bar
+ * definitions.d.ts): `Style.Light` = dark text for light backgrounds, `Style.Dark` =
+ * light text for dark ones — so Light → Style.Light, Dark → Style.Dark.
+ * Calls run one after another, so quick flips always end on the latest theme. The
+ * plugin is imported lazily so the web build never loads it, and any failure (an
+ * older native shell without the plugin, a rejected call) just leaves the bar as it
+ * was: it's cosmetic and must never break the app.
+ */
+export function syncStatusBar(theme: Theme): Promise<void> {
+  if (!isNative()) return statusBarQueue;
+  statusBarQueue = statusBarQueue.then(async () => {
+    if (statusBarShown === theme) return;
+    try {
+      const { StatusBar, Style } = await import("@capacitor/status-bar");
+      await StatusBar.setStyle({ style: theme === "dark" ? Style.Dark : Style.Light });
+      statusBarShown = theme;
+    } catch {
+      /* leave the bar as it is; the next theme change tries again */
+    }
+  });
+  return statusBarQueue;
+}
+
+/** Resolves once every queued status-bar update has run (tests). */
+export function statusBarIdle(): Promise<void> {
+  return statusBarQueue;
+}
+
 export function startAppearance(): () => void {
   const mq = darkQuery();
-  const sync = () => applyTheme(resolveTheme(useSettings.getState().appearance, !!mq?.matches));
+  const sync = () => {
+    const theme = resolveTheme(useSettings.getState().appearance, !!mq?.matches);
+    applyTheme(theme);
+    void syncStatusBar(theme);
+  };
   sync();
   const unsub = useSettings.subscribe((s, prev) => { if (s.appearance !== prev.appearance) sync(); });
   const onChange = () => sync();

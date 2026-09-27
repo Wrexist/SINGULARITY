@@ -252,8 +252,12 @@ body,
   min-height: 100%;
 }
 
-/* Light surface behind everything — so the status-bar area, the home-indicator
-   area, and any overscroll bounce show the app's light bg, never a dark band. */
+/* The page colour behind everything, in either theme. On iOS the web view runs
+   edge to edge (capacitor.config.ts `contentInset: "never"`), so this is what fills
+   the status-bar strip, the home-indicator area and any overscroll bounce.
+   Safe-area insets: every rule reads them as var(--sat|--sab|--sal|--sar, env(...)).
+   Nothing sets those properties in the app, so the device's env() value is used; a
+   browser layout check sets them on <html> to fake a notch (env() can't be faked). */
 html {
   background: var(--bg);
 }
@@ -330,13 +334,13 @@ svg { vertical-align: middle; }
   max-width: 480px;
   margin: 0 auto;
   /* Bottom room for the fixed bottom-nav bar (~64px + its safe-area inset). */
-  padding: 0 16px calc(84px + env(safe-area-inset-bottom));
+  padding: 0 16px calc(84px + var(--sab, env(safe-area-inset-bottom, 0px)));
   /* In landscape the sensor housing sits on a side (59px on a 15 Pro). The 480px
      phone column clears it by centring, but the iPad split (min-width: 900px) is
      1008px wide and also kicks in on a Pro Max held sideways (932x430), where the
      brand, daily-boost bar and the Training dock ran under the Dynamic Island. */
-  padding-left: max(16px, env(safe-area-inset-left));
-  padding-right: max(16px, env(safe-area-inset-right));
+  padding-left: max(16px, var(--sal, env(safe-area-inset-left, 0px)));
+  padding-right: max(16px, var(--sar, env(safe-area-inset-right, 0px)));
 }
 
 /* ---------- Top bar ---------- */
@@ -346,7 +350,7 @@ svg { vertical-align: middle; }
   justify-content: space-between;
   /* No horizontal padding — `.app` already owns the 16px gutter. Adding 4px here put
      the brand on a different left edge from every card below it. (2026-08 gutter sweep.) */
-  padding: calc(18px + env(safe-area-inset-top)) 0 14px;
+  padding: calc(18px + var(--sat, env(safe-area-inset-top, 0px))) 0 14px;
 }
 .brand {
   display: flex;
@@ -612,7 +616,7 @@ svg { vertical-align: middle; }
 /* ---------- Resource bar ---------- */
 .resource-bar {
   position: sticky;
-  top: calc(8px + env(safe-area-inset-top));
+  top: calc(8px + var(--sat, env(safe-area-inset-top, 0px)));
   z-index: 5;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -628,15 +632,23 @@ svg { vertical-align: middle; }
   /* Generous top overdraw: covers the safe area AND the gap iOS rubber-band
      overscroll opens above the pinned bar (on-device report: strips bled
      through during the bounce). Off-viewport when pinned normally. */
-  inset: calc(-120px - env(safe-area-inset-top)) -16px -12px;
+  /* Sideways it reaches the edge of `.app`, whose gutter grows to the side safe-area
+     inset in landscape — a fixed -16px left a visible seam of aurora beside it there. */
+  inset: calc(-120px - var(--sat, env(safe-area-inset-top, 0px)))
+    calc(-1 * max(16px, var(--sar, env(safe-area-inset-right, 0px)))) -12px
+    calc(-1 * max(16px, var(--sal, env(safe-area-inset-left, 0px))));
   z-index: -1;
   pointer-events: none;
   background: linear-gradient(180deg, var(--bg) 0%, var(--bg) 88%, var(--bg-clear) 100%);
 }
 /* At rest (page not scrolled) the overdraw would sit on the brand header above the
-   bar and hide it; reach only as far as the pinned gap until the page scrolls. */
+   bar and hide it; reach only as far as the 8px gap until the page scrolls. Not the
+   safe-area inset too: at rest the header sits between the bar and the inset, and on
+   a notched phone (edge-to-edge shell) "-8px - inset" reached up over the brand. The
+   bar only pins after [data-scrolled] is set (40px vs 60px of scroll), so the full
+   overdraw above is always in place by the time anything slides under it. */
 :root:not([data-scrolled]) .resource-bar::before {
-  top: calc(-8px - env(safe-area-inset-top));
+  top: -8px;
 }
 .resource {
   /* Stacked + centered so all three cards are visually identical and balanced
@@ -789,7 +801,7 @@ svg { vertical-align: middle; }
 @media (min-width: 900px) {
   .app-split.hall-pin .stage-left {
     position: sticky;
-    top: calc(8px + env(safe-area-inset-top) + var(--resbar-h, 105px) + 16px);
+    top: calc(8px + var(--sat, env(safe-area-inset-top, 0px)) + var(--resbar-h, 105px) + 16px);
   }
   .app-split.hall-pin .stage-left .hall {
     height: var(--hall-pin-h, 372px);
@@ -800,7 +812,7 @@ svg { vertical-align: middle; }
      end; the phone padding left it 22px higher and shoved the hall under the bar.
      The footer line moves under the shop column, clear of the pinned one. */
   .app.app-split.hall-pin {
-    padding-bottom: var(--hall-pin-pad, calc(84px + env(safe-area-inset-bottom)));
+    padding-bottom: var(--hall-pin-pad, calc(84px + var(--sab, env(safe-area-inset-bottom, 0px))));
   }
   .app-split.hall-pin .stage > .footer {
     grid-column: 2;
@@ -1779,7 +1791,7 @@ svg { vertical-align: middle; }
   z-index: 50;
   /* The app runs viewport-fit=cover, so a tall modal must clear the Dynamic Island
      and the home indicator itself. */
-  padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
+  padding: max(24px, var(--sat, env(safe-area-inset-top, 0px))) 24px max(24px, var(--sab, env(safe-area-inset-bottom, 0px)));
   animation: fade 0.25s ease;
 }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
@@ -1790,7 +1802,7 @@ svg { vertical-align: middle; }
   box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(var(--hilite-rgb), 0.7);
   animation: rise-modal 0.4s var(--spring);
   /* Scroll inside tall modals on short screens without chaining to the page. */
-  max-height: calc(100dvh - 48px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  max-height: calc(100dvh - 48px - var(--sat, env(safe-area-inset-top, 0px)) - var(--sab, env(safe-area-inset-bottom, 0px)));
   overflow-y: auto;
   overflow-x: hidden; /* keep overflow-x from computing to `auto` and panning sideways */
   touch-action: pan-y;
@@ -2012,7 +2024,7 @@ button.modchip.workable:active { transform: scale(0.94); }
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
+  padding: max(24px, var(--sat, env(safe-area-inset-top, 0px))) 24px max(24px, var(--sab, env(safe-area-inset-bottom, 0px)));
   background: radial-gradient(120% 80% at 50% 0%, rgba(255, 90, 60, 0.26), rgba(28, 30, 36, 0.45));
   backdrop-filter: blur(10px) saturate(160%);
   -webkit-backdrop-filter: blur(10px) saturate(160%);
@@ -2060,7 +2072,7 @@ button.modchip.workable:active { transform: scale(0.94); }
      a phone in landscape (390px) or an SE it was cut off top and bottom by the
      overflow:hidden overlay, with "Begin next generation" and "Share this run" out of
      reach. Fit it to the safe viewport and scroll inside. */
-  max-height: calc(100dvh - 48px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  max-height: calc(100dvh - 48px - var(--sat, env(safe-area-inset-top, 0px)) - var(--sab, env(safe-area-inset-bottom, 0px)));
   overflow-y: auto;
   overflow-x: hidden;
   touch-action: pan-y;
@@ -2170,7 +2182,7 @@ button.modchip.workable:active { transform: scale(0.94); }
   /* Just under the resource bar, pinned or not (it ends at ~173px at rest, ~113px
      pinned). At 72px a toast sat squarely on the Compute/Data/Money values — the
      very numbers a decision toast ("pay the fine: −20% cash") is about. */
-  top: calc(182px + env(safe-area-inset-top));
+  top: calc(182px + var(--sat, env(safe-area-inset-top, 0px)));
   left: 0;
   right: 0;
   /* Below modal/sheet backdrops (50/60) so an open pop-up covers toasts rather
@@ -2257,7 +2269,7 @@ button.modchip.workable:active { transform: scale(0.94); }
 .sheet {
   width: 100%;
   max-width: 480px;
-  padding: 12px 18px calc(22px + env(safe-area-inset-bottom));
+  padding: 12px 18px calc(22px + var(--sab, env(safe-area-inset-bottom, 0px)));
   background: var(--glass-strong);
   backdrop-filter: blur(var(--blur)) saturate(180%);
   -webkit-backdrop-filter: blur(var(--blur)) saturate(180%);
@@ -2424,7 +2436,7 @@ button.modchip.workable:active { transform: scale(0.94); }
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
   margin: 0 auto; max-width: 480px;
   display: flex; gap: 2px; justify-content: space-around;
-  padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+  padding: 8px 8px calc(8px + var(--sab, env(safe-area-inset-bottom, 0px)));
   background: rgba(var(--hi-rgb), 0.86);
   backdrop-filter: blur(18px) saturate(180%); -webkit-backdrop-filter: blur(18px) saturate(180%);
   border-top: 1px solid rgba(var(--shade-rgb), 0.07);
