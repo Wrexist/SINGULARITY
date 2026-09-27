@@ -2463,7 +2463,9 @@ button.modchip.workable:active { transform: scale(0.94); }
   animation: afford-breathe 2.6s ease-in-out infinite;
 }
 .contract-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
-.contract-title { font-weight: 800; font-size: var(--fs-base); color: var(--ink); }
+/* Wraps like a product name: the text column is ~150px at 320px, and a title word with
+   no break point ran through the card gap and under the Rep reward / Claim button. */
+.contract-title { font-weight: 800; font-size: var(--fs-base); color: var(--ink); min-width: 0; overflow-wrap: anywhere; }
 .contract-desc { font-size: var(--fs-sm); color: var(--ink-2); }
 .contract-bar { height: 6px; border-radius: 999px; background: rgba(16, 24, 40, 0.08); overflow: hidden; }
 .contract-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #2f7bf6, #16b364); transition: width 0.3s var(--ease-out); }
