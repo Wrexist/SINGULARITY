@@ -13,8 +13,8 @@
  *            appstore/preview.mp4 (scripts/store-preview-video.mjs) stays the preview.
  */
 import { chromium } from "playwright";
-import { execFileSync } from "node:child_process";
-import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync, existsSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync, existsSync, renameSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -337,6 +337,16 @@ async function run() {
     "-pix_fmt", "yuv420p", "-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709",
     "-c:a", "aac", "-b:a", "256k", "-ar", "48000", "-t", String(dur), "-movflags", "+faststart", OUT,
   ], { stdio: "inherit" });
+  // Single-pass loudnorm undershoots on a short cue: measure, then apply the exact gain
+  // (video copied) so the file lands on -14 LUFS integrated.
+  const meas = spawnSync("ffmpeg", ["-hide_banner", "-nostats", "-i", OUT, "-af", "ebur128", "-f", "null", "-"], { encoding: "utf8" }).stderr;
+  const I = Number(/Summary:[\s\S]*?I:\s*(-?[\d.]+) LUFS/.exec(meas)?.[1]);
+  if (Number.isFinite(I)) {
+    const tmp = OUT.replace(/\.mp4$/, ".tmp.mp4");
+    execFileSync("ffmpeg", ["-y", "-v", "error", "-i", OUT, "-c:v", "copy", "-af", `volume=${(-14 - I).toFixed(2)}dB,alimiter=limit=0.89:level=false`, "-c:a", "aac", "-b:a", "256k", "-movflags", "+faststart", tmp], { stdio: "inherit" });
+    renameSync(tmp, OUT);
+    console.log(`loudness ${I} LUFS -> -14 LUFS`);
+  }
   console.log(`wrote ${OUT} (${dur.toFixed(1)} s, ${W}x${H})`);
 }
 

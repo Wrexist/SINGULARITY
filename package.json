@@ -14,7 +14,8 @@
     "shot": "node scripts/screenshot.mjs",
     "validate:store": "node scripts/validate-store-metadata.mjs",
     "icons": "node scripts/stamp-icons.mjs",
-    "cap:sync": "npm run build && cap sync ios"
+    "cap:sync": "npm run build && cap sync ios",
+    "trailer:score": "node scripts/trailer/score.mjs"
   },
   "dependencies": {
     "@capacitor/cli": "^6.2.1",
