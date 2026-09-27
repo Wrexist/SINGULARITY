@@ -1429,6 +1429,15 @@ export const balance = {
      *  diminishes but payroll does NOT — so a small, trained, high-trait team beats
      *  zerg-hiring a wall of juniors. perLaneRate 0 = old linear behaviour. */
     diminishing: { perLaneRate: 0.18 },
+    /** Softcap on each Compute/Data/Money staff lane. The lanes MULTIPLY every
+     *  specialist's contribution, so even with the rank decay above they grew like a
+     *  power of headcount: 512 L4 10x Engineers at full morale gave x42,125 Compute
+     *  while payroll is capped at half of income. Above `knee` a lane grows as
+     *  knee x (m / knee)^exponent — big crews keep growing, with diminishing returns.
+     *  The knee sits above every ordinary crew we measured (a 60-person roster across
+     *  all roles at L4 10x and full morale peaks at x21; 60 L4 10x on one lane at base
+     *  morale reach x93), so those are unchanged. Curve-safe: the sim never hires. */
+    laneSoftcap: { knee: 100, exponent: 0.5 },
     /** Ceiling on the morale that Mentor-type traits add together (5 Mentors at +0.06).
      *  Morale scales EVERY specialist's output and the Compute/Data/Money lanes multiply
      *  those contributions, so an uncapped Mentor stack (free re-rolls, flat signing

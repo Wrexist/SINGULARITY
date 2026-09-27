@@ -201,6 +201,13 @@ export interface StaffEffects {
   productModsById: Record<string, ProductMods>;
 }
 
+/** Softcap a Compute/Data/Money lane multiplier: identity up to the knee, then
+ *  knee × (m / knee)^exponent — continuous, still rising, with diminishing returns. */
+export function laneSoftcap(m: number): number {
+  const { knee, exponent } = S.laneSoftcap;
+  return m > knee ? knee * Math.pow(m / knee, exponent) : m;
+}
+
 const emptyUnits = (): Record<ProductStaffLane, number> =>
   ({ upgradeSpeed: 0, acquisition: 0, arpu: 0, serveCost: 0, churn: 0, heat: 0 });
 const buildMods = (u: Record<ProductStaffLane, number>): ProductMods => ({
@@ -273,9 +280,9 @@ export function computeStaffEffects(
   const dampMult = (vals: number[]) =>
     vals.sort((a, b) => b - a).reduce((m, v, k) => m * (1 + v * decay(k)), 1);
 
-  const computeMultF = dampMult(laneMult.computeMult);
-  const dataMultF = dampMult(laneMult.dataMult);
-  const moneyMultF = dampMult(laneMult.moneyMult);
+  const computeMultF = laneSoftcap(dampMult(laneMult.computeMult));
+  const dataMultF = laneSoftcap(dampMult(laneMult.dataMult));
+  const moneyMultF = laneSoftcap(dampMult(laneMult.moneyMult));
   const hireCut = dampSum(metaHire);
 
   const globalUnits = emptyUnits();
