@@ -32,9 +32,8 @@ export interface Settings {
 
 const KEY = "singularity.settings.v1";
 
-/** Seed the in-app reduced-motion toggle from the OS preference on FIRST run
- *  (a saved choice always wins). The canvas/FX layers read the setting, not the
- *  media query, so without this seed an OS-level preference was ignored. */
+/** The OS `prefers-reduced-motion` value. Read LIVE (see osReduceMotion below), so it
+ *  no longer seeds the in-app toggle: motion is reduced when EITHER is on. */
 function prefersReducedMotion(): boolean {
   try {
     return typeof window !== "undefined" && !!window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -43,7 +42,11 @@ function prefersReducedMotion(): boolean {
   }
 }
 
-const DEFAULTS: Settings = { sound: true, music: true, haptics: true, reducedMotion: prefersReducedMotion(), hallTheme: "classic", rackSkin: "classic", onboarded: false, shipExplained: false, hapticsLight: false, scientificNotation: false, lastBackupAt: null, achievementsSeen: 0, notifyReminders: false };
+// reducedMotion defaults OFF: it is the player's own choice. The device preference is
+// honoured live by motionReduced(); seeding the toggle from it baked a device setting
+// into the stored settings, so turning Reduce Motion off in iOS later kept the game
+// still. A saved value (either way) is kept as stored.
+const DEFAULTS: Settings = { sound: true, music: true, haptics: true, reducedMotion: false, hallTheme: "classic", rackSkin: "classic", onboarded: false, shipExplained: false, hapticsLight: false, scientificNotation: false, lastBackupAt: null, achievementsSeen: 0, notifyReminders: false };
 
 function load(): Settings {
   try {
@@ -69,10 +72,9 @@ function persist(s: Settings): void {
 /**
  * Live OS-level `prefers-reduced-motion`, kept in sync for the whole session.
  *
- * `prefersReducedMotion()` above only SEEDS the default for a fresh install. Once the
- * setting is persisted, a player who turns Reduce Motion on in iOS afterwards was
- * still getting particle bursts, floaters and scale-punches, because the JS FX layers
- * read the stored setting and never the media query. CLAUDE.md requires respecting the
+ * The JS FX layers used to read only the stored setting, so a player who turned
+ * Reduce Motion on in iOS after first run still got particle bursts, floaters and
+ * scale-punches. CLAUDE.md requires respecting the
  * OS preference AND the in-app toggle, so motion is reduced when EITHER is on.
  * (The CSS side already covered both via its global kill switch.)
  */
