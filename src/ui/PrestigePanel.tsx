@@ -12,6 +12,7 @@ import { fmt, fmtMoney, fmtMult } from "./format";
 import { Big } from "../engine/math/Big";
 import { ReputationModal } from "./ReputationModal";
 import { ConfirmSheet } from "./ConfirmSheet";
+import { directivePickWaiting } from "./repSignal";
 import { LandmarkIcon, RocketIcon, GlobeIcon, CoinIcon, SwordsIcon, MegaphoneIcon, ChevronIcon } from "./Icons";
 import type { ReactNode } from "react";
 
@@ -142,6 +143,7 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
         <button className="rep-strip" onClick={() => setRepOpen(true)}>
           <span className="rep-strip-mark rec-ring" style={{ ["--pct" as string]: nextRecordProgress(game) }}><LandmarkIcon size={16} /></span>
           <span className="rep-strip-text">Lab Reputation — <b>{repPoints}</b> point{repPoints === 1 ? "" : "s"} to spend{repOwned > 0 ? ` · ${repOwned} perk${repOwned === 1 ? "" : "s"} owned` : ""}</span>
+          {directivePickWaiting(game) && <span className="pick-dot" role="status" aria-label="Directive pick waiting" />}
           <span className="rep-strip-go">open ▸</span>
         </button>
       )}

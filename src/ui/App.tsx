@@ -32,6 +32,7 @@ import { EmployeesPanel } from "./EmployeesPanel";
 import { ProductsPanel } from "./ProductsPanel";
 import { GoalsPanel, type GoalsSection } from "./GoalsPanel";
 import { goalsCounts } from "./goalsCount";
+import { directivePickWaiting } from "./repSignal";
 import { CharterPanel } from "./CharterPanel";
 import { CodexPanel } from "./CodexPanel";
 import { codexRevealed } from "../engine/codex";
@@ -176,6 +177,9 @@ export function App() {
   // One scan behind every GOALS badge: the nav count, the horizon dots and the
   // fold counts all read the same numbers, so they cannot disagree.
   const goalsCount = useMemo(() => goalsCounts(game), [game]);
+  // An earned Endowment Directive pick waits on the player: a wordless dot marks the
+  // path to it (Lab nav → HQ segment → Reputation strip) until it is chosen.
+  const directivePick = directivePickWaiting(game);
 
   // Detect a ship (prestige) and fire the celebration moment + haptics.
   const prevShips = useRef(game.prestige.ships);
@@ -1098,7 +1102,9 @@ export function App() {
                 <button className={`tab ${section === "hq" ? "on" : ""}`} aria-current={section === "hq" ? "true" : undefined} onClick={() => { haptics.tap(); goSection("hq"); }}>
                   HQ{shipCalls && section !== "hq"
                     ? <span className="tab-dot ship-ready" role="status" aria-label="Ship ready" />
-                    : labAttention.hq > 0 && <span className="tab-dot">{labAttention.hq}</span>}
+                    : labAttention.hq > 0
+                      ? <span className="tab-dot">{labAttention.hq}</span>
+                      : directivePick && section !== "hq" && <span className="tab-dot pick-dot" role="status" aria-label="Directive pick waiting" />}
                 </button>
               </nav>
             )}
@@ -1206,7 +1212,9 @@ export function App() {
               CLAUDE.md). The value framing + wayfinding still live in the advisor
               chip and the HQ "Ship" pill; screen readers get the aria-label above.
               The numeric attention badge still surfaces other pulls in the Lab. */}
-          {attention.lab > 0 && <span className="botnav-badge">{attention.lab}</span>}
+          {attention.lab > 0
+            ? <span className="botnav-badge">{attention.lab}</span>
+            : directivePick && <span className="botnav-badge pick-dot" role="status" aria-label="Directive pick waiting" />}
         </button>
         {showProducts && (
           <button className={`botnav-item ${tab === "products" ? "on" : ""}`} aria-current={tab === "products" ? "page" : undefined} onClick={() => { haptics.tap(); goTab("products"); }}>

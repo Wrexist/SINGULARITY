@@ -405,6 +405,12 @@ svg { vertical-align: middle; }
 .rep-strip-text { flex: 1; font-size: var(--fs-sm); font-weight: 650; color: var(--ink); }
 .rep-strip-text b { font-weight: 850; }
 .rep-strip-go { font-size: var(--fs-sm); font-weight: 750; color: var(--data); white-space: nowrap; }
+/* An earned Endowment Directive pick is waiting: one small, static violet dot (the
+   Endowment's colour) on the strip, the HQ segment and the Lab nav — wordless, and
+   gone once the pick is made. Static by design, so reduced motion has nothing to drop. */
+.pick-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: #a855f7; }
+.tab-dot.pick-dot { min-width: 9px; width: 9px; height: 9px; padding: 0; border-radius: 50%; background: #a855f7; }
+.botnav-badge.pick-dot { min-width: 9px; width: 9px; height: 9px; padding: 0; border-radius: 50%; margin-right: -16px; top: 3px; background: #a855f7; }
 .rep-modal { max-width: 440px; }
 /* Personal Compute records — one quiet row + a slim log-scale bar in the sheet. */
 .rep-records { margin: 0 0 12px; }
