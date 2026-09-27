@@ -106,7 +106,7 @@ export const reputation = {
     /** Endowment DIRECTIVES (2026-07 depth pass): the flat all-lane boost is
      *  decisionless, so every `interval` levels the player also earns ONE Directive
      *  pick — a permanent lane doctrine. This turns "endow the next level" into a
-     *  build choice (lean Compute, diversify, go all-in Revenue) that repeats across
+     *  build choice (lean Compute, diversify, go all-in Money) that repeats across
      *  the deep endgame. Picks are FREE (a reward of levelling, not a Reputation
      *  spend), so no cost reconciliation is needed. Curve-safe: repEndowment is 0
      *  through the whole tuned game (the Endowment can't unlock until every perk is

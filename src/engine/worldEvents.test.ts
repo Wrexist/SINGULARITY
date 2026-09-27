@@ -35,7 +35,7 @@ describe("world events — timed modifiers", () => {
 
   it("modifiers tick down and expire", () => {
     const s = createInitialState();
-    const { state } = applyWorldEvent(s, "viral_demo"); // Revenue ×2, 45s
+    const { state } = applyWorldEvent(s, "viral_demo"); // Money ×2, 45s
     const dur = state.modifiers[0]!.remainingSec;
     const mid = tick(state, (dur - 5) * 1000);
     expect(mid.modifiers).toHaveLength(1);

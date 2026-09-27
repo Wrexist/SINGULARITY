@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { achievements } from "./balance/achievements";
-import { objectives } from "./balance/objectives";
+import { objectives, laneLabel, objectiveRewardLabel } from "./balance/objectives";
 import { contracts } from "./balance/contracts";
 import { productMilestones } from "./balance/products";
 import { themes, rackSkins, type CosmeticUnlock } from "./balance/cosmetics";
@@ -19,6 +19,8 @@ import { trialRewardLabel } from "./trials";
 import { createInitialState } from "./state";
 import { derive } from "./derive";
 import { settledMrr } from "./products";
+import { applyWorldEvent } from "./actions";
+import { directiveSummary } from "./reputation";
 import type { GameState, ProductState } from "./types";
 
 /**
@@ -290,5 +292,53 @@ describe("every goal is reachable", () => {
   });
   it("the Running Hot Trial asks for Heat the meter can reach", () => {
     expect(CONDITION_THRESHOLDS.hot).toBeLessThanOrEqual(balance.heat.max);
+  });
+});
+
+describe("'Revenue' never labels the Money lane", () => {
+  // The moneyMult lane is the lab's run income ("Money"); product revenue is a separate
+  // economy it never touches (see above). The Objective lane buttons, the world-event
+  // modifier chips and summaries, the event copy and the Directive summary all called
+  // it "Revenue", so a player boosting it watched their products' Revenue /s sit still.
+  const MONEY_TARGET = "moneyMult";
+  it("the Objective lane label is Money", () => {
+    expect(laneLabel(MONEY_TARGET)).toBe("Money");
+    for (const o of objectives.pool) {
+      for (const lane of ["computeMult", "dataMult", "moneyMult"] as const) {
+        expect(objectiveRewardLabel({ ...o.reward, target: lane })).not.toMatch(/Revenue/i);
+      }
+    }
+  });
+  it("every Money world event and choice names Money, with the factor it applies", () => {
+    let seen = 0;
+    for (const e of balance.worldEvents.list) {
+      const lines: { text: string; effect: typeof e.effect }[] = [];
+      if (e.effect) lines.push({ text: e.body, effect: e.effect });
+      for (const c of e.choices ?? []) lines.push({ text: c.label, effect: c.effect });
+      for (const { text, effect } of lines) {
+        expect(text).not.toMatch(/Revenue\s*[×x]\s*\d/);
+        if (effect?.kind !== "buff" || effect.target !== MONEY_TARGET) continue;
+        seen++;
+        expect(text).toContain(`Money ×${effect.factor}`);
+      }
+    }
+    expect(seen).toBeGreaterThan(10);
+  });
+  it("the modifier chip and the event summary say Money", () => {
+    const s = createInitialState();
+    for (const e of balance.worldEvents.list) {
+      const r = applyWorldEvent(s, e.id);
+      expect(r.event.summary).not.toMatch(/Revenue/);
+      for (const c of r.event.choices ?? []) expect(c.summary).not.toMatch(/Revenue/);
+      for (const m of r.state.modifiers) expect(m.label).not.toMatch(/Revenue/);
+    }
+    const viral = applyWorldEvent(s, "viral_demo");
+    expect(viral.state.modifiers[0]!.label).toBe("Money ×2");
+    expect(viral.event.summary).toMatch(/^Money ×2/);
+  });
+  it("the owned-Directive summary names the Money lane Money", () => {
+    const money = reputation.endowment.directives.defs.find((d) => d.lane === "money")!;
+    const s: GameState = { ...createInitialState(), endowmentDirectives: [money.id] };
+    expect(directiveSummary(s)).toEqual([`Money +${Math.round(money.value * 100)}%`]);
   });
 });

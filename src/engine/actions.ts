@@ -696,7 +696,7 @@ export function pickWorldEvent(
 const TARGET_LABEL: Record<string, string> = {
   computeMult: "Compute",
   dataMult: "Data",
-  moneyMult: "Revenue",
+  moneyMult: "Money",
 };
 const RES_LABEL: Record<string, string> = { compute: "compute", data: "data", money: "$" };
 

@@ -209,7 +209,7 @@ const WORLD_EVENTS: WorldEvent[] = [
     weight: 3,
     tone: "good",
     headline: "Your Demo Goes Viral",
-    body: "A cherry-picked clip trends. Nobody asks about the failure cases. Revenue ×2 while the hype lasts.",
+    body: "A cherry-picked clip trends. Nobody asks about the failure cases. Money ×2 while the hype lasts.",
     effect: { kind: "buff", target: "moneyMult", factor: 2, durationSec: 45 },
   },
   {
@@ -249,7 +249,7 @@ const WORLD_EVENTS: WorldEvent[] = [
     weight: 2,
     tone: "good",
     headline: "Tech Influencer Endorsement",
-    body: "'This changes everything,' says a man with a ring light and no technical background. Revenue ×1.8.",
+    body: "'This changes everything,' says a man with a ring light and no technical background. Money ×1.8.",
     effect: { kind: "buff", target: "moneyMult", factor: 1.8, durationSec: 40 },
   },
   {
@@ -297,7 +297,7 @@ const WORLD_EVENTS: WorldEvent[] = [
     weight: 2,
     tone: "good",
     headline: "AGI Achieved (Internally)",
-    body: "A Slack message declares AGI. It still can't count the r's in 'strawberry,' but the market believes. Revenue ×2.",
+    body: "A Slack message declares AGI. It still can't count the r's in 'strawberry,' but the market believes. Money ×2.",
     effect: { kind: "buff", target: "moneyMult", factor: 2, durationSec: 45 },
   },
   {
@@ -329,7 +329,7 @@ const WORLD_EVENTS: WorldEvent[] = [
     weight: 1,
     tone: "good",
     headline: "Regulatory Sandbox",
-    body: "The government lets you do whatever you want, briefly, to 'foster innovation.' Revenue ×1.6.",
+    body: "The government lets you do whatever you want, briefly, to 'foster innovation.' Money ×1.6.",
     effect: { kind: "buff", target: "moneyMult", factor: 1.6, durationSec: 45 },
   },
   {
@@ -446,7 +446,7 @@ const WORLD_EVENTS: WorldEvent[] = [
     weight: 2,
     tone: "good",
     headline: "You Top a Benchmark Nobody Asked For",
-    body: "Your model edges out the field on 'Vibes-Bench v3'. The leaderboard screenshot does numbers on social. Revenue ×1.6, briefly.",
+    body: "Your model edges out the field on 'Vibes-Bench v3'. The leaderboard screenshot does numbers on social. Money ×1.6, briefly.",
     effect: { kind: "buff", target: "moneyMult", factor: 1.6, durationSec: 45 },
   },
   {
@@ -524,7 +524,7 @@ const WORLD_EVENTS: WorldEvent[] = [
     headline: "Safety Team Demands a Slowdown",
     body: "Your safety lead wants a six-week eval freeze. Your investors want a demo on Tuesday. Both cc'd the whole company.",
     choices: [
-      { label: "Slow down (Revenue ×1.6, PR win)", effect: { kind: "buff", target: "moneyMult", factor: 1.6, durationSec: 50 }, alignment: -0.3 },
+      { label: "Slow down (Money ×1.6, PR win)", effect: { kind: "buff", target: "moneyMult", factor: 1.6, durationSec: 50 }, alignment: -0.3 },
       { label: "Full speed ahead (Compute ×1.8)", effect: { kind: "buff", target: "computeMult", factor: 1.8, durationSec: 50 }, alignment: 0.3 },
     ],
   },
@@ -558,7 +558,7 @@ const WORLD_EVENTS: WorldEvent[] = [
     body: "An engineer wants to go public about the data sourcing. You can support them, or 'manage the narrative.' HR is sweating.",
     choices: [
       { label: "Back them (−12% cash, integrity)", effect: { kind: "grantPct", resource: "money", pct: -0.12 }, alignment: -0.32 },
-      { label: "Spin it (Revenue ×1.7)", effect: { kind: "buff", target: "moneyMult", factor: 1.7, durationSec: 45 }, alignment: 0.28 },
+      { label: "Spin it (Money ×1.7)", effect: { kind: "buff", target: "moneyMult", factor: 1.7, durationSec: 45 }, alignment: 0.28 },
     ],
   },
 
@@ -600,7 +600,7 @@ const WORLD_EVENTS: WorldEvent[] = [
     weight: 3,
     tone: "bad",
     headline: "Token Price War",
-    body: "A rival drops their API price below cost to 'buy market share.' You follow them off the cliff. Revenue ×0.7 for a while.",
+    body: "A rival drops their API price below cost to 'buy market share.' You follow them off the cliff. Money ×0.7 for a while.",
     effect: { kind: "buff", target: "moneyMult", factor: 0.7, durationSec: 45 },
   },
   {
@@ -665,7 +665,7 @@ const WORLD_EVENTS: WorldEvent[] = [
     body: "Your red team found something genuinely alarming. Publishing builds trust and hands rivals a roadmap. The doc is one click from public.",
     choices: [
       { label: "Publish it (+30% data, transparency)", effect: { kind: "grantPct", resource: "data", pct: 0.3 }, alignment: -0.3 },
-      { label: "Bury it (Revenue ×1.8)", effect: { kind: "buff", target: "moneyMult", factor: 1.8, durationSec: 45 }, alignment: 0.3 },
+      { label: "Bury it (Money ×1.8)", effect: { kind: "buff", target: "moneyMult", factor: 1.8, durationSec: 45 }, alignment: 0.3 },
     ],
   },
 
@@ -711,7 +711,7 @@ const WORLD_EVENTS: WorldEvent[] = [
     headline: "The Eval Trips the Emergency Brake",
     body: "An automated safety eval just flagged the new checkpoint and halted the run on its own. You can honor the halt, or override it and keep training.",
     choices: [
-      { label: "Honor the halt (careful, Revenue ×1.6)", effect: { kind: "buff", target: "moneyMult", factor: 1.6, durationSec: 50 }, alignment: -0.34 },
+      { label: "Honor the halt (careful, Money ×1.6)", effect: { kind: "buff", target: "moneyMult", factor: 1.6, durationSec: 50 }, alignment: -0.34 },
       { label: "Override it (Compute ×2 briefly)", effect: { kind: "buff", target: "computeMult", factor: 2, durationSec: 45 }, alignment: 0.34 },
     ],
   },
@@ -735,7 +735,7 @@ const WORLD_EVENTS: WorldEvent[] = [
     tone: "good",
     faction: "doomer",
     headline: "Enterprises Pay for 'The Safe One'",
-    body: "Risk-averse Fortune 500s route their contracts to the lab that won't end up in a hearing. Boring is, briefly, very profitable. Revenue ×1.7.",
+    body: "Risk-averse Fortune 500s route their contracts to the lab that won't end up in a hearing. Boring is, briefly, very profitable. Money ×1.7.",
     effect: { kind: "buff", target: "moneyMult", factor: 1.7, durationSec: 50 },
   },
   {
@@ -804,7 +804,7 @@ const WORLD_EVENTS: WorldEvent[] = [
     weight: 12,
     tone: "good",
     headline: "The Apology Tour Lands",
-    body: "Three podcasts, one carefully damp eye, zero specifics. Somehow the tweet from last week is now a 'growth moment' and enterprise deals are BACK. Revenue ×1.4.",
+    body: "Three podcasts, one carefully damp eye, zero specifics. Somehow the tweet from last week is now a 'growth moment' and enterprise deals are BACK. Money ×1.4.",
     effect: { kind: "buff", target: "moneyMult", factor: 1.4, durationSec: 45 },
   },
   {
@@ -892,7 +892,7 @@ const WORLD_EVENTS: WorldEvent[] = [
     weight: 1,
     tone: "good",
     headline: "Your Super Bowl Ad Airs",
-    body: "Sixty seconds of slow piano, a single glowing orb, and your logo. Nobody understood it; everybody remembers it. Revenue ×1.7 while it lasts.",
+    body: "Sixty seconds of slow piano, a single glowing orb, and your logo. Nobody understood it; everybody remembers it. Money ×1.7 while it lasts.",
     effect: { kind: "buff", target: "moneyMult", factor: 1.7, durationSec: 45 },
   },
   {
@@ -964,7 +964,7 @@ const WORLD_EVENTS: WorldEvent[] = [
     weight: 2,
     tone: "bad",
     headline: "A Model Router Eats Your Margin",
-    body: "A startup silently routes every request to whichever lab is cheapest this second. You're now a commodity with a login page. Revenue ×0.75 for a while.",
+    body: "A startup silently routes every request to whichever lab is cheapest this second. You're now a commodity with a login page. Money ×0.75 for a while.",
     effect: { kind: "buff", target: "moneyMult", factor: 0.75, durationSec: 45 },
   },
   {
@@ -1069,7 +1069,7 @@ const WORLD_EVENTS: WorldEvent[] = [
     weight: 12,
     tone: "good",
     headline: "The Price War Ends in a Truce",
-    body: "Everyone quietly raises prices back on the same Tuesday, having proven nothing except that below-cost is below cost. Margins return. Revenue ×1.5.",
+    body: "Everyone quietly raises prices back on the same Tuesday, having proven nothing except that below-cost is below cost. Margins return. Money ×1.5.",
     effect: { kind: "buff", target: "moneyMult", factor: 1.5, durationSec: 45 },
   },
   {
@@ -1153,7 +1153,7 @@ const WORLD_EVENTS: WorldEvent[] = [
     tone: "good",
     faction: "doomer",
     headline: "Wall Street Prices In 'Won't Get Sued'",
-    body: "Analysts finally put a number on not being reckless, and it's a good number. The boring lab is suddenly the safe investment. Revenue ×1.6.",
+    body: "Analysts finally put a number on not being reckless, and it's a good number. The boring lab is suddenly the safe investment. Money ×1.6.",
     effect: { kind: "buff", target: "moneyMult", factor: 1.6, durationSec: 50 },
   },
   // Accelerationist pool (alignment ≥ threshold): speed keeps compounding.
