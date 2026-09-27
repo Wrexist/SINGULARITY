@@ -75,15 +75,16 @@ toasts landed on top of the resource values.
 
 ## Part 5 — Open items, ranked
 
-1. **Dark mode (owner decision + one device test).** This is the single biggest visual
-   upgrade left. The hall, the store screenshots and the brand are all dark, while the
-   UI is light-only, so a dark-mode iPhone gets a white screen at night. The CSS is
-   ready for it: roughly 1,000 `var(--…)` uses, plus about 110 literals to tokenise.
-   **Blocker:** `capacitor.config.ts` sets `ios.contentInset: "always"` with a fixed
-   light `backgroundColor`, so the status-bar strip would stay light above a dark app.
-   The fix is native: `@capacitor/status-bar`, or `contentInset: "never"` with CSS
-   safe-area padding. Both need one TestFlight check that can't be done from the web
-   build.
+1. ~~**Dark mode.**~~ ✅ **done (rounds 8 and 10).**
+   - Settings › Appearance offers Light (the default), Dark or Match device.
+   - The iOS shell now runs edge to edge (`contentInset: "never"`), so the page paints
+     the status-bar strip in the current theme.
+   - `@capacitor/status-bar` sets the text colour per theme.
+   - Every safe-area inset reads through an overridable property, so it could be tested
+     in a browser with a fake notch.
+   - *Owner check:* run the TestFlight list in DEPLOYMENT.md §8. It covers status text
+     in both themes with the system in either mode, the brand below the Dynamic Island,
+     landscape, and the bounce colour.
 2. ~~**Sponsor completions past 400 lose Reputation on reload.**~~ ✅ **done.** Earned
    Rep is recomputed from the kept `sponsor_<day>` ids, so the 400 cap took 6 Rep per
    trimmed id on every load. The cap is now 3650 (ten years of dailies). It stays a
@@ -487,9 +488,8 @@ byte-identical. The suite is at 1944 tests. No player loses anything they alread
 
 Round 8, still for the owner:
 - **On-device checks.**
-  - Dark mode and Match device on a real iPhone. The iOS status-bar strip stays light in
-    Dark until `@capacitor/status-bar`, or `contentInset: "never"` plus safe-area CSS, is
-    device-tested (DEPLOYMENT.md section 8).
+  - Dark mode and Match device on a real iPhone, with the status bar handled in round 10
+    (DEPLOYMENT.md section 8).
   - An 11-inch iPad in landscape.
   - The Daily Boost across a real midnight and after an iOS suspend.
 - **Dials if a change lands badly.**
@@ -529,6 +529,30 @@ Round 9, left for the owner:
   Rep, forward a little.
 - **Reinstall reopens the daily.** Reinstalling and restoring a backup reopens that day's
   Daily Boost, because the claim key lives outside the save.
+
+**Round 10 fixed everything that was left.** The suite is at 2049 tests, the sim is still
+identical, and `validate:store` passes 50/50.
+- **The Daily Boost and sponsor roll over at the player's local midnight,** DST included,
+  instead of UTC midnight.
+  - The daily claim now lives in the save (SAVE_VERSION 41, `dailyDay`). A reinstall
+    plus restore keeps it claimed, and the update imports the old claim once.
+  - Clock moves and time-zone hopping can never claim a day twice. Sponsor ids already
+    earned are never re-keyed, so Reputation is unchanged.
+- **Compute records are measured on the boost-free rate.** A boost can't pull a record,
+  or its Rep, forward. The same boost-free peak now drives compute contracts, objectives
+  and achievements, so a boost alone no longer completes them.
+- **Money names say Money:** Money Specialist, Mastery and Frontier, the Money Mandate,
+  and "Money first" (Bootstrapped).
+- **Hard generations no longer claim "back at the frontier".** The copy reads "as close
+  as rivals allow".
+- **iOS status bar in both themes.** The shell is edge to edge and the text colour
+  follows the theme. The audit also fixed two layout bugs that a real top inset would
+  have caused: the brand header was hidden at rest, and a landscape seam showed.
+- **Translation proofread (49 locales).**
+  - The Dark mode line now names the in-game "Settings", not the iPhone's Settings app.
+  - Compute keeps one grammatical gender per language (es/fr/ca/de). In es/fr/ca this
+    fixed a "Save for this" line that read as the lab buying Compute.
+  - Wording slips in uk, ru, el, ar-SA and ur-PK were fixed.
 
 ## Part 6 — App Store: "free to download"
 
