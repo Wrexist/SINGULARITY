@@ -1,6 +1,6 @@
 Dieses Update:
 
-• Dunkelmodus: Wähle in den Einstellungen Light, Dark oder Match device.
+• Dunkelmodus: Wähle unter Settings Light, Dark oder Match device.
 • Neu in jeder Generation: Bezieh Stellung – Safety, Center oder Acceleration – und schalte die Doctrine-Perks dieser Seite frei. Jedes Ship teilt dir außerdem drei Lab Charters aus, darunter auch solche, die die Regeln auf den Kopf stellen.
 • Unplugged Trials: Schalte Legacy für eine Generation ab und spiel noch einmal einen kompletten Run. Deine Compute-Rekorde bringen jetzt Lab Reputation.
 • Klarere Ziele: Du siehst immer deinen nächsten Schritt – und wann sich das Shippen wirklich lohnt.

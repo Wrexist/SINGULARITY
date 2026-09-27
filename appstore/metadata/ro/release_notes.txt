@@ -1,6 +1,6 @@
 În această actualizare:
 
-• Mod întunecat: alege Light, Dark sau Match device în Configurări.
+• Mod întunecat: alege Light, Dark sau Match device în meniul Settings.
 • Nou în fiecare generație: alege-ți tabăra (Safety, Center sau Acceleration) și deblochează perk-urile Doctrine ale acesteia. Iar fiecare Ship îți împarte trei Lab Charters, inclusiv unele care schimbă regulile jocului.
 • Unplugged Trials: oprește Legacy pentru o generație și joacă din nou o partidă completă. Recordurile tale de Compute aduc acum Lab Reputation.
 • Obiective mai clare: vezi mereu pasul următor și când merită cu adevărat să faci Ship.

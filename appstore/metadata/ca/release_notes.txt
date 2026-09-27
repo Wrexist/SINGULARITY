@@ -1,6 +1,6 @@
 En aquesta actualització:
 
-• Mode fosc: tria Light, Dark o Match device a Configuració.
+• Mode fosc: tria Light, Dark o Match device a Settings.
 • Novetats a cada generació: declara la teva postura (Safety, Center o Acceleration) i desbloqueja els avantatges de Doctrina d'aquell bàndol. A més, cada Ship et reparteix tres Cartes del Laboratori, algunes de les quals canvien les regles.
 • Proves Unplugged: desactiva el Llegat durant una generació i torna a jugar una partida completa. Els teus rècords de Compute ara donen Reputació del Laboratori.
 • Objectius més clars: sempre veus el pas següent i quan val de debò la pena fer Ship.

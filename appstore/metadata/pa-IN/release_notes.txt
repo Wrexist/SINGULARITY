@@ -1,6 +1,6 @@
 ਇਸ ਅਪਡੇਟ ਵਿੱਚ:
 
-• ਡਾਰਕ ਮੋਡ: ਸੈਟਿੰਗਾਂ ਵਿੱਚ Light, Dark ਜਾਂ Match device ਚੁਣੋ।
+• ਡਾਰਕ ਮੋਡ: Settings ਵਿੱਚ Light, Dark ਜਾਂ Match device ਚੁਣੋ।
 • ਹਰ ਪੀੜ੍ਹੀ ਵਿੱਚ ਕੁਝ ਨਵਾਂ: ਆਪਣਾ Stance ਐਲਾਨੋ (Safety / Center / Acceleration) ਅਤੇ ਉਸ ਪੱਖ ਦੇ Doctrine ਬੋਨਸ ਅਨਲੌਕ ਕਰੋ। ਹਰ ਵਾਰ Ship ਕਰਨ 'ਤੇ ਤਿੰਨ Lab Charter ਵਿੱਚੋਂ ਇੱਕ ਚੁਣੋ, ਕੁਝ ਤਾਂ ਖੇਡ ਦੇ ਨਿਯਮ ਹੀ ਬਦਲ ਦਿੰਦੇ ਹਨ।
 • Unplugged Trials: ਇੱਕ ਪੀੜ੍ਹੀ ਲਈ Legacy ਬੰਦ ਕਰੋ ਅਤੇ ਮੁੜ ਪੂਰਾ ਰਨ ਖੇਡੋ। Compute ਵਿੱਚ ਤੁਹਾਡੇ ਨਵੇਂ ਰਿਕਾਰਡ ਹੁਣ Lab Reputation ਦਿਵਾਉਂਦੇ ਹਨ।
 • ਸਾਫ਼ ਟੀਚੇ: ਅਗਲਾ ਕਦਮ ਹਮੇਸ਼ਾ ਦਿਸਦਾ ਹੈ, ਅਤੇ ਇਹ ਵੀ ਕਿ Ship ਕਰਨਾ ਕਦੋਂ ਸੱਚਮੁੱਚ ਫ਼ਾਇਦੇਮੰਦ ਹੈ।

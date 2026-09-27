@@ -1,6 +1,6 @@
 Dans cette mise à jour :
 
-• Mode sombre : choisissez Light, Dark ou Match device dans Réglages.
+• Mode sombre : choisissez Light, Dark ou Match device dans Settings.
 • Nouveau à chaque génération : choisissez votre camp (Safety, Center ou Acceleration) et débloquez ses avantages de Doctrine. Chaque Ship vous distribue aussi trois chartes de labo, dont certaines changent les règles du jeu.
 • Épreuves Unplugged : désactivez le Legacy le temps d'une génération et refaites une partie complète. Vos records de Compute rapportent maintenant de la Réputation de labo.
 • Des objectifs plus clairs : voyez toujours votre prochaine étape, et le moment où shipper en vaut vraiment la peine.

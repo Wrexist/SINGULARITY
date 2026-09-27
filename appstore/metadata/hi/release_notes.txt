@@ -1,6 +1,6 @@
 इस अपडेट में:
 
-• डार्क मोड: सेटिंग्ज़ में Light, Dark या Match device चुनें।
+• डार्क मोड: Settings में Light, Dark या Match device चुनें।
 • हर पीढ़ी में कुछ नया: अपना Stance तय करें (Safety / Center / Acceleration) और उस पक्ष के Doctrine बोनस अनलॉक करें। हर Ship पर तीन Lab Charter में से एक चुनें, कुछ तो खेल के नियम ही बदल देते हैं।
 • Unplugged Trials: एक पीढ़ी के लिए Legacy बंद करें और फिर से पूरा रन खेलें। Compute के आपके नए रिकॉर्ड अब Lab Reputation दिलाते हैं।
 • साफ़ लक्ष्य: अगला कदम हमेशा दिखता है, और यह भी कि Ship करना कब सच में फ़ायदेमंद है।

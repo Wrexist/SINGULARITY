@@ -1,6 +1,6 @@
 Bu güncellemede:
 
-• Karanlık mod: Ayarlar'dan Light, Dark ya da Match device seçeneğini seç.
+• Karanlık mod: Settings menüsünden Light, Dark ya da Match device seçeneğini seç.
 • Her nesilde yenilik: duruşunu ilan et (Safety, Center ya da Acceleration) ve o tarafın Doctrine avantajlarının kilidini aç. Her Ship sana ayrıca üç Lab Charter dağıtır; bazıları oyunun kurallarını değiştirir.
 • Unplugged Trials: bir nesil boyunca Legacy'yi kapat ve baştan sona tam bir oyun daha oyna. Compute rekorların artık Lab Reputation kazandırıyor.
 • Daha net hedefler: bir sonraki adımını ve Ship yapmanın gerçekten ne zaman değdiğini hep görürsün.

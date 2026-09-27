@@ -1,6 +1,6 @@
 בעדכון הזה:
 
-• מצב כהה: בחרו בין Light, Dark או Match device בהגדרות.
+• מצב כהה: בחרו Light, Dark או Match device בתפריט Settings.
 • חדש בכל דור: הכריזו על העמדה שלכם – Safety, Center או Acceleration – ופתחו את הטבות ה-Doctrine של הצד שבחרתם. וכל Ship מחלק לכם שלושה Lab Charters, כולל כאלה שמשנים את חוקי המשחק.
 • מבחני Unplugged: כבו את ה-Legacy לדור אחד ושחקו שוב סבב מלא מההתחלה. שיאי ה-Compute שלכם מזכים עכשיו ב-Lab Reputation.
 • יעדים ברורים יותר: תמיד רואים את הצעד הבא, ומתי באמת משתלם לעשות Ship.

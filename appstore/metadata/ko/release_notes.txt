@@ -1,6 +1,6 @@
 이번 업데이트:
 
-• 다크 모드: 설정에서 Light·Dark·Match device 중에 고를 수 있어요.
+• 다크 모드: Settings에서 Light·Dark·Match device 중에 고를 수 있어요.
 • 세대마다 새로운 선택: 노선(Safety·Center·Acceleration)을 선언하면 그 진영의 Doctrine 특전이 열려요. Ship할 때마다 Lab Charter 3장이 주어지고, 그중엔 규칙 자체를 바꾸는 카드도 있어요.
 • Unplugged Trials: 한 세대 동안 Legacy를 끄고 처음부터 끝까지 한 판을 다시 즐겨 보세요. 이제 Compute 최고 기록을 경신하면 Lab Reputation도 얻어요.
 • 더 분명한 목표: 다음에 할 일과 Ship이 정말 이득인 시점을 언제든 확인할 수 있어요.

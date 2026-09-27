@@ -1,6 +1,6 @@
 V tej posodobitvi:
 
-• Temni način: v Nastavitvah izberite Light, Dark ali Match device.
+• Temni način: v meniju Settings izberite Light, Dark ali Match device.
 • Novo v vsaki generaciji: izberite Stance (Safety, Center ali Acceleration) in odklenite ugodnosti Doctrine za to stran. Vsak Ship poleg tega razdeli tri karte Lab Charter, med njimi tudi take, ki spremenijo pravila igre.
 • Unplugged Trials: za eno generacijo izklopite Legacy in znova odigrajte celotno igro od začetka. Vaši rekordi v Compute zdaj prinašajo Lab Reputation.
 • Jasnejši cilji: vedno vidite naslednji korak in kdaj se Ship res splača.

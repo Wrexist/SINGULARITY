@@ -1,6 +1,6 @@
 本次更新：
 
-• 深色模式：可在「設定」中選擇 Light、Dark 或 Match device。
+• 深色模式：可在 Settings 中選擇 Light、Dark 或 Match device。
 • 每一代都有新變化：選定立場（Safety / Center / Acceleration），解鎖該陣營的 Doctrine 特權；每次 Ship 還會發三張 Lab Charter 讓你挑，其中不乏改寫規則的牌。
 • Unplugged Trials：關閉 Legacy 一代，原汁原味地再完整玩一輪。刷新 Compute 紀錄，現在還能賺到 Lab Reputation。
 • 目標更清楚：隨時看到下一步，也知道什麼時候 Ship 才真正划算。

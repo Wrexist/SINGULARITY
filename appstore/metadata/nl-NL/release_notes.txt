@@ -1,6 +1,6 @@
 In deze update:
 
-• Donkere modus: kies Light, Dark of Match device in Instellingen.
+• Donkere modus: kies Light, Dark of Match device in Settings.
 • Nieuw in elke generatie: kies je kant (Safety, Center of Acceleration) en ontgrendel de Doctrine-perks die daarbij horen. En elke keer dat je shipt, krijg je drie Lab Charters uitgedeeld, waaronder een paar die de regels omgooien.
 • Unplugged Trials: zet Legacy één generatie uit en speel weer een volledige run. Je Compute-records leveren nu Lab Reputation op.
 • Duidelijkere doelen: je ziet altijd je volgende stap, en wanneer shippen echt de moeite waard is.

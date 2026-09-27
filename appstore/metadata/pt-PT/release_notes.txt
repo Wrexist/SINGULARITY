@@ -1,6 +1,6 @@
 Nesta atualização:
 
-• Modo escuro: escolha Light, Dark ou Match device nas Definições.
+• Modo escuro: escolha Light, Dark ou Match device em Settings.
 • Novidade em cada geração: declare a sua posição (Safety, Center ou Acceleration) e desbloqueie as vantagens de Doutrina desse lado. E cada Ship distribui-lhe três Cartas do Laboratório, incluindo algumas que mudam as regras.
 • Provas Unplugged: desligue o Legacy durante uma geração e volte a jogar uma partida completa. Os seus recordes de Compute passam a render Reputação do Laboratório.
 • Objetivos mais claros: vê sempre o próximo passo e quando compensa mesmo fazer Ship.

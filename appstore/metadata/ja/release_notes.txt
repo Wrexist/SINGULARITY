@@ -1,6 +1,6 @@
 今回のアップデート：
 
-• ダークモード：「設定」でLight・Dark・Match deviceから選べます。
+• ダークモード：「Settings」でLight・Dark・Match deviceから選べます。
 • 世代ごとに新しい選択を。スタンス（Safety・Center・Acceleration）を宣言すると、その陣営のDoctrine特典が解放されます。さらにShipのたびにLab Charterが3枚配られ、中にはルールそのものを変える一枚も。
 • Unplugged Trials：1世代だけLegacyをオフにして、もう一度まるごと1周遊べます。Computeの自己ベストを更新すると、Lab Reputationも獲得できるようになりました。
 • 目標がより明確に。次にやることと、Shipが本当に得になるタイミングがいつでも分かります。

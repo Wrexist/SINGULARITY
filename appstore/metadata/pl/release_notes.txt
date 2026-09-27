@@ -1,6 +1,6 @@
 W tej aktualizacji:
 
-• Tryb ciemny: w Ustawieniach wybierz Light, Dark lub Match device.
+• Tryb ciemny: w menu Settings wybierz Light, Dark lub Match device.
 • Nowość w każdej generacji: zadeklaruj Stance (Safety, Center lub Acceleration) i odblokuj perki Doctrine tej strony. Każdy Ship rozdaje też trzy karty Lab Charter, w tym takie, które zmieniają zasady gry.
 • Unplugged Trials: wyłącz Legacy na jedną generację i znów zagraj pełną rozgrywkę od zera. Twoje rekordy Compute dają teraz Lab Reputation.
 • Czytelniejsze cele: zawsze widzisz kolejny krok i moment, w którym Ship naprawdę się opłaca.

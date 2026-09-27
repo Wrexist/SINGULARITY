@@ -1,6 +1,6 @@
 Ebben a frissítésben:
 
-• Sötét mód: a Beállításokban válaszd a Light, Dark vagy Match device lehetőséget.
+• Sötét mód: a Settings menüben válaszd a Light, Dark vagy Match device lehetőséget.
 • Újdonság minden generációban: válassz Stance-et (Safety, Center vagy Acceleration), és oldd fel az adott oldal Doctrine-előnyeit. Minden Ship ráadásul három Lab Chartert oszt le, köztük olyanokat is, amelyek magukat a szabályokat írják át.
 • Unplugged Trials: kapcsold ki egy generációra a Legacyt, és játssz végig újra egy teljes kört a nulláról. A Compute-rekordjaid mostantól Lab Reputationt hoznak.
 • Világosabb célok: mindig látod a következő lépést, és azt is, mikor éri meg igazán a Ship.

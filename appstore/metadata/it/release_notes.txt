@@ -1,6 +1,6 @@
 In questo aggiornamento:
 
-• Modalità scura: scegli Light, Dark o Match device in Impostazioni.
+• Modalità scura: scegli Light, Dark o Match device in Settings.
 • Novità a ogni generazione: dichiara la tua posizione (Safety, Center o Acceleration) e sblocca i vantaggi di Dottrina di quello schieramento. E ogni Ship ti mette in mano tre Carte del Laboratorio, comprese alcune che cambiano le regole.
 • Prove Unplugged: disattiva il Legacy per una generazione e rigioca una partita completa. I tuoi record di Compute ora ti fruttano Reputazione del Laboratorio.
 • Obiettivi più chiari: vedi sempre il prossimo passo e quando conviene davvero fare Ship.

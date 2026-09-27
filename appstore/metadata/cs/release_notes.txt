@@ -1,6 +1,6 @@
 V této aktualizaci:
 
-• Tmavý režim: v Nastavení zvolte Light, Dark nebo Match device.
+• Tmavý režim: v nabídce Settings zvolte Light, Dark nebo Match device.
 • Nově v každé generaci: zvolte si Stance (Safety, Center nebo Acceleration) a odemkněte perky Doctrine dané strany. Každý Ship navíc rozdá tři karty Lab Charter, včetně takových, které mění samotná pravidla.
 • Unplugged Trials: vypněte na jednu generaci Legacy a projděte si znovu celou hru od nuly. Vaše rekordy v Compute teď přinášejí Lab Reputation.
 • Jasnější cíle: vždy vidíte další krok a kdy se Ship opravdu vyplatí.

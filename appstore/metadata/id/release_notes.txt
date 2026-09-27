@@ -1,6 +1,6 @@
 Di pembaruan ini:
 
-• Mode Gelap: pilih Light, Dark, atau Match device di Pengaturan.
+• Mode Gelap: pilih Light, Dark, atau Match device di menu Settings.
 • Tiap generasi ada pilihan baru: tentukan sikapmu (Safety, Center, atau Acceleration) untuk membuka perk Doctrine kubu itu. Tiap Ship juga membagikan tiga Lab Charter, termasuk yang bisa mengubah aturan main.
 • Unplugged Trials: matikan Legacy selama satu generasi dan mainkan lagi satu run penuh dari awal. Rekor Compute-mu kini juga menghasilkan Lab Reputation.
 • Tujuan lebih jelas: selalu lihat langkah berikutnya dan kapan Ship benar-benar menguntungkan.
