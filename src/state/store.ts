@@ -8,7 +8,7 @@ import {
   addEmployee, rosterFull, startTraining, canTrain, fireEmployee, hireCost,
   assignEmployee as assignEmployeeToProduct, levelUpNote,
 } from "../engine/employees";
-import { versionShipNote } from "../engine/notices";
+import { versionShipNote, versionsShipNote } from "../engine/notices";
 import {
   startRun,
   claimRun,
@@ -52,6 +52,7 @@ import {
   buyFeature,
   maxActiveProducts,
   productsUnlocked,
+  rivalLead,
 } from "../engine/products";
 import { productMilestones as PRODUCT_MILESTONES, type ProductTypeId } from "../engine/balance/products";
 import { achievements as ACHIEVEMENT_DEFS } from "../engine/balance/achievements";
@@ -671,8 +672,9 @@ export const useGame = create<GameStore>((set, get) => ({
 
       // Several can finish in one tick (offline catch-up) — name one, count the rest.
       const finished = game.products.active.filter((p) => p.version > (versionBefore.get(p.id) ?? Infinity));
-      if (finished.length === 1) pushNotice(versionShipNote(finished[0]!.name, finished[0]!.version), "ship");
-      else if (finished.length > 1) pushNotice(`${finished.length} products shipped new versions — back at the frontier`, "ship");
+      const behindRivals = rivalLead(game) > 0; // a Hard generation: rivals keep their lead
+      if (finished.length === 1) pushNotice(versionShipNote(finished[0]!.name, finished[0]!.version, behindRivals), "ship");
+      else if (finished.length > 1) pushNotice(versionsShipNote(finished.length, behindRivals), "ship");
 
       const trained = game.employees.filter((e) => wasTraining.get(e.id) && !e.training);
       if (trained.length === 1) pushNotice(levelUpNote(trained[0]!), "levelup");

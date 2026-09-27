@@ -5,6 +5,7 @@ import { fmt, fmtPerHour, fmtTime } from "./format";
 import { achievementDefs } from "../engine/achievements";
 import { productMilestones } from "../engine/balance/products";
 import { eraName } from "../engine/eras";
+import { versionLanding } from "../engine/notices";
 import { LandmarkIcon, TrophyIcon } from "./Icons";
 import { useDialog } from "./useDialog";
 
@@ -25,7 +26,7 @@ function storyLines(story: OfflineSummary["story"], max = 4): string[] {
     const def = productMilestones.find((d) => d.id === m);
     if (def) lines.push(`Milestone reached: ${def.label}.`);
   }
-  for (const u of story.upgradesFinished) lines.push(`${u.name} shipped v${u.version} — back at the frontier.`);
+  for (const u of story.upgradesFinished) lines.push(`${u.name} shipped v${u.version} — ${versionLanding(!!u.behindRivals)}.`);
   for (const e of story.leveledUp) lines.push(`${e.name} finished training — now L${e.level}.`);
   if (lines.length > max) {
     const extra = lines.length - (max - 1);
