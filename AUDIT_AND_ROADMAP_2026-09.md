@@ -442,6 +442,62 @@ Round 7, left for the owner:
 - **Staff PR's "-10% product Heat"** has the same incident-Heat blind spot that Trust &
   Safety had.
 
+**Round 8 settled the open owner calls.** The owner asked for "everything" to be done.
+Every change below is in systems the balance sim never touches, so the sim is still
+byte-identical. The suite is at 1944 tests. No player loses anything they already hold.
+- **Staff lanes are softcapped above x100.** Past the knee a lane pays 100 x (m/100)^0.5.
+  Crews of up to about 60 people are unchanged. 512 L4 10x Engineers at full morale go
+  from x42,125 to x2,052.
+- **Rig Bay fusion is a trade-in, not a discount path.** A fused part can't appear
+  before its normal reveal. Each rung needs enough spares that the inputs cost at least
+  50% of the result's list price. Parts already fused early stay owned.
+- **Hard ship is a real trade-off.** Its rival lead now lasts the whole generation instead
+  of vanishing at the next version push. Over the next 20 minutes, Hard earns $9.3M and
+  Deploy $12.4M; Hard still banks +50% Legacy.
+- **The Megaproject cap rose from 512 to 890 cycles.** Mandate summaries switch to a
+  multiplier form so they stay short.
+- **A Reasoning Engine can't be priced at a loss.** Its price floor is x0.6 (was x0.5);
+  every product type's minimum price has a non-negative margin at zero marketing.
+- **A timed boost no longer multiplies a Ship's Legacy.** The Legacy base is priced on
+  boost-free income. Boosts still pay their Money and count for achievements and
+  contracts.
+- **Legacy growth above x10 softens gently.** The power is 0.15, and banked weights are
+  never reduced. For a Ship whose raw gain is +10% weights:
+  - a x1e3 lab gains +3.3% (was +7.9%);
+  - a x1e6 veteran gains +0.9% (was +7.9%).
+  - A x20 lab keeps about 85% of its gain.
+  - A first pass at power 0.5 froze veterans at +0.006% a Ship, so it was softened.
+- **The Money lane is called Money.** Objective lanes, event chips and bodies, and the
+  Directive summary no longer say "Revenue", which reads as product revenue. Proper names
+  ("Revenue Mandate", Legacy node names) are unchanged. A parity test pins this.
+- **Smaller fixes:**
+  - An earned Endowment Directive pick shows a small static violet dot on the path to it.
+  - Reduced motion now defaults to off; the OS preference is still honoured live.
+  - Long Contract titles wrap.
+  - The hall column pins on 11-inch iPads (measured bar height, and a smaller hall there).
+  - Staff PR now cuts incident Heat.
+  - Completionist counts only the base tree.
+  - A notice burst keeps every notice.
+- **Offline clock guard (SAVE_VERSION 40, `clockMark`).** Offline credit, suspend credit,
+  the Daily Boost and the sponsor day all use a high-water mark. A forward, back, forward
+  jump pays once. The mark is trusted at most 7 days ahead of the device clock, so a phone
+  that was wrongly ahead loses at most that gap. Live play never depends on the mark.
+- **Opt-in dark mode.** Settings > Appearance offers Light, Dark or Match device, and
+  defaults to Light. Every enabled text run passes WCAG AA in Dark across 21 screens.
+
+Round 8, still for the owner:
+- **On-device checks.**
+  - Dark mode and Match device on a real iPhone. The iOS status-bar strip stays light in
+    Dark until `@capacitor/status-bar`, or `contentInset: "never"` plus safe-area CSS, is
+    device-tested (DEPLOYMENT.md section 8).
+  - An 11-inch iPad in landscape.
+  - The Daily Boost across a real midnight and after an iOS suspend.
+- **Dials if a change lands badly.**
+  - `balance.staff.laneSoftcap`
+  - `prestige.legacySoftcapPower`
+  - `components` minFuseValueShare
+  - the Hard ship lead
+
 ## Part 6 — App Store: "free to download"
 
 The listing copy already says "free" (`appstore/metadata/en-US/description.txt`:
