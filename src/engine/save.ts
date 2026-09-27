@@ -26,7 +26,7 @@ import { RACK_IDS } from "./hall";
 import { laneMet } from "./challenges";
 import { shiftAlignment } from "./alignment";
 import { capActiveModifiers } from "./tick";
-import { cleanProductName } from "./products";
+import { cleanProductName, priceMinFor } from "./products";
 import type { ChallengeState } from "./types";
 import type { ActiveModifier, ComponentsState, DraftModel, Employee, GameState, LifetimeStats, ModifierTarget, ProductsState, ProductState, ShipLogEntry, UpgradeState } from "./types";
 
@@ -751,7 +751,8 @@ export function deserialize(json: string): GameState {
         mau,
         paid: clampNum(o.paid, 0, mau, 0), // paid can never exceed MAU (sim invariant)
         version: Math.floor(clampNum(o.version, 1, PROD_CAPS.version, 1)),
-        priceMult: clampNum(o.priceMult, PRODUCTS.priceMin, PRODUCTS.priceMax, 1),
+        // The type's own floor (priceMinFor), exactly what the price setter allows.
+        priceMult: clampNum(o.priceMult, priceMinFor(o.type), PRODUCTS.priceMax, 1),
         marketingPerSec: clampNum(o.marketingPerSec, 0, quality * PRODUCTS.marketingCapPerQuality, 0),
         buzzSec: clampNum(o.buzzSec, 0, PROD_CAPS.buzzSec, 0),
         upgrade: sanitizeUpgrade(o.upgrade),

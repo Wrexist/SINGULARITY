@@ -809,8 +809,21 @@ export function advanceUpgrades(
   return { products: { ...ps, active }, computeSpent, dataSpent, completed };
 }
 
+/** The lowest Pro price dial a product type allows: the global floor, raised to the
+ *  first 0.1 step (the slider's step) where a paying user covers their own serving
+ *  cost. Revenue and serving per user both scale with quality, so below
+ *  computePerUser / baseArpu every subscriber loses money whatever else the lab does:
+ *  Reasoning Engine broke even at ×0.533 and the dial went to ×0.5. It is the only
+ *  type the global ×0.5 floor did not already cover, so it alone moves (to ×0.6). */
+export function priceMinFor(type: ProductTypeId): number {
+  const t = typeDef(type);
+  const breakEven = t.baseArpu > 0 ? t.computePerUser / t.baseArpu : 0;
+  return Math.min(B.priceMax, Math.max(B.priceMin, Math.ceil(breakEven * 10 - 1e-9) / 10));
+}
+
 export function setProductPrice(state: GameState, id: string, priceMult: number): GameState {
-  const price = clamp(priceMult, B.priceMin, B.priceMax);
+  const target = state.products.active.find((x) => x.id === id);
+  const price = clamp(priceMult, target ? priceMinFor(target.type) : B.priceMin, B.priceMax);
   return {
     ...state,
     products: {

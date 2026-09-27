@@ -4,7 +4,7 @@ import type { GameState, ProductMods } from "../engine/types";
 import { products as B, productFeatures, type FeatureLane, type ProductTypeId } from "../engine/balance/products";
 import {
   typeDef, productMetrics, canStartUpgrade, canBuyFeature, versionCostFor, featureMods,
-  upgradeDurationSec, upgradeWallSec, upgradeProgress, retirePayout, enterpriseUnlocked, suggestChannelMix,
+  upgradeDurationSec, upgradeWallSec, upgradeProgress, retirePayout, enterpriseUnlocked, suggestChannelMix, priceMinFor,
 } from "../engine/products";
 import { flagshipMoneyMult } from "../engine/flagship";
 import { m$, numOf as num, fmtDur } from "./format";
@@ -218,8 +218,9 @@ export function ProductDetail({ game, productId, mods, onClose, onStartUpgrade, 
                 {/* With the product's revenue buffs (staff, the Product Company charter), as billed. */}
                 <span className="pd-card-value">{perUserPrice(t.baseArpu * p.priceMult * p.quality * featureMods(p).arpu * (mods?.arpu ?? 1))} <span className="pd-mult-note">×{p.priceMult.toFixed(1)}</span></span>
               </div>
-              <input className="pd-slider" type="range" min={Math.round(B.priceMin * 10)} max={Math.round(B.priceMax * 10)} step={1}
-                style={fill(((p.priceMult - B.priceMin) / (B.priceMax - B.priceMin)) * 100)}
+              {/* The type's own floor: never below the price where a subscriber pays for their serving. */}
+              <input className="pd-slider" type="range" min={Math.round(priceMinFor(p.type) * 10)} max={Math.round(B.priceMax * 10)} step={1}
+                style={fill(((p.priceMult - priceMinFor(p.type)) / (B.priceMax - priceMinFor(p.type))) * 100)}
                 value={Math.round(p.priceMult * 10)} onChange={(e) => onSetPrice(p.id, Number(e.target.value) / 10)} aria-label="Pro pricing"
                 aria-valuetext={`${p.priceMult.toFixed(1)} times base price`} />
             </div>
