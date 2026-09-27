@@ -1634,11 +1634,13 @@ export const balance = {
      * are never reduced, so no save's multiplier goes down. Veterans had reached x1e6+
      * and seconds-long runs. The balance sim peaks at about x2.9, so it never gets here.
      * Above the cap each earned weight pays (capWeights / weights)^power of a weight
-     * (integrated over the Ship, see softcapLegacyGain): with power 0.5 a fresh climb
-     * past x10 grows the multiplier roughly as the 2/3 power of what it would have.
+     * (integrated over the Ship, see softcapLegacyGain). Power 0.15 is deliberately
+     * gentle: a x20 lab keeps ~87% of a Ship's weights, while a x1e6 veteran keeps ~11%
+     * (about +1% multiplier a Ship where it was +8%), so a Ship still visibly moves the
+     * number. 0.5 was tried first and froze veterans at ~0.07% of their gain.
      */
     legacySoftcapAt: 10,
-    legacySoftcapPower: 0.5,
+    legacySoftcapPower: 0.15,
 
     /**
      * GDD §4 — shipping is a player-flavored choice with minor different bonuses.

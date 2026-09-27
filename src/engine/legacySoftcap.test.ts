@@ -54,12 +54,15 @@ describe("Legacy softcap above x10", () => {
     const raw = legacyWeightsGain(s);
     expect(raw.div(stock).toNumber()).toBeCloseTo(1, 6);
     const paid = legacyWeightsForMode(s, "deploy");
-    expect(paid.lt(raw.div(100))).toBe(true);
-    expect(paid.gte(1)).toBe(true);
+    // Softened, but a Ship still visibly moves a veteran: between 5% and 25% of raw.
+    expect(paid.lt(raw.div(4))).toBe(true);
+    expect(paid.gt(raw.div(20))).toBe(true);
     const after = prestige(s);
     expect(after.prestige.legacyWeights.toNumber()).toBeCloseTo(stock.add(paid).toNumber(), 0);
     // Never down: the fresh run starts at least where the veteran was.
     expect(legacyMultiplier(legacyAvailable(after)).gte(legacyMultiplier(stock))).toBe(true);
+    // ...and the multiplier grows by a noticeable step, not a frozen 0.0x%.
+    expect(legacyMultiplier(after.prestige.legacyWeights).div(legacyMultiplier(stock)).toNumber()).toBeGreaterThan(1.02);
     // The Ship panel quotes the multiplier the Ship really leaves.
     expect(nextRunMultiplier(s).toNumber()).toBeCloseTo(legacyMultiplier(after.prestige.legacyWeights).toNumber(), 6);
   });
