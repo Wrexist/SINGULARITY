@@ -3183,6 +3183,18 @@ p.pd-flagship { cursor: default; text-align: center; margin-top: 0; }
 .emp-proj-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .emp-proj-id { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .emp-proj-name { font-size: var(--fs-lg); font-weight: 800; color: var(--ink); letter-spacing: -0.01em; }
+/* A product's name is player-typed: up to 24 characters, often one long word with no
+   break point. Wrap it inside its box (product card, detail sheet, leaderboard, Team
+   projects, toasts, the away recap, the flagship/sell confirm) instead of letting it
+   run off the screen and scroll the whole page. */
+.prod-name,
+.pd-name,
+.market-name,
+.emp-proj-name,
+.toast-text,
+.wiwa-story p,
+.confirm-modal h2,
+.confirm-modal .modal-sub { min-width: 0; overflow-wrap: anywhere; }
 .emp-proj-sub { font-size: var(--fs-xs); color: var(--ink-3); font-weight: 600; }
 .emp-proj-badge { flex: 0 0 auto; font-size: var(--fs-2xs); font-weight: 800; padding: 3px 9px; border-radius: 999px; }
 .emp-proj-badge.high { color: var(--money-ink); background: rgba(22, 179, 100, 0.12); }
