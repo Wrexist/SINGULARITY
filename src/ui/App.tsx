@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useGame, guardedDay } from "../state/store";
+import { useGame, guardedDay, offlineAccruesFrom } from "../state/store";
 import { useGameLoop } from "../state/useGameLoop";
 import { derive } from "../engine/derive";
 import { Big } from "../engine/math/Big";
@@ -336,6 +336,7 @@ export function App() {
       enabled: useSettings.getState().notifyReminders,
       producing: derive(g).computePerSec.gt(0) || g.products.active.length > 0,
       capHours: isPremium() ? balance.offline.premiumMaxHours : balance.offline.maxHours,
+      accruesFrom: offlineAccruesFrom(),
     };
   }), []);
 

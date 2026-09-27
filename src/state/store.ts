@@ -82,7 +82,7 @@ import { currentEra } from "../engine/eras";
 import { codexBalance, codexUnlocked, codexRevealed } from "../engine/codex";
 import type { Big } from "../engine/math/Big";
 import { enqueueNotices } from "./noticeQueue";
-import { creditableMs, guardedDayOf, nextMark, sanitizeMark } from "./clockGuard";
+import { creditableMs, guardedDayOf, nextMark, sanitizeMark, trustedMark } from "./clockGuard";
 
 const SAVE_KEY = "singularity.save.v1";
 const TIME_KEY = "singularity.lastSeen.v1";
@@ -291,6 +291,13 @@ export function claimWallTime(from: number, wall: number = now()): number {
  *  a day already played. Read-only: the loop moves the mark. */
 export function guardedDay(wall: number = now()): number {
   return guardedDayOf(clockMark, wall);
+}
+
+/** When offline time away from `wall` starts to count: now, or later while the mark
+ *  is ahead of the clock (a clock that was ahead, then corrected, pays nothing until
+ *  real time catches up). The return reminder fires a full cap after it. */
+export function offlineAccruesFrom(wall: number = now()): number {
+  return Math.max(wall, trustedMark(clockMark, wall));
 }
 
 /** The live high-water mark (read by the Daily Boost's day check). */

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { useGame, claimWallTime, guardedDay } from "./store";
+import { useGame, claimWallTime, guardedDay, offlineAccruesFrom } from "./store";
 import { loopDelta, MARK_TRUST_MS } from "./clockGuard";
 import { dailyAvailable, markDailyClaimed } from "../ui/daily";
 import { createInitialState } from "../engine/state";
@@ -119,6 +119,15 @@ describe("offline clock guard — cold launches", () => {
     expect(credited).toBeGreaterThanOrEqual(away - 7 * 86_400 - 6 * 3600 - 1);
     expect(relaunchAt(real + 8 * DAY + 4 * H)).toBeCloseTo(4 * 3600, 0);
     expect(MARK_TRUST_MS).toBe(7 * DAY);
+  });
+
+  it("the return reminder's start is when offline time starts to count", () => {
+    installAt(T0 + 3 * H); // the phone read 3 hours ahead
+    relaunchAt(T0); // corrected
+    expect(offlineAccruesFrom(T0)).toBe(T0 + 3 * H);
+    // The 8-hour cap fills 11 hours after this, which is exactly what a launch pays.
+    expect(relaunchAt(T0 + 11 * H)).toBeCloseTo(8 * 3600, 0);
+    expect(offlineAccruesFrom(T0 + 11 * H)).toBe(T0 + 11 * H); // honest from here on
   });
 
   it("restoring a backup keeps the mark it was taken with", () => {
