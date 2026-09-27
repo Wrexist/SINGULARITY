@@ -2,6 +2,7 @@ import { Big } from "./math/Big";
 import { achievements as DEFS, type AchievementDef, type AchMetric } from "./balance/achievements";
 import { currentEra } from "./eras";
 import { collectionProgress } from "./cosmetics";
+import { isEpochNode } from "./researchTree";
 import type { GameState } from "./types";
 
 /**
@@ -31,6 +32,10 @@ export function metricValue(state: GameState, metric: AchMetric): Big {
     case "totalShips": return Big.of(s.totalShips);
     case "eraReached": return Big.of(currentEra(state));
     case "peakResearch": return Big.of(s.peakResearchCount);
+    // Completionist's threshold is the BASE tree's size; peakResearchCount also counts
+    // Paradigm Epoch nodes, which let a veteran earn it holding part of the tree. The
+    // base nodes owned this run are the honest measure (an earned badge is kept).
+    case "baseResearch": return Big.of(state.research.filter((id) => !isEpochNode(id)).length);
     case "worldEventsResolved": return Big.of(s.worldEventsResolved);
     case "playtimeSec": return Big.of(s.playtimeSec);
     case "openSourceShips": return Big.of(s.openSourceShips);

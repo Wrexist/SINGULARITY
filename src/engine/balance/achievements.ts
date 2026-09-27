@@ -40,6 +40,8 @@ export type AchMetric =
   | "totalLegacy"
   | "eraReached"
   | "peakResearch"
+  /** Base-tree research nodes owned THIS run (Paradigm Epoch nodes excluded). */
+  | "baseResearch"
   | "worldEventsResolved"
   | "playtimeSec"
   | "openSourceShips"
@@ -116,7 +118,7 @@ export const achievements: AchievementDef[] = [
   { id: "research_15", label: "Well Read", desc: "Own 15 research nodes in one run", cat: "meta", metric: "peakResearch", threshold: 15 },
   // Capstone = the full tree, derived so it can't drift (was an unreachable
   // hardcoded 30, then a brittle 17) — a true "own everything" badge.
-  { id: "research_30", label: "Completionist", desc: "Own every research node in a single run", cat: "meta", metric: "peakResearch", threshold: RESEARCH_TREE_SIZE },
+  { id: "research_30", label: "Completionist", desc: "Own every research node in a single run", cat: "meta", metric: "baseResearch", threshold: RESEARCH_TREE_SIZE },
   { id: "events_25", label: "Survivor", desc: "Resolve 25 world events", cat: "meta", metric: "worldEventsResolved", threshold: 25 },
   { id: "play_1h", label: "Hooked", desc: "Play for 1 hour", cat: "meta", metric: "playtimeSec", threshold: 3_600 },
   { id: "play_10h", label: "Dedicated", desc: "Play for 10 hours", cat: "meta", metric: "playtimeSec", threshold: 36_000 },
