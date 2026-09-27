@@ -203,8 +203,8 @@ describe("Megaproject Mandates — hostile save hardening", () => {
   it("bounds an oversized mandate list, which derive walks every tick", () => {
     const flood = Array.from({ length: 200_000 }, () => "mand_compute");
     const back = deserialize(JSON.stringify(rawSaveWith({ level: 999999, funded: { compute: "0", data: "0", money: "0" }, mandates: flood }, true)));
-    expect(back.megaprojects.mandates.length).toBeLessThanOrEqual(512);
-    expect(back.megaprojects.level).toBeLessThanOrEqual(512);
+    expect(back.megaprojects.mandates.length).toBeLessThanOrEqual(C.megaproject.maxLevel);
+    expect(back.megaprojects.level).toBeLessThanOrEqual(C.megaproject.maxLevel);
     // And the multiplier it yields stays a finite, computable number.
     expect(Number.isFinite(mandateMods(back).compute.toNumber())).toBe(true);
   });

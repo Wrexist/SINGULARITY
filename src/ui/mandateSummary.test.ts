@@ -37,12 +37,15 @@ describe("the Mandates held summary", () => {
   });
 
   it("keeps a deep stack short and never exponential", () => {
-    for (const n of [100, 400, 512]) {
+    for (const n of [100, 400, 512, 890]) {
       const s = summary(render(withMandates(Array(n).fill("mand_compute"))));
       expect(s).not.toBeNull();
       expect(s).not.toMatch(/e\+|\d{5,}/);
       expect(s!.length).toBeLessThanOrEqual(32);
     }
-    expect(summary(render(withMandates(Array(100).fill("mand_compute"))))).toBe("+8.35M% C · +0% D · +0% $");
+    // Past +1000% a lane reads as a two-figure multiplier (round 8: the 890-cycle cap).
+    expect(summary(render(withMandates(Array(100).fill("mand_compute"))))).toBe("×84K C · +0% D · +0% $");
+    expect(summary(render(withMandates(Array(20).fill("mand_compute"))))).toBe("+865% C · +0% D · +0% $");
+    expect(summary(render(withMandates(Array(25).fill("mand_compute"))))).toBe("×17 C · +0% D · +0% $");
   });
 });

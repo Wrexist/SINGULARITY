@@ -2,7 +2,7 @@ import type { GameState } from "../engine/types";
 import { visibleChallenges, challengeView, canFundChallenge, pendingForkChallenge, megaprojectUnlocked, megaprojectView, canFundMegaproject, mandateDefs, mandatePicksAvailable, mandateMods } from "../engine/challenges";
 import { challenges as C } from "../engine/balance/challenges";
 import { fmt, fmtFloor } from "./format";
-import type { Big } from "../engine/math/Big";
+import { Big } from "../engine/math/Big";
 import { ComputeIcon, DataIcon, MoneyIcon, GiftIcon } from "./Icons";
 import { iconFor } from "./iconRegistry";
 
@@ -38,13 +38,17 @@ export function GrandChallengesPanel({ game, onFund, onChooseFork, onFundMegapro
   const picks = mandatePicksAvailable(game);
   const mandateHeld = game.megaprojects.mandates.length;
   const mm = mandateMods(game);
-  // Whole percents while small; the compact format from 1000% up. Mandates compound, so
-  // a deep single-lane stack printed "+8352127%" and then "+4.866414170442524e+21%".
-  const asPct = (b: Big) => {
+  // Whole percents while small; a compact two-figure multiplier from +1000% up.
+  // Mandates compound, so a deep single-lane stack printed "+8352127%" and then
+  // "+4.866414170442524e+21%", and at the 890-cycle cap even the compact percent ran
+  // past the chip ("+478Qa% C"). A stack that deep is a magnitude, not a ledger.
+  const lane = (b: Big) => {
     const p = b.sub(1).mul(100);
-    return p.lt(999.5) ? String(Math.round(p.toNumber())) : fmt(p);
+    if (p.lt(999.5)) return `+${Math.round(p.toNumber())}%`;
+    const unit = Big.of(10).pow(Math.floor(b.log10()) - 1);
+    return `×${fmt(unit.mul(Math.round(b.div(unit).toNumber())))}`;
   };
-  const mandateSummary = `+${asPct(mm.compute)}% C · +${asPct(mm.data)}% D · +${asPct(mm.money)}% $`;
+  const mandateSummary = `${lane(mm.compute)} C · ${lane(mm.data)} D · ${lane(mm.money)} $`;
 
   const body = (
     <>
