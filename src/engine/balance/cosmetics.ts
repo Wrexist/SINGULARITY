@@ -11,6 +11,8 @@
 
 export type CosmeticUnlock =
   | { kind: "free" }
+  /** Pro (subscription or the lifetime unlock). The id stays "premium" for data
+   *  compatibility; players see it labelled "Pro". */
   | { kind: "premium" }
   | { kind: "ships"; n: number }
   | { kind: "ascensions"; n: number }
@@ -45,8 +47,10 @@ export const themes: ThemeDef[] = [
   { id: "platinum", name: "Platinum", blurb: "Earn $1B all-time. The valuation is fake but the chrome is real.", unlock: { kind: "totalMoney", n: 1_000_000_000 } },
   { id: "midnight", name: "Midnight Oil", blurb: "Five hours in. Sleep is a deprecated dependency.", unlock: { kind: "playtimeHours", n: 5 } },
   { id: "iridescent", name: "Iridescent", blurb: "Ascend to AGI once. The hall shimmers with post-human regret.", unlock: { kind: "ascensions", n: 1 } },
-  // — Premium nod —
+  // — Pro —
   { id: "gold", name: "Founder Gold", blurb: "You backed the lab early. Wear it.", unlock: { kind: "premium" } },
+  { id: "boardroom", name: "Boardroom", blurb: "Mahogany, brass, and a cap table nobody on the board has actually read.", unlock: { kind: "premium" } },
+  { id: "orbital", name: "Orbital", blurb: "Racks in low Earth orbit. The latency is terrible; the pitch deck is incredible.", unlock: { kind: "premium" } },
 ];
 
 /** Rack skins (R6.3) — a SECOND cosmetic axis, independent of the hall theme: recolours
@@ -60,4 +64,6 @@ export const rackSkins: ThemeDef[] = [
   { id: "synth", name: "Hotpink HPC", blurb: "Launch four products. Compute, but make it a personality.", unlock: { kind: "productsLaunched", n: 4 } },
   { id: "aurora", name: "Aurora", blurb: "Ascend to AGI. The racks shimmer in colours that don't have names yet.", unlock: { kind: "ascensions", n: 1 } },
   { id: "gold", name: "Gold-Plated", blurb: "Founder flex: solid-gold heatsinks, terrible thermals.", unlock: { kind: "premium" } },
+  { id: "obsidian", name: "Obsidian", blurb: "Volcanic-glass racks. Fingerprint magnets with a Series C attitude.", unlock: { kind: "premium" } },
+  { id: "chrome", name: "Liquid Chrome", blurb: "Mirror-polished racks that reflect your burn rate back at you.", unlock: { kind: "premium" } },
 ];
