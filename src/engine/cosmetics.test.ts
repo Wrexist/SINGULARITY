@@ -76,6 +76,6 @@ describe("R6.3 — cosmetic unlocks (pure)", () => {
     expect(unlockHint({ kind: "peakCompute", n: 1_000_000 })).toBe("Reach 1M Compute/s");
     expect(unlockHint({ kind: "totalMoney", n: 1_000_000_000 })).toBe("Earn $1B all-time");
     expect(unlockHint({ kind: "ascensions", n: 1 })).toBe("Ascend to AGI");
-    expect(unlockHint({ kind: "premium" })).toBe("Premium unlock");
+    expect(unlockHint({ kind: "premium" })).toBe("Pro");
   });
 });

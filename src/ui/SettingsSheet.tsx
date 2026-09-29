@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import { useSettings, osReduceMotionNow, onOsReduceMotionChange } from "./settings";
-import { iap, PREMIUM_PRICE } from "./iap";
+import { iap } from "./iap";
+import { useHasPro } from "./pro";
+import { onProChange, isPremium } from "../state/premium";
 import { haptics as hpt } from "./haptics";
 import { sound as snd } from "./sound";
 import { remindersSupported, ensureReminderPermission, cancelReturnReminder } from "./notifications";
@@ -9,7 +11,7 @@ import { useGame, previewBackup, type BackupPreview } from "../state/store";
 import { fmtMoney } from "./format";
 import { themeStyle, skinSwatch } from "./hallThemes";
 import { themes, rackSkins, themeUnlocked, skinUnlocked, collectionProgress, skinProgress, unlockHint } from "../engine/cosmetics";
-import { PaletteIcon, DownloadIcon, LockIcon, CheckIcon, BarsIcon, ChevronIcon, SunIcon, MoonIcon, DeviceIcon } from "./Icons";
+import { PaletteIcon, DownloadIcon, LockIcon, CheckIcon, BarsIcon, ChevronIcon, SunIcon, MoonIcon, DeviceIcon, CrownIcon } from "./Icons";
 import type { Appearance } from "./settings";
 
 /** Appearance options, in display order. Light is the default (no change until a
@@ -80,10 +82,21 @@ interface Props {
   onClose: () => void;
   /** Ask App to confirm a hard reset (the confirm sheet lives there). */
   onReset: () => void;
+  /** Open the Pro paywall (it lives in App, above this sheet). */
+  onOpenPro?: () => void;
+}
+
+/** "Oct 3, 2026" for the Pro card's expiry line (UI owns the clock and locale). */
+function fmtDate(ms: number): string {
+  try {
+    return new Date(ms).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  } catch {
+    return new Date(ms).toISOString().slice(0, 10);
+  }
 }
 
 /** iOS-style bottom sheet for feel preferences (clean-to-play, GAMEPLAN §8). */
-export function SettingsSheet({ onClose, onReset }: Props) {
+export function SettingsSheet({ onClose, onReset, onOpenPro }: Props) {
   const { sound, music, haptics, hapticsLight, reducedMotion, scientificNotation, notifyReminders, hallTheme, rackSkin, appearance, toggle, setHallTheme, setRackSkin, setNotifyReminders, setAppearance } = useSettings();
   // Live device Reduce Motion (one listener, shared with motion.ts via settings.ts).
   const osReduced = useSyncExternalStore((fn) => onOsReduceMotionChange(() => fn()), osReduceMotionNow, osReduceMotionNow);
@@ -100,18 +113,15 @@ export function SettingsSheet({ onClose, onReset }: Props) {
   const sheetRef = useRef<HTMLDivElement>(null);
   useDialog(sheetRef, { onClose, labelledBy: "settings-title" });
 
-  const [premium, setPremiumState] = useState(iap.isPremium());
-  const [price, setPrice] = useState(PREMIUM_PRICE);
-  useEffect(() => {
-    let live = true;
-    void iap.priceLabel().then((p) => { if (live) setPrice(p); });
-    return () => { live = false; };
-  }, []);
+  // Pro (any route) unlocks the Pro cosmetics; the lifetime unlock is "Founder".
+  const pro = useHasPro();
+  const lifetime = useSyncExternalStore(onProChange, isPremium, isPremium);
+  const until = pro && !lifetime ? iap.proUntil() : 0;
   // Cosmetic collection (R6.3): unlocks are derived from monotonic lifetime stats, so
   // a one-shot read at render is enough (no need to re-check at 10Hz while the sheet is open).
   const game = useGame.getState().game;
-  const themeProgress = collectionProgress(game, premium);
-  const skinProg = skinProgress(game, premium);
+  const themeProgress = collectionProgress(game, pro);
+  const skinProg = skinProgress(game, pro);
   const [busy, setBusy] = useState(false);
   const [backupOpen, setBackupOpen] = useState(false);
   const [confirmImport, setConfirmImport] = useState<BackupPreview | null>(null);
@@ -168,28 +178,17 @@ export function SettingsSheet({ onClose, onReset }: Props) {
     if (useGame.getState().importSave(importText)) { location.reload(); }
     else { setStatus("That backup didn't look valid — check you copied all of it."); }
   };
-  const buy = async () => {
-    setBusy(true);
-    try {
-      const ok = await iap.purchasePremium();
-      if (ok) { setPremiumState(true); hpt.celebrate(); snd.ship(); }
-      else setStatus("Purchase didn't complete — you haven't been charged.");
-    } catch {
-      // ensureInit rethrows on a StoreKit/network failure — say so instead of
-      // leaving the player staring at a spinner that just stops.
-      setStatus("Store unreachable — check your connection and try again.");
-    } finally {
-      setBusy(false);
-    }
-  };
+  // The Pro card's own one-line status (the backup section has its own).
+  const [proStatus, setProStatus] = useState<string | null>(null);
   const restore = async () => {
     setBusy(true);
+    setProStatus(null);
     try {
       const ok = await iap.restore();
-      setPremiumState(ok);
-      if (!ok) setStatus("No previous purchase found for this Apple ID.");
+      if (ok) { hpt.celebrate(); snd.success(); }
+      else setProStatus("No previous purchase found for this Apple ID.");
     } catch {
-      setStatus("Store unreachable — check your connection and try again.");
+      setProStatus("Store unreachable — check your connection and try again.");
     } finally {
       setBusy(false);
     }
@@ -207,29 +206,37 @@ export function SettingsSheet({ onClose, onReset }: Props) {
           <button className="sheet-close" onClick={onClose} aria-label="Close settings">✕</button>
         </div>
 
-        {/* Premium: one generous, cosmetic/QoL unlock (GDD §9 — never power). */}
-        <div className={`premium-card ${premium ? "owned" : ""}`}>
+        {/* Pro: a subscription, or the lifetime unlock (the original Premium —
+            its owners are "Founders" with Pro forever). The plans live in the
+            paywall; this card is status + a door to it + Restore. */}
+        <div className={`premium-card ${pro ? "owned" : ""}`}>
           <div className="premium-head">
-            <span className="premium-title">✦ Premium {premium && <span className="premium-badge">Founder</span>}</span>
-            {!premium && <span className="premium-price">{price}</span>}
+            <span className="premium-title"><CrownIcon size={17} /> {pro && !lifetime ? "Pro — active" : "Pro"} {lifetime && <span className="premium-badge">Founder</span>}</span>
           </div>
-          <ul className="premium-perks">
-            <li>{balance.offline.premiumMaxHours}-hour offline cap (up from {balance.offline.maxHours}h)</li>
-            <li>“Founder” status &amp; future hall themes</li>
-            <li>One-time unlock — no ads, ever, no pay-to-win</li>
-          </ul>
-          {premium ? (
-            <div className="premium-owned-tag">Unlocked — thank you</div>
+          {lifetime ? (
+            <p className="pro-card-status">Founder · Pro forever. Thank you for backing the lab.</p>
+          ) : pro ? (
+            <p className="pro-card-status">
+              {until > 0 ? `Through ${fmtDate(until)}. ` : ""}Renews automatically until cancelled in Settings › Apple ID.
+            </p>
           ) : (
+            <ul className="premium-perks">
+              <li>Offline earnings ×2 and a {balance.offline.premiumMaxHours}-hour cap (up from {balance.offline.maxHours}h)</li>
+              <li>Autopilots one Ship sooner</li>
+              <li>Pro-only hall themes &amp; rack skins</li>
+            </ul>
+          )}
+          {!lifetime && (
             <div className="premium-actions">
-              <button className="btn btn-primary" disabled={busy} onClick={buy}>
-                {busy ? "…" : `Unlock ${price}`}
-              </button>
+              {!pro && onOpenPro && (
+                <button className="btn btn-primary" disabled={busy} onClick={onOpenPro}>See Pro plans</button>
+              )}
               <button className="link-btn" disabled={busy} onClick={restore}>
-                Restore
+                {busy ? "Restoring…" : "Restore"}
               </button>
             </div>
           )}
+          {proStatus && <p className="set-backup-status">{proStatus}</p>}
         </div>
 
         <div className="set-list">
@@ -289,7 +296,7 @@ export function SettingsSheet({ onClose, onReset }: Props) {
           </div>
           <div className="set-theme-row">
             {themes.map((t) => {
-              const unlocked = themeUnlocked(game, premium, t.id);
+              const unlocked = themeUnlocked(game, pro, t.id);
               const active = hallTheme === t.id;
               const style = themeStyle(t.id);
               return (
@@ -317,7 +324,7 @@ export function SettingsSheet({ onClose, onReset }: Props) {
           </div>
           <div className="set-theme-row">
             {rackSkins.map((t) => {
-              const unlocked = skinUnlocked(game, premium, t.id);
+              const unlocked = skinUnlocked(game, pro, t.id);
               const active = rackSkin === t.id;
               return (
                 <button

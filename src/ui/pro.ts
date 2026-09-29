@@ -7,5 +7,5 @@ import { hasPro, onProChange } from "../state/premium";
  * open takes effect on the next frame (the App renders at 10Hz).
  */
 export function useHasPro(): boolean {
-  return useSyncExternalStore(onProChange, () => hasPro(), () => false);
+  return useSyncExternalStore(onProChange, () => hasPro(), () => hasPro());
 }
