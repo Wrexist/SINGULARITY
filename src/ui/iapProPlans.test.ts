@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach, beforeAll } from "vitest";
 
 /**
  * Pro plans through RevenueCat: the current offering's packages become the paywall's
@@ -81,6 +81,10 @@ async function load(fake: ReturnType<typeof fakePurchases> | null, native = true
   const premium = await import("../state/premium");
   return { iap: mod.iap, ...premium };
 }
+
+// Warm the module transform once: under the full suite's parallel load a cold first
+// import can outlast the default 5s test timeout.
+beforeAll(async () => { await import("./iap"); }, 60_000);
 
 afterEach(() => {
   vi.useRealTimers();

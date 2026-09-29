@@ -78,6 +78,8 @@ try {
   await page.addInitScript(
     ([save]) => {
       localStorage.setItem("singularity.settings.v1", JSON.stringify({ sound: false, haptics: false, reducedMotion: true, onboarded: true }));
+      // The Pro paywall's automatic showings are spent, so it never covers a shot.
+      localStorage.setItem("singularity.paywall.v1", JSON.stringify({ launchShown: true, shipArmed: true, shipShown: true, lastAutoAt: 0 }));
       localStorage.setItem("singularity.save.v1", save);
       localStorage.setItem("singularity.lastSeen.v1", String(Date.now()));
     },

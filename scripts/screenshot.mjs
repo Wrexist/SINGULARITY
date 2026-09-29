@@ -74,6 +74,8 @@ try {
         "singularity.settings.v1",
         JSON.stringify({ sound: true, haptics: true, reducedMotion: false, onboarded: true, shipExplained: true }),
       );
+      // The Pro paywall's automatic showings are spent, so it never covers a shot.
+      localStorage.setItem("singularity.paywall.v1", JSON.stringify({ launchShown: true, shipArmed: true, shipShown: true, lastAutoAt: 0 }));
     });
   }
 

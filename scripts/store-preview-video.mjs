@@ -121,6 +121,7 @@ async function openBeat(browser, beat) {
   // reducedMotion:false so the hall actually animates on camera (the screenshot
   // pipeline uses true; a video wants the motion).
   await app.addInitScript(() => localStorage.setItem("singularity.settings.v1", JSON.stringify({ sound: true, haptics: true, reducedMotion: false, onboarded: true })));
+  await app.addInitScript(() => localStorage.setItem("singularity.paywall.v1", JSON.stringify({ launchShown: true, shipArmed: true, shipShown: true, lastAutoAt: 0 })));
   await app.addInitScript(([save, now]) => {
     localStorage.setItem("singularity.save.v1", save);
     localStorage.setItem("singularity.lastSeen.v1", now);
