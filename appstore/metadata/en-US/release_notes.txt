@@ -14,6 +14,7 @@ The biggest update since launch. Your lab now runs far deeper than GPUs and rack
 • "Save for this": tap research that's out of reach and the lab banks Compute, then buys it for you
 • Calmer news: only real decisions interrupt you; everything else runs on the Newswire
 • Dark mode: choose Light, Dark or Match device in Settings
+• Singularity Pro (optional): offline earnings ×2, a 24-hour offline cap, earlier autopilots and Pro-only themes. Try it free for 7 days
 • Better with VoiceOver, keyboards and Reduce Motion, with bigger tap targets and clearer text
 • Smoother on older iPhones, offline time counted properly, and 150+ fixes
 
