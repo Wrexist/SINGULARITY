@@ -12,7 +12,7 @@ import { CrownIcon, FastForwardIcon, ClockIcon, RocketIcon, PaletteIcon } from "
 export const TERMS_URL = "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/";
 export const PRIVACY_URL = "https://wrexist.github.io/SINGULARITY/privacy/";
 
-const PLAN_NAME: Record<PlanId, string> = { annual: "Yearly", monthly: "Monthly", lifetime: "Lifetime" };
+const PLAN_NAME: Record<PlanId, string> = { annual: "Yearly", weekly: "Weekly", lifetime: "Lifetime" };
 
 /** The primary button's words for a plan. */
 export function ctaLabel(p: Plan | undefined): string {
@@ -26,7 +26,7 @@ export function ctaLabel(p: Plan | undefined): string {
 export function termsLine(p: Plan | undefined): string {
   if (!p) return "";
   if (p.id === "lifetime") return `One-time purchase of ${p.priceString}. No subscription.`;
-  const unit = p.periodLabel === "year" ? "year" : "month";
+  const unit = p.periodLabel === "year" ? "year" : "week";
   if (p.trialDays) {
     return `${p.trialDays} days free, then ${p.priceString}/${unit}. Auto-renews until cancelled. Cancel anytime in Settings › Apple ID at least 24 hours before the trial ends.`;
   }
@@ -194,12 +194,12 @@ export function ProPaywall({ onClose }: Props) {
                         {p.id === "annual" && <span className="pro-tag">Best value</span>}
                       </span>
                       <span className="pro-plan-note">
-                        {p.id === "lifetime" ? "Pay once" : p.id === "annual" ? "Billed yearly" : "Billed monthly"}
+                        {p.id === "lifetime" ? "Pay once" : p.id === "annual" ? "Billed yearly" : "Billed weekly"}
                       </span>
                     </span>
                     <span className="pro-plan-price">
                       <span className="pro-plan-amt"><b>{p.priceString}</b>{p.id !== "lifetime" && <span>/{p.periodLabel}</span>}</span>
-                      {p.perMonthString && <span className="pro-plan-pm">{p.perMonthString}/mo</span>}
+                      {p.perWeekString && <span className="pro-plan-pm">{p.perWeekString}/wk</span>}
                     </span>
                     {p.id === "annual" && p.trialDays ? <span className="pro-badge">{p.trialDays} days free</span> : null}
                   </button>

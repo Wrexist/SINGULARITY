@@ -7,7 +7,7 @@
  *  - the lifetime unlock (non-consumable `com.wrexist.singularityinc.premium`, the
  *    original "Premium"): a local flag that is GRANT-ONLY — a "not owned" answer
  *    from the store never takes it away (existing buyers keep Pro forever);
- *  - a yearly or monthly subscription: persisted as an expiry timestamp (ms epoch)
+ *  - a yearly or weekly subscription: persisted as an expiry timestamp (ms epoch)
  *    mirrored from the store's entitlement. Unlike the lifetime flag it CAN lapse.
  *
  * Local storage is hostile input like the save: the stored expiry is validated and a

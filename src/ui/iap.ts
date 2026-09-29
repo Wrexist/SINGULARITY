@@ -33,8 +33,8 @@ export const PREMIUM_PRICE = "$6.99";
 /** Web/dev placeholder plans (no store there). On a device every price comes from
  *  the store — these strings are never shown to a real buyer. */
 export const WEB_PLANS: readonly Plan[] = [
-  { id: "annual", priceString: "$24.99", periodLabel: "year", trialDays: 7, perMonthString: "$2.08" },
-  { id: "monthly", priceString: "$4.99", periodLabel: "month", trialDays: null },
+  { id: "annual", priceString: "$24.99", periodLabel: "year", trialDays: 7, perWeekString: "$0.48" },
+  { id: "weekly", priceString: "$4.99", periodLabel: "week", trialDays: null },
   { id: "lifetime", priceString: PREMIUM_PRICE, periodLabel: "once", trialDays: null },
 ];
 
@@ -232,7 +232,7 @@ export const iap = {
   },
 
   /**
-   * The plans on sale, in display order (yearly, monthly, lifetime — as offered).
+   * The plans on sale, in display order (yearly, weekly, lifetime — as offered).
    * RevenueCat builds read the current offering; the direct StoreKit path sells the
    * lifetime unlock only; web/dev shows placeholders. Never throws: a store that
    * cannot answer yields an empty list (the paywall says so).

@@ -95,21 +95,21 @@ describe("paywall memory is hostile storage", () => {
 });
 
 describe("paywall copy follows the plan", () => {
-  const annual: Plan = { id: "annual", priceString: "$24.99", periodLabel: "year", trialDays: 7, perMonthString: "$2.08" };
+  const annual: Plan = { id: "annual", priceString: "$24.99", periodLabel: "year", trialDays: 7, perWeekString: "$0.48" };
   const annualNoTrial: Plan = { ...annual, trialDays: null };
-  const monthly: Plan = { id: "monthly", priceString: "$4.99", periodLabel: "month", trialDays: null };
+  const weekly: Plan = { id: "weekly", priceString: "$4.99", periodLabel: "week", trialDays: null };
   const lifetime: Plan = { id: "lifetime", priceString: "$6.99", periodLabel: "once", trialDays: null };
 
   it("names the action", () => {
     expect(ctaLabel(annual)).toBe("Start 7-day free trial");
     expect(ctaLabel(annualNoTrial)).toBe("Subscribe");
-    expect(ctaLabel(monthly)).toBe("Subscribe");
+    expect(ctaLabel(weekly)).toBe("Subscribe");
     expect(ctaLabel(lifetime)).toBe("Unlock forever");
   });
 
   it("states the exact terms under the button", () => {
     expect(termsLine(annual)).toBe("7 days free, then $24.99/year. Auto-renews until cancelled. Cancel anytime in Settings › Apple ID at least 24 hours before the trial ends.");
-    expect(termsLine(monthly)).toMatch(/^\$4\.99\/month, auto-renews until cancelled\. Cancel anytime in Settings › Apple ID/);
+    expect(termsLine(weekly)).toMatch(/^\$4\.99\/week, auto-renews until cancelled\. Cancel anytime in Settings › Apple ID/);
     expect(termsLine(annualNoTrial)).toMatch(/^\$24\.99\/year, auto-renews until cancelled/);
     expect(termsLine(lifetime)).toBe("One-time purchase of $6.99. No subscription.");
   });

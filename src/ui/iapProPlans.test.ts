@@ -10,7 +10,7 @@ import { describe, it, expect, vi, afterEach, beforeAll } from "vitest";
 
 const LIFETIME = "com.wrexist.singularityinc.premium";
 const YEARLY = "com.wrexist.singularityinc.pro.yearly";
-const MONTHLY = "com.wrexist.singularityinc.pro.monthly";
+const WEEKLY = "com.wrexist.singularityinc.pro.weekly";
 const DAY = 24 * 3_600_000;
 
 function fakeLocalStorage() {
@@ -42,10 +42,10 @@ function fakePurchases(opts: {
 }) {
   const calls = { packages: [] as string[], listener: null as null | ((i: unknown) => void) };
   const yearly = product(YEARLY, "249,00 kr", {
-    pricePerMonthString: "20,75 kr",
+    pricePerWeekString: "4,79 kr",
     introPrice: { price: 0, priceString: "0 kr", cycles: 1, period: "P1W", periodUnit: "WEEK", periodNumberOfUnits: 1 },
   });
-  const monthly = product(MONTHLY, "49,00 kr", { introPrice: null });
+  const weekly = product(WEEKLY, "49,00 kr", { introPrice: null });
   const lifetime = product(LIFETIME, "79,00 kr");
   const Purchases = {
     setLogLevel: async () => {},
@@ -55,7 +55,7 @@ function fakePurchases(opts: {
     getProducts: async () => ({ products: [lifetime] }),
     getOfferings: async () => ({
       all: {},
-      current: opts.noOffering ? null : { identifier: "default", availablePackages: [pkg("MONTHLY", monthly), pkg("ANNUAL", yearly), pkg("LIFETIME", lifetime)] },
+      current: opts.noOffering ? null : { identifier: "default", availablePackages: [pkg("WEEKLY", weekly), pkg("ANNUAL", yearly), pkg("LIFETIME", lifetime)] },
     }),
     checkTrialOrIntroductoryPriceEligibility: async ({ productIdentifiers }: { productIdentifiers: string[] }) =>
       Object.fromEntries(productIdentifiers.map((id) => [id, { status: opts.eligibility ?? 2, description: "" }])),
@@ -96,12 +96,12 @@ afterEach(() => {
 });
 
 describe("iap.plans through RevenueCat", () => {
-  it("lists yearly, monthly, lifetime from the current offering with store prices", async () => {
+  it("lists yearly, weekly, lifetime from the current offering with store prices", async () => {
     const { iap } = await load(fakePurchases({}));
     const plans = await iap.plans();
-    expect(plans.map((p) => p.id)).toEqual(["annual", "monthly", "lifetime"]);
-    expect(plans[0]).toEqual({ id: "annual", priceString: "249,00 kr", periodLabel: "year", trialDays: 7, perMonthString: "20,75 kr" });
-    expect(plans[1]).toEqual({ id: "monthly", priceString: "49,00 kr", periodLabel: "month", trialDays: null });
+    expect(plans.map((p) => p.id)).toEqual(["annual", "weekly", "lifetime"]);
+    expect(plans[0]).toEqual({ id: "annual", priceString: "249,00 kr", periodLabel: "year", trialDays: 7, perWeekString: "4,79 kr" });
+    expect(plans[1]).toEqual({ id: "weekly", priceString: "49,00 kr", periodLabel: "week", trialDays: null });
     expect(plans[2]).toEqual({ id: "lifetime", priceString: "79,00 kr", periodLabel: "once", trialDays: null });
   });
 
@@ -139,15 +139,15 @@ describe("iap.purchasePlan through RevenueCat", () => {
 
   it("a cancelled sheet is a quiet false", async () => {
     const { iap, hasPro } = await load(fakePurchases({ buyResult: "cancel" }));
-    expect(await iap.purchasePlan("monthly")).toBe(false);
+    expect(await iap.purchasePlan("weekly")).toBe(false);
     expect(hasPro()).toBe(false);
   });
 
   it("a later snapshot with no entitlement lets a subscription lapse", async () => {
     const until = Date.now() + 30 * DAY;
-    const fake = fakePurchases({ buyResult: subInfo(MONTHLY, until) });
+    const fake = fakePurchases({ buyResult: subInfo(WEEKLY, until) });
     const { iap, hasPro } = await load(fake);
-    await iap.purchasePlan("monthly");
+    await iap.purchasePlan("weekly");
     expect(hasPro()).toBe(true);
     fake.calls.listener?.(info(null)); // RevenueCat pushes the expired customer
     expect(hasPro()).toBe(false);
@@ -171,7 +171,7 @@ describe("iap.purchasePlan through RevenueCat", () => {
 
   it("restore brings back a subscription", async () => {
     const until = Date.now() + 20 * DAY;
-    const { iap, hasPro } = await load(fakePurchases({ restore: subInfo(MONTHLY, until) }));
+    const { iap, hasPro } = await load(fakePurchases({ restore: subInfo(WEEKLY, until) }));
     expect(await iap.restore()).toBe(true);
     expect(hasPro()).toBe(true);
   });
@@ -183,14 +183,14 @@ describe("iap plans on web/dev", () => {
     const plans = await iap.plans();
     expect(plans.map((p) => [p.id, p.priceString, p.trialDays])).toEqual([
       ["annual", "$24.99", 7],
-      ["monthly", "$4.99", null],
+      ["weekly", "$4.99", null],
       ["lifetime", "$6.99", null],
     ]);
   });
 
   it("grants a subscription locally so the paywall is testable", async () => {
     const { iap, hasPro, isPremium, proUntil } = await load(null, false);
-    expect(await iap.purchasePlan("monthly")).toBe(true);
+    expect(await iap.purchasePlan("weekly")).toBe(true);
     expect(hasPro()).toBe(true);
     expect(isPremium()).toBe(false);
     expect(proUntil()).toBeGreaterThan(Date.now());

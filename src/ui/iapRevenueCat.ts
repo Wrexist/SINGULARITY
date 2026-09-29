@@ -7,7 +7,7 @@ import type { CustomerInfo, PurchasesPackage, PurchasesStoreProduct } from "@rev
  * without one the app keeps its direct StoreKit path, which sells the lifetime unlock
  * only, so a build missing the key still sells and restores it.
  *
- * All three products (yearly, monthly, lifetime) attach to ONE entitlement, "pro".
+ * All three products (yearly, weekly, lifetime) attach to ONE entitlement, "pro".
  * RevenueCat is the source of truth for the purchase itself (receipt validation,
  * restore across devices, revenue reporting). Locally, the game reads state/premium:
  *  - the lifetime flag stays GRANT-ONLY: a "not owned" answer never takes it away;
@@ -19,19 +19,19 @@ import type { CustomerInfo, PurchasesPackage, PurchasesStoreProduct } from "@rev
 export const RC_ENTITLEMENT_ID = "pro";
 
 export const PRO_YEARLY_ID = "com.wrexist.singularityinc.pro.yearly";
-export const PRO_MONTHLY_ID = "com.wrexist.singularityinc.pro.monthly";
+export const PRO_WEEKLY_ID = "com.wrexist.singularityinc.pro.weekly";
 
-export type PlanId = "annual" | "monthly" | "lifetime";
+export type PlanId = "annual" | "weekly" | "lifetime";
 
 export interface Plan {
   id: PlanId;
   /** Store-localized price ("$24.99", "249,00 kr"). */
   priceString: string;
-  periodLabel: "year" | "month" | "once";
+  periodLabel: "year" | "week" | "once";
   /** Free-trial length in days when this customer is offered one, else null. */
   trialDays: number | null;
-  /** Localized per-month equivalent (yearly only). */
-  perMonthString?: string;
+  /** Localized per-week equivalent (yearly only). */
+  perWeekString?: string;
 }
 
 /** What one customer-info snapshot says about Pro. */
@@ -90,7 +90,7 @@ export function trialDaysOf(product: PurchasesStoreProduct | null | undefined): 
 export interface RevenueCatStore {
   /** Localized lifetime price string, or null while unknown. */
   price(): Promise<string | null>;
-  /** The plans the current offering sells (annual, monthly, lifetime — as present). */
+  /** The plans the current offering sells (annual, weekly, lifetime — as present). */
   plans(): Promise<Plan[]>;
   /** Buy the lifetime unlock; true when Pro is active afterwards. False on cancel. */
   buy(): Promise<boolean>;
@@ -139,7 +139,7 @@ export async function createRevenueCatStore(
       for (const p of current?.availablePackages ?? []) {
         const t = p.packageType as string;
         if (t === "ANNUAL" && !out.annual) out.annual = p;
-        else if (t === "MONTHLY" && !out.monthly) out.monthly = p;
+        else if (t === "WEEKLY" && !out.weekly) out.weekly = p;
         else if (t === "LIFETIME" && !out.lifetime) out.lifetime = p;
       }
     } catch (e) {
@@ -193,18 +193,18 @@ export async function createRevenueCatStore(
     price,
     async plans() {
       const pkgs = await loadPackages();
-      const subs = [pkgs.annual, pkgs.monthly].filter((p): p is PurchasesPackage => !!p);
+      const subs = [pkgs.annual, pkgs.weekly].filter((p): p is PurchasesPackage => !!p);
       const noTrial = await ineligible(subs.map((p) => p.product.identifier));
       const plans: Plan[] = [];
-      const sub = (id: "annual" | "monthly", p: PurchasesPackage | undefined) => {
+      const sub = (id: "annual" | "weekly", p: PurchasesPackage | undefined) => {
         if (!p || !p.product?.priceString) return;
         const trial = noTrial.has(p.product.identifier) ? null : trialDaysOf(p.product);
-        const plan: Plan = { id, priceString: p.product.priceString, periodLabel: id === "annual" ? "year" : "month", trialDays: trial };
-        if (id === "annual" && p.product.pricePerMonthString) plan.perMonthString = p.product.pricePerMonthString;
+        const plan: Plan = { id, priceString: p.product.priceString, periodLabel: id === "annual" ? "year" : "week", trialDays: trial };
+        if (id === "annual" && p.product.pricePerWeekString) plan.perWeekString = p.product.pricePerWeekString;
         plans.push(plan);
       };
       sub("annual", pkgs.annual);
-      sub("monthly", pkgs.monthly);
+      sub("weekly", pkgs.weekly);
       const lifePrice = pkgs.lifetime?.product?.priceString ?? (await price());
       if (lifePrice) plans.push({ id: "lifetime", priceString: lifePrice, periodLabel: "once", trialDays: null });
       return plans;
