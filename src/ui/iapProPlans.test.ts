@@ -183,8 +183,8 @@ describe("iap plans on web/dev", () => {
     const plans = await iap.plans();
     expect(plans.map((p) => [p.id, p.priceString, p.trialDays])).toEqual([
       ["annual", "$24.99", 7],
-      ["weekly", "$4.99", null],
-      ["lifetime", "$6.99", null],
+      ["weekly", "$4.99", 7],
+      ["lifetime", "$39.99", null],
     ]);
   });
 

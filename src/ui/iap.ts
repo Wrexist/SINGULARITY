@@ -28,13 +28,13 @@ export const PREMIUM_PRODUCT_ID = "com.wrexist.singularityinc.premium";
 /** Fallback label only (web/dev, or before StoreKit has answered). On device the
  *  card shows StoreKit's localized price — a hardcoded "$6.99" told a player in
  *  the UK, EU or Japan a price StoreKit would not actually charge them. */
-export const PREMIUM_PRICE = "$6.99";
+export const PREMIUM_PRICE = "$39.99";
 
 /** Web/dev placeholder plans (no store there). On a device every price comes from
  *  the store — these strings are never shown to a real buyer. */
 export const WEB_PLANS: readonly Plan[] = [
   { id: "annual", priceString: "$24.99", periodLabel: "year", trialDays: 7, perWeekString: "$0.48" },
-  { id: "weekly", priceString: "$4.99", periodLabel: "week", trialDays: null },
+  { id: "weekly", priceString: "$4.99", periodLabel: "week", trialDays: 7 },
   { id: "lifetime", priceString: PREMIUM_PRICE, periodLabel: "once", trialDays: null },
 ];
 

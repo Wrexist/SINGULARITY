@@ -104,6 +104,8 @@ describe("paywall copy follows the plan", () => {
     expect(ctaLabel(annual)).toBe("Start 7-day free trial");
     expect(ctaLabel(annualNoTrial)).toBe("Subscribe");
     expect(ctaLabel(weekly)).toBe("Subscribe");
+    expect(ctaLabel({ ...weekly, trialDays: 7 })).toBe("Start 7-day free trial");
+    expect(termsLine({ ...weekly, trialDays: 7 })).toBe("7 days free, then $4.99/week. Auto-renews until cancelled. Cancel anytime in Settings › Apple ID at least 24 hours before the trial ends.");
     expect(ctaLabel(lifetime)).toBe("Unlock forever");
   });
 

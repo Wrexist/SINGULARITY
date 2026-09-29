@@ -194,7 +194,7 @@ export function ProPaywall({ onClose }: Props) {
                         {p.id === "annual" && <span className="pro-tag">Best value</span>}
                       </span>
                       <span className="pro-plan-note">
-                        {p.id === "lifetime" ? "Pay once" : p.id === "annual" ? "Billed yearly" : "Billed weekly"}
+                        {p.id === "lifetime" ? "Pay once" : p.id === "annual" ? "Billed yearly" : p.trialDays ? `${p.trialDays} days free, then weekly` : "Billed weekly"}
                       </span>
                     </span>
                     <span className="pro-plan-price">
