@@ -13,6 +13,13 @@ import type { GameState } from "./types";
  * lagging product's next version when affordable. (Draft auto-launch needs id minting, so it
  * lives store-side.) Every autopilot is off by default and gated by ship count, and the sim
  * never enables one — so the tuned curve is untouched.
+ *
+ * PRO PERK: with Pro, every autopilot (and the panel reveal) unlocks
+ * `automation.proShipsEarlier` Ship sooner. Pro is a store/UI concern (StoreKit + wall
+ * clock), so it is passed IN as a plain boolean — the same boundary as the cosmetics'
+ * isPremium flag. It is never persisted, and every parameter defaults to false, so the
+ * balance sim (which never passes it) is untouched. Losing Pro simply re-locks: a switch
+ * left on stays stored and stops running, then resumes if Pro returns.
  */
 
 const BY_ID = new Map(A.list.map((a) => [a.id, a]));
@@ -22,25 +29,30 @@ export function automationList(): AutomationDef[] {
   return A.list;
 }
 
-/** True once the whole panel reveals. */
-export function automationUnlockedAny(state: GameState): boolean {
-  return A.enabled && state.prestige.ships >= A.revealAtShips;
+/** Ships needed for a gate, with the Pro head start applied (never below 0). */
+export function shipsNeeded(base: number, pro = false): number {
+  return pro ? Math.max(0, base - A.proShipsEarlier) : base;
 }
 
-/** Is a specific autopilot unlocked (by ship count)? */
-export function automationUnlocked(state: GameState, id: string): boolean {
+/** True once the whole panel reveals. */
+export function automationUnlockedAny(state: GameState, pro = false): boolean {
+  return A.enabled && state.prestige.ships >= shipsNeeded(A.revealAtShips, pro);
+}
+
+/** Is a specific autopilot unlocked (by ship count; one sooner with Pro)? */
+export function automationUnlocked(state: GameState, id: string, pro = false): boolean {
   const def = BY_ID.get(id);
-  return A.enabled && !!def && state.prestige.ships >= def.unlockShips;
+  return A.enabled && !!def && state.prestige.ships >= shipsNeeded(def.unlockShips, pro);
 }
 
 /** Is it unlocked AND switched on? */
-export function automationEnabled(state: GameState, id: string): boolean {
-  return automationUnlocked(state, id) && !!state.automation[id];
+export function automationEnabled(state: GameState, id: string, pro = false): boolean {
+  return automationUnlocked(state, id, pro) && !!state.automation[id];
 }
 
 /** Flip an autopilot on/off (no-op if still locked). */
-export function toggleAutomation(state: GameState, id: string): GameState {
-  if (!automationUnlocked(state, id)) return state;
+export function toggleAutomation(state: GameState, id: string, pro = false): GameState {
+  if (!automationUnlocked(state, id, pro)) return state;
   return { ...state, automation: { ...state.automation, [id]: !state.automation[id] } };
 }
 
@@ -48,22 +60,22 @@ export function toggleAutomation(state: GameState, id: string): GameState {
  * Run the pure autopilots on the post-tick state. Cheap early-out when nothing is enabled;
  * each branch only acts when there's a real chore waiting, so most ticks are no-ops.
  */
-export function applyAutomation(state: GameState): GameState {
+export function applyAutomation(state: GameState, pro = false): GameState {
   if (!A.enabled) return state;
   let s = state;
 
-  if (automationEnabled(s, "auto_objectives")) {
+  if (automationEnabled(s, "auto_objectives", pro)) {
     for (const v of objectiveBoard(s)) if (v.ready) s = claimObjective(s, v.def.id);
   }
 
-  if (automationEnabled(s, "auto_contracts")) {
+  if (automationEnabled(s, "auto_contracts", pro)) {
     for (const c of contractBoard(s)) if (c.ready) s = claimContract(s, c.def.id);
     // Today's sponsor is a contract too — for a cleared-ladder veteran it's the only one
     // left. Same-ref no-op unless it's met and unclaimed.
     s = claimSponsor(s);
   }
 
-  if (automationEnabled(s, "auto_assign") && s.products.active.length > 0) {
+  if (automationEnabled(s, "auto_assign", pro) && s.products.active.length > 0) {
     // Post each idle product-team specialist to a product it synergizes with (else the first).
     // Someone the PLAYER benched stays benched — re-posting them on the next tick made
     // "send to Lab" appear to do nothing while the autopilot was on.
@@ -75,7 +87,7 @@ export function applyAutomation(state: GameState): GameState {
     }
   }
 
-  if (automationEnabled(s, "auto_upgrade")) {
+  if (automationEnabled(s, "auto_upgrade", pro)) {
     // Start the next version on a product that's fallen behind rivals, if it's affordable now.
     for (const p of s.products.active) {
       if (p.upgrade) continue;

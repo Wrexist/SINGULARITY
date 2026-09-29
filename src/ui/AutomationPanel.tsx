@@ -1,5 +1,5 @@
 import type { GameState } from "../engine/types";
-import { automationList, automationUnlocked } from "../engine/automation";
+import { automationList, automationUnlocked, shipsNeeded } from "../engine/automation";
 import { iconFor } from "./iconRegistry";
 import { LockIcon } from "./Icons";
 
@@ -10,6 +10,8 @@ interface Props {
    *  already supplies both). Otherwise this nests a panel inside a panel and shows
    *  its heading twice. */
   bare?: boolean;
+  /** Pro: every autopilot unlocks one Ship sooner (engine takes it as a flag). */
+  pro?: boolean;
 }
 
 /**
@@ -17,9 +19,9 @@ interface Props {
  * ship count, then flips on/off with a switch. Off by default (the player opts in), and the
  * balance sim never enables one, so the tuned curve is untouched.
  */
-export function AutomationPanel({ game, onToggle, bare = false }: Props) {
+export function AutomationPanel({ game, onToggle, bare = false, pro = false }: Props) {
   const list = automationList();
-  const onCount = list.filter((d) => automationUnlocked(game, d.id) && game.automation[d.id]).length;
+  const onCount = list.filter((d) => automationUnlocked(game, d.id, pro) && game.automation[d.id]).length;
 
   const body = (
     <>
@@ -27,7 +29,7 @@ export function AutomationPanel({ game, onToggle, bare = false }: Props) {
       {onCount === 0 && <p className="automation-intro">Let the lab run itself. Ship more models to unlock each autopilot, then switch it on.</p>}
       <div className="list">
         {list.map((def) => {
-          const unlocked = automationUnlocked(game, def.id);
+          const unlocked = automationUnlocked(game, def.id, pro);
           const on = unlocked && !!game.automation[def.id];
           return (
             <button
@@ -40,7 +42,7 @@ export function AutomationPanel({ game, onToggle, bare = false }: Props) {
               <span className="automation-ic" aria-hidden="true">{unlocked ? iconFor(def.icon, 21) : <LockIcon size={21} />}</span>
               <div className="automation-text">
                 <span className="automation-name">{def.name}</span>
-                <span className="automation-desc">{unlocked ? def.desc : `Unlocks at ${def.unlockShips} models shipped`}</span>
+                <span className="automation-desc">{unlocked ? def.desc : `Unlocks at ${shipsNeeded(def.unlockShips, pro)} models shipped`}</span>
               </div>
               <span className={`automation-switch ${on ? "on" : ""}`} aria-hidden="true"><span className="automation-knob" /></span>
             </button>

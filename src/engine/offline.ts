@@ -14,6 +14,9 @@ export interface OfflineSummary {
   appliedMs: number;
   /** Whether the offline window was clamped to the cap. */
   capped: boolean;
+  /** Offline-rate multiplier the window was simulated at (Pro ×2). Absent = ×1. The
+   *  times above stay REAL time; only the simulated span was `appliedMs × rate`. */
+  rate?: number;
   gained: {
     compute: Big;
     data: Big;
@@ -112,6 +115,7 @@ export function extendSummary(open: OfflineSummary, next: OfflineSummary): Offli
     elapsedMs: open.elapsedMs + next.elapsedMs,
     appliedMs: open.appliedMs + next.appliedMs,
     capped: open.capped || next.capped,
+    ...(open.rate !== undefined || next.rate !== undefined ? { rate: Math.max(open.rate ?? 1, next.rate ?? 1) } : {}),
     gained: {
       compute: open.gained.compute.add(next.gained.compute),
       data: open.gained.data.add(next.gained.data),
@@ -160,15 +164,31 @@ export function recapWorthShowing(
   );
 }
 
+/** Largest offline-rate multiplier the engine will honour (defence in depth). */
+export const MAX_OFFLINE_RATE = 4;
+
+/** A usable offline rate: finite, positive, at most MAX_OFFLINE_RATE; else ×1. */
+export function sanitizeOfflineRate(rate: number): number {
+  return Number.isFinite(rate) && rate > 0 ? Math.min(rate, MAX_OFFLINE_RATE) : 1;
+}
+
 /**
  * Apply offline progress on load. Offline is "just a tick with a big elapsedMs"
  * (LEARNINGS) — clamp the window so returning is a reward, not an exploit, and
  * return a summary the "while you were away" screen renders as a designed beat.
+ *
+ * `rate` (Pro: ×2) speeds the away window up: the cap applies to REAL time first,
+ * then the capped window is simulated at `rate` — so 30h away on a 24h cap at ×2 is
+ * 48h of lab time, never 60h. The summary keeps reporting real time away. `pro` is
+ * passed through to the autopilots that run between the catch-up's steps. Both
+ * default off, and the balance sim never calls this, so the tuned curve can't move.
  */
 export function applyOffline(
   state: GameState,
   elapsedMs: number,
   capHours: number = balance.offline.maxHours,
+  rate = 1,
+  pro = false,
 ): {
   state: GameState;
   summary: OfflineSummary;
@@ -178,6 +198,8 @@ export function applyOffline(
   // summary never reports NaN and the catch-up tick is simply skipped.
   const elapsed = Number.isFinite(elapsedMs) ? elapsedMs : 0;
   const appliedMs = Math.max(0, Math.min(elapsed, capMs));
-  const next = tick(state, appliedMs);
-  return { state: next, summary: summarizeWindow(state, next, elapsed, appliedMs) };
+  const r = sanitizeOfflineRate(rate);
+  const next = tick(state, appliedMs * r, pro);
+  const summary = summarizeWindow(state, next, elapsed, appliedMs);
+  return { state: next, summary: r !== 1 ? { ...summary, rate: r } : summary };
 }

@@ -73,9 +73,9 @@ import { counterRival, placeStake } from "../engine/market";
 import { negotiationDue, negotiationOffer, applyNegotiationChoice, negotiationStands, NEGOTIATION_ID } from "../engine/negotiation";
 import { buyLegacyPerk } from "../engine/legacyTree";
 import { prestige, type ShipMode } from "../engine/prestige";
-import { applyOffline, summarizeWindow, extendSummary, recapWorthShowing, type OfflineSummary } from "../engine/offline";
+import { applyOffline, summarizeWindow, extendSummary, recapWorthShowing, sanitizeOfflineRate, type OfflineSummary } from "../engine/offline";
 import { serialize, deserialize } from "../engine/save";
-import { isPremium } from "./premium";
+import { hasPro } from "./premium";
 import { balance } from "../engine/balance/config";
 import { recordTelemetry } from "./telemetry";
 import { purchaseSignature } from "../engine/telemetry";
@@ -161,7 +161,9 @@ interface GameStore {
   /** Advance the sim by an already-cap-clamped window. `rawElapsedMs` is the
    *  UNCLAMPED real time it represents — pass it when resuming from a suspend so
    *  the recap can say the window was capped. */
-  advance: (elapsedMs: number, rawElapsedMs?: number) => void;
+  /** `rate` (Pro ×2) speeds up a RESUME window only — the loop passes it for a real
+   *  suspend, never for a live frame. Times in the recap stay real time. */
+  advance: (elapsedMs: number, rawElapsedMs?: number, rate?: number) => void;
   save: () => void;
   dismissOffline: () => void;
   // player actions
@@ -524,13 +526,15 @@ export const useGame = create<GameStore>((set, get) => ({
           // back credits nothing (it used to credit nothing too, then the next save
           // stamped the earlier time and re-opened the whole window).
           const elapsed = creditableMs(last, seen, wall);
-          // Premium grants a longer offline cap (QoL perk, not power).
-          const capHours = isPremium() ? balance.offline.premiumMaxHours : balance.offline.maxHours;
+          // Pro grants a longer offline cap and runs the away window at ×2 (the cap
+          // bounds REAL time first; see applyOffline).
+          const pro = hasPro();
+          const capHours = pro ? balance.offline.premiumMaxHours : balance.offline.maxHours;
           // Offline catch-up gets its OWN guard: a throw here is an engine bug, not a
           // corrupt save, and must never fall through to the fresh-game path below.
           // Keep the loaded save and skip the catch-up instead.
           try {
-            const result = applyOffline(game, elapsed, capHours);
+            const result = applyOffline(game, elapsed, capHours, pro ? balance.offline.proRate : 1, pro);
             game = result.state;
             // Only surface the WIWA screen if the window earned it — real time away
             // AND something to report. Shares one predicate with the resume path so
@@ -573,8 +577,12 @@ export const useGame = create<GameStore>((set, get) => ({
     recordTelemetry({ kind: "session", t: now() });
   },
 
-  advance: (elapsedMs, rawElapsedMs) =>
+  advance: (elapsedMs, rawElapsedMs, rate) =>
     set((s) => {
+      // Pro is read here (state layer: storage + wall clock) and handed to the pure
+      // engine as a plain flag. The rate multiplies SIMULATED time only.
+      const pro = hasPro();
+      const simRate = sanitizeOfflineRate(rate ?? 1);
       // Snapshot each product's version so we can celebrate completions
       // (the engine finishes them inside tick; we surface the moment to the UI).
       // By version, not by "was upgrading, now isn't" (as summarizeWindow does): the
@@ -590,9 +598,9 @@ export const useGame = create<GameStore>((set, get) => ({
       // the app left open would: letting go there cancelled the save on every short
       // app switch and spent what it had banked on full-size runs.
       let start = s.game;
-      let remainingMs = elapsedMs;
+      let remainingMs = elapsedMs * simRate;
       let pinDone = false;
-      if (s.savingFor && elapsedMs > 2000) {
+      if (s.savingFor && remainingMs > 2000) {
         const pin = s.savingFor;
         const def = ALL_RESEARCH.find((r) => r.id === pin.id);
         // The landing moment is re-estimated after each hop: a buff that lapses inside
@@ -607,7 +615,7 @@ export const useGame = create<GameStore>((set, get) => ({
           }
           if (Number.isFinite(needMs) && needMs >= remainingMs) break; // the window ends first: keep the pin
           if (Number.isFinite(needMs)) {
-            start = tick(start, needMs);
+            start = tick(start, needMs, pro);
             remainingMs -= needMs;
             if (canBuyResearch(start, pin.id)) start = buyResearchByHand(start, pin.id);
             else if (def && researchAvailable(start, pin.id) && start.resources.compute.lt(researchCost(start, def).compute)) continue; // still short on Compute: hop again
@@ -616,7 +624,7 @@ export const useGame = create<GameStore>((set, get) => ({
           pinDone = true;
         }
       }
-      let game = tick(start, remainingMs);
+      let game = tick(start, remainingMs, pro);
       const secs = elapsedMs / 1000;
       const patch: Partial<GameStore> = { game };
       if (pinDone) patch.savingFor = null;
@@ -632,7 +640,8 @@ export const useGame = create<GameStore>((set, get) => ({
       const bigWindow = elapsedMs >= balance.offline.resumeRecapMinMs;
       let recapFired = false;
       if (bigWindow) {
-        const summary = summarizeWindow(s.game, game, rawElapsedMs ?? elapsedMs, elapsedMs);
+        const win = summarizeWindow(s.game, game, rawElapsedMs ?? elapsedMs, elapsedMs);
+        const summary = simRate !== 1 ? { ...win, rate: simRate } : win;
         if (s.offline) {
           // A recap from an earlier window is still open (read, then the phone was
           // locked without collecting). Fold this window into it: the window is paid
@@ -799,11 +808,11 @@ export const useGame = create<GameStore>((set, get) => ({
       // Automation (IDEAS #C): run the toggled-on autopilots on the post-tick state. Silent
       // by design — the point is to remove chores, not add feedback. Off by default, gated by
       // ship count, and never enabled by the sim, so the tuned curve is untouched.
-      if (automationUnlockedAny(game)) {
-        game = applyAutomation(game);
+      if (automationUnlockedAny(game, pro)) {
+        game = applyAutomation(game, pro);
         // Auto-launch needs id minting, so it runs here rather than in the pure engine: a
         // freshly-shipped draft is commercialised into any free slot (as a General product).
-        if (automationEnabled(game, "auto_launch")) {
+        if (automationEnabled(game, "auto_launch", pro)) {
           let guard = 0;
           while (game.products.drafts.length > 0 && game.products.active.length < maxActiveProducts(game) && guard++ < 8) {
             // The strongest model on the shelf (ties → the newest). Drafts are stored
@@ -969,7 +978,7 @@ export const useGame = create<GameStore>((set, get) => ({
   },
   doPickMandate: (id) => set((s) => ({ game: pickMandate(s.game, id) })),
   doClaimObjective: (id, target) => set((s) => ({ game: claimObjective(s.game, id, target) })),
-  doToggleAutomation: (id) => set((s) => ({ game: toggleAutomation(s.game, id) })),
+  doToggleAutomation: (id) => set((s) => ({ game: toggleAutomation(s.game, id, hasPro()) })),
   // Moving the slider by hand is an explicit choice: it cancels any "save for this" pin.
   setComputeFocus: (v) =>
     set((s) => ({ game: { ...s.game, computeFocus: Math.max(0, Math.min(1, v)) }, savingFor: null })),

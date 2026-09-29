@@ -66,7 +66,7 @@ const RUN_START_SPLIT_MS = 500;
  *
  * Returns a new object; never mutates the input (keeps it pure and testable).
  */
-export function tick(state: GameState, elapsedMs: number): GameState {
+export function tick(state: GameState, elapsedMs: number, pro = false): GameState {
   // Reject any non-positive OR non-finite dt: ≤0 is a no-op, NaN would turn every
   // resource into NaN, and Infinity would make `seconds` infinite and push the whole
   // simulation non-finite before the later delta guards run. The engine owns this
@@ -87,9 +87,9 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     let remaining = elapsedMs;
     while (remaining > 0) {
       const step = Math.min(MAX_STEP_MS, remaining);
-      s = tick(s, step);
+      s = tick(s, step, pro);
       remaining -= step;
-      if (remaining > 0) s = applyAutomation(s);
+      if (remaining > 0) s = applyAutomation(s, pro);
     }
     return s;
   }
@@ -109,7 +109,7 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     // the danger zone. The load sanitizer applies the same cap, so the two always agree.
     active = capActiveModifiers(active);
     if (active.length !== state.modifiers.length) {
-      return tick({ ...state, modifiers: active }, elapsedMs);
+      return tick({ ...state, modifiers: active }, elapsedMs, pro);
     }
     let minRem = Infinity;
     for (const m of active) if (m.remainingSec < minRem) minRem = m.remainingSec;
@@ -119,7 +119,7 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     // overflowed — every frame, and on the offline catch-up (2026-09 bug hunt).
     const firstMs = minRem * 1000;
     if (minRem > 0 && firstMs < elapsedMs) {
-      return tick(tick(state, firstMs), elapsedMs - firstMs);
+      return tick(tick(state, firstMs, pro), elapsedMs - firstMs, pro);
     }
   }
 

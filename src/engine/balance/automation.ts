@@ -28,6 +28,9 @@ export const automation = {
   ] as AutomationDef[],
   /** The whole panel reveals with the first automation. */
   revealAtShips: 2,
+  /** Pro perk: each autopilot (and the panel reveal) unlocks this many Ships sooner.
+   *  Player-only (Pro is passed in by the store; the sim never has it) → curve-safe. */
+  proShipsEarlier: 1,
   /** Names for auto-launched products, cycled by launch count. */
   names: ["Nimbus", "Oracle", "Cortex", "Lumen", "Vertex", "Sage", "Atlas", "Echo", "Prism", "Nova", "Helix", "Quasar", "Onyx", "Cirrus"],
 };

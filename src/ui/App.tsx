@@ -53,7 +53,8 @@ import { fmt, fmtMoney, barRates } from "./format";
 import { decisionToast } from "./decisionToast";
 import type { ProductTypeId } from "../engine/balance/products";
 import { iap } from "./iap";
-import { isPremium } from "../state/premium";
+import { hasPro } from "../state/premium";
+import { useHasPro } from "./pro";
 import { watchReturnReminders } from "./notifications";
 import { balance } from "../engine/balance/config";
 import { ALL_RESEARCH } from "../engine/researchTree";
@@ -142,6 +143,8 @@ export function App() {
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
+  // Pro (subscription or lifetime): read at the UI edge and handed to the pure engine.
+  const pro = useHasPro();
   // The advisor list feeds three things from one scan (memoized per tick, same
   // cadence as derive — a handful of product checks, no clock): the per-tab nav
   // badges, the per-Lab-section badges, and the single "next action" nudge chip.
@@ -168,12 +171,12 @@ export function App() {
   // goal ladder), so its badge is all that is left here. The contract / challenge
   // tallies moved into GOALS, which counts them once for its own badges.
   const hqCounts = useMemo(() => {
-    const autos = automationList().filter((a) => automationUnlocked(game, a.id));
+    const autos = automationList().filter((a) => automationUnlocked(game, a.id, pro));
     return {
-      autoOn: autos.filter((a) => automationEnabled(game, a.id)).length,
+      autoOn: autos.filter((a) => automationEnabled(game, a.id, pro)).length,
       autoTotal: autos.length,
     };
-  }, [game]);
+  }, [game, pro]);
 
   // One scan behind every GOALS badge: the nav count, the horizon dots and the
   // fold counts all read the same numbers, so they cannot disagree.
@@ -337,7 +340,7 @@ export function App() {
     return {
       enabled: useSettings.getState().notifyReminders,
       producing: derive(g).computePerSec.gt(0) || g.products.active.length > 0,
-      capHours: isPremium() ? balance.offline.premiumMaxHours : balance.offline.maxHours,
+      capHours: hasPro() ? balance.offline.premiumMaxHours : balance.offline.maxHours,
       accruesFrom: offlineAccruesFrom(),
     };
   }), []);
@@ -757,7 +760,7 @@ export function App() {
       // The flagship you just shipped is waiting as a free-to-launch product —
       // make sure the player knows (a ship that "gave nothing" was the #1 confusion).
       // Only when this ship really left one to launch by hand (see shipLanding.ts).
-      if (shipLeftModelToLaunch(game)) {
+      if (shipLeftModelToLaunch(game, hasPro())) {
         pushToast(modelReadyNote(game.prestige.ships), "good");
       }
       // An AGI ascension (a ship in the Post-Singularity era) gets the grander beat:
@@ -1177,9 +1180,9 @@ export function App() {
                     Automation and Grand Challenges now fold like Trials/Doctrine/the
                     Institute already did, each carrying its own "needs you" count so a
                     folded board still calls out ambiently. (2026-08 navigation sweep.) */}
-                {automationUnlockedAny(game) && (
+                {automationUnlockedAny(game, pro) && (
                   <Collapsible title="Automation" badge={`${hqCounts.autoOn}/${hqCounts.autoTotal} on`}>
-                    <AutomationPanel bare game={game} onToggle={onToggleAutomation} />
+                    <AutomationPanel bare game={game} onToggle={onToggleAutomation} pro={pro} />
                   </Collapsible>
                 )}
                 {instituteUnlocked(game) && (

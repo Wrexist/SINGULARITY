@@ -73,7 +73,8 @@ export function OfflineModal({ summary, onClose }: Props) {
         <h2 id="offline-title" tabIndex={-1}>While you were away</h2>
         <p className="modal-sub">
           The lab ran for {fmtTime(summary.appliedMs)}
-          {summary.capped && " (capped)"}. Here's what stacked up:
+          {summary.capped && " (capped)"}
+          {summary.rate !== undefined && summary.rate > 1 && ` at ×${summary.rate} with Pro`}. Here's what stacked up:
         </p>
         <div className="wiwa-grid">
           {rows.map((r) => {
