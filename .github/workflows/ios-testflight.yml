@@ -90,6 +90,13 @@ jobs:
           # Stamp the app icon (Logo 1 — server rack) + launch splash into the
           # freshly-scaffolded native project from assets/icon.png & splash.png.
           node scripts/stamp-icons.mjs
+          # Apple (ITMS-90068): from April 2027 uploads must target iOS 15.0 or later.
+          # Capacitor 6 scaffolds 13.0, so raise it in the Xcode project and the Podfile
+          # before `cap sync` installs the pods.
+          sed -i.bak "s/IPHONEOS_DEPLOYMENT_TARGET = 13\.0;/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/g" ios/App/App.xcodeproj/project.pbxproj
+          sed -i.bak "s/platform :ios, '13\.0'/platform :ios, '15.0'/" ios/App/Podfile
+          rm -f ios/App/App.xcodeproj/project.pbxproj.bak ios/App/Podfile.bak
+          grep -n "IPHONEOS_DEPLOYMENT_TARGET\|platform :ios" ios/App/App.xcodeproj/project.pbxproj ios/App/Podfile
           npx cap sync ios
 
       # Auto-pass export compliance (no custom crypto) + a unique, rising build number
