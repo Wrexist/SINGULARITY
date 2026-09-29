@@ -47,7 +47,14 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # RevenueCat's public iOS SDK key (appl_…). Optional: without it the app keeps
+      # its direct StoreKit purchase path, so a missing secret never breaks Premium.
       - run: npm run build
+        env:
+          VITE_RC_IOS_KEY: ${{ secrets.RC_IOS_KEY }}
+      - name: Report the purchase backend baked into this build
+        run: |
+          if grep -q "appl_" dist/assets/*.js; then echo "Purchases: RevenueCat"; else echo "::warning::RC_IOS_KEY is not set: this build uses direct StoreKit, not RevenueCat."; fi
 
       # Place the ASC API key where both xcodebuild and altool auto-discover it.
       # The secret may hold the raw .p8 PEM OR its base64 — base64 is the robust

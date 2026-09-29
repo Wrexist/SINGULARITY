@@ -1,5 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 import { isPremium, setPremium } from "../state/premium";
+import type { RevenueCatStore } from "./iapRevenueCat";
 
 /**
  * Premium unlock IAP (GDD §9: a single generous unlock, cosmetic/QoL only, never
@@ -141,11 +142,38 @@ function storePrice(store: CdvStore | null): string | null {
   }
 }
 
+// --- RevenueCat path (native, when the build carries a key; see iapRevenueCat.ts).
+// Loaded lazily so the web build and the StoreKit-path tests never touch the plugin.
+/** The public iOS SDK key baked into this build (VITE_RC_IOS_KEY), or null. */
+export function revenueCatKey(): string | null {
+  const k = import.meta.env?.VITE_RC_IOS_KEY;
+  return typeof k === "string" && k.trim() ? k.trim() : null;
+}
+
+let rcPromise: Promise<RevenueCatStore | null> | null = null;
+
+function ensureRevenueCat(): Promise<RevenueCatStore | null> {
+  if (rcPromise) return rcPromise;
+  rcPromise = (async () => {
+    if (!Capacitor.isNativePlatform()) return null;
+    const key = revenueCatKey();
+    if (!key) return null;
+    const rc = await import("./iapRevenueCat");
+    return rc.createRevenueCatStore(key, PREMIUM_PRODUCT_ID, () => setPremium(true));
+  })().catch((e) => {
+    rcPromise = null; // a transient failure must not block later attempts
+    throw e;
+  });
+  return rcPromise;
+}
+
 export const iap = {
   /** The price to show on the Premium card: StoreKit's localized string on device
    *  once available, else the fallback label. Never throws. */
   async priceLabel(): Promise<string> {
     try {
+      const rc = await ensureRevenueCat();
+      if (rc) return (await rc.price()) ?? PREMIUM_PRICE;
       return storePrice(await ensureInit()) ?? PREMIUM_PRICE;
     } catch {
       return PREMIUM_PRICE;
@@ -163,7 +191,7 @@ export const iap = {
     // surface as an unhandled rejection (the caller `void`s this) — log only.
     // Buy/restore call ensureInit() themselves, so a later attempt still retries.
     try {
-      await ensureInit();
+      if (!(await ensureRevenueCat())) await ensureInit();
     } catch (e) {
       console.warn("IAP init failed (will retry on next purchase/restore):", e);
     }
@@ -184,6 +212,8 @@ export const iap = {
    * the unlock UI is testable. Resolves true once the entitlement is owned.
    */
   async purchasePremium(): Promise<boolean> {
+    const rc = await ensureRevenueCat();
+    if (rc) return (await rc.buy()) || isPremium();
     const store = await ensureInit();
     if (!store) {
       // Web/dev stub: grant locally so the flow is exercisable without a device.
@@ -206,6 +236,18 @@ export const iap = {
 
   /** Restore purchases (App Store requirement). */
   async restore(): Promise<boolean> {
+    const rc = await ensureRevenueCat();
+    if (rc) {
+      let owned = false;
+      try {
+        owned = await rc.restore();
+      } catch (e) {
+        console.warn("IAP restore failed:", e);
+        if (isPremium()) return true;
+        throw new Error("RevenueCat restore failed");
+      }
+      return owned || isPremium();
+    }
     const store = await ensureInit();
     if (!store) return isPremium();
     // CdvPurchase reports a failed restore by RESOLVING with an IError, not by throwing.
