@@ -115,7 +115,7 @@ export const objectives = {
 
 /** Short lane name for a boost target. */
 export function laneLabel(t: ObjectiveReward["target"]): string {
-  return t === "computeMult" ? "Compute" : t === "dataMult" ? "Data" : "Revenue";
+  return t === "computeMult" ? "Compute" : t === "dataMult" ? "Data" : "Money";
 }
 
 /** Short label for a specific reward option (lane + strength), for a lane button. */
@@ -130,7 +130,7 @@ export function objectiveRewardStrength(r: ObjectiveReward): string {
 
 /**
  * The reward lanes a claim offers: the objective's headline lane plus the NEXT lane in the
- * Compute→Data→Revenue cycle. Both options share the same factor and duration, so the pick
+ * Compute→Data→Money cycle. Both options share the same factor and duration, so the pick
  * is a PLACEMENT choice (where do I want this boost right now?), never a power choice — the
  * reward strength is identical either way, so it stays curve-safe. Turns a passive auto-claim
  * into a small, recurring decision without inflating anything.

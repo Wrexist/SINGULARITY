@@ -9,7 +9,16 @@ import { useGame, previewBackup, type BackupPreview } from "../state/store";
 import { fmtMoney } from "./format";
 import { themeStyle, skinSwatch } from "./hallThemes";
 import { themes, rackSkins, themeUnlocked, skinUnlocked, collectionProgress, skinProgress, unlockHint } from "../engine/cosmetics";
-import { PaletteIcon, DownloadIcon, LockIcon, CheckIcon, BarsIcon, ChevronIcon} from "./Icons";
+import { PaletteIcon, DownloadIcon, LockIcon, CheckIcon, BarsIcon, ChevronIcon, SunIcon, MoonIcon, DeviceIcon } from "./Icons";
+import type { Appearance } from "./settings";
+
+/** Appearance options, in display order. Light is the default (no change until a
+ *  player opts in); Match device follows the OS light/dark setting live. */
+export const APPEARANCE_OPTIONS: { id: Appearance; label: string; icon: JSX.Element }[] = [
+  { id: "light", label: "Light", icon: <SunIcon size={15} /> },
+  { id: "dark", label: "Dark", icon: <MoonIcon size={15} /> },
+  { id: "system", label: "Match device", icon: <DeviceIcon size={15} /> },
+];
 import { ConfirmSheet } from "./ConfirmSheet";
 import { version as APP_VERSION } from "../../package.json";
 import { telemetryEnabled, setTelemetryEnabled, getTelemetryEvents, clearTelemetry } from "../state/telemetry";
@@ -75,7 +84,7 @@ interface Props {
 
 /** iOS-style bottom sheet for feel preferences (clean-to-play, GAMEPLAN §8). */
 export function SettingsSheet({ onClose, onReset }: Props) {
-  const { sound, music, haptics, hapticsLight, reducedMotion, scientificNotation, notifyReminders, hallTheme, rackSkin, toggle, setHallTheme, setRackSkin, setNotifyReminders } = useSettings();
+  const { sound, music, haptics, hapticsLight, reducedMotion, scientificNotation, notifyReminders, hallTheme, rackSkin, appearance, toggle, setHallTheme, setRackSkin, setNotifyReminders, setAppearance } = useSettings();
   // Live device Reduce Motion (one listener, shared with motion.ts via settings.ts).
   const osReduced = useSyncExternalStore((fn) => onOsReduceMotionChange(() => fn()), osReduceMotionNow, osReduceMotionNow);
   const motionRow = rowState(reducedMotion, osReduced);
@@ -251,6 +260,25 @@ export function SettingsSheet({ onClose, onReset }: Props) {
               }}
             />
           )}
+        </div>
+        {/* Appearance — Light (default) / Dark / Match device. Local only, never in the save. */}
+        <div className="set-theme">
+          <div className="set-theme-head" id="set-appear-label">
+            <MoonIcon size={16} /> Appearance
+          </div>
+          <div className="set-appear" role="radiogroup" aria-labelledby="set-appear-label">
+            {APPEARANCE_OPTIONS.map((o) => (
+              <button
+                key={o.id}
+                className={`set-appear-opt ${appearance === o.id ? "on" : ""}`}
+                role="radio"
+                aria-checked={appearance === o.id}
+                onClick={() => { if (appearance !== o.id) { snd.tap(); setAppearance(o.id); } }}
+              >
+                {o.icon}<span>{o.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
         {/* Hall theme collection — cosmetic only (never affects gameplay). Earn themes
             by playing (R6.3); locked chips show how to unlock them. */}

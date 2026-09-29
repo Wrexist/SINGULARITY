@@ -7,7 +7,7 @@ import type { GameState, ProductMods, ProductState, ProductsState, UpgradeState 
 import { bonusProductSlots } from "./reputation";
 import { trialBonusProductSlots } from "./trials";
 import { legacyBonusProductSlots } from "./legacyTree";
-import { derive } from "./derive";
+import { derive, committedProductMods } from "./derive";
 
 /** No employees hired → no product buffs. */
 export const NEUTRAL_MODS: ProductMods = { upgradeSpeed: 1, serveCost: 1, churn: 1, acq: 1, arpu: 1, heat: 1 };
@@ -68,6 +68,27 @@ export function buyFeature(state: GameState, productId: string, featureId: strin
       ),
     },
   };
+}
+
+/** How far rivals lead your lab this generation. A Hard ship leaps the competitive
+ *  frontier ("your products start behind"), and that lead holds until the next Ship:
+ *  version pushes, finished upgrades and new launches reach the frontier minus it.
+ *  (It used to vanish on the first push, which left the product at a HIGHER quality
+ *  than a Deploy lab's, so Hard beat Deploy on both Legacy and products.) Read from
+ *  the Archive entry prestige() writes for this generation, so it needs no saved
+ *  field; 0 for every other mode, for an entry that isn't this generation's, and on
+ *  the balance sim's deploy-only curve. */
+export function rivalLead(state: GameState): number {
+  const last = state.shipLog[state.shipLog.length - 1];
+  if (!last || last.gen !== state.prestige.ships) return 0;
+  const lead = (balance.prestige.shipModes as Record<string, { frontierPenalty: number } | undefined>)[last.mode]?.frontierPenalty ?? 0;
+  return Number.isFinite(lead) && lead > 0 ? lead : 0;
+}
+
+/** The quality a release, version push or finished upgrade reaches right now: the
+ *  competitive frontier, less any rivals' lead this generation (see rivalLead). */
+export function reachableQuality(state: GameState): number {
+  return Math.max(1, state.products.frontier - rivalLead(state));
 }
 
 /** Products unlock once you've shipped at least `unlockAtShips` models. */
@@ -371,7 +392,7 @@ export function milestoneValue(state: GameState, metric: MilestoneDef["metric"],
     // product cards, the sponsor/contract ladder and the "$1K/s" achievement all read.
     // The bare figure left a lab billing $1.5K/s short of the "$1K/s" rung.
     case "mrr": {
-      const mods = modsById ?? derive(state).productModsById;
+      const mods = modsById ?? committedProductMods(state);
       return ps.active.reduce((s, p) => s + settledMrr(p, ps.frontier, mods[p.id]), 0);
     }
     case "version": return ps.active.reduce((m, p) => Math.max(m, p.version), 0);
@@ -456,7 +477,13 @@ export function maybeProductEvent(
   // Clamp like every other Heat write — [0, max] both bounds — so an event at near-max
   // Heat can't push it over the ceiling, and a (future) cooling event can't drive it
   // negative, even for the frame before the next tick re-clamps.
-  const heat = ev.heat ? Math.max(0, Math.min(balance.heat.max, state.heat + ev.heat)) : state.heat;
+  // A product's own Heat lane (Trust & Safety) scales the Heat its incidents raise, like
+  // its steady Heat: five of the eight types have none, so the feature did nothing there.
+  // The product's Heat multiplier (Staff PR & Legal, benched or assigned — the lane its
+  // steady Heat is scaled by) cuts it too, for the same reason. Only derived when an
+  // event actually raises Heat.
+  const heatMult = ev.heat ? featureMods(p).heat * (derive(state).productModsById[p.id]?.heat ?? 1) : 1;
+  const heat = ev.heat ? Math.max(0, Math.min(balance.heat.max, state.heat + ev.heat * heatMult)) : state.heat;
   return {
     state: {
       ...state,
@@ -542,10 +569,10 @@ export function releaseProduct(
   if (!canReleaseProduct(state, opts.type)) return state;
   const product: ProductState = {
     id: opts.id,
-    name: opts.name,
+    name: cleanProductName(opts.name),
     type: opts.type,
     version: 1,
-    quality: state.products.frontier, // launch at the current frontier
+    quality: reachableQuality(state), // launch at the current frontier (less a Hard lead)
     priceMult: 1,
     enterprise: false,
     enterprisePrice: 1,
@@ -582,7 +609,7 @@ export function pushVersion(state: GameState, id: string): GameState {
   const c = versionCostFor(state, p.version);
   const active = state.products.active.map((x) =>
     x.id === id
-      ? { ...x, version: x.version + 1, quality: state.products.frontier, buzzSec: Math.max(x.buzzSec, B.buzzDurationSec) }
+      ? { ...x, version: x.version + 1, quality: reachableQuality(state), buzzSec: Math.max(x.buzzSec, B.buzzDurationSec) }
       : x,
   );
   return {
@@ -621,7 +648,7 @@ export function launchDraft(
   const draft = state.products.drafts.find((d) => d.id === opts.draftId)!;
   const product: ProductState = {
     id: opts.id,
-    name: opts.name,
+    name: cleanProductName(opts.name),
     type: opts.type,
     version: 1,
     quality: Math.max(1, draft.quality),
@@ -723,13 +750,14 @@ export interface UpgradeTickResult {
  *  (a tick you can't afford the drain stalls that upgrade). Pure: resource pools
  *  are passed in as numbers and the amounts spent are returned for the caller (tick)
  *  to subtract from the Big resources. On completion: version bumps, quality jumps
- *  to the current frontier, and launch buzz fires. */
+ *  to the current frontier (less `rivalLead`, see rivalLead()), and launch buzz fires. */
 export function advanceUpgrades(
   ps: ProductsState,
   computeAvail: number,
   dataAvail: number,
   seconds: number,
   modsById: Record<string, ProductMods> = {},
+  rivalLeadNow = 0,
 ): UpgradeTickResult {
   if (seconds <= 0 || !ps.active.some((p) => p.upgrade)) {
     return { products: ps, computeSpent: 0, dataSpent: 0, completed: [] };
@@ -766,7 +794,7 @@ export function advanceUpgrades(
       return {
         ...p,
         version: u.targetVersion,
-        quality: Math.max(p.quality, ps.frontier),
+        quality: Math.max(p.quality, ps.frontier - rivalLeadNow),
         buzzSec: Math.max(p.buzzSec, B.buzzDurationSec), // keep a longer hype wave running
         upgrade: null,
       };
@@ -785,8 +813,21 @@ export function advanceUpgrades(
   return { products: { ...ps, active }, computeSpent, dataSpent, completed };
 }
 
+/** The lowest Pro price dial a product type allows: the global floor, raised to the
+ *  first 0.1 step (the slider's step) where a paying user covers their own serving
+ *  cost. Revenue and serving per user both scale with quality, so below
+ *  computePerUser / baseArpu every subscriber loses money whatever else the lab does:
+ *  Reasoning Engine broke even at ×0.533 and the dial went to ×0.5. It is the only
+ *  type the global ×0.5 floor did not already cover, so it alone moves (to ×0.6). */
+export function priceMinFor(type: ProductTypeId): number {
+  const t = typeDef(type);
+  const breakEven = t.baseArpu > 0 ? t.computePerUser / t.baseArpu : 0;
+  return Math.min(B.priceMax, Math.max(B.priceMin, Math.ceil(breakEven * 10 - 1e-9) / 10));
+}
+
 export function setProductPrice(state: GameState, id: string, priceMult: number): GameState {
-  const price = clamp(priceMult, B.priceMin, B.priceMax);
+  const target = state.products.active.find((x) => x.id === id);
+  const price = clamp(priceMult, target ? priceMinFor(target.type) : B.priceMin, B.priceMax);
   return {
     ...state,
     products: {
@@ -853,8 +894,47 @@ export function setChannelMix(state: GameState, id: string, channelId: string, w
   };
 }
 
+/** Longest product name kept, in UTF-16 units (what an <input maxLength> counts, so
+ *  the rename field can never hold more than the rename keeps). */
+export const PRODUCT_NAME_MAX = 24;
+
+// C0/C1 controls (tab, newline, NUL…) read as a space; the bidi embedding/override/
+// isolate controls are dropped. A name has no closing mark for an override, so a
+// pasted U+202E flipped the rest of every toast that named the product. Plain RTL
+// letters (and the LRM/RLM marks) are untouched.
+const NAME_CONTROLS = /[\u0000-\u001f\u007f-\u009f]/g;
+const NAME_BIDI = /[\u202a-\u202e\u2066-\u2069]/g;
+
+/** Split into user-perceived characters (an emoji ZWJ sequence or a letter plus its
+ *  combining marks stays whole); code points where Intl.Segmenter is missing. */
+function graphemes(text: string): string[] {
+  const Seg = (Intl as { Segmenter?: new (l?: string, o?: { granularity: "grapheme" }) => { segment(t: string): Iterable<{ segment: string }> } }).Segmenter;
+  return Seg ? Array.from(new Seg(undefined, { granularity: "grapheme" }).segment(text), (x) => x.segment) : Array.from(text);
+}
+
+/** A player-typed (or save-loaded) product name, made safe to store and show:
+ *  controls become spaces, runs of whitespace collapse, lone surrogates go, and the
+ *  length cap only ever cuts between whole characters. Empty → "Untitled". */
+export function cleanProductName(name: unknown): string {
+  if (typeof name !== "string") return "Untitled";
+  // Bound the work on a hostile paste before segmenting it.
+  const flat = Array.from(name.slice(0, PRODUCT_NAME_MAX * 16))
+    .filter((c) => !/^[\ud800-\udfff]$/.test(c)) // a lone surrogate (a pair is one element)
+    .join("")
+    .replace(NAME_BIDI, "")
+    .replace(NAME_CONTROLS, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  let out = "";
+  for (const g of graphemes(flat)) {
+    if (out.length + g.length > PRODUCT_NAME_MAX) break;
+    out += g;
+  }
+  return out.trim() || "Untitled";
+}
+
 export function renameProduct(state: GameState, id: string, name: string): GameState {
-  const clean = name.trim().slice(0, 24) || "Untitled";
+  const clean = cleanProductName(name);
   return {
     ...state,
     products: {
@@ -939,8 +1019,9 @@ export function capCarriedMarketing(state: GameState): GameState {
 function saleValue(state: GameState, p: ProductState): number {
   // Valued on the revenue the product really earns: its settled paid count AND its live
   // ARPU buffs (Product Company charter, assigned staff). Pricing the sale on unbuffed
-  // ARPU paid out well under the "N seconds of revenue" the product was earning.
-  const mods = derive(state).productModsById[p.id] ?? NEUTRAL_MODS;
+  // ARPU paid out well under the "N seconds of revenue" the product was earning. A
+  // charter still open to change is not counted yet (see committedProductMods).
+  const mods = committedProductMods(state)[p.id] ?? NEUTRAL_MODS;
   const v = settledMrr(p, state.products.frontier, mods) * B.retireValuationSec * retireMaturity(p);
   return Number.isFinite(v) ? Math.max(0, v) : 0;
 }

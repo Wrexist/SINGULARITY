@@ -18,7 +18,7 @@ interface Props {
 /**
  * Lab Objectives — an early/mid "lots to do" board: three rotating quick goals, each with a
  * live progress bar. A met objective is claimed by picking WHICH lane its boost lands on
- * (Compute / Data / Revenue) — a small "where do I need this now?" decision rather than an
+ * (Compute / Data / Money) — a small "where do I need this now?" decision rather than an
  * auto-resolve. Both lanes share the same strength, so the pick is placement only. Hidden
  * once the ladder is cleared (it's an onboarding-grind feature).
  */

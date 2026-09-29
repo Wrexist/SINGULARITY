@@ -135,8 +135,17 @@ function canonValue(v: unknown): unknown {
   }
   return v;
 }
+/** A save without the offline clock guard's mark. The mark is wall-time metadata the
+ *  store stamps on every save and launch (like the lastSeen key beside it), so it is
+ *  checked on its own below, not as part of "the game". */
+function unmarked(json: string): string {
+  const o = JSON.parse(json) as Record<string, unknown>;
+  delete o.clockMark;
+  return JSON.stringify(o);
+}
+
 /** The game as the loader sees it (so loader-side normalization is not a difference). */
-const canon = (json: string) => JSON.stringify(canonValue(JSON.parse(serialize(deserialize(json)))));
+const canon = (json: string) => JSON.stringify(canonValue(JSON.parse(unmarked(serialize(deserialize(json))))));
 
 function firstDiff(a: unknown, b: unknown, path = "$"): string | null {
   if (JSON.stringify(a) === JSON.stringify(b)) return null;
@@ -477,11 +486,14 @@ function runSeed(seed: number, steps: number): string[] {
       const want = serialize(st.savingFor ? { ...st.game, computeFocus: st.savingFor.prevFocus } : st.game);
       st.save();
       const disk = storage[SAVE_KEY];
-      if (disk !== want) found.push(`${where}: save() wrote something else: ${disk ? firstDiff(JSON.parse(disk), JSON.parse(want)) : "nothing"}`);
+      if (!disk || unmarked(disk) !== unmarked(want)) found.push(`${where}: save() wrote something else: ${disk ? firstDiff(JSON.parse(unmarked(disk)), JSON.parse(unmarked(want))) : "nothing"}`);
+      // The clock guard's mark: never behind the clock the save was written at.
+      const mark = disk ? (JSON.parse(disk) as { clockMark?: unknown }).clockMark : undefined;
+      if (typeof mark !== "number" || mark < Date.now()) found.push(`${where}: save() wrote clockMark ${String(mark)} behind the clock ${Date.now()}`);
       const blob = st.exportSave();
       let backup = "";
       try { backup = decodeURIComponent(escape(atob(blob))); } catch { backup = blob; }
-      if (backup !== want) found.push(`${where}: exportSave differs from the save`);
+      if (backup !== disk) found.push(`${where}: exportSave differs from the save`);
     }
     if (name === "relaunch" || name === "exportImport") {
       // The step itself saved/exported then loaded: the game now running must be the one

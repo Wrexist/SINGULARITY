@@ -812,10 +812,12 @@ function drawMarkers(ctx: CanvasRenderingContext2D, markers: PlacedMarker[], t: 
   ctx.restore();
 }
 
-function fmtShort(n: number): string {
-  if (n >= 1e9) return `$${(n / 1e9).toFixed(1)}B`;
-  if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
-  if (n >= 1e3) return `$${(n / 1e3).toFixed(1)}K`;
+/** Compact price tag for an expansion marker. Each tier starts where the one below
+ *  would ROUND onto 1000 (999.95K is "$1.0M", never "$1000.0K"; $999.6 is "$1.0K"). */
+export function fmtShort(n: number): string {
+  if (n >= 999.95e6) return `$${(n / 1e9).toFixed(1)}B`;
+  if (n >= 999.95e3) return `$${(n / 1e6).toFixed(1)}M`;
+  if (n >= 999.5) return `$${(n / 1e3).toFixed(1)}K`;
   return `$${Math.round(n)}`;
 }
 

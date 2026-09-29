@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import { useGame } from "./store";
+import { useGame, claimWallTime } from "./store";
+import { loopDelta } from "./clockGuard";
 import { balance } from "../engine/balance/config";
 import { isPremium } from "./premium";
 
@@ -40,10 +41,12 @@ export function useGameLoop(tickHz = 10, saveEverySec = 5) {
       // clearly more time pass than the monotonic clock, trust it: that gap is
       // exactly the sleep. A backwards clock change falls back to the monotonic
       // delta, and the cap below bounds a forward one (as closing the app would).
+      // The wall side is GUARDED (clockGuard.ts): only wall time beyond the latest
+      // the app has seen counts, so a clock moved forward, back and forward again
+      // while the app is open is not paid twice.
       const w = Date.now();
       const perfRaw = t - last.current;
-      const wallRaw = w - lastWall.current;
-      const raw = wallRaw > perfRaw + 2000 ? wallRaw : perfRaw;
+      const raw = loopDelta(perfRaw, claimWallTime(lastWall.current, w));
       const elapsed = Math.min(raw, capMs);
       last.current = t;
       lastWall.current = w;

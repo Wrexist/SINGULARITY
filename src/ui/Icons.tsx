@@ -610,6 +610,25 @@ export function SunIcon({ size = 18 }: IconProps) {
   );
 }
 
+/** Appearance (Settings) — a crescent moon. */
+export function MoonIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z" />
+    </Icon>
+  );
+}
+
+/** Appearance "Match device" — a phone outline. */
+export function DeviceIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <rect x="7" y="2.5" width="10" height="19" rx="2.4" />
+      <path d="M11 18.5h2" />
+    </Icon>
+  );
+}
+
 /** Synthetic data — a DNA double helix (Grand Challenge: synthetic foundry). */
 export function HelixIcon({ size = 18 }: IconProps) {
   return (

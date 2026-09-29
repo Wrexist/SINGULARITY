@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { canPrestige, legacyWeightsGain, legacyWeightsForMode, ascensionMultiplier, shipPath, nextRunMultiplier, shipWouldAscend, productSlotsAfterShip, type ShipMode } from "../engine/prestige";
+import { canPrestige, legacyWeightMoneyStep, legacyWeightsForMode, ascensionMultiplier, shipPath, nextRunMultiplier, shipWouldAscend, productSlotsAfterShip, type ShipMode } from "../engine/prestige";
 import { legacyMultiplier } from "../engine/derive";
 import { currentEra } from "../engine/eras";
 import { reputationAvailable, nextRecordProgress } from "../engine/reputation";
@@ -12,6 +12,7 @@ import { fmt, fmtMoney, fmtMult } from "./format";
 import { Big } from "../engine/math/Big";
 import { ReputationModal } from "./ReputationModal";
 import { ConfirmSheet } from "./ConfirmSheet";
+import { directivePickWaiting } from "./repSignal";
 import { LandmarkIcon, RocketIcon, GlobeIcon, CoinIcon, SwordsIcon, MegaphoneIcon, ChevronIcon } from "./Icons";
 import type { ReactNode } from "react";
 
@@ -71,7 +72,6 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
   const repPoints = reputationAvailable(game);
   const repOwned = game.reputation.perks.length;
   const ready = canPrestige(game);
-  const gain = legacyWeightsGain(game);
   const have = game.prestige.legacyWeights;
   // The research the Ship actually needs, not the whole tree (see shipPath).
   const path = shipPath(game);
@@ -143,6 +143,7 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
         <button className="rep-strip" onClick={() => setRepOpen(true)}>
           <span className="rep-strip-mark rec-ring" style={{ ["--pct" as string]: nextRecordProgress(game) }}><LandmarkIcon size={16} /></span>
           <span className="rep-strip-text">Lab Reputation — <b>{repPoints}</b> point{repPoints === 1 ? "" : "s"} to spend{repOwned > 0 ? ` · ${repOwned} perk${repOwned === 1 ? "" : "s"} owned` : ""}</span>
+          {directivePickWaiting(game) && <span className="pick-dot" role="status" aria-label="Directive pick waiting" />}
           <span className="rep-strip-go">open ▸</span>
         </button>
       )}
@@ -150,12 +151,14 @@ export function PrestigePanel({ game, onPrestige, onBuyReputationPerk, onBuyEndo
       {/* Timing guidance (the classic idle "ship now or keep going?" decision): the
           weights you'd bank RIGHT NOW, and how close lifetime earnings are to the next
           whole weight — so the reset is an informed choice, not a shot in the dark.
-          Pure display over legacyWeightsGain; weights diminish (exponent < 1), which the
-          progress-to-next visibly encodes. */}
+          Pure display over legacyWeightMoneyStep; weights diminish (exponent < 1, and the
+          softcap above x10), which the progress-to-next visibly encodes. */}
       {ready && !confirming && (() => {
-        const exp = balance.prestige.exponent;
-        const lAt = Big.of(balance.prestige.scale).mul(gain.pow(1 / exp));
-        const lNext = Big.of(balance.prestige.scale).mul(gain.add(1).pow(1 / exp));
+        // The Money at which the Ship pays its current weights and one more, over the
+        // real pricing (softcap above x10, conviction, floors) — legacyWeightMoneyStep.
+        const step = legacyWeightMoneyStep(game);
+        if (!step) return null;
+        const { at: lAt, next: lNext } = step;
         const span = lNext.sub(lAt);
         // One weight's worth of money is ~2/gain of the lifetime figure, and Big keeps
         // ~15 significant digits: once a ship banks trillions of weights the step is

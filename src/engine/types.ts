@@ -61,7 +61,8 @@ export interface GameState {
   research: string[];
   run: TrainingRun;
   prestige: PrestigeState;
-  /** Lifetime money earned this run — feeds the prestige capability gate. */
+  /** Money earned this run, priced with timed buffs divided out (boostFreeDerive): the
+   *  Legacy base a Ship is priced on. All-time earnings live in stats.totalMoney. */
   lifetimeMoney: Big;
   /** Regulatory Heat (0..100). Rises with dark-web use, cools over time. */
   heat: number;
@@ -210,6 +211,16 @@ export interface GameState {
    *  recorded in contracts.completed as `sponsor_<dayKey>`. Persists across
    *  prestige (metrics are lifetime stats). */
   sponsor: SponsorContract | null;
+  /** Offline clock guard (round 8): the latest wall-clock time (ms since epoch) the
+   *  app has ever seen, 0 = none yet. The STORE writes it at save time and owns the
+   *  live value (src/state/clockGuard.ts); the engine never reads it — it is only
+   *  carried through the save, so the tuned curve cannot see it. Persisted since v40. */
+  clockMark: number;
+  /** The local day (days since the epoch, from the player's own midnight) the Daily
+   *  Boost was last claimed on, 0 = never. Like `clockMark`, the STORE owns the live
+   *  value and writes it at save time; the engine never reads it. In the save since
+   *  v41, so a reinstall that restores a backup cannot re-open a claimed day. */
+  dailyDay: number;
   /** IDEAS #10 — frontier preprints published THIS run (post-tree repeatable
    *  research). Hard-capped (balance.preprints.maxPerRun); resets on prestige
    *  like the research tree it extends. */
@@ -298,7 +309,8 @@ export interface ShipLogEntry {
 export interface LifetimeStats {
   /** Money earned across all runs (cumulative). */
   totalMoney: Big;
-  /** Best Compute/sec ever reached. */
+  /** Best Compute/sec ever reached, measured with timed buffs divided out
+   *  (boostFreeDerive): it pays permanent Rep through the records ladder. */
   peakComputePerSec: Big;
   /** Best total product MRR/s ever reached. */
   peakMrr: number;

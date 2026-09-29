@@ -2,7 +2,7 @@ import { automation as A, type AutomationDef } from "./balance/automation";
 import { objectiveBoard, claimObjective } from "./objectives";
 import { contractBoard, claimContract, claimSponsor } from "./contracts";
 import { assignEmployee, roleMatchesSegment, roleDef } from "./employees";
-import { canStartUpgrade, startUpgrade, productMetrics } from "./products";
+import { canStartUpgrade, startUpgrade, productMetrics, reachableQuality } from "./products";
 import { products as PRODUCTS, type ProductTypeId, type SegmentSkew } from "./balance/products";
 import type { GameState } from "./types";
 
@@ -79,7 +79,9 @@ export function applyAutomation(state: GameState): GameState {
     // Start the next version on a product that's fallen behind rivals, if it's affordable now.
     for (const p of s.products.active) {
       if (p.upgrade) continue;
-      if (productMetrics(p, s.products.frontier).qf < 0.6 && canStartUpgrade(s, p.id)) s = startUpgrade(s, p.id);
+      // Judged against what a new version can actually reach: in a Hard generation the
+      // rivals' lead survives every upgrade, so the full frontier would re-buy forever.
+      if (productMetrics(p, reachableQuality(s)).qf < 0.6 && canStartUpgrade(s, p.id)) s = startUpgrade(s, p.id);
     }
   }
 

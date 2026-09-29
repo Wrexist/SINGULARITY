@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { equipComponent, equippedCount, freeCopies, fuseComponents, canFuse, componentsBalance } from "./components";
+import { equipComponent, equippedCount, freeCopies, fuseComponents, canFuse, fuseCountFor } from "./components";
 import { buyUpgrade, buyUpgradeBulk } from "./actions";
 import { hallCapacity, totalRacks } from "./hall";
 import { createInitialState } from "./state";
@@ -64,7 +64,7 @@ describe("Rig Bay — a tier emptied by in-place rack upgrades", () => {
 
   it("frees a stranded spare so it can be fused again", () => {
     let g = fullConsumerFloor("acc_refurb");
-    g = { ...g, components: { ...g.components, owned: { acc_refurb: componentsBalance.fuseCount } } };
+    g = { ...g, components: { ...g.components, owned: { acc_refurb: fuseCountFor("acc_refurb") } } };
     expect(canFuse(g, "acc_refurb")).toBe(false); // one of the copies is slotted
     const after = buyUpgradeBulk(g, "rack_server", Infinity);
     expect(canFuse(after, "acc_refurb")).toBe(true);

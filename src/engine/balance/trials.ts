@@ -65,7 +65,7 @@ const BASE_TRIALS: TrialDef[] = ((defs) => defs.map((d) => ({ ...d, ladder: d.id
     // and, crucially, gives a slower player who reaches ship 9-11 WITHOUT ascending
     // something new. Curve-safe: the sim never opts in, so unlock timing can't move it.
     { id: "trial_ablation", name: "Ablation Study", desc: "Run a whole generation at HALF Compute — then bank +10% Compute, permanently.", unlockShips: 3, handicap: { lane: "compute", factor: 0.5 }, reward: { lane: "compute", value: 0.1 } },
-    { id: "trial_lean", name: "Lean Budget", desc: "Run a whole generation at HALF Revenue — then bank +10% Money, permanently.", unlockShips: 5, handicap: { lane: "money", factor: 0.5 }, reward: { lane: "money", value: 0.1 } },
+    { id: "trial_lean", name: "Lean Budget", desc: "Run a whole generation at HALF Money — then bank +10% Money, permanently.", unlockShips: 5, handicap: { lane: "money", factor: 0.5 }, reward: { lane: "money", value: 0.1 } },
     { id: "trial_scarcity", name: "Data Scarcity", desc: "Run a whole generation at HALF Data — then bank +10% Data, permanently.", unlockShips: 7, handicap: { lane: "data", factor: 0.5 }, reward: { lane: "data", value: 0.1 } },
     // Condition Trial (reads a run rule, no production handicap): ship with an EMPTY
     // staff roster. The lean discipline pays out in cash efficiency.

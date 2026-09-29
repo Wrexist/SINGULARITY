@@ -8,7 +8,7 @@ import {
   type WorldEvent,
   type WorldEventEffect,
 } from "./balance/config";
-import { derive, computeBankReach, computeBankEtaSecs, runYieldAt, runsPerSec } from "./derive";
+import { derive, boostFreeDerive, computeBankReach, computeBankEtaSecs, runYieldAt, runsPerSec } from "./derive";
 import { ALL_RESEARCH, researchTree, epochUnlocked } from "./researchTree";
 import { alignmentHeatMult, shiftAlignment } from "./alignment";
 import { suspicionEventMult, regulatorIsNamed, regulatorState, clampSuspicion } from "./regulator";
@@ -58,7 +58,11 @@ export function startRun(state: GameState): GameState {
  *  started at (see runYieldAt). No-op if nothing is ready. */
 export function claimRun(state: GameState): GameState {
   if (!state.run.readyToClaim) return state;
-  const y = runYieldAt(state, derive(state), state.run.focus);
+  const d = derive(state);
+  const y = runYieldAt(state, d, state.run.focus);
+  // The Legacy base is priced boost-free (see boostFreeDerive); the Money is paid in full.
+  const dFree = boostFreeDerive(state, d);
+  const legacyY = dFree === d ? y.money : runYieldAt(state, dFree, state.run.focus).money.min(y.money);
   return {
     ...state,
     resources: {
@@ -66,7 +70,7 @@ export function claimRun(state: GameState): GameState {
       data: state.resources.data.add(y.data),
       money: state.resources.money.add(y.money),
     },
-    lifetimeMoney: state.lifetimeMoney.add(y.money),
+    lifetimeMoney: state.lifetimeMoney.add(legacyY),
     // tick() derives stats.totalMoney from the lifetimeMoney delta WITHIN a tick, so a
     // claim landing between ticks was never counted: a hand-claiming opening showed
     // $0 all-time earned and the Seed Round contract / lifetime achievements sat
@@ -598,8 +602,22 @@ export interface WorldEventResult {
   tone: "good" | "bad";
   /** Short effect summary for the card, e.g. "+25% $" or "Compute ×1.5 · 60s". */
   summary: string;
-  /** Present for faction events: the two branches to render as buttons. */
-  choices?: { label: string; summary: string }[];
+  /** Present for faction events: the two branches to render as buttons. `tone` is
+   *  what the branch DOES (a cash cost is "bad" even on a "good" card) — the tone the
+   *  decision's confirmation takes. */
+  choices?: { label: string; summary: string; tone: EffectTone }[];
+}
+
+export type EffectTone = "good" | "bad" | "neutral";
+
+/** What an effect does to the lab, as a tone: a loss (negative grant, a factor under
+ *  1, rivals leaping ahead) is "bad", a gain is "good". The confirmation of a
+ *  "Back them (−12% cash)" pick used to celebrate in the win tone whatever it cost. */
+export function effectTone(effect: WorldEventEffect): EffectTone {
+  if (effect.kind === "grantPct") return effect.pct < 0 ? "bad" : effect.pct > 0 ? "good" : "neutral";
+  if (effect.kind === "frontierJump") return "bad";
+  if (effect.kind === "productBuzz") return "good";
+  return effect.factor < 1 ? "bad" : effect.factor > 1 ? "good" : "neutral";
 }
 
 const WORLD_EVENTS = balance.worldEvents.list as WorldEvent[];
@@ -678,7 +696,7 @@ export function pickWorldEvent(
 const TARGET_LABEL: Record<string, string> = {
   computeMult: "Compute",
   dataMult: "Data",
-  moneyMult: "Revenue",
+  moneyMult: "Money",
 };
 const RES_LABEL: Record<string, string> = { compute: "compute", data: "data", money: "$" };
 
@@ -771,7 +789,7 @@ export function applyWorldEvent(state: GameState, eventId: string): { state: Gam
   if (def.choices && def.choices.length > 0) {
     return {
       state, // unchanged until the player chooses
-      event: { ...base, summary: "", choices: def.choices.map((c) => ({ label: c.label, summary: effectSummary(c.effect) })) },
+      event: { ...base, summary: "", choices: def.choices.map((c) => ({ label: c.label, summary: effectSummary(c.effect), tone: effectTone(c.effect) })) },
     };
   }
 

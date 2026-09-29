@@ -1,10 +1,11 @@
 V tejto aktualizácii:
 
+• Tmavý režim: v ponuke Settings zvoľte Light, Dark alebo Match device.
 • Nové v každej generácii: zvoľte si Stance (Safety, Center alebo Acceleration) a odomknite perky Doctrine danej strany. Každý Ship navyše rozdá tri karty Lab Charter vrátane takých, ktoré menia samotné pravidlá.
 • Unplugged Trials: vypnite na jednu generáciu Legacy a prejdite si znova celú hru od nuly. Vaše rekordy v Compute teraz prinášajú Lab Reputation.
 • Jasnejšie ciele: vždy vidíte ďalší krok a kedy sa Ship naozaj oplatí.
 • „Šetriť na toto“: ťuknite na nedosiahnuteľný výskum a laboratórium naň samo našetrí Compute a kúpi ho za vás.
 • Viac pokoja: vyrušujú vás iba skutočné rozhodnutia, zvyšok beží v spravodajskom páse. Lepšia podpora funkcie VoiceOver a väčšie dotykové plochy.
-• Plynulejší chod na starších iPhonoch, presný čas offline a viac ako 60 opráv chýb.
+• Plynulejší chod na starších iPhonoch, presný čas offline a viac ako 150 opráv chýb.
 
 Stále bez reklám. Stále bez pay-to-win.

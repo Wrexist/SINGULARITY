@@ -55,7 +55,8 @@ export function effectLabel(e: AnyEffect): string {
     case "floorRows": return `+${e.perLevel} floor`;
     case "autoClaim": return "Auto-claims runs";
     case "autoTrain": return "Auto-runs the lab";
-    case "unlockPassiveMoney": return `+$${e.perSec}/s passive`;
+    // derive pays perSec Money/sec for every Compute/sec produced, not a flat amount.
+    case "unlockPassiveMoney": return `+$${e.perSec}/s per Compute/s`;
     default: return "Upgrade";
   }
 }
@@ -66,7 +67,7 @@ export function EffectPill({ effect }: { effect: AnyEffect }) {
   return (
     // Text in a 60%-towards-black shade of the lane tint (>= 4.7:1 for every lane);
     // the soft tinted background keeps the colour coding. Was the raw tint: 1.6-3.4:1.
-    <span className="eff-pill" style={{ color: `color-mix(in srgb, ${tint} 60%, #000)`, background: `color-mix(in srgb, ${tint} 10%, transparent)` }}>
+    <span className="eff-pill" style={{ color: `color-mix(in srgb, ${tint} 60%, var(--mix-ink))`, background: `color-mix(in srgb, ${tint} 10%, transparent)` }}>
       {effectLabel(effect)}
     </span>
   );

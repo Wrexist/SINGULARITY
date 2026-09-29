@@ -3,7 +3,7 @@ import { balance } from "./balance/config";
 import { computeStaffEffects, teamMorale, type StaffEffects } from "./employees";
 import { reputationMods } from "./reputation";
 import { alignmentProductionMods, alignmentProductMods } from "./alignment";
-import { charterMods, charterRule } from "./charter";
+import { canSetCharter, charterMods, charterRule } from "./charter";
 import { legacyAvailable, legacyTreeMods } from "./legacyTree";
 import { trialMods, legacyUnplugged } from "./trials";
 import { flagshipMoneyMult } from "./flagship";
@@ -18,7 +18,7 @@ import { powerStats } from "./power";
 import { rackTier } from "./hall";
 import { tierComputeMult, loadoutDataPerSec } from "./components";
 import { products as PRODUCTS, type SegmentSkew } from "./balance/products";
-import type { Derived, Employee, GameState } from "./types";
+import type { Derived, Employee, GameState, ProductMods } from "./types";
 
 /** Product type id → market segment, resolved once (static catalog data). Feeds the
  *  staff segment-synergy: an assigned specialist matched to the product's segment. */
@@ -95,6 +95,28 @@ export function trainingIntensity(focus: number): number {
  *  a 5K-weight lab as ×91 when it was really ×17). Pure. */
 export function legacyMultiplier(weights: Big): Big {
   return Big.ONE.add(weights.max(Big.ZERO).pow(balance.prestige.multiplierExponent).mul(balance.prestige.multiplierPerPoint));
+}
+
+/** A live timed BUFF: a modifier that raises a lane for a while (Daily Boost, an
+ *  Objective's reward, a world-event buff, ship momentum). Debuffs and factor-1
+ *  status markers (the regulator truce) are not buffs. */
+function isTimedBuff(m: GameState["modifiers"][number]): boolean {
+  return m.remainingSec > 0 && m.factor > 1;
+}
+
+/**
+ * The economy as it would run with every timed buff divided out: what the Legacy base
+ * (lifetimeMoney) is priced on. A lane boost reaches run payouts through Compute AND
+ * Money (squared, see runMoneyYield), so a x2 boost taken while lingering at a
+ * ship-ready lab used to quadruple the Legacy that lingering added. The boost still
+ * pays its Money in full; it just can't buy permanent Legacy.
+ *
+ * Returns `d` itself when no buff is live, so boost-free play (and the balance sim,
+ * which never claims a boost) runs exactly as before. Pure.
+ */
+export function boostFreeDerive(state: GameState, d: Derived): Derived {
+  if (!state.modifiers.some(isTimedBuff)) return d;
+  return derive({ ...state, modifiers: state.modifiers.filter((m) => !isTimedBuff(m)) });
 }
 
 /** First-Ship value: the global multiplier the NEXT run would start with if the
@@ -407,6 +429,23 @@ export function derive(state: GameState): Derived {
     productModsById,
     hireDiscount,
   };
+}
+
+/**
+ * The per-product mods that VALUE revenue: a product sale and the revenue ladders
+ * (peakMrr, the $/s milestones). The live mods, less the Product Company charter's
+ * ARPU while the charter can still be changed (the start-of-run window). Picking it,
+ * selling and picking another charter in the same frame sold a product at ×2.5 for a
+ * run that never flew the charter (the one-frame flick the price dials were closed
+ * against, r1/r3). Once the charter is locked, or with no ARPU rule, identity: the
+ * money products earn is untouched either way (tick prices it on derive's mods).
+ */
+export function committedProductMods(state: GameState, d: Derived = derive(state)): Record<string, ProductMods> {
+  const arpu = charterRule(state).productArpu ?? 1;
+  if (arpu === 1 || !(arpu > 0) || !canSetCharter(state)) return d.productModsById;
+  return Object.fromEntries(
+    Object.entries(d.productModsById).map(([id, m]) => [id, { ...m, arpu: m.arpu / arpu }]),
+  );
 }
 
 /** Compute one training run invests at a given intensity: `costSeconds` of production

@@ -3,7 +3,7 @@ import { Portal } from "./Portal";
 import { Big } from "../engine/math/Big";
 import {
   componentsBalance, SLOTS_BY_TIER, componentDef, visibleCatalog, canBuyComponent, componentOnSale, equippedCount,
-  earnedDefs, earnedSourceComplete, canFuse, freeCopies, tierSetMatched, trophyEarnHint,
+  earnedDefs, earnedSourceComplete, canFuse, fuseCountFor, freeCopies, spareWanted, tierSetMatched, trophyEarnHint,
 } from "../engine/components";
 import type { SlotClass, ComponentDef, ComponentGrade } from "../engine/balance/components";
 import { RACK_IDS } from "../engine/hall";
@@ -104,6 +104,7 @@ export function RigBayPanel({ game, onBuy, onEquip, onFuse }: Props) {
           const allFitted = !hasFree && owned > 0 && !componentOnSale(game, def.id);
           const action = isCurrent ? "equipped" : hasFree ? "equip" : affordable ? "buy" : allFitted ? "inUse" : "poor";
           const fusable = canFuse(game, def.id);
+          const spare = !fusable && spareWanted(game, def.id);
           return (
             <div key={def.id} className="rig-row">
               <button
@@ -129,7 +130,17 @@ export function RigBayPanel({ game, onBuy, onEquip, onFuse }: Props) {
               </button>
               {fusable && def.fusesInto && (
                 <button className="rig-fuse" onClick={() => onFuse(def.id)}>
-                  <SparkIcon size={13} /> Fuse {componentsBalance.fuseCount} spares → 1× {componentDef(def.fusesInto)?.name}
+                  <SparkIcon size={13} /> Fuse {fuseCountFor(def.id)} spares → 1× {componentDef(def.fusesInto)?.name}
+                </button>
+              )}
+              {spare && (
+                <button
+                  className="rig-fuse rig-spare"
+                  disabled={!affordable}
+                  aria-label={`Buy a spare ${def.name} for ${fmtMoney(Big.of(def.cost))}: ${freeCopies(game, def.id)} of ${fuseCountFor(def.id)} spares toward ${componentDef(def.fusesInto!)?.name}`}
+                  onClick={() => onBuy(def.id)}
+                >
+                  Buy a spare · {fmtMoney(Big.of(def.cost))} · {freeCopies(game, def.id)}/{fuseCountFor(def.id)}
                 </button>
               )}
             </div>

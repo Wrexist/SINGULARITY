@@ -8,7 +8,7 @@ import {
   addEmployee, rosterFull, startTraining, canTrain, fireEmployee, hireCost,
   assignEmployee as assignEmployeeToProduct, levelUpNote,
 } from "../engine/employees";
-import { versionShipNote } from "../engine/notices";
+import { versionShipNote, versionsShipNote } from "../engine/notices";
 import {
   startRun,
   claimRun,
@@ -52,6 +52,7 @@ import {
   buyFeature,
   maxActiveProducts,
   productsUnlocked,
+  rivalLead,
 } from "../engine/products";
 import { productMilestones as PRODUCT_MILESTONES, type ProductTypeId } from "../engine/balance/products";
 import { achievements as ACHIEVEMENT_DEFS } from "../engine/balance/achievements";
@@ -65,11 +66,11 @@ import { fundChallenge, chooseFork, fundMegaproject, pickMandate } from "../engi
 import { claimObjective } from "../engine/objectives";
 import { applyAutomation, automationUnlockedAny, automationEnabled, toggleAutomation } from "../engine/automation";
 import { automation as AUTOMATION } from "../engine/balance/automation";
-import { claimContract, rollSponsor, claimSponsor } from "../engine/contracts";
+import { claimContract, rollSponsor, claimSponsor, lastSponsorDay } from "../engine/contracts";
 import { buyPreprint } from "../engine/preprints";
 import { setCharter, lockCharter } from "../engine/charter";
 import { counterRival, placeStake } from "../engine/market";
-import { negotiationDue, negotiationOffer, applyNegotiationChoice, NEGOTIATION_ID } from "../engine/negotiation";
+import { negotiationDue, negotiationOffer, applyNegotiationChoice, negotiationStands, NEGOTIATION_ID } from "../engine/negotiation";
 import { buyLegacyPerk } from "../engine/legacyTree";
 import { prestige, type ShipMode } from "../engine/prestige";
 import { applyOffline, summarizeWindow, extendSummary, recapWorthShowing, type OfflineSummary } from "../engine/offline";
@@ -81,6 +82,8 @@ import { purchaseSignature } from "../engine/telemetry";
 import { currentEra } from "../engine/eras";
 import { codexBalance, codexUnlocked, codexRevealed } from "../engine/codex";
 import type { Big } from "../engine/math/Big";
+import { enqueueNotices } from "./noticeQueue";
+import { boundClaimDay, creditableMs, dayOpen, guardedDayOf, legacyClaimDay, nextMark, sanitizeMark, sanitizeOffset, sponsorDayFor, trustedMark } from "./clockGuard";
 
 const SAVE_KEY = "singularity.save.v1";
 const TIME_KEY = "singularity.lastSeen.v1";
@@ -90,6 +93,9 @@ const TIME_KEY = "singularity.lastSeen.v1";
 // corrupt it won't even parse — so the raw bytes survive for later recovery
 // instead of being silently overwritten by the next autosave.
 const CORRUPT_KEY = "singularity.save.corrupt.v1";
+/** Where the Daily Boost's claim (a UTC day) lived before v41 moved it into the save.
+ *  Read on the launch that loads a pre-v41 save, and never written again. */
+const LEGACY_DAILY_KEY = "singularity.daily.v1";
 
 /** Last-seen progress signature + era for telemetry purchase/era-arrival detection.
  *  Module-level (like the event-key counters) — diffed across ticks in advance(). */
@@ -261,6 +267,85 @@ function now(): number {
   return Date.now();
 }
 
+/**
+ * Offline clock guard (see clockGuard.ts): the latest wall time this app has paid
+ * (or given up) up to. The store owns the live value — the loop moves it forward —
+ * and writes it into the save (`clockMark`), so a backup carries it too. Loaded by
+ * init() from the save (a cold launch), raised by an import, kept by a Hard Reset.
+ * A save writes the time it saw into the save's mark but does NOT move the live one:
+ * an autosave that fires first on waking from a suspend only saw the time, and
+ * moving the live mark there left the loop's tick right after it nothing to pay.
+ */
+let clockMark = 0;
+
+/**
+ * Wall-clock ms the guard credits for a window that began at `from` and ends at
+ * `wall` — only the time beyond the latest the app has seen — and move the mark
+ * up to `wall`. The game loop calls this once per interval for a suspend's extra
+ * wall time, so a clock moved forward, back and forward again pays nothing twice.
+ */
+export function claimWallTime(from: number, wall: number = now()): number {
+  const credit = creditableMs(from, clockMark, wall);
+  clockMark = nextMark(clockMark, wall);
+  return credit;
+}
+
+/** The device's offset from UTC at `wall` (ms, east positive), from its time zone —
+ *  daylight saving included. The engine never sees the zone; it is given day numbers. */
+function localOffsetMs(wall: number): number {
+  return sanitizeOffset(-new Date(wall).getTimezoneOffset() * 60_000);
+}
+
+/** The guarded day the Daily Boost and the sponsor objective key off, in the
+ *  player's LOCAL days (they roll over at the player's own midnight): the latest day
+ *  the app has seen, so a clock set back never returns to a day already played.
+ *  Read-only: the loop moves the mark. */
+export function guardedDay(wall: number = now()): number {
+  return guardedDayOf(clockMark, wall, localOffsetMs(wall));
+}
+
+/**
+ * The local day the Daily Boost was last claimed on (0 = never; day 0 is in 1970).
+ * Like the mark, the store owns it and writes it into the save (`dailyDay`, v41), so
+ * a backup carries it: a reinstall that restores one can no longer re-open the day.
+ * Loaded by init() from the save, raised (never lowered) by an import, kept by a
+ * Hard Reset.
+ */
+let dailyClaimDay = 0;
+
+/** Whether today's Daily Boost is still unclaimed (the clock guard's rules: only a
+ *  LATER local day than the one claimed opens it). A claim dated past the trust
+ *  window (a clock that was far ahead) is pulled back to its edge and remembered
+ *  there, so it locks for at most a week. */
+export function dailyBoostOpen(wall: number = now()): boolean {
+  const offset = localOffsetMs(wall);
+  const bounded = boundClaimDay(dailyClaimDay, wall, offset);
+  if (bounded >= 0 && bounded < dailyClaimDay) dailyClaimDay = bounded;
+  return dayOpen(bounded, clockMark, wall, offset);
+}
+
+/** Record today's Daily Boost as claimed (the next save persists it). */
+export function recordDailyClaim(wall: number = now()): void {
+  dailyClaimDay = Math.max(dailyClaimDay, guardedDay(wall));
+}
+
+/** The version a stored save was written at (0 when unreadable). */
+function storedVersion(json: string): number {
+  try {
+    const v: unknown = (JSON.parse(json) as { version?: unknown } | null)?.version;
+    return typeof v === "number" && Number.isFinite(v) ? v : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** When offline time away from `wall` starts to count: now, or later while the mark
+ *  is ahead of the clock (a clock that was ahead, then corrected, pays nothing until
+ *  real time catches up). The return reminder fires a full cap after it. */
+export function offlineAccruesFrom(wall: number = now()): number {
+  return Math.max(wall, trustedMark(clockMark, wall));
+}
+
 let eventKey = 0;
 let noticeKey = 0;
 let worldKey = 0;
@@ -330,8 +415,11 @@ function decodeBackup(blob: string): GameState | null {
 /** The game as it should be WRITTEN anywhere (autosave or exported backup): the
  *  player's own training intensity, never the temporary "save for this" one. Both a
  *  relaunch and an import start with no pin, so nothing would ever restore it. */
-function persistedGame(game: GameState, savingFor: { prevFocus: number } | null): GameState {
-  return savingFor ? { ...game, computeFocus: savingFor.prevFocus } : game;
+function persistedGame(game: GameState, savingFor: { prevFocus: number } | null, mark: number): GameState {
+  // The clock guard's mark and the Daily Boost's claim day are the store's (the
+  // in-memory game keeps the loaded ones).
+  const own = { clockMark: mark, dailyDay: dailyClaimDay };
+  return savingFor ? { ...game, computeFocus: savingFor.prevFocus, ...own } : { ...game, ...own };
 }
 
 let empKey = 0;
@@ -401,6 +489,8 @@ export const useGame = create<GameStore>((set, get) => ({
       if (!s.worldEvent) return {};
       // The regulator negotiation has its own (multi-lane) effect application.
       if (s.worldEvent.id === NEGOTIATION_ID) {
+        // The case closed while the card waited: withdraw it, charge nothing.
+        if (!negotiationStands(s.game)) return { worldEvent: null };
         return { game: applyNegotiationChoice(s.game, choiceIndex), worldEvent: null };
       }
       const { state } = applyWorldEventChoice(s.game, s.worldEvent.id, choiceIndex);
@@ -410,13 +500,30 @@ export const useGame = create<GameStore>((set, get) => ({
   init: () => {
     let game = createInitialState();
     let offline: OfflineSummary | null = null;
+    const wall = now();
+    // A cold launch: the mark and the daily claim are the save's (a fresh install has none yet).
+    clockMark = 0;
+    dailyClaimDay = 0;
     try {
       const saved = localStorage.getItem(SAVE_KEY);
+      // Before v41 the Daily Boost's claim lived in its own key, as a UTC day. The
+      // launch that loads such a save (or finds none) takes it in, as the latest local
+      // day the claim can have been made on, so updating re-opens nothing.
+      const legacyDaily = saved && storedVersion(saved) >= 41 ? null : localStorage.getItem(LEGACY_DAILY_KEY);
+      let seen = 0;
       if (saved) {
         game = deserialize(saved);
-        const last = Number(localStorage.getItem(TIME_KEY) ?? "0");
+        dailyClaimDay = game.dailyDay;
+        const last = sanitizeMark(Number(localStorage.getItem(TIME_KEY) ?? "0"));
+        // The lastSeen stamp is a time the app saw too (the only one a pre-v40 save has).
+        seen = Math.max(game.clockMark, last);
+        clockMark = seen;
         if (last > 0) {
-          const elapsed = now() - last;
+          // Offline clock guard: only wall time beyond the latest the app has ever seen
+          // is credited. A clock set forward, back and forward again pays once; one set
+          // back credits nothing (it used to credit nothing too, then the next save
+          // stamped the earlier time and re-opened the whole window).
+          const elapsed = creditableMs(last, seen, wall);
           // Premium grants a longer offline cap (QoL perk, not power).
           const capHours = isPremium() ? balance.offline.premiumMaxHours : balance.offline.maxHours;
           // Offline catch-up gets its OWN guard: a throw here is an engine bug, not a
@@ -434,6 +541,9 @@ export const useGame = create<GameStore>((set, get) => ({
           }
         }
       }
+      if (legacyDaily !== null && legacyDaily.trim() !== "") {
+        dailyClaimDay = Math.max(dailyClaimDay, legacyClaimDay(Number(legacyDaily), seen, localOffsetMs(wall)));
+      }
     } catch (err) {
       console.warn("Save load failed, starting fresh:", err);
       // A save so corrupt it throws is the ONLY true wipe path (deserialize
@@ -449,6 +559,7 @@ export const useGame = create<GameStore>((set, get) => ({
     game = migrateStaffCounts(game); // legacy role-counts → individual people
     seedProductKey(game);
     seedEmpKey(game);
+    clockMark = nextMark(clockMark, wall);
     set({ game, offline, initialized: true });
     // Persist the caught-up lab AND the new lastSeen together (save() writes both).
     // Stamping lastSeen alone left the pre-catch-up save on disk: an app killed in
@@ -464,9 +575,12 @@ export const useGame = create<GameStore>((set, get) => ({
 
   advance: (elapsedMs, rawElapsedMs) =>
     set((s) => {
-      // Snapshot which products are mid-upgrade so we can celebrate completions
+      // Snapshot each product's version so we can celebrate completions
       // (the engine finishes them inside tick; we surface the moment to the UI).
-      const wasUpgrading = new Map(s.game.products.active.map((p) => [p.id, !!p.upgrade]));
+      // By version, not by "was upgrading, now isn't" (as summarizeWindow does): the
+      // Version Autopilot runs between a resume window's 5-minute steps, so a version
+      // can start AND ship inside it, or ship with the next already under way.
+      const versionBefore = new Map(s.game.products.active.map((p) => [p.id, p.version]));
       const wasTraining = new Map(s.game.employees.map((e) => [e.id, !!e.training]));
       // "Save for this" across a big window (a resume from suspend): the eased
       // intensity must not govern hours of catch-up. Tick only until the bank covers
@@ -557,9 +671,10 @@ export const useGame = create<GameStore>((set, get) => ({
       }
 
       // Several can finish in one tick (offline catch-up) — name one, count the rest.
-      const finished = game.products.active.filter((p) => wasUpgrading.get(p.id) && !p.upgrade);
-      if (finished.length === 1) pushNotice(versionShipNote(finished[0]!.name, finished[0]!.version), "ship");
-      else if (finished.length > 1) pushNotice(`${finished.length} products shipped new versions — back at the frontier`, "ship");
+      const finished = game.products.active.filter((p) => p.version > (versionBefore.get(p.id) ?? Infinity));
+      const behindRivals = rivalLead(game) > 0; // a Hard generation: rivals keep their lead
+      if (finished.length === 1) pushNotice(versionShipNote(finished[0]!.name, finished[0]!.version, behindRivals), "ship");
+      else if (finished.length > 1) pushNotice(versionsShipNote(finished.length, behindRivals), "ship");
 
       const trained = game.employees.filter((e) => wasTraining.get(e.id) && !e.training);
       if (trained.length === 1) pushNotice(levelUpNote(trained[0]!), "levelup");
@@ -611,14 +726,15 @@ export const useGame = create<GameStore>((set, get) => ({
       }
 
       // One queue, oldest first — a notice earned this tick never jumps ahead of
-      // one still waiting from a previous tick. Cap the backlog so an extreme
-      // offline catch-up can't toast for minutes.
+      // one still waiting from a previous tick. Every notice is kept (it used to be
+      // cut to six, dropping the 7th+ of a burst); only a runaway backlog folds its
+      // overflow into one summary notice, so a catch-up can't toast for minutes.
       // A fired recap SUPERSEDES the notice backlog: every achievement, milestone,
       // version ship and level-up this catch-up tick produced is already a line in
       // the "while you were away" screen, so queuing them as toasts too would tell
       // the same story twice — once behind a modal the player can't read past.
       if (recapFired) pendingNotices = [];
-      else if (earned.length > 0) pendingNotices = [...pendingNotices, ...earned].slice(0, 6);
+      else if (earned.length > 0) pendingNotices = enqueueNotices(pendingNotices, earned);
       // Drain at most one per NOTICE_GATE_MS of real time (not one per 100ms tick), so a
       // same-tick burst / catch-up backlog surfaces as readable, staggered toasts; and hold
       // while a heat event claimed this tick. The gate idles at 0, so a single notice after
@@ -633,6 +749,9 @@ export const useGame = create<GameStore>((set, get) => ({
       // Regulator negotiation (IMPROVEMENTS #9): deterministic, outranks the
       // ambient pool. Fires only past the suspicion line with no truce pending —
       // a clean lab (and the balance sim) never sees it.
+      // A meeting card still waiting (it holds behind an open sheet) is withdrawn once
+      // suspicion is back under the line — lobbying Heat also buys suspicion down.
+      if (s.worldEvent?.id === NEGOTIATION_ID && !negotiationStands(game)) patch.worldEvent = null;
       if (!s.worldEvent && negotiationDue(game)) {
         worldKey += 1;
         patch.worldEvent = { key: worldKey, ...negotiationOffer(game) };
@@ -741,8 +860,11 @@ export const useGame = create<GameStore>((set, get) => ({
       // Persist the player's own intensity, never the temporary "save for this" one:
       // an app killed mid-pin must not relaunch with training held.
       const { game, savingFor } = get();
-      localStorage.setItem(SAVE_KEY, serialize(persistedGame(game, savingFor)));
-      localStorage.setItem(TIME_KEY, String(now()));
+      // The save records the time it saw (a relaunch credits only beyond it), but the
+      // live mark stays where the loop left it: the loop has not paid up to `wall` yet.
+      const wall = now();
+      localStorage.setItem(SAVE_KEY, serialize(persistedGame(game, savingFor, nextMark(clockMark, wall))));
+      localStorage.setItem(TIME_KEY, String(wall));
     } catch (err) {
       console.warn("Save failed:", err);
     }
@@ -765,7 +887,11 @@ export const useGame = create<GameStore>((set, get) => ({
   doClaimContract: (id) => set((s) => ({ game: claimContract(s.game, id) })),
   doWorkProblem: (id) => set((s) => ({ game: workProblem(s.game, id) })),
   doRollSponsor: (dayKey) => set((s) => {
-    const next = rollSponsor(s.game, dayKey);
+    // Never back to an earlier day than the latest sponsor rolled or completed: a zone
+    // change west, or the switch from UTC days to local ones, keeps today's sponsor
+    // (and its claim) instead of rolling an earlier day's over it.
+    const wall = now();
+    const next = rollSponsor(s.game, sponsorDayFor(lastSponsorDay(s.game), dayKey, wall, localOffsetMs(wall)));
     return next === s.game ? {} : { game: next };
   }),
   doClaimSponsor: () => set((s) => ({ game: claimSponsor(s.game) })),
@@ -950,18 +1076,28 @@ export const useGame = create<GameStore>((set, get) => ({
   exportSave: () => {
     // Same substitution as save(): a backup taken mid-pin must not restore with training held.
     const { game, savingFor } = get();
-    const json = serialize(persistedGame(game, savingFor));
+    // Its mark is the time it was taken, exactly as save() writes it.
+    const json = serialize(persistedGame(game, savingFor, nextMark(clockMark, now())));
     try { return btoa(unescape(encodeURIComponent(json))); } catch { return json; }
   },
   importSave: (blob: string) => {
     const decoded = decodeBackup(blob);
     if (!decoded) return false;
     let prevSeen: string | null | undefined;
+    let restoreMark: number | undefined;
+    let restoreDaily: number | undefined;
     try {
       // Mirror init()'s post-load normalization so an imported save matches the
       // runtime shape (legacy role-counts → people; ID counters seeded so new
       // products/hires don't collide with existing prod-N / emp-N ids).
-      const game = migrateStaffCounts(decoded);
+      // The backup's clock mark joins this device's: restoring a backup taken after a
+      // clock jump must not reopen the window that jump already paid.
+      restoreMark = clockMark;
+      restoreDaily = dailyClaimDay;
+      clockMark = nextMark(Math.max(clockMark, decoded.clockMark), now());
+      // Likewise its Daily Boost claim: an older backup never re-opens today's boost.
+      dailyClaimDay = Math.max(dailyClaimDay, decoded.dailyDay);
+      const game = { ...migrateStaffCounts(decoded), clockMark, dailyDay: dailyClaimDay };
       // Persist BEFORE swapping the running lab: when the write throws (storage full
       // or blocked) the sheet reports a failed restore, and the lab it leaves running
       // must be the player's own. Swapping first replaced it with the backup anyway,
@@ -981,6 +1117,9 @@ export const useGame = create<GameStore>((set, get) => ({
       set((s) => ({ game, offline: null, event: null, notice: null, worldEvent: null, claimBurst: 0, candidates: null, savingFor: null, saveEpoch: s.saveEpoch + 1 }));
       return true;
     } catch {
+      // The running lab stays the player's own, with its own mark.
+      if (restoreMark !== undefined) clockMark = restoreMark;
+      if (restoreDaily !== undefined) dailyClaimDay = restoreDaily;
       if (prevSeen !== undefined) {
         try {
           if (prevSeen === null) localStorage.removeItem(TIME_KEY);

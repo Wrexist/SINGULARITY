@@ -233,6 +233,18 @@ export function endowmentDirectiveMods(state: GameState): { computeMult: number;
   return { computeMult, dataMult, moneyMult };
 }
 
+/** The owned-Directive lane summary the Reputation sheet prints ("Compute +10% · Money
+ *  +10%"). The Money lane is run income, not product revenue, so it is called Money. */
+export function directiveSummary(state: GameState): string[] {
+  const dir = endowmentDirectiveMods(state);
+  const pct = (m: number) => Math.round((m - 1) * 100);
+  const out: string[] = [];
+  if (dir.computeMult > 1) out.push(`Compute +${pct(dir.computeMult)}%`);
+  if (dir.dataMult > 1) out.push(`Data +${pct(dir.dataMult)}%`);
+  if (dir.moneyMult > 1) out.push(`Money +${pct(dir.moneyMult)}%`);
+  return out;
+}
+
 export interface ReputationMods {
   computeMult: number;
   dataMult: number;

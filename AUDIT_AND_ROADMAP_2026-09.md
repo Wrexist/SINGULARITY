@@ -75,15 +75,16 @@ toasts landed on top of the resource values.
 
 ## Part 5 — Open items, ranked
 
-1. **Dark mode (owner decision + one device test).** This is the single biggest visual
-   upgrade left. The hall, the store screenshots and the brand are all dark, while the
-   UI is light-only, so a dark-mode iPhone gets a white screen at night. The CSS is
-   ready for it: roughly 1,000 `var(--…)` uses, plus about 110 literals to tokenise.
-   **Blocker:** `capacitor.config.ts` sets `ios.contentInset: "always"` with a fixed
-   light `backgroundColor`, so the status-bar strip would stay light above a dark app.
-   The fix is native: `@capacitor/status-bar`, or `contentInset: "never"` with CSS
-   safe-area padding. Both need one TestFlight check that can't be done from the web
-   build.
+1. ~~**Dark mode.**~~ ✅ **done (rounds 8 and 10).**
+   - Settings › Appearance offers Light (the default), Dark or Match device.
+   - The iOS shell now runs edge to edge (`contentInset: "never"`), so the page paints
+     the status-bar strip in the current theme.
+   - `@capacitor/status-bar` sets the text colour per theme.
+   - Every safe-area inset reads through an overridable property, so it could be tested
+     in a browser with a fake notch.
+   - *Owner check:* run the TestFlight list in DEPLOYMENT.md §8. It covers status text
+     in both themes with the system in either mode, the brand below the Dynamic Island,
+     landscape, and the bounce colour.
 2. ~~**Sponsor completions past 400 lose Reputation on reload.**~~ ✅ **done.** Earned
    Rep is recomputed from the kept `sponsor_<day>` ids, so the 400 cap took 6 Rep per
    trimmed id on every load. The cap is now 3650 (ten years of dailies). It stays a
@@ -370,6 +371,188 @@ Round 5, left for the owner:
   and toasts?
 - **Milestone Money at $0 cash.** Offline keeps a milestone payout that live play spends
   on marketing when cash is at $0. It favours the player and is bounded.
+
+**Round 6** covered tap targets, earlier rounds' reported-only defects, layout across form
+factors, and an economic exploit hunt. It landed 15 fixes. The suite is at 1535 tests;
+the sim is unchanged except one printed label ("10.0 c/s" now reads "10 c/s"), which is
+the formatter fix itself. Highlights:
+- **Exploit closed.** Picking the Product Company charter for one frame sold a product
+  at 2.5x and lifted the permanent revenue ladders. A charter's product ARPU now counts
+  toward sales and ladders only once the run commits to it (Lock in or the first
+  research). Product income is untouched.
+- **44pt hit areas.** 94 controls across the app missed taps just outside their visible
+  box. They now share the transparent hit-area rule, so nothing moved on screen, and a
+  probe confirmed no control steals a neighbour's tap. Hall wing chips get a tap frame
+  that snaps to the nearest chip.
+- **Form factors.**
+  - The Ship celebration scrolls on landscape phones and the SE.
+  - The iPad landscape hall column stays below the resource bar.
+  - The product sheet's four tabs fit at 320px.
+  - The wide Build layout clears the Dynamic Island in landscape.
+- **Leftover fixes.**
+  - Number labels no longer round past their unit (9.96 read "10.0", 999.6 read
+    "1000").
+  - A decision's toast takes the tone of its effect.
+  - Chen's waiting card is withdrawn when suspicion falls back.
+  - The newswire names the model actually shipped.
+  - Versions shipped inside a short resume are announced.
+  - Hard Reset clears the old lab's toasts and activity log.
+  - Haptic tails stop once Haptics is switched off.
+  - In-flight particles are dropped when reduced motion turns on.
+- **One flaky test fixed.** The save-for resume test checked cash on hand, and a random
+  cash-costing world event failed it about 1 run in 27. It now checks earnings.
+
+Round 6, left for the owner:
+- **Staff lane multipliers grow without bound** with headcount: 512 L4 10x Engineers give
+  x3,725 Compute, while payroll is capped at half of income. Proposal: fold additively
+  within a lane, or add an escalating signing bonus.
+- **Rig Bay fusion is an 82x discount path.** 243 Refurb Cards ($34K) fuse into a
+  Dyson-Adjacent Cluster listed at $2.8M.
+- **iPad hall pin on 11-inch.** The pinned hall column now stays only on 12.9/13-inch
+  iPads in landscape. Pinning it on 11-inch needs a measured bar height.
+- **Long Contract titles** run into the card gap at 320px.
+
+**Round 7** covered three areas: long-session health, goal copy parity and hostile text
+input. It landed 10 fixes. The suite is at 1845 tests and the sim is still identical.
+- **Long sessions are clean.** Over a simulated 5-hour session plus an interaction-churn
+  loop, heap growth was V8 JIT warm-up only. Listeners, intervals, rAF loops, DOM nodes
+  and audio nodes stayed flat, and every module-level collection is capped.
+- **Goal copy parity is now a permanent table test** (`src/engine/goalCopyParity.test.ts`).
+  It derives each goal's numbers, units and lane from the effect data and checks the copy
+  against them. It found:
+  - Grand Challenge and Lean Budget rewards promised "all revenue" but only touch the
+    Money lane; the copy now says Money.
+  - A Field Note said "Ten contracts" at a threshold of 5.
+  - The Inference API card read "+$0.3/s" but pays $0.30 per Compute/s.
+  - Trust & Safety did nothing on 5 of 8 product types; it now cuts incident Heat.
+  - Running Hot and Apolitician had no readout, and the Heat meter rounded 59.5 up to
+    60%.
+- **Product names are safe.**
+  - Rename survives IME composition.
+  - Names are cleaned: no split emoji, bidi overrides or control characters.
+  - A save with a junk name keeps the product.
+  - Long one-word names wrap instead of scrolling the page sideways.
+  - A product named like a rival no longer takes the rival's tags.
+- **The product sheet's title** no longer sits in the browser's grey button box.
+
+Round 7, left for the owner:
+- **"Revenue" versus "Money".** The Objective lane buttons, world-event chips and about a
+  dozen event bodies say "Revenue" for the Money lane, which never touches product
+  revenue. Either rename the label to Money everywhere, or let the Money lane reach
+  products.
+- **Staff PR's "-10% product Heat"** has the same incident-Heat blind spot that Trust &
+  Safety had.
+
+**Round 8 settled the open owner calls.** The owner asked for "everything" to be done.
+Every change below is in systems the balance sim never touches, so the sim is still
+byte-identical. The suite is at 1944 tests. No player loses anything they already hold.
+- **Staff lanes are softcapped above x100.** Past the knee a lane pays 100 x (m/100)^0.5.
+  Crews of up to about 60 people are unchanged. 512 L4 10x Engineers at full morale go
+  from x42,125 to x2,052.
+- **Rig Bay fusion is a trade-in, not a discount path.** A fused part can't appear
+  before its normal reveal. Each rung needs enough spares that the inputs cost at least
+  50% of the result's list price. Parts already fused early stay owned.
+- **Hard ship is a real trade-off.** Its rival lead now lasts the whole generation instead
+  of vanishing at the next version push. Over the next 20 minutes, Hard earns $9.3M and
+  Deploy $12.4M; Hard still banks +50% Legacy.
+- **The Megaproject cap rose from 512 to 890 cycles.** Mandate summaries switch to a
+  multiplier form so they stay short.
+- **A Reasoning Engine can't be priced at a loss.** Its price floor is x0.6 (was x0.5);
+  every product type's minimum price has a non-negative margin at zero marketing.
+- **A timed boost no longer multiplies a Ship's Legacy.** The Legacy base is priced on
+  boost-free income. Boosts still pay their Money and count for achievements and
+  contracts.
+- **Legacy growth above x10 softens gently.** The power is 0.15, and banked weights are
+  never reduced. For a Ship whose raw gain is +10% weights:
+  - a x1e3 lab gains +3.3% (was +7.9%);
+  - a x1e6 veteran gains +0.9% (was +7.9%).
+  - A x20 lab keeps about 85% of its gain.
+  - A first pass at power 0.5 froze veterans at +0.006% a Ship, so it was softened.
+- **The Money lane is called Money.** Objective lanes, event chips and bodies, and the
+  Directive summary no longer say "Revenue", which reads as product revenue. Proper names
+  ("Revenue Mandate", Legacy node names) are unchanged. A parity test pins this.
+- **Smaller fixes:**
+  - An earned Endowment Directive pick shows a small static violet dot on the path to it.
+  - Reduced motion now defaults to off; the OS preference is still honoured live.
+  - Long Contract titles wrap.
+  - The hall column pins on 11-inch iPads (measured bar height, and a smaller hall there).
+  - Staff PR now cuts incident Heat.
+  - Completionist counts only the base tree.
+  - A notice burst keeps every notice.
+- **Offline clock guard (SAVE_VERSION 40, `clockMark`).** Offline credit, suspend credit,
+  the Daily Boost and the sponsor day all use a high-water mark. A forward, back, forward
+  jump pays once. The mark is trusted at most 7 days ahead of the device clock, so a phone
+  that was wrongly ahead loses at most that gap. Live play never depends on the mark.
+- **Opt-in dark mode.** Settings > Appearance offers Light, Dark or Match device, and
+  defaults to Light. Every enabled text run passes WCAG AA in Dark across 21 screens.
+
+Round 8, still for the owner:
+- **On-device checks.**
+  - Dark mode and Match device on a real iPhone, with the status bar handled in round 10
+    (DEPLOYMENT.md section 8).
+  - An 11-inch iPad in landscape.
+  - The Daily Boost across a real midnight and after an iOS suspend.
+- **Dials if a change lands badly.**
+  - `balance.staff.laneSoftcap`
+  - `prestige.legacySoftcapPower`
+  - `components` minFuseValueShare
+  - the Hard ship lead
+
+**Round 9 reviewed round 8 adversarially** and found three regressions in it, all now
+fixed. The suite is at 1984 tests and the sim is still identical.
+- **A suspend's offline window could be lost.** If the 5 s autosave woke before the game
+  loop (about 1 wake in 50), save() moved the clock guard's live mark, and the whole
+  locked-phone window paid nothing. Now saves only record the mark into the persisted
+  copy; the loop, init and import move the live one. A clock-guard fuzz test
+  (`clockGuardFuzz.test.ts`) pins honest play paid in full and clock moves never
+  double-paid.
+- **A Hard ship's rival lead became a permanent product gain.** It was added to the
+  frontier and never taken back out, so the next generation out-earned Deploy by 62%. It
+  now ends at the next Ship, and a Hard generation's draft is minted at the reachable
+  quality.
+- **Rig Bay fusion was unreachable.** Round 8's fair counts exceeded the spares a
+  player could ever hold. The picker now offers "Buy a spare" (with n/N progress) on an
+  owned part while its fusion result is revealed.
+- **Smaller fixes:**
+  - The return reminder fires when the offline cap has really filled after a clock
+    correction.
+  - Unearned Team stars are no longer near-white in Dark.
+  - The pinned iPad hall stays below the bar at the end of the Build page.
+- **Clean on review:** every reader of the new boost-free Legacy base (payroll,
+  milestones, stats, objectives, UI), and softcap agreement across every ship mode and
+  extreme stocks.
+
+Round 9, left for the owner:
+- **UTC day rollover.** The Daily Boost and sponsor day roll over at UTC midnight, not
+  local midnight (as before round 8).
+- **Records Rep from boosts.** A timed boost can still pull a Compute record, and its
+  Rep, forward a little.
+- **Reinstall reopens the daily.** Reinstalling and restoring a backup reopens that day's
+  Daily Boost, because the claim key lives outside the save.
+
+**Round 10 fixed everything that was left.** The suite is at 2049 tests, the sim is still
+identical, and `validate:store` passes 50/50.
+- **The Daily Boost and sponsor roll over at the player's local midnight,** DST included,
+  instead of UTC midnight.
+  - The daily claim now lives in the save (SAVE_VERSION 41, `dailyDay`). A reinstall
+    plus restore keeps it claimed, and the update imports the old claim once.
+  - Clock moves and time-zone hopping can never claim a day twice. Sponsor ids already
+    earned are never re-keyed, so Reputation is unchanged.
+- **Compute records are measured on the boost-free rate.** A boost can't pull a record,
+  or its Rep, forward. The same boost-free peak now drives compute contracts, objectives
+  and achievements, so a boost alone no longer completes them.
+- **Money names say Money:** Money Specialist, Mastery and Frontier, the Money Mandate,
+  and "Money first" (Bootstrapped).
+- **Hard generations no longer claim "back at the frontier".** The copy reads "as close
+  as rivals allow".
+- **iOS status bar in both themes.** The shell is edge to edge and the text colour
+  follows the theme. The audit also fixed two layout bugs that a real top inset would
+  have caused: the brand header was hidden at rest, and a landscape seam showed.
+- **Translation proofread (49 locales).**
+  - The Dark mode line now names the in-game "Settings", not the iPhone's Settings app.
+  - Compute keeps one grammatical gender per language (es/fr/ca/de). In es/fr/ca this
+    fixed a "Save for this" line that read as the lab buying Compute.
+  - Wording slips in uk, ru, el, ar-SA and ur-PK were fixed.
 
 ## Part 6 — App Store: "free to download"
 

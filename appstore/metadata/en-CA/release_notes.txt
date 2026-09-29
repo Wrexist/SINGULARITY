@@ -1,5 +1,6 @@
 A big update — more to decide every generation:
 
+• Dark mode: choose Light, Dark or Match device in Settings
 • Declare a Stance: pick Safety, Center or Acceleration at the start of a run and unlock the Doctrine perks for that side
 • Charter draft: every Ship deals three Lab Charters, including rule-changers like Research Sprint and Product Company
 • Unplugged Trials: veterans can switch Legacy off for one generation and play a real, full run again
@@ -8,6 +9,6 @@ A big update — more to decide every generation:
 • "Save for this": tap research that's out of reach and the lab banks Compute for it, then buys it for you
 • Calmer news: only real decisions interrupt you; everything else runs on the Newswire
 • Works better with VoiceOver and keyboards, with bigger tap targets and clearer text
-• Smoother on older iPhones, offline time counted properly, and 60+ fixes, including a rare freeze when a boost expired
+• Smoother on older iPhones, offline time counted properly, and 150+ fixes, including a rare freeze when a boost expired
 
 Thanks for playing. Tell us what to build next.

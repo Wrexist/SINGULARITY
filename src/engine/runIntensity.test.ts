@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createInitialState } from "./state";
+import { SAVE_VERSION, createInitialState } from "./state";
 import { derive } from "./derive";
 import { tick } from "./tick";
 import { startRun, claimRun } from "./actions";
@@ -109,7 +109,7 @@ describe("run intensity persists (save v37)", () => {
     raw.version = 36;
     delete raw.run.focus;
     const back = deserialize(JSON.stringify(raw));
-    expect(back.version).toBe(39);
+    expect(back.version).toBe(SAVE_VERSION);
     expect(back.run.focus).toBe(0.4);
     const ready = { ...raw, run: { active: false, progress: 1, readyToClaim: true } };
     expect(deserialize(JSON.stringify(ready)).run.focus).toBe(0.4);

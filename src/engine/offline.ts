@@ -4,6 +4,7 @@ import { tick } from "./tick";
 import { earnedReputation } from "./reputation";
 import { playerMarketRank } from "./market";
 import { currentEra } from "./eras";
+import { rivalLead } from "./products";
 import type { GameState } from "./types";
 
 export interface OfflineSummary {
@@ -27,8 +28,9 @@ export interface OfflineSummary {
   story: {
     /** Product-milestone ids reached while away. */
     milestones: string[];
-    /** Products whose version upgrade finished while away. */
-    upgradesFinished: { name: string; version: number }[];
+    /** Products whose version upgrade finished while away. `behindRivals`: it landed
+     *  in a Hard generation, short of the frontier by the rivals' lead (rivalLead). */
+    upgradesFinished: { name: string; version: number; behindRivals?: boolean }[];
     /** Specialists whose training completed while away. */
     leveledUp: { name: string; level: number }[];
     /** Market rank before/after (null = no live product). */
@@ -84,7 +86,7 @@ export function summarizeWindow(
       milestones: after.products.milestones.filter((id) => !hadMilestones.has(id)),
       upgradesFinished: after.products.active
         .filter((p) => p.version > (versionBefore.get(p.id) ?? Infinity))
-        .map((p) => ({ name: p.name, version: p.version })),
+        .map((p) => ({ name: p.name, version: p.version, behindRivals: rivalLead(after) > 0 })),
       leveledUp: after.employees
         .filter((e) => wasTraining.get(e.id) && !e.training)
         .map((e) => ({ name: e.name, level: e.level })),

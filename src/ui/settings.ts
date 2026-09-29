@@ -1,5 +1,14 @@
 import { create } from "zustand";
 
+/** Appearance (2026-09): Light is the default so no existing player sees a change
+ *  until they opt in; "system" follows the device's prefers-color-scheme live. */
+export type Appearance = "light" | "dark" | "system";
+export const APPEARANCES: readonly Appearance[] = ["light", "dark", "system"];
+/** Stored settings are hostile input like the save: an unknown value reads as Light. */
+export function sanitizeAppearance(v: unknown): Appearance {
+  return (APPEARANCES as readonly unknown[]).includes(v) ? (v as Appearance) : "light";
+}
+
 export interface Settings {
   sound: boolean;
   /** Ambient music bed + era/ship stingers (separate from SFX so each is opt-out). */
@@ -28,13 +37,14 @@ export interface Settings {
    *  shows only NEW unlocks since, so it matches the other badges' "needs you"
    *  semantics instead of being a permanently-large lifetime total. */
   achievementsSeen: number;
+  /** Colour scheme: Light (default) / Dark / Match device. Cosmetic, local only. */
+  appearance: Appearance;
 }
 
 const KEY = "singularity.settings.v1";
 
-/** Seed the in-app reduced-motion toggle from the OS preference on FIRST run
- *  (a saved choice always wins). The canvas/FX layers read the setting, not the
- *  media query, so without this seed an OS-level preference was ignored. */
+/** The OS `prefers-reduced-motion` value. Read LIVE (see osReduceMotion below), so it
+ *  no longer seeds the in-app toggle: motion is reduced when EITHER is on. */
 function prefersReducedMotion(): boolean {
   try {
     return typeof window !== "undefined" && !!window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -43,12 +53,19 @@ function prefersReducedMotion(): boolean {
   }
 }
 
-const DEFAULTS: Settings = { sound: true, music: true, haptics: true, reducedMotion: prefersReducedMotion(), hallTheme: "classic", rackSkin: "classic", onboarded: false, shipExplained: false, hapticsLight: false, scientificNotation: false, lastBackupAt: null, achievementsSeen: 0, notifyReminders: false };
+// reducedMotion defaults OFF: it is the player's own choice. The device preference is
+// honoured live by motionReduced(); seeding the toggle from it baked a device setting
+// into the stored settings, so turning Reduce Motion off in iOS later kept the game
+// still. A saved value (either way) is kept as stored.
+const DEFAULTS: Settings = { sound: true, music: true, haptics: true, reducedMotion: false, hallTheme: "classic", rackSkin: "classic", onboarded: false, shipExplained: false, hapticsLight: false, scientificNotation: false, lastBackupAt: null, achievementsSeen: 0, notifyReminders: false, appearance: "light" };
 
 function load(): Settings {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return { ...DEFAULTS, ...JSON.parse(raw) };
+    if (raw) {
+      const s = { ...DEFAULTS, ...JSON.parse(raw) } as Settings;
+      return { ...s, appearance: sanitizeAppearance(s.appearance) };
+    }
   } catch {
     /* ignore */
   }
@@ -59,7 +76,7 @@ function persist(s: Settings): void {
   try {
     localStorage.setItem(
       KEY,
-      JSON.stringify({ sound: s.sound, music: s.music, haptics: s.haptics, reducedMotion: s.reducedMotion, hallTheme: s.hallTheme, rackSkin: s.rackSkin, onboarded: s.onboarded, shipExplained: s.shipExplained, hapticsLight: s.hapticsLight, scientificNotation: s.scientificNotation, lastBackupAt: s.lastBackupAt, achievementsSeen: s.achievementsSeen, notifyReminders: s.notifyReminders }),
+      JSON.stringify({ sound: s.sound, music: s.music, haptics: s.haptics, reducedMotion: s.reducedMotion, hallTheme: s.hallTheme, rackSkin: s.rackSkin, onboarded: s.onboarded, shipExplained: s.shipExplained, hapticsLight: s.hapticsLight, scientificNotation: s.scientificNotation, lastBackupAt: s.lastBackupAt, achievementsSeen: s.achievementsSeen, notifyReminders: s.notifyReminders, appearance: s.appearance }),
     );
   } catch {
     /* ignore */
@@ -69,10 +86,9 @@ function persist(s: Settings): void {
 /**
  * Live OS-level `prefers-reduced-motion`, kept in sync for the whole session.
  *
- * `prefersReducedMotion()` above only SEEDS the default for a fresh install. Once the
- * setting is persisted, a player who turns Reduce Motion on in iOS afterwards was
- * still getting particle bursts, floaters and scale-punches, because the JS FX layers
- * read the stored setting and never the media query. CLAUDE.md requires respecting the
+ * The JS FX layers used to read only the stored setting, so a player who turned
+ * Reduce Motion on in iOS after first run still got particle bursts, floaters and
+ * scale-punches. CLAUDE.md requires respecting the
  * OS preference AND the in-app toggle, so motion is reduced when EITHER is on.
  * (The CSS side already covered both via its global kill switch.)
  */
@@ -110,6 +126,7 @@ interface SettingsStore extends Settings {
   setRackSkin: (id: string) => void;
   /** Return-reminder toggle (permission handling lives in the UI before this is set). */
   setNotifyReminders: (on: boolean) => void;
+  setAppearance: (a: Appearance) => void;
   completeOnboarding: () => void;
   markShipExplained: () => void;
   markBackedUp: () => void;
@@ -135,6 +152,10 @@ export const useSettings = create<SettingsStore>((set, get) => ({
   },
   setNotifyReminders: (on) => {
     set({ notifyReminders: on });
+    persist(get());
+  },
+  setAppearance: (a) => {
+    set({ appearance: sanitizeAppearance(a) });
     persist(get());
   },
   completeOnboarding: () => {

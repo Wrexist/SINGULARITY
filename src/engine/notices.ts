@@ -26,8 +26,16 @@ const hashStr = (s: string): number => {
 const pick = <T>(pool: readonly T[], seed: string): T => pool[hashStr(seed) % pool.length]!;
 
 // ---- A model version ships (store.ts notice; every version bump) ----
+/** Where a finished version lands. In a Hard generation rivals keep their lead all
+ *  generation (products.ts rivalLead/reachableQuality): a new version reaches the
+ *  frontier LESS that lead, so "back at the frontier" would be false there. */
+const AT_FRONTIER = "back at the frontier";
+const BEHIND_RIVALS = "as close as rivals allow";
+export function versionLanding(behindRivals: boolean): string {
+  return behindRivals ? BEHIND_RIVALS : AT_FRONTIER;
+}
 const VERSION_SHIP_TAILS = [
-  "back at the frontier",
+  AT_FRONTIER,
   "the changelog is one line and a shrug",
   "now with 12% more state-of-the-art",
   "the benchmarks blinked first",
@@ -38,8 +46,15 @@ const VERSION_SHIP_TAILS = [
   "ships with confidence and one known issue",
   "the eval numbers went up and to the right",
 ];
-export function versionShipNote(name: string, version: number): string {
-  return `${name} v${version} shipped — ${pick(VERSION_SHIP_TAILS, `${name}#${version}`)}`;
+/** `behindRivals`: a Hard generation's lead is live (rivalLead > 0), so the frontier
+ *  line reads as close as rivals allow; every other tail is true either way. */
+export function versionShipNote(name: string, version: number, behindRivals = false): string {
+  const tail = pick(VERSION_SHIP_TAILS, `${name}#${version}`);
+  return `${name} v${version} shipped — ${tail === AT_FRONTIER ? versionLanding(behindRivals) : tail}`;
+}
+/** Several versions finished on one tick (an offline catch-up). */
+export function versionsShipNote(count: number, behindRivals = false): string {
+  return `${count} products shipped new versions — ${versionLanding(behindRivals)}`;
 }
 
 // ---- A fresh model is waiting to be commercialised (App.tsx; every ship) ----

@@ -11,7 +11,7 @@ import { advanceFlagship } from "./flagship";
 import { legacyMultiplier } from "./derive";
 import { legacyAvailable } from "./legacyTree";
 import { resolveStakeOutcome, playerMarketRank, rivalsBeaten } from "./market";
-import { capCarriedMarketing, maxActiveProducts } from "./products";
+import { capCarriedMarketing, maxActiveProducts, rivalLead, reachableQuality } from "./products";
 import { truceAcrossShip } from "./negotiation";
 import type { DraftModel, GameState } from "./types";
 
@@ -77,15 +77,83 @@ export function charterConvictionMult(state: GameState): number {
   return ladder[idx]!;
 }
 
-/** Legacy Weights a given ship mode would actually bank (base × mode mult × conviction). */
+/** The weights at which the Legacy multiplier reaches the softcap (x10): past this
+ *  stock, what a Ship earns meets diminishing returns. Static over the balance data. */
+const SOFTCAP_WEIGHTS: Big = Big.of(
+  ((balance.prestige.legacySoftcapAt - 1) / balance.prestige.multiplierPerPoint) ** (1 / balance.prestige.multiplierExponent),
+);
+export function legacySoftcapWeights(): Big {
+  return SOFTCAP_WEIGHTS;
+}
+
+/**
+ * The weights a Ship actually adds to a stock of `stock` when it earns `gain` raw:
+ * the Legacy softcap above x10 (owner-approved 2026-09). Up to the cap every weight
+ * pays in full; past it each weight pays (cap / weights)^power, integrated over the
+ * Ship itself, so it is smooth across x10, never pays less for earning more, and a
+ * single enormous Ship can't jump the curve. Only EARNED weights are softened — the
+ * stock is never reduced, so no existing save's multiplier goes down. Returns `gain`
+ * itself (same reference) when the Ship stays under the cap, as every Ship in the
+ * balance sim does. Pure, Big-native (no overflow for astronomical stocks).
+ */
+export function softcapLegacyGain(stock: Big, gain: Big): Big {
+  const cap = SOFTCAP_WEIGHTS;
+  if (!gain.gt(0) || stock.add(gain).lte(cap)) return gain;
+  const below = cap.sub(stock).max(Big.ZERO).min(gain);
+  const above = gain.sub(below);
+  const start = stock.max(cap);
+  // dW/dg = (cap / W)^p  =>  W_end^(p+1) = start^(p+1) + (p+1)·cap^p·above.
+  const p = balance.prestige.legacySoftcapPower;
+  const k = cap.pow(p).mul(p + 1);
+  const x = above.mul(k).div(start.pow(p + 1));
+  const delta = x.lt(1e9)
+    // Small relative gain: the stable form, so a huge stock doesn't round it to 0.
+    ? start.mul(Math.expm1(Math.log1p(x.toNumber()) / (p + 1)))
+    : start.pow(p + 1).add(above.mul(k)).pow(1 / (p + 1)).sub(start);
+  return below.add(delta.max(Big.ZERO));
+}
+
+/** Legacy Weights a given ship mode would actually bank (base × mode mult × conviction,
+ *  softened above the x10 softcap — softcapLegacyGain). */
 export function legacyWeightsForMode(state: GameState, mode: ShipMode): Big {
   const base = legacyWeightsGain(state);
   if (!canPrestige(state)) return base;
-  return base
+  const raw = base
     .mul(balance.prestige.shipModes[mode].legacyMult)
     .mul(charterConvictionMult(state))
     .floor()
     .max(1);
+  const paid = softcapLegacyGain(legacyAvailable(state), raw);
+  return paid === raw ? raw : paid.floor().max(1);
+}
+
+/**
+ * The run's lifetime Money at which the Ship (deploy) pays its current number of
+ * weights, and the Money at which it pays one more — what "Progress to next Legacy
+ * Weight" measures. Found by bisection over the real pricing (legacyWeightsForMode),
+ * so it follows the softcap, the charter conviction and every floor exactly: the bar
+ * fills toward the weight the Ship will really pay, not a raw one. null before the
+ * Ship unlocks. Pure.
+ */
+export function legacyWeightMoneyStep(state: GameState): { at: Big; next: Big } | null {
+  if (!canPrestige(state)) return null;
+  const paidAt = (m: Big) => legacyWeightsForMode({ ...state, lifetimeMoney: m }, "deploy");
+  const now = paidAt(state.lifetimeMoney);
+  const moneyFor = (target: Big): Big => {
+    if (paidAt(Big.ZERO).gte(target)) return Big.ZERO;
+    // Bracket in log10 space, then bisect: paidAt is monotone in Money.
+    let lo = Math.log10(balance.prestige.scale) - 1;
+    let hi = Math.max(lo + 1, state.lifetimeMoney.log10() + 1);
+    for (let i = 0; i < 64 && paidAt(Big.of(10).pow(hi)).lt(target); i++) hi = lo + (hi - lo) * 2;
+    for (let i = 0; i < 100; i++) {
+      const mid = (lo + hi) / 2;
+      if (mid === lo || mid === hi) break;
+      if (paidAt(Big.of(10).pow(mid)).gte(target)) hi = mid;
+      else lo = mid;
+    }
+    return Big.of(10).pow(hi);
+  };
+  return { at: moneyFor(now), next: moneyFor(now.add(1)) };
 }
 
 /** The AGI-ascension gate: a ship counts as one if it lands in the Post-Singularity
@@ -200,10 +268,12 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
   // into a standing business. Its strength = the competitive frontier at ship time,
   // so a longer run yields a stronger starting product. Oldest drafts drop off the cap.
   // Deploy keeps the flagship as a commercialisable draft; open-source/sell give
-  // the model away, so no new draft lands in the Products tab.
+  // the model away, so no new draft lands in the Products tab. In a Hard generation
+  // the lab builds to the frontier less the rivals' lead (reachableQuality), so its
+  // draft does too — the leapt frontier is the rivals' strength, not the model's.
   const draft: DraftModel = {
     id: `draft-${ships}`,
-    quality: Math.max(1, state.products.frontier),
+    quality: reachableQuality(state),
     ships,
   };
   const drafts = modeDef.keepsDraft
@@ -259,7 +329,8 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
     },
     // Phase 3 — released products are your standing business; they survive the
     // reset and keep earning Money into the next run (the meta-reward for shipping).
-    // A "hard" ship leaps the competitive frontier so carried products start behind.
+    // A "hard" ship leaps the competitive frontier so carried products start behind,
+    // and stay behind for this generation (see rivalLead in products.ts).
     // A version upgrade still in flight is dropped, not carried: its remaining cost was
     // priced from the OLD run's Data rate, so in the fresh lab it drained every bit of
     // Data (and a share of Compute) each tick and froze research for the whole
@@ -268,7 +339,11 @@ export function prestige(state: GameState, mode: ShipMode = "deploy"): GameState
       ...state.products,
       active: state.products.active.map((p) => (p.upgrade ? { ...p, upgrade: null } : p)),
       drafts,
-      frontier: state.products.frontier + modeDef.frontierPenalty,
+      // The ending generation's rivals' lead is taken back out first: it lasts one
+      // generation. Left in, it became a permanent gain — every later push reached a
+      // frontier 6 higher than a Deploy lab's (revenue scales with quality), and each
+      // Hard ship stacked another 6. 0 outside a Hard generation.
+      frontier: Math.max(P.frontierStart, state.products.frontier - rivalLead(state)) + modeDef.frontierPenalty,
     },
     // Flagship brand: if the designated product survived to this ship, its tenure grows
     // (capped); if it was retired, the brand is lost. The sim never has a flagship.
