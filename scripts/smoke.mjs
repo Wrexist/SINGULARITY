@@ -80,6 +80,8 @@ try {
           "singularity.settings.v1",
           JSON.stringify({ onboarded: true, shipExplained: true, sound: false, music: false })
         );
+        // The Pro paywall's automatic showings are spent (its own smoke drives it).
+        localStorage.setItem("singularity.paywall.v1", JSON.stringify({ launchShown: true, shipArmed: true, shipShown: true, lastAutoAt: 0 }));
       },
       { save, now: Date.now() }
     );
@@ -113,6 +115,7 @@ try {
         "singularity.settings.v1",
         JSON.stringify({ onboarded: true, shipExplained: true, sound: false, music: false })
       );
+      localStorage.setItem("singularity.paywall.v1", JSON.stringify({ launchShown: true, shipArmed: true, shipShown: true, lastAutoAt: 0 }));
     }, save);
     await page.reload({ waitUntil: "networkidle" });
     await sleep(1200);

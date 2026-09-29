@@ -714,3 +714,34 @@ export function SingularityIcon({ size = 18 }: IconProps) {
     </Icon>
   );
 }
+
+/** Pro — a crown with a spark set in it (the paywall hero; Settings' Pro card). */
+export function CrownIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="M3.5 8.2 7.8 12l4.2-6.5 4.2 6.5 4.3-3.8-1.7 9.3H5.2z" />
+      <path d="M5.4 20.5h13.2" />
+      <path d="M12 12.6c.25 1.25.75 1.75 2 2-1.25.25-1.75.75-2 2-.25-1.25-.75-1.75-2-2 1.25-.25 1.75-.75 2-2z" />
+    </Icon>
+  );
+}
+
+/** Time away runs faster — a fast-forward (Pro: offline ×2). */
+export function FastForwardIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="M3.5 6.5 11 12l-7.5 5.5z" />
+      <path d="M12.5 6.5 20 12l-7.5 5.5z" />
+    </Icon>
+  );
+}
+
+/** A longer window — a clock face (Pro: 24-hour offline cap). */
+export function ClockIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" />
+    </Icon>
+  );
+}

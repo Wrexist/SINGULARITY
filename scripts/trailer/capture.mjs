@@ -67,6 +67,7 @@ async function openShot(browser, shot) {
     }));
     localStorage.setItem("singularity.save.v1", save);
     localStorage.setItem("singularity.lastSeen.v1", String(Date.now()));
+    localStorage.setItem("singularity.paywall.v1", JSON.stringify({ launchShown: true, shipArmed: true, shipShown: true, lastAutoAt: 0 }));
     const st = document.createElement("style");
     st.textContent = quiet;
     document.addEventListener("DOMContentLoaded", () => document.head.appendChild(st));

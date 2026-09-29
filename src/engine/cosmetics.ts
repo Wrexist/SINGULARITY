@@ -5,7 +5,7 @@
  * prestige and ascension (no need to persist an "unlocked set"). Cosmetic-only →
  * never folded into derive → the tuned curve is untouched.
  *
- * Premium is a UI/state concern (StoreKit), so it's passed IN as a flag — same
+ * Pro (the "premium" unlock kind) is a UI/state concern (StoreKit), so it's passed IN as a flag — same
  * boundary as the wall clock and the RNG rolls.
  */
 import { Big } from "./math/Big";
@@ -66,7 +66,7 @@ export function skinProgress(state: GameState, isPremium: boolean): { owned: num
 export function unlockHint(u: CosmeticUnlock): string {
   switch (u.kind) {
     case "free": return "Available";
-    case "premium": return "Premium unlock";
+    case "premium": return "Pro";
     case "ships": return `Ship ${u.n} models`;
     case "ascensions": return u.n === 1 ? "Ascend to AGI" : `Ascend ${u.n}×`;
     case "peakCompute": return `Reach ${compact(u.n)} Compute/s`;

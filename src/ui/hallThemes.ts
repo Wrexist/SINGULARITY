@@ -30,6 +30,9 @@ const STYLES: Record<string, ThemeStyle> = {
   midnight: { filter: "hue-rotate(200deg) saturate(0.8) brightness(0.85)", swatch: "linear-gradient(135deg,#1e3a8a,#0b1224)", accent: "#3b5bdb" },
   iridescent: { filter: "hue-rotate(180deg) saturate(1.7) brightness(1.08)", swatch: "linear-gradient(135deg,#a855f7,#22d3ee,#f5b40a)", accent: "#9b6bff" },
   gold: { filter: "hue-rotate(14deg) saturate(1.25) sepia(0.2) brightness(1.05)", swatch: "linear-gradient(135deg,#f5b40a,#ff8c42)", accent: "#d99a16" },
+  // Pro drops (2026-09).
+  boardroom: { filter: "sepia(0.35) hue-rotate(-18deg) saturate(1.2) brightness(0.95) contrast(1.06)", swatch: "linear-gradient(135deg,#7a2e3a,#c89b4a)", accent: "#b0413e" },
+  orbital: { filter: "hue-rotate(145deg) saturate(1.35) brightness(0.93) contrast(1.04)", swatch: "linear-gradient(135deg,#1e1b4b,#0ea5b7)", accent: "#0e8fa0" },
 };
 
 export function themeStyle(id: string): ThemeStyle {
@@ -51,6 +54,8 @@ const SKIN_SWATCH: Record<string, string> = {
   synth: "linear-gradient(135deg,#ff5fd2,#a855f7)",
   aurora: "linear-gradient(135deg,#5effc0,#7ee8ff,#c08bff)",
   gold: "linear-gradient(135deg,#f5d020,#f5b40a)",
+  obsidian: "linear-gradient(135deg,#3b2f5c,#0f0d17)",
+  chrome: "linear-gradient(135deg,#f4f6fa,#9aa3b2,#e3e7ee)",
 };
 
 export function skinSwatch(id: string): string {

@@ -2,7 +2,16 @@ import { useEffect, useRef } from "react";
 import { useGame, claimWallTime } from "./store";
 import { loopDelta } from "./clockGuard";
 import { balance } from "../engine/balance/config";
-import { isPremium } from "./premium";
+import { hasPro } from "./premium";
+
+/** A tick whose raw gap exceeds this is a real suspend (OS sleep / frozen tab), not a
+ *  live frame — only then does the Pro offline rate apply. */
+export const RESUME_RATE_MIN_MS = 60_000;
+
+/** The offline rate for one loop delta: Pro ×rate on a real suspend, else ×1. Pure. */
+export function resumeRate(rawMs: number, pro: boolean): number {
+  return pro && Number.isFinite(rawMs) && rawMs > RESUME_RATE_MIN_MS ? balance.offline.proRate : 1;
+}
 
 /**
  * Drives the simulation in real time. Reads the wall clock here (the UI layer),
@@ -34,7 +43,8 @@ export function useGameLoop(tickHz = 10, saveEverySec = 5) {
       // single-tick windfall that bypasses the very cap the offline (tab-closed) path
       // enforces. A normal tick is ~100ms, so this only ever bites a long suspend, and
       // it's never more generous than simply closing the tab would have been.
-      const capMs = (isPremium() ? balance.offline.premiumMaxHours : balance.offline.maxHours) * 3_600_000;
+      const pro = hasPro();
+      const capMs = (pro ? balance.offline.premiumMaxHours : balance.offline.maxHours) * 3_600_000;
       // performance.now() is monotonic (immune to clock changes) but on iOS it can
       // stop advancing while the device is asleep, so a suspend with the screen
       // locked was credited as seconds instead of hours. When the wall clock saw
@@ -54,7 +64,9 @@ export function useGameLoop(tickHz = 10, saveEverySec = 5) {
         // Pass the raw (unclamped) window too: when this tick IS a resume from a
         // long suspend, the store turns it into the "while you were away" recap,
         // and the recap needs the real time away to say it was capped.
-        advance(elapsed, raw);
+        // Pro: a real suspend (raw gap > 60s) runs at the offline rate, applied to the
+        // CAPPED real window (so the cap still bounds real time). Live frames: ×1.
+        advance(elapsed, raw, resumeRate(raw, pro));
       } catch (e) {
         if (!tickErrorLogged) {
           console.error("Game tick failed — containing so the loop survives:", e);

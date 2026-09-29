@@ -1,5 +1,8 @@
 import { Capacitor } from "@capacitor/core";
-import { isPremium, setPremium } from "../state/premium";
+import { isPremium, setPremium, hasPro, setProUntil, proUntil } from "../state/premium";
+import type { RevenueCatStore, Plan, PlanId, ProStatus } from "./iapRevenueCat";
+
+export type { Plan, PlanId } from "./iapRevenueCat";
 
 /**
  * Premium unlock IAP (GDD §9: a single generous unlock, cosmetic/QoL only, never
@@ -25,7 +28,24 @@ export const PREMIUM_PRODUCT_ID = "com.wrexist.singularityinc.premium";
 /** Fallback label only (web/dev, or before StoreKit has answered). On device the
  *  card shows StoreKit's localized price — a hardcoded "$6.99" told a player in
  *  the UK, EU or Japan a price StoreKit would not actually charge them. */
-export const PREMIUM_PRICE = "$6.99";
+export const PREMIUM_PRICE = "$39.99";
+
+/** Web/dev placeholder plans (no store there). On a device every price comes from
+ *  the store — these strings are never shown to a real buyer. */
+export const WEB_PLANS: readonly Plan[] = [
+  { id: "annual", priceString: "$24.99", periodLabel: "year", trialDays: 7, perWeekString: "$0.48" },
+  { id: "weekly", priceString: "$4.99", periodLabel: "week", trialDays: 7 },
+  { id: "lifetime", priceString: PREMIUM_PRICE, periodLabel: "once", trialDays: null },
+];
+
+const DAY_MS = 24 * 3_600_000;
+
+/** Mirror one RevenueCat snapshot into the local entitlement. The lifetime flag is
+ *  grant-only; the subscription expiry follows the store, so a lapse clears it. */
+function applyStatus(st: ProStatus): void {
+  if (st.lifetime) setPremium(true);
+  setProUntil(st.until);
+}
 
 // --- Minimal typing for the bits of the (globally-injected) CdvPurchase we use.
 // We deliberately DON'T `import "cordova-plugin-purchase"` so the web/Vite build
@@ -141,11 +161,38 @@ function storePrice(store: CdvStore | null): string | null {
   }
 }
 
+// --- RevenueCat path (native, when the build carries a key; see iapRevenueCat.ts).
+// Loaded lazily so the web build and the StoreKit-path tests never touch the plugin.
+/** The public iOS SDK key baked into this build (VITE_RC_IOS_KEY), or null. */
+export function revenueCatKey(): string | null {
+  const k = import.meta.env?.VITE_RC_IOS_KEY;
+  return typeof k === "string" && k.trim() ? k.trim() : null;
+}
+
+let rcPromise: Promise<RevenueCatStore | null> | null = null;
+
+function ensureRevenueCat(): Promise<RevenueCatStore | null> {
+  if (rcPromise) return rcPromise;
+  rcPromise = (async () => {
+    if (!Capacitor.isNativePlatform()) return null;
+    const key = revenueCatKey();
+    if (!key) return null;
+    const rc = await import("./iapRevenueCat");
+    return rc.createRevenueCatStore(key, PREMIUM_PRODUCT_ID, applyStatus);
+  })().catch((e) => {
+    rcPromise = null; // a transient failure must not block later attempts
+    throw e;
+  });
+  return rcPromise;
+}
+
 export const iap = {
   /** The price to show on the Premium card: StoreKit's localized string on device
    *  once available, else the fallback label. Never throws. */
   async priceLabel(): Promise<string> {
     try {
+      const rc = await ensureRevenueCat();
+      if (rc) return (await rc.price()) ?? PREMIUM_PRICE;
       return storePrice(await ensureInit()) ?? PREMIUM_PRICE;
     } catch {
       return PREMIUM_PRICE;
@@ -163,15 +210,59 @@ export const iap = {
     // surface as an unhandled rejection (the caller `void`s this) — log only.
     // Buy/restore call ensureInit() themselves, so a later attempt still retries.
     try {
-      await ensureInit();
+      if (!(await ensureRevenueCat())) await ensureInit();
     } catch (e) {
       console.warn("IAP init failed (will retry on next purchase/restore):", e);
     }
   },
 
-  /** Is the premium unlock owned? */
+  /** Is the lifetime unlock (the original Premium) owned? */
   isPremium(): boolean {
     return isPremium();
+  },
+
+  /** Is Pro active (lifetime, or a live subscription)? */
+  hasPro(): boolean {
+    return hasPro();
+  },
+
+  /** The live subscription's expiry (ms epoch), or 0 — for the Settings card. */
+  proUntil(): number {
+    return proUntil();
+  },
+
+  /**
+   * The plans on sale, in display order (yearly, weekly, lifetime — as offered).
+   * RevenueCat builds read the current offering; the direct StoreKit path sells the
+   * lifetime unlock only; web/dev shows placeholders. Never throws: a store that
+   * cannot answer yields an empty list (the paywall says so).
+   */
+  async plans(): Promise<Plan[]> {
+    try {
+      const rc = await ensureRevenueCat();
+      if (rc) return await rc.plans();
+      const store = await ensureInit();
+      if (!store) return WEB_PLANS.map((p) => ({ ...p }));
+      const price = storePrice(store);
+      return price ? [{ id: "lifetime", priceString: price, periodLabel: "once", trialDays: null }] : [];
+    } catch (e) {
+      console.warn("IAP plans unavailable:", e);
+      return [];
+    }
+  },
+
+  /**
+   * Buy a plan. Resolves true when Pro is active afterwards; false on a cancel (or a
+   * plan this build cannot sell). Web/dev grants locally so the flow is testable.
+   */
+  async purchasePlan(id: PlanId): Promise<boolean> {
+    const rc = await ensureRevenueCat();
+    if (rc) return (await rc.buyPlan(id)) || hasPro();
+    if (id === "lifetime") return (await iap.purchasePremium()) || hasPro();
+    const store = await ensureInit();
+    if (store) return hasPro(); // direct StoreKit path sells the lifetime unlock only
+    setProUntil(Date.now() + (id === "annual" ? 365 : 30) * DAY_MS);
+    return hasPro();
   },
 
   /** True on a real device where a native store could exist. */
@@ -184,6 +275,8 @@ export const iap = {
    * the unlock UI is testable. Resolves true once the entitlement is owned.
    */
   async purchasePremium(): Promise<boolean> {
+    const rc = await ensureRevenueCat();
+    if (rc) return (await rc.buy()) || isPremium();
     const store = await ensureInit();
     if (!store) {
       // Web/dev stub: grant locally so the flow is exercisable without a device.
@@ -206,8 +299,20 @@ export const iap = {
 
   /** Restore purchases (App Store requirement). */
   async restore(): Promise<boolean> {
+    const rc = await ensureRevenueCat();
+    if (rc) {
+      let owned = false;
+      try {
+        owned = await rc.restore();
+      } catch (e) {
+        console.warn("IAP restore failed:", e);
+        if (hasPro()) return true;
+        throw new Error("RevenueCat restore failed");
+      }
+      return owned || hasPro();
+    }
     const store = await ensureInit();
-    if (!store) return isPremium();
+    if (!store) return hasPro();
     // CdvPurchase reports a failed restore by RESOLVING with an IError, not by throwing.
     let failure: unknown = null;
     try {
@@ -219,7 +324,7 @@ export const iap = {
     // Same grant-only rule as the launch sync: a restore that replays nothing leaves a
     // Premium already on this device in place.
     if (await settleOwnership(store)) setPremium(true);
-    if (isPremium()) return true;
+    if (hasPro()) return true;
     // Nothing owned AND StoreKit never answered: say so (the sheet shows "Store
     // unreachable") instead of "No previous purchase found for this Apple ID".
     if (failure) throw new Error("StoreKit restore failed");

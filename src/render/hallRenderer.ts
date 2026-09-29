@@ -176,6 +176,9 @@ const SKIN_TINTS: Record<string, { h?: number; s?: number; l?: number }> = {
   synth: { h: 150, s: 1.3, l: 1.05 },
   aurora: { h: 80, s: 1.4, l: 1.08 },
   gold: { h: -105, s: 1.1, l: 1.05 },
+  // Pro drops (2026-09).
+  obsidian: { h: 20, s: 0.5, l: 0.62 },
+  chrome: { s: 0.08, l: 1.3 },
 };
 
 function rgbToHsl(c: RGB): [number, number, number] {

@@ -27,8 +27,8 @@ export function draftLaunchable(game: GameState): boolean {
 /** The Ship that just happened left THIS generation's model to launch by hand: it
  *  deposited a draft (Deploy, Hard, Splash — not a give-away), a slot is free, and the
  *  Launch Autopilot is not about to commercialise it on its own. */
-export function shipLeftModelToLaunch(game: GameState): boolean {
+export function shipLeftModelToLaunch(game: GameState, pro = false): boolean {
   return draftLaunchable(game)
     && game.products.drafts.some((d) => d.ships === game.prestige.ships)
-    && !automationEnabled(game, "auto_launch");
+    && !automationEnabled(game, "auto_launch", pro);
 }

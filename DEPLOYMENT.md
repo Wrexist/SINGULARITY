@@ -81,6 +81,15 @@ Run: `bundle exec fastlane beta`
 
 ## 5b. In-app purchase (premium unlock) — StoreKit setup
 
+> **RevenueCat (from 1.1):** when the build carries a RevenueCat public iOS SDK key,
+> purchases and restores go through RevenueCat (`src/ui/iapRevenueCat.ts`); without
+> one the app keeps the direct StoreKit path below. Setup: RevenueCat project
+> "Singularity Inc. Idle Tycoon" → App Store app `com.wrexist.singularityinc` with the
+> In-App Purchase Key (.p8) → product `com.wrexist.singularityinc.premium` → entitlement
+> `premium` → offering `default`. Then put the app's public key (`appl_…`, from
+> RevenueCat → API keys) in the GitHub secret **`RC_IOS_KEY`**. The TestFlight log
+> prints which backend the build uses.
+
 The premium unlock uses **`cordova-plugin-purchase` (CdvPurchase v13)** — a
 self-contained, on-device StoreKit integration (no third-party billing backend).
 Code lives in `src/ui/iap.ts` behind a stable interface; the entitlement flag is

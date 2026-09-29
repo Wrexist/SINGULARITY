@@ -19,6 +19,9 @@ import { PrestigePanel } from "./PrestigePanel";
 import { OfflineModal } from "./OfflineModal";
 import { Celebration, shipReportFor, type ShipReport } from "./Celebration";
 import { SettingsSheet } from "./SettingsSheet";
+import { ProPaywall } from "./ProPaywall";
+import { loadMemo, saveMemo, shouldAutoShow, markShown, armShip, type PaywallTrigger } from "./paywallRules";
+import { themes, rackSkins } from "../engine/cosmetics";
 import { ToastStack, type ToastData } from "./Toast";
 import { StatsPanel } from "./StatsPanel";
 import { Tagline } from "./Tagline";
@@ -53,7 +56,8 @@ import { fmt, fmtMoney, barRates } from "./format";
 import { decisionToast } from "./decisionToast";
 import type { ProductTypeId } from "../engine/balance/products";
 import { iap } from "./iap";
-import { isPremium } from "../state/premium";
+import { hasPro } from "../state/premium";
+import { useHasPro } from "./pro";
 import { watchReturnReminders } from "./notifications";
 import { balance } from "../engine/balance/config";
 import { ALL_RESEARCH } from "../engine/researchTree";
@@ -142,6 +146,8 @@ export function App() {
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
+  // Pro (subscription or lifetime): read at the UI edge and handed to the pure engine.
+  const pro = useHasPro();
   // The advisor list feeds three things from one scan (memoized per tick, same
   // cadence as derive — a handful of product checks, no clock): the per-tab nav
   // badges, the per-Lab-section badges, and the single "next action" nudge chip.
@@ -168,12 +174,12 @@ export function App() {
   // goal ladder), so its badge is all that is left here. The contract / challenge
   // tallies moved into GOALS, which counts them once for its own badges.
   const hqCounts = useMemo(() => {
-    const autos = automationList().filter((a) => automationUnlocked(game, a.id));
+    const autos = automationList().filter((a) => automationUnlocked(game, a.id, pro));
     return {
-      autoOn: autos.filter((a) => automationEnabled(game, a.id)).length,
+      autoOn: autos.filter((a) => automationEnabled(game, a.id, pro)).length,
       autoTotal: autos.length,
     };
-  }, [game]);
+  }, [game, pro]);
 
   // One scan behind every GOALS badge: the nav count, the horizon dots and the
   // fold counts all read the same numbers, so they cannot disagree.
@@ -194,6 +200,10 @@ export function App() {
   const [pendingFlagship, setPendingFlagship] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  // Pro paywall: open (by the player from Settings, or automatically) + the automatic
+  // trigger waiting for a clear stage (see paywallRules for when it may show).
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [paywallPending, setPaywallPending] = useState<PaywallTrigger | null>(null);
   const portalOpen = usePortalOpen();
   const [breaking, setBreaking] = useState<Breaking | null>(null);
   const [challengeDoneId, setChallengeDoneId] = useState<string | null>(null); // Grand Challenge just completed → moment
@@ -258,7 +268,7 @@ export function App() {
   // consequence of something the player just did; this is the only uninvited one, so
   // it's the only one that waits. The store holds it in a single slot, so it simply
   // shows once the sheet closes. (2026-08 — reproduced in a seeded smoke run.)
-  const sheetOpen = showSettings || !!pendingExpansion || confirmReset || !!pendingRetire || !!pendingFlagship || portalOpen;
+  const sheetOpen = showSettings || showPaywall || !!pendingExpansion || confirmReset || !!pendingRetire || !!pendingFlagship || portalOpen;
 
   // The moment queue's head: exactly ONE full-screen moment renders at a time,
   // by priority. Dismissing the head lets the next pending one show.
@@ -337,7 +347,7 @@ export function App() {
     return {
       enabled: useSettings.getState().notifyReminders,
       producing: derive(g).computePerSec.gt(0) || g.products.active.length > 0,
-      capHours: isPremium() ? balance.offline.premiumMaxHours : balance.offline.maxHours,
+      capHours: hasPro() ? balance.offline.premiumMaxHours : balance.offline.maxHours,
       accruesFrom: offlineAccruesFrom(),
     };
   }), []);
@@ -569,6 +579,45 @@ export function App() {
     if (shipCalls && !sheetOpen) setShowShipExplainer(true);
   }, [initialized, shipCalls, shipExplained, game.prestige.ships, markShipExplained, sheetOpen]);
 
+  // Pro paywall, automatic triggers. "launch": once, on the first launch the game UI is
+  // ready on (new and existing players alike). "ship": armed by the first Ship on this
+  // install, raised as a Ship celebration closes. Either waits for a clear stage — no
+  // moment, sheet, onboarding or ship explainer on screen — then paywallRules decides
+  // (never with Pro, never twice in 24h). A trigger that may not show is dropped for
+  // this session; the memory lives in its own key, never in the save.
+  const launchPaywallAsked = useRef(false);
+  useEffect(() => {
+    if (!initialized || launchPaywallAsked.current) return;
+    launchPaywallAsked.current = true;
+    if (!loadMemo().launchShown) setPaywallPending((p) => p ?? "launch");
+  }, [initialized]);
+  const paywallStageClear = initialized && booted && onboarded && moment === null && !sheetOpen && !showShipExplainer;
+  useEffect(() => {
+    if (!paywallPending || !paywallStageClear) return;
+    // A calm beat after the stage clears, so it never lands on the frame a
+    // celebration closes. Cancelled if anything takes the stage meanwhile.
+    const t = window.setTimeout(() => {
+      const memo = loadMemo();
+      const now = Date.now();
+      if (shouldAutoShow(memo, paywallPending, now, hasPro())) {
+        saveMemo(markShown(memo, paywallPending, now));
+        setShowPaywall(true);
+      }
+      setPaywallPending(null);
+    }, 700);
+    return () => window.clearTimeout(t);
+  }, [paywallPending, paywallStageClear]);
+
+  // Pro cosmetics follow Pro: when it lapses, a Pro-only theme or skin still selected
+  // falls back to Classic (earned-by-play ones are untouched). Waits for hydration.
+  const rackSkinId = useSettings((s) => s.rackSkin);
+  useEffect(() => {
+    if (!initialized || pro) return;
+    const st = useSettings.getState();
+    if (themes.find((t) => t.id === hallTheme)?.unlock.kind === "premium") st.setHallTheme("classic");
+    if (rackSkins.find((t) => t.id === rackSkinId)?.unlock.kind === "premium") st.setRackSkin("classic");
+  }, [initialized, pro, hallTheme, rackSkinId]);
+
   // Era transitions: a full-screen tentpole moment when the lab crosses an era.
   // Guarded by the same hydration sync so it never fires on a returning load.
   const seenEra = useRef(era);
@@ -757,7 +806,7 @@ export function App() {
       // The flagship you just shipped is waiting as a free-to-launch product —
       // make sure the player knows (a ship that "gave nothing" was the #1 confusion).
       // Only when this ship really left one to launch by hand (see shipLanding.ts).
-      if (shipLeftModelToLaunch(game)) {
+      if (shipLeftModelToLaunch(game, hasPro())) {
         pushToast(modelReadyNote(game.prestige.ships), "good");
       }
       // An AGI ascension (a ship in the Post-Singularity era) gets the grander beat:
@@ -1177,9 +1226,9 @@ export function App() {
                     Automation and Grand Challenges now fold like Trials/Doctrine/the
                     Institute already did, each carrying its own "needs you" count so a
                     folded board still calls out ambiently. (2026-08 navigation sweep.) */}
-                {automationUnlockedAny(game) && (
+                {automationUnlockedAny(game, pro) && (
                   <Collapsible title="Automation" badge={`${hqCounts.autoOn}/${hqCounts.autoTotal} on`}>
-                    <AutomationPanel bare game={game} onToggle={onToggleAutomation} />
+                    <AutomationPanel bare game={game} onToggle={onToggleAutomation} pro={pro} />
                   </Collapsible>
                 )}
                 {instituteUnlocked(game) && (
@@ -1268,6 +1317,13 @@ export function App() {
           ascended={celebration.ascended === true}
           onDone={() => {
             setCelebration(null);
+            // The after-Ship paywall: armed by the first Ship on this install, offered
+            // once as a celebration closes (it still waits for a clear stage).
+            if (game.prestige.ships >= 1) {
+              let memo = loadMemo();
+              if (game.prestige.ships === 1 && !memo.shipArmed) { memo = armShip(memo); saveMemo(memo); }
+              if (memo.shipArmed && !memo.shipShown) setPaywallPending("ship");
+            }
             // A fresh run starts at the hall — don't leave the Lab parked on HQ.
             setLabSection("build");
             // Land the player on their reward: a freshly-shipped model waiting to
@@ -1277,7 +1333,8 @@ export function App() {
           }}
         />
       )}
-      {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} onReset={() => { setShowSettings(false); setConfirmReset(true); }} />}
+      {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} onReset={() => { setShowSettings(false); setConfirmReset(true); }} onOpenPro={() => { haptics.tap(); setShowPaywall(true); }} />}
+      {showPaywall && <ProPaywall onClose={() => setShowPaywall(false)} />}
       {moment === "challenge" && challengeDoneId && challengeById.get(challengeDoneId) && (
         <ChallengeComplete challenge={challengeById.get(challengeDoneId)!} onDone={() => setChallengeDoneId(null)} />
       )}

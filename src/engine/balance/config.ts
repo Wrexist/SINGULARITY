@@ -1701,6 +1701,10 @@ export const balance = {
     maxHours: 8,
     /** Premium QoL perk: a longer offline cap (GDD-sanctioned, not pay-for-power). */
     premiumMaxHours: 24,
+    /** Pro perk: time away runs at this rate (cold launch + a real suspend/resume,
+     *  never a live frame). Applied AFTER the cap, to real time. Player-only — the
+     *  balance sim never takes the offline path — so the tuned curve can't move. */
+    proRate: 2,
     /** How much time away earns the "while you were away" recap on COLD LAUNCH.
      *  It is a reward beat, not a receipt — reopening the app after a moment
      *  should return you straight to the lab, so this sits at minutes, not 1s. */

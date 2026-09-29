@@ -23,6 +23,7 @@ async function run() {
       const app = await browser.newPage({ viewport: { width: 402, height: 874 }, deviceScaleFactor: 3 });
       try {
       await app.addInitScript(() => localStorage.setItem("singularity.settings.v1", JSON.stringify({ sound: true, haptics: true, reducedMotion: true, onboarded: true, shipExplained: true })));
+      await app.addInitScript(() => localStorage.setItem("singularity.paywall.v1", JSON.stringify({ launchShown: true, shipArmed: true, shipShown: true, lastAutoAt: 0 })));
       await app.addInitScript(([save, now]) => {
         localStorage.setItem("singularity.save.v1", save);
         localStorage.setItem("singularity.lastSeen.v1", now);
