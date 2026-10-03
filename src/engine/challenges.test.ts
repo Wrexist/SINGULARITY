@@ -242,3 +242,26 @@ describe("instalment precision (Big keeps ~15 significant digits)", () => {
     expect(s.megaprojects.level).toBe(1);
   });
 });
+
+describe("funding is gated in the engine, not only by which cards render", () => {
+  it("a challenge not yet revealed cannot be funded or completed, however rich the lab", () => {
+    const s = createInitialState();
+    for (const k of ["compute", "data", "money"] as const) s.resources[k] = Big.of(1e300);
+    const id = C.list[0]!.id;
+    expect(visibleChallenges(s).length === 0 || !challengesUnlocked(s)).toBe(true);
+    expect(canFundChallenge(s, id)).toBe(false);
+    const r = fundChallenge(s, id);
+    expect(r.justCompleted).toBe(false);
+    expect(r.state).toBe(s);
+  });
+
+  it("a revealed challenge whose own Ship gate is unmet stays closed", () => {
+    const late = [...C.list].sort((a, b) => b.unlockShips - a.unlockShips)[0]!;
+    const s = createInitialState();
+    s.prestige.ships = Math.max(C.revealAtShips, late.unlockShips - 1);
+    for (const k of ["compute", "data", "money"] as const) s.resources[k] = Big.of(1e300);
+    if (s.prestige.ships >= late.unlockShips) return; // every challenge opens at reveal
+    expect(canFundChallenge(s, late.id)).toBe(false);
+    expect(fundChallenge(s, late.id).state).toBe(s);
+  });
+});
