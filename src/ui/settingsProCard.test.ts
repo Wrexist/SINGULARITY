@@ -54,7 +54,17 @@ describe("Settings Pro card", () => {
     expect(card).not.toContain("See Pro plans");
   });
 
-  it("an expired subscription reads as no Pro", async () => {
+  it("a cancelled subscription says it won't renew, not that it renews", async () => {
+    const card = await render({
+      "singularity.pro.until.v1": String(Date.now() + 3 * 86_400_000),
+      "singularity.pro.renews.v1": "0",
+    });
+    expect(card).toContain("Pro — active");
+    expect(card).toContain("Cancelled");
+    expect(card).not.toContain("Renews automatically");
+  });
+
+    it("an expired subscription reads as no Pro", async () => {
     const card = await render({ "singularity.pro.until.v1": String(Date.now() - 1000) });
     expect(card).toContain("See Pro plans");
   });

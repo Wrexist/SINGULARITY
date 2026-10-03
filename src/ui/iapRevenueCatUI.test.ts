@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeAll } from "vitest";
-import { paywallOutcome, wantsRevenueCatPaywall } from "./iapRevenueCat";
+import { paywallOutcome, wantsRevenueCatPaywall, proStatus } from "./iapRevenueCat";
 
 /**
  * RevenueCat UI on top of the purchase layer: the dashboard paywall shows only when the
@@ -89,6 +89,28 @@ describe("paywall helpers", () => {
     expect(wantsRevenueCatPaywall({ paywall: true })).toBe(false);
     expect(wantsRevenueCatPaywall({})).toBe(false);
     expect(wantsRevenueCatPaywall(null)).toBe(false);
+  });
+});
+
+describe("willRenew", () => {
+  it("a cancelled subscription stays active until expiry but reports it won't renew", () => {
+    const until = Date.now() + 3 * DAY;
+    const info = sub(until);
+    (info.entitlements.active.pro as Record<string, unknown>).willRenew = false;
+    const st = proStatus(info as never, "com.wrexist.singularityinc.premium");
+    expect(st.active).toBe(true);
+    expect(st.willRenew).toBe(false);
+  });
+
+  it("is mirrored into local state, and back on when the player resubscribes", async () => {
+    const cancelled = sub(Date.now() + 3 * DAY);
+    (cancelled.entitlements.active.pro as Record<string, unknown>).willRenew = false;
+    const f = fakes({ infos: [cancelled, sub(Date.now() + 3 * DAY)] });
+    const { iap, proWillRenew } = await load(f);
+    await iap.refresh();
+    expect(proWillRenew()).toBe(false);
+    await iap.syncStatus();
+    expect(proWillRenew()).toBe(true);
   });
 });
 

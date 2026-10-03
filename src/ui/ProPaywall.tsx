@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Portal } from "./Portal";
 import { useDialog } from "./useDialog";
 import { iap, type Plan, type PlanId } from "./iap";
+import { useHasPro } from "./pro";
 import { haptics } from "./haptics";
 import { sound } from "./sound";
 import { motionReduced } from "./settings";
@@ -76,7 +77,20 @@ export function ProPaywall({ onClose }: Props) {
 
   const plan = plans?.find((p) => p.id === selected);
 
+  // Pro can arrive by another route than buy()'s own answer: on the direct StoreKit
+  // path a purchase that confirms after its short settle wait resolves false (the
+  // sheet went back to idle while the player was charged), and the store grants it a
+  // moment later. Pro turning on while this is open ends it the same way, once.
+  const finished = useRef(false);
+  const pro = useHasPro();
+  const proAtOpen = useRef(pro);
+  useEffect(() => {
+    if (pro && !proAtOpen.current) finish();
+  }, [pro]);
+
   const finish = () => {
+    if (finished.current) return;
+    finished.current = true;
     setPhase("done");
     setError(null);
     haptics.celebrate();

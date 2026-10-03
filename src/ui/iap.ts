@@ -1,5 +1,5 @@
 import { Capacitor } from "@capacitor/core";
-import { isPremium, setPremium, hasPro, setProUntil, proUntil } from "../state/premium";
+import { isPremium, setPremium, hasPro, setProUntil, proUntil, setProWillRenew } from "../state/premium";
 import type { RevenueCatStore, Plan, PlanId, ProStatus } from "./iapRevenueCat";
 
 export type { Plan, PlanId } from "./iapRevenueCat";
@@ -45,6 +45,7 @@ const DAY_MS = 24 * 3_600_000;
 function applyStatus(st: ProStatus): void {
   if (st.lifetime) setPremium(true);
   setProUntil(st.until);
+  setProWillRenew(st.willRenew);
 }
 
 // --- Minimal typing for the bits of the (globally-injected) CdvPurchase we use.

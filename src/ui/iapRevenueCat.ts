@@ -68,12 +68,14 @@ export interface ProStatus {
   until: number | null;
   /** Pro is active by this snapshot, by any route. */
   active: boolean;
+  /** The subscription is set to renew (false once cancelled; true when unknown). */
+  willRenew: boolean;
 }
 
 /** Read Pro out of RevenueCat customer info. Pure. The raw lifetime product id counts
  *  as a fallback, so a purchase still grants before the entitlement is attached. */
 export function proStatus(info: CustomerInfo | null | undefined, lifetimeId: string): ProStatus {
-  if (!info) return { lifetime: false, until: null, active: false };
+  if (!info) return { lifetime: false, until: null, active: false, willRenew: true };
   const ent = info.entitlements?.active?.[RC_ENTITLEMENT_ID];
   const purchased = info.allPurchasedProductIdentifiers ?? [];
   const lifetime = purchased.includes(lifetimeId) || (!!ent && ent.productIdentifier === lifetimeId);
@@ -86,7 +88,12 @@ export function proStatus(info: CustomerInfo | null | undefined, lifetimeId: str
   // An active entitlement with no expiry and no lifetime product (a promotional
   // lifetime grant from the dashboard) is Pro forever too.
   const lifetimeGrant = !!ent && !lifetime && until === null && ent.expirationDate == null;
-  return { lifetime: lifetime || lifetimeGrant, until, active: lifetime || lifetimeGrant || until !== null };
+  return {
+    lifetime: lifetime || lifetimeGrant,
+    until,
+    active: lifetime || lifetimeGrant || until !== null,
+    willRenew: !ent || ent.willRenew !== false,
+  };
 }
 
 /** Kept for callers that only care about the lifetime unlock. */

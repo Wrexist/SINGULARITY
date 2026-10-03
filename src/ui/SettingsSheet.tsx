@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useSettings, osReduceMotionNow, onOsReduceMotionChange } from "./settings";
 import { iap } from "./iap";
 import { useHasPro } from "./pro";
-import { onProChange, isPremium } from "../state/premium";
+import { onProChange, isPremium, proWillRenew } from "../state/premium";
 import { haptics as hpt } from "./haptics";
 import { sound as snd } from "./sound";
 import { remindersSupported, ensureReminderPermission, cancelReturnReminder } from "./notifications";
@@ -117,6 +117,7 @@ export function SettingsSheet({ onClose, onReset, onOpenPro }: Props) {
   const pro = useHasPro();
   const lifetime = useSyncExternalStore(onProChange, isPremium, isPremium);
   const until = pro && !lifetime ? iap.proUntil() : 0;
+  const renews = useSyncExternalStore(onProChange, proWillRenew, proWillRenew);
   // Cosmetic collection (R6.3): unlocks are derived from monotonic lifetime stats, so
   // a one-shot read at render is enough (no need to re-check at 10Hz while the sheet is open).
   const game = useGame.getState().game;
@@ -242,7 +243,9 @@ export function SettingsSheet({ onClose, onReset, onOpenPro }: Props) {
             <p className="pro-card-status">Founder · Pro forever. Thank you for backing the lab.</p>
           ) : pro ? (
             <p className="pro-card-status">
-              {until > 0 ? `Through ${fmtDate(until)}. ` : ""}Renews automatically until cancelled in Settings › Apple ID.
+              {renews
+                ? <>{until > 0 ? `Through ${fmtDate(until)}. ` : ""}Renews automatically until cancelled in Settings › Apple ID.</>
+                : <>Cancelled — Pro stays on{until > 0 ? ` through ${fmtDate(until)}` : " until the period ends"}, then it won&apos;t renew.</>}
             </p>
           ) : (
             <ul className="premium-perks">

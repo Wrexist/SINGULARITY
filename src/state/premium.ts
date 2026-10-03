@@ -107,6 +107,31 @@ export function proLapseConfirmed(now: number = Date.now()): boolean {
   return !hasPro(now) && proUntil(now) === 0;
 }
 
+/** Whether the active subscription is set to renew (false once the player cancels:
+ *  Pro stays on until the expiry, then lapses). Mirrored from the store; unknown or
+ *  absent reads as renewing, the common case. Display only — it grants nothing. */
+export const PRO_RENEWS_KEY = "singularity.pro.renews.v1";
+
+export function proWillRenew(): boolean {
+  try {
+    return localStorage.getItem(PRO_RENEWS_KEY) !== "0";
+  } catch {
+    return true;
+  }
+}
+
+export function setProWillRenew(renews: boolean): void {
+  try {
+    const before = localStorage.getItem(PRO_RENEWS_KEY);
+    const next = renews ? null : "0";
+    if (next === null) localStorage.removeItem(PRO_RENEWS_KEY);
+    else localStorage.setItem(PRO_RENEWS_KEY, next);
+    if (before !== next) emit();
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Is Pro active right now? Lifetime owners always; subscribers until expiry. */
 export function hasPro(now: number = Date.now()): boolean {
   if (isPremium()) return true;
