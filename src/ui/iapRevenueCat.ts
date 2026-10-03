@@ -1,5 +1,5 @@
 import { Purchases, LOG_LEVEL } from "@revenuecat/purchases-capacitor";
-import type { CustomerInfo, PurchasesPackage, PurchasesStoreProduct } from "@revenuecat/purchases-capacitor";
+import type { CustomerInfo, PurchasesOffering, PurchasesPackage, PurchasesStoreProduct, PurchasesWinBackOffer } from "@revenuecat/purchases-capacitor";
 
 /**
  * RevenueCat backend for Pro (native iOS only). iap.ts picks it when the build carries
@@ -59,6 +59,25 @@ export interface Plan {
   trialDays: number | null;
   /** Localized per-week equivalent (yearly only). */
   perWeekString?: string;
+  /** A discounted start this customer is eligible for (an App Store win-back offer):
+   *  the first `periods` × `unit` at `priceString`, then the regular price. */
+  offer?: PlanOffer;
+}
+
+export interface PlanOffer {
+  priceString: string;
+  periods: number;
+  unit: "day" | "week" | "month" | "year";
+}
+
+/** A store discount → PlanOffer (null when the shape is not understood). Pure. */
+export function planOfferOf(d: { priceString?: string; periodUnit?: string; periodNumberOfUnits?: number; cycles?: number } | null | undefined): PlanOffer | null {
+  if (!d || typeof d.priceString !== "string" || !d.priceString.trim()) return null;
+  const unit = (d.periodUnit ?? "").toLowerCase();
+  if (unit !== "day" && unit !== "week" && unit !== "month" && unit !== "year") return null;
+  const per = typeof d.periodNumberOfUnits === "number" && d.periodNumberOfUnits > 0 ? d.periodNumberOfUnits : 1;
+  const cycles = typeof d.cycles === "number" && d.cycles > 0 ? d.cycles : 1;
+  return { priceString: d.priceString, periods: per * cycles, unit };
 }
 
 /** What one customer-info snapshot says about Pro. */
@@ -124,19 +143,24 @@ export function trialDaysOf(product: PurchasesStoreProduct | null | undefined): 
 export interface RevenueCatStore {
   /** Localized lifetime price string, or null while unknown. */
   price(): Promise<string | null>;
-  /** The plans the current offering sells (annual, weekly, lifetime — as present). */
-  plans(): Promise<Plan[]>;
+  /** The plans a placement's offering sells (annual, weekly, lifetime — as present).
+   *  "winback" also attaches each plan's eligible App Store win-back offer. */
+  plans(placement?: string): Promise<Plan[]>;
   /** Buy the lifetime unlock; true when Pro is active afterwards. False on cancel. */
   buy(): Promise<boolean>;
-  /** Buy a plan; true when Pro is active afterwards. Resolves false on cancel. */
-  buyPlan(id: PlanId): Promise<boolean>;
+  /** Buy a plan from a placement's offering (with its win-back offer, if one was
+   *  shown); true when Pro is active afterwards. Resolves false on cancel. */
+  buyPlan(id: PlanId, placement?: string): Promise<boolean>;
+  /** Has the dashboard set up a one-time exit offer — an "exit" placement offering
+   *  distinct from the current one? */
+  hasExitOffer(): Promise<boolean>;
   /** Restore; true when Pro is active afterwards. Throws when the store never answered. */
   restore(): Promise<boolean>;
   /** Re-read customer info now (e.g. when a stored expiry passes: did it renew?). */
   refreshStatus(): Promise<void>;
   /** Present the dashboard paywall when the current offering opts in (see
    *  PAYWALL_METADATA_KEY). Null when it does not (show the in-app paywall instead). */
-  presentPaywall(): Promise<PaywallOutcome | null>;
+  presentPaywall(placement?: string): Promise<PaywallOutcome | null>;
   /** Present RevenueCat's Customer Center (manage / cancel / refund / restore), then
    *  re-read customer info so a change made there lands at once. */
   presentCustomerCenter(): Promise<void>;
@@ -180,11 +204,24 @@ export async function createRevenueCatStore(
     return product;
   };
 
-  /** The current offering's packages by plan id (lifetime falls back to the product). */
-  const loadPackages = async (): Promise<Partial<Record<PlanId, PurchasesPackage>>> => {
+  /** A placement's offering (RevenueCat Targeting), else the current offering. */
+  const offeringFor = async (placement?: string): Promise<PurchasesOffering | null> => {
+    if (placement) {
+      try {
+        const o = await Purchases.getCurrentOfferingForPlacement({ placementIdentifier: placement });
+        if (o) return o;
+      } catch {
+        /* an older SDK / no placement → the current offering */
+      }
+    }
+    return (await Purchases.getOfferings()).current ?? null;
+  };
+
+  /** A placement's packages by plan id (lifetime falls back to the product). */
+  const loadPackages = async (placement?: string): Promise<Partial<Record<PlanId, PurchasesPackage>>> => {
     const out: Partial<Record<PlanId, PurchasesPackage>> = {};
     try {
-      const current = (await Purchases.getOfferings()).current;
+      const current = await offeringFor(placement);
       // Compared by value (PACKAGE_TYPE's string members) so this module needs no
       // runtime enum from the plugin.
       for (const p of current?.availablePackages ?? []) {
@@ -215,6 +252,17 @@ export async function createRevenueCatStore(
     return out;
   };
 
+  /** The win-back offer shown on each plan (purchased with it), by placement. */
+  const winBack = new Map<PlanId, PurchasesWinBackOffer>();
+  const eligibleWinBack = async (p: PurchasesPackage): Promise<PurchasesWinBackOffer | null> => {
+    try {
+      const { eligibleWinBackOffers } = await Purchases.getEligibleWinBackOffersForPackage({ aPackage: p });
+      return eligibleWinBackOffers?.[0] ?? null;
+    } catch {
+      return null; // before iOS 18, or none configured: the regular price
+    }
+  };
+
   const purchase = async (run: () => Promise<{ customerInfo: CustomerInfo }>): Promise<boolean> => {
     try {
       const { customerInfo } = await run();
@@ -242,40 +290,66 @@ export async function createRevenueCatStore(
 
   return {
     price,
-    async plans() {
-      const pkgs = await loadPackages();
+    async plans(placement) {
+      const pkgs = await loadPackages(placement);
       const subs = [pkgs.annual, pkgs.weekly].filter((p): p is PurchasesPackage => !!p);
       const noTrial = await ineligible(subs.map((p) => p.product.identifier));
+      winBack.clear();
       const plans: Plan[] = [];
-      const sub = (id: "annual" | "weekly", p: PurchasesPackage | undefined) => {
+      const sub = async (id: "annual" | "weekly", p: PurchasesPackage | undefined) => {
         if (!p || !p.product?.priceString) return;
         const trial = noTrial.has(p.product.identifier) ? null : trialDaysOf(p.product);
         const plan: Plan = { id, priceString: p.product.priceString, periodLabel: id === "annual" ? "year" : "week", trialDays: trial };
         if (id === "annual" && p.product.pricePerWeekString) plan.perWeekString = p.product.pricePerWeekString;
+        if (placement === "winback") {
+          const w = await eligibleWinBack(p);
+          const offer = planOfferOf(w);
+          if (w && offer) { plan.offer = offer; plan.trialDays = null; winBack.set(id, w); }
+        }
         plans.push(plan);
       };
-      sub("annual", pkgs.annual);
-      sub("weekly", pkgs.weekly);
-      const lifePrice = pkgs.lifetime?.product?.priceString ?? (await price());
+      await sub("annual", pkgs.annual);
+      await sub("weekly", pkgs.weekly);
+      // The exit offering sells only what it holds (no regular-price lifetime beside it).
+      const lifePrice = pkgs.lifetime?.product?.priceString ?? (placement === "exit" ? null : await price());
       if (lifePrice) plans.push({ id: "lifetime", priceString: lifePrice, periodLabel: "once", trialDays: null });
       return plans;
     },
     buy: buyLifetime,
-    async buyPlan(id) {
-      const pkg = (await loadPackages())[id];
+    async buyPlan(id, placement) {
+      const pkg = (await loadPackages(placement))[id];
+      const w = placement === "winback" ? winBack.get(id) : undefined;
+      if (pkg && w) {
+        return purchase(async () =>
+          (await Purchases.purchasePackageWithWinBackOffer({ aPackage: pkg, winBackOffer: w })) ??
+          // Typed optional by the plugin: read the outcome back if it came without one.
+          { customerInfo: (await Purchases.getCustomerInfo()).customerInfo });
+      }
       if (pkg) return purchase(() => Purchases.purchasePackage({ aPackage: pkg }));
-      if (id === "lifetime") return buyLifetime();
+      if (id === "lifetime" && placement !== "exit") return buyLifetime();
       return false;
+    },
+    async hasExitOffer() {
+      try {
+        const exit = await Purchases.getCurrentOfferingForPlacement({ placementIdentifier: "exit" });
+        if (!exit || (exit.availablePackages ?? []).length === 0) return false;
+        // An unconfigured placement falls back to the default offering: that is the
+        // regular paywall again, not an offer — only a distinct offering counts.
+        const current = (await Purchases.getOfferings()).current;
+        return exit.identifier !== current?.identifier;
+      } catch {
+        return false;
+      }
     },
     async restore() {
       const { customerInfo } = await Purchases.restorePurchases();
       return sync(customerInfo);
     },
     refreshStatus: resync,
-    async presentPaywall() {
+    async presentPaywall(placement) {
       let current;
       try {
-        current = (await Purchases.getOfferings()).current;
+        current = await offeringFor(placement);
       } catch (e) {
         console.warn("RevenueCat offerings unavailable:", e);
         return null;

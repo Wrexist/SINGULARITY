@@ -2,7 +2,7 @@ import { Capacitor } from "@capacitor/core";
 import { isPremium, setPremium, hasPro, setProUntil, proUntil, setProWillRenew } from "../state/premium";
 import type { RevenueCatStore, Plan, PlanId, ProStatus } from "./iapRevenueCat";
 
-export type { Plan, PlanId } from "./iapRevenueCat";
+export type { Plan, PlanId, PlanOffer } from "./iapRevenueCat";
 
 /**
  * Premium unlock IAP (GDD §9: a single generous unlock, cosmetic/QoL only, never
@@ -39,6 +39,28 @@ export const WEB_PLANS: readonly Plan[] = [
 ];
 
 const DAY_MS = 24 * 3_600_000;
+
+/** Web/dev only: localStorage "singularity.dev.offers" = "1" shows placeholder win-back
+ *  and exit offers, so those screens can be exercised without a store. A device never
+ *  reads it (it only touches the web stub's plans). */
+const DEV_OFFERS_KEY = "singularity.dev.offers";
+function devOffers(): boolean {
+  try { return localStorage.getItem(DEV_OFFERS_KEY) === "1"; } catch { return false; }
+}
+
+/** Web/dev placeholder plans for a placement. */
+function webPlans(placement?: string): Plan[] {
+  const plans = WEB_PLANS.map((p) => ({ ...p }));
+  if (!devOffers()) return plans;
+  if (placement === "winback") {
+    for (const p of plans) if (p.id === "annual") { p.offer = { priceString: "$12.49", periods: 1, unit: "year" }; p.trialDays = null; }
+    return plans;
+  }
+  if (placement === "exit") {
+    return [{ id: "annual", priceString: "$14.99", periodLabel: "year", trialDays: 7, perWeekString: "$0.29" }];
+  }
+  return plans;
+}
 
 /** Mirror one RevenueCat snapshot into the local entitlement. The lifetime flag is
  *  grant-only; the subscription expiry follows the store, so a lapse clears it. */
@@ -270,12 +292,12 @@ export const iap = {
    * lifetime unlock only; web/dev shows placeholders. Never throws: a store that
    * cannot answer yields an empty list (the paywall says so).
    */
-  async plans(): Promise<Plan[]> {
+  async plans(placement?: string): Promise<Plan[]> {
     try {
       const rc = await ensureRevenueCat();
-      if (rc) return await rc.plans();
+      if (rc) return await rc.plans(placement);
       const store = await ensureInit();
-      if (!store) return WEB_PLANS.map((p) => ({ ...p }));
+      if (!store) return webPlans(placement);
       const price = storePrice(store);
       return price ? [{ id: "lifetime", priceString: price, periodLabel: "once", trialDays: null }] : [];
     } catch (e) {
@@ -288,9 +310,9 @@ export const iap = {
    * Buy a plan. Resolves true when Pro is active afterwards; false on a cancel (or a
    * plan this build cannot sell). Web/dev grants locally so the flow is testable.
    */
-  async purchasePlan(id: PlanId): Promise<boolean> {
+  async purchasePlan(id: PlanId, placement?: string): Promise<boolean> {
     const rc = await ensureRevenueCat();
-    if (rc) return (await rc.buyPlan(id)) || hasPro();
+    if (rc) return (await rc.buyPlan(id, placement)) || hasPro();
     if (id === "lifetime") return (await iap.purchasePremium()) || hasPro();
     const store = await ensureInit();
     if (store) return hasPro(); // direct StoreKit path sells the lifetime unlock only
@@ -305,16 +327,31 @@ export const iap = {
    * in an error — web/dev, a build without RevenueCat, an offering that keeps the in-app
    * paywall, a missing dashboard paywall — so the caller shows ours instead.
    */
-  async presentNativePaywall(): Promise<boolean> {
+  async presentNativePaywall(placement?: string): Promise<boolean> {
     try {
       const rc = await ensureRevenueCat();
       if (!rc) return false;
-      const outcome = await rc.presentPaywall();
+      const outcome = await rc.presentPaywall(placement);
       // Shown and finished (bought, restored or closed by the player). An error or a
       // paywall that never came up falls back to ours: the player always gets one.
       return outcome === "purchased" || outcome === "restored" || outcome === "closed";
     } catch (e) {
       console.warn("RevenueCat paywall unavailable:", e);
+      return false;
+    }
+  },
+
+  /**
+   * Is a one-time exit offer set up? RevenueCat: an "exit" placement offering distinct
+   * from the current one (dashboard → Targeting). No offer → nothing extra ever shows.
+   * The direct StoreKit path has none; web/dev only with the dev flag. Never throws.
+   */
+  async exitOfferAvailable(): Promise<boolean> {
+    try {
+      const rc = await ensureRevenueCat();
+      if (rc) return await rc.hasExitOffer();
+      return !(await ensureInit()) && devOffers();
+    } catch {
       return false;
     }
   },

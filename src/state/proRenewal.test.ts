@@ -3,7 +3,7 @@ import { useGame } from "./store";
 import { createInitialState } from "../engine/state";
 import { serialize } from "../engine/save";
 import { balance } from "../engine/balance/config";
-import { PRO_UNTIL_KEY, hadProAt, proLapseConfirmed, hasPro, setProUntil } from "./premium";
+import { PRO_UNTIL_KEY, hadProAt, proLapseConfirmed, hasPro, setProUntil, lapsedSubscriptionAt, lastSubscriptionExpiry } from "./premium";
 
 /**
  * A subscription renews at Apple, usually while an idle game is closed. The device's
@@ -93,5 +93,26 @@ describe("hadProAt / proLapseConfirmed", () => {
     expect(proLapseConfirmed()).toBe(true);
     storage["singularity.premium.v1"] = "1";
     expect(proLapseConfirmed()).toBe(false);
+  });
+});
+
+describe("lapsedSubscriptionAt (the win-back key)", () => {
+  it("is the expiry a store-confirmed lapse ended at, kept after the expiry is cleared", () => {
+    setProUntil(T0 + H);
+    expect(lapsedSubscriptionAt()).toBe(0); // still Pro
+    vi.setSystemTime(T0 + 2 * H);
+    expect(lapsedSubscriptionAt()).toBe(0); // passed on the clock only: may have renewed
+    setProUntil(null); // the store confirms
+    expect(lastSubscriptionExpiry()).toBe(T0 + H);
+    expect(lapsedSubscriptionAt()).toBe(T0 + H);
+  });
+
+  it("is 0 for a player who never subscribed, and for lifetime owners", () => {
+    expect(lapsedSubscriptionAt()).toBe(0);
+    setProUntil(T0 + H);
+    vi.setSystemTime(T0 + 2 * H);
+    setProUntil(null);
+    storage["singularity.premium.v1"] = "1";
+    expect(lapsedSubscriptionAt()).toBe(0);
   });
 });

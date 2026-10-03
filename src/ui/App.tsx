@@ -20,7 +20,10 @@ import { OfflineModal } from "./OfflineModal";
 import { Celebration, shipReportFor, type ShipReport } from "./Celebration";
 import { SettingsSheet } from "./SettingsSheet";
 import { ProPaywall } from "./ProPaywall";
-import { loadMemo, saveMemo, shouldAutoShow, markShown, armShip, type PaywallTrigger } from "./paywallRules";
+import {
+  loadMemo, saveMemo, shouldAutoShow, markShown, armShip, placementFor, shouldOfferExit, markExitShown,
+  type PaywallTrigger, type PaywallPlacement,
+} from "./paywallRules";
 import { themes, rackSkins } from "../engine/cosmetics";
 import { ToastStack, type ToastData } from "./Toast";
 import { StatsPanel } from "./StatsPanel";
@@ -56,7 +59,7 @@ import { fmt, fmtMoney, barRates } from "./format";
 import { decisionToast } from "./decisionToast";
 import type { ProductTypeId } from "../engine/balance/products";
 import { iap } from "./iap";
-import { hasPro } from "../state/premium";
+import { hasPro, isPremium, lastSubscriptionExpiry, lapsedSubscriptionAt } from "../state/premium";
 import { useHasPro, useProLapseConfirmed } from "./pro";
 import { watchReturnReminders } from "./notifications";
 import { balance } from "../engine/balance/config";
@@ -207,15 +210,44 @@ export function App() {
   // RevenueCat's own paywall when the current offering opts in (iap.presentNativePaywall);
   // otherwise ours. True while either is being decided or the native one is up.
   const [nativePaywall, setNativePaywall] = useState(false);
+  // Where the open paywall came from: a RevenueCat placement (its own offering and
+  // offers, targetable and testable from the dashboard) and the paywall's words.
+  const [paywallPlacement, setPaywallPlacement] = useState<PaywallPlacement>("settings");
   const paywallOpening = useRef(false);
-  const openPaywall = useCallback(() => {
+  const openPaywallRef = useRef<(placement: PaywallPlacement) => void>(() => {});
+  // After a paywall closes without a purchase: the one-time exit offer, for a player
+  // who has never paid, once per install, and only when the dashboard has one set up.
+  const afterPaywall = useCallback((placement: PaywallPlacement, purchased: boolean) => {
+    if (purchased || hasPro()) return;
+    const everPaid = isPremium() || lastSubscriptionExpiry() > 0;
+    if (!shouldOfferExit(loadMemo(), placement, everPaid, hasPro())) return;
+    void iap.exitOfferAvailable().then((ok) => {
+      if (!ok || hasPro() || loadMemo().exitShown) return;
+      saveMemo(markExitShown(loadMemo()));
+      openPaywallRef.current("exit");
+    });
+  }, []);
+  const openPaywall = useCallback((placement: PaywallPlacement = "settings") => {
     if (paywallOpening.current) return;
     paywallOpening.current = true;
     setNativePaywall(true);
-    void iap.presentNativePaywall()
-      .then((shown) => { if (!shown) setShowPaywall(true); })
-      .finally(() => { paywallOpening.current = false; setNativePaywall(false); });
-  }, []);
+    let nativeShown = false;
+    void iap.presentNativePaywall(placement)
+      .then((shown) => {
+        nativeShown = shown;
+        if (!shown) { setPaywallPlacement(placement); setShowPaywall(true); }
+      })
+      .finally(() => {
+        paywallOpening.current = false;
+        setNativePaywall(false);
+        if (nativeShown) afterPaywall(placement, hasPro());
+      });
+  }, [afterPaywall]);
+  openPaywallRef.current = openPaywall;
+  const closePaywall = useCallback((purchased: boolean) => {
+    setShowPaywall(false);
+    afterPaywall(paywallPlacement, purchased);
+  }, [afterPaywall, paywallPlacement]);
   const portalOpen = usePortalOpen();
   const [breaking, setBreaking] = useState<Breaking | null>(null);
   const [challengeDoneId, setChallengeDoneId] = useState<string | null>(null); // Grand Challenge just completed → moment
@@ -611,9 +643,10 @@ export function App() {
     const t = window.setTimeout(() => {
       const memo = loadMemo();
       const now = Date.now();
-      if (shouldAutoShow(memo, paywallPending, now, hasPro())) {
-        saveMemo(markShown(memo, paywallPending, now));
-        openPaywall();
+      const lapsedAt = paywallPending === "winback" ? lapsedSubscriptionAt(now) : 0;
+      if (shouldAutoShow(memo, paywallPending, now, hasPro(), lapsedAt)) {
+        saveMemo(markShown(memo, paywallPending, now, lapsedAt));
+        openPaywall(placementFor(paywallPending));
       }
       setPaywallPending(null);
     }, 700);
@@ -633,6 +666,13 @@ export function App() {
     if (themes.find((t) => t.id === hallTheme)?.unlock.kind === "premium") st.setHallTheme("classic");
     if (rackSkins.find((t) => t.id === rackSkinId)?.unlock.kind === "premium") st.setRackSkin("classic");
   }, [initialized, pro, lapseConfirmed, hallTheme, rackSkinId]);
+  // Win-back: a former subscriber whose lapse the store has confirmed gets one
+  // "welcome back" paywall per lapse (paywallRules), on a clear stage like the others.
+  useEffect(() => {
+    if (!initialized || pro || !lapseConfirmed) return;
+    const lapsedAt = lapsedSubscriptionAt();
+    if (lapsedAt > 0 && loadMemo().winbackFor !== lapsedAt) setPaywallPending((p) => p ?? "winback");
+  }, [initialized, pro, lapseConfirmed]);
   // A stored expiry that passed on the device clock: ask the store whether it renewed.
   useEffect(() => {
     if (initialized && !pro && !lapseConfirmed) void iap.syncStatus();
@@ -1353,8 +1393,8 @@ export function App() {
           }}
         />
       )}
-      {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} onReset={() => { setShowSettings(false); setConfirmReset(true); }} onOpenPro={() => { haptics.tap(); openPaywall(); }} />}
-      {showPaywall && <ProPaywall onClose={() => setShowPaywall(false)} />}
+      {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} onReset={() => { setShowSettings(false); setConfirmReset(true); }} onOpenPro={() => { haptics.tap(); openPaywall("settings"); }} />}
+      {showPaywall && <ProPaywall key={paywallPlacement} placement={paywallPlacement} onClose={closePaywall} />}
       {moment === "challenge" && challengeDoneId && challengeById.get(challengeDoneId) && (
         <ChallengeComplete challenge={challengeById.get(challengeDoneId)!} onDone={() => setChallengeDoneId(null)} />
       )}

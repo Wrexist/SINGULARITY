@@ -77,7 +77,12 @@ export function setProUntil(until: number | null, now: number = Date.now()): voi
   try {
     const before = localStorage.getItem(PRO_UNTIL_KEY);
     const v = until === null ? 0 : sanitizeProUntil(until, now);
-    if (v > 0) localStorage.setItem(PRO_UNTIL_KEY, String(v));
+    if (v > 0) {
+      localStorage.setItem(PRO_UNTIL_KEY, String(v));
+      // Kept past a lapse (the expiry above is cleared then): the win-back offer is
+      // for players who subscribed before, and once per lapse — keyed by this.
+      localStorage.setItem(PRO_LAST_EXPIRY_KEY, String(v));
+    }
     else localStorage.removeItem(PRO_UNTIL_KEY);
     if (before !== (v > 0 ? String(v) : null)) emit();
   } catch {
@@ -130,6 +135,30 @@ export function setProWillRenew(renews: boolean): void {
   } catch {
     /* ignore */
   }
+}
+
+/** The latest subscription expiry this install ever held (ms epoch), kept after it
+ *  lapses. Display/targeting only: it grants nothing. */
+export const PRO_LAST_EXPIRY_KEY = "singularity.pro.lastExpiry.v1";
+
+export function lastSubscriptionExpiry(): number {
+  try {
+    const n = Number(localStorage.getItem(PRO_LAST_EXPIRY_KEY));
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * A former subscriber whose plan is over, as the store has confirmed: the expiry it
+ * ended at (the win-back key — one offer per lapse), or 0. Never a lifetime owner, and
+ * never on a lapse only the device clock has seen (it may have renewed).
+ */
+export function lapsedSubscriptionAt(now: number = Date.now()): number {
+  if (isPremium() || !proLapseConfirmed(now)) return 0;
+  const last = lastSubscriptionExpiry();
+  return last > 0 && last <= now ? last : 0;
 }
 
 /** Is Pro active right now? Lifetime owners always; subscribers until expiry. */
