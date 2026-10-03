@@ -300,15 +300,19 @@ export const iap = {
 
   /**
    * Present the paywall designed in the RevenueCat dashboard, when the current offering
-   * opts in (metadata {"paywall": "revenuecat"}). Resolves true once RevenueCat showed
-   * it (however it ended); false when it did not — web/dev, a build without RevenueCat,
-   * an offering that keeps the in-app paywall, or a failure — so the caller shows ours.
+   * opts in (metadata {"paywall": "revenuecat"}). Resolves true once the player has seen
+   * it through (bought, restored or closed it); false when it did not come up or ended
+   * in an error — web/dev, a build without RevenueCat, an offering that keeps the in-app
+   * paywall, a missing dashboard paywall — so the caller shows ours instead.
    */
   async presentNativePaywall(): Promise<boolean> {
     try {
       const rc = await ensureRevenueCat();
       if (!rc) return false;
-      return (await rc.presentPaywall()) !== null;
+      const outcome = await rc.presentPaywall();
+      // Shown and finished (bought, restored or closed by the player). An error or a
+      // paywall that never came up falls back to ours: the player always gets one.
+      return outcome === "purchased" || outcome === "restored" || outcome === "closed";
     } catch (e) {
       console.warn("RevenueCat paywall unavailable:", e);
       return false;

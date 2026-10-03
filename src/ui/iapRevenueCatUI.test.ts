@@ -78,7 +78,7 @@ describe("paywall helpers", () => {
     expect(paywallOutcome("RESTORED")).toBe("restored");
     expect(paywallOutcome("ERROR")).toBe("error");
     expect(paywallOutcome("CANCELLED")).toBe("closed");
-    expect(paywallOutcome("NOT_PRESENTED")).toBe("closed");
+    expect(paywallOutcome("NOT_PRESENTED")).toBe("not_presented");
     expect(paywallOutcome(undefined)).toBe("closed");
   });
 
@@ -138,6 +138,13 @@ describe("iap.presentNativePaywall", () => {
     expect(f.calls.paywall).toBe(1);
     expect((f.calls.offering as { identifier: string }).identifier).toBe("default");
     expect(hasPro()).toBe(true);
+  });
+
+  it.each(["ERROR", "NOT_PRESENTED"])("falls back to the in-app paywall when RevenueCat's ends %s", async (result) => {
+    const f = fakes({ metadata: { paywall: "revenuecat" }, result, infos: [none()] });
+    const { iap } = await load(f);
+    expect(await iap.presentNativePaywall()).toBe(false);
+    expect(f.calls.paywall).toBe(1);
   });
 
   it("a closed RevenueCat paywall still counts as shown (no second, in-app one)", async () => {

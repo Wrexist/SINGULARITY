@@ -31,7 +31,7 @@ export type PlanId = "annual" | "weekly" | "lifetime";
 export const PAYWALL_METADATA_KEY = "paywall";
 
 /** How a RevenueCat-presented paywall ended. */
-export type PaywallOutcome = "purchased" | "restored" | "closed" | "error";
+export type PaywallOutcome = "purchased" | "restored" | "closed" | "error" | "not_presented";
 
 /** PAYWALL_RESULT (a string enum in the plugin), compared by value. */
 export function paywallOutcome(result: string | undefined): PaywallOutcome {
@@ -39,7 +39,8 @@ export function paywallOutcome(result: string | undefined): PaywallOutcome {
     case "PURCHASED": return "purchased";
     case "RESTORED": return "restored";
     case "ERROR": return "error";
-    default: return "closed"; // CANCELLED, NOT_PRESENTED
+    case "NOT_PRESENTED": return "not_presented";
+    default: return "closed"; // CANCELLED
   }
 }
 
