@@ -204,6 +204,18 @@ export function App() {
   // trigger waiting for a clear stage (see paywallRules for when it may show).
   const [showPaywall, setShowPaywall] = useState(false);
   const [paywallPending, setPaywallPending] = useState<PaywallTrigger | null>(null);
+  // RevenueCat's own paywall when the current offering opts in (iap.presentNativePaywall);
+  // otherwise ours. True while either is being decided or the native one is up.
+  const [nativePaywall, setNativePaywall] = useState(false);
+  const paywallOpening = useRef(false);
+  const openPaywall = useCallback(() => {
+    if (paywallOpening.current) return;
+    paywallOpening.current = true;
+    setNativePaywall(true);
+    void iap.presentNativePaywall()
+      .then((shown) => { if (!shown) setShowPaywall(true); })
+      .finally(() => { paywallOpening.current = false; setNativePaywall(false); });
+  }, []);
   const portalOpen = usePortalOpen();
   const [breaking, setBreaking] = useState<Breaking | null>(null);
   const [challengeDoneId, setChallengeDoneId] = useState<string | null>(null); // Grand Challenge just completed → moment
@@ -268,7 +280,7 @@ export function App() {
   // consequence of something the player just did; this is the only uninvited one, so
   // it's the only one that waits. The store holds it in a single slot, so it simply
   // shows once the sheet closes. (2026-08 — reproduced in a seeded smoke run.)
-  const sheetOpen = showSettings || showPaywall || !!pendingExpansion || confirmReset || !!pendingRetire || !!pendingFlagship || portalOpen;
+  const sheetOpen = showSettings || showPaywall || nativePaywall || !!pendingExpansion || confirmReset || !!pendingRetire || !!pendingFlagship || portalOpen;
 
   // The moment queue's head: exactly ONE full-screen moment renders at a time,
   // by priority. Dismissing the head lets the next pending one show.
@@ -601,12 +613,12 @@ export function App() {
       const now = Date.now();
       if (shouldAutoShow(memo, paywallPending, now, hasPro())) {
         saveMemo(markShown(memo, paywallPending, now));
-        setShowPaywall(true);
+        openPaywall();
       }
       setPaywallPending(null);
     }, 700);
     return () => window.clearTimeout(t);
-  }, [paywallPending, paywallStageClear]);
+  }, [paywallPending, paywallStageClear, openPaywall]);
 
   // Pro cosmetics follow Pro: when it lapses, a Pro-only theme or skin still selected
   // falls back to Classic (earned-by-play ones are untouched). Waits for hydration.
@@ -1333,7 +1345,7 @@ export function App() {
           }}
         />
       )}
-      {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} onReset={() => { setShowSettings(false); setConfirmReset(true); }} onOpenPro={() => { haptics.tap(); setShowPaywall(true); }} />}
+      {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} onReset={() => { setShowSettings(false); setConfirmReset(true); }} onOpenPro={() => { haptics.tap(); openPaywall(); }} />}
       {showPaywall && <ProPaywall onClose={() => setShowPaywall(false)} />}
       {moment === "challenge" && challengeDoneId && challengeById.get(challengeDoneId) && (
         <ChallengeComplete challenge={challengeById.get(challengeDoneId)!} onDone={() => setChallengeDoneId(null)} />

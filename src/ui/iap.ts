@@ -163,10 +163,25 @@ function storePrice(store: CdvStore | null): string | null {
 
 // --- RevenueCat path (native, when the build carries a key; see iapRevenueCat.ts).
 // Loaded lazily so the web build and the StoreKit-path tests never touch the plugin.
-/** The public iOS SDK key baked into this build (VITE_RC_IOS_KEY), or null. */
+/** The public iOS SDK key baked into this build (VITE_RC_IOS_KEY), or null.
+ *  A Test Store key (test_…) simulates purchases and the native SDK crashes a Release
+ *  build configured with one, so it is honoured only in a non-production bundle
+ *  (`npm run cap:sync:dev`, Xcode Debug); a production bundle ignores it and keeps
+ *  the direct StoreKit path, so a mis-set secret can never reach players. */
 export function revenueCatKey(): string | null {
   const k = import.meta.env?.VITE_RC_IOS_KEY;
-  return typeof k === "string" && k.trim() ? k.trim() : null;
+  if (typeof k !== "string" || !k.trim()) return null;
+  const key = k.trim();
+  if (isTestStoreKey(key) && import.meta.env?.MODE === "production") {
+    console.warn("RevenueCat Test Store key ignored in a production build.");
+    return null;
+  }
+  return key;
+}
+
+/** RevenueCat Test Store keys start with "test_" (App Store keys with "appl_"). */
+export function isTestStoreKey(key: string): boolean {
+  return key.startsWith("test_");
 }
 
 let rcPromise: Promise<RevenueCatStore | null> | null = null;
@@ -263,6 +278,40 @@ export const iap = {
     if (store) return hasPro(); // direct StoreKit path sells the lifetime unlock only
     setProUntil(Date.now() + (id === "annual" ? 365 : 30) * DAY_MS);
     return hasPro();
+  },
+
+  /**
+   * Present the paywall designed in the RevenueCat dashboard, when the current offering
+   * opts in (metadata {"paywall": "revenuecat"}). Resolves true once RevenueCat showed
+   * it (however it ended); false when it did not — web/dev, a build without RevenueCat,
+   * an offering that keeps the in-app paywall, or a failure — so the caller shows ours.
+   */
+  async presentNativePaywall(): Promise<boolean> {
+    try {
+      const rc = await ensureRevenueCat();
+      if (!rc) return false;
+      return (await rc.presentPaywall()) !== null;
+    } catch (e) {
+      console.warn("RevenueCat paywall unavailable:", e);
+      return false;
+    }
+  },
+
+  /** Can this build open RevenueCat's Customer Center (native + RevenueCat)? */
+  async canManageSubscription(): Promise<boolean> {
+    try {
+      return !!(await ensureRevenueCat());
+    } catch {
+      return false;
+    }
+  },
+
+  /** Open RevenueCat's Customer Center: manage or cancel the plan, request a refund,
+   *  restore. Throws when it cannot open (the caller says so in one line). */
+  async manageSubscription(): Promise<void> {
+    const rc = await ensureRevenueCat();
+    if (!rc) throw new Error("Customer Center needs the RevenueCat build");
+    await rc.presentCustomerCenter();
   },
 
   /** True on a real device where a native store could exist. */

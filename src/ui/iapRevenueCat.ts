@@ -7,7 +7,8 @@ import type { CustomerInfo, PurchasesPackage, PurchasesStoreProduct } from "@rev
  * without one the app keeps its direct StoreKit path, which sells the lifetime unlock
  * only, so a build missing the key still sells and restores it.
  *
- * All three products (yearly, weekly, lifetime) attach to ONE entitlement, "pro".
+ * All three products (yearly, weekly, lifetime) attach to ONE entitlement, "pro", and
+ * sit as packages ($rc_annual, $rc_weekly, $rc_lifetime) in the current offering.
  * RevenueCat is the source of truth for the purchase itself (receipt validation,
  * restore across devices, revenue reporting). Locally, the game reads state/premium:
  *  - the lifetime flag stays GRANT-ONLY: a "not owned" answer never takes it away;
@@ -22,6 +23,31 @@ export const PRO_YEARLY_ID = "com.wrexist.singularityinc.pro.yearly";
 export const PRO_WEEKLY_ID = "com.wrexist.singularityinc.pro.weekly";
 
 export type PlanId = "annual" | "weekly" | "lifetime";
+
+/** Offering metadata key that hands the paywall to RevenueCat: set {"paywall": "revenuecat"}
+ *  on the current offering (dashboard → Offerings → metadata) to present the paywall built
+ *  in RevenueCat's editor instead of the in-app one. Absent/anything else keeps ours, so a
+ *  dashboard change switches it (and back) with no app update. */
+export const PAYWALL_METADATA_KEY = "paywall";
+
+/** How a RevenueCat-presented paywall ended. */
+export type PaywallOutcome = "purchased" | "restored" | "closed" | "error";
+
+/** PAYWALL_RESULT (a string enum in the plugin), compared by value. */
+export function paywallOutcome(result: string | undefined): PaywallOutcome {
+  switch (result) {
+    case "PURCHASED": return "purchased";
+    case "RESTORED": return "restored";
+    case "ERROR": return "error";
+    default: return "closed"; // CANCELLED, NOT_PRESENTED
+  }
+}
+
+/** Does this offering's metadata ask for RevenueCat's paywall? Pure. */
+export function wantsRevenueCatPaywall(metadata: Record<string, unknown> | null | undefined): boolean {
+  const v = metadata?.[PAYWALL_METADATA_KEY];
+  return typeof v === "string" && v.trim().toLowerCase() === "revenuecat";
+}
 
 export interface Plan {
   id: PlanId;
@@ -98,6 +124,12 @@ export interface RevenueCatStore {
   buyPlan(id: PlanId): Promise<boolean>;
   /** Restore; true when Pro is active afterwards. Throws when the store never answered. */
   restore(): Promise<boolean>;
+  /** Present the dashboard paywall when the current offering opts in (see
+   *  PAYWALL_METADATA_KEY). Null when it does not (show the in-app paywall instead). */
+  presentPaywall(): Promise<PaywallOutcome | null>;
+  /** Present RevenueCat's Customer Center (manage / cancel / refund / restore), then
+   *  re-read customer info so a change made there lands at once. */
+  presentCustomerCenter(): Promise<void>;
 }
 
 /** INTRO_ELIGIBILITY_STATUS.INTRO_ELIGIBILITY_STATUS_INELIGIBLE, by value. */
@@ -120,6 +152,15 @@ export async function createRevenueCatStore(
   };
   await Purchases.addCustomerInfoUpdateListener(sync);
   sync((await Purchases.getCustomerInfo()).customerInfo);
+
+  /** Re-read customer info (the update listener also fires, but not on every path). */
+  const resync = async (): Promise<void> => {
+    try {
+      sync((await Purchases.getCustomerInfo()).customerInfo);
+    } catch (e) {
+      console.warn("RevenueCat customer info unavailable:", e);
+    }
+  };
 
   let product: PurchasesStoreProduct | null = null;
   const loadProduct = async (): Promise<PurchasesStoreProduct | null> => {
@@ -219,6 +260,29 @@ export async function createRevenueCatStore(
     async restore() {
       const { customerInfo } = await Purchases.restorePurchases();
       return sync(customerInfo);
+    },
+    async presentPaywall() {
+      let current;
+      try {
+        current = (await Purchases.getOfferings()).current;
+      } catch (e) {
+        console.warn("RevenueCat offerings unavailable:", e);
+        return null;
+      }
+      if (!current || !wantsRevenueCatPaywall(current.metadata)) return null;
+      // Loaded on demand: the UI plugin is only needed once a paywall is asked for.
+      const { RevenueCatUI } = await import("@revenuecat/purchases-capacitor-ui");
+      const { result } = await RevenueCatUI.presentPaywall({ offering: current, displayCloseButton: true });
+      await resync();
+      return paywallOutcome(result as string);
+    },
+    async presentCustomerCenter() {
+      const { RevenueCatUI } = await import("@revenuecat/purchases-capacitor-ui");
+      try {
+        await RevenueCatUI.presentCustomerCenter();
+      } finally {
+        await resync();
+      }
     },
   };
 }

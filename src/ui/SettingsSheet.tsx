@@ -1,4 +1,4 @@
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useSettings, osReduceMotionNow, onOsReduceMotionChange } from "./settings";
 import { iap } from "./iap";
 import { useHasPro } from "./pro";
@@ -180,6 +180,26 @@ export function SettingsSheet({ onClose, onReset, onOpenPro }: Props) {
   };
   // The Pro card's own one-line status (the backup section has its own).
   const [proStatus, setProStatus] = useState<string | null>(null);
+  // RevenueCat builds manage the plan in its Customer Center (cancel, change plan,
+  // refund request, restore) — offered to subscribers only.
+  const [canManage, setCanManage] = useState(false);
+  useEffect(() => {
+    let live = true;
+    void iap.canManageSubscription().then((ok) => { if (live) setCanManage(ok); });
+    return () => { live = false; };
+  }, []);
+  const [managing, setManaging] = useState(false);
+  const manage = async () => {
+    setManaging(true);
+    setProStatus(null);
+    try {
+      await iap.manageSubscription();
+    } catch {
+      setProStatus("Couldn't open subscription settings — try Settings › Apple ID › Subscriptions.");
+    } finally {
+      setManaging(false);
+    }
+  };
   const restore = async () => {
     setBusy(true);
     setProStatus(null);
@@ -231,7 +251,10 @@ export function SettingsSheet({ onClose, onReset, onOpenPro }: Props) {
               {!pro && onOpenPro && (
                 <button className="btn btn-primary" disabled={busy} onClick={onOpenPro}>See Pro plans</button>
               )}
-              <button className="link-btn" disabled={busy} onClick={restore}>
+              {pro && canManage && (
+                <button className="btn btn-ghost" disabled={busy || managing} onClick={manage}>Manage subscription</button>
+              )}
+              <button className="link-btn" disabled={busy || managing} onClick={restore}>
                 {busy ? "Restoring…" : "Restore"}
               </button>
             </div>
