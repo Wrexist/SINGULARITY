@@ -14,17 +14,19 @@
     "shot": "node scripts/screenshot.mjs",
     "validate:store": "node scripts/validate-store-metadata.mjs",
     "icons": "node scripts/stamp-icons.mjs",
-    "cap:sync": "npm run build && cap sync ios",
+    "cap:sync": "npm run build && node scripts/ios-prepare.mjs && cap sync ios",
+    "cap:sync:dev": "tsc --noEmit && vite build --mode development && node scripts/ios-prepare.mjs && cap sync ios",
     "trailer:score": "node scripts/trailer/score.mjs"
   },
   "dependencies": {
-    "@capacitor/cli": "^6.2.1",
-    "@capacitor/core": "^6.2.1",
-    "@capacitor/haptics": "^6.0.3",
-    "@capacitor/ios": "^6.2.1",
-    "@capacitor/local-notifications": "^6.1.3",
-    "@capacitor/status-bar": "^6.0.3",
-    "@revenuecat/purchases-capacitor": "9.2.2",
+    "@capacitor/cli": "^7.6.9",
+    "@capacitor/core": "^7.6.9",
+    "@capacitor/haptics": "^7.0.5",
+    "@capacitor/ios": "^7.6.9",
+    "@capacitor/local-notifications": "^7.0.7",
+    "@capacitor/status-bar": "^7.0.6",
+    "@revenuecat/purchases-capacitor": "11.3.2",
+    "@revenuecat/purchases-capacitor-ui": "11.3.2",
     "break_infinity.js": "^2.0.0",
     "cordova-plugin-purchase": "^13.17.2",
     "react": "^18.3.1",
@@ -40,5 +42,10 @@
     "typescript": "^5.7.2",
     "vite": "^6.0.7",
     "vitest": "^2.1.8"
+  },
+  "overrides": {
+    "@revenuecat/purchases-capacitor-ui": {
+      "@revenuecat/purchases-capacitor": "$@revenuecat/purchases-capacitor"
+    }
   }
 }

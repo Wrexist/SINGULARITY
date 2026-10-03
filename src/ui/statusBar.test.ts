@@ -167,10 +167,19 @@ describe("edge-to-edge iOS shell", () => {
     expect(cfg).toMatch(/backgroundColor:\s*"#eef1f8"/);
   });
 
-  it("the status-bar plugin is a dependency at the Capacitor 6 major", () => {
+  it("the status-bar plugin is a dependency at the Capacitor 7 major", () => {
     const pkg = JSON.parse(read("../../package.json")) as { dependencies: Record<string, string> };
-    expect(pkg.dependencies["@capacitor/status-bar"]).toMatch(/^\^6\./);
-    expect(pkg.dependencies["@capacitor/core"]).toMatch(/^\^6\./);
+    expect(pkg.dependencies["@capacitor/status-bar"]).toMatch(/^\^7\./);
+    expect(pkg.dependencies["@capacitor/core"]).toMatch(/^\^7\./);
+  });
+
+  it("every official Capacitor package shares core's major (a mixed major breaks pod install)", () => {
+    const pkg = JSON.parse(read("../../package.json")) as { dependencies: Record<string, string> };
+    const major = (v: string) => v.replace(/^[\^~]/, "").split(".")[0];
+    const core = major(pkg.dependencies["@capacitor/core"] ?? "");
+    const caps = Object.entries(pkg.dependencies).filter(([n]) => n.startsWith("@capacitor/"));
+    expect(caps.length).toBeGreaterThan(3);
+    for (const [, v] of caps) expect(major(v)).toBe(core);
   });
 
   it("every safe-area inset in the stylesheet is overridable (var(--sa*, env(...)))", () => {

@@ -83,12 +83,46 @@ Run: `bundle exec fastlane beta`
 
 > **RevenueCat (from 1.1):** when the build carries a RevenueCat public iOS SDK key,
 > purchases and restores go through RevenueCat (`src/ui/iapRevenueCat.ts`); without
-> one the app keeps the direct StoreKit path below. Setup: RevenueCat project
-> "Singularity Inc. Idle Tycoon" → App Store app `com.wrexist.singularityinc` with the
-> In-App Purchase Key (.p8) → product `com.wrexist.singularityinc.premium` → entitlement
-> `premium` → offering `default`. Then put the app's public key (`appl_…`, from
-> RevenueCat → API keys) in the GitHub secret **`RC_IOS_KEY`**. The TestFlight log
-> prints which backend the build uses.
+> one the app keeps the direct StoreKit path below. Put the app's App Store key
+> (`appl_…`, RevenueCat → API keys) in the GitHub secret **`RC_IOS_KEY`**. The
+> TestFlight log prints which backend the build uses.
+>
+> **RevenueCat project setup** ("Singularity Inc. Idle Tycoon" → App Store app
+> `com.wrexist.singularityinc`, with the In-App Purchase Key .p8 uploaded):
+>
+> | Product (App Store Connect) | Type | Package in offering `default` |
+> |---|---|---|
+> | `com.wrexist.singularityinc.pro.yearly` — Pro Yearly | auto-renewable (group "Pro") | `$rc_annual` |
+> | `com.wrexist.singularityinc.pro.weekly` — Pro | auto-renewable (group "Pro") | `$rc_weekly` |
+> | `com.wrexist.singularityinc.premium` — Pro Lifetime | non-consumable | `$rc_lifetime` |
+>
+> 1. **Products:** import all three (Product catalog → Products).
+> 2. **Entitlement `pro`:** attach all three products. The app checks only `pro`
+>    (`RC_ENTITLEMENT_ID`); the lifetime product id also counts on its own, so a
+>    purchase grants even before it is attached.
+> 3. **Offering `default`**, marked *current*, with the three packages above. The
+>    app reads packages by type (Annual / Weekly / Lifetime), so their order and the
+>    offering's identifier don't matter — whichever offering is current is sold.
+> 4. **Paywall (optional, remote switch):** design one in RevenueCat → Paywalls for
+>    the current offering, then add offering **metadata** `{"paywall": "revenuecat"}`.
+>    The app then presents RevenueCat's paywall (`RevenueCatUI.presentPaywall`)
+>    instead of its own `ProPaywall`; remove the key to switch back. No app update
+>    either way. Without the key the in-app paywall stays (it follows this app's
+>    design rules, and works on the direct-StoreKit and web builds too).
+> 5. **Customer Center:** RevenueCat → Customer Center (the defaults work; add a
+>    support email and the cancel/refund paths you want). Pro subscribers open it from
+>    Settings → *Manage subscription* (RevenueCat builds only).
+>
+> **Testing with the Test Store** (simulated purchases — no App Store account, no
+> money): `.env.development` carries the project's Test Store key (`test_…`).
+> `npm run cap:sync:dev`, then run from Xcode with the **Debug** configuration. A
+> production bundle ignores `test_` keys and CI fails if `RC_IOS_KEY` holds one: the
+> native SDK deliberately crashes a Release build configured with a Test Store key.
+>
+> **Native project:** the Paywall / Customer Center pod (RevenueCatUI) needs **iOS
+> 15+**. `scripts/ios-prepare.mjs` scaffolds `ios/` when missing and raises the
+> deployment target (Capacitor 7's template targets 14); `cap:sync`,
+> `cap:sync:dev` and CI run it before `cap sync ios`.
 
 The premium unlock uses **`cordova-plugin-purchase` (CdvPurchase v13)** — a
 self-contained, on-device StoreKit integration (no third-party billing backend).

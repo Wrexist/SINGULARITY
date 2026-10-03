@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Portal } from "./Portal";
 import { useDialog } from "./useDialog";
-import { iap, type Plan, type PlanId } from "./iap";
+import { iap, type Plan, type PlanId, type PlanOffer } from "./iap";
+import type { PaywallPlacement } from "./paywallRules";
+import { useHasPro } from "./pro";
 import { haptics } from "./haptics";
 import { sound } from "./sound";
 import { motionReduced } from "./settings";
@@ -14,10 +16,16 @@ export const PRIVACY_URL = "https://wrexist.github.io/SINGULARITY/privacy/";
 
 const PLAN_NAME: Record<PlanId, string> = { annual: "Yearly", weekly: "Weekly", lifetime: "Lifetime" };
 
+/** "year", "3 months", "1 week" → how long a discounted start lasts. Pure. */
+export function offerSpan(o: PlanOffer): string {
+  return o.periods === 1 ? o.unit : `${o.periods} ${o.unit}s`;
+}
+
 /** The primary button's words for a plan. */
 export function ctaLabel(p: Plan | undefined): string {
   if (!p) return "Continue";
   if (p.id === "lifetime") return "Unlock forever";
+  if (p.offer) return `Continue for ${p.offer.priceString}`;
   if (p.trialDays) return `Start ${p.trialDays}-day free trial`;
   return "Subscribe";
 }
@@ -27,6 +35,9 @@ export function termsLine(p: Plan | undefined): string {
   if (!p) return "";
   if (p.id === "lifetime") return `One-time purchase of ${p.priceString}. No subscription.`;
   const unit = p.periodLabel === "year" ? "year" : "week";
+  if (p.offer) {
+    return `${p.offer.priceString} for the first ${offerSpan(p.offer)}, then ${p.priceString}/${unit}. Auto-renews until cancelled. Cancel anytime in Settings › Apple ID at least 24 hours before the period ends.`;
+  }
   if (p.trialDays) {
     return `${p.trialDays} days free, then ${p.priceString}/${unit}. Auto-renews until cancelled. Cancel anytime in Settings › Apple ID at least 24 hours before the trial ends.`;
   }
@@ -42,8 +53,19 @@ const PERKS = [
 
 type Phase = "idle" | "buying" | "restoring" | "done";
 
+/** The words at the top, by where the paywall opened. Every moment sells the same
+ *  Pro; a returning subscriber and a one-time offer are told what they are. */
+const COPY: Record<"default" | "winback" | "exit", { kicker: string; title: string; sub: string }> = {
+  default: { kicker: "SINGULARITY PRO", title: "Run the lab at full power", sub: "More done while you're away, less busywork while you're here." },
+  winback: { kicker: "WELCOME BACK", title: "Pick up where Pro left off", sub: "Double-speed time away and the 24-hour cap, back on in one tap." },
+  exit: { kicker: "ONE-TIME OFFER", title: "Pro, on better terms", sub: "This offer is shown once on this device." },
+};
+
 interface Props {
-  onClose: () => void;
+  /** Called once: `purchased` true after a purchase or restore, false when dismissed. */
+  onClose: (purchased: boolean) => void;
+  /** Where it opened (a RevenueCat placement: its own offering, offers and copy). */
+  placement?: PaywallPlacement;
 }
 
 /**
@@ -52,7 +74,8 @@ interface Props {
  * App Store sheet is silent; a failure is one calm line. A purchase ends on a quiet
  * check and closes itself.
  */
-export function ProPaywall({ onClose }: Props) {
+export function ProPaywall({ onClose, placement = "settings" }: Props) {
+  const copy = COPY[placement === "winback" || placement === "exit" ? placement : "default"];
   const ref = useRef<HTMLDivElement>(null);
   const [plans, setPlans] = useState<Plan[] | null>(null);
   const [selected, setSelected] = useState<PlanId>("annual");
@@ -61,12 +84,12 @@ export function ProPaywall({ onClose }: Props) {
   const live = useRef(true);
   const busy = phase !== "idle";
   // Escape / ✕ are always available — except for the last beat of a finished purchase.
-  const close = () => { if (phase !== "buying" && phase !== "restoring") onClose(); };
+  const close = () => { if (phase !== "buying" && phase !== "restoring") onClose(finished.current); };
   useDialog(ref, { onClose: close, labelledBy: "pro-title" });
 
   useEffect(() => {
     live.current = true;
-    void iap.plans().then((p) => {
+    void iap.plans(placement).then((p) => {
       if (!live.current) return;
       setPlans(p);
       if (p.length > 0 && !p.some((x) => x.id === "annual")) setSelected(p[0]!.id);
@@ -76,12 +99,25 @@ export function ProPaywall({ onClose }: Props) {
 
   const plan = plans?.find((p) => p.id === selected);
 
+  // Pro can arrive by another route than buy()'s own answer: on the direct StoreKit
+  // path a purchase that confirms after its short settle wait resolves false (the
+  // sheet went back to idle while the player was charged), and the store grants it a
+  // moment later. Pro turning on while this is open ends it the same way, once.
+  const finished = useRef(false);
+  const pro = useHasPro();
+  const proAtOpen = useRef(pro);
+  useEffect(() => {
+    if (pro && !proAtOpen.current) finish();
+  }, [pro]);
+
   const finish = () => {
+    if (finished.current) return;
+    finished.current = true;
     setPhase("done");
     setError(null);
     haptics.celebrate();
     sound.success();
-    window.setTimeout(() => { if (live.current) onClose(); }, motionReduced() ? 900 : 1300);
+    window.setTimeout(() => { if (live.current) onClose(true); }, motionReduced() ? 900 : 1300);
   };
 
   const buy = async () => {
@@ -89,7 +125,7 @@ export function ProPaywall({ onClose }: Props) {
     setError(null);
     setPhase("buying");
     try {
-      const ok = await iap.purchasePlan(plan.id);
+      const ok = await iap.purchasePlan(plan.id, placement);
       if (!live.current) return;
       if (ok) finish();
       else setPhase("idle"); // a cancelled App Store sheet: silent
@@ -150,9 +186,9 @@ export function ProPaywall({ onClose }: Props) {
             <span className="pro-hero-glow" />
             <span className="pro-hero-ic"><CrownIcon size={40} /></span>
           </div>
-          <div className="pro-kicker">SINGULARITY PRO</div>
-          <h2 id="pro-title" className="pro-title" tabIndex={-1}>Run the lab at full power</h2>
-          <p className="pro-sub">More done while you're away, less busywork while you're here.</p>
+          <div className="pro-kicker">{copy.kicker}</div>
+          <h2 id="pro-title" className="pro-title" tabIndex={-1}>{copy.title}</h2>
+          <p className="pro-sub">{copy.sub}</p>
 
           <ul className="pro-perks">
             {PERKS.map((p) => (
@@ -194,12 +230,13 @@ export function ProPaywall({ onClose }: Props) {
                         {p.id === "annual" && <span className="pro-tag">Best value</span>}
                       </span>
                       <span className="pro-plan-note">
-                        {p.id === "lifetime" ? "Pay once" : p.id === "annual" ? "Billed yearly" : p.trialDays ? `${p.trialDays} days free, then weekly` : "Billed weekly"}
+                        {p.offer ? `First ${offerSpan(p.offer)}, then ${p.priceString}/${p.periodLabel}`
+                          : p.id === "lifetime" ? "Pay once" : p.id === "annual" ? "Billed yearly" : p.trialDays ? `${p.trialDays} days free, then weekly` : "Billed weekly"}
                       </span>
                     </span>
                     <span className="pro-plan-price">
-                      <span className="pro-plan-amt"><b>{p.priceString}</b>{p.id !== "lifetime" && <span>/{p.periodLabel}</span>}</span>
-                      {p.perWeekString && <span className="pro-plan-pm">{p.perWeekString}/wk</span>}
+                      <span className="pro-plan-amt"><b>{p.offer ? p.offer.priceString : p.priceString}</b>{p.id !== "lifetime" && <span>/{p.offer ? offerSpan(p.offer) : p.periodLabel}</span>}</span>
+                      {!p.offer && p.perWeekString && <span className="pro-plan-pm">{p.perWeekString}/wk</span>}
                     </span>
                     {p.id === "annual" && p.trialDays ? <span className="pro-badge">{p.trialDays} days free</span> : null}
                   </button>

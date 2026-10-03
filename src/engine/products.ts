@@ -598,7 +598,9 @@ export function releaseProduct(
 
 export function canPushVersion(state: GameState, id: string): boolean {
   const p = state.products.active.find((x) => x.id === id);
-  if (!p) return false;
+  // Not during a timed upgrade: its finish sets the version to its target, which
+  // would silently undo (and so double-charge) a push made meanwhile.
+  if (!p || p.upgrade) return false;
   const c = versionCostFor(state, p.version);
   return state.resources.compute.gte(c.compute) && state.resources.data.gte(c.data);
 }

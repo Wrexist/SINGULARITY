@@ -1,8 +1,8 @@
 import { Capacitor } from "@capacitor/core";
-import { isPremium, setPremium, hasPro, setProUntil, proUntil } from "../state/premium";
+import { isPremium, setPremium, hasPro, setProUntil, proUntil, setProWillRenew } from "../state/premium";
 import type { RevenueCatStore, Plan, PlanId, ProStatus } from "./iapRevenueCat";
 
-export type { Plan, PlanId } from "./iapRevenueCat";
+export type { Plan, PlanId, PlanOffer } from "./iapRevenueCat";
 
 /**
  * Premium unlock IAP (GDD §9: a single generous unlock, cosmetic/QoL only, never
@@ -40,11 +40,34 @@ export const WEB_PLANS: readonly Plan[] = [
 
 const DAY_MS = 24 * 3_600_000;
 
+/** Web/dev only: localStorage "singularity.dev.offers" = "1" shows placeholder win-back
+ *  and exit offers, so those screens can be exercised without a store. A device never
+ *  reads it (it only touches the web stub's plans). */
+const DEV_OFFERS_KEY = "singularity.dev.offers";
+function devOffers(): boolean {
+  try { return localStorage.getItem(DEV_OFFERS_KEY) === "1"; } catch { return false; }
+}
+
+/** Web/dev placeholder plans for a placement. */
+function webPlans(placement?: string): Plan[] {
+  const plans = WEB_PLANS.map((p) => ({ ...p }));
+  if (!devOffers()) return plans;
+  if (placement === "winback") {
+    for (const p of plans) if (p.id === "annual") { p.offer = { priceString: "$12.49", periods: 1, unit: "year" }; p.trialDays = null; }
+    return plans;
+  }
+  if (placement === "exit") {
+    return [{ id: "annual", priceString: "$14.99", periodLabel: "year", trialDays: 7, perWeekString: "$0.29" }];
+  }
+  return plans;
+}
+
 /** Mirror one RevenueCat snapshot into the local entitlement. The lifetime flag is
  *  grant-only; the subscription expiry follows the store, so a lapse clears it. */
 function applyStatus(st: ProStatus): void {
   if (st.lifetime) setPremium(true);
   setProUntil(st.until);
+  setProWillRenew(st.willRenew);
 }
 
 // --- Minimal typing for the bits of the (globally-injected) CdvPurchase we use.
@@ -163,10 +186,25 @@ function storePrice(store: CdvStore | null): string | null {
 
 // --- RevenueCat path (native, when the build carries a key; see iapRevenueCat.ts).
 // Loaded lazily so the web build and the StoreKit-path tests never touch the plugin.
-/** The public iOS SDK key baked into this build (VITE_RC_IOS_KEY), or null. */
+/** The public iOS SDK key baked into this build (VITE_RC_IOS_KEY), or null.
+ *  A Test Store key (test_…) simulates purchases and the native SDK crashes a Release
+ *  build configured with one, so it is honoured only in a non-production bundle
+ *  (`npm run cap:sync:dev`, Xcode Debug); a production bundle ignores it and keeps
+ *  the direct StoreKit path, so a mis-set secret can never reach players. */
 export function revenueCatKey(): string | null {
   const k = import.meta.env?.VITE_RC_IOS_KEY;
-  return typeof k === "string" && k.trim() ? k.trim() : null;
+  if (typeof k !== "string" || !k.trim()) return null;
+  const key = k.trim();
+  if (isTestStoreKey(key) && import.meta.env?.MODE === "production") {
+    console.warn("RevenueCat Test Store key ignored in a production build.");
+    return null;
+  }
+  return key;
+}
+
+/** RevenueCat Test Store keys start with "test_" (App Store keys with "appl_"). */
+export function isTestStoreKey(key: string): boolean {
+  return key.startsWith("test_");
 }
 
 let rcPromise: Promise<RevenueCatStore | null> | null = null;
@@ -216,7 +254,24 @@ export const iap = {
     }
   },
 
-  /** Is the lifetime unlock (the original Premium) owned? */
+  /**
+   * Ask the store again whether the subscription is active — for when the stored
+   * expiry passes on the device clock (a renewal reaches the device only when the
+   * store next answers). Without RevenueCat the passed expiry is final. Never throws.
+   */
+  async syncStatus(): Promise<void> {
+    try {
+      const rc = await ensureRevenueCat();
+      if (rc) { await rc.refreshStatus(); return; }
+      // No store here can renew a subscription (direct StoreKit sells lifetime only;
+      // web/dev is a stub): an expiry that passed is the answer.
+      if (!hasPro() && proUntil() > 0) setProUntil(null);
+    } catch (e) {
+      console.warn("IAP status sync failed:", e);
+    }
+  },
+
+    /** Is the lifetime unlock (the original Premium) owned? */
   isPremium(): boolean {
     return isPremium();
   },
@@ -237,12 +292,12 @@ export const iap = {
    * lifetime unlock only; web/dev shows placeholders. Never throws: a store that
    * cannot answer yields an empty list (the paywall says so).
    */
-  async plans(): Promise<Plan[]> {
+  async plans(placement?: string): Promise<Plan[]> {
     try {
       const rc = await ensureRevenueCat();
-      if (rc) return await rc.plans();
+      if (rc) return await rc.plans(placement);
       const store = await ensureInit();
-      if (!store) return WEB_PLANS.map((p) => ({ ...p }));
+      if (!store) return webPlans(placement);
       const price = storePrice(store);
       return price ? [{ id: "lifetime", priceString: price, periodLabel: "once", trialDays: null }] : [];
     } catch (e) {
@@ -255,14 +310,67 @@ export const iap = {
    * Buy a plan. Resolves true when Pro is active afterwards; false on a cancel (or a
    * plan this build cannot sell). Web/dev grants locally so the flow is testable.
    */
-  async purchasePlan(id: PlanId): Promise<boolean> {
+  async purchasePlan(id: PlanId, placement?: string): Promise<boolean> {
     const rc = await ensureRevenueCat();
-    if (rc) return (await rc.buyPlan(id)) || hasPro();
+    if (rc) return (await rc.buyPlan(id, placement)) || hasPro();
     if (id === "lifetime") return (await iap.purchasePremium()) || hasPro();
     const store = await ensureInit();
     if (store) return hasPro(); // direct StoreKit path sells the lifetime unlock only
-    setProUntil(Date.now() + (id === "annual" ? 365 : 30) * DAY_MS);
+    setProUntil(Date.now() + (id === "annual" ? 365 : 7) * DAY_MS);
     return hasPro();
+  },
+
+  /**
+   * Present the paywall designed in the RevenueCat dashboard, when the current offering
+   * opts in (metadata {"paywall": "revenuecat"}). Resolves true once the player has seen
+   * it through (bought, restored or closed it); false when it did not come up or ended
+   * in an error — web/dev, a build without RevenueCat, an offering that keeps the in-app
+   * paywall, a missing dashboard paywall — so the caller shows ours instead.
+   */
+  async presentNativePaywall(placement?: string): Promise<boolean> {
+    try {
+      const rc = await ensureRevenueCat();
+      if (!rc) return false;
+      const outcome = await rc.presentPaywall(placement);
+      // Shown and finished (bought, restored or closed by the player). An error or a
+      // paywall that never came up falls back to ours: the player always gets one.
+      return outcome === "purchased" || outcome === "restored" || outcome === "closed";
+    } catch (e) {
+      console.warn("RevenueCat paywall unavailable:", e);
+      return false;
+    }
+  },
+
+  /**
+   * Is a one-time exit offer set up? RevenueCat: an "exit" placement offering distinct
+   * from the current one (dashboard → Targeting). No offer → nothing extra ever shows.
+   * The direct StoreKit path has none; web/dev only with the dev flag. Never throws.
+   */
+  async exitOfferAvailable(): Promise<boolean> {
+    try {
+      const rc = await ensureRevenueCat();
+      if (rc) return await rc.hasExitOffer();
+      return !(await ensureInit()) && devOffers();
+    } catch {
+      return false;
+    }
+  },
+
+  /** Can this build open RevenueCat's Customer Center (native + RevenueCat)? */
+  async canManageSubscription(): Promise<boolean> {
+    try {
+      return !!(await ensureRevenueCat());
+    } catch {
+      return false;
+    }
+  },
+
+  /** Open RevenueCat's Customer Center: manage or cancel the plan, request a refund,
+   *  restore. Throws when it cannot open (the caller says so in one line). */
+  async manageSubscription(): Promise<void> {
+    const rc = await ensureRevenueCat();
+    if (!rc) throw new Error("Customer Center needs the RevenueCat build");
+    await rc.presentCustomerCenter();
   },
 
   /** True on a real device where a native store could exist. */

@@ -207,7 +207,7 @@ describe("save/load", () => {
       frontier: 3,
       sold: 2,
       drafts: [{ id: "d1", quality: 5, ships: 1 }],
-      milestones: ["m1"],
+      milestones: ["first_launch"],
       active: [
         { id: "prod-1", name: "Nimbus", type: "general", version: 1, quality: 2, priceMult: 1, marketingPerSec: 0, mau: 10, paid: 2, buzzSec: 0, ageSec: 0, upgrade: null, features: [], enterprise: false, enterprisePrice: 1, channelMix: { ads: 1 } },
         { id: "prod-2", name: "Stratus", type: "code", version: 2, quality: 4, priceMult: 1, marketingPerSec: 0, mau: 50, paid: 9, buzzSec: 0, ageSec: 0, upgrade: null, features: [], enterprise: false, enterprisePrice: 1, channelMix: { ads: 1 } },
@@ -224,7 +224,7 @@ describe("save/load", () => {
     expect(recovered.products.active.map((p) => p.id)).toEqual(["prod-2"]);
     expect(recovered.products.drafts).toHaveLength(1);
     expect(recovered.products.sold).toBe(2);
-    expect(recovered.products.milestones).toEqual(["m1"]);
+    expect(recovered.products.milestones).toEqual(["first_launch"]);
     expect(recovered.products.frontier).toBe(3);
   });
 
