@@ -1149,9 +1149,8 @@ svg { vertical-align: middle; }
 /* The purchase "punch" is driven via the Web Animations API (see fx.ts punch()),
    NOT a CSS class — toggling a class that owns `animation` re-triggered the card's
    entrance animation on release and snapped it back to its start position. */
-.card:disabled:not(.affordable) { opacity: 0.5; cursor: not-allowed; }
+.card:disabled:not(.affordable) { cursor: not-allowed; }
 .card:disabled:not(.affordable):hover { transform: none; box-shadow: none; }
-.card.maxed { opacity: 0.65; }
 .card-main { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .rack-tier-mark { font-size: var(--fs-micro); letter-spacing: 1px; margin-right: 5px; vertical-align: 1px; opacity: 0.9; }
 .card-name {
@@ -1438,8 +1437,8 @@ svg { vertical-align: middle; }
    Keeps the ring meaningful — it only tracks items you're actively working toward. */
 .node.owned .icon-ring::before, .node.locked .icon-ring::before, .node.excluded .icon-ring::before,
 .card.maxed .icon-ring::before { display: none; }
-.node.locked { opacity: 0.5; cursor: not-allowed; }
-.node.excluded { opacity: 0.42; cursor: not-allowed; }
+.node.locked { cursor: not-allowed; }
+.node.excluded { cursor: not-allowed; }
 .node-tag.excl { color: var(--accent-text); font-weight: 800; }
 .node:active { transform: scale(0.97); }
 .node.available:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
@@ -1571,7 +1570,7 @@ svg { vertical-align: middle; }
   width: 100%; display: flex; align-items: center; gap: 10px; text-align: left;
   margin: 0 0 10px; cursor: pointer;
 }
-.wing-found:disabled { cursor: default; opacity: 0.62; }
+.wing-found:disabled { cursor: default; }
 /* .wing-found.affordable's tint comes from the shared emphasis recipe above. */
 .wing-found-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .wing-found-name { font-size: var(--fs-md); font-weight: 800; color: var(--ink); }
@@ -2717,7 +2716,7 @@ button.modchip.workable:active { transform: scale(0.94); }
   display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; cursor: pointer;
   background: var(--surface); border: 1px solid rgba(var(--shade-rgb), 0.07); border-radius: var(--radius-sm); padding: 10px 12px;
 }
-.legacy-perk:disabled { cursor: default; opacity: 0.6; }
+.legacy-perk:disabled { cursor: default; }
 .legacy-perk.owned { opacity: 1; border-color: color-mix(in srgb, var(--accent) 40%, transparent); background: linear-gradient(100deg, color-mix(in srgb, var(--accent) 7%, transparent), var(--surface)); }
 .legacy-perk-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .legacy-perk-name { font-weight: 800; font-size: var(--fs-md); color: var(--ink); }
@@ -3038,7 +3037,7 @@ button.pd-name {
 .codex-toggle { margin-left: auto; font-size: var(--fs-sm); color: var(--ink-3); }
 .codex-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
 .codex-entry { background: var(--surface); border: 1px solid rgba(var(--shade-rgb), 0.05); border-radius: var(--radius-xs); padding: var(--pad-row); }
-.codex-entry.locked { opacity: 0.55; border-style: dashed; border-color: rgba(var(--shade-rgb), 0.14); background: transparent; }
+.codex-entry.locked { border-style: dashed; border-color: rgba(var(--shade-rgb), 0.14); background: transparent; }
 .codex-entry-title { display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: var(--fs-md); color: var(--ink); margin-bottom: 4px; }
 .codex-entry-body { font-size: var(--fs-sm); line-height: 1.45; color: var(--ink-2); }
 
@@ -3232,7 +3231,7 @@ p.pd-flagship { cursor: default; text-align: center; margin-top: 0; }
   transition: border-color var(--dur-fast), transform var(--dur-fast) var(--ease-out);
 }
 .emp-cand:hover:not(:disabled) { border-color: color-mix(in srgb, var(--money) 40%, transparent); transform: translateY(-1px); }
-.emp-cand.maxed { opacity: 0.5; cursor: not-allowed; }
+.emp-cand.maxed { cursor: not-allowed; }
 .emp-cand-main { flex: 1; min-width: 0; }
 .emp-cand-name { font-size: var(--fs-base); font-weight: 750; }
 .emp-cand-role { font-size: var(--fs-sm); color: var(--ink-2); }
@@ -3357,7 +3356,7 @@ p.pd-flagship { cursor: default; text-align: center; margin-top: 0; }
 .emp-perks-meta { font-size: var(--fs-sm); font-weight: 650; color: var(--ink-2); }
 .emp-perk { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; background: var(--surface); border: none; border-radius: var(--radius-xs); padding: var(--pad-row); box-shadow: var(--shadow-xs); cursor: pointer; }
 .emp-perk.owned { background: rgba(22, 179, 100, 0.07); box-shadow: inset 0 0 0 1px rgba(22, 179, 100, 0.2); }
-.emp-perk:disabled:not(.owned) { opacity: 0.5; cursor: not-allowed; }
+.emp-perk:disabled:not(.owned) { cursor: not-allowed; }
 .emp-perk-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .emp-perk-name { font-size: var(--fs-md); font-weight: 750; color: var(--ink); }
 .emp-perk-desc { font-size: var(--fs-xs); color: var(--ink-3); line-height: 1.3; }
@@ -3445,6 +3444,45 @@ p.pd-flagship { cursor: default; text-align: center; margin-top: 0; }
      product never rested; the moving width + live dot already say "in progress".) */
 }
 
+/* ---------- Unavailable rows: dim the frame, never the words ----------
+   Locked, unaffordable or maxed rows used to fade WHOLE (opacity 0.42–0.65), which
+   took their descriptions and prices to 2:1–3:1 — text a player reads to decide what
+   to save for. The row now reads as "not yet" through its frame instead: colour
+   drained (saturate keeps luminance, so text keeps its contrast), flat (no lift),
+   a faded icon, and the title stepped down to secondary ink. */
+:is(
+  .card:disabled:not(.affordable), .card.maxed, .node.locked, .node.excluded,
+  .wing-found:disabled, .legacy-perk:disabled, .codex-entry.locked,
+  .institute-wing:not(.owned):disabled, .doctrine-perk:not(.owned):disabled,
+  .paradigm-node:not(.owned):disabled, .automation-row.locked,
+  .emp-perk:disabled:not(.owned), .rig-option:disabled, .emp-cand.maxed,
+  .meta-item.locked
+) {
+  filter: saturate(0.25);
+  box-shadow: none;
+  color: var(--ink-2);
+}
+/* Flat on the panel: the solid surface is for rows you can act on. Half-tinted,
+   text still sits on a near-surface colour (contrast checked in light and dark). */
+:is(.card:disabled:not(.affordable), .card.maxed) {
+  background: color-mix(in srgb, var(--surface) 45%, transparent);
+}
+:is(
+  .card:disabled:not(.affordable), .card.maxed, .node.locked, .node.excluded,
+  .wing-found:disabled, .legacy-perk:disabled, .codex-entry.locked,
+  .institute-wing:not(.owned):disabled, .doctrine-perk:not(.owned):disabled,
+  .paradigm-node:not(.owned):disabled, .automation-row.locked,
+  .emp-perk:disabled:not(.owned), .rig-option:disabled, .emp-cand.maxed,
+  .meta-item.locked
+) :is(.icon-ring, svg:not(.icon-ring *)) {
+  opacity: 0.5;
+}
+:is(.card:disabled:not(.affordable), .card.maxed, .node.locked, .node.excluded) :is(.card-name, .node-name) {
+  color: var(--ink-2);
+}
+/* Prerequisite-locked / excluded go one step further than "can't afford yet". */
+:is(.node.excluded, .codex-entry.locked, .meta-item.locked) { background: transparent; }
+
 /* ---------- Accessibility: respect reduced motion (premium = considerate) ---------- */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -3515,7 +3553,7 @@ p.pd-flagship { cursor: default; text-align: center; margin-top: 0; }
   padding: var(--pad-row); border-radius: var(--radius-xs); cursor: pointer;
   background: var(--surface); border: 1px solid rgba(var(--shade-rgb), 0.09);
 }
-.rig-option:disabled { opacity: 0.55; cursor: default; }
+.rig-option:disabled { cursor: default; }
 .rig-option.current { border-color: rgba(22, 179, 100, 0.5); background: rgba(22, 179, 100, 0.05); }
 .rig-option-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .rig-option-name { font-size: var(--fs-md); font-weight: 750; color: var(--ink); }
@@ -3699,7 +3737,7 @@ p.pd-flagship { cursor: default; text-align: center; margin-top: 0; }
   border-radius: var(--radius-sm); padding: 10px 11px; background: color-mix(in srgb, var(--accent) 6%, transparent);
 }
 .institute-wing:disabled { cursor: default; }
-.institute-wing:not(.owned):disabled { opacity: 0.6; border-color: var(--line, rgba(20,22,27,0.08)); background: var(--glass-strong, var(--surface)); }
+.institute-wing:not(.owned):disabled { border-color: var(--line, rgba(20,22,27,0.08)); background: var(--glass-strong, var(--surface)); }
 .institute-wing.owned { border-color: color-mix(in srgb, var(--money) 40%, transparent); background: color-mix(in srgb, var(--money) 7%, transparent); }
 .institute-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .institute-name { font-size: var(--fs-md); font-weight: 800; color: var(--ink); }
@@ -3731,7 +3769,6 @@ p.pd-flagship { cursor: default; text-align: center; margin-top: 0; }
   width: 100%; display: flex; align-items: center; gap: 10px; margin-bottom: 6px; text-align: left; cursor: pointer;
 }
 .doctrine-perk:disabled { cursor: default; }
-.doctrine-perk:not(.owned):disabled { opacity: 0.62; }
 /* .doctrine-perk.owned's tint comes from the shared emphasis recipe above. */
 .doctrine-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .doctrine-name { font-size: var(--fs-md); font-weight: 800; color: var(--ink); }
@@ -3751,7 +3788,7 @@ p.pd-flagship { cursor: default; text-align: center; margin-top: 0; }
 }
 .paradigm-node:disabled { cursor: default; }
 .paradigm-node.owned { border-color: color-mix(in srgb, var(--money) 40%, transparent); background: color-mix(in srgb, var(--money) 7%, transparent); }
-.paradigm-node:not(.owned):disabled { opacity: 0.6; border-color: var(--line, rgba(20,22,27,0.08)); background: var(--glass-strong, var(--surface)); }
+.paradigm-node:not(.owned):disabled { border-color: var(--line, rgba(20,22,27,0.08)); background: var(--glass-strong, var(--surface)); }
 .paradigm-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .paradigm-name { font-size: var(--fs-md); font-weight: 800; color: var(--ink); }
 .paradigm-desc { font-size: var(--fs-sm); color: var(--ink-2, #4a4a55); }
@@ -3864,7 +3901,7 @@ p.pd-flagship { cursor: default; text-align: center; margin-top: 0; }
   display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
   transition: border-color var(--dur), background var(--dur), opacity var(--dur);
 }
-.automation-row.locked { opacity: 0.6; cursor: not-allowed; }
+.automation-row.locked { cursor: not-allowed; }
 .automation-row:not(:disabled):active { transform: scale(0.99); }
 .automation-ic { flex-shrink: 0; color: var(--ink); display: inline-flex; align-items: center; justify-content: center; }
 .automation-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
@@ -3957,7 +3994,6 @@ p.pd-flagship { cursor: default; text-align: center; margin-top: 0; }
 .meta-item.locked:disabled {
   border-style: dashed;
   border-color: rgba(var(--shade-rgb), 0.16);
-  opacity: 0.55;
 }
 
 /* GOALS — the one destination for "what should I do next?". Its section header
