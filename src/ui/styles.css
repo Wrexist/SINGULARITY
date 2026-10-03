@@ -2891,8 +2891,11 @@ button.modchip.workable:active { transform: scale(0.94); }
 .prod-ms-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .prod-ms {
   padding: 9px 11px; border-radius: var(--radius-sm);
-  background: var(--glass-strong); border: 1px solid var(--glass-hairline); opacity: 0.7;
+  background: var(--glass-strong); border: 1px solid var(--glass-hairline);
 }
+/* Not yet earned: the name recedes, but the reward stays at full ink — it is the
+   number the player reads (a whole-card opacity took it below AA contrast). */
+.prod-ms:not(.done) .prod-ms-name { color: var(--ink-2); }
 .prod-ms.done {
   opacity: 1;
   background: color-mix(in srgb, var(--money) 12%, var(--glass-strong));
@@ -3450,6 +3453,8 @@ p.pd-flagship { cursor: default; text-align: center; margin-top: 0; }
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+    animation-delay: 0s !important; /* a stagger would still hold content back, then snap */
+    transition-delay: 0s !important;
   }
 }
 /* In-app toggle mirrors the OS preference. */
@@ -3459,6 +3464,8 @@ p.pd-flagship { cursor: default; text-align: center; margin-top: 0; }
   animation-duration: 0.001ms !important;
   animation-iteration-count: 1 !important;
   transition-duration: 0.001ms !important;
+  animation-delay: 0s !important;
+  transition-delay: 0s !important;
 }
 /* The animated sheen overlay would freeze as a static white streak — hide it. */
 

@@ -46,11 +46,13 @@ function PowerMeter({ draw, cap, factor, throttled }: { draw: number; cap: numbe
   const pct = cap > 0 ? (draw / cap) * 100 : 0;
   const penalty = Math.round((1 - factor) * 100);
   const color = throttled ? "#ef4444" : pct > 80 ? "#f97316" : "var(--compute)";
+  // The fill takes the bright colour; text takes the matching AA "ink" shade.
+  const ink = throttled ? "var(--bad-ink)" : pct > 80 ? "var(--orange-ink)" : "var(--compute-ink)";
   return (
     <div className="power">
       <div className="power-head">
         <span>Power</span>
-        <span className="power-stat" style={{ color }}>
+        <span className="power-stat" style={{ color: ink }}>
           {Math.round(draw)}/{Math.round(cap)} kW
           {throttled ? <> · <BoltIcon size={12} /> throttled −{penalty}%</> : ` · ${Math.round(pct)}%`}
         </span>
