@@ -231,7 +231,24 @@ export const iap = {
     }
   },
 
-  /** Is the lifetime unlock (the original Premium) owned? */
+  /**
+   * Ask the store again whether the subscription is active — for when the stored
+   * expiry passes on the device clock (a renewal reaches the device only when the
+   * store next answers). Without RevenueCat the passed expiry is final. Never throws.
+   */
+  async syncStatus(): Promise<void> {
+    try {
+      const rc = await ensureRevenueCat();
+      if (rc) { await rc.refreshStatus(); return; }
+      // No store here can renew a subscription (direct StoreKit sells lifetime only;
+      // web/dev is a stub): an expiry that passed is the answer.
+      if (!hasPro() && proUntil() > 0) setProUntil(null);
+    } catch (e) {
+      console.warn("IAP status sync failed:", e);
+    }
+  },
+
+    /** Is the lifetime unlock (the original Premium) owned? */
   isPremium(): boolean {
     return isPremium();
   },
@@ -276,7 +293,7 @@ export const iap = {
     if (id === "lifetime") return (await iap.purchasePremium()) || hasPro();
     const store = await ensureInit();
     if (store) return hasPro(); // direct StoreKit path sells the lifetime unlock only
-    setProUntil(Date.now() + (id === "annual" ? 365 : 30) * DAY_MS);
+    setProUntil(Date.now() + (id === "annual" ? 365 : 7) * DAY_MS);
     return hasPro();
   },
 

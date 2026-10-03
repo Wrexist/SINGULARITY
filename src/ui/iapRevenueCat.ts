@@ -124,6 +124,8 @@ export interface RevenueCatStore {
   buyPlan(id: PlanId): Promise<boolean>;
   /** Restore; true when Pro is active afterwards. Throws when the store never answered. */
   restore(): Promise<boolean>;
+  /** Re-read customer info now (e.g. when a stored expiry passes: did it renew?). */
+  refreshStatus(): Promise<void>;
   /** Present the dashboard paywall when the current offering opts in (see
    *  PAYWALL_METADATA_KEY). Null when it does not (show the in-app paywall instead). */
   presentPaywall(): Promise<PaywallOutcome | null>;
@@ -261,6 +263,7 @@ export async function createRevenueCatStore(
       const { customerInfo } = await Purchases.restorePurchases();
       return sync(customerInfo);
     },
+    refreshStatus: resync,
     async presentPaywall() {
       let current;
       try {

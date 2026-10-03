@@ -57,7 +57,7 @@ import { decisionToast } from "./decisionToast";
 import type { ProductTypeId } from "../engine/balance/products";
 import { iap } from "./iap";
 import { hasPro } from "../state/premium";
-import { useHasPro } from "./pro";
+import { useHasPro, useProLapseConfirmed } from "./pro";
 import { watchReturnReminders } from "./notifications";
 import { balance } from "../engine/balance/config";
 import { ALL_RESEARCH } from "../engine/researchTree";
@@ -622,13 +622,21 @@ export function App() {
 
   // Pro cosmetics follow Pro: when it lapses, a Pro-only theme or skin still selected
   // falls back to Classic (earned-by-play ones are untouched). Waits for hydration.
+  // Only once the store CONFIRMS the lapse: a subscription whose stored expiry merely
+  // passed (it renews at Apple while the game is closed) must not lose its chosen
+  // theme in the moment before the store reports the renewal.
   const rackSkinId = useSettings((s) => s.rackSkin);
+  const lapseConfirmed = useProLapseConfirmed();
   useEffect(() => {
-    if (!initialized || pro) return;
+    if (!initialized || pro || !lapseConfirmed) return;
     const st = useSettings.getState();
     if (themes.find((t) => t.id === hallTheme)?.unlock.kind === "premium") st.setHallTheme("classic");
     if (rackSkins.find((t) => t.id === rackSkinId)?.unlock.kind === "premium") st.setRackSkin("classic");
-  }, [initialized, pro, hallTheme, rackSkinId]);
+  }, [initialized, pro, lapseConfirmed, hallTheme, rackSkinId]);
+  // A stored expiry that passed on the device clock: ask the store whether it renewed.
+  useEffect(() => {
+    if (initialized && !pro && !lapseConfirmed) void iap.syncStatus();
+  }, [initialized, pro, lapseConfirmed]);
 
   // Era transitions: a full-screen tentpole moment when the lab crosses an era.
   // Guarded by the same hydration sync so it never fires on a returning load.

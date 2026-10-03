@@ -85,6 +85,28 @@ export function setProUntil(until: number | null, now: number = Date.now()): voi
   }
 }
 
+/**
+ * Was Pro active at wall time `t` (ms epoch)? For an away window: the stored expiry
+ * only moves when the store next answers, so on return a subscription that renewed
+ * while the app was closed still reads as expired for a moment. The window is paid
+ * at the tier the player LEFT with, never at whatever the first frame back reads.
+ */
+export function hadProAt(t: number): boolean {
+  if (isPremium()) return true;
+  if (!Number.isFinite(t)) return false;
+  return proUntil() > t;
+}
+
+/**
+ * Has the store CONFIRMED that the subscription is over? A lapse the store reports
+ * clears the stored expiry (setProUntil(null)); an expiry that merely passed on the
+ * device clock stays stored until the store answers (it may have renewed). Things
+ * that take something away on a lapse (Pro cosmetics) wait for this.
+ */
+export function proLapseConfirmed(now: number = Date.now()): boolean {
+  return !hasPro(now) && proUntil(now) === 0;
+}
+
 /** Is Pro active right now? Lifetime owners always; subscribers until expiry. */
 export function hasPro(now: number = Date.now()): boolean {
   if (isPremium()) return true;

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { Employee, GameState } from "../engine/types";
-import { createInitialState } from "../engine/state";
+import { createInitialState, SAVE_VERSION } from "../engine/state";
 import { tick } from "../engine/tick";
 import { derive, focusToBank } from "../engine/derive";
 import { ALL_RESEARCH } from "../engine/researchTree";
@@ -75,7 +75,7 @@ import { buyLegacyPerk } from "../engine/legacyTree";
 import { prestige, type ShipMode } from "../engine/prestige";
 import { applyOffline, summarizeWindow, extendSummary, recapWorthShowing, sanitizeOfflineRate, type OfflineSummary } from "../engine/offline";
 import { serialize, deserialize } from "../engine/save";
-import { hasPro } from "./premium";
+import { hasPro, hadProAt } from "./premium";
 import { balance } from "../engine/balance/config";
 import { recordTelemetry } from "./telemetry";
 import { purchaseSignature } from "../engine/telemetry";
@@ -163,7 +163,9 @@ interface GameStore {
    *  the recap can say the window was capped. */
   /** `rate` (Pro ×2) speeds up a RESUME window only — the loop passes it for a real
    *  suspend, never for a live frame. Times in the recap stay real time. */
-  advance: (elapsedMs: number, rawElapsedMs?: number, rate?: number) => void;
+  /** `pro`: Pro for this window (the loop passes Pro as of the previous tick, so a
+   *  resume pays at the tier the player left with); defaults to Pro right now. */
+  advance: (elapsedMs: number, rawElapsedMs?: number, rate?: number, pro?: boolean) => void;
   save: () => void;
   dismissOffline: () => void;
   // player actions
@@ -398,6 +400,13 @@ function mintedIndex(id: string, prefix: string): number {
  * and one tap on Restore replaced the player's progress with it.
  */
 function decodeBackup(blob: string): GameState | null {
+  const raw = backupJson(blob);
+  if (!raw || raw.newer) return null;
+  try { return deserialize(raw.json); } catch { return null; } // migrates + sanitizes
+}
+
+/** The backup's save JSON (see decodeBackup), and whether a NEWER build wrote it. */
+function backupJson(blob: string): { json: string; newer: boolean } | null {
   const raw = blob.trim();
   if (!raw) return null;
   const candidates: string[] = [];
@@ -408,10 +417,18 @@ function decodeBackup(blob: string): GameState | null {
       const parsed: unknown = JSON.parse(json);
       if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) continue;
       if (!("version" in parsed) && !("resources" in parsed)) continue;
-      return deserialize(json); // migrates + sanitizes
+      // A save version this build doesn't know: deserialize would stamp it as ours and
+      // drop every newer field, and the next autosave would lose them for good.
+      const v = (parsed as { version?: unknown }).version;
+      return { json, newer: typeof v === "number" && v > SAVE_VERSION };
     } catch { /* try the next candidate */ }
   }
   return null;
+}
+
+/** Was this backup made by a newer version of the game (update the app first)? */
+export function backupIsFromNewerVersion(blob: string): boolean {
+  return backupJson(blob)?.newer === true;
 }
 
 /** The game as it should be WRITTEN anywhere (autosave or exported backup): the
@@ -514,6 +531,10 @@ export const useGame = create<GameStore>((set, get) => ({
       const legacyDaily = saved && storedVersion(saved) >= 41 ? null : localStorage.getItem(LEGACY_DAILY_KEY);
       let seen = 0;
       if (saved) {
+        // A save a NEWER build wrote (an app downgrade, a TestFlight build): it loads as
+        // ours with its newer fields dropped, and the next autosave overwrites it. Keep
+        // the original aside first, like a corrupt save, so it is never lost outright.
+        if (storedVersion(saved) > SAVE_VERSION && !localStorage.getItem(CORRUPT_KEY)) localStorage.setItem(CORRUPT_KEY, saved);
         game = deserialize(saved);
         dailyClaimDay = game.dailyDay;
         const last = sanitizeMark(Number(localStorage.getItem(TIME_KEY) ?? "0"));
@@ -528,7 +549,9 @@ export const useGame = create<GameStore>((set, get) => ({
           const elapsed = creditableMs(last, seen, wall);
           // Pro grants a longer offline cap and runs the away window at ×2 (the cap
           // bounds REAL time first; see applyOffline).
-          const pro = hasPro();
+          // Pro as it was when the player left (a renewal while away reaches the
+          // device only once the store answers, after this catch-up has run).
+          const pro = hadProAt(last);
           const capHours = pro ? balance.offline.premiumMaxHours : balance.offline.maxHours;
           // Offline catch-up gets its OWN guard: a throw here is an engine bug, not a
           // corrupt save, and must never fall through to the fresh-game path below.
@@ -577,11 +600,11 @@ export const useGame = create<GameStore>((set, get) => ({
     recordTelemetry({ kind: "session", t: now() });
   },
 
-  advance: (elapsedMs, rawElapsedMs, rate) =>
+  advance: (elapsedMs, rawElapsedMs, rate, proIn) =>
     set((s) => {
       // Pro is read here (state layer: storage + wall clock) and handed to the pure
       // engine as a plain flag. The rate multiplies SIMULATED time only.
-      const pro = hasPro();
+      const pro = typeof proIn === "boolean" ? proIn : hasPro();
       const simRate = sanitizeOfflineRate(rate ?? 1);
       // Snapshot each product's version so we can celebrate completions
       // (the engine finishes them inside tick; we surface the moment to the UI).
