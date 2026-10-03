@@ -7,7 +7,7 @@ import { haptics as hpt } from "./haptics";
 import { sound as snd } from "./sound";
 import { remindersSupported, ensureReminderPermission, cancelReturnReminder } from "./notifications";
 import { balance } from "../engine/balance/config";
-import { useGame, previewBackup, type BackupPreview } from "../state/store";
+import { useGame, previewBackup, backupIsFromNewerVersion, type BackupPreview } from "../state/store";
 import { fmtMoney } from "./format";
 import { themeStyle, skinSwatch } from "./hallThemes";
 import { themes, rackSkins, themeUnlocked, skinUnlocked, collectionProgress, skinProgress, unlockHint } from "../engine/cosmetics";
@@ -170,7 +170,12 @@ export function SettingsSheet({ onClose, onReset, onOpenPro }: Props) {
     // Preview BEFORE the confirm: the player should know what they're about to
     // replace their progress with (and a bad paste fails here, not after).
     const preview = previewBackup(importText);
-    if (!preview) { setStatus("That backup didn't look valid — check you copied all of it."); return; }
+    if (!preview) {
+      setStatus(backupIsFromNewerVersion(importText)
+        ? "That backup is from a newer version of the game — update the app, then restore it."
+        : "That backup didn't look valid — check you copied all of it.");
+      return;
+    }
     setConfirmImport(preview);
   };
   const reallyImport = () => {

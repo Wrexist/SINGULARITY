@@ -1,7 +1,7 @@
 import { Big } from "./math/Big";
 import { SAVE_VERSION, createInitialState } from "./state";
 import { initialStats } from "./stats";
-import { products as PRODUCTS, productFeatures } from "./balance/products";
+import { products as PRODUCTS, productFeatures, productMilestones } from "./balance/products";
 import { contracts as CONTRACTS } from "./balance/contracts";
 import { legacyTree as LEGACY } from "./balance/legacyTree";
 import { reputation as REPUTATION } from "./balance/reputation";
@@ -27,6 +27,7 @@ import { laneMet } from "./challenges";
 import { shiftAlignment } from "./alignment";
 import { capActiveModifiers } from "./tick";
 import { cleanProductName, priceMinFor } from "./products";
+import { achievements as ACHIEVEMENTS } from "./balance/achievements";
 import type { ChallengeState } from "./types";
 import type { ActiveModifier, ComponentsState, DraftModel, Employee, GameState, LifetimeStats, ModifierTarget, ProductsState, ProductState, ShipLogEntry, UpgradeState } from "./types";
 
@@ -238,6 +239,24 @@ const MAX_SAVED_PRODUCTS = 64;
  *  deletes a hire the player paid for. */
 const MAX_SAVED_EMPLOYEES = balance.staff.maxRoster;
 const MAX_SAVED_IDS = 512;
+
+const ACHIEVEMENT_IDS = new Set(ACHIEVEMENTS.map((a) => a.id));
+const MILESTONE_IDS = new Set(productMilestones.map((m) => m.id));
+
+/** Engine-written text from a save (generated staff names, sponsor copy, buff labels):
+ *  a string, control/bidi characters out, bounded. Unbounded, a pasted megabyte rode
+ *  every autosave until the save outgrew storage and stopped being written at all. */
+const TEXT_CONTROLS = /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g;
+function cleanText(v: string, max: number): string {
+  return v.slice(0, max * 4).replace(TEXT_CONTROLS, " ").replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+/** Loaded buffs/debuffs clamp to a band wider than anything the game grants (factors
+ *  run ×0.6–×3.8, durations a few minutes): a crafted ×1e300 that never expired took
+ *  Compute/s from 1e13 to 1e313 for good. Clamped, not dropped (filter, don't wipe). */
+const MOD_FACTOR_MIN = 0.05;
+const MOD_FACTOR_MAX = 10;
+const MOD_SEC_MAX = 3600;
 /** Ceiling on megaproject cycles — see sanitizeMegaprojects. The SAME value the runtime
  *  stops funding at (canFundMegaproject), so a reload never deletes an earned cycle. */
 const MAX_MEGA_LEVEL = CHALLENGES.megaproject.maxLevel;
@@ -257,7 +276,10 @@ function sanitizeDrafts(d: unknown): DraftModel[] {
         typeof x.quality === "number" && Number.isFinite(x.quality) && x.quality >= 0 &&
         typeof x.ships === "number" && Number.isFinite(x.ships),
     )
-    .map((x) => ({ id: x.id, quality: Math.min(x.quality, PROD_CAPS.quality), ships: x.ships }));
+    // One draft per id (keep first): launchDraft removes by id, so launching one of a
+    // repeated id deleted every copy; React keys collided too.
+    .filter((x, i, all) => all.findIndex((y) => y.id === x.id) === i)
+    .map((x) => ({ id: x.id, quality: Math.min(x.quality, PROD_CAPS.quality), ships: Math.min(1e7, safeCount(x.ships)) }));
 }
 
 /** Loaded products are untrusted; guard the container SHAPE here only. Entries
@@ -299,7 +321,7 @@ function sanitizeEmployees(e: unknown, productIds: ReadonlySet<string>): Employe
     seen.add(x.id);
     out.push({
       id: x.id,
-      name: x.name,
+      name: cleanText(x.name, 40) || "Staffer",
       roleId: x.roleId,
       level: Math.min(balance.staff.maxLevel, Math.max(1, Math.floor(x.level))),
       trait: typeof x.trait === "string" && TRAIT_IDS.has(x.trait) ? x.trait : null,
@@ -681,7 +703,16 @@ export function deserialize(json: string): GameState {
   // buffs — a claimed Objective backlog + the Daily Boost + open-source momentum
   // passes 20 in honest play, and the newest claims vanished on reload.
   const modifiers = Array.isArray(raw.modifiers)
-    ? capActiveModifiers(lastPerId(raw.modifiers.filter(isWellFormedModifier)))
+    ? capActiveModifiers(lastPerId(raw.modifiers.filter(isWellFormedModifier)).map((m): ActiveModifier => ({
+        // Known fields only (an unknown key would ride every autosave), clamped.
+        id: m.id.slice(0, 64),
+        target: m.target,
+        factor: Math.min(MOD_FACTOR_MAX, Math.max(MOD_FACTOR_MIN, m.factor)),
+        remainingSec: Math.min(MOD_SEC_MAX, m.remainingSec),
+        label: cleanText(m.label, 64),
+        tone: m.tone,
+        ...(m.worked === true ? { worked: true } : {}),
+      })))
     : fresh.modifiers;
   // Clamped and snapped like every runtime shift (shiftAlignment), so a save that
   // already drifted to 0.39999999999999997 gets its declared stance back on load.
@@ -695,9 +726,9 @@ export function deserialize(json: string): GameState {
       : fresh.computeFocus;
   // Sanitize the trophy-source witnesses FIRST: components legitimacy (below)
   // is checked against these, so a crafted dupe can't smuggle a trophy in.
-  const achievements = Array.isArray(raw.achievements)
-    ? raw.achievements.filter((a): a is string => typeof a === "string").slice(0, MAX_SAVED_IDS)
-    : [];
+  // Known ids, each once: the collection screens count `.length` ("29 / 52" from a
+  // save repeating ids). No achievement id has ever been retired, so none is lost.
+  const achievements = dedupeKnownIds(raw.achievements, ACHIEVEMENT_IDS);
   const contracts = sanitizeContracts(raw.contracts);
   // Endgame Endowment level: a finite non-negative int, clamped to the safety bound so
   // a crafted value can't drive the cost-sum / boost math to Infinity. Its cost is then
@@ -729,8 +760,9 @@ export function deserialize(json: string): GameState {
   const loadedProducts = isWellFormedProducts(raw.products) ? raw.products : fresh.products;
   // `sold` was added after v6 shipped, `drafts`/`upgrade` in v7; default them for
   // saves that predate each, and sanitize the untrusted nested shapes.
+  // Rebuilt from known fields only (no `...loadedProducts` / `...p`): an unknown key in
+  // a save was kept and re-serialized forever, so a pasted payload bloated every save.
   const products: ProductsState = {
-    ...loadedProducts,
     // Per-entry filter + clamp, then DEDUPE by id (keep first): two products sharing
     // an id would collide React keys and make the find()-based actions (retire /
     // upgrade / flagship) hit only the first — same known-id-once policy as research.
@@ -749,7 +781,8 @@ export function deserialize(json: string): GameState {
       const quality = clampNum(o.quality, 0, PROD_CAPS.quality, 1);
       const mau = clampNum(o.mau, 0, PROD_CAPS.mau, 0);
       return {
-        ...p,
+        id: o.id,
+        type: o.type,
         // Player-typed text: cleaned and capped exactly like a rename (a crafted save
         // carried 10,000-character or bidi-override names into every card and toast).
         name: cleanProductName(o.name),
@@ -782,9 +815,7 @@ export function deserialize(json: string): GameState {
     frontier: clampNum(loadedProducts.frontier, PRODUCTS.frontierStart, PROD_CAPS.frontier, PRODUCTS.frontierStart),
     drafts: sanitizeDrafts((loadedProducts as ProductsState).drafts),
     sold: typeof loadedProducts.sold === "number" && Number.isFinite(loadedProducts.sold) && loadedProducts.sold >= 0 ? Math.floor(loadedProducts.sold) : 0,
-    milestones: Array.isArray((loadedProducts as ProductsState).milestones)
-      ? (loadedProducts as ProductsState).milestones.filter((m): m is string => typeof m === "string").slice(0, MAX_SAVED_IDS)
-      : [],
+    milestones: dedupeKnownIds((loadedProducts as ProductsState).milestones, MILESTONE_IDS),
   };
   // An unreadable frontier falls back to the highest quality on record rather than the
   // start value: every product and draft launched at (or below) the frontier of its day,
@@ -1050,8 +1081,8 @@ function sanitizeSponsor(s: unknown): GameState["sponsor"] {
     target: o.target,
     // Rep is NOT trusted from the save — it's the balance constant.
     rep: CONTRACTS.sponsor.rep,
-    title: o.title,
-    desc: o.desc,
+    title: cleanText(o.title, 120),
+    desc: cleanText(o.desc, 300),
   };
 }
 

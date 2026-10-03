@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { useGame, previewBackup } from "./store";
-import { createInitialState } from "../engine/state";
+import { useGame, previewBackup, backupIsFromNewerVersion } from "./store";
+import { createInitialState, SAVE_VERSION } from "../engine/state";
 import { serialize } from "../engine/save";
 import { Big } from "../engine/math/Big";
 import type { GameState } from "../engine/types";
@@ -69,5 +69,25 @@ describe("restore only accepts a save", () => {
     // chain upgrades them, so they remain restorable.
     const v0 = JSON.stringify({ resources: { compute: "5", data: "0", money: "10" }, prestige: { legacyWeights: "0", ships: 2 } });
     expect(previewBackup(v0)?.ships).toBe(2);
+  });
+});
+
+describe("a backup from a newer build", () => {
+  const newer = () => {
+    const raw = JSON.parse(serialize(createInitialState())) as Record<string, unknown>;
+    raw.version = SAVE_VERSION + 1;
+    return btoa(JSON.stringify(raw));
+  };
+
+  it("is refused (it would lose every newer field), with its own reason", () => {
+    expect(previewBackup(newer())).toBeNull();
+    expect(useGame.getState().importSave(newer())).toBe(false);
+    expect(backupIsFromNewerVersion(newer())).toBe(true);
+  });
+
+  it("a current backup is not flagged as newer", () => {
+    const cur = btoa(serialize(createInitialState()));
+    expect(backupIsFromNewerVersion(cur)).toBe(false);
+    expect(previewBackup(cur)).not.toBeNull();
   });
 });
