@@ -20,7 +20,10 @@ import { OfflineModal } from "./OfflineModal";
 import { Celebration, shipReportFor, type ShipReport } from "./Celebration";
 import { SettingsSheet } from "./SettingsSheet";
 import { ProPaywall } from "./ProPaywall";
-import { loadMemo, saveMemo, shouldAutoShow, markShown, armShip, type PaywallTrigger } from "./paywallRules";
+import {
+  loadMemo, saveMemo, shouldAutoShow, markShown, armShip, placementFor, shouldOfferExit, markExitShown,
+  type PaywallTrigger, type PaywallPlacement,
+} from "./paywallRules";
 import { themes, rackSkins } from "../engine/cosmetics";
 import { ToastStack, type ToastData } from "./Toast";
 import { StatsPanel } from "./StatsPanel";
@@ -56,8 +59,8 @@ import { fmt, fmtMoney, barRates } from "./format";
 import { decisionToast } from "./decisionToast";
 import type { ProductTypeId } from "../engine/balance/products";
 import { iap } from "./iap";
-import { hasPro } from "../state/premium";
-import { useHasPro } from "./pro";
+import { hasPro, isPremium, lastSubscriptionExpiry, lapsedSubscriptionAt } from "../state/premium";
+import { useHasPro, useProLapseConfirmed } from "./pro";
 import { watchReturnReminders } from "./notifications";
 import { balance } from "../engine/balance/config";
 import { ALL_RESEARCH } from "../engine/researchTree";
@@ -204,6 +207,47 @@ export function App() {
   // trigger waiting for a clear stage (see paywallRules for when it may show).
   const [showPaywall, setShowPaywall] = useState(false);
   const [paywallPending, setPaywallPending] = useState<PaywallTrigger | null>(null);
+  // RevenueCat's own paywall when the current offering opts in (iap.presentNativePaywall);
+  // otherwise ours. True while either is being decided or the native one is up.
+  const [nativePaywall, setNativePaywall] = useState(false);
+  // Where the open paywall came from: a RevenueCat placement (its own offering and
+  // offers, targetable and testable from the dashboard) and the paywall's words.
+  const [paywallPlacement, setPaywallPlacement] = useState<PaywallPlacement>("settings");
+  const paywallOpening = useRef(false);
+  const openPaywallRef = useRef<(placement: PaywallPlacement) => void>(() => {});
+  // After a paywall closes without a purchase: the one-time exit offer, for a player
+  // who has never paid, once per install, and only when the dashboard has one set up.
+  const afterPaywall = useCallback((placement: PaywallPlacement, purchased: boolean) => {
+    if (purchased || hasPro()) return;
+    const everPaid = isPremium() || lastSubscriptionExpiry() > 0;
+    if (!shouldOfferExit(loadMemo(), placement, everPaid, hasPro())) return;
+    void iap.exitOfferAvailable().then((ok) => {
+      if (!ok || hasPro() || loadMemo().exitShown) return;
+      saveMemo(markExitShown(loadMemo()));
+      openPaywallRef.current("exit");
+    });
+  }, []);
+  const openPaywall = useCallback((placement: PaywallPlacement = "settings") => {
+    if (paywallOpening.current) return;
+    paywallOpening.current = true;
+    setNativePaywall(true);
+    let nativeShown = false;
+    void iap.presentNativePaywall(placement)
+      .then((shown) => {
+        nativeShown = shown;
+        if (!shown) { setPaywallPlacement(placement); setShowPaywall(true); }
+      })
+      .finally(() => {
+        paywallOpening.current = false;
+        setNativePaywall(false);
+        if (nativeShown) afterPaywall(placement, hasPro());
+      });
+  }, [afterPaywall]);
+  openPaywallRef.current = openPaywall;
+  const closePaywall = useCallback((purchased: boolean) => {
+    setShowPaywall(false);
+    afterPaywall(paywallPlacement, purchased);
+  }, [afterPaywall, paywallPlacement]);
   const portalOpen = usePortalOpen();
   const [breaking, setBreaking] = useState<Breaking | null>(null);
   const [challengeDoneId, setChallengeDoneId] = useState<string | null>(null); // Grand Challenge just completed → moment
@@ -268,7 +312,7 @@ export function App() {
   // consequence of something the player just did; this is the only uninvited one, so
   // it's the only one that waits. The store holds it in a single slot, so it simply
   // shows once the sheet closes. (2026-08 — reproduced in a seeded smoke run.)
-  const sheetOpen = showSettings || showPaywall || !!pendingExpansion || confirmReset || !!pendingRetire || !!pendingFlagship || portalOpen;
+  const sheetOpen = showSettings || showPaywall || nativePaywall || !!pendingExpansion || confirmReset || !!pendingRetire || !!pendingFlagship || portalOpen;
 
   // The moment queue's head: exactly ONE full-screen moment renders at a time,
   // by priority. Dismissing the head lets the next pending one show.
@@ -599,24 +643,40 @@ export function App() {
     const t = window.setTimeout(() => {
       const memo = loadMemo();
       const now = Date.now();
-      if (shouldAutoShow(memo, paywallPending, now, hasPro())) {
-        saveMemo(markShown(memo, paywallPending, now));
-        setShowPaywall(true);
+      const lapsedAt = paywallPending === "winback" ? lapsedSubscriptionAt(now) : 0;
+      if (shouldAutoShow(memo, paywallPending, now, hasPro(), lapsedAt)) {
+        saveMemo(markShown(memo, paywallPending, now, lapsedAt));
+        openPaywall(placementFor(paywallPending));
       }
       setPaywallPending(null);
     }, 700);
     return () => window.clearTimeout(t);
-  }, [paywallPending, paywallStageClear]);
+  }, [paywallPending, paywallStageClear, openPaywall]);
 
   // Pro cosmetics follow Pro: when it lapses, a Pro-only theme or skin still selected
   // falls back to Classic (earned-by-play ones are untouched). Waits for hydration.
+  // Only once the store CONFIRMS the lapse: a subscription whose stored expiry merely
+  // passed (it renews at Apple while the game is closed) must not lose its chosen
+  // theme in the moment before the store reports the renewal.
   const rackSkinId = useSettings((s) => s.rackSkin);
+  const lapseConfirmed = useProLapseConfirmed();
   useEffect(() => {
-    if (!initialized || pro) return;
+    if (!initialized || pro || !lapseConfirmed) return;
     const st = useSettings.getState();
     if (themes.find((t) => t.id === hallTheme)?.unlock.kind === "premium") st.setHallTheme("classic");
     if (rackSkins.find((t) => t.id === rackSkinId)?.unlock.kind === "premium") st.setRackSkin("classic");
-  }, [initialized, pro, hallTheme, rackSkinId]);
+  }, [initialized, pro, lapseConfirmed, hallTheme, rackSkinId]);
+  // Win-back: a former subscriber whose lapse the store has confirmed gets one
+  // "welcome back" paywall per lapse (paywallRules), on a clear stage like the others.
+  useEffect(() => {
+    if (!initialized || pro || !lapseConfirmed) return;
+    const lapsedAt = lapsedSubscriptionAt();
+    if (lapsedAt > 0 && loadMemo().winbackFor !== lapsedAt) setPaywallPending((p) => p ?? "winback");
+  }, [initialized, pro, lapseConfirmed]);
+  // A stored expiry that passed on the device clock: ask the store whether it renewed.
+  useEffect(() => {
+    if (initialized && !pro && !lapseConfirmed) void iap.syncStatus();
+  }, [initialized, pro, lapseConfirmed]);
 
   // Era transitions: a full-screen tentpole moment when the lab crosses an era.
   // Guarded by the same hydration sync so it never fires on a returning load.
@@ -1333,8 +1393,8 @@ export function App() {
           }}
         />
       )}
-      {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} onReset={() => { setShowSettings(false); setConfirmReset(true); }} onOpenPro={() => { haptics.tap(); setShowPaywall(true); }} />}
-      {showPaywall && <ProPaywall onClose={() => setShowPaywall(false)} />}
+      {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} onReset={() => { setShowSettings(false); setConfirmReset(true); }} onOpenPro={() => { haptics.tap(); openPaywall("settings"); }} />}
+      {showPaywall && <ProPaywall key={paywallPlacement} placement={paywallPlacement} onClose={closePaywall} />}
       {moment === "challenge" && challengeDoneId && challengeById.get(challengeDoneId) && (
         <ChallengeComplete challenge={challengeById.get(challengeDoneId)!} onDone={() => setChallengeDoneId(null)} />
       )}

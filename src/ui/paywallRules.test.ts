@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
   shouldAutoShow, markShown, armShip, sanitizeMemo, loadMemo, saveMemo, EMPTY_MEMO, PAYWALL_KEY, PAYWALL_THROTTLE_MS, type PaywallMemo,
+  placementFor, shouldOfferExit, markExitShown,
 } from "./paywallRules";
 import { ctaLabel, termsLine } from "./ProPaywall";
 import type { Plan } from "./iap";
@@ -64,7 +65,7 @@ describe("paywall memory is hostile storage", () => {
   afterEach(() => { (globalThis as { localStorage?: unknown }).localStorage = prev; });
 
   it("round-trips", () => {
-    const m: PaywallMemo = { launchShown: true, shipArmed: true, shipShown: false, lastAutoAt: T0 };
+    const m: PaywallMemo = { launchShown: true, shipArmed: true, shipShown: false, lastAutoAt: T0, winbackFor: T0 - 5, exitShown: true };
     saveMemo(m);
     expect(loadMemo()).toEqual(m);
   });
@@ -114,5 +115,44 @@ describe("paywall copy follows the plan", () => {
     expect(termsLine(weekly)).toMatch(/^\$4\.99\/week, auto-renews until cancelled\. Cancel anytime in Settings › Apple ID/);
     expect(termsLine(annualNoTrial)).toMatch(/^\$24\.99\/year, auto-renews until cancelled/);
     expect(termsLine(lifetime)).toBe("One-time purchase of $6.99. No subscription.");
+  });
+});
+
+describe("win-back (a former subscriber, once per lapse)", () => {
+  const lapsed = T0 - 3 * 86_400_000;
+  it("shows for a confirmed lapse, once for that lapse", () => {
+    expect(shouldAutoShow(EMPTY_MEMO, "winback", T0, false, lapsed)).toBe(true);
+    const m = markShown(EMPTY_MEMO, "winback", T0, lapsed);
+    expect(m.winbackFor).toBe(lapsed);
+    expect(shouldAutoShow(m, "winback", T0 + 2 * 86_400_000, false, lapsed)).toBe(false);
+  });
+  it("a later lapse (resubscribed, lapsed again) gets its own", () => {
+    const m = markShown(EMPTY_MEMO, "winback", T0, lapsed);
+    const next = lapsed + 40 * 86_400_000;
+    expect(shouldAutoShow(m, "winback", next + 86_400_000, false, next)).toBe(true);
+  });
+  it("never for a player who isn't a lapsed subscriber, while Pro, or inside the 24h window", () => {
+    expect(shouldAutoShow(EMPTY_MEMO, "winback", T0, false, 0)).toBe(false);
+    expect(shouldAutoShow(EMPTY_MEMO, "winback", T0, true, lapsed)).toBe(false);
+    const recent = markShown(EMPTY_MEMO, "launch", T0 - 3_600_000);
+    expect(shouldAutoShow(recent, "winback", T0, false, lapsed)).toBe(false);
+  });
+  it("opens the winback placement", () => {
+    expect(placementFor("winback")).toBe("winback");
+    expect(placementFor("launch")).toBe("onboarding");
+    expect(placementFor("ship")).toBe("post_ship");
+  });
+});
+
+describe("exit offer (once per install, never-paid players)", () => {
+  it("may follow a closed paywall once", () => {
+    expect(shouldOfferExit(EMPTY_MEMO, "onboarding", false, false)).toBe(true);
+    expect(shouldOfferExit(markExitShown(EMPTY_MEMO), "settings", false, false)).toBe(false);
+  });
+  it("never for payers, Pro, or after a win-back / exit paywall", () => {
+    expect(shouldOfferExit(EMPTY_MEMO, "onboarding", true, false)).toBe(false);
+    expect(shouldOfferExit(EMPTY_MEMO, "onboarding", false, true)).toBe(false);
+    expect(shouldOfferExit(EMPTY_MEMO, "winback", false, false)).toBe(false);
+    expect(shouldOfferExit(EMPTY_MEMO, "exit", false, false)).toBe(false);
   });
 });

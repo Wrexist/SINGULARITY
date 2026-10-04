@@ -289,6 +289,13 @@ function tickSegment(state: GameState, elapsedMs: number): GameState {
     // Money Big, where .max(ZERO) does not sanitize NaN and would brick the save.
     const moneyDelta = Number.isFinite(sim.moneyDelta) ? sim.moneyDelta : 0;
     const heatDelta = Number.isFinite(sim.heatDelta) ? sim.heatDelta : 0;
+    // The zero floor also forgives a marketing bill beyond what the lab holds, while
+    // that campaign still buys its users. INTENTIONAL (2026-10 owner call): Money
+    // resets at every Ship but campaigns carry over, so each run opens on unfunded
+    // marketing, and the tuned curve depends on it. Paying marketing strictly from
+    // funds was measured in `npm run sim`: Gen 20 ship 1m27s -> 2m15s, late
+    // money/compute 7.6 -> 2.3. Leaderboards rank Ships/Ascensions only, so it is
+    // fair between players. Don't "fix" this without a retune.
     money = money.add(moneyDelta).max(Big.ZERO);
     if (moneyDelta > 0) lifetimeMoney = lifetimeMoney.add(moneyDelta);
     // Products heat the lab WHILE it cools, so the two net out over the window before

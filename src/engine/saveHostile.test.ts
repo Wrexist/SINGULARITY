@@ -138,12 +138,12 @@ describe("a corrupt frontier doesn't wipe the portfolio", () => {
     // gone — although the frontier has its own clamp a few lines later.
     const drafts = [{ id: "draft-4", quality: 30, ships: 4 }];
     const g = deserialize(blob({
-      products: productsOf([product({ quality: 42 })], { frontier: null, drafts, sold: 2, milestones: ["m1"] }),
+      products: productsOf([product({ quality: 42 })], { frontier: null, drafts, sold: 2, milestones: ["first_launch"] }),
     }));
     expect(g.products.active.map((p) => p.id)).toEqual(["prod-1"]);
     expect(g.products.drafts).toEqual(drafts);
     expect(g.products.sold).toBe(2);
-    expect(g.products.milestones).toEqual(["m1"]);
+    expect(g.products.milestones).toEqual(["first_launch"]);
     // The frontier is never below a product that launched against it, so a reset
     // can't hand the portfolio a free competitiveness buff.
     expect(g.products.frontier).toBeGreaterThanOrEqual(42);

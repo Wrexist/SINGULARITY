@@ -49,11 +49,18 @@ jobs:
       - run: npm ci
       # RevenueCat's public iOS SDK key (appl_…). Optional: without it the app keeps
       # its direct StoreKit purchase path, so a missing secret never breaks Premium.
+      # Never a Test Store key (test_…): the native SDK crashes a Release build
+      # configured with one, so the next step refuses the build outright.
       - run: npm run build
         env:
           VITE_RC_IOS_KEY: ${{ secrets.RC_IOS_KEY }}
       - name: Report the purchase backend baked into this build
+        env:
+          RC_IOS_KEY: ${{ secrets.RC_IOS_KEY }}
         run: |
+          case "$RC_IOS_KEY" in
+            test_*) echo "::error::RC_IOS_KEY holds a RevenueCat Test Store key (test_…). Release builds need the App Store key (appl_…) from RevenueCat → API keys."; exit 1 ;;
+          esac
           if grep -q "appl_" dist/assets/*.js; then echo "Purchases: RevenueCat"; else echo "::warning::RC_IOS_KEY is not set: this build uses direct StoreKit, not RevenueCat."; fi
 
       # Place the ASC API key where both xcodebuild and altool auto-discover it.
@@ -86,7 +93,10 @@ jobs:
       # rather than swallowing real failures from `cap add` with `|| true`.
       - name: Generate & sync Capacitor iOS
         run: |
-          if [ ! -d ios ]; then npx cap add ios; fi
+          # `cap add ios` (when missing) + the iOS 15 floor RevenueCatUI needs
+          # (Paywalls + Customer Center; Capacitor 7's template targets 14), in
+          # place before CocoaPods first resolves the pods. See the script.
+          node scripts/ios-prepare.mjs
           # Stamp the app icon (Logo 1 — server rack) + launch splash into the
           # freshly-scaffolded native project from assets/icon.png & splash.png.
           node scripts/stamp-icons.mjs

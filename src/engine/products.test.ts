@@ -319,7 +319,13 @@ describe("products — timed version upgrades", () => {
     return s;
   };
 
-  it("research duration escalates with version", () => {
+  it("a version push is refused while a timed upgrade runs (its finish would undo it)", () => {
+    const s = startUpgrade(ready(), "p1");
+    expect(canPushVersion(s, "p1")).toBe(false);
+    expect(pushVersion(s, "p1")).toBe(s);
+  });
+
+    it("research duration escalates with version", () => {
     expect(upgradeDurationSec(2)).toBeGreaterThan(upgradeDurationSec(1));
   });
 

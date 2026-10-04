@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useGame, claimWallTime } from "./store";
 import { loopDelta } from "./clockGuard";
 import { balance } from "../engine/balance/config";
-import { hasPro } from "./premium";
+import { hadProAt } from "./premium";
 
 /** A tick whose raw gap exceeds this is a real suspend (OS sleep / frozen tab), not a
  *  live frame — only then does the Pro offline rate apply. */
@@ -43,7 +43,9 @@ export function useGameLoop(tickHz = 10, saveEverySec = 5) {
       // single-tick windfall that bypasses the very cap the offline (tab-closed) path
       // enforces. A normal tick is ~100ms, so this only ever bites a long suspend, and
       // it's never more generous than simply closing the tab would have been.
-      const pro = hasPro();
+      // Pro as of the previous tick: on a resume that is when the player left, so a
+      // renewal the store has not reported yet still pays the away window as Pro.
+      const pro = hadProAt(lastWall.current);
       const capMs = (pro ? balance.offline.premiumMaxHours : balance.offline.maxHours) * 3_600_000;
       // performance.now() is monotonic (immune to clock changes) but on iOS it can
       // stop advancing while the device is asleep, so a suspend with the screen
@@ -66,7 +68,7 @@ export function useGameLoop(tickHz = 10, saveEverySec = 5) {
         // and the recap needs the real time away to say it was capped.
         // Pro: a real suspend (raw gap > 60s) runs at the offline rate, applied to the
         // CAPPED real window (so the cap still bounds real time). Live frames: ×1.
-        advance(elapsed, raw, resumeRate(raw, pro));
+        advance(elapsed, raw, resumeRate(raw, pro), pro);
       } catch (e) {
         if (!tickErrorLogged) {
           console.error("Game tick failed — containing so the loop survives:", e);

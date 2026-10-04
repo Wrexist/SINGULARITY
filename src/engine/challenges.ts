@@ -101,10 +101,17 @@ export function challengeView(state: GameState, id: string): ChallengeView | nul
   };
 }
 
+/** Is this challenge open to fund: the system revealed and its own Ship gate met? The
+ *  engine checks it itself (as research and trials do) rather than trusting that only
+ *  visible cards can call in. */
+function challengeOpen(state: GameState, def: GrandChallenge): boolean {
+  return challengesUnlocked(state) && state.prestige.ships >= def.unlockShips;
+}
+
 /** Is there anything to contribute right now (an unmet resource the player has some of)? */
 export function canFundChallenge(state: GameState, id: string): boolean {
   const def = BY_ID.get(id);
-  if (!def || state.challenges.completed.includes(id)) return false;
+  if (!def || state.challenges.completed.includes(id) || !challengeOpen(state, def)) return false;
   const f = state.challenges.funded[id] ?? zeroFund();
   return canContribute(f, costOf(def), state.resources);
 }
@@ -116,7 +123,7 @@ export function canFundChallenge(state: GameState, id: string): boolean {
  */
 export function fundChallenge(state: GameState, id: string): { state: GameState; justCompleted: boolean } {
   const def = BY_ID.get(id);
-  if (!def || state.challenges.completed.includes(id)) return { state, justCompleted: false };
+  if (!def || state.challenges.completed.includes(id) || !challengeOpen(state, def)) return { state, justCompleted: false };
   const cur = state.challenges.funded[id] ?? zeroFund();
   const cost = costOf(def);
   const r = state.resources;

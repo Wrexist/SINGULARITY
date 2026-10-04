@@ -1,13 +1,13 @@
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useSettings, osReduceMotionNow, onOsReduceMotionChange } from "./settings";
 import { iap } from "./iap";
 import { useHasPro } from "./pro";
-import { onProChange, isPremium } from "../state/premium";
+import { onProChange, isPremium, proWillRenew } from "../state/premium";
 import { haptics as hpt } from "./haptics";
 import { sound as snd } from "./sound";
 import { remindersSupported, ensureReminderPermission, cancelReturnReminder } from "./notifications";
 import { balance } from "../engine/balance/config";
-import { useGame, previewBackup, type BackupPreview } from "../state/store";
+import { useGame, previewBackup, backupIsFromNewerVersion, type BackupPreview } from "../state/store";
 import { fmtMoney } from "./format";
 import { themeStyle, skinSwatch } from "./hallThemes";
 import { themes, rackSkins, themeUnlocked, skinUnlocked, collectionProgress, skinProgress, unlockHint } from "../engine/cosmetics";
@@ -117,6 +117,7 @@ export function SettingsSheet({ onClose, onReset, onOpenPro }: Props) {
   const pro = useHasPro();
   const lifetime = useSyncExternalStore(onProChange, isPremium, isPremium);
   const until = pro && !lifetime ? iap.proUntil() : 0;
+  const renews = useSyncExternalStore(onProChange, proWillRenew, proWillRenew);
   // Cosmetic collection (R6.3): unlocks are derived from monotonic lifetime stats, so
   // a one-shot read at render is enough (no need to re-check at 10Hz while the sheet is open).
   const game = useGame.getState().game;
@@ -170,7 +171,12 @@ export function SettingsSheet({ onClose, onReset, onOpenPro }: Props) {
     // Preview BEFORE the confirm: the player should know what they're about to
     // replace their progress with (and a bad paste fails here, not after).
     const preview = previewBackup(importText);
-    if (!preview) { setStatus("That backup didn't look valid — check you copied all of it."); return; }
+    if (!preview) {
+      setStatus(backupIsFromNewerVersion(importText)
+        ? "That backup is from a newer version of the game — update the app, then restore it."
+        : "That backup didn't look valid — check you copied all of it.");
+      return;
+    }
     setConfirmImport(preview);
   };
   const reallyImport = () => {
@@ -180,6 +186,26 @@ export function SettingsSheet({ onClose, onReset, onOpenPro }: Props) {
   };
   // The Pro card's own one-line status (the backup section has its own).
   const [proStatus, setProStatus] = useState<string | null>(null);
+  // RevenueCat builds manage the plan in its Customer Center (cancel, change plan,
+  // refund request, restore) — offered to subscribers only.
+  const [canManage, setCanManage] = useState(false);
+  useEffect(() => {
+    let live = true;
+    void iap.canManageSubscription().then((ok) => { if (live) setCanManage(ok); });
+    return () => { live = false; };
+  }, []);
+  const [managing, setManaging] = useState(false);
+  const manage = async () => {
+    setManaging(true);
+    setProStatus(null);
+    try {
+      await iap.manageSubscription();
+    } catch {
+      setProStatus("Couldn't open subscription settings — try Settings › Apple ID › Subscriptions.");
+    } finally {
+      setManaging(false);
+    }
+  };
   const restore = async () => {
     setBusy(true);
     setProStatus(null);
@@ -217,7 +243,9 @@ export function SettingsSheet({ onClose, onReset, onOpenPro }: Props) {
             <p className="pro-card-status">Founder · Pro forever. Thank you for backing the lab.</p>
           ) : pro ? (
             <p className="pro-card-status">
-              {until > 0 ? `Through ${fmtDate(until)}. ` : ""}Renews automatically until cancelled in Settings › Apple ID.
+              {renews
+                ? <>{until > 0 ? `Through ${fmtDate(until)}. ` : ""}Renews automatically until cancelled in Settings › Apple ID.</>
+                : <>Cancelled — Pro stays on{until > 0 ? ` through ${fmtDate(until)}` : " until the period ends"}, then it won&apos;t renew.</>}
             </p>
           ) : (
             <ul className="premium-perks">
@@ -231,7 +259,10 @@ export function SettingsSheet({ onClose, onReset, onOpenPro }: Props) {
               {!pro && onOpenPro && (
                 <button className="btn btn-primary" disabled={busy} onClick={onOpenPro}>See Pro plans</button>
               )}
-              <button className="link-btn" disabled={busy} onClick={restore}>
+              {pro && canManage && (
+                <button className="btn btn-ghost" disabled={busy || managing} onClick={manage}>Manage subscription</button>
+              )}
+              <button className="link-btn" disabled={busy || managing} onClick={restore}>
                 {busy ? "Restoring…" : "Restore"}
               </button>
             </div>
