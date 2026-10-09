@@ -8,6 +8,20 @@ Phase 0–3 history retained below for context.
 
 ---
 
+## 3D world spike (2026-10-09) — `claude/quirky-cray-ym85q8`, OFF for every player
+*Owner asked how to make the hall "fully immersive and 3D" like the Ralv agent office /
+AI-generated three.js digital twins. Research + audits + plan in `WORLD_3D_PLAN.md`.
+Renderer-only: no engine, save, balance or sim change.*
+- [x] `three@0.186.1` (exact pin), code-split: 150 KB gzip chunk loads only with the flag
+- [x] `layout3d.ts` (pure, tested) + `hallScene3d.ts` (procedural, instanced, frozen shadows)
+- [x] `HallStage3D` loop (30 fps cap, off-screen pause, reduce-motion, context watchdog → 2D)
+- [x] Explore mode: full screen, pan/pinch/orbit, tap-to-focus, culled name labels
+- [x] `hallModelSig` shared by both loops (verbatim extraction); smoke `--hall3d`
+- [ ] **Owner decisions** (WORLD_3D_PLAN §9): spine change, phase priority vs R8, camera, assets
+- [ ] Phase 0 device gate: cold start, p10 fps, thermal, battery on iPhone 11 / SE2 / 12 + iPad
+
+---
+
 ## Depth batch (2026-08-21, from the parallel-audit wave) — uncommitted on `master-agentic-development`
 *The gameplay-depth audit's top curve-safe proposals, shipped. Every new path is
 gated behind a player-only action the sim never takes (stake/respec/charter/trial),

@@ -558,3 +558,17 @@ when" balance, dials the whole curve, and the UI cost displays update for free (
 - **The bot can't click "unstable" elements.** Playwright refuses to click buttons in the middle of
   a CSS animation (e.g. the first-run `nudge`) and times out quietly inside `.catch(() => {})`. Pass
   `force: true` for play-throughs, or the "player" never presses the button.
+- **three.js r186 removed `PCFSoftShadowMap`.** Using it logs a runtime warning (it silently
+  becomes `PCFShadowMap`), which trips the zero-console-errors smoke. Use `PCFShadowMap` +
+  `shadow.radius`. three ships breaking changes most releases: pin exactly, read the
+  migration guide on every bump.
+- **Headless Chrome (M139+) no longer falls back to SwiftShader for WebGL.** Without
+  `--use-angle=swiftshader --enable-unsafe-swiftshader` the 3D hall silently fails over to
+  2D in Playwright. `scripts/smoke.mjs --hall3d` passes them and asserts the 3D stats hook.
+- **iOS drops the WebGL context on every backgrounding, sometimes without an event.**
+  `preventDefault()` the loss so WebGLRenderer can restore, re-render frozen shadow maps on
+  restore, and poll `isContextLost()`; only fall back when it STAYS lost. Falling back on the
+  first loss would turn 3D off every time the player switched apps.
+- **Iso 3D picking needs the floor tile, not just the mesh.** Racks are 0.66 tiles wide, so a
+  third of taps pass between them; map a floor-plane hit to the tile's rack (the 2D hit-test
+  already honours the tile the same way).
