@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { buildScene3D, agentPose, chenPose, trainingWave, rackHeight3D, BAY_DEPTH } from "./layout3d";
+import { buildScene3D, agentPose, chenPose, trainingWave, rackHeight3D, BAY_DEPTH, botPose, crowdPose, deliveryPose, DELIVERY_MS } from "./layout3d";
 import { hall3dEnabled, HALL3D_KEY } from "./flag";
 import { buildHallModel, hallModelSig } from "../render/hallModel";
 import { rackTileOrder } from "../render/hallRenderer";
@@ -166,6 +166,78 @@ describe("3D hall layout", () => {
   it("is deterministic: the same model always yields the same spec", () => {
     const m = buildHallModel(lab());
     expect(buildScene3D(m)).toEqual(buildScene3D(m));
+  });
+});
+
+describe("3D hall life: ops bot, crowd, delivery", () => {
+  it("the ops bot only exists with auto-train and racks, and parks under reduced motion", () => {
+    const m = buildHallModel(lab());
+    const spec = buildScene3D(m);
+    expect(botPose(spec, { ...m, autoBot: false }, 1000, false)).toBeNull();
+    const empty = buildHallModel(createInitialState());
+    expect(botPose(buildScene3D(empty), { ...empty, autoBot: true }, 1000, false)).toBeNull();
+    const a = botPose(spec, { ...m, autoBot: true }, 1000, true)!;
+    expect(a).toEqual(botPose(spec, { ...m, autoBot: true }, 987654, true));
+    expect(a.scan).toBe(0);
+    expect(a.rack).toBe(-1);
+  });
+
+  it("patrols the front rack lane, scanning every front-row rack it stops at", () => {
+    const m = { ...buildHallModel(lab()), autoBot: true };
+    const spec = buildScene3D(m);
+    const frontZ = Math.max(...spec.racks.map((r) => r.z));
+    const front = new Set(spec.racks.flatMap((r, i) => (r.z === frontZ ? [i] : [])));
+    const scanned = new Set<number>();
+    let z: number | null = null;
+    for (let t = 0; t < 120000; t += 100) {
+      const p = botPose(spec, m, t, false)!;
+      z ??= p.z;
+      expect(p.z).toBe(z); // one lane
+      expect(p.z).toBeGreaterThan(frontZ + 0.5);
+      expect(p.x).toBeGreaterThanOrEqual(spec.floor.x0);
+      expect(p.x).toBeLessThanOrEqual(spec.floor.x1);
+      if (p.scan > 0) {
+        expect(front.has(p.rack)).toBe(true);
+        expect(p.x).toBeCloseTo(spec.racks[p.rack]!.x);
+        expect(p.rotY).toBeCloseTo(Math.PI); // facing the racks
+        scanned.add(p.rack);
+      }
+    }
+    expect([...scanned].sort()).toEqual([...front].sort());
+    expect(botPose(spec, m, 4321, false)).toEqual(botPose(spec, m, 4321, false));
+  });
+
+  it("onlookers stand just outside the open front, turned in toward the floor", () => {
+    const spec = buildScene3D(buildHallModel(lab()));
+    for (let k = 0; k < 6; k++) {
+      const p = crowdPose(spec, k, 5000, false);
+      expect(p.z).toBeGreaterThan(spec.bay.z1);
+      expect(p.x).toBeGreaterThanOrEqual(spec.bay.x0);
+      expect(p.x).toBeLessThanOrEqual(spec.bay.x1);
+      expect(Math.cos(p.rotY)).toBeLessThan(0); // facing −Z, into the lab
+      expect(p.cheer).toBe(k % 3 === 0 ? 1 : 0);
+      expect(crowdPose(spec, k, 5000, true).lift).toBe(0);
+    }
+  });
+
+  it("a delivery rolls in along the walkway, fades, and is gone after its window", () => {
+    const spec = buildScene3D(buildHallModel(lab()));
+    expect(deliveryPose(spec, -1)).toBeNull();
+    expect(deliveryPose(spec, Number.NaN)).toBeNull();
+    expect(deliveryPose(spec, Infinity)).toBeNull();
+    expect(deliveryPose(spec, DELIVERY_MS)).toBeNull();
+    let prevX = Infinity;
+    for (let ms = 0; ms < DELIVERY_MS; ms += 50) {
+      const p = deliveryPose(spec, ms)!;
+      expect(p.x).toBeLessThanOrEqual(prevX);
+      prevX = p.x;
+      expect(p.alpha).toBeGreaterThanOrEqual(0);
+      expect(p.alpha).toBeLessThanOrEqual(1);
+      expect(p.z).toBeGreaterThan(spec.bay.z0);
+      expect(p.z).toBeLessThan(spec.bay.z1);
+      expect(p.x).toBeLessThanOrEqual(spec.bay.x1); // on the plinth the whole way
+      expect(p.x).toBeGreaterThanOrEqual(spec.bay.x0);
+    }
   });
 });
 

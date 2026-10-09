@@ -28,6 +28,10 @@ Renderer-only: no engine, save, balance or sim change.*
       faces, mugs, rack vents, scrolling code monitors, out-of-phase LEDs; rack drop-in +
       dust + power-on, hire walk-ins, eased walkers + glances, claim burst, training
       packets; camera glides, explore fly-in, 60 fps only while moving, fade-ins, hint
+- [x] Round 5 (owner: "continue, make the game better"): 3D parity complete — ops bot
+      (auto-train), crowd at the lip (good events), Rig Bay delivery crate, incident
+      storm (overcast, rain, lightning), ready-to-claim LED heartbeat, packet speed
+      follows batching
 - [ ] Next: device benchmarks on TestFlight (iPhone 11 / SE2 / 12 + iPad) before 3D goes
       beyond opt-in; then "the world fills the screen" layout (§7 #1)
 - [ ] Phase 0 device gate: cold start, p10 fps, thermal, battery on iPhone 11 / SE2 / 12 + iPad

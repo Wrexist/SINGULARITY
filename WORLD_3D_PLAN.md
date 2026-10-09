@@ -27,6 +27,42 @@ generating a 3D airport digital twin), Dominik Scholz's three.js agent office
 
 ---
 
+## Round 5 (2026-10-09): every system shows up in the world
+
+**Owner:** *"continue, make the game better."* With the detail and motion passes done,
+the biggest gap was **parity**. Four things the 2D hall shows were still missing in 3D,
+so in the 3D lab buying them, or having them happen, changed nothing on screen. They're
+all built now, all wordless, all driven by the same `HallModel` fields as 2D:
+
+- **Ops bot (auto-train).**
+  - A small white hover bot with a dark visor band, a mint eye and light ring, and a
+    blinking antenna.
+  - It glides along the front row of racks, stops at each to sweep a mint scan line up
+    and down the rack face, then patrols back.
+  - Under reduced motion it waits, parked, at the end of its lane.
+  - `botPose` is pure and tested: one lane, and every front-row rack gets scanned.
+- **Crowd at the lip (good events).** Onlookers stand on the ground below the plinth and
+  peer over it into the lab. Every third one cheers, and phone cameras flash now and then
+  (motion only). They use the staff instancing (slots after staff), so no extra draws,
+  and they can't be picked.
+- **Delivery crate (Rig Bay buys).** A taped crate on a dolly fades in at the plinth's
+  right edge, rolls along the walkway and fades out (1.8 s). It uses the same trigger as
+  2D: the owned-copy count grew.
+- **Incident storm.**
+  - The sky goes overcast and the sun dims.
+  - Rain falls around, never into, the open-top diorama.
+  - The 2D lightning strobe flashes the sky and fill light.
+  - Under reduced motion it stays overcast only, the 2D rule.
+- **Smaller cues.**
+  - When a payout is ready, every rack's LEDs breathe together in one slow heartbeat.
+  - Training packets speed up with the Batch Scheduler (the plan's "speed follows the
+    run").
+- **Budget.** The bot draws in 3 meshes plus its glow, shadow and scan line; the crate
+  in 1. A lab with everything on is at 76 draws. Era 5 alone is 79, so the worst case
+  is about 88, against a budget of 100.
+
+---
+
 ## Round 4 (2026-10-09): detail, motion, smoothness
 
 **Owner:** *"make it more detailed and smooth and clean, professional, make everything work
@@ -384,9 +420,9 @@ GameState ──buildHallModel()──► HallModel ──┬──► hallRende
 | Rack tap flash + cards | ✓ | Shared cards with 2D |
 | Hall themes (CSS filter) | ✓ | Applied to the GL canvas |
 | Charter banner, Legacy Wall trophies | ✓ | Round 2: banner on the back wall; trophy shelf on the left wall |
-| Storm / lightning weather, singularity vortex | ✗ | Phase 1 (weather on glass/roof only) |
-| Component delivery crate, ops bot, crowd at the lip | ✗ | Phase 1 |
-| Rig Bay part silhouettes | ✗ | Phase 1 (fixes hard truth #2) |
+| Storm / lightning weather, singularity vortex | ✓ | Round 5: overcast sky, rain around (never into) the open-top room, lightning strobe; era 5 spiral motes |
+| Component delivery crate, ops bot, crowd at the lip | ✓ | Round 5: crate dolly on the walkway; hover bot scanning racks; onlookers peering over the plinth |
+| Rig Bay part silhouettes | ✓ | Round 3 |
 
 ---
 

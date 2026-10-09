@@ -588,6 +588,16 @@ when" balance, dials the whole curve, and the UI cost displays update for free (
   frame (a second WebGL context compiling shaders) blocks the main thread for seconds, so
   a "check at 600 ms" from Playwright actually lands after a 4.3 s UI timer has fired.
   Measure inside the page (`performance.now()`) before calling a timer bug a bug.
+- **Capture sub-second animations with Playwright's fake clock.** Under SwiftShader a
+  1.8 s effect is over before the second screenshot. `page.clock.install()` before load,
+  `pauseAt(now)` right after the trigger, then `runFor(250)` between screenshots, steps
+  rAF deterministically and catches every frame.
+- **Things outside the plinth stand on the ground, not the floor.** Anything placed past
+  the diorama's edge (onlookers, a crate entering) at `FLOOR_Y` floats 0.3 above the lot.
+  Put it at ground height, or keep its whole path on the plinth.
+- **Chibi arms can't clear a chibi head.** A big head hides arms raised straight up.
+  Spread them into a "\o/" and stretch them along their length (toon-style), or the
+  cheer reads as arms at the sides.
 - **Animate the camera toward a goal, don't set it.** `fitCamera` now writes a goal
   (target, distance, polar) and the card camera eases there (`1 - exp(-dt/240)`), so a
   new floor or era glides in. Snap only on the first fit and on resize, or the view

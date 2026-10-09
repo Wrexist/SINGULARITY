@@ -9,6 +9,7 @@ import {
   CylinderGeometry,
   DirectionalLight,
   DoubleSide,
+  Euler,
   Fog,
   Group,
   HemisphereLight,
@@ -49,8 +50,8 @@ import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.j
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import type { HallModel } from "../render/hallModel";
-import { nightFactor, skinTint } from "../render/hallRenderer";
-import { buildScene3D, agentPose, chenPose, trainingWave, type AgentPose, type Scene3DSpec, type Rect } from "./layout3d";
+import { lightningFlash, nightFactor, skinTint } from "../render/hallRenderer";
+import { buildScene3D, agentPose, botPose, chenPose, crowdPose, deliveryPose, trainingWave, type AgentPose, type Scene3DSpec, type Rect } from "./layout3d";
 
 /**
  * The 3D hall (WORLD_3D_PLAN.md) — a "Lab Diorama" in the style of the Ralv agent
@@ -76,6 +77,8 @@ export interface Scene3DFrame {
   /** ms since the latest rack purchase started arriving (Infinity: none, or RM). */
   spawnMs: number;
   burst: number;
+  /** ms since a Rig Bay part was bought (the crate dolly); Infinity / absent = none. */
+  deliveryMs?: number;
   rackSkin?: string;
   tapFlash?: { index: number; t: number };
 }
@@ -123,6 +126,16 @@ type Bx = { r: Rect; y0: number; h: number; c?: RGB };
 const FLOOR_Y = 0.3; // the plinth top — everything stands on it
 const MAX_RACKS = 120;
 const MAX_PEOPLE = 16;
+/** Onlookers at the front lip while a good-tone event runs (the model caps it at 6). */
+const MAX_CROWD = 6;
+/** Where onlookers stand: the ground / expansion lot outside the plinth. */
+const CROWD_Y = 0.025;
+/** Person instance slots: staff first, then the onlookers after them. */
+const PEOPLE_CAP = MAX_PEOPLE + MAX_CROWD;
+/** Rain streaks around the diorama while an incident storm is on. */
+const MAX_RAIN = 150;
+/** The ops bot's lights (the 2D bot's mint). */
+const MINT: [number, number, number] = [120, 230, 180];
 const MAX_MOTES = 90;
 const MAX_PULSES = 48;
 const MAX_SMOKE = 24;
@@ -310,6 +323,22 @@ function merge(parts: BufferGeometry[]): BufferGeometry {
   const out = mergeGeometries(flat);
   if (!out) throw new Error("hall3d: incompatible geometry parts");
   return out;
+}
+
+/** Paint a part one flat colour (a vertex `color` attribute), so parts of different
+ *  colours merge into one draw. */
+function painted(g: BufferGeometry, rgb: RGB): BufferGeometry {
+  const flat = g.index ? g.toNonIndexed() : g;
+  const n = flat.getAttribute("position").count;
+  const c = col(rgb);
+  const a = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    a[i * 3] = c.r;
+    a[i * 3 + 1] = c.g;
+    a[i * 3 + 2] = c.b;
+  }
+  flat.setAttribute("color", new BufferAttribute(a, 3));
+  return flat;
 }
 
 /** A vertical gradient column (alpha 1 at the base → 0 at the top) for beams. */
@@ -591,17 +620,20 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
   const armGeo = own(new CapsuleGeometry(0.027, 0.09, 3, 8));
   armGeo.translate(0, -0.072, 0);
   const personMat = own(new MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 }));
-  const bodies = inst(bodyGeo, personMat, MAX_PEOPLE);
-  const heads = inst(headGeo, personMat, MAX_PEOPLE);
-  const hair = inst(hairGeo, personMat, MAX_PEOPLE);
-  const legs = inst(legGeo, personMat, MAX_PEOPLE * 2);
-  const arms = inst(armGeo, personMat, MAX_PEOPLE * 2);
+  const bodies = inst(bodyGeo, personMat, PEOPLE_CAP);
+  const heads = inst(headGeo, personMat, PEOPLE_CAP);
+  const hair = inst(hairGeo, personMat, PEOPLE_CAP);
+  const legs = inst(legGeo, personMat, PEOPLE_CAP * 2);
+  const arms = inst(armGeo, personMat, PEOPLE_CAP * 2);
   // Faces: two small dark eyes on the front of each head (they turn with the head).
-  const eyes = inst(own(new SphereGeometry(0.017, 8, 6)), own(new MeshBasicMaterial({ color: 0x1c1b24 })), MAX_PEOPLE * 2);
-  const blobs = inst(unitPlane, shadowMat, MAX_PEOPLE + 1);
+  const eyes = inst(own(new SphereGeometry(0.017, 8, 6)), own(new MeshBasicMaterial({ color: 0x1c1b24 })), PEOPLE_CAP * 2);
+  const blobs = inst(unitPlane, shadowMat, PEOPLE_CAP + 1);
   blobs.renderOrder = 1;
-  const agentProxy = inst(unitBox, pickMat, MAX_PEOPLE);
-  const headPos = new Float32Array(MAX_PEOPLE * 3);
+  // Pick proxies exist for staff only (count = staff); the onlookers' slots are inert.
+  const agentProxy = inst(unitBox, pickMat, PEOPLE_CAP);
+  const headPos = new Float32Array(PEOPLE_CAP * 3);
+  const eul = new Euler();
+  const armStretch = new Vector3(1, 1.55, 1);
 
   // Desks, chairs, monitors, screens, keyboards — one instanced draw each.
   const desks = inst(own(deskGeometry()), own(new MeshStandardMaterial({ color: col([222, 196, 156]), roughness: 0.75 })), MAX_PEOPLE, true);
@@ -694,6 +726,60 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
   const packets = inst(own(new SphereGeometry(0.05, 10, 8)), own(new MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: AdditiveBlending, depthWrite: false, toneMapped: false })), 14);
   let packetPath: Vector3[] = [];
   let packetLens: number[] = [];
+
+  // The ops bot (auto-train, made visible): a small white hover bot with a dark visor
+  // band all the way round and a mint eye + light ring (so it reads as a machine from
+  // any side — it shows the camera its back while scanning), a blinking antenna tip, a
+  // mint glow on the floor under it, and a scan line it sweeps up and down the face of
+  // the rack it has stopped at. Three draws for the bot itself.
+  const bot = new Group();
+  const shellParts = [
+    new CapsuleGeometry(0.085, 0.09, 4, 14).translate(0, 0.13, 0),
+    new CylinderGeometry(0.089, 0.089, 0.05, 24, 1, true).translate(0, 0.15, 0),
+    new CylinderGeometry(0.006, 0.006, 0.08, 6).translate(0, 0.3, 0),
+  ];
+  const botShell = new Mesh(
+    own(merge([painted(shellParts[0]!, [243, 245, 250]), painted(shellParts[1]!, [26, 31, 46]), painted(shellParts[2]!, [154, 163, 181])])),
+    own(new MeshStandardMaterial({ vertexColors: true, roughness: 0.32, metalness: 0.1 })),
+  );
+  const ringPart = new TorusGeometry(0.088, 0.007, 6, 32).rotateX(Math.PI / 2).translate(0, 0.098, 0);
+  const eyePart = new SphereGeometry(0.02, 10, 8).scale(1.5, 0.6, 0.5).translate(0, 0.15, 0.09);
+  const botEyeMat = own(new MeshBasicMaterial({ color: col(MINT), toneMapped: false }));
+  const botLights = new Mesh(own(merge([eyePart, ringPart])), botEyeMat);
+  const botTipMat = own(new MeshBasicMaterial({ color: col(MINT), toneMapped: false }));
+  const antennaTip = new Mesh(own(new SphereGeometry(0.017, 10, 8)), botTipMat);
+  antennaTip.position.y = 0.345;
+  for (const g of [...shellParts, ringPart, eyePart]) g.dispose();
+  bot.add(botShell, botLights, antennaTip);
+  bot.scale.setScalar(1.45);
+  const botGlowMat = own(new MeshBasicMaterial({ map: glowTex, color: col(MINT), transparent: true, depthWrite: false, blending: AdditiveBlending, toneMapped: false }));
+  const botGlow = new Mesh(unitPlane, botGlowMat);
+  botGlow.renderOrder = 2;
+  const botBlob = new Mesh(unitPlane, shadowMat);
+  botBlob.renderOrder = 1;
+  const scanMat = own(new MeshBasicMaterial({ color: col(MINT), transparent: true, opacity: 0, blending: AdditiveBlending, depthWrite: false, toneMapped: false }));
+  const scanLine = new Mesh(unitBox, scanMat);
+
+  // A Rig Bay part arriving: a pale taped shipping crate on a dark dolly (one draw).
+  const crateParts = [
+    new RoundedBoxGeometry(0.28, 0.24, 0.26, 1, 0.02).translate(0, 0.155, 0),
+    new BoxGeometry(0.05, 0.246, 0.266).translate(0, 0.155, 0),
+    new BoxGeometry(0.32, 0.03, 0.3).translate(0, 0.02, 0),
+  ];
+  const crateMat = own(new MeshStandardMaterial({ vertexColors: true, roughness: 0.72, transparent: true }));
+  const crate = new Mesh(own(merge([painted(crateParts[0]!, [214, 206, 192]), painted(crateParts[1]!, [150, 140, 120]), painted(crateParts[2]!, [42, 46, 58])])), crateMat);
+  for (const g of crateParts) g.dispose();
+  for (const o of [bot, botGlow, botBlob, scanLine, crate]) {
+    o.visible = false;
+    scene.add(o);
+  }
+
+  // Incident weather: rain streaks falling around (never into) the open-top diorama,
+  // and onlookers' phone flashes during a good event.
+  const rain = inst(unitBox, own(new MeshBasicMaterial({ color: col([196, 210, 238]), transparent: true, opacity: 0.32, depthWrite: false })), MAX_RAIN);
+  let rainSpots: { x: number; z: number; s: number }[] = [];
+  const flashes = inst(own(new SphereGeometry(0.035, 8, 6)), own(new MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: AdditiveBlending, depthWrite: false, toneMapped: false })), MAX_CROWD);
+  let crowdKey = -1;
 
   // Rig Bay ("Bare Metal") on each rack's left face: a socket per slot — dark and
   // open when empty; fitted parts grow geometry by class (heatsink fins, a spinning
@@ -1070,6 +1156,19 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
       for (let k = 1; k < packetPath.length; k++) packetLens.push(packetLens[k - 1]! + packetPath[k]!.distanceTo(packetPath[k - 1]!));
     }
 
+    // Storm rain falls OUTSIDE the walls only (the cutaway room has no roof).
+    {
+      const bd = s.bounds;
+      rainSpots = [];
+      const ax0 = bd.x0 - 3.2, ax1 = bd.x1 + 3.2, az0 = bd.z0 - 3.2, az1 = bd.z1 + 3.2;
+      for (let k = 0; k < MAX_RAIN * 4 && rainSpots.length < MAX_RAIN; k++) {
+        const x = ax0 + hash01(k * 3 + 1) * (ax1 - ax0);
+        const z = az0 + hash01(k * 3 + 2) * (az1 - az0);
+        if (x > bd.x0 - 0.45 && x < bd.x1 + 0.45 && z > bd.z0 - 0.45 && z < bd.z1 + 0.45) continue;
+        rainSpots.push({ x, z, s: hash01(k * 3 + 3) });
+      }
+    }
+
     // Campus growth beyond the walls (tall enough to read over them).
     steamTops = [];
     if (era >= 3) {
@@ -1417,6 +1516,22 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
     if (rackBody.instanceColor) rackBody.instanceColor.needsUpdate = true;
   }
 
+  /** Onlookers wear pale civilian colours (the 2D crowd's), in the slots after staff. */
+  function crowdColors(base: number, n: number): void {
+    for (let k = 0; k < n; k++) {
+      const i = base + k;
+      const shirt: RGB = k % 2 === 0 ? [200, 205, 220] : [170, 180, 205];
+      bodies.setColorAt(i, setC(c, shirt));
+      heads.setColorAt(i, setC(c, pick(SKIN, k * 5 + 2)));
+      hair.setColorAt(i, setC(c, pick(HAIR, k * 3 + 4)));
+      arms.setColorAt(i * 2, setC(c, shirt));
+      arms.setColorAt(i * 2 + 1, setC(c, shirt));
+      legs.setColorAt(i * 2, setC(c, [70, 74, 92]));
+      legs.setColorAt(i * 2 + 1, setC(c, [70, 74, 92]));
+    }
+    for (const im of [bodies, heads, hair, arms, legs]) if (im.instanceColor) im.instanceColor.needsUpdate = true;
+  }
+
   /** Identity colours for the people: team shirt (gold for a 10× hire), skin, hair. */
   function peopleColors(m: HallModel): void {
     m.agents.slice(0, MAX_PEOPLE).forEach((a, i) => {
@@ -1466,8 +1581,16 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
       legs.setMatrixAt(i * 2 + k, mC);
       // Arms: reaching for the keyboard and typing when seated; counter-swing walking.
       const type = rm ? 0 : Math.sin(p.gait * (k === 0 ? 1 : 1.13) + k) * 0.12;
-      const armAng = p.seated ? -1.05 + type : -swing * sgn * 0.8;
-      mB.makeRotationX(armAng).setPosition(sgn * 0.113, 0.33, 0);
+      // Cheering: arms up in a "\o/" and waving (still under RM). Chibi arms are too
+      // short to clear the big head, so a cheering arm stretches, toon-style.
+      const cheer = p.cheer ?? 0;
+      if (cheer > 0) {
+        const wave = rm ? 0 : Math.sin(p.gait * 2.4 + k * 1.4) * 0.2;
+        mB.makeRotationFromEuler(eul.set(-2.75, 0, sgn * (0.62 + wave))).scale(armStretch);
+      } else {
+        mB.makeRotationX(p.seated ? -1.05 + type : -swing * sgn * 0.8);
+      }
+      mB.setPosition(sgn * 0.113, 0.33, 0);
       mC.multiplyMatrices(mA, mB);
       arms.setMatrixAt(i * 2 + k, mC);
     }
@@ -1643,6 +1766,36 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
       if (windowMat) setC(windowMat.color, mix([170, 190, 215], [255, 214, 150], nf));
       // Rival towers sink into the night; only their crown lights stay on.
       if (skylineMat) setC(skylineMat.color, mix([255, 255, 255], [70, 70, 92], nf));
+      // Incident weather — the sky answers a lab on fire: overcast always; rain and a
+      // lightning strobe only with motion on (the 2D hall's rule).
+      const storm = Math.min(1, m.incidents.length * 0.5);
+      let rn = 0;
+      if (storm > 0) {
+        bg.lerp(setC(c, [58, 66, 84]), 0.55 * storm);
+        if (groundMat) groundMat.color.lerp(setC(c, [58, 66, 84]), 0.35 * storm);
+        sun.intensity *= 1 - 0.45 * storm;
+        hemi.intensity *= 1 - 0.15 * storm;
+        if (!rm) {
+          const fl = lightningFlash(t) * storm;
+          if (fl > 0.001) {
+            hemi.intensity += 1.4 * fl;
+            bg.lerp(setC(c, [214, 222, 246]), 0.5 * fl);
+          }
+          const top = FLOOR_Y + s.wallH + 3.2;
+          const n = Math.round(rainSpots.length * (0.5 + 0.5 * storm));
+          for (let k = 0; k < n; k++) {
+            const sp = rainSpots[k]!;
+            dummy.position.set(sp.x, top - ((t / 620 + sp.s) % 1) * top, sp.z);
+            dummy.rotation.set(0, 0, 0.1);
+            dummy.scale.set(0.012, 0.4, 0.012);
+            dummy.updateMatrix();
+            rain.setMatrixAt(rn++, dummy.matrix);
+          }
+        }
+        fog.color.copy(bg);
+      }
+      rain.count = rn;
+      if (rn > 0) rain.instanceMatrix.needsUpdate = true;
       poolMat.opacity = 0.12 + 0.55 * nf;
       setC(shadeMat.color, mix([238, 226, 206], [255, 214, 150], nf), 1 + 0.6 * nf);
       // Floor lettering: the overview's labels, faded out as the player pinches in.
@@ -1654,11 +1807,13 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
       // active, a hot cast under overclock / thermal load, tap flash, claim burst.
       const busy = m.busy && !rm ? 0.5 + 0.5 * Math.sin(t / 700) : 0.5;
       const hot = Math.min(1, m.overclock * 0.6 + Math.max(0, m.loadFrac - 0.85) * 2);
+      // Payout ready: every rack breathes together, a slow shared heartbeat (RM: lit).
+      const ready = m.readyToClaim ? (rm ? 0.5 : 0.5 + 0.5 * Math.sin(t / 260)) : 0;
       for (let i = 0; i < s.racks.length; i++) {
         const r = s.racks[i]!;
         let led = mix(pick(TIER_LED, r.tier), [255, 150, 80], hot * 0.55);
         const wave = trainingWave(r.x, r.z, t, m.active, rm);
-        let k = 0.42 + 0.18 * busy + 0.9 * wave + 0.6 * f.burst;
+        let k = 0.42 + 0.18 * busy + 0.9 * wave + 0.6 * f.burst + 0.4 * ready;
         if (f.tapFlash && f.tapFlash.index === i) k += f.tapFlash.t * (rm ? 0.6 : 0.6 + 0.4 * Math.sin(t / 30));
         const inc = m.incidents.find((x) => x.rackIndex === i);
         if (inc) led = mix(led, [255, 80, 60], inc.worked ? 0.35 : 0.7);
@@ -1699,8 +1854,10 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
 
       // People. A new hire walks in from the door to their place (RM: just there).
       const nAgents = Math.min(MAX_PEOPLE, m.agents.length);
-      bodies.count = heads.count = hair.count = agentProxy.count = nAgents;
-      legs.count = arms.count = eyes.count = nAgents * 2;
+      const nCrowd = Math.min(MAX_CROWD, Math.max(0, Math.floor(m.crowd)));
+      bodies.count = heads.count = hair.count = nAgents + nCrowd;
+      agentProxy.count = nAgents;
+      legs.count = arms.count = eyes.count = (nAgents + nCrowd) * 2;
       for (const i of pendingArrivals) arrivalAt.set(i, t);
       pendingArrivals = [];
       let blobN = 0;
@@ -1739,8 +1896,74 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
         dummy.updateMatrix();
         blobs.setMatrixAt(blobN++, dummy.matrix);
       }
+      // Onlookers at the front lip (hype made visible); a phone camera flashes now and
+      // then among the ones not cheering (motion only).
+      if (nCrowd > 0 && crowdKey !== nAgents * 100 + nCrowd) {
+        crowdKey = nAgents * 100 + nCrowd;
+        crowdColors(nAgents, nCrowd);
+      }
+      let fn = 0;
+      for (let k = 0; k < nCrowd; k++) {
+        const i = nAgents + k;
+        // They stand on the ground (or the expansion lot) below the plinth, so they
+        // peer over its lip into the lab.
+        const p0 = crowdPose(s, k, t, rm);
+        const p = { ...p0, lift: p0.lift + CROWD_Y - FLOOR_Y };
+        posePerson(i, p, rm);
+        dummy.position.set(p.x, CROWD_Y + 0.008, p.z);
+        dummy.rotation.set(0, 0, 0);
+        dummy.scale.set(0.42, 1, 0.42);
+        dummy.updateMatrix();
+        blobs.setMatrixAt(blobN++, dummy.matrix);
+        if (!rm && !p.cheer) {
+          const ph = (t + k * 1371) % 2600;
+          if (ph < 120) {
+            const u = 1 - ph / 120;
+            dummy.position.set(headPos[i * 3]! + Math.sin(p.rotY) * 0.15, headPos[i * 3 + 1]! - 0.1, headPos[i * 3 + 2]! + Math.cos(p.rotY) * 0.15);
+            dummy.scale.setScalar(0.6 + u);
+            dummy.updateMatrix();
+            flashes.setMatrixAt(fn++, dummy.matrix);
+          }
+        }
+      }
+      flashes.count = fn;
+      if (fn > 0) flashes.instanceMatrix.needsUpdate = true;
       blobs.count = blobN;
       for (const im of [bodies, heads, hair, legs, arms, eyes, agentProxy, blobs]) im.instanceMatrix.needsUpdate = true;
+
+      // The ops bot glides the front rack lane, stopping to scan racks (parked under RM).
+      const bp = botPose(s, m, t, rm);
+      bot.visible = botGlow.visible = botBlob.visible = !!bp;
+      scanLine.visible = false;
+      if (bp) {
+        bot.position.set(bp.x, FLOOR_Y + bp.hover, bp.z);
+        bot.rotation.y = bp.rotY;
+        botGlow.position.set(bp.x, FLOOR_Y + 0.016, bp.z);
+        botGlow.scale.set(0.72, 1, 0.72);
+        setC(botGlowMat.color, MINT, 0.4 + 0.35 * nf + (bp.scan > 0 ? 0.15 : 0));
+        botBlob.position.set(bp.x, FLOOR_Y + 0.012, bp.z);
+        botBlob.scale.set(0.34, 1, 0.34);
+        setC(botTipMat.color, MINT, rm || t % 1400 < 160 ? 1 : 0.22);
+        setC(botEyeMat.color, MINT, bp.scan > 0 ? 1.3 : 0.9);
+        const r = bp.rack >= 0 ? s.racks[bp.rack] : undefined;
+        if (r && bp.scan > 0) {
+          const foot = TIER_FOOT[r.tier] ?? 1;
+          const s2 = (bp.scan * 2) % 1;
+          const yf = s2 < 0.5 ? s2 * 2 : 2 - s2 * 2;
+          scanLine.visible = true;
+          scanLine.position.set(r.x, FLOOR_Y + 0.08 + yf * Math.max(0, r.h - 0.14), r.z + 0.33 * foot + 0.035);
+          scanLine.scale.set(0.5 * foot, 0.014, 0.01);
+          scanMat.opacity = 0.9 * Math.min(1, bp.scan / 0.08, (1 - bp.scan) / 0.08);
+        }
+      }
+
+      // A Rig Bay part arriving: the crate dolly rolls in along the walkway and fades.
+      const dp = deliveryPose(s, f.deliveryMs ?? Infinity);
+      crate.visible = !!dp && !rm;
+      if (dp && !rm) {
+        crate.position.set(dp.x, FLOOR_Y, dp.z);
+        crateMat.opacity = dp.alpha;
+      }
 
       // Beams + rising pulses (launch buzz surges; batching speeds; monetize gilds).
       // Instanced: brightness stands in for opacity (additive blending).
@@ -1891,7 +2114,7 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
       const total = packetLens[packetLens.length - 1] ?? 0;
       if (m.active && !rm && total > 0) {
         for (let k = 0; k < 14; k++) {
-          let d = ((t / 2600 + k / 14) % 1) * total;
+          let d = ((t / (2600 / (1 + 0.8 * m.batching)) + k / 14) % 1) * total;
           let seg = 1;
           while (seg < packetLens.length - 1 && packetLens[seg]! < d) seg++;
           const a0 = packetPath[seg - 1]!, a1 = packetPath[seg]!;

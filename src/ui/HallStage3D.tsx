@@ -100,6 +100,15 @@ export function HallStage3D({
       let prevTotal = model.total, prevWing = model.wing;
       let spawnFrom = 0, spawnStart = -1e9;
       let prevClaim = useGame.getState().claimBurst;
+      // A Rig Bay part bought → the crate dolly rolls in (same trigger as the 2D hall:
+      // the owned-copy total only grows when hardware arrives).
+      const partsOwned = (o: Record<string, number>) => {
+        let n = 0;
+        for (const v of Object.values(o)) n += v;
+        return n;
+      };
+      let prevParts = partsOwned(useGame.getState().game.components.owned);
+      let deliveryStart = -1e9;
       let burstStart = -1e9;
       const BURST_MS = 1100;
       let tapFlash: { index: number; start: number } | null = null;
@@ -192,6 +201,9 @@ export function HallStage3D({
         const game = st.game;
         if (st.claimBurst !== prevClaim) { prevClaim = st.claimBurst; burstStart = timeMs; }
         const burst = timeMs - burstStart < BURST_MS ? 1 - (timeMs - burstStart) / BURST_MS : 0;
+        const parts = partsOwned(game.components.owned);
+        if (parts > prevParts) deliveryStart = timeMs;
+        prevParts = parts;
 
         const sig = hallModelSig(game, wingRef.current);
         let rebuilt = false;
@@ -262,6 +274,7 @@ export function HallStage3D({
           spawnFrom,
           spawnMs: rm ? Infinity : timeMs - spawnStart,
           burst: rm ? 0 : burst,
+          deliveryMs: rm ? Infinity : timeMs - deliveryStart,
           rackSkin: useSettings.getState().rackSkin,
           ...(tapFlash && timeMs - tapFlash.start < 450 ? { tapFlash: { index: tapFlash.index, t: 1 - (timeMs - tapFlash.start) / 450 } } : {}),
         });

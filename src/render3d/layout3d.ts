@@ -210,6 +210,8 @@ export interface AgentPose {
   yaw: number;
   /** 0..1 how much the legs swing (walkers slow to a stop at each end). */
   stride?: number;
+  /** 0..1 arms raised overhead (an onlooker cheering). */
+  cheer?: number;
 }
 
 /** Deterministic per-frame pose for agent `i`: seated at their desk if they have one,
@@ -293,4 +295,101 @@ export function trainingWave(x: number, z: number, t: number, active: boolean, r
   const k = d - front;
   const w = Math.exp(-(k * k) / 2.2) + Math.exp(-((k + 30) * (k + 30)) / 2.2);
   return Math.min(1, w);
+}
+
+/** The ops bot's lane: just in front of the front row of racks. */
+export const BOT_LANE = 0.16;
+const BOT_SPEED = 0.0011; // tiles per ms (~1.1 tiles/s)
+const BOT_DWELL = 1800; // ms scanning each rack it stops at
+
+export interface BotPose {
+  x: number;
+  z: number;
+  /** Facing (0 = +Z). It faces the racks (π) while scanning. */
+  rotY: number;
+  /** Hover height above the floor. */
+  hover: number;
+  /** 0..1 progress of the current scan (0 = not scanning). */
+  scan: number;
+  /** Index into spec.racks of the rack being scanned, or -1. */
+  rack: number;
+}
+
+/** Auto-train made visible (the 2D "ops bot"): a little hover bot glides along the
+ *  front row of racks, stopping at each to scan it, then back the other way. Pure
+ *  function of (spec, model, clock). Under reduced motion it waits, parked, at the
+ *  left end of the lane, so owning the automation still shows. Null without it. */
+export function botPose(spec: Scene3DSpec, model: HallModel, t: number, reducedMotion: boolean): BotPose | null {
+  if (!model.autoBot || spec.racks.length === 0) return null;
+  const frontZ = Math.max(...spec.racks.map((r) => r.z));
+  const z = Math.min(spec.floor.z1, frontZ + 0.5) + BOT_LANE;
+  const parked: BotPose = { x: spec.floor.x0 + 0.3, z, rotY: 0, hover: 0.05, scan: 0, rack: -1 };
+  if (reducedMotion) return parked;
+  const stops = spec.racks
+    .map((r, i) => ({ x: r.x, i }))
+    .filter((_, i) => spec.racks[i]!.z === frontZ)
+    .sort((a, b) => a.x - b.x);
+  const hover = 0.06 + 0.018 * Math.sin(t / 420);
+  if (stops.length === 1) {
+    const s = stops[0]!;
+    return { x: s.x, z, rotY: Math.PI, hover, scan: (t % BOT_DWELL) / BOT_DWELL, rack: s.i };
+  }
+  // Ping-pong over the stops: 0, 1, … n−1, n−2, … 1, then round again.
+  const seq: number[] = [];
+  for (let k = 0; k < stops.length; k++) seq.push(k);
+  for (let k = stops.length - 2; k >= 1; k--) seq.push(k);
+  const legs = seq.map((from, j) => {
+    const to = seq[(j + 1) % seq.length]!;
+    return { from, to, travel: Math.abs(stops[to]!.x - stops[from]!.x) / BOT_SPEED };
+  });
+  const cycle = legs.reduce((s, l) => s + BOT_DWELL + l.travel, 0);
+  let u = ((t % cycle) + cycle) % cycle;
+  for (const leg of legs) {
+    const a = stops[leg.from]!, b = stops[leg.to]!;
+    if (u < BOT_DWELL) return { x: a.x, z, rotY: Math.PI, hover, scan: u / BOT_DWELL, rack: a.i };
+    u -= BOT_DWELL;
+    if (u < leg.travel) {
+      const p = u / leg.travel;
+      const e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+      // Turn from facing the racks to the travel heading and back (+X → π/2, −X → 3π/2,
+      // so the turn is always the short way round from π).
+      const heading = b.x >= a.x ? Math.PI / 2 : (3 * Math.PI) / 2;
+      const turn = Math.min(1, p / 0.2, (1 - p) / 0.2);
+      return { x: a.x + (b.x - a.x) * e, z, rotY: Math.PI + (heading - Math.PI) * turn, hover, scan: 0, rack: -1 };
+    }
+    u -= leg.travel;
+  }
+  return parked; // unreachable: u < cycle
+}
+
+/** Hype made visible (the 2D crowd): onlookers pressed against the lab's open front
+ *  edge while a good-tone event runs, turned in toward the floor. Every third one
+ *  cheers, arms up. They bob with excitement (still under reduced motion). */
+export function crowdPose(spec: Scene3DSpec, k: number, t: number, reducedMotion: boolean): AgentPose {
+  const { bay, floor } = spec;
+  const seed = ((k * 48271) % 997) / 997;
+  const w = bay.x1 - bay.x0;
+  const x = bay.x0 + 0.8 + seed * Math.max(0, w - 1.6);
+  const z = bay.z1 + 0.34 + (k % 2) * 0.3;
+  const cx = (floor.x0 + floor.x1) / 2;
+  const rotY = Math.atan2(cx - x, floor.z1 - z);
+  const cheer = k % 3 === 0 ? 1 : 0;
+  const bob = reducedMotion ? 0 : Math.abs(Math.sin(t / 210 + k * 1.9)) * (cheer ? 0.08 : 0.04);
+  return { x, z, lift: bob, rotY, seated: false, gait: reducedMotion ? 0 : t / 260 + k, yaw: 0, stride: 0, cheer };
+}
+
+/** A component purchase arriving (the 2D delivery dolly): a crate fades in at the
+ *  plinth's right edge, rolls along the front walkway and fades as it reaches the
+ *  racks. `ms` since the buy; null once it has arrived (or for any non-finite clock). */
+export const DELIVERY_MS = 1800;
+export function deliveryPose(spec: Scene3DSpec, ms: number): { x: number; z: number; alpha: number } | null {
+  if (!(ms >= 0) || ms >= DELIVERY_MS) return null;
+  const u = ms / DELIVERY_MS;
+  const e = 1 - Math.pow(1 - u, 3);
+  const { bay, floor } = spec;
+  const z = bay.z0 + WALK_Z + 0.1;
+  const x0 = bay.x1 - 0.25; // on the plinth, never floating past its edge
+  const x1 = floor.x0 + (floor.x1 - floor.x0) * 0.55;
+  const alpha = u < 0.1 ? u / 0.1 : u > 0.8 ? (1 - u) / 0.2 : 1;
+  return { x: x0 + (x1 - x0) * e, z, alpha };
 }
