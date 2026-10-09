@@ -7,6 +7,7 @@ import { dayPhase, spawnFromOnChange } from "../render/hallRenderer";
 import { products as PRODUCTS_BAL } from "../engine/balance/products";
 import type { GameState } from "../engine/types";
 import type { HallScene3D, Pick3D } from "../render3d/hallScene3d";
+import { nextDprCap, shouldRender } from "../render3d/quality";
 
 /**
  * The 3D hall stage (Phase 0 spike — WORLD_3D_PLAN.md). Same contract as the 2D
@@ -96,6 +97,10 @@ export function HallStage3D({
       let burstStart = -1e9;
       const BURST_MS = 1100;
       let tapFlash: { index: number; start: number } | null = null;
+      // Battery guards (render3d/quality.ts): adaptive pixel ratio + the still lab.
+      let dprCap = 2;
+      let paceAcc = 0, paceN = 0, prevTick = -1;
+      let lastRenderAt = -1e9;
       let lastLostCheck = 0;
       let lostChecks = 0;
       let labelNames = "";
@@ -107,7 +112,7 @@ export function HallStage3D({
       const resize = () => {
         cssW = Math.max(1, wrap.clientWidth);
         cssH = Math.max(1, wrap.clientHeight);
-        s3.resize(cssW, cssH, window.devicePixelRatio || 1);
+        s3.resize(cssW, cssH, Math.min(window.devicePixelRatio || 1, dprCap));
       };
       resize();
       const ro = new ResizeObserver(resize);
@@ -207,6 +212,24 @@ export function HallStage3D({
         prevWing = model.wing;
 
         const rm = reduceMotionNow();
+        const tapping = !!tapFlash && timeMs - tapFlash.start < 450;
+        const changed = rebuilt || tapping || burst > 0 || from !== null;
+        if (!shouldRender({ reducedMotion: rm, explore, changed, sinceLastMs: timeMs - lastRenderAt })) {
+          raf = requestAnimationFrame(frame);
+          return;
+        }
+        // Pace check (continuous rendering only): a device that can't hold ~30fps
+        // gets a lower pixel-ratio cap, a step at a time.
+        if (!rm || explore) {
+          if (prevTick > 0 && timeMs - prevTick < 1000) { paceAcc += timeMs - prevTick; paceN++; }
+          prevTick = timeMs;
+          if (paceN >= 90) {
+            const next = nextDprCap(dprCap, paceAcc / paceN);
+            paceAcc = paceN = 0;
+            if (next !== dprCap) { dprCap = next; resize(); }
+          }
+        }
+        lastRenderAt = timeMs;
         s3.frame({
           timeMs,
           reducedMotion: rm,
@@ -267,6 +290,7 @@ export function HallStage3D({
       const start = () => {
         if (running) return;
         running = true;
+        prevTick = -1; // a pause isn't a slow frame
         raf = requestAnimationFrame(frame);
       };
       const stop = () => {

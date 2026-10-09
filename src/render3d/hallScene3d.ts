@@ -13,8 +13,11 @@ import {
   Group,
   HemisphereLight,
   InstancedMesh,
+  LatheGeometry,
+  LineBasicMaterial,
   LineDashedMaterial,
   LineLoop,
+  LineSegments,
   Matrix4,
   Mesh,
   MeshBasicMaterial,
@@ -34,6 +37,7 @@ import {
   Scene,
   SphereGeometry,
   SRGBColorSpace,
+  TorusGeometry,
   TOUCH,
   Vector2,
   Vector3,
@@ -107,6 +111,8 @@ export interface HallScene3D {
 export class NoWebGLError extends Error {}
 
 type RGB = [number, number, number];
+/** A box by its floor rect, base height and height (+ optional instance colour). */
+type Bx = { r: Rect; y0: number; h: number; c?: RGB };
 
 const FLOOR_Y = 0.3; // the plinth top — everything stands on it
 const MAX_RACKS = 120;
@@ -130,7 +136,7 @@ const ERA_GROUND: RGB[] = [[38, 32, 46], [34, 30, 56], [40, 28, 56], [26, 40, 50
 const ERA_FLOOR: RGB[] = [[146, 140, 133], [164, 110, 72], [156, 106, 74], [160, 114, 78], [150, 104, 76], [226, 222, 238]];
 const ERA_BAY_RUG: RGB[] = [[201, 150, 92], [40, 150, 140], [128, 92, 206], [52, 150, 100], [64, 112, 214], [206, 112, 190]];
 const ROOM_RUGS: RGB[][] = [
-  [[60, 60, 66]], // garage: rubber mats
+  [[124, 120, 116]], // garage: worn anti-static mats on the concrete
   [[63, 45, 92], [29, 79, 85], [38, 58, 102], [90, 42, 58]],
   [[63, 45, 92], [29, 79, 85], [38, 58, 102], [90, 42, 58]],
   [[29, 79, 85], [38, 58, 102], [63, 45, 92], [90, 42, 58]],
@@ -143,6 +149,8 @@ const BEAM: RGB[] = [[63, 134, 240], [155, 81, 224], [52, 210, 126], [245, 180, 
 const SKIN: RGB[] = [[241, 204, 176], [214, 166, 128], [168, 116, 82], [120, 80, 56], [232, 190, 150]];
 const HAIR: RGB[] = [[40, 32, 30], [74, 52, 38], [20, 20, 24], [150, 104, 60], [196, 160, 110], [120, 60, 50]];
 const CHAIR: RGB[] = [[168, 195, 160], [232, 164, 99], [239, 230, 214], [143, 155, 179], [214, 132, 120]];
+/** Rig Bay part grades (matches the 2D hall): standard, enterprise, prototype. */
+const GRADE_GLOW: RGB[] = [[255, 228, 180], [255, 228, 180], [96, 224, 255], [208, 144, 255]];
 const LEAF: RGB[] = [[88, 150, 82], [70, 132, 74], [112, 168, 90], [60, 118, 70]];
 
 const pick = <T,>(a: T[], i: number): T => a[((i % a.length) + a.length) % a.length]!;
@@ -330,6 +338,78 @@ function lampPoleGeometry(): BufferGeometry {
   return merge([base, pole]);
 }
 
+/** A hyperboloid cooling tower (3.4 tall), lathed from its profile. */
+function coolingTowerGeometry(): BufferGeometry {
+  const pts: Vector2[] = [];
+  for (let k = 0; k <= 12; k++) {
+    const y = (k / 12) * 3.4;
+    const r = 0.62 * Math.sqrt(1 + ((y - 2.3) / 1.25) ** 2) * 0.82;
+    pts.push(new Vector2(r, y));
+  }
+  return new LatheGeometry(pts, 24);
+}
+
+/** A lattice transmission pylon: four tapered legs, three cross-arms, braces. */
+function pylonGeometry(): BufferGeometry {
+  const parts: BufferGeometry[] = [];
+  for (const [sx, sz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]] as const) {
+    const leg = new BoxGeometry(0.05, 3.6, 0.05);
+    leg.rotateZ(-sx * 0.07);
+    leg.rotateX(sz * 0.07);
+    leg.translate(sx * 0.2, 1.8, sz * 0.2);
+    parts.push(leg);
+  }
+  for (const [y, w] of [[2.6, 1.3], [3.1, 1.1], [3.42, 1.4]] as const) {
+    const arm = new BoxGeometry(w, 0.05, 0.06);
+    arm.translate(0, y, 0);
+    parts.push(arm);
+  }
+  for (let k = 0; k < 4; k++) {
+    const b = new BoxGeometry(0.03, 0.62, 0.03);
+    b.rotateZ(k % 2 ? 0.75 : -0.75);
+    b.translate(0, 0.5 + k * 0.62, 0.3 - k * 0.04);
+    parts.push(b);
+  }
+  return merge(parts);
+}
+
+/** The "+" on an expansion plot (two flat bars). */
+function plusGeometry(): BufferGeometry {
+  return merge([new BoxGeometry(0.44, 0.02, 0.07), new BoxGeometry(0.07, 0.02, 0.44)]);
+}
+
+/** A beanbag: a squashed blob, origin on the floor. */
+function beanbagGeometry(): BufferGeometry {
+  const g = new SphereGeometry(0.21, 16, 10);
+  g.scale(1, 0.58, 1);
+  g.translate(0, 0.11, 0);
+  return g;
+}
+
+/** A Rig Bay part's cooling fan: a ring and three blades, facing +Z. */
+function rigFanGeometry(): BufferGeometry {
+  const ring = new TorusGeometry(0.42, 0.07, 6, 20);
+  const parts: BufferGeometry[] = [ring];
+  for (let k = 0; k < 3; k++) {
+    const b = new BoxGeometry(0.62, 0.14, 0.04);
+    b.translate(0.22, 0, 0);
+    b.rotateZ((k * Math.PI * 2) / 3);
+    parts.push(b);
+  }
+  return merge(parts);
+}
+
+/** Accelerator heatsink: three glowing fins across a unit face. */
+function finGeometry(): BufferGeometry {
+  const parts: BufferGeometry[] = [];
+  for (const y of [-0.28, 0, 0.28]) {
+    const f = new BoxGeometry(0.82, 0.13, 1);
+    f.translate(0, y, 0);
+    parts.push(f);
+  }
+  return merge(parts);
+}
+
 // --- The scene ----------------------------------------------------------------------
 
 export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
@@ -398,6 +478,10 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
   gridTex.repeat.set(100, 100);
   const shadowMat = own(new MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false, color: 0xffffff }));
   const pickMat = own(new MeshBasicMaterial({ visible: false }));
+  const coolingTowerGeo = own(coolingTowerGeometry());
+  const pylonGeo = own(pylonGeometry());
+  const plusGeo = own(plusGeometry());
+  const beanbagGeo = own(beanbagGeometry());
 
   const inst = (geo: BufferGeometry, mat: Material, n: number, cast = false): InstancedMesh => {
     const m = new InstancedMesh(geo, mat, n);
@@ -452,7 +536,6 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
   deskAO.renderOrder = 1;
 
   // Planter strips + their leaves, potted plants, floor lamps (+ warm night pools).
-  const planterMat = own(new MeshStandardMaterial({ color: col([196, 160, 118]), roughness: 0.8 }));
   const leafGeo = own(new SphereGeometry(0.075, 8, 6));
   const leaves = inst(leafGeo, own(new MeshStandardMaterial({ color: 0xffffff, roughness: 0.85 })), MAX_LEAVES);
   const pots = inst(own(potGeometry()), own(new MeshStandardMaterial({ color: col([236, 232, 224]), roughness: 0.6 })), 8, true);
@@ -517,6 +600,24 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
   ring.visible = false;
   scene.add(ring);
 
+  // Cooling-tower steam (Frontier+) and the Singularity's spiral motes (era 5).
+  const steam = inst(own(new SphereGeometry(0.3, 10, 8)), own(new MeshBasicMaterial({ color: 0xf2f4fa, transparent: true, opacity: 0.38, depthWrite: false })), 18);
+  const orbits = inst(own(new SphereGeometry(0.045, 8, 6)), own(new MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: AdditiveBlending, depthWrite: false, toneMapped: false })), 28);
+
+  // Rig Bay ("Bare Metal") on each rack's left face: a socket per slot — dark and
+  // open when empty; fitted parts grow geometry by class (heatsink fins, a spinning
+  // fan, a lit cable trunk to the floor) glowing in their grade's colour.
+  const MAX_SLOTS = MAX_RACKS * 3;
+  const bayPlates = inst(unitBox, own(new MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, metalness: 0.3 })), MAX_SLOTS);
+  const bayFins = inst(own(finGeometry()), own(new MeshBasicMaterial({ color: 0xffffff, toneMapped: false })), MAX_RACKS);
+  const bayFans = inst(own(rigFanGeometry()), own(new MeshBasicMaterial({ color: 0xffffff, toneMapped: false })), MAX_RACKS);
+  const cableGeo = own(new CylinderGeometry(0.018, 0.018, 1, 6));
+  cableGeo.translate(0, 0.5, 0);
+  const bayCables = inst(cableGeo, own(new MeshBasicMaterial({ color: 0xffffff, toneMapped: false })), MAX_RACKS);
+  const bayPackets = inst(own(new SphereGeometry(0.035, 8, 6)), own(new MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: AdditiveBlending, depthWrite: false, toneMapped: false })), MAX_RACKS);
+  let rigFanSpots: { x: number; y: number; z: number; s: number }[] = [];
+  let rigCables: { x: number; y0: number; y1: number; z: number; c: RGB }[] = [];
+
   // Per-rebuild world (plinth, floors, walls, plots, beams, skyline, decor, lettering).
   let world = new Group();
   scene.add(world);
@@ -525,7 +626,10 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
   let worldTex: Texture[] = [];
   const wmat = <T extends Material>(m: T): T => { worldMats.push(m); return m; };
   const wgeo = <T extends BufferGeometry>(g: T): T => { worldGeos.push(g); return g; };
-  let beamMeshes: { core: Mesh; glow: Mesh }[] = [];
+  let beamCores: InstancedMesh | null = null;
+  let beamGlows: InstancedMesh | null = null;
+  let steamTops: { x: number; y: number; z: number; k: number }[] = [];
+  let halo: Mesh | null = null;
   let plotMeshes: { id: string; fill: Mesh; mat: MeshBasicMaterial; edgeMat: LineDashedMaterial; plusMat: MeshBasicMaterial }[] = [];
   let windowMat: MeshBasicMaterial | null = null;
   let groundMat: MeshStandardMaterial | null = null;
@@ -553,15 +657,6 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
   const dummy = new Object3D();
   const c = new Color();
 
-  const box = (r: Rect, y0: number, h: number, mat: Material, cast = false, receive = true): Mesh => {
-    const m = new Mesh(unitBox, mat);
-    m.scale.set(r.x1 - r.x0, h, r.z1 - r.z0);
-    m.position.set((r.x0 + r.x1) / 2, y0 + h / 2, (r.z0 + r.z1) / 2);
-    m.castShadow = cast;
-    m.receiveShadow = receive;
-    world.add(m);
-    return m;
-  };
   const plane = (r: Rect, y: number, mat: Material, layer = 0): Mesh => {
     // Stacked floor layers (floor → rug → strip) get a polygon offset per layer, so
     // they never z-fight however far the camera pulls back.
@@ -594,6 +689,25 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
     im.receiveShadow = cast;
     world.add(im);
   };
+  /** One instanced draw of coloured floor rects at height y (a rug layer). */
+  const planes = (list: { r: Rect; c: RGB }[], y: number, mat: Material, layer: number): void => {
+    if (list.length === 0) return;
+    mat.polygonOffset = true;
+    mat.polygonOffsetFactor = -layer;
+    mat.polygonOffsetUnits = -layer * 2;
+    const im = new InstancedMesh(unitPlane, mat, list.length);
+    list.forEach(({ r, c: tint }, i) => {
+      dummy.position.set((r.x0 + r.x1) / 2, y, (r.z0 + r.z1) / 2);
+      dummy.rotation.set(0, 0, 0);
+      dummy.scale.set(r.x1 - r.x0, 1, r.z1 - r.z0);
+      dummy.updateMatrix();
+      im.setMatrixAt(i, dummy.matrix);
+      im.setColorAt(i, setC(c, tint));
+    });
+    im.frustumCulled = false;
+    im.receiveShadow = true;
+    world.add(im);
+  };
   /** A flat sign lying on the ground: `dir` "x" reads along +X, "z" along −Z. */
   const lettering = (text: string, x: number, z: number, h: number, dir: "x" | "z"): void => {
     const { tex, aspect } = textTexture(text);
@@ -619,14 +733,18 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
     worldTex = [];
     world = new Group();
     scene.add(world);
-    beamMeshes = [];
+    beamCores = beamGlows = null;
+    steamTops = [];
+    halo = null;
     plotMeshes = [];
     letterMats = [];
     windowMat = null;
     skylineMat = null;
   }
 
-  /** Rebuild the static room. Runs only when the room changes. */
+  /** Rebuild the static room. Runs only when the room changes. Almost everything is
+   *  collected into a few instanced batches (one matte, one glowing, one rug layer),
+   *  so the room's architecture costs a handful of draw calls whatever the era. */
   function buildWorld(m: HallModel, s: Scene3DSpec): void {
     disposeWorld();
     const era = Math.max(0, Math.min(5, m.era));
@@ -635,6 +753,10 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
     const bayRug = pick(ERA_BAY_RUG, era);
     const rugs = pick(ROOM_RUGS, era);
     const F = s.floor, B = s.bay;
+    const H = s.wallH;
+    const T = 0.14;
+    const decor: Bx[] = []; // matte, per-instance colour, casts shadows
+    const glow: Bx[] = []; // unlit, per-instance colour
 
     // Ground + a fading two-tier grid (fog does the fade).
     groundMat = wmat(new MeshStandardMaterial({ color: col(ground), roughness: 0.95 }));
@@ -656,42 +778,44 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
     world.add(plinth);
     plane({ x0: F.x0 - 0.02, z0: F.z0, x1: F.x1, z1: B.z1 }, FLOOR_Y + 0.002, wmat(new MeshStandardMaterial({ color: col(floorC), roughness: 0.78 })));
 
-    // Rooms: a colour-blocked rug each (the Ralv signature); lit aisles between them.
-    s.rooms.forEach((r, i) => {
-      plane({ x0: r.x0 + 0.08, z0: r.z0 + 0.08, x1: r.x1 - 0.08, z1: r.z1 - 0.08 }, FLOOR_Y + 0.006, wmat(new MeshStandardMaterial({ color: col(pick(rugs, i)), roughness: 0.95 })), 1);
-    });
-    const stripMat = wmat(new MeshBasicMaterial({ color: col(mix(bayRug, [255, 255, 255], 0.45)), toneMapped: false }));
-    const glassMat = wmat(new MeshStandardMaterial({ color: col([206, 228, 255]), transparent: true, opacity: 0.18, roughness: 0.1, metalness: 0.1, depthWrite: false }));
-    const railMat = wmat(new MeshBasicMaterial({ color: col([235, 245, 255]), toneMapped: false }));
-    const glass: { r: Rect; y0: number; h: number }[] = [];
-    const rails: { r: Rect; y0: number; h: number }[] = [];
-    const strips: { r: Rect; y0: number; h: number }[] = [];
+    // Rugs (one instanced layer): a colour block per room — the Ralv signature — and
+    // the era's colour under the desks.
+    const rugList: { r: Rect; c: RGB }[] = s.rooms.map((r, i) => ({ r: { x0: r.x0 + 0.08, z0: r.z0 + 0.08, x1: r.x1 - 0.08, z1: r.z1 - 0.08 }, c: pick(rugs, i) }));
+    rugList.push({ r: { x0: B.x0 + 0.3, z0: B.z0 + 0.62, x1: B.x1 - 0.3, z1: B.z1 - 0.62 }, c: bayRug });
+    planes(rugList, FLOOR_Y + 0.006, wmat(new MeshStandardMaterial({ color: 0xffffff, roughness: 0.95 })), 1);
+
+    // Floor tiles: from the Scale-Up the rack floor is a raised data-hall floor; after
+    // the Singularity its seams glow.
+    if (era >= 2) {
+      const seam: number[] = [];
+      const y = FLOOR_Y + 0.009;
+      for (let x = F.x0 + 1; x < F.x1; x++) seam.push(x, y, F.z0, x, y, F.z1);
+      for (let z = F.z0 + 1; z < F.z1; z++) seam.push(F.x0, y, z, F.x1, y, z);
+      const seamGeo = wgeo(new BufferGeometry());
+      seamGeo.setAttribute("position", new BufferAttribute(new Float32Array(seam), 3));
+      const glowSeams = era >= 5;
+      world.add(new LineSegments(seamGeo, wmat(new LineBasicMaterial({ color: col(glowSeams ? [200, 170, 255] : shade(floorC, 1.35)), transparent: true, opacity: glowSeams ? 0.7 : 0.28, toneMapped: !glowSeams }))));
+    }
+
+    // Aisles: lit strips + low glass rails.
+    const glass: Bx[] = [];
     for (const a of s.aisles) {
       const vertical = a.x1 - a.x0 < a.z1 - a.z0;
       const cx = (a.x0 + a.x1) / 2, cz = (a.z0 + a.z1) / 2;
-      strips.push({ r: vertical ? { x0: cx - 0.025, z0: a.z0 + 0.15, x1: cx + 0.025, z1: a.z1 - 0.15 } : { x0: a.x0 + 0.15, z0: cz - 0.025, x1: a.x1 - 0.15, z1: cz + 0.025 }, y0: FLOOR_Y, h: 0.012 });
-      // Low glass rails along both edges of the walkway.
+      glow.push({ r: vertical ? { x0: cx - 0.025, z0: a.z0 + 0.15, x1: cx + 0.025, z1: a.z1 - 0.15 } : { x0: a.x0 + 0.15, z0: cz - 0.025, x1: a.x1 - 0.15, z1: cz + 0.025 }, y0: FLOOR_Y, h: 0.012, c: mix(bayRug, [255, 255, 255], 0.45) });
       for (const e of vertical ? [a.x0 + 0.06, a.x1 - 0.06] : [a.z0 + 0.06, a.z1 - 0.06]) {
         const r: Rect = vertical ? { x0: e - 0.012, z0: a.z0 + 0.1, x1: e + 0.012, z1: a.z1 - 0.1 } : { x0: a.x0 + 0.1, z0: e - 0.012, x1: a.x1 - 0.1, z1: e + 0.012 };
         glass.push({ r, y0: FLOOR_Y, h: 0.42 });
-        rails.push({ r, y0: FLOOR_Y + 0.42, h: 0.012 });
+        glow.push({ r, y0: FLOOR_Y + 0.42, h: 0.012, c: [235, 245, 255] });
       }
     }
-    boxes(strips, stripMat);
-    boxes(glass, glassMat);
-    boxes(rails, railMat);
-    // The ops bay: the era's colour block under the desks.
-    plane({ x0: B.x0 + 0.3, z0: B.z0 + 0.62, x1: B.x1 - 0.3, z1: B.z1 - 0.62 }, FLOOR_Y + 0.006, wmat(new MeshStandardMaterial({ color: col(bayRug), roughness: 0.95 })), 1);
+    boxes(glass, wmat(new MeshStandardMaterial({ color: col([206, 228, 255]), transparent: true, opacity: 0.18, roughness: 0.1, metalness: 0.1, depthWrite: false })));
 
-    // Cutaway walls (back two only), bevelled caps, AO where they meet the floor.
-    const T = 0.14;
-    const H = s.wallH;
-    const wallMat = wmat(new MeshStandardMaterial({ color: col(WALL), roughness: 0.92 }));
-    const capMat = wmat(new MeshStandardMaterial({ color: col(WALL_CAP), roughness: 0.7 }));
-    box({ x0: F.x0 - T, z0: F.z0 - T, x1: F.x1, z1: F.z0 }, FLOOR_Y, H, wallMat, true);
-    box({ x0: F.x0 - T, z0: F.z0, x1: F.x0, z1: B.z1 }, FLOOR_Y, H, wallMat, true);
-    box({ x0: F.x0 - T - 0.02, z0: F.z0 - T - 0.02, x1: F.x1 + 0.02, z1: F.z0 + 0.02 }, FLOOR_Y + H, 0.05, capMat);
-    box({ x0: F.x0 - T - 0.02, z0: F.z0, x1: F.x0 + 0.02, z1: B.z1 + 0.02 }, FLOOR_Y + H, 0.05, capMat);
+    // Cutaway walls (back two only) with bevelled caps; AO where they meet the floor.
+    decor.push({ r: { x0: F.x0 - T, z0: F.z0 - T, x1: F.x1, z1: F.z0 }, y0: FLOOR_Y, h: H, c: WALL });
+    decor.push({ r: { x0: F.x0 - T, z0: F.z0, x1: F.x0, z1: B.z1 }, y0: FLOOR_Y, h: H, c: WALL });
+    decor.push({ r: { x0: F.x0 - T - 0.02, z0: F.z0 - T - 0.02, x1: F.x1 + 0.02, z1: F.z0 + 0.02 }, y0: FLOOR_Y + H, h: 0.05, c: WALL_CAP });
+    decor.push({ r: { x0: F.x0 - T - 0.02, z0: F.z0, x1: F.x0 + 0.02, z1: B.z1 + 0.02 }, y0: FLOOR_Y + H, h: 0.05, c: WALL_CAP });
     const edgeMat = wmat(new MeshBasicMaterial({ map: edgeTex, transparent: true, depthWrite: false, color: 0xffffff }));
     const eb = new Mesh(unitPlane, edgeMat);
     eb.scale.set(F.x1 - F.x0, 1, 0.55);
@@ -706,47 +830,103 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
 
     // Clerestory windows (one instanced draw): pale by day, warm and lit at night.
     windowMat = wmat(new MeshBasicMaterial({ color: 0xffffff, toneMapped: false }));
-    const panes: Rect[] = [];
-    for (let x = F.x0 + 0.6; x < F.x1 - 0.4; x += 1.4) panes.push({ x0: x, z0: F.z0 + 0.001, x1: x + 0.9, z1: F.z0 + 0.02 });
-    for (let z = F.z0 + 0.6; z < B.z1 - 0.4; z += 1.4) panes.push({ x0: F.x0 + 0.001, z0: z, x1: F.x0 + 0.02, z1: z + 0.9 });
-    const win = new InstancedMesh(unitBox, windowMat, Math.max(1, panes.length));
-    panes.forEach((r, i) => {
-      dummy.position.set((r.x0 + r.x1) / 2, FLOOR_Y + H * 0.74, (r.z0 + r.z1) / 2);
-      dummy.rotation.set(0, 0, 0);
-      dummy.scale.set(r.x1 - r.x0, H * 0.22, r.z1 - r.z0);
-      dummy.updateMatrix();
-      win.setMatrixAt(i, dummy.matrix);
-    });
-    win.count = panes.length;
-    win.frustumCulled = false;
-    world.add(win);
+    const panes: Bx[] = [];
+    for (let x = F.x0 + 0.6; x < F.x1 - 0.4; x += 1.4) panes.push({ r: { x0: x, z0: F.z0 + 0.001, x1: x + 0.9, z1: F.z0 + 0.02 }, y0: FLOOR_Y + H * 0.63, h: H * 0.22 });
+    for (let z = F.z0 + 0.6; z < B.z1 - 0.4; z += 1.4) panes.push({ r: { x0: F.x0 + 0.001, z0: z, x1: F.x0 + 0.02, z1: z + 0.9 }, y0: FLOOR_Y + H * 0.63, h: H * 0.22 });
+    boxes(panes, windowMat);
 
-    // Wall decor: a whiteboard over the bay, the charter banner, the Legacy shelf.
+    // Wall over the bay: a pegboard of tools in the garage, a whiteboard with sticky
+    // notes once the lab is funded.
     const boardZ = (B.z0 + B.z1) / 2;
-    box({ x0: F.x0 + 0.001, z0: boardZ - 0.55, x1: F.x0 + 0.03, z1: boardZ + 0.55 }, FLOOR_Y + 0.75, 0.62, wmat(new MeshStandardMaterial({ color: col([250, 250, 252]), roughness: 0.3 })));
-    box({ x0: F.x0 + 0.001, z0: boardZ - 0.58, x1: F.x0 + 0.025, z1: boardZ + 0.58 }, FLOOR_Y + 0.72, 0.03, capMat);
+    const wallX = (x: number, w: number): Rect => ({ x0: F.x0 + x, z0: 0, x1: F.x0 + x + w, z1: 0 });
+    const onLeftWall = (z0: number, z1: number, x: number, w: number): Rect => ({ ...wallX(x, w), z0, z1 });
+    if (era === 0) {
+      decor.push({ r: onLeftWall(boardZ - 0.6, boardZ + 0.6, 0.001, 0.03), y0: FLOOR_Y + 0.7, h: 0.72, c: [190, 150, 106] });
+      for (const [dz, dy, w, h] of [[-0.4, 0.2, 0.06, 0.32], [-0.36, 0.42, 0.18, 0.06], [-0.1, 0.18, 0.05, 0.36], [0.14, 0.3, 0.22, 0.05], [0.18, 0.15, 0.05, 0.2], [0.4, 0.22, 0.05, 0.38]] as const) {
+        decor.push({ r: onLeftWall(boardZ + dz - w / 2, boardZ + dz + w / 2, 0.03, 0.035), y0: FLOOR_Y + 0.7 + dy, h, c: [74, 80, 94] });
+      }
+    } else {
+      decor.push({ r: onLeftWall(boardZ - 0.58, boardZ + 0.58, 0.001, 0.025), y0: FLOOR_Y + 0.72, h: 0.03, c: WALL_CAP });
+      decor.push({ r: onLeftWall(boardZ - 0.55, boardZ + 0.55, 0.001, 0.03), y0: FLOOR_Y + 0.75, h: 0.62, c: [250, 250, 252] });
+      ([[-0.36, 0.38, [252, 226, 120]], [-0.2, 0.18, [255, 170, 200]], [0.02, 0.36, [150, 220, 255]], [0.28, 0.22, [252, 226, 120]]] as const).forEach(([dz, dy, cc]) => {
+        decor.push({ r: onLeftWall(boardZ + dz - 0.06, boardZ + dz + 0.06, 0.03, 0.006), y0: FLOOR_Y + 0.75 + dy, h: 0.12, c: [cc[0], cc[1], cc[2]] });
+      });
+    }
+
+    // The Garage Closet's own architecture: a roller door, a shelf of boxes.
+    if (era === 0) {
+      const dw = Math.min(2.2, (F.x1 - F.x0) * 0.42);
+      const dx = F.x0 + (F.x1 - F.x0) * 0.64;
+      decor.push({ r: { x0: dx - dw / 2, z0: F.z0, x1: dx + dw / 2, z1: F.z0 + 0.03 }, y0: FLOOR_Y, h: 1.55, c: [184, 188, 194] });
+      for (let k = 0; k < 9; k++) decor.push({ r: { x0: dx - dw / 2 + 0.02, z0: F.z0 + 0.03, x1: dx + dw / 2 - 0.02, z1: F.z0 + 0.05 }, y0: FLOOR_Y + 0.1 + k * 0.165, h: 0.03, c: [152, 157, 166] });
+      decor.push({ r: { x0: dx - dw / 2 - 0.06, z0: F.z0, x1: dx + dw / 2 + 0.06, z1: F.z0 + 0.12 }, y0: FLOOR_Y + 1.55, h: 0.18, c: [112, 118, 128] });
+      const sx = F.x0 + 0.3, sw = Math.min(1.5, (F.x1 - F.x0) * 0.28);
+      decor.push({ r: { x0: sx, z0: F.z0, x1: sx + sw, z1: F.z0 + 0.26 }, y0: FLOOR_Y + 1.32, h: 0.04, c: [150, 110, 72] });
+      ([[0.05, 0.36, 0.26], [0.45, 0.3, 0.2], [0.8, 0.4, 0.3], [1.22, 0.24, 0.16]] as const).forEach(([ox, w, h]) => {
+        if (ox + w <= sw) decor.push({ r: { x0: sx + ox, z0: F.z0 + 0.03, x1: sx + ox + w, z1: F.z0 + 0.24 }, y0: FLOOR_Y + 1.36, h, c: [198, 152, 100] });
+      });
+    }
+
+    // The bay's front-right corner tells the lab's story: a mattress in the garage
+    // (founded in a garage, rented hourly), beanbags at the funded startup.
+    const cx0 = B.x1 - 0.62, cz0 = B.z1 - 0.34;
+    if (era === 0) {
+      decor.push({ r: { x0: cx0 - 0.5, z0: cz0 - 0.24, x1: cx0 + 0.5, z1: cz0 + 0.24 }, y0: FLOOR_Y, h: 0.12, c: [236, 230, 218] });
+      decor.push({ r: { x0: cx0 + 0.24, z0: cz0 - 0.18, x1: cx0 + 0.46, z1: cz0 + 0.18 }, y0: FLOOR_Y + 0.12, h: 0.07, c: [250, 250, 252] });
+      decor.push({ r: { x0: cx0 - 0.5, z0: cz0 - 0.25, x1: cx0 + 0.1, z1: cz0 + 0.25 }, y0: FLOOR_Y + 0.12, h: 0.03, c: [96, 124, 196] });
+    } else if (era === 1) {
+      const bags = new InstancedMesh(beanbagGeo, wmat(new MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 })), 2);
+      ([[cx0 - 0.2, cz0, [232, 120, 92]], [cx0 + 0.28, cz0 - 0.06, [98, 176, 160]]] as const).forEach(([x, z, cc], i) => {
+        dummy.position.set(x, FLOOR_Y, z);
+        dummy.rotation.set(0, i * 0.8, 0);
+        dummy.scale.set(1, 1, 1);
+        dummy.updateMatrix();
+        bags.setMatrixAt(i, dummy.matrix);
+        bags.setColorAt(i, setC(c, [cc[0], cc[1], cc[2]]));
+      });
+      bags.castShadow = true;
+      world.add(bags);
+    }
+
+    // From the Scale-Up: cable ladder trays along the top of both walls.
+    if (era >= 2) {
+      const ty = FLOOR_Y + H - 0.34;
+      const rail: RGB = [150, 156, 168];
+      decor.push({ r: { x0: F.x0, z0: F.z0, x1: F.x1, z1: F.z0 + 0.03 }, y0: ty, h: 0.05, c: rail });
+      decor.push({ r: { x0: F.x0, z0: F.z0 + 0.3, x1: F.x1, z1: F.z0 + 0.33 }, y0: ty, h: 0.05, c: rail });
+      decor.push({ r: { x0: F.x0, z0: F.z0, x1: F.x0 + 0.03, z1: F.z1 }, y0: ty, h: 0.05, c: rail });
+      decor.push({ r: { x0: F.x0 + 0.3, z0: F.z0, x1: F.x0 + 0.33, z1: F.z1 }, y0: ty, h: 0.05, c: rail });
+      for (let x = F.x0 + 0.35; x < F.x1 - 0.1; x += 0.36) decor.push({ r: { x0: x, z0: F.z0, x1: x + 0.03, z1: F.z0 + 0.33 }, y0: ty, h: 0.02, c: rail });
+      for (let z = F.z0 + 0.35; z < F.z1 - 0.1; z += 0.36) decor.push({ r: { x0: F.x0, z0: z, x1: F.x0 + 0.33, z1: z + 0.03 }, y0: ty, h: 0.02, c: rail });
+      ([[70, 120, 220], [235, 190, 60], [210, 80, 80]] as const).forEach((cc, k) => {
+        const o = 0.08 + k * 0.08;
+        decor.push({ r: { x0: F.x0 + 0.33, z0: F.z0 + o, x1: F.x1, z1: F.z0 + o + 0.04 }, y0: ty + 0.02, h: 0.04, c: [cc[0], cc[1], cc[2]] });
+        decor.push({ r: { x0: F.x0 + o, z0: F.z0 + 0.33, x1: F.x0 + o + 0.04, z1: F.z1 }, y0: ty + 0.02, h: 0.04, c: [cc[0], cc[1], cc[2]] });
+      });
+    }
+
+    // The charter, hung on the back wall; the Legacy shelf on the left.
     if (m.charter) {
-      const bx = (F.x0 + F.x1) / 2;
-      box({ x0: bx - 0.42, z0: F.z0 + 0.001, x1: bx + 0.42, z1: F.z0 + 0.03 }, FLOOR_Y + H * 0.2, H * 0.5, wmat(new MeshStandardMaterial({ color: col(mix(bayRug, [40, 30, 60], 0.35)), roughness: 0.9 })));
-      box({ x0: bx - 0.46, z0: F.z0 + 0.001, x1: bx + 0.46, z1: F.z0 + 0.05 }, FLOOR_Y + H * 0.7, 0.04, wmat(new MeshStandardMaterial({ color: col([200, 170, 90]), roughness: 0.3, metalness: 0.6 })));
+      const bx = F.x0 + (F.x1 - F.x0) * 0.3;
+      decor.push({ r: { x0: bx - 0.42, z0: F.z0 + 0.001, x1: bx + 0.42, z1: F.z0 + 0.03 }, y0: FLOOR_Y + H * 0.2, h: H * 0.42, c: mix(bayRug, [40, 30, 60], 0.35) });
+      decor.push({ r: { x0: bx - 0.46, z0: F.z0 + 0.001, x1: bx + 0.46, z1: F.z0 + 0.05 }, y0: FLOOR_Y + H * 0.62, h: 0.04, c: [200, 170, 90] });
     }
     if (m.wall.length > 0) {
       const z0 = F.z0 + 0.5, step = Math.min(0.62, (F.z1 - F.z0 - 1) / Math.max(1, m.wall.length));
-      box({ x0: F.x0, z0: z0 - 0.25, x1: F.x0 + 0.2, z1: z0 + step * m.wall.length - 0.05 }, FLOOR_Y + H * 0.45, 0.04, capMat);
-      // Trophies: a gold base each, topped by a glowing core sized by that
-      // generation's banked Legacy (the shape of a career, not eight equal prizes).
-      const bases: { r: Rect; y0: number; h: number }[] = [];
-      const cores: { r: Rect; y0: number; h: number; c: RGB }[] = [];
+      const sy = FLOOR_Y + H * 0.45;
+      decor.push({ r: { x0: F.x0, z0: z0 - 0.25, x1: F.x0 + 0.2, z1: z0 + step * m.wall.length - 0.05 }, y0: sy, h: 0.04, c: WALL_CAP });
+      // A gold trophy per shipped generation, its core sized by the Legacy it banked
+      // (the shape of a career, not eight identical prizes).
       m.wall.forEach((w, i) => {
         const tz = z0 + i * step;
         const k = 0.04 * Math.max(0.6, Math.min(1.4, (w.mag ?? 3) / 4));
-        const y = FLOOR_Y + H * 0.45 + 0.04;
-        bases.push({ r: { x0: F.x0 + 0.05, z0: tz - 0.05, x1: F.x0 + 0.15, z1: tz + 0.05 }, y0: y, h: 0.1 });
-        cores.push({ r: { x0: F.x0 + 0.1 - k, z0: tz - k, x1: F.x0 + 0.1 + k, z1: tz + k }, y0: y + 0.12, h: k * 2, c: w.asc ? [215, 170, 255] : pick(BEAM, w.era) });
+        decor.push({ r: { x0: F.x0 + 0.05, z0: tz - 0.05, x1: F.x0 + 0.15, z1: tz + 0.05 }, y0: sy + 0.04, h: 0.1, c: [214, 178, 92] });
+        glow.push({ r: { x0: F.x0 + 0.1 - k, z0: tz - k, x1: F.x0 + 0.1 + k, z1: tz + k }, y0: sy + 0.16, h: k * 2, c: w.asc ? [215, 170, 255] : pick(BEAM, w.era) });
       });
-      boxes(bases, wmat(new MeshStandardMaterial({ color: col([214, 178, 92]), roughness: 0.25, metalness: 0.7 })));
-      boxes(cores, wmat(new MeshBasicMaterial({ color: 0xffffff, toneMapped: false })));
     }
+
+    // Planter strips between paired desks.
+    for (const p of s.planters) decor.push({ r: p, y0: FLOOR_Y + 0.38, h: 0.12, c: [196, 160, 118] });
 
     // Cooling units on both walls; their fans spin (frame()).
     fanSpots = [];
@@ -768,39 +948,92 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
     coolers.count = cu;
     coolers.instanceMatrix.needsUpdate = true;
 
-    // The horizon race: rival datacenters beyond the back wall (fog makes them hazy).
-    const towers: { r: Rect; y0: number; h: number; c: RGB }[] = [];
-    const crowns: { r: Rect; y0: number; h: number; c: RGB }[] = [];
+    // Campus growth beyond the walls (tall enough to read over them).
+    steamTops = [];
+    if (era >= 3) {
+      // Cooling towers behind the back-right corner, steaming (frame()).
+      const spots: [number, number, number][] = [[F.x1 - 1.1, F.z0 - 2.8, 1]];
+      if (era >= 4) spots.push([F.x1 + 1.5, F.z0 - 1.6, 0.85]);
+      const towersIM = new InstancedMesh(coolingTowerGeo, wmat(new MeshStandardMaterial({ color: col([206, 200, 192]), roughness: 0.85 })), spots.length);
+      spots.forEach(([x, z, k], i) => {
+        dummy.position.set(x, 0, z);
+        dummy.rotation.set(0, 0, 0);
+        dummy.scale.setScalar(k);
+        dummy.updateMatrix();
+        towersIM.setMatrixAt(i, dummy.matrix);
+        steamTops.push({ x, y: 3.4 * k, z, k });
+      });
+      towersIM.castShadow = true;
+      world.add(towersIM);
+    }
+    if (era >= 4) {
+      // Transmission pylons marching to the horizon behind the left wall, wired in.
+      const pz = [F.z1 - 0.5, F.z0 - 3, F.z0 - 8.5, F.z0 - 14];
+      const px = F.x0 - 2.2;
+      const pylons = new InstancedMesh(pylonGeo, wmat(new MeshStandardMaterial({ color: col([150, 156, 170]), roughness: 0.5, metalness: 0.4 })), pz.length);
+      const wire: number[] = [];
+      pz.forEach((z, i) => {
+        dummy.position.set(px, 0, z);
+        dummy.rotation.set(0, 0, 0);
+        dummy.scale.set(1, 1, 1);
+        dummy.updateMatrix();
+        pylons.setMatrixAt(i, dummy.matrix);
+        const next = pz[i + 1];
+        if (next !== undefined) for (const ax of [-0.62, 0.62]) wire.push(px + ax, 3.42, z, px + ax, 3.42, next);
+      });
+      for (const ax of [-0.62, 0.62]) wire.push(px + ax, 3.42, pz[0]!, F.x0 - T, FLOOR_Y + H, F.z1 - 0.4);
+      const wireGeo = wgeo(new BufferGeometry());
+      wireGeo.setAttribute("position", new BufferAttribute(new Float32Array(wire), 3));
+      world.add(pylons, new LineSegments(wireGeo, wmat(new LineBasicMaterial({ color: col([40, 44, 56]) }))));
+    }
+    halo = null;
+    if (era >= 5) {
+      // The Singularity: an iridescent ring hanging over the lab, motes spiralling up
+      // through it (the 2D hall's vortex, in the round). Animated in frame().
+      const span = Math.min(F.x1 - F.x0, F.z1 - F.z0);
+      const ring = new Mesh(wgeo(new TorusGeometry(Math.max(1.2, span * 0.3), 0.05, 10, 120)), wmat(new MeshBasicMaterial({ color: 0xffffff, toneMapped: false })));
+      ring.position.set((F.x0 + F.x1) / 2, FLOOR_Y + H + 1.7, (F.z0 + F.z1) / 2);
+      ring.rotation.x = Math.PI / 2;
+      world.add(ring);
+      halo = ring;
+    }
+
+    // The horizon race: rival datacenters, far off and hazy, yours among them.
+    const towers: Bx[] = [];
     m.skyline.forEach((tw, i) => {
       const n = m.skyline.length;
       const x = F.x0 - 6 + ((i + 0.5) / n) * (F.x1 - F.x0 + 14);
       const z = F.z0 - 12 - (i % 3) * 3;
       const h = 2 + tw.h * 6;
       const r: Rect = { x0: x - 1, z0: z - 1, x1: x + 1, z1: z + 1 };
-      // Flat, hazy silhouettes close to the ground colour: they read as distance.
       towers.push({ r, y0: 0, h, c: tw.you ? mix(ground, [150, 120, 240], 0.3) : mix(ground, [150, 160, 195], tw.dim ? 0.06 : 0.13) });
-      crowns.push({ r: { x0: r.x0 - 0.02, z0: r.z0 - 0.02, x1: r.x1 + 0.02, z1: r.z1 + 0.02 }, y0: h - 0.25, h: 0.14, c: tw.you ? [205, 175, 255] : tw.dim ? [80, 80, 100] : [160, 190, 235] });
+      glow.push({ r: { x0: r.x0 - 0.02, z0: r.z0 - 0.02, x1: r.x1 + 0.02, z1: r.z1 + 0.02 }, y0: h - 0.25, h: 0.14, c: tw.you ? [205, 175, 255] : tw.dim ? [80, 80, 100] : [160, 190, 235] });
     });
     skylineMat = wmat(new MeshBasicMaterial({ color: 0xffffff }));
     boxes(towers, skylineMat);
-    boxes(crowns, wmat(new MeshBasicMaterial({ color: 0xffffff, toneMapped: false })));
 
-    // Planter strips between paired desks.
-    for (const p of s.planters) box(p, FLOOR_Y + 0.38, 0.12, planterMat, true);
-
-    // Beam columns (one per live product).
-    s.beams.forEach((b, i) => {
-      const bc = pick(BEAM, i);
-      const add = { transparent: true, vertexColors: true, blending: AdditiveBlending, depthWrite: false, toneMapped: false } as const;
-      const core = new Mesh(beamCore, wmat(new MeshBasicMaterial({ color: col(bc), opacity: 0.9, ...add })));
-      const glow = new Mesh(beamGlow, wmat(new MeshBasicMaterial({ color: col(bc), opacity: 0.35, ...add })));
-      const node = new Mesh(unitPlane, wmat(new MeshBasicMaterial({ map: blobTex, color: col(bc), transparent: true, depthWrite: false, blending: AdditiveBlending, toneMapped: false })));
-      node.scale.set(0.7, 1, 0.7);
-      for (const o of [core, glow]) o.position.set(b.x, FLOOR_Y, b.z);
-      node.position.set(b.x, FLOOR_Y + 0.014, b.z);
-      world.add(core, glow, node);
-      beamMeshes.push({ core, glow });
-    });
+    // Product beams: three instanced draws however many products (frame() sizes them).
+    const nb = s.beams.length;
+    if (nb > 0) {
+      const add = { transparent: true, blending: AdditiveBlending, depthWrite: false, toneMapped: false } as const;
+      beamCores = new InstancedMesh(beamCore, wmat(new MeshBasicMaterial({ color: 0xffffff, vertexColors: true, ...add })), nb);
+      beamGlows = new InstancedMesh(beamGlow, wmat(new MeshBasicMaterial({ color: 0xffffff, vertexColors: true, ...add })), nb);
+      const nodes = new InstancedMesh(unitPlane, wmat(new MeshBasicMaterial({ map: blobTex, color: 0xffffff, ...add })), nb);
+      s.beams.forEach((b, i) => {
+        dummy.position.set(b.x, FLOOR_Y + 0.014, b.z);
+        dummy.rotation.set(0, 0, 0);
+        dummy.scale.set(0.7, 1, 0.7);
+        dummy.updateMatrix();
+        nodes.setMatrixAt(i, dummy.matrix);
+        nodes.setColorAt(i, setC(c, pick(BEAM, i)));
+      });
+      for (const im of [beamCores, beamGlows, nodes]) {
+        im.frustumCulled = false;
+        world.add(im);
+      }
+    } else {
+      beamCores = beamGlows = null;
+    }
 
     // Expansion plots: a ghost lot past the open edge, "+" in the middle.
     for (const p of s.plots) {
@@ -813,10 +1046,10 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
       const edge = new LineLoop(edgeGeo, edgeMat);
       edge.computeLineDistances();
       world.add(edge);
-      const cx = (r.x0 + r.x1) / 2, cz = (r.z0 + r.z1) / 2;
       const plusMat = wmat(new MeshBasicMaterial({ color: col(accent), transparent: true, opacity: 0.9, toneMapped: false }));
-      box({ x0: cx - 0.22, z0: cz - 0.035, x1: cx + 0.22, z1: cz + 0.035 }, 0.03, 0.02, plusMat, false, false);
-      box({ x0: cx - 0.035, z0: cz - 0.22, x1: cx + 0.035, z1: cz + 0.22 }, 0.03, 0.02, plusMat, false, false);
+      const plus = new Mesh(plusGeo, plusMat);
+      plus.position.set((r.x0 + r.x1) / 2, 0.04, (r.z0 + r.z1) / 2);
+      world.add(plus);
       fill.userData.plot = p.id;
       plotMeshes.push({ id: p.id, fill, mat, edgeMat, plusMat });
     }
@@ -826,6 +1059,10 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
     const outX = Math.max(F.x1, ...s.plots.filter((p) => p.dir === "e").map((p) => p.rect.x1)) + 0.25;
     lettering(`${WING_NAME(m.wing)} · ${m.total} ${m.total === 1 ? "RACK" : "RACKS"}`, F.x0, outZ + 0.45, 0.7, "x");
     lettering(`OPS · ${m.staff} STAFF`, outX + 0.45, B.z1, 0.7, "z");
+
+    // The two batches.
+    boxes(decor, wmat(new MeshStandardMaterial({ color: 0xffffff, roughness: 0.82 })), true);
+    boxes(glow, wmat(new MeshBasicMaterial({ color: 0xffffff, toneMapped: false })));
 
     // Sun + shadow frustum fitted to the building.
     const cx = (s.bounds.x0 + s.bounds.x1) / 2, cz = (s.bounds.z0 + s.bounds.z1) / 2;
@@ -870,6 +1107,63 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
     for (const im of [rackBody, rackPanel, rackLeds, rackAO, podCaps]) im.instanceMatrix.needsUpdate = true;
     if (podCaps.instanceColor) podCaps.instanceColor.needsUpdate = true;
     rackBody.computeBoundingSphere();
+
+    // Rig Bay sockets on each rack's left (+Z) face, top slot first (as in 2D).
+    let np = 0, nf = 0, nfan = 0, nc = 0;
+    rigFanSpots = [];
+    rigCables = [];
+    if (m.rigs) {
+      s.racks.forEach((r, i) => {
+        const slots = m.rigs?.[r.tier];
+        if (!slots || slots.length === 0) return;
+        const foot = TIER_FOOT[r.tier] ?? 1;
+        const k = i >= spawnFrom && spawnT < 1 ? Math.max(0.001, grow) : 1;
+        const h = r.h * k;
+        const face = r.z + 0.33 * foot + 0.02;
+        const tierShade = shade(skinTint(pick(TIER, r.tier), lastSkin), 0.42);
+        slots.forEach((slot, j) => {
+          const v = 0.7 - j * 0.26;
+          const y = FLOOR_Y + h * v;
+          const w = 0.42 * foot, ph = Math.min(0.17 * h, 0.16);
+          dummy.rotation.set(0, 0, 0);
+          dummy.position.set(r.x, y, face);
+          dummy.scale.set(w, ph, 0.035);
+          dummy.updateMatrix();
+          bayPlates.setMatrixAt(np, dummy.matrix);
+          bayPlates.setColorAt(np, setC(c, slot.grade === 0 ? [10, 12, 18] : tierShade));
+          np++;
+          if (slot.grade === 0) return;
+          const gc = pick(GRADE_GLOW, slot.grade);
+          if (slot.cls === "accelerator") {
+            dummy.position.set(r.x, y, face + 0.02);
+            dummy.scale.set(w, ph, 0.012);
+            dummy.updateMatrix();
+            bayFins.setMatrixAt(nf, dummy.matrix);
+            bayFins.setColorAt(nf, setC(c, gc));
+            nf++;
+          } else if (slot.cls === "cooling") {
+            rigFanSpots.push({ x: r.x, y, z: face + 0.022, s: ph * 0.9 });
+            bayFans.setColorAt(nfan, setC(c, gc));
+            nfan++;
+          } else {
+            const z = face + 0.05;
+            dummy.position.set(r.x + w * 0.3, FLOOR_Y, z);
+            dummy.scale.set(1, Math.max(0.01, y - ph / 2 - FLOOR_Y), 1);
+            dummy.updateMatrix();
+            bayCables.setMatrixAt(nc, dummy.matrix);
+            bayCables.setColorAt(nc, setC(c, gc, 0.55));
+            rigCables.push({ x: r.x + w * 0.3, y0: FLOOR_Y, y1: y - ph / 2, z, c: gc });
+            nc++;
+          }
+        });
+      });
+    }
+    bayPlates.count = np;
+    bayFins.count = nf;
+    bayFans.count = nfan;
+    bayCables.count = nc;
+    for (const im of [bayPlates, bayFins, bayCables]) im.instanceMatrix.needsUpdate = true;
+    for (const im of [bayPlates, bayFins, bayFans, bayCables]) if (im.instanceColor) im.instanceColor.needsUpdate = true;
 
     // Desks + chairs + monitors + screens + keyboards. side +1: sitter on the front
     // (camera) side facing −Z; side −1: sitter on the back side facing +Z.
@@ -930,10 +1224,12 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
     leaves.instanceMatrix.needsUpdate = true;
     if (leaves.instanceColor) leaves.instanceColor.needsUpdate = true;
 
-    // Potted plants, floor lamps, and their contact shadows.
+    // Potted plants, floor lamps, and their contact shadows. In the Garage and the
+    // Startup the front-right corner holds the mattress / beanbags instead.
     let ao = 0;
-    pots.count = foliage.count = s.plants.length;
-    s.plants.forEach((p, i) => {
+    const plants = m.era <= 1 ? s.plants.filter((_, i) => i !== 2) : s.plants;
+    pots.count = foliage.count = plants.length;
+    plants.forEach((p, i) => {
       dummy.position.set(p.x, FLOOR_Y, p.z);
       dummy.rotation.set(0, i * 1.7, 0);
       dummy.scale.setScalar(p.s);
@@ -1131,6 +1427,7 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
       if (f.rackSkin !== lastSkin) {
         lastSkin = f.rackSkin;
         rackColors(m, lastSkin);
+        staticsDirty = true; // Rig Bay plates take the skinned tier colour too
       }
       const spawning = f.spawnT < 1;
       if (staticsDirty || spawning) {
@@ -1210,18 +1507,26 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
       for (const im of [bodies, heads, hair, legs, arms, agentProxy, blobs]) im.instanceMatrix.needsUpdate = true;
 
       // Beams + rising pulses (launch buzz surges; batching speeds; monetize gilds).
+      // Instanced: brightness stands in for opacity (additive blending).
       let pn = 0;
-      beamMeshes.forEach((bm, i) => {
-        const b = s.beams[i];
-        if (!b) return;
+      s.beams.forEach((b, i) => {
         const buzz = m.beamBuzz[i] ?? 0;
         const inten = Math.min(1.1, (m.beams[i] ?? 0.2) * (1 + 0.45 * buzz));
         const flick = rm ? 1 : 0.88 + 0.12 * Math.sin(t / 260 + i * 1.3) + buzz * 0.2 * (0.5 + 0.5 * Math.sin(t / 110 + i));
         const h = 2.6 + 5.5 * inten;
-        bm.core.scale.set(1, h, 1);
-        bm.glow.scale.set(1 + buzz * 0.6, h * 0.92, 1 + buzz * 0.6);
-        (bm.core.material as MeshBasicMaterial).opacity = 0.8 * flick;
-        (bm.glow.material as MeshBasicMaterial).opacity = (0.22 + 0.25 * buzz) * flick;
+        const bc = pick(BEAM, i);
+        if (beamCores && beamGlows) {
+          dummy.position.set(b.x, FLOOR_Y, b.z);
+          dummy.rotation.set(0, 0, 0);
+          dummy.scale.set(1, h, 1);
+          dummy.updateMatrix();
+          beamCores.setMatrixAt(i, dummy.matrix);
+          beamCores.setColorAt(i, setC(c, bc, 0.8 * flick));
+          dummy.scale.set(1 + buzz * 0.6, h * 0.92, 1 + buzz * 0.6);
+          dummy.updateMatrix();
+          beamGlows.setMatrixAt(i, dummy.matrix);
+          beamGlows.setColorAt(i, setC(c, bc, (0.22 + 0.25 * buzz) * flick));
+        }
         if (!rm && (m.batching > 0.001 || m.monetize > 0.001 || buzz > 0.04)) {
           const speed = 1 + m.batching * 2.4;
           const count = buzz > 0.04 ? 4 : 2;
@@ -1233,11 +1538,16 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
             dummy.rotation.set(0, 0, 0);
             dummy.updateMatrix();
             pulses.setMatrixAt(pn, dummy.matrix);
-            pulses.setColorAt(pn, setC(c, mix(pick(BEAM, i), [255, 205, 70], m.monetize), 1 - ph));
+            pulses.setColorAt(pn, setC(c, mix(bc, [255, 205, 70], m.monetize), 1 - ph));
             pn++;
           }
         }
       });
+      for (const im of [beamCores, beamGlows]) {
+        if (!im) continue;
+        im.instanceMatrix.needsUpdate = true;
+        if (im.instanceColor) im.instanceColor.needsUpdate = true;
+      }
       pulses.count = pn;
       pulses.instanceMatrix.needsUpdate = true;
       if (pulses.instanceColor) pulses.instanceColor.needsUpdate = true;
@@ -1318,6 +1628,70 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
         const pulse = aff && !rm ? 0.5 + 0.5 * Math.sin(t / 360) : aff ? 1 : 0.4;
         p.mat.opacity = 0.08 + 0.14 * pulse;
         p.edgeMat.opacity = 0.35 + 0.5 * pulse;
+      }
+
+      // Cooling-tower steam: soft puffs rising and widening (held still under RM).
+      let sn2 = 0;
+      for (const st of steamTops) {
+        for (let k = 0; k < 6 && sn2 < 18; k++) {
+          const ph = rm ? 0.2 + k * 0.13 : (t / 5200 + k / 6 + st.x * 0.1) % 1;
+          dummy.position.set(st.x + Math.sin(ph * 3 + k) * 0.25 * st.k, st.y + ph * 2.2 * st.k, st.z + ph * 0.6);
+          dummy.rotation.set(0, 0, 0);
+          dummy.scale.setScalar((0.8 + ph * 1.6) * st.k * (1 - ph * 0.35));
+          dummy.updateMatrix();
+          steam.setMatrixAt(sn2++, dummy.matrix);
+        }
+      }
+      steam.count = sn2;
+      steam.instanceMatrix.needsUpdate = true;
+
+      // The Singularity: the ring slowly turns and shifts hue; motes spiral up it.
+      let on = 0;
+      if (halo) {
+        const hue = rm ? 0.75 : (t / 9000) % 1;
+        (halo.material as MeshBasicMaterial).color.setHSL(hue, 0.85, 0.72, SRGBColorSpace);
+        if (!rm) halo.rotation.z = t / 6000;
+        const R = (halo.geometry as TorusGeometry).parameters.radius;
+        for (let k = 0; k < 28; k++) {
+          const ph = rm ? k / 28 : (t / 7000 + k / 28) % 1;
+          const a = ph * Math.PI * 6 + k;
+          const rr = R * (1 - ph * 0.85);
+          dummy.position.set(halo.position.x + Math.cos(a) * rr, halo.position.y - 1.4 + ph * 2.2, halo.position.z + Math.sin(a) * rr);
+          dummy.rotation.set(0, 0, 0);
+          dummy.scale.setScalar(1 - ph * 0.5);
+          dummy.updateMatrix();
+          orbits.setMatrixAt(on, dummy.matrix);
+          orbits.setColorAt(on, c.setHSL((hue + ph * 0.3) % 1, 0.8, 0.7, SRGBColorSpace));
+          on++;
+        }
+      }
+      orbits.count = on;
+      orbits.instanceMatrix.needsUpdate = true;
+      if (orbits.instanceColor) orbits.instanceColor.needsUpdate = true;
+
+      // Rig Bay: fitted cooling fans spin; interconnect cables carry a packet down.
+      bayFans.count = rigFanSpots.length;
+      rigFanSpots.forEach((fs, i) => {
+        dummy.position.set(fs.x, fs.y, fs.z);
+        dummy.rotation.set(0, 0, rm ? 0.5 : t / 170 + i);
+        dummy.scale.set(fs.s, fs.s, fs.s);
+        dummy.updateMatrix();
+        bayFans.setMatrixAt(i, dummy.matrix);
+      });
+      bayFans.instanceMatrix.needsUpdate = true;
+      bayPackets.count = rm ? 0 : rigCables.length;
+      if (!rm) {
+        rigCables.forEach((cb, i) => {
+          const ph = (t / 900 + i * 0.37) % 1;
+          dummy.position.set(cb.x, cb.y1 - ph * (cb.y1 - cb.y0), cb.z);
+          dummy.rotation.set(0, 0, 0);
+          dummy.scale.setScalar(1);
+          dummy.updateMatrix();
+          bayPackets.setMatrixAt(i, dummy.matrix);
+          bayPackets.setColorAt(i, setC(c, cb.c));
+        });
+        bayPackets.instanceMatrix.needsUpdate = true;
+        if (bayPackets.instanceColor) bayPackets.instanceColor.needsUpdate = true;
       }
 
       // Claim burst ring.

@@ -74,6 +74,23 @@ describe("3D hall layout", () => {
     expect(spec.beams).toHaveLength(2);
   });
 
+  it("fills a product's front desk row first, then the facing back row, with a planter between", () => {
+    const people = Array.from({ length: 12 }, (_, i) => person(`p${i}`, "p1"));
+    const m = buildHallModel(lab({ products: { ...createInitialState().products, active: [product("p1", 5e6)] }, employees: people }));
+    const spec = buildScene3D(m);
+    const front = spec.desks.filter((d) => d.side === 1);
+    const back = spec.desks.filter((d) => d.side === -1);
+    expect(front.length).toBeGreaterThan(0);
+    expect(back.length).toBeGreaterThan(0);
+    // Front-row desks sit nearer the camera than the back row; the planter runs between.
+    const p = spec.planters[0]!;
+    for (const d of front) expect(d.z).toBeGreaterThan(p.z1);
+    for (const d of back) expect(d.z).toBeLessThan(p.z0);
+    // Front-row sitters face the racks (back to camera); back-row sitters face the camera.
+    expect(agentPose(spec, m, front[0]!.agent, 0, true).rotY).toBeCloseTo(Math.PI);
+    expect(agentPose(spec, m, back[0]!.agent, 0, true).rotY).toBeCloseTo(0);
+  });
+
   it("only offers the expansion plots that can still be bought", () => {
     const s = lab();
     s.upgrades = { ...s.upgrades, rack_basic: 20 }; // half-full → the strips appear
