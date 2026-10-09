@@ -1,4 +1,6 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Big } from "../engine/math/Big";
+import { EasedNumber } from "./EasedNumber";
 import { useGame } from "../state/store";
 import { derive } from "../engine/derive";
 import { currentEra, eraName } from "../engine/eras";
@@ -28,12 +30,50 @@ export function ExploreHud({ wing }: { wing: number }) {
         <span className="hall3d-hud-sub">{wing < 26 ? `Wing ${String.fromCharCode(65 + wing)}` : `Wing ${wing + 1}`}</span>
       </div>
       <div className="hall3d-hud-rates">
-        <span style={{ color: "var(--compute)" }}><ComputeIcon size={13} />{fmtRate(d.computePerSec)}</span>
-        <span style={{ color: "var(--data)" }}><DataIcon size={13} />{fmtRate(rates.data)}</span>
-        <span style={{ color: "var(--money)" }}><MoneyIcon size={13} />${fmtRate(rates.money)}</span>
+        <span style={{ color: "var(--compute)" }}><ComputeIcon size={13} /><Rate v={d.computePerSec} /></span>
+        <span style={{ color: "var(--data)" }}><DataIcon size={13} /><Rate v={rates.data} /></span>
+        <span style={{ color: "var(--money)" }}><MoneyIcon size={13} />$<Rate v={rates.money} /></span>
       </div>
     </div>
   );
+}
+
+/** A rate that rolls toward its new value instead of snapping every tick. Values past
+ *  the float range (deep endgame) just print. */
+function Rate({ v }: { v: Big }) {
+  const n = v.toNumber();
+  if (!Number.isFinite(n)) return <>{fmtRate(v)}</>;
+  return <EasedNumber value={n} format={(x) => fmtRate(Big.of(x))} />;
+}
+
+const HINT_KEY = "singularity.hall3dHint.v1";
+
+/** The one-time gesture hint for explore: shown on the first visit only (stored per
+ *  device), gone after ~4s or on the first touch, whichever comes first. Wording
+ *  follows the input: touch or mouse. */
+export function ExploreHint() {
+  const [show] = useState(() => {
+    try {
+      return !localStorage.getItem(HINT_KEY);
+    } catch {
+      return false;
+    }
+  });
+  const [gone, setGone] = useState(false);
+  useEffect(() => {
+    if (!show) return;
+    try { localStorage.setItem(HINT_KEY, "1"); } catch { /* storage off: it may show again */ }
+    const hide = () => setGone(true);
+    const id = window.setTimeout(hide, 4300);
+    window.addEventListener("pointerdown", hide, { once: true, capture: true });
+    return () => {
+      window.clearTimeout(id);
+      window.removeEventListener("pointerdown", hide, { capture: true });
+    };
+  }, [show]);
+  if (!show || gone) return null;
+  const touch = typeof window !== "undefined" && !!window.matchMedia?.("(pointer: coarse)").matches;
+  return <div className="hall3d-hint" aria-hidden="true">{touch ? "Drag to move · pinch to zoom · tap anyone" : "Drag to move · scroll to zoom · click anyone"}</div>;
 }
 
 const RING_R = 15;

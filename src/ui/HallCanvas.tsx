@@ -21,7 +21,7 @@ import { HallStage3D } from "./HallStage3D";
 import { Portal } from "./Portal";
 import { ExpandIcon } from "./Icons";
 import { useDialog } from "./useDialog";
-import { ExploreHud, TrainingCallout } from "./Hall3DHud";
+import { ExploreHud, ExploreHint, TrainingCallout } from "./Hall3DHud";
 
 /** Wings are named, not numbered: "Wing B" reads like a place in a building, where
  *  "Wing 2" reads like an index. Past Z it falls back to a number, which no real save
@@ -593,6 +593,7 @@ function Explore3D({
         <h2 id="hall3d-explore-title" className="sr-only">The lab, in 3D</h2>
         <HallStage3D wingRef={wingRef} explore paused={false} filter={filter} onPick={onPick} onFail={onFail} callout={<TrainingCallout />} />
         <ExploreHud wing={wingRef.current} />
+        <ExploreHint />
         <button className="hall3d-close" aria-label="Close" onClick={onClose}>×</button>
         {children}
       </div>

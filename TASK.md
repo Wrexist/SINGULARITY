@@ -24,6 +24,10 @@ Renderer-only: no engine, save, balance or sim change.*
 - [x] Round 3 (owner: "do what's best, free or coded"): assets = 100% code-built; eras as
       architecture (garage → halo), Rig Bay parts on the racks, decor batching (84 → 65
       draw calls), battery guards (adaptive DPR, still lab under reduced motion)
+- [x] Round 4 (owner: "more detailed, smooth, clean; add motion and animation"):
+      faces, mugs, rack vents, scrolling code monitors, out-of-phase LEDs; rack drop-in +
+      dust + power-on, hire walk-ins, eased walkers + glances, claim burst, training
+      packets; camera glides, explore fly-in, 60 fps only while moving, fade-ins, hint
 - [ ] Next: device benchmarks on TestFlight (iPhone 11 / SE2 / 12 + iPad) before 3D goes
       beyond opt-in; then "the world fills the screen" layout (§7 #1)
 - [ ] Phase 0 device gate: cold start, p10 fps, thermal, battery on iPhone 11 / SE2 / 12 + iPad

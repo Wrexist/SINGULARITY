@@ -581,3 +581,14 @@ when" balance, dials the whole curve, and the UI cost displays update for free (
 - **An exception inside the rAF loop kills the loop silently and surfaces as a pageerror.**
   The 3D stage wraps building and drawing each frame in try/catch and falls back to the
   2D hall: a renderer bug must never take the lab off the screen.
+- **Additive blending needs a WHITE glow texture.** A dark-centred "shadow blob" map under
+  `AdditiveBlending` adds black, which is nothing: the lamp pools and beam nodes were
+  invisible for two rounds. Shadows multiply; glows add — keep one texture for each.
+- **Under SwiftShader, page time runs far ahead of the test's clock.** The first explore
+  frame (a second WebGL context compiling shaders) blocks the main thread for seconds, so
+  a "check at 600 ms" from Playwright actually lands after a 4.3 s UI timer has fired.
+  Measure inside the page (`performance.now()`) before calling a timer bug a bug.
+- **Animate the camera toward a goal, don't set it.** `fitCamera` now writes a goal
+  (target, distance, polar) and the card camera eases there (`1 - exp(-dt/240)`), so a
+  new floor or era glides in. Snap only on the first fit and on resize, or the view
+  drifts across a layout change.

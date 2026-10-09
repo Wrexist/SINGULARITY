@@ -119,6 +119,34 @@ describe("3D hall layout", () => {
     expect(walker.x).toBeLessThanOrEqual(spec.bay.x1);
   });
 
+  it("walkers ease to a stop at each end and face the camera mid-turn", () => {
+    const s = lab({ employees: [person("a", null)] });
+    const m = buildHallModel(s);
+    const spec = buildScene3D(m);
+    const seed = ((0 * 2654435761) % 1000) / 1000;
+    const period = 16000 + seed * 9000;
+    // ph = 0.5 is the far end: stopped, mid-turn → facing +Z (rotY 0), no stride.
+    const tEnd = (0.5 - seed + 1) * period;
+    const end = agentPose(spec, m, 0, tEnd, false);
+    expect(Math.abs(end.rotY)).toBeLessThan(0.05);
+    expect(end.stride ?? 0).toBeLessThan(0.05);
+    // ph = 0.25 is mid-walk toward +X: facing +X, full stride.
+    const mid = agentPose(spec, m, 0, (0.25 - seed + 1) * period, false);
+    expect(mid.rotY).toBeCloseTo(Math.PI / 2);
+    expect(mid.stride).toBe(1);
+  });
+
+  it("seated staff only glance under motion, and never more than ~35°", () => {
+    const s = lab({ products: { ...createInitialState().products, active: [product("p1", 5e6)] }, employees: [person("a", "p1")] });
+    const m = buildHallModel(s);
+    const spec = buildScene3D(m);
+    let maxYaw = 0;
+    for (let t = 0; t < 60000; t += 250) maxYaw = Math.max(maxYaw, Math.abs(agentPose(spec, m, 0, t, false).yaw));
+    expect(maxYaw).toBeGreaterThan(0.1);
+    expect(maxYaw).toBeLessThanOrEqual(0.6 + 1e-9);
+    expect(agentPose(spec, m, 0, 12345, true).yaw).toBe(0);
+  });
+
   it("the inspector only appears when scrutiny is named", () => {
     const m = buildHallModel(lab());
     expect(m.regulator).toBeNull();

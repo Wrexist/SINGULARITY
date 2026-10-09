@@ -206,6 +206,10 @@ export interface AgentPose {
   seated: boolean;
   /** Walk / typing cycle phase (radians) — drives the limb swing. */
   gait: number;
+  /** Head turn (radians about +Y, relative to the body): seated staff glance around. */
+  yaw: number;
+  /** 0..1 how much the legs swing (walkers slow to a stop at each end). */
+  stride?: number;
 }
 
 /** Deterministic per-frame pose for agent `i`: seated at their desk if they have one,
@@ -216,7 +220,10 @@ export function agentPose(spec: Scene3DSpec, model: HallModel, i: number, t: num
   const hop = !reducedMotion && model.readyToClaim ? Math.abs(Math.sin(t / 190 + i * 1.3)) * 0.12 : 0;
   if (desk) {
     // Seated on the chair behind the desk, facing the monitor; typing drives the arms.
+    // Now and then they look up and glance to one side (a few seconds in every ~30).
     const sway = reducedMotion ? 0 : Math.sin(t / 900 + i) * 0.03;
+    const g = reducedMotion ? 0 : Math.sin(t / 5200 + i * 2.3);
+    const yaw = g > 0.72 ? ((g - 0.72) / 0.28) * 0.6 * (i % 2 ? 1 : -1) : 0;
     return {
       x: desk.x,
       z: desk.z + desk.side * 0.34,
@@ -224,6 +231,7 @@ export function agentPose(spec: Scene3DSpec, model: HallModel, i: number, t: num
       rotY: (desk.side === 1 ? Math.PI : 0) + sway,
       seated: true,
       gait: reducedMotion ? 0 : t / 95 + i * 1.7,
+      yaw,
     };
   }
   const seed = ((i * 2654435761) % 1000) / 1000;
@@ -232,11 +240,13 @@ export function agentPose(spec: Scene3DSpec, model: HallModel, i: number, t: num
   const span = bay.x1 - bay.x0 - 1.3;
   const period = 16000 + seed * 9000;
   const ph = reducedMotion ? seed : (t / period + seed) % 1;
-  // Ping-pong along the walkway: u in 0..1..0, heading flips at each end.
-  const u = ph < 0.5 ? ph * 2 : 2 - ph * 2;
+  // Back and forth along the walkway, easing to a stop at each end; mid-turn they face
+  // the camera, so a turnaround reads as a person turning, not a sprite flipping.
+  const u = (1 - Math.cos(ph * Math.PI * 2)) / 2;
+  const v = Math.sin(ph * Math.PI * 2); // velocity sign/size along +X
   let x = bay.x0 + 0.65 + u * Math.max(0, span);
   let z = bay.z0 + WALK_Z + (seed2 - 0.5) * 0.24;
-  let rotY = ph < 0.5 ? Math.PI / 2 : -Math.PI / 2;
+  let rotY = (Math.PI / 2) * Math.max(-1, Math.min(1, v * 3));
   // Incident rally: drift a bounded way toward the nearest smoking rack.
   if (model.incidents.length > 0) {
     let best: { x: number; z: number } | null = null;
@@ -254,9 +264,11 @@ export function agentPose(spec: Scene3DSpec, model: HallModel, i: number, t: num
       rotY = Math.atan2(best.x - x, best.z - z);
     }
   }
+  // Stride slows with the walking speed, so they don't moonwalk at the turnarounds.
+  const stride = Math.min(1, Math.abs(v) * 1.6);
   const gait = reducedMotion ? 0 : t / 160 + i * 2.3;
-  const bob = reducedMotion ? 0 : Math.abs(Math.sin(gait)) * 0.025;
-  return { x, z, lift: Math.max(bob, hop), rotY, seated: false, gait };
+  const bob = reducedMotion ? 0 : Math.abs(Math.sin(gait)) * 0.025 * stride;
+  return { x, z, lift: Math.max(bob, hop), rotY, seated: false, gait, yaw: 0, stride };
 }
 
 /** The inspector's patrol: slow back-and-forth along the bay's front edge (still,
@@ -268,7 +280,7 @@ export function chenPose(spec: Scene3DSpec, model: HallModel, t: number, reduced
   const { bay } = spec;
   const heading = reducedMotion ? 0 : Math.cos(t / 2600) >= 0 ? Math.PI / 2 : -Math.PI / 2;
   const gait = reducedMotion ? 0 : t / 200;
-  return { x: bay.x0 + u * (bay.x1 - bay.x0), z: bay.z1 - 0.2, lift: reducedMotion ? 0 : Math.abs(Math.sin(gait)) * 0.02, rotY: heading, seated: false, gait };
+  return { x: bay.x0 + u * (bay.x1 - bay.x0), z: bay.z1 - 0.2, lift: reducedMotion ? 0 : Math.abs(Math.sin(gait)) * 0.02, rotY: heading, seated: false, gait, yaw: 0 };
 }
 
 /** The training run as light: a soft wave of LED brightness that sweeps the floor

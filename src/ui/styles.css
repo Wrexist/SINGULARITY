@@ -1646,7 +1646,11 @@ svg { vertical-align: middle; }
 
 /* ---------- 3D hall spike (opt-in flag; WORLD_3D_PLAN.md) ---------- */
 .hall3d-stage { position: absolute; inset: 0; }
-.hall3d-stage .hall-canvas { touch-action: pan-y; }
+.hall3d-stage .hall-canvas { touch-action: pan-y; opacity: 0; transition: opacity 0.45s ease; }
+/* The lab fades in on its first frame, and dips softly while a wing / era swaps. */
+.hall3d-stage.ready .hall-canvas { opacity: 1; }
+.hall3d-stage.ready.dip .hall-canvas { animation: hall3d-dip 0.42s ease; }
+@keyframes hall3d-dip { 0% { opacity: 1; } 35% { opacity: 0.18; } 100% { opacity: 1; } }
 .hall3d-expand {
   position: absolute;
   right: 10px;
@@ -1709,7 +1713,9 @@ svg { vertical-align: middle; }
   font-size: 11px;
   line-height: 1.25;
   white-space: nowrap;
-  will-change: transform;
+  will-change: transform, opacity;
+  opacity: 0;
+  transition: opacity 0.18s ease;
 }
 .hall3d-label-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .hall3d-label-head b { font-size: 12px; font-weight: 700; }
@@ -1744,7 +1750,8 @@ svg { vertical-align: middle; }
 /* The training run, pinned in the world above the racks (Acme-style callout). */
 .hall3d-anchor { position: absolute; left: 0; top: 0; z-index: 2; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; will-change: transform; }
 .hall3d-anchor.on { opacity: 1; }
-.hall3d-anchor.on .hall3d-callout { pointer-events: auto; }
+.hall3d-anchor.on .hall3d-callout { pointer-events: auto; transform: none; }
+.hall3d-anchor .hall3d-callout { transform: translateY(8px) scale(0.94); transform-origin: 50% 100%; transition: transform 0.34s cubic-bezier(0.2, 1.35, 0.4, 1); }
 .hall3d-callout {
   position: relative;
   width: 214px;
@@ -1804,7 +1811,31 @@ svg { vertical-align: middle; }
 .hall3d-cta:active { transform: scale(0.98); }
 .reduce-motion .hall3d-explore { animation: none; }
 .reduce-motion .hall3d-labels { transition: none; }
-.reduce-motion .hall3d-anchor, .reduce-motion .hall3d-ring-fill { transition: none; }
+.reduce-motion .hall3d-anchor, .reduce-motion .hall3d-ring-fill, .reduce-motion .hall3d-label,
+.reduce-motion .hall3d-stage .hall-canvas, .reduce-motion .hall3d-anchor .hall3d-callout { transition: none; }
+.reduce-motion .hall3d-stage.dip .hall-canvas { animation: none; }
+
+/* One-time gesture hint in explore: a quiet pill that leaves on the first touch. */
+.hall3d-hint {
+  position: absolute;
+  left: 50%;
+  bottom: calc(22px + var(--sab, env(safe-area-inset-bottom, 0px)));
+  z-index: 3;
+  transform: translateX(-50%);
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(16, 14, 28, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: hall3d-hint 4.2s ease forwards;
+}
+@keyframes hall3d-hint { 0% { opacity: 0; transform: translate(-50%, 6px); } 10%, 82% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, 0); } }
+.reduce-motion .hall3d-hint { animation: hall3d-hint-still 4.2s step-end forwards; }
+@keyframes hall3d-hint-still { 0% { opacity: 1; } 100% { opacity: 0; } }
 
 /* ---------- Lab Stats (collapsible) ---------- */
 .stats { padding-top: 4px; padding-bottom: 4px; }

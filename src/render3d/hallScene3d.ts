@@ -73,7 +73,8 @@ export interface Scene3DFrame {
   /** Day phase 0..1 (dayPhase from the 2D renderer; the caller freezes it under RM). */
   phase: number;
   spawnFrom: number;
-  spawnT: number;
+  /** ms since the latest rack purchase started arriving (Infinity: none, or RM). */
+  spawnMs: number;
   burst: number;
   rackSkin?: string;
   tapFlash?: { index: number; t: number };
@@ -86,6 +87,9 @@ export type Pick3D =
   | { kind: "plot"; id: string };
 
 export interface HallScene3D {
+  /** How many staff the player has already seen on the floor (from an earlier mount):
+   *  anyone beyond that walks in on the first model. Call before the first setModel. */
+  primeAgents(seen: number): void;
   setModel(model: HallModel): void;
   frame(f: Scene3DFrame): void;
   resize(cssW: number, cssH: number, dpr: number): void;
@@ -100,6 +104,8 @@ export interface HallScene3D {
   runAnchor(): { x: number; y: number } | null;
   /** 1 at the fitted view; larger when the player has pinched in. */
   zoom(): number;
+  /** The camera is moving (a touch, a glide, a refit): render at the higher rate. */
+  wantsHighFps(): boolean;
   /** True once the GL context is gone (iOS can kill it without an event firing). */
   isLost(): boolean;
   /** Last frame's renderer counters (perf budget checks in the smoke harness). */
@@ -160,6 +166,24 @@ const setC = (target: Color, c: RGB, k = 1) => target.setRGB((c[0] / 255) * k, (
 const mix = (a: RGB, b: RGB, t: number): RGB => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 const shade = (c: RGB, f: number): RGB => [Math.min(255, c[0] * f), Math.min(255, c[1] * f), Math.min(255, c[2] * f)];
 const easeOut = (t: number) => 1 - Math.pow(1 - Math.max(0, Math.min(1, t)), 3);
+const easeInOut = (t: number) => { const x = Math.max(0, Math.min(1, t)); return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+const smooth = (a: number, b: number, x: number) => { const u = Math.max(0, Math.min(1, (x - a) / (b - a))); return u * u * (3 - 2 * u); };
+/** Ease-out bounce: a rack dropped onto the floor settles with two small hops. */
+function bounce(x: number): number {
+  const n1 = 7.5625, d1 = 2.75;
+  if (x < 1 / d1) return n1 * x * x;
+  if (x < 2 / d1) { const y = x - 1.5 / d1; return n1 * y * y + 0.75; }
+  if (x < 2.5 / d1) { const y = x - 2.25 / d1; return n1 * y * y + 0.9375; }
+  const y = x - 2.625 / d1;
+  return n1 * y * y + 0.984375;
+}
+/** Rack arrival timing: each new rack drops RACK_DROP_MS, the next RACK_STAGGER later. */
+const RACK_DROP_MS = 700;
+const RACK_STAGGER = 55;
+const DUST_MS = 520;
+const DROP_H = 2.4;
+/** A new hire's walk from the door to their place. */
+const ARRIVE_MS = 2600;
 const hash01 = (n: number) => {
   const s = Math.sin(n * 127.1 + 311.7) * 43758.5453;
   return s - Math.floor(s);
@@ -188,6 +212,49 @@ function blobTexture(): CanvasTexture {
     g.fillStyle = r;
     g.fillRect(0, 0, 64, 64);
   });
+}
+
+/** A soft WHITE radial glow — for additive light (lamp pools, beam feet, dust). */
+function glowTexture(): CanvasTexture {
+  return canvasTex(64, 64, (g) => {
+    const r = g.createRadialGradient(32, 32, 1, 32, 32, 32);
+    r.addColorStop(0, "rgba(255,255,255,1)");
+    r.addColorStop(0.4, "rgba(255,255,255,0.45)");
+    r.addColorStop(1, "rgba(255,255,255,0)");
+    g.fillStyle = r;
+    g.fillRect(0, 0, 64, 64);
+  });
+}
+
+/** A rack-top vent grille: five dark slots on transparent. */
+function ventTexture(): CanvasTexture {
+  return canvasTex(64, 64, (g) => {
+    g.clearRect(0, 0, 64, 64);
+    g.fillStyle = "rgba(0,0,0,0.85)";
+    for (let k = 0; k < 5; k++) {
+      const y = 8 + k * 11;
+      g.beginPath();
+      g.roundRect?.(8, y, 48, 5, 2.5);
+      if (!g.roundRect) g.rect(8, y, 48, 5);
+      g.fill();
+    }
+  });
+}
+
+/** Monitor content: indented lines of "code" that scroll (texture offset, frame()). */
+function codeTexture(): CanvasTexture {
+  const t = canvasTex(128, 128, (g) => {
+    g.fillStyle = "rgb(52,62,86)";
+    g.fillRect(0, 0, 128, 128);
+    for (let k = 0; k < 16; k++) {
+      const indent = [0, 8, 16, 8, 16, 24, 8, 0][k % 8]!;
+      const len = 24 + ((k * 37) % 70);
+      g.fillStyle = k % 5 === 3 ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.6)";
+      g.fillRect(10 + indent, 4 + k * 8, Math.min(len, 108 - indent), 3);
+    }
+  });
+  t.wrapS = t.wrapT = RepeatWrapping;
+  return t;
 }
 
 /** Ambient occlusion along a wall base: dark at the wall, fading into the room. */
@@ -266,9 +333,9 @@ function panelGeometry(): BufferGeometry {
 }
 
 /** Blade-server LED bars on both visible faces — flat quads (2 tris each). */
-function ledGeometry(): BufferGeometry {
+function ledGeometry(parity: 0 | 1): BufferGeometry {
   const parts: BufferGeometry[] = [];
-  for (let k = 0; k < LED_BARS; k++) {
+  for (let k = parity; k < LED_BARS; k += 2) {
     const y = 0.21 + (k * 0.58) / (LED_BARS - 1);
     const a = new PlaneGeometry(0.28, 0.026);
     a.translate(-0.02, y, 0.344);
@@ -472,6 +539,10 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
   const unitPlane = own(new PlaneGeometry(1, 1));
   unitPlane.rotateX(-Math.PI / 2);
   const blobTex = own(blobTexture());
+  const glowTex = own(glowTexture());
+  const ventTex = own(ventTexture());
+  const codeTex = own(codeTexture());
+  codeTex.repeat.set(1, 0.7);
   const edgeTex = own(edgeTexture());
   const gridTex = own(gridTexture());
   gridTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
@@ -498,7 +569,12 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
   rackGeo.translate(0, 0.5, 0);
   const rackBody = inst(rackGeo, own(new MeshStandardMaterial({ color: 0xffffff, roughness: 0.48, metalness: 0.12 })), MAX_RACKS, true);
   const rackPanel = inst(own(panelGeometry()), own(new MeshStandardMaterial({ color: 0x141926, roughness: 0.28, metalness: 0.5 })), MAX_RACKS);
-  const rackLeds = inst(own(ledGeometry()), own(new MeshBasicMaterial({ color: 0xffffff, toneMapped: false })), MAX_RACKS);
+  // LED bars in two interleaved sets, so alternate bars blink out of phase.
+  const ledMat = own(new MeshBasicMaterial({ color: 0xffffff, toneMapped: false }));
+  const rackLedsA = inst(own(ledGeometry(0)), ledMat, MAX_RACKS);
+  const rackLedsB = inst(own(ledGeometry(1)), ledMat, MAX_RACKS);
+  const rackVents = inst(unitPlane, own(new MeshBasicMaterial({ map: ventTex, transparent: true, depthWrite: false, color: 0xffffff })), MAX_RACKS);
+  rackVents.renderOrder = 1;
   const capGeo = own(new CylinderGeometry(0.2, 0.26, 0.1, 18));
   capGeo.translate(0, 0.05, 0);
   const podCaps = inst(capGeo, own(new MeshBasicMaterial({ color: 0xffffff, toneMapped: false })), MAX_RACKS);
@@ -520,6 +596,8 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
   const hair = inst(hairGeo, personMat, MAX_PEOPLE);
   const legs = inst(legGeo, personMat, MAX_PEOPLE * 2);
   const arms = inst(armGeo, personMat, MAX_PEOPLE * 2);
+  // Faces: two small dark eyes on the front of each head (they turn with the head).
+  const eyes = inst(own(new SphereGeometry(0.017, 8, 6)), own(new MeshBasicMaterial({ color: 0x1c1b24 })), MAX_PEOPLE * 2);
   const blobs = inst(unitPlane, shadowMat, MAX_PEOPLE + 1);
   blobs.renderOrder = 1;
   const agentProxy = inst(unitBox, pickMat, MAX_PEOPLE);
@@ -530,7 +608,12 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
   const chairs = inst(own(chairGeometry()), own(new MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 })), MAX_PEOPLE);
   const monitors = inst(own(monitorGeometry()), own(new MeshStandardMaterial({ color: 0x1b1f2b, roughness: 0.35, metalness: 0.4 })), MAX_PEOPLE);
   const screenGeo = own(new PlaneGeometry(0.27, 0.15));
-  const screens = inst(screenGeo, own(new MeshBasicMaterial({ color: 0xffffff, toneMapped: false })), MAX_PEOPLE);
+  // Screens show scrolling code (the texture scrolls in frame()), tinted by team.
+  const screenMat = own(new MeshBasicMaterial({ color: 0xffffff, map: codeTex, toneMapped: false }));
+  const screens = inst(screenGeo, screenMat, MAX_PEOPLE);
+  const mugGeo = own(new CylinderGeometry(0.026, 0.022, 0.055, 12));
+  mugGeo.translate(0, 0.0275, 0);
+  const mugs = inst(mugGeo, own(new MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 })), MAX_PEOPLE);
   const keyboards = inst(unitBox, own(new MeshStandardMaterial({ color: 0xe8eaee, roughness: 0.5 })), MAX_PEOPLE);
   const deskAO = inst(unitPlane, shadowMat, MAX_PEOPLE);
   deskAO.renderOrder = 1;
@@ -545,7 +628,7 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
   shadeGeo.translate(0, 0.94, 0);
   const shadeMat = own(new MeshBasicMaterial({ color: col([255, 226, 180]), side: DoubleSide, toneMapped: false }));
   const lampShades = inst(shadeGeo, shadeMat, 4);
-  const poolMat = own(new MeshBasicMaterial({ map: blobTex, color: col([255, 196, 120]), transparent: true, depthWrite: false, blending: AdditiveBlending, toneMapped: false }));
+  const poolMat = own(new MeshBasicMaterial({ map: glowTex, color: col([255, 196, 120]), transparent: true, depthWrite: false, blending: AdditiveBlending, toneMapped: false }));
   const lampPools = inst(unitPlane, poolMat, 4);
   lampPools.renderOrder = 2;
   const propAO = inst(unitPlane, shadowMat, 12);
@@ -603,6 +686,14 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
   // Cooling-tower steam (Frontier+) and the Singularity's spiral motes (era 5).
   const steam = inst(own(new SphereGeometry(0.3, 10, 8)), own(new MeshBasicMaterial({ color: 0xf2f4fa, transparent: true, opacity: 0.38, depthWrite: false })), 18);
   const orbits = inst(own(new SphereGeometry(0.045, 8, 6)), own(new MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: AdditiveBlending, depthWrite: false, toneMapped: false })), 28);
+  // Motion effects: dust where a new rack lands; data cubes bursting up on a claim;
+  // training packets running the cable path toward the ops bay.
+  const dust = inst(unitPlane, own(new MeshBasicMaterial({ map: glowTex, color: 0xffffff, transparent: true, depthWrite: false, blending: AdditiveBlending, toneMapped: false })), MAX_RACKS);
+  dust.renderOrder = 2;
+  const bursts = inst(own(new BoxGeometry(0.06, 0.06, 0.06)), own(new MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: AdditiveBlending, depthWrite: false, toneMapped: false })), 48);
+  const packets = inst(own(new SphereGeometry(0.05, 10, 8)), own(new MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: AdditiveBlending, depthWrite: false, toneMapped: false })), 14);
+  let packetPath: Vector3[] = [];
+  let packetLens: number[] = [];
 
   // Rig Bay ("Bare Metal") on each rack's left face: a socket per slot — dark and
   // open when empty; fitted parts grow geometry by class (heatsink fins, a spinning
@@ -647,10 +738,26 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
   let lastRM = false;
   let lastSkin: string | undefined;
   let staticsDirty = true;
+  // New hires walking in: indices that just appeared, and when their walk started.
+  let prevAgents = -1;
+  let pendingArrivals: number[] = [];
+  const arrivalAt = new Map<number, number>();
+  // Card camera: eases toward the fitted framing instead of snapping to it.
+  const goalTarget = new Vector3();
+  let goalDist = 30, curDist = 30, goalPolar = 0.87, curPolar = 0.87;
+  let fittedOnce = false;
+  let lastFrameT = -1;
+  let lastCamMove = -1e9;
+
+  /** 0..1 arrival progress for rack i (1 = settled) — a purchase drops racks in. */
+  const arrival = (i: number, spawnFrom: number, spawnMs: number): number =>
+    i < spawnFrom || !Number.isFinite(spawnMs) ? 1 : Math.max(0, Math.min(1, (spawnMs - (i - spawnFrom) * RACK_STAGGER) / RACK_DROP_MS));
+  const dropOf = (a: number): number => (a >= 1 ? 0 : (1 - bounce(a)) * DROP_H);
 
   const mA = new Matrix4();
   const mB = new Matrix4();
   const mC = new Matrix4();
+  const mH = new Matrix4();
   const floorPlane = new Plane(new Vector3(0, 1, 0), -FLOOR_Y);
   const tmp = new Vector3();
   const tmp2 = new Vector3();
@@ -948,6 +1055,21 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
     coolers.count = cu;
     coolers.instanceMatrix.needsUpdate = true;
 
+    // The training packets' route: along the cable trays (Scale-Up+) or the wall base
+    // (earlier), from the far end of the back wall round to the ops bay.
+    {
+      const y = era >= 2 ? FLOOR_Y + H - 0.26 : FLOOR_Y + 0.05;
+      const o = era >= 2 ? 0.16 : 0.12;
+      packetPath = [
+        new Vector3(F.x1 - 0.2, y, F.z0 + o),
+        new Vector3(F.x0 + o, y, F.z0 + o),
+        new Vector3(F.x0 + o, y, era >= 2 ? F.z1 : B.z0 + 0.25),
+      ];
+      if (era >= 2) packetPath.push(new Vector3(F.x0 + o, FLOOR_Y + 0.05, F.z1 + 0.25));
+      packetLens = [0];
+      for (let k = 1; k < packetPath.length; k++) packetLens.push(packetLens[k - 1]! + packetPath[k]!.distanceTo(packetPath[k - 1]!));
+    }
+
     // Campus growth beyond the walls (tall enough to read over them).
     steamTops = [];
     if (era >= 3) {
@@ -1018,7 +1140,7 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
       const add = { transparent: true, blending: AdditiveBlending, depthWrite: false, toneMapped: false } as const;
       beamCores = new InstancedMesh(beamCore, wmat(new MeshBasicMaterial({ color: 0xffffff, vertexColors: true, ...add })), nb);
       beamGlows = new InstancedMesh(beamGlow, wmat(new MeshBasicMaterial({ color: 0xffffff, vertexColors: true, ...add })), nb);
-      const nodes = new InstancedMesh(unitPlane, wmat(new MeshBasicMaterial({ map: blobTex, color: 0xffffff, ...add })), nb);
+      const nodes = new InstancedMesh(unitPlane, wmat(new MeshBasicMaterial({ map: glowTex, color: 0xffffff, ...add })), nb);
       s.beams.forEach((b, i) => {
         dummy.position.set(b.x, FLOOR_Y + 0.014, b.z);
         dummy.rotation.set(0, 0, 0);
@@ -1049,6 +1171,8 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
       const plusMat = wmat(new MeshBasicMaterial({ color: col(accent), transparent: true, opacity: 0.9, toneMapped: false }));
       const plus = new Mesh(plusGeo, plusMat);
       plus.position.set((r.x0 + r.x1) / 2, 0.04, (r.z0 + r.z1) / 2);
+      // Turned 45° so it reads as "+" (not "×", which says "close") from the iso camera.
+      plus.rotation.y = Math.PI / 4;
       world.add(plus);
       fill.userData.plot = p.id;
       plotMeshes.push({ id: p.id, fill, mat, edgeMat, plusMat });
@@ -1076,35 +1200,46 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
   }
 
   /** Static furniture + rack transforms for the current spec (people move per frame). */
-  function placeStatics(m: HallModel, s: Scene3DSpec, spawnFrom: number, spawnT: number): void {
-    const grow = easeOut(spawnT);
-    rackBody.count = rackPanel.count = rackLeds.count = rackAO.count = s.racks.length;
-    let caps = 0;
+  function placeStatics(m: HallModel, s: Scene3DSpec, spawnFrom: number, spawnMs: number): void {
+    rackBody.count = rackPanel.count = rackLedsA.count = rackLedsB.count = rackAO.count = s.racks.length;
+    let caps = 0, vents = 0;
     s.racks.forEach((r, i) => {
-      const k = i >= spawnFrom && spawnT < 1 ? Math.max(0.001, grow) : 1;
+      // A newly bought rack drops in from above and bounces to rest; its contact
+      // shadow tightens as it lands.
+      const a = arrival(i, spawnFrom, spawnMs);
+      const drop = dropOf(a);
       const foot = TIER_FOOT[r.tier] ?? 1;
-      dummy.position.set(r.x, FLOOR_Y, r.z);
+      dummy.position.set(r.x, FLOOR_Y + drop, r.z);
       dummy.rotation.set(0, 0, 0);
-      dummy.scale.set(foot, r.h * k, foot);
+      dummy.scale.set(foot, r.h, foot);
       dummy.updateMatrix();
       rackBody.setMatrixAt(i, dummy.matrix);
       rackPanel.setMatrixAt(i, dummy.matrix);
-      rackLeds.setMatrixAt(i, dummy.matrix);
+      rackLedsA.setMatrixAt(i, dummy.matrix);
+      rackLedsB.setMatrixAt(i, dummy.matrix);
+      const ao = 0.25 + 0.75 * (a >= 1 ? 1 : bounce(a));
       dummy.position.set(r.x + 0.04, FLOOR_Y + 0.012, r.z + 0.04);
-      dummy.scale.set(foot * 1.25 * k, 1, foot * 1.25 * k);
+      dummy.scale.set(foot * 1.25 * ao, 1, foot * 1.25 * ao);
       dummy.updateMatrix();
       rackAO.setMatrixAt(i, dummy.matrix);
       if (r.tier === 2) {
-        dummy.position.set(r.x, FLOOR_Y + r.h * k, r.z);
-        dummy.scale.set(foot, Math.max(0.001, k), foot);
+        dummy.position.set(r.x, FLOOR_Y + drop + r.h, r.z);
+        dummy.scale.set(foot, 1, foot);
         dummy.updateMatrix();
         podCaps.setMatrixAt(caps, dummy.matrix);
         podCaps.setColorAt(caps, setC(c, pick(TIER_LED, 2)));
         caps++;
+      } else {
+        // Vent grille on the top face (the face an isometric camera sees most).
+        dummy.position.set(r.x, FLOOR_Y + drop + r.h + 0.004, r.z);
+        dummy.scale.set(foot * 0.46, 1, foot * 0.46);
+        dummy.updateMatrix();
+        rackVents.setMatrixAt(vents++, dummy.matrix);
       }
     });
     podCaps.count = caps;
-    for (const im of [rackBody, rackPanel, rackLeds, rackAO, podCaps]) im.instanceMatrix.needsUpdate = true;
+    rackVents.count = vents;
+    for (const im of [rackBody, rackPanel, rackLedsA, rackLedsB, rackAO, podCaps, rackVents]) im.instanceMatrix.needsUpdate = true;
     if (podCaps.instanceColor) podCaps.instanceColor.needsUpdate = true;
     rackBody.computeBoundingSphere();
 
@@ -1117,13 +1252,13 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
         const slots = m.rigs?.[r.tier];
         if (!slots || slots.length === 0) return;
         const foot = TIER_FOOT[r.tier] ?? 1;
-        const k = i >= spawnFrom && spawnT < 1 ? Math.max(0.001, grow) : 1;
-        const h = r.h * k;
+        const lift = dropOf(arrival(i, spawnFrom, spawnMs));
+        const h = r.h;
         const face = r.z + 0.33 * foot + 0.02;
         const tierShade = shade(skinTint(pick(TIER, r.tier), lastSkin), 0.42);
         slots.forEach((slot, j) => {
           const v = 0.7 - j * 0.26;
-          const y = FLOOR_Y + h * v;
+          const y = FLOOR_Y + lift + h * v;
           const w = 0.42 * foot, ph = Math.min(0.17 * h, 0.16);
           dummy.rotation.set(0, 0, 0);
           dummy.position.set(r.x, y, face);
@@ -1168,6 +1303,7 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
     // Desks + chairs + monitors + screens + keyboards. side +1: sitter on the front
     // (camera) side facing −Z; side −1: sitter on the back side facing +Z.
     const n = s.desks.length;
+    let nm = 0;
     desks.count = chairs.count = monitors.count = screens.count = keyboards.count = deskAO.count = n;
     s.desks.forEach((d, i) => {
       const facing = d.side === 1 ? Math.PI : 0; // sitter's rotY
@@ -1202,7 +1338,19 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
       dummy.scale.set(0.22, 0.012, 0.07);
       dummy.updateMatrix();
       keyboards.setMatrixAt(i, dummy.matrix);
+      // Every other desk has a mug by the keyboard.
+      if (d.agent % 2 === 0) {
+        dummy.position.set(d.x + 0.21, FLOOR_Y + 0.4, d.z + d.side * 0.07);
+        dummy.scale.set(1, 1, 1);
+        dummy.updateMatrix();
+        mugs.setMatrixAt(nm, dummy.matrix);
+        mugs.setColorAt(nm, setC(c, pick(CHAIR, d.agent + 2)));
+        nm++;
+      }
     });
+    mugs.count = nm;
+    mugs.instanceMatrix.needsUpdate = true;
+    if (mugs.instanceColor) mugs.instanceColor.needsUpdate = true;
     for (const im of [desks, chairs, monitors, screens, keyboards, deskAO]) im.instanceMatrix.needsUpdate = true;
     for (const im of [screens, chairs]) if (im.instanceColor) im.instanceColor.needsUpdate = true;
 
@@ -1284,21 +1432,32 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
     for (const im of [bodies, heads, hair, arms, legs]) if (im.instanceColor) im.instanceColor.needsUpdate = true;
   }
 
-  /** Pose one chibi: root matrix, then limbs swung about their hip / shoulder pivots. */
-  function posePerson(i: number, p: AgentPose, rm: boolean): void {
+  /** Pose one chibi: root matrix, then limbs swung about their hip / shoulder pivots,
+   *  the head (with hair and eyes) turned by the pose's glance. `pop` scales the whole
+   *  figure (a new hire stepping in). */
+  function posePerson(i: number, p: AgentPose, rm: boolean, pop = 1): void {
     const rootY = FLOOR_Y + p.lift + (p.seated ? 0.06 : 0);
-    mA.makeRotationY(p.rotY).setPosition(p.x, rootY, p.z);
+    mA.makeRotationY(p.rotY);
+    if (pop !== 1) mA.scale(tmp.set(pop, pop, pop));
+    mA.setPosition(p.x, rootY, p.z);
     bodies.setMatrixAt(i, mA);
-    mB.makeTranslation(0, 0.49, 0);
-    mC.multiplyMatrices(mA, mB);
-    heads.setMatrixAt(i, mC);
-    tmp.setFromMatrixPosition(mC);
+    // Head: lifted onto the body, turned by the glance.
+    mB.makeRotationY(p.yaw).setPosition(0, 0.49, 0);
+    mH.multiplyMatrices(mA, mB);
+    heads.setMatrixAt(i, mH);
+    tmp.setFromMatrixPosition(mH);
     headPos[i * 3] = tmp.x; headPos[i * 3 + 1] = tmp.y + 0.17; headPos[i * 3 + 2] = tmp.z;
-    mB.makeRotationX(-0.28).setPosition(0, 0.51, -0.01);
-    mC.multiplyMatrices(mA, mB);
+    mB.makeRotationX(-0.28).setPosition(0, 0.02, -0.01);
+    mC.multiplyMatrices(mH, mB);
     hair.setMatrixAt(i, mC);
-    // Legs: forward under the desk when seated; a swing when walking.
-    const swing = rm ? 0 : Math.sin(p.gait) * 0.55;
+    for (let k = 0; k < 2; k++) {
+      mB.makeTranslation(k === 0 ? 0.045 : -0.045, 0.012, 0.108);
+      mC.multiplyMatrices(mH, mB);
+      eyes.setMatrixAt(i * 2 + k, mC);
+    }
+    // Legs: forward under the desk when seated; a swing when walking (scaled by
+    // stride, so they slow to a stop instead of moonwalking at the turnarounds).
+    const swing = rm ? 0 : Math.sin(p.gait) * 0.55 * (p.stride ?? 1);
     for (let k = 0; k < 2; k++) {
       const sgn = k === 0 ? 1 : -1;
       const ang = p.seated ? -1.45 : swing * sgn;
@@ -1317,8 +1476,9 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
     agentProxy.setMatrixAt(i, mC);
   }
 
-  function fitCamera(): void {
+  function fitCamera(snap = false): void {
     if (!spec) return;
+    const prevTarget = target.clone();
     const b = spec.bounds;
     const aspect = cssW / Math.max(1, cssH);
     POLAR = aspect < 0.8 ? 0.66 : 0.87;
@@ -1351,9 +1511,21 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
     camera.near = Math.max(0.3, fitDist * 0.04);
     camera.far = fitDist * 8 + 60;
     camera.updateProjectionMatrix();
-    camera.position.copy(target).addScaledVector(dir, fitDist);
-    camera.up.set(0, 1, 0);
-    camera.lookAt(target);
+    // That's the goal framing; the card camera eases toward it in frame() (a new floor,
+    // a new era, a new wing glide in rather than cut). First fit and resizes snap.
+    goalTarget.copy(target);
+    goalDist = fitDist;
+    goalPolar = POLAR;
+    if (snap || !fittedOnce) {
+      fittedOnce = true;
+      curDist = goalDist;
+      curPolar = goalPolar;
+      camera.position.copy(target).addScaledVector(dir, fitDist);
+      camera.up.set(0, 1, 0);
+      camera.lookAt(target);
+    } else {
+      target.copy(prevTarget);
+    }
     const span = Math.max(b.x1 - b.x0, b.z1 - b.z0);
     fog.near = fitDist + span * 0.5;
     fog.far = fitDist + span * 2.6 + 25;
@@ -1375,8 +1547,17 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
     oc.zoomToCursor = true;
     oc.touches = { ONE: TOUCH.PAN, TWO: TOUCH.DOLLY_ROTATE };
     oc.mouseButtons = { LEFT: MOUSE.PAN, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.ROTATE };
+    oc.addEventListener("change", () => { lastCamMove = performance.now(); });
     oc.update();
     controls = oc;
+    // Fly in: start a little further out and glide to the framing (RM: just there).
+    if (!lastRM) {
+      const from = fitDist * 1.35;
+      tmp.copy(camera.position).sub(target).normalize();
+      camera.position.copy(target).addScaledVector(tmp, from);
+      focusFrom = { t: target.clone(), d: from, at: performance.now() };
+      focusTo = { t: target.clone(), d: fitDist };
+    }
   }
   function detachControls(): void {
     if (!controls) return;
@@ -1384,7 +1565,7 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
     controls = null;
     canvas.style.touchAction = "";
     azimuth = AZ;
-    fitCamera();
+    fitCamera(true);
   }
 
   const project = (v: Vector3): { x: number; y: number } | null => {
@@ -1394,7 +1575,16 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
   };
 
   const api: HallScene3D = {
+    primeAgents(seen) {
+      prevAgents = Math.max(0, Math.floor(seen));
+    },
+
     setModel(next) {
+      // Someone new on the roster walks in (not on the first build, not on a reload).
+      const n = next.agents.length;
+      if (prevAgents >= 0 && n > prevAgents) for (let i = prevAgents; i < Math.min(n, MAX_PEOPLE); i++) pendingArrivals.push(i);
+      if (n < prevAgents) for (const k of [...arrivalAt.keys()]) if (k >= n) arrivalAt.delete(k);
+      prevAgents = n;
       model = next;
       spec = buildScene3D(next);
       const sig = `${next.cols}|${next.rows}|${next.era}|${next.splitGx}|${next.splitGy}|${next.coolingUnits}|${spec.plots.map((p) => p.id).join(",")}|${next.beams.length}|${spec.planters.map((p) => `${p.x0.toFixed(2)}:${p.x1.toFixed(2)}`).join(",")}|${next.skyline.map((t) => `${Math.round(t.h * 20)}${t.dim ? "d" : ""}${t.you ? "y" : ""}`).join(".")}|${next.charter?.id ?? ""}|${next.wall.length}|${next.wing}|${next.total}|${next.staff}`;
@@ -1429,9 +1619,10 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
         rackColors(m, lastSkin);
         staticsDirty = true; // Rig Bay plates take the skinned tier colour too
       }
-      const spawning = f.spawnT < 1;
+      const spawnEnd = RACK_DROP_MS + RACK_STAGGER * Math.max(0, s.racks.length - f.spawnFrom) + DUST_MS;
+      const spawning = f.spawnMs < spawnEnd;
       if (staticsDirty || spawning) {
-        placeStatics(m, s, f.spawnFrom, f.spawnT);
+        placeStatics(m, s, f.spawnFrom, f.spawnMs);
         staticsDirty = false;
         renderer.shadowMap.needsUpdate = true;
       }
@@ -1472,18 +1663,63 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
         const inc = m.incidents.find((x) => x.rackIndex === i);
         if (inc) led = mix(led, [255, 80, 60], inc.worked ? 0.35 : 0.7);
         k *= 0.85 + 0.35 * nf;
-        rackLeds.setColorAt(i, setC(c, led, k));
+        // A rack that just landed powers on: dark, a flicker, then lit.
+        const a = arrival(i, f.spawnFrom, f.spawnMs);
+        if (a < 1) k *= smooth(0.72, 1, a) * (0.7 + 0.3 * Math.sin(t / 22));
+        // Alternate bars blink out of phase — the rack reads as a working machine.
+        const ph = t / 230 + i * 1.7;
+        rackLedsA.setColorAt(i, setC(c, led, k * (rm ? 1 : 0.8 + 0.2 * Math.sin(ph))));
+        rackLedsB.setColorAt(i, setC(c, led, k * (rm ? 1 : 0.8 + 0.2 * Math.sin(ph + 2.4))));
       }
-      if (rackLeds.instanceColor) rackLeds.instanceColor.needsUpdate = true;
+      for (const im of [rackLedsA, rackLedsB]) if (im.instanceColor) im.instanceColor.needsUpdate = true;
 
-      // People.
+      // Dust where a new rack lands (a soft additive puff that spreads and fades).
+      let dn = 0;
+      if (spawning) {
+        for (let i = Math.max(0, f.spawnFrom); i < s.racks.length; i++) {
+          const r = s.racks[i]!;
+          const dt = f.spawnMs - (i - f.spawnFrom) * RACK_STAGGER - RACK_DROP_MS * 0.36;
+          if (dt <= 0 || dt >= DUST_MS) continue;
+          const u = dt / DUST_MS;
+          dummy.position.set(r.x, FLOOR_Y + 0.02, r.z);
+          dummy.rotation.set(0, 0, 0);
+          dummy.scale.set(0.6 + u * 1.3, 1, 0.6 + u * 1.3);
+          dummy.updateMatrix();
+          dust.setMatrixAt(dn, dummy.matrix);
+          dust.setColorAt(dn, setC(c, [214, 206, 194], (1 - u) * 0.55));
+          dn++;
+        }
+      }
+      dust.count = dn;
+      dust.instanceMatrix.needsUpdate = true;
+      if (dust.instanceColor) dust.instanceColor.needsUpdate = true;
+
+      // Monitors: the code scrolls (still under RM).
+      codeTex.offset.y = rm ? 0 : -((t / 9000) % 1);
+
+      // People. A new hire walks in from the door to their place (RM: just there).
       const nAgents = Math.min(MAX_PEOPLE, m.agents.length);
       bodies.count = heads.count = hair.count = agentProxy.count = nAgents;
-      legs.count = arms.count = nAgents * 2;
+      legs.count = arms.count = eyes.count = nAgents * 2;
+      for (const i of pendingArrivals) arrivalAt.set(i, t);
+      pendingArrivals = [];
       let blobN = 0;
       for (let i = 0; i < nAgents; i++) {
-        const p = agentPose(s, m, i, t, rm);
-        posePerson(i, p, rm);
+        let p = agentPose(s, m, i, t, rm);
+        let pop = 1;
+        const at = arrivalAt.get(i);
+        if (at !== undefined) {
+          const lt = t - at;
+          if (rm || lt >= ARRIVE_MS) arrivalAt.delete(i);
+          else {
+            const e = easeInOut(lt / ARRIVE_MS);
+            const sx = s.bay.x0 + 0.62, sz = s.bay.z1 - 0.1;
+            const gait = t / 150 + i;
+            p = { x: sx + (p.x - sx) * e, z: sz + (p.z - sz) * e, lift: Math.abs(Math.sin(gait)) * 0.025, rotY: Math.atan2(p.x - sx, p.z - sz), seated: false, gait, yaw: 0, stride: 1 };
+            pop = Math.min(1, 0.2 + lt / 260);
+          }
+        }
+        posePerson(i, p, rm, pop);
         dummy.position.set(p.x, FLOOR_Y + 0.012, p.z);
         dummy.rotation.set(0, 0, 0);
         dummy.scale.set(0.42, 1, 0.42);
@@ -1504,15 +1740,15 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
         blobs.setMatrixAt(blobN++, dummy.matrix);
       }
       blobs.count = blobN;
-      for (const im of [bodies, heads, hair, legs, arms, agentProxy, blobs]) im.instanceMatrix.needsUpdate = true;
+      for (const im of [bodies, heads, hair, legs, arms, eyes, agentProxy, blobs]) im.instanceMatrix.needsUpdate = true;
 
       // Beams + rising pulses (launch buzz surges; batching speeds; monetize gilds).
       // Instanced: brightness stands in for opacity (additive blending).
       let pn = 0;
       s.beams.forEach((b, i) => {
         const buzz = m.beamBuzz[i] ?? 0;
-        const inten = Math.min(1.1, (m.beams[i] ?? 0.2) * (1 + 0.45 * buzz));
-        const flick = rm ? 1 : 0.88 + 0.12 * Math.sin(t / 260 + i * 1.3) + buzz * 0.2 * (0.5 + 0.5 * Math.sin(t / 110 + i));
+        const inten = Math.min(1.3, (m.beams[i] ?? 0.2) * (1 + 0.45 * buzz) + f.burst * 0.4);
+        const flick = (rm ? 1 : 0.88 + 0.12 * Math.sin(t / 260 + i * 1.3) + buzz * 0.2 * (0.5 + 0.5 * Math.sin(t / 110 + i))) + f.burst * 0.8;
         const h = 2.6 + 5.5 * inten;
         const bc = pick(BEAM, i);
         if (beamCores && beamGlows) {
@@ -1630,6 +1866,50 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
         p.edgeMat.opacity = 0.35 + 0.5 * pulse;
       }
 
+      // Claim: a burst of glowing data cubes rising off the racks and fading.
+      let bn = 0;
+      if (f.burst > 0.001 && !rm && s.racks.length > 0) {
+        const ph = 1 - f.burst;
+        for (let k = 0; k < 48; k++) {
+          const r = s.racks[Math.floor(hash01(k + 101) * s.racks.length)]!;
+          const up = ph * (1.1 + hash01(k + 7) * 1.9) - ph * ph * 0.5;
+          dummy.position.set(r.x + (hash01(k + 3) - 0.5) * 0.5 * (1 + ph), FLOOR_Y + r.h + 0.1 + up, r.z + (hash01(k + 5) - 0.5) * 0.5 * (1 + ph));
+          dummy.rotation.set(ph * 4 + k, ph * 3 + k, 0);
+          dummy.scale.setScalar(1 - ph * 0.55);
+          dummy.updateMatrix();
+          bursts.setMatrixAt(bn, dummy.matrix);
+          bursts.setColorAt(bn, setC(c, pick(TIER_LED, r.tier), (1 - ph) * 1.3));
+          bn++;
+        }
+      }
+      bursts.count = bn;
+      bursts.instanceMatrix.needsUpdate = true;
+      if (bursts.instanceColor) bursts.instanceColor.needsUpdate = true;
+
+      // Training run: data packets run the cable path from the racks to the ops bay.
+      let kn = 0;
+      const total = packetLens[packetLens.length - 1] ?? 0;
+      if (m.active && !rm && total > 0) {
+        for (let k = 0; k < 14; k++) {
+          let d = ((t / 2600 + k / 14) % 1) * total;
+          let seg = 1;
+          while (seg < packetLens.length - 1 && packetLens[seg]! < d) seg++;
+          const a0 = packetPath[seg - 1]!, a1 = packetPath[seg]!;
+          const l0 = packetLens[seg - 1]!, l1 = packetLens[seg]!;
+          d = l1 > l0 ? (d - l0) / (l1 - l0) : 0;
+          dummy.position.lerpVectors(a0, a1, d);
+          dummy.rotation.set(0, 0, 0);
+          dummy.scale.setScalar(1);
+          dummy.updateMatrix();
+          packets.setMatrixAt(kn, dummy.matrix);
+          packets.setColorAt(kn, setC(c, [140, 220, 255], 0.75 + 0.25 * Math.sin(t / 120 + k)));
+          kn++;
+        }
+      }
+      packets.count = kn;
+      packets.instanceMatrix.needsUpdate = true;
+      if (packets.instanceColor) packets.instanceColor.needsUpdate = true;
+
       // Cooling-tower steam: soft puffs rising and widening (held still under RM).
       let sn2 = 0;
       for (const st of steamTops) {
@@ -1719,15 +1999,20 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
         controls.target.z = Math.max(b.z0 - 1, Math.min(b.z1 + 1, controls.target.z));
         controls.target.y = FLOOR_Y + 0.4;
         controls.update();
-      } else if (!rm) {
-        const az = AZ + 0.035 * Math.sin(t / 15000);
-        if (Math.abs(az - azimuth) > 1e-4) {
-          azimuth = az;
-          tmp.set(Math.sin(POLAR) * Math.sin(azimuth), Math.cos(POLAR), Math.sin(POLAR) * Math.cos(azimuth));
-          camera.position.copy(target).addScaledVector(tmp, fitDist);
-          camera.lookAt(target);
-        }
+      } else {
+        // Ease toward the fitted framing (a new floor / era / wing glides in), plus a
+        // slow, barely-there sway. Reduced motion: snap, no sway.
+        const dt = lastFrameT < 0 ? 1000 : Math.min(200, t - lastFrameT);
+        const a = rm ? 1 : 1 - Math.exp(-dt / 240);
+        target.lerp(goalTarget, a);
+        curDist += (goalDist - curDist) * a;
+        curPolar += (goalPolar - curPolar) * a;
+        azimuth = rm ? AZ : AZ + 0.035 * Math.sin(t / 15000);
+        tmp.set(Math.sin(curPolar) * Math.sin(azimuth), Math.cos(curPolar), Math.sin(curPolar) * Math.cos(azimuth));
+        camera.position.copy(target).addScaledVector(tmp, curDist);
+        camera.lookAt(target);
       }
+      lastFrameT = t;
 
       renderer.render(scene, camera);
     },
@@ -1740,7 +2025,7 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
       if (controls) {
         camera.aspect = cssW / cssH;
         camera.updateProjectionMatrix();
-      } else fitCamera();
+      } else fitCamera(true);
     },
 
     pick(x, y) {
@@ -1762,6 +2047,22 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
         }
         const plot = h.object.userData.plot as string | undefined;
         if (plot) return { kind: "plot", id: plot };
+      }
+      // People are small under a thumb: take the nearest one within ~22 css px of the tap.
+      {
+        let best = -1, bestD = 22 * 22;
+        const n = Math.min(MAX_PEOPLE, model.agents.length);
+        for (let i = 0; i < n; i++) {
+          const p = project(tmp.set(headPos[i * 3]!, headPos[i * 3 + 1]! - 0.32, headPos[i * 3 + 2]!));
+          if (!p) continue;
+          const d = (p.x - x) ** 2 + (p.y - y) ** 2;
+          if (d < bestD) { bestD = d; best = i; }
+        }
+        if (chen.visible) {
+          const p = project(tmp.copy(chen.position).setY(chen.position.y + 0.35));
+          if (p && (p.x - x) ** 2 + (p.y - y) ** 2 < bestD) return { kind: "chen" };
+        }
+        if (best >= 0) return { kind: "agent", index: best };
       }
       // A tap in the gap between racks lands on the floor: the tile under it belongs to
       // the rack standing there (the 2D hit-test honours the floor tile the same way).
@@ -1810,6 +2111,11 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
 
     zoom() {
       return controls ? fitDist / Math.max(0.01, camera.position.distanceTo(controls.target)) : 1;
+    },
+
+    wantsHighFps() {
+      if (controls) return focusFrom !== null || performance.now() - lastCamMove < 1200;
+      return Math.abs(goalDist - curDist) > 0.02 * goalDist || target.distanceToSquared(goalTarget) > 0.0004;
     },
 
     isLost() {

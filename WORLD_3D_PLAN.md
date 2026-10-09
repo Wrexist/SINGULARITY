@@ -27,6 +27,49 @@ generating a 3D airport digital twin), Dominik Scholz's three.js agent office
 
 ---
 
+## Round 4 (2026-10-09): detail, motion, smoothness
+
+**Owner:** *"make it more detailed and smooth and clean, professional, make everything work
+and immersive; also add motion and animation."*
+
+Every addition is wordless and ambient (CLAUDE.md "clean, not noisy"), renderer-only, and
+degrades to a static end state under reduced motion.
+
+- **Detail**
+  - Faces: two eyes per head, turning with the head.
+  - A mug on every other desk.
+  - Vent grilles on rack tops (pods keep their glowing caps).
+  - Monitors show slowly scrolling code (texture offset; still under reduced motion).
+  - Rack LED bars in two interleaved sets that blink out of phase.
+  - Lamp pools and beam nodes now use a white glow texture. The old black blob was
+    invisible under additive blending.
+- **Motion**
+  - A bought rack drops in and bounces to rest: 700 ms, staggered 55 ms per rack, its
+    contact shadow tightening as it lands. A dust puff spreads where it touches down, and
+    its LEDs power on with a flicker.
+  - New hires walk in from the bay door to their desk (2.6 s, eased). Hiring happens on
+    the Team tab, so the stage remembers how many staff you've seen across mounts.
+  - Walkers ease to a stop at each end and face the camera mid-turn; their stride scales
+    with speed (no moonwalking).
+  - Seated staff glance aside now and then (at most ~35°).
+  - A claim sends 48 glowing data cubes up off the racks and flares the product beams.
+  - A live training run sends data packets along the cable trays to the ops bay.
+- **Smoothness**
+  - The card camera glides to a new framing (new floor, era or wing) instead of cutting.
+  - A wing or era swap dips the canvas softly.
+  - The lab fades in on its first frame.
+  - Explore flies in from 1.35× distance.
+  - 60 fps only while the camera moves (touch, glide, refit); 30 fps otherwise.
+- **UI**
+  - Status labels and the training callout fade and spring rather than pop.
+  - HUD rates roll toward new values.
+  - A one-time gesture hint appears in explore, gone after ~4 s or on the first touch.
+  - People are tappable within ~22 px of the thumb.
+  - The plot "+" is turned 45° so it no longer reads as "×".
+- **Budget:** 39 draw calls on a busy lab (seeded smoke), 18 on a fresh one; the gate is ≤100.
+
+---
+
 ## Round 3 (2026-10-09): owner decisions, eras as architecture, Rig Bay, battery
 
 **Owner:** *"do what's best for the game in everything, but it should be free or coded."*

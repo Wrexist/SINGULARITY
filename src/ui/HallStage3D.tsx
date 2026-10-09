@@ -9,6 +9,11 @@ import type { GameState } from "../engine/types";
 import type { HallScene3D, Pick3D } from "../render3d/hallScene3d";
 import { nextDprCap, shouldRender } from "../render3d/quality";
 
+/** Staff the player has already seen on the floor this session. Hiring happens on the
+ *  Team tab (the hall isn't mounted there), so the next time the lab mounts, anyone
+ *  beyond this count walks in from the door. -1 = nothing seen yet (no walk-ins). */
+let seenAgents = -1;
+
 /**
  * The 3D hall stage (Phase 0 spike — WORLD_3D_PLAN.md). Same contract as the 2D
  * HallCanvas loop: an rAF loop reads the store directly (no React churn), caps the
@@ -81,7 +86,9 @@ export function HallStage3D({
     function run(s3: HallScene3D, canvas: HTMLCanvasElement, wrap: HTMLDivElement): () => void {
       let raf = 0;
       let running = false;
+      // ~30fps ambient; ~60fps while the camera moves (a touch, a glide, a refit).
       const FRAME_MS = 1000 / 30;
+      const FAST_MS = 1000 / 60;
       let lastDraw = -1e9;
       let cssW = 1, cssH = 1;
 
@@ -92,7 +99,6 @@ export function HallStage3D({
       let lastSkylineAt = -1e9;
       let prevTotal = model.total, prevWing = model.wing;
       let spawnFrom = 0, spawnStart = -1e9;
-      const SPAWN_MS = 520;
       let prevClaim = useGame.getState().claimBurst;
       let burstStart = -1e9;
       const BURST_MS = 1100;
@@ -101,13 +107,17 @@ export function HallStage3D({
       let dprCap = 2;
       let paceAcc = 0, paceN = 0, prevTick = -1;
       let lastRenderAt = -1e9;
+      let prevView: { wing: number; era: number } | null = null;
+      let shown = false;
       let lastLostCheck = 0;
       let lostChecks = 0;
       let labelNames = "";
       let labelSizes: { w: number; h: number }[] = [];
       const placed: { x0: number; y0: number; x1: number; y1: number }[] = [];
       const order: { i: number; x: number; y: number }[] = [];
+      if (seenAgents >= 0) s3.primeAgents(Math.min(seenAgents, model.agents.length));
       s3.setModel(model);
+      seenAgents = model.agents.length;
 
       const resize = () => {
         cssW = Math.max(1, wrap.clientWidth);
@@ -140,6 +150,7 @@ export function HallStage3D({
           ...rows.map((r) => {
             const el = document.createElement("div");
             el.className = "hall3d-label";
+            el.style.opacity = "0";
             const head = document.createElement("div");
             head.className = "hall3d-label-head";
             const b = document.createElement("b");
@@ -161,7 +172,7 @@ export function HallStage3D({
 
       const frame = (timeMs: number) => {
         if (!running) return;
-        if (timeMs - lastDraw < FRAME_MS) { raf = requestAnimationFrame(frame); return; }
+        if (timeMs - lastDraw < (s3.wantsHighFps() ? FAST_MS : FRAME_MS) - 1) { raf = requestAnimationFrame(frame); return; }
         lastDraw = timeMs;
 
         // Context watchdog. A loss on backgrounding is normal and restores itself; one
@@ -202,7 +213,16 @@ export function HallStage3D({
           rebuilt = true;
         }
         if (rebuilt) {
+          // Switching wings or crossing an era rebuilds the room: a quick soft dip hides
+          // the swap (CSS; none under reduced motion).
+          if (prevView && (prevView.wing !== model.wing || prevView.era !== model.era)) {
+            wrap.classList.remove("dip");
+            void wrap.offsetWidth;
+            wrap.classList.add("dip");
+          }
+          prevView = { wing: model.wing, era: model.era };
           s3.setModel(model);
+          seenAgents = model.agents.length;
           syncLabels(model, game);
         }
 
@@ -230,12 +250,17 @@ export function HallStage3D({
           }
         }
         lastRenderAt = timeMs;
+        if (!shown) {
+          // Fade the lab in on its first frame (no pop from an empty canvas).
+          shown = true;
+          requestAnimationFrame(() => wrap.classList.add("ready"));
+        }
         s3.frame({
           timeMs,
           reducedMotion: rm,
           phase: rm ? 0.08 : dayPhase(timeMs),
           spawnFrom,
-          spawnT: rm ? 1 : Math.min(1, (timeMs - spawnStart) / SPAWN_MS),
+          spawnMs: rm ? Infinity : timeMs - spawnStart,
           burst: rm ? 0 : burst,
           rackSkin: useSettings.getState().rackSkin,
           ...(tapFlash && timeMs - tapFlash.start < 450 ? { tapFlash: { index: tapFlash.index, t: 1 - (timeMs - tapFlash.start) / 450 } } : {}),
@@ -268,7 +293,7 @@ export function HallStage3D({
             for (let i = 0; i < els.length; i++) {
               const p = s3.agentScreen(i);
               if (p) order.push({ i, x: p.x, y: p.y });
-              else (els[i] as HTMLElement).style.visibility = "hidden";
+              else (els[i] as HTMLElement).style.opacity = "0";
             }
             order.sort((a, b) => b.y - a.y);
             placed.length = 0;
@@ -277,7 +302,7 @@ export function HallStage3D({
               const sz = labelSizes[o.i] ?? { w: 90, h: 32 };
               const r = { x0: o.x - sz.w / 2 - 3, y0: o.y - sz.h - 3, x1: o.x + sz.w / 2 + 3, y1: o.y + 3 };
               const clash = placed.some((q) => r.x0 < q.x1 && r.x1 > q.x0 && r.y0 < q.y1 && r.y1 > q.y0);
-              el.style.visibility = clash ? "hidden" : "visible";
+              el.style.opacity = clash ? "0" : "1";
               if (clash) continue;
               placed.push(r);
               el.style.transform = `translate(${o.x.toFixed(1)}px, ${o.y.toFixed(1)}px) translate(-50%, -100%)`;
