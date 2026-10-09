@@ -572,3 +572,12 @@ when" balance, dials the whole curve, and the UI cost displays update for free (
 - **Iso 3D picking needs the floor tile, not just the mesh.** Racks are 0.66 tiles wide, so a
   third of taps pass between them; map a floor-plane hit to the tile's rack (the 2D hit-test
   already honours the tile the same way).
+- **three.js `mergeGeometries` refuses a mix of indexed and non-indexed parts.**
+  `RoundedBoxGeometry` is non-indexed, `BoxGeometry` is indexed: de-index first
+  (`g.index ? g.toNonIndexed() : g`), or the merge returns null and logs an error.
+- **Stacked floor planes z-fight under a perspective camera.** Millimetre offsets that
+  were fine in orthographic stripe at distance. Use `polygonOffset` per layer and scale
+  `camera.near` with the framing distance (near = 4% of it), not a fixed 0.1.
+- **An exception inside the rAF loop kills the loop silently and surfaces as a pageerror.**
+  The 3D stage wraps building and drawing each frame in try/catch and falls back to the
+  2D hall: a renderer bug must never take the lab off the screen.

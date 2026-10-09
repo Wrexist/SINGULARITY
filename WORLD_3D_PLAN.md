@@ -27,6 +27,52 @@ generating a 3D airport digital twin), Dominik Scholz's three.js agent office
 
 ---
 
+## Round 3 (2026-10-09): owner decisions, eras as architecture, Rig Bay, battery
+
+**Owner:** *"do what's best for the game in everything, but it should be free or coded."*
+
+**Decisions taken on that basis:**
+1. **Assets: 100% code-built.**
+   - Free, no licences to track, and a tiny bundle.
+   - Every object can carry live state, and the art stays in one style.
+   - CC0 kits remain allowed later if a specific need appears (characters are the likely
+     candidate), but nothing needs them now.
+2. **Priority: visible depth first.** Each era looks different, and every purchase is
+   visible: the Rig Bay parts that the 2D hall barely showed (IDEAS hard truth #2).
+3. **Battery is a feature.** An idle game stays open for hours, so the 3D Lab gets
+   cheaper on slow devices and stops repainting when the player asked for stillness.
+
+**What shipped:**
+- **Eras as architecture** (§7 #9):
+  - *Garage Closet:* concrete floor, a roller door, a pegboard of tools, a shelf of boxes,
+    and a mattress in the corner ("founded in a garage, rented hourly").
+  - *Funded Startup:* sticky notes on the whiteboard, beanbags.
+  - *Scale-Up:* cable ladder trays with coloured cables along both walls, and a tiled
+    data-hall floor.
+  - *Frontier:* a hyperboloid cooling tower, steaming, behind the building.
+  - *Hyperscaler:* a second tower, plus transmission pylons marching to the horizon,
+    wired into the lab.
+  - *Post-Singularity:* glowing floor seams, and an iridescent halo ring over the lab
+    with motes spiralling up through it (the 2D vortex, in the round).
+- **Rig Bay on the racks:** a socket per slot on each rack's left face, matching the 2D
+  "Bare Metal" rules.
+  - An empty socket is a dark hole.
+  - Accelerators grow glowing heatsink fins.
+  - Cooling parts spin a fan.
+  - Interconnects run a lit cable to the floor with a packet travelling down it.
+  - Each part glows in its grade's colour (standard warm white, enterprise cyan,
+    prototype violet).
+- **Batching:** all decor draws as one matte batch and one glowing batch. Rugs and beams
+  are instanced too. A late-game Post-Singularity wing went from 84 to **65 draw calls**
+  while gaining all of the above.
+- **Battery guards** (`render3d/quality.ts`, tested):
+  - **Adaptive resolution:** if a device can't hold ~30fps over 90 frames, the pixel
+    ratio steps down 2 → 1.75 → 1.5 → 1.25. It never steps back up in a session.
+  - **Still lab:** under reduced motion the card repaints only when something changed,
+    or at most twice a second.
+
+---
+
 ## Round 2 (2026-10-09, later): the "Lab Diorama" pass
 
 Owner follow-up: *"continue — make it look like the ones I sent, good UI and a great 3D
@@ -383,10 +429,8 @@ devices (A14+) → staged percentage. Keep **Classic** forever, the way Dwarf Fo
    R8-telemetry first, then Phase 0 on devices.
 3. **Explore camera:** keep orthographic (on-brand with today), or a low-FOV perspective
    (Ralv's depth when zooming)?
-4. **Assets:** stay 100% procedural (current rule, zero licence risk, tiny bundle), or allow
-   CC0 kits (Kenney Furniture Kit, KayKit, Quaternius) for props and characters? Racks,
-   cooling and cables must stay procedural either way: they carry live state, and no good
-   CC0 source exists. Avoid Hunyuan3D (licence excludes EU/UK/KR). Synty would need
+4. ~~**Assets**~~ — **decided (Round 3): 100% code-built.** CC0 kits stay allowed if a
+   specific need appears. Avoid Hunyuan3D (licence excludes EU/UK/KR). Synty would need
    written confirmation for GLBs inside a web bundle.
 
 ---

@@ -21,7 +21,11 @@ Renderer-only: no engine, save, balance or sim change.*
       camera, plinth, rugs, paired desks + planters, plants/lamp, limbs, wall decor,
       explore HUD + training callout, Ralv status cards, floor lettering
 - [x] Settings → "3D Lab (beta)" (default off, sanitized, live switch, any 3D error → 2D)
-- [ ] **Owner decisions left** (WORLD_3D_PLAN §9): assets policy, phase priority vs R8
+- [x] Round 3 (owner: "do what's best, free or coded"): assets = 100% code-built; eras as
+      architecture (garage → halo), Rig Bay parts on the racks, decor batching (84 → 65
+      draw calls), battery guards (adaptive DPR, still lab under reduced motion)
+- [ ] Next: device benchmarks on TestFlight (iPhone 11 / SE2 / 12 + iPad) before 3D goes
+      beyond opt-in; then "the world fills the screen" layout (§7 #1)
 - [ ] Phase 0 device gate: cold start, p10 fps, thermal, battery on iPhone 11 / SE2 / 12 + iPad
 
 ---
