@@ -27,6 +27,59 @@ generating a 3D airport digital twin), Dominik Scholz's three.js agent office
 
 ---
 
+## Round 2 (2026-10-09, later): the "Lab Diorama" pass
+
+Owner follow-up: *"continue — make it look like the ones I sent, good UI and a great 3D
+world."* That settles three §9 calls: go Ralv-style, use a perspective camera, and make it
+playable on a device. What changed:
+
+- **Camera:**
+  - A low-FOV (24°) **perspective** camera at about 40° elevation, slightly off 45° so the
+    two walls light differently.
+  - It frames the building automatically.
+  - A portrait screen tilts more top-down so the lab fills it.
+- **Building:**
+  - The whole lab stands on a bevelled **cream plinth**, with warm off-white walls and
+    bevelled caps.
+  - Ambient occlusion where the walls meet the floor.
+  - Wood floors (concrete in the Garage, white ceramic after the Singularity).
+  - **Colour-blocked rugs per room** (the Ralv signature).
+  - Lit aisles with low **glass rails**.
+- **Contact shadows:** under every rack, desk, plant and person, from a canvas-drawn soft
+  blob. These sit on top of the frozen soft sun shadows.
+- **The ops bay, Ralv-style:**
+  - **Desks in facing pairs** with a **planter strip** between them; the back row faces
+    the camera.
+  - Colourful office chairs, keyboards, monitors glowing in the team colour.
+  - Potted plants in the corners, and a floor lamp that pools warm light at night.
+- **Walls:** a whiteboard over the bay, the **charter banner**, and the **Legacy trophy
+  shelf** (one gold trophy per shipped generation; its core is sized by banked Legacy).
+- **People:** chibi with **arms and legs**. Seated staff type; roamers walk with a leg and
+  arm swing; Supervisor Chen walks her patrol.
+- **Explore UI:**
+  - **Glass HUD:** era, wing, and live Compute/Data/Money rates with the line icons.
+  - **Training-run callout** pinned in the world over the racks (Acme): a progress ring, a
+    Start → Train → Claim stepper, and the one live action (Start run / Claim payout).
+  - **Ralv status cards** once you pinch in: name, a Working / Training / In the lab chip,
+    and role · product. These are collision-culled, and the callout and floor lettering
+    give way to them (level of detail).
+  - **Floor lettering** at overview: "WING A · 120 RACKS", "OPS · 12 STAFF".
+- **Settings → "3D Lab (beta)":**
+  - Default **off**, and sanitized: only a stored `true` turns it on.
+  - Flips live between the 2D and 3D halls.
+  - Any 3D failure (no WebGL2, a context that stays lost, *any exception while building or
+    drawing a frame*) drops that session back to 2D.
+- **Budget, late-game wing:**
+  - 84 draw calls / 63k triangles (early lab 67 / 18k).
+  - Everything repeated is instanced: racks, people and limbs, furniture, leaves, windows,
+    rails, trophies, skyline, coolers, fans.
+  - Chunk 153 KB gzip.
+
+The **Garage Closet** still needs its own props (roller door, workbench, one tower PC) —
+that's the next "eras as architecture" item (§7 #9).
+
+---
+
 ## 1. What the references actually are
 
 | Ref | What it is | How it's built (evidence) | What to take |
@@ -241,7 +294,7 @@ GameState ──buildHallModel()──► HallModel ──┬──► hallRende
 | Claim burst, day/night, skyline, alignment tint | ✓ | |
 | Rack tap flash + cards | ✓ | Shared cards with 2D |
 | Hall themes (CSS filter) | ✓ | Applied to the GL canvas |
-| Charter banner, Legacy Wall trophies | ✗ | Phase 1 |
+| Charter banner, Legacy Wall trophies | ✓ | Round 2: banner on the back wall; trophy shelf on the left wall |
 | Storm / lightning weather, singularity vortex | ✗ | Phase 1 (weather on glass/roof only) |
 | Component delivery crate, ops bot, crowd at the lip | ✗ | Phase 1 |
 | Rig Bay part silhouettes | ✗ | Phase 1 (fixes hard truth #2) |

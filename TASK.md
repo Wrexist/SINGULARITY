@@ -17,7 +17,11 @@ Renderer-only: no engine, save, balance or sim change.*
 - [x] `HallStage3D` loop (30 fps cap, off-screen pause, reduce-motion, context watchdog → 2D)
 - [x] Explore mode: full screen, pan/pinch/orbit, tap-to-focus, culled name labels
 - [x] `hallModelSig` shared by both loops (verbatim extraction); smoke `--hall3d`
-- [ ] **Owner decisions** (WORLD_3D_PLAN §9): spine change, phase priority vs R8, camera, assets
+- [x] Round 2 "Lab Diorama" (owner: "make it look like the ones I sent"): perspective
+      camera, plinth, rugs, paired desks + planters, plants/lamp, limbs, wall decor,
+      explore HUD + training callout, Ralv status cards, floor lettering
+- [x] Settings → "3D Lab (beta)" (default off, sanitized, live switch, any 3D error → 2D)
+- [ ] **Owner decisions left** (WORLD_3D_PLAN §9): assets policy, phase priority vs R8
 - [ ] Phase 0 device gate: cold start, p10 fps, thermal, battery on iPhone 11 / SE2 / 12 + iPad
 
 ---
