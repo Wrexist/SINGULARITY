@@ -39,6 +39,9 @@ export interface Settings {
   achievementsSeen: number;
   /** Colour scheme: Light (default) / Dark / Match device. Cosmetic, local only. */
   appearance: Appearance;
+  /** 3D Lab (beta, WORLD_3D_PLAN.md): draw the hall with the three.js renderer.
+   *  Opt-in (default off); purely visual. Falls back to the 2D hall on any failure. */
+  lab3d: boolean;
 }
 
 const KEY = "singularity.settings.v1";
@@ -57,14 +60,14 @@ function prefersReducedMotion(): boolean {
 // honoured live by motionReduced(); seeding the toggle from it baked a device setting
 // into the stored settings, so turning Reduce Motion off in iOS later kept the game
 // still. A saved value (either way) is kept as stored.
-const DEFAULTS: Settings = { sound: true, music: true, haptics: true, reducedMotion: false, hallTheme: "classic", rackSkin: "classic", onboarded: false, shipExplained: false, hapticsLight: false, scientificNotation: false, lastBackupAt: null, achievementsSeen: 0, notifyReminders: false, appearance: "light" };
+const DEFAULTS: Settings = { sound: true, music: true, haptics: true, reducedMotion: false, hallTheme: "classic", rackSkin: "classic", onboarded: false, shipExplained: false, hapticsLight: false, scientificNotation: false, lastBackupAt: null, achievementsSeen: 0, notifyReminders: false, appearance: "light", lab3d: false };
 
 function load(): Settings {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const s = { ...DEFAULTS, ...JSON.parse(raw) } as Settings;
-      return { ...s, appearance: sanitizeAppearance(s.appearance) };
+      return { ...s, appearance: sanitizeAppearance(s.appearance), lab3d: s.lab3d === true };
     }
   } catch {
     /* ignore */
@@ -76,7 +79,7 @@ function persist(s: Settings): void {
   try {
     localStorage.setItem(
       KEY,
-      JSON.stringify({ sound: s.sound, music: s.music, haptics: s.haptics, reducedMotion: s.reducedMotion, hallTheme: s.hallTheme, rackSkin: s.rackSkin, onboarded: s.onboarded, shipExplained: s.shipExplained, hapticsLight: s.hapticsLight, scientificNotation: s.scientificNotation, lastBackupAt: s.lastBackupAt, achievementsSeen: s.achievementsSeen, notifyReminders: s.notifyReminders, appearance: s.appearance }),
+      JSON.stringify({ sound: s.sound, music: s.music, haptics: s.haptics, reducedMotion: s.reducedMotion, hallTheme: s.hallTheme, rackSkin: s.rackSkin, onboarded: s.onboarded, shipExplained: s.shipExplained, hapticsLight: s.hapticsLight, scientificNotation: s.scientificNotation, lastBackupAt: s.lastBackupAt, achievementsSeen: s.achievementsSeen, notifyReminders: s.notifyReminders, appearance: s.appearance, lab3d: s.lab3d }),
     );
   } catch {
     /* ignore */
@@ -121,7 +124,7 @@ export function osReduceMotionNow(): boolean {
 }
 
 interface SettingsStore extends Settings {
-  toggle: (key: "sound" | "music" | "haptics" | "hapticsLight" | "reducedMotion" | "scientificNotation") => void;
+  toggle: (key: "sound" | "music" | "haptics" | "hapticsLight" | "reducedMotion" | "scientificNotation" | "lab3d") => void;
   setHallTheme: (id: string) => void;
   setRackSkin: (id: string) => void;
   /** Return-reminder toggle (permission handling lives in the UI before this is set). */

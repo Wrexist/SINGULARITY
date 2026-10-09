@@ -137,7 +137,10 @@ try {
     for (let i = 0; i < 8; i++) {
       const btn = page.locator(
         'button:has-text("Take the first step"), button:has-text("Got it"), button:has-text("Continue"), ' +
-        'button:has-text("Begin"), button:has-text("Onward"), button:has-text("Nice"), button:has-text("Close"), button:has-text("Skip")'
+        'button:has-text("Begin"), button:has-text("Onward"), button:has-text("Nice"), button:has-text("Close"), button:has-text("Skip"), ' +
+        // A world-event DECISION can fire at any tick of a seeded run and has no
+        // dismiss — it waits for a choice. Take the first one so the walk goes on.
+        '.world-choice'
       ).first();
       if (await btn.count().then((c) => c > 0).catch(() => false)) {
         await btn.click({ timeout: 1500 }).catch(() => {});
@@ -162,6 +165,8 @@ try {
     await page.locator(".hall3d-expand").click();
     await sleep(1500);
     if ((await page.locator(".hall3d-explore").count()) !== 1) throw new Error("SMOKE: 3D explore mode did not open");
+    if ((await page.locator(".hall3d-explore .hall3d-hud").count()) !== 1) throw new Error("SMOKE: 3D explore HUD missing");
+    if ((await page.locator(".hall3d-explore .hall3d-callout").count()) !== 1) throw new Error("SMOKE: 3D training callout missing");
     await page.screenshot({ path: join(OUT, "03-hall3d-explore.png") });
     await page.keyboard.press("Escape");
     await sleep(400);
@@ -204,6 +209,7 @@ try {
   // The nav sweep above finishes on More, which opens the Settings sheet — its
   // backdrop covers the nav bar. Close it before asserting on GOALS, or the strict
   // click below fails on an overlay rather than on a real regression.
+  await dismissOverlays();
   for (let i = 0; i < 3; i++) {
     const backdrop = page.locator(".sheet-backdrop, .modal-backdrop");
     if ((await backdrop.count()) === 0) break;

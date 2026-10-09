@@ -21,6 +21,7 @@ import { HallStage3D } from "./HallStage3D";
 import { Portal } from "./Portal";
 import { ExpandIcon } from "./Icons";
 import { useDialog } from "./useDialog";
+import { ExploreHud, TrainingCallout } from "./Hall3DHud";
 
 /** Wings are named, not numbered: "Wing B" reads like a place in a building, where
  *  "Wing 2" reads like an index. Past Z it falls back to a number, which no real save
@@ -42,9 +43,13 @@ function HallCanvasImpl({ onExpand }: { onExpand: (id: string) => void }) {
   // Keep the latest callback reachable from the (mount-only) pointer handler.
   const onExpandRef = useRef(onExpand);
   onExpandRef.current = onExpand;
-  // Renderer: the shipped 2D canvas, or the opt-in 3D spike (WORLD_3D_PLAN.md). The
-  // 3D stage drops back to "2d" on any failure (no WebGL, lost context), for good.
-  const [mode, setMode] = useState<"2d" | "3d">(() => (hall3dEnabled() ? "3d" : "2d"));
+  // Renderer: the shipped 2D canvas, or the opt-in 3D Lab (Settings → 3D Lab (beta),
+  // or the ?hall3d=1 dev flag; WORLD_3D_PLAN.md). Any 3D failure (no WebGL, a lost
+  // context, a renderer error) drops back to 2D for the rest of the session.
+  const lab3d = useSettings((s) => s.lab3d);
+  const [devFlag] = useState(hall3dEnabled);
+  const [failed3d, setFailed3d] = useState(false);
+  const mode: "2d" | "3d" = (lab3d || devFlag) && !failed3d ? "3d" : "2d";
   const [explore, setExplore] = useState(false);
   // Live rack hit-areas (refreshed each frame) + the tapped rack's tier (R2.1).
   const rackHitsRef = useRef<RackHit[]>([]);
@@ -140,7 +145,9 @@ function HallCanvasImpl({ onExpand }: { onExpand: (id: string) => void }) {
     else if (p.kind === "agent") setSelectedAgent(p.index);
     else setSelectedTier(p.tier);
   }, [closeAllCards]);
-  const fallBack2D = useCallback(() => { setExplore(false); setMode("2d"); }, []);
+  const fallBack2D = useCallback(() => { setExplore(false); setFailed3d(true); }, []);
+  // Turning the 3D Lab off closes an open explore view with it.
+  useEffect(() => { if (mode === "2d") setExplore(false); }, [mode]);
 
   useEffect(() => {
     if (mode !== "2d") return;
@@ -584,7 +591,8 @@ function Explore3D({
     <Portal>
       <div className="hall3d-explore" ref={ref} role="dialog" aria-modal="true" aria-labelledby="hall3d-explore-title">
         <h2 id="hall3d-explore-title" className="sr-only">The lab, in 3D</h2>
-        <HallStage3D wingRef={wingRef} explore paused={false} filter={filter} onPick={onPick} onFail={onFail} />
+        <HallStage3D wingRef={wingRef} explore paused={false} filter={filter} onPick={onPick} onFail={onFail} callout={<TrainingCallout />} />
+        <ExploreHud wing={wingRef.current} />
         <button className="hall3d-close" aria-label="Close" onClick={onClose}>×</button>
         {children}
       </div>

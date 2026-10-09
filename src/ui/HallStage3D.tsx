@@ -1,10 +1,11 @@
-import { useEffect, useRef, type MutableRefObject } from "react";
+import { useEffect, useRef, type MutableRefObject, type ReactNode } from "react";
 import { useGame } from "../state/store";
 import { useSettings } from "./settings";
 import { reduceMotionNow } from "./motion";
 import { buildHallModel, buildSkyline, heatCrateCount, hallModelSig, type HallModel } from "../render/hallModel";
 import { dayPhase, spawnFromOnChange } from "../render/hallRenderer";
 import { products as PRODUCTS_BAL } from "../engine/balance/products";
+import type { GameState } from "../engine/types";
 import type { HallScene3D, Pick3D } from "../render3d/hallScene3d";
 
 /**
@@ -25,6 +26,7 @@ export function HallStage3D({
   filter,
   onPick,
   onFail,
+  callout,
 }: {
   wingRef: MutableRefObject<number>;
   explore: boolean;
@@ -32,10 +34,13 @@ export function HallStage3D({
   filter: string;
   onPick: (p: Pick3D | null, clientX: number, clientY: number) => void;
   onFail: () => void;
+  /** Explore only: a card pinned in the world above the racks (the training run). */
+  callout?: ReactNode;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelsRef = useRef<HTMLDivElement>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
   const onPickRef = useRef(onPick);
   onPickRef.current = onPick;
   const onFailRef = useRef(onFail);
@@ -108,23 +113,40 @@ export function HallStage3D({
       const ro = new ResizeObserver(resize);
       ro.observe(wrap);
 
-      // People labels (explore only, zoomed in): DOM, not in-scene text, so they stay
-      // crisp and legible at any zoom; positioned by projecting each head every frame.
-      const syncLabels = (m: HallModel) => {
+      // People cards (explore only, zoomed in) — the Ralv agent card: name, a status
+      // chip (working / training / in the lab) and what they're on. DOM, not in-scene
+      // text, so they stay crisp at any zoom; positioned by projecting each head.
+      const statusOf = (game: GameState, i: number): { tone: string; chip: string; line: string } => {
+        const e = game.employees[i];
+        const role = model.agents[i]?.role ?? "";
+        if (!e) return { tone: "idle", chip: "In the lab", line: role };
+        if (e.training) return { tone: "train", chip: "Training", line: `${role} · Lv ${e.level} → ${e.level + 1}` };
+        const p = e.assignedProductId ? game.products.active.find((q) => q.id === e.assignedProductId) : undefined;
+        return p ? { tone: "work", chip: "Working", line: `${role} · on ${p.name}` } : { tone: "idle", chip: "In the lab", line: role };
+      };
+      const syncLabels = (m: HallModel, game: GameState) => {
         const host = labelsRef.current;
         if (!host) return;
-        const names = m.agents.map((a) => `${a.name}/${a.role}`).join("|");
-        if (names === labelNames) return;
-        labelNames = names;
+        const rows = m.agents.map((a, i) => ({ name: a.name, ...statusOf(game, i) }));
+        const key = rows.map((r) => `${r.name}/${r.tone}/${r.line}`).join("|");
+        if (key === labelNames) return;
+        labelNames = key;
         host.replaceChildren(
-          ...m.agents.map((a) => {
+          ...rows.map((r) => {
             const el = document.createElement("div");
             el.className = "hall3d-label";
+            const head = document.createElement("div");
+            head.className = "hall3d-label-head";
             const b = document.createElement("b");
-            b.textContent = a.name;
-            const r = document.createElement("span");
-            r.textContent = a.role;
-            el.append(b, r);
+            b.textContent = r.name;
+            const chip = document.createElement("span");
+            chip.className = `hall3d-chip ${r.tone}`;
+            chip.textContent = r.chip;
+            head.append(b, chip);
+            const line = document.createElement("span");
+            line.className = "hall3d-label-line";
+            line.textContent = r.line;
+            el.append(head, line);
             return el;
           }),
         );
@@ -147,6 +169,9 @@ export function HallStage3D({
         }
         if (lostChecks > 0) { raf = requestAnimationFrame(frame); return; }
 
+        // A renderer bug must never take the hall down: any exception while building
+        // or drawing the 3D frame drops this session back to the shipped 2D canvas.
+        try {
         const st = useGame.getState();
         const game = st.game;
         if (st.claimBurst !== prevClaim) { prevClaim = st.claimBurst; burstStart = timeMs; }
@@ -173,7 +198,7 @@ export function HallStage3D({
         }
         if (rebuilt) {
           s3.setModel(model);
-          syncLabels(model);
+          syncLabels(model, game);
         }
 
         const from = spawnFromOnChange({ total: prevTotal, wing: prevWing }, { total: model.total, wing: model.wing });
@@ -192,10 +217,24 @@ export function HallStage3D({
           rackSkin: useSettings.getState().rackSkin,
           ...(tapFlash && timeMs - tapFlash.start < 450 ? { tapFlash: { index: tapFlash.index, t: 1 - (timeMs - tapFlash.start) / 450 } } : {}),
         });
+        } catch {
+          stop();
+          fail();
+          return;
+        }
 
+        // Level of detail: at overview the run callout floats over the racks; pinched
+        // in, it gives way to the people cards.
+        const zoom = s3.zoom();
+        const anchor = anchorRef.current;
+        if (anchor) {
+          const a = zoom < 1.6 ? s3.runAnchor() : null;
+          anchor.classList.toggle("on", !!a);
+          if (a) anchor.style.transform = `translate(${a.x.toFixed(1)}px, ${a.y.toFixed(1)}px) translate(-50%, -100%)`;
+        }
         const host = labelsRef.current;
         if (host) {
-          const show = explore && s3.zoom() >= 1.6;
+          const show = explore && zoom >= 1.6;
           host.classList.toggle("on", show);
           if (show) {
             // Label culling: front-most people (lowest on screen) claim their spot
@@ -312,6 +351,7 @@ export function HallStage3D({
     <div className="hall3d-stage" ref={wrapRef}>
       <canvas ref={canvasRef} className="hall-canvas" aria-hidden="true" style={filter ? { filter } : undefined} />
       {explore && <div className="hall3d-labels" ref={labelsRef} aria-hidden="true" />}
+      {explore && callout && <div className="hall3d-anchor" ref={anchorRef}>{callout}</div>}
     </div>
   );
 }
