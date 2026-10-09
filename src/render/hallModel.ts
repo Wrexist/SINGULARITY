@@ -401,3 +401,25 @@ export function buildHallModel(game: GameState, wing = 0): HallModel {
     ...hallRoomSplit(game),
   };
 }
+
+/**
+ * Cheap signature of every render-affecting field, so a renderer can cache the
+ * model and rebuild only when this string changes. Shared by the 2D canvas and
+ * the 3D stage so they can never disagree about when the lab changed.
+ *
+ * run.progress is excluded — the renderers animate from the clock, not from
+ * progress. Power ids come from the same source buildHallModel uses, so a new
+ * powerCapacity upgrade automatically invalidates the cache. The incident set
+ * changes on event fire/expiry/work, not on the per-tick decay. Software upgrades
+ * that manifest in the model (overclock → hotter racks, auto_train → ops bot,
+ * data_pipeline → denser motes, batching → faster beam pulses, monetize → golden
+ * beam glint) MUST be in the signature, else buying them rebuilds nothing and the
+ * lab looks unchanged (2026-07: they were modeled but omitted, so a common buy like
+ * Overclock felt inert).
+ */
+export function hallModelSig(game: GameState, wing: number): string {
+  const u = game.upgrades;
+  const powerSig = POWER_IDS.map((id) => u[id] ?? 0).join(",");
+  const incSig = game.modifiers.map((m) => `${m.id}${m.tone === "bad" ? (m.worked ? "w" : "b") : "g"}`).join(",");
+  return `${u.rack_basic ?? 0}|${u.rack_server ?? 0}|${u.rack_tpu ?? 0}|${u.expand_n ?? 0}|${u.expand_s ?? 0}|${u.expand_e ?? 0}|${u.expand_w ?? 0}|${u.overclock ?? 0}|${u.auto_train ?? 0}|${u.data_pipeline ?? 0}|${u.batching ?? 0}|${u.monetize ?? 0}|${powerSig}|${game.run.active ? 1 : 0}|${game.run.readyToClaim ? 1 : 0}|${Math.round(game.alignment * 20)}|${game.products.active.map((p) => p.id).join(",")}|${currentEra(game)}|${regulatorState(game).index}|${game.charter ?? ""}|${game.shipLog.length}|${wing}|${game.facilityWings}|${incSig}`;
+}

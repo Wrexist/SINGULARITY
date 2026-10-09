@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useGame } from "../state/store";
 import { useSettings } from "./settings";
 import { reduceMotionNow } from "./motion";
@@ -6,7 +6,7 @@ import { haptics } from "./haptics";
 import { sound } from "./sound";
 import { floatText } from "./fx";
 import { wingAtX } from "./wingSlop";
-import { buildHallModel, buildSkyline, heatCrateCount, POWER_IDS } from "../render/hallModel";
+import { buildHallModel, buildSkyline, heatCrateCount, hallModelSig } from "../render/hallModel";
 import { drawHallStatic, drawHallDynamic, expansionMarkers, rackHitAreas, rackAtPoint, spawnFromOnChange, pointInPoly, agentSpots, chenSpot, dayPhase, type RackHit, type AgentSpot } from "../render/hallRenderer";
 import { currentEra, eraName } from "../engine/eras";
 import { hallRooms, hallWings, wingCapacity } from "../engine/hall";
@@ -15,6 +15,12 @@ import { balance } from "../engine/balance/config";
 import { products as PRODUCTS_BAL } from "../engine/balance/products";
 import { rackInfo } from "../engine/rackInfo";
 import { themeFilter } from "./hallThemes";
+import { hall3dEnabled } from "../render3d/flag";
+import type { Pick3D } from "../render3d/hallScene3d";
+import { HallStage3D } from "./HallStage3D";
+import { Portal } from "./Portal";
+import { ExpandIcon } from "./Icons";
+import { useDialog } from "./useDialog";
 
 /** Wings are named, not numbered: "Wing B" reads like a place in a building, where
  *  "Wing 2" reads like an index. Past Z it falls back to a number, which no real save
@@ -36,6 +42,10 @@ function HallCanvasImpl({ onExpand }: { onExpand: (id: string) => void }) {
   // Keep the latest callback reachable from the (mount-only) pointer handler.
   const onExpandRef = useRef(onExpand);
   onExpandRef.current = onExpand;
+  // Renderer: the shipped 2D canvas, or the opt-in 3D spike (WORLD_3D_PLAN.md). The
+  // 3D stage drops back to "2d" on any failure (no WebGL, lost context), for good.
+  const [mode, setMode] = useState<"2d" | "3d">(() => (hall3dEnabled() ? "3d" : "2d"));
+  const [explore, setExplore] = useState(false);
   // Live rack hit-areas (refreshed each frame) + the tapped rack's tier (R2.1).
   const rackHitsRef = useRef<RackHit[]>([]);
   const [selectedTier, setSelectedTier] = useState<number | null>(null);
@@ -105,9 +115,35 @@ function HallCanvasImpl({ onExpand }: { onExpand: (id: string) => void }) {
   // Cosmetic theme = a CSS filter on the canvas (purely visual; no render change).
   useEffect(() => {
     if (canvasRef.current) canvasRef.current.style.filter = themeFilter(hallTheme);
-  }, [hallTheme]);
+  }, [hallTheme, mode]);
+
+  // The 3D stage's taps land here so both renderers share one set of cards/actions.
+  const closeAllCards = useCallback(() => {
+    setSelectedTier(null);
+    setSelectedAgent(null);
+    setChenOpen(false);
+  }, []);
+  const onPick3D = useCallback((p: Pick3D | null, clientX: number, clientY: number) => {
+    if (!p) { closeAllCards(); return; }
+    sound.tap();
+    if (p.kind === "rack" && p.incident) {
+      // IDEAS #5 — a smoking rack is a problem you can WORK (same as the 2D tap).
+      haptics.success();
+      useGame.getState().doWorkProblem(p.incident);
+      floatText(clientX, clientY - 12, `on it — −${balance.worldEvents.workShaveSec}s`, "#ff9f0a", 13);
+      return;
+    }
+    haptics.tap();
+    if (p.kind === "plot") { onExpandRef.current(p.id); return; }
+    closeAllCards();
+    if (p.kind === "chen") setChenOpen(true);
+    else if (p.kind === "agent") setSelectedAgent(p.index);
+    else setSelectedTier(p.tier);
+  }, [closeAllCards]);
+  const fallBack2D = useCallback(() => { setExplore(false); setMode("2d"); }, []);
 
   useEffect(() => {
+    if (mode !== "2d") return;
     const canvas = canvasRef.current!;
     const wrap = wrapRef.current!;
     const ctx = canvas.getContext("2d");
@@ -198,20 +234,8 @@ function HallCanvasImpl({ onExpand }: { onExpand: (id: string) => void }) {
       const game = st.game;
       if (st.claimBurst !== prevClaim) { prevClaim = st.claimBurst; burstStart = timeMs; }
       const burst = timeMs - burstStart < BURST_MS ? 1 - (timeMs - burstStart) / BURST_MS : 0;
-      // Cheap signature of render-affecting fields (run.progress is excluded —
-      // the renderer animates from the clock, not from progress).
-      const u = game.upgrades;
-      // Power ids come from the same source buildHallModel uses, so adding a new
-      // powerCapacity upgrade automatically invalidates this cache too.
-      const powerSig = POWER_IDS.map((id) => u[id] ?? 0).join(",");
-      // Incident set: changes on event fire/expiry/work — not on the per-tick decay.
-      const incSig = game.modifiers.map((m) => `${m.id}${m.tone === "bad" ? (m.worked ? "w" : "b") : "g"}`).join(",");
-      // Software upgrades that manifest in the model (overclock → hotter racks,
-      // auto_train → ops bot, data_pipeline → denser motes, batching → faster beam
-      // pulses, monetize → golden beam glint) MUST be in the signature, else buying
-      // them rebuilds nothing and the lab looks unchanged (2026-07: they were modeled
-      // but omitted here, so a common buy like Overclock felt inert).
-      const sig = `${u.rack_basic ?? 0}|${u.rack_server ?? 0}|${u.rack_tpu ?? 0}|${u.expand_n ?? 0}|${u.expand_s ?? 0}|${u.expand_e ?? 0}|${u.expand_w ?? 0}|${u.overclock ?? 0}|${u.auto_train ?? 0}|${u.data_pipeline ?? 0}|${u.batching ?? 0}|${u.monetize ?? 0}|${powerSig}|${game.run.active ? 1 : 0}|${game.run.readyToClaim ? 1 : 0}|${Math.round(game.alignment * 20)}|${game.products.active.map((p) => p.id).join(",")}|${currentEra(game)}|${regulatorState(game).index}|${game.charter ?? ""}|${game.shipLog.length}|${wingRef.current}|${game.facilityWings}|${incSig}`;
+      // Cheap signature of render-affecting fields (shared with the 3D stage).
+      const sig = hallModelSig(game, wingRef.current);
       if (sig !== modelSig || game.components.loadout !== rigLoadout || game.employees !== agentRoster) {
         modelSig = sig;
         rigLoadout = game.components.loadout;
@@ -426,11 +450,66 @@ function HallCanvasImpl({ onExpand }: { onExpand: (id: string) => void }) {
       canvas.removeEventListener("pointerdown", onDown);
       canvas.removeEventListener("pointermove", onMove);
     };
-  }, []);
+  }, [mode]);
+
+  // The tap cards: in the card normally, inside the overlay while exploring.
+  const cards = (
+    <>
+    {/* The rack cards echo taps on the (aria-hidden) canvas; the same facts live in
+        the accessible panels. Their × stays out of the Tab order (tabIndex -1) so
+        nothing focusable sits inside an aria-hidden subtree. Tapping still closes. */}
+    {agentInfo && (
+      <div className="rack-card" aria-hidden="true" onClick={() => setSelectedAgent(null)}>
+        <div className="rack-card-head">
+          <span className="rack-card-name">{agentInfo.name}</span>
+          <button className="rack-card-x" aria-label="Close" tabIndex={-1} onClick={(e) => { e.stopPropagation(); setSelectedAgent(null); }}>×</button>
+        </div>
+        <p className="rack-card-desc">
+          {agentInfo.role} · Lv {agentInfo.level}
+          {agentInfo.assigned ? ` · on ${agentInfo.assigned}` : ""}
+        </p>
+        {agentInfo.trait && <div className="rack-card-stats"><span>{agentInfo.trait}</span></div>}
+      </div>
+    )}
+    {chenOpen && chenInfo && (
+      <div className="rack-card" aria-hidden="true" onClick={() => setChenOpen(false)}>
+        <div className="rack-card-head">
+          <span className="rack-card-name">{chenInfo.name}</span>
+          <button className="rack-card-x" aria-label="Close" tabIndex={-1} onClick={(e) => { e.stopPropagation(); setChenOpen(false); }}>×</button>
+        </div>
+        <p className="rack-card-desc">{chenInfo.label} — {chenInfo.blurb}</p>
+        <div className="rack-card-stats"><span>Lobbying (Data Market) cools her interest. Shady buys don't.</span></div>
+      </div>
+    )}
+    {!agentInfo && !chenOpen && selected && selected.owned > 0 && (
+      // A lightweight popover, not a dialog: the hall is a pointer/touch canvas
+      // (aria-hidden), so claiming dialog semantics would promise keyboard/AT
+      // access this canvas-only affordance doesn't provide. aria-hidden keeps it
+      // out of the AT tree to match — the rack data is also in the Hardware panel.
+      <div className="rack-card" aria-hidden="true" onClick={() => setSelectedTier(null)}>
+        <div className="rack-card-head">
+          <span className={`rack-swatch tier-${selected.tier}`} aria-hidden="true" />
+          <span className="rack-card-name">{selected.name}</span>
+          <button className="rack-card-x" aria-label="Close" tabIndex={-1} onClick={(e) => { e.stopPropagation(); setSelectedTier(null); }}>×</button>
+        </div>
+        <p className="rack-card-desc">{selected.desc}</p>
+        <div className="rack-card-stats">
+          <span><b>{selected.owned}</b> owned</span>
+          <span><b>+{selected.computeEach}</b> compute/s each</span>
+          <span><b>+{selected.computeTotal.toLocaleString()}</b> compute/s total</span>
+        </div>
+      </div>
+    )}
+    </>
+  );
 
   return (
     <div className="hall" ref={wrapRef}>
-      <canvas ref={canvasRef} className="hall-canvas" aria-hidden="true" />
+      {mode === "2d" ? (
+        <canvas ref={canvasRef} className="hall-canvas" aria-hidden="true" />
+      ) : (
+        <HallStage3D wingRef={wingRef} explore={false} paused={explore} filter={themeFilter(hallTheme)} onPick={onPick3D} onFail={fallBack2D} />
+      )}
       <div className="hall-tag">
         <span className="hall-era">{eraName(era)}</span>
         <span className="hall-count">
@@ -471,52 +550,45 @@ function HallCanvasImpl({ onExpand }: { onExpand: (id: string) => void }) {
         </nav>
         </div>
       )}
-      {/* The rack cards echo taps on the (aria-hidden) canvas; the same facts live in
-          the accessible panels. Their × stays out of the Tab order (tabIndex -1) so
-          nothing focusable sits inside an aria-hidden subtree. Tapping still closes. */}
-      {agentInfo && (
-        <div className="rack-card" aria-hidden="true" onClick={() => setSelectedAgent(null)}>
-          <div className="rack-card-head">
-            <span className="rack-card-name">{agentInfo.name}</span>
-            <button className="rack-card-x" aria-label="Close" tabIndex={-1} onClick={(e) => { e.stopPropagation(); setSelectedAgent(null); }}>×</button>
-          </div>
-          <p className="rack-card-desc">
-            {agentInfo.role} · Lv {agentInfo.level}
-            {agentInfo.assigned ? ` · on ${agentInfo.assigned}` : ""}
-          </p>
-          {agentInfo.trait && <div className="rack-card-stats"><span>{agentInfo.trait}</span></div>}
-        </div>
+      {mode === "3d" && (
+        <button className="hall3d-expand" aria-label="Explore the lab in 3D" onClick={() => { haptics.tap(); closeAllCards(); setExplore(true); }}>
+          <ExpandIcon size={16} />
+        </button>
       )}
-      {chenOpen && chenInfo && (
-        <div className="rack-card" aria-hidden="true" onClick={() => setChenOpen(false)}>
-          <div className="rack-card-head">
-            <span className="rack-card-name">{chenInfo.name}</span>
-            <button className="rack-card-x" aria-label="Close" tabIndex={-1} onClick={(e) => { e.stopPropagation(); setChenOpen(false); }}>×</button>
-          </div>
-          <p className="rack-card-desc">{chenInfo.label} — {chenInfo.blurb}</p>
-          <div className="rack-card-stats"><span>Lobbying (Data Market) cools her interest. Shady buys don't.</span></div>
-        </div>
-      )}
-      {!agentInfo && !chenOpen && selected && selected.owned > 0 && (
-        // A lightweight popover, not a dialog: the hall is a pointer/touch canvas
-        // (aria-hidden), so claiming dialog semantics would promise keyboard/AT
-        // access this canvas-only affordance doesn't provide. aria-hidden keeps it
-        // out of the AT tree to match — the rack data is also in the Hardware panel.
-        <div className="rack-card" aria-hidden="true" onClick={() => setSelectedTier(null)}>
-          <div className="rack-card-head">
-            <span className={`rack-swatch tier-${selected.tier}`} aria-hidden="true" />
-            <span className="rack-card-name">{selected.name}</span>
-            <button className="rack-card-x" aria-label="Close" tabIndex={-1} onClick={(e) => { e.stopPropagation(); setSelectedTier(null); }}>×</button>
-          </div>
-          <p className="rack-card-desc">{selected.desc}</p>
-          <div className="rack-card-stats">
-            <span><b>{selected.owned}</b> owned</span>
-            <span><b>+{selected.computeEach}</b> compute/s each</span>
-            <span><b>+{selected.computeTotal.toLocaleString()}</b> compute/s total</span>
-          </div>
-        </div>
+      {!explore && cards}
+      {explore && mode === "3d" && (
+        <Explore3D wingRef={wingRef} filter={themeFilter(hallTheme)} onPick={onPick3D} onFail={fallBack2D} onClose={() => { closeAllCards(); setExplore(false); }}>
+          {cards}
+        </Explore3D>
       )}
     </div>
+  );
+}
+
+/** Full-screen "walk the floor" mode for the 3D spike: the same lab, a free camera
+ *  (pan / pinch / orbit within the front quadrant), people labelled when zoomed in.
+ *  Portalled so it covers the true viewport; Escape and × close it. */
+function Explore3D({
+  wingRef, filter, onPick, onFail, onClose, children,
+}: {
+  wingRef: React.MutableRefObject<number>;
+  filter: string;
+  onPick: (p: Pick3D | null, clientX: number, clientY: number) => void;
+  onFail: () => void;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useDialog(ref, { onClose, labelledBy: "hall3d-explore-title" });
+  return (
+    <Portal>
+      <div className="hall3d-explore" ref={ref} role="dialog" aria-modal="true" aria-labelledby="hall3d-explore-title">
+        <h2 id="hall3d-explore-title" className="sr-only">The lab, in 3D</h2>
+        <HallStage3D wingRef={wingRef} explore paused={false} filter={filter} onPick={onPick} onFail={onFail} />
+        <button className="hall3d-close" aria-label="Close" onClick={onClose}>×</button>
+        {children}
+      </div>
+    </Portal>
   );
 }
 

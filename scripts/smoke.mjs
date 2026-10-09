@@ -2,6 +2,7 @@
 //
 //   node smoke.mjs            # fresh save
 //   node smoke.mjs --seeded   # seed a late-game save first
+//   node smoke.mjs --hall3d   # also drive the opt-in 3D hall spike (WORLD_3D_PLAN.md)
 //
 // Exits non-zero on any console error / pageerror / failed request.
 import { spawn, execSync } from "node:child_process";
@@ -19,6 +20,9 @@ const REPO = "/home/user/SINGULARITY";
 const OUT = process.env.SMOKE_OUT || join(tmpdir(), "singularity-smoke", "shots");
 const port = 4319;
 const seeded = process.argv.includes("--seeded");
+// The 3D hall needs WebGL; headless Chrome (M139+) no longer falls back to SwiftShader
+// on its own, so opt in to it explicitly or context creation fails.
+const hall3d = process.argv.includes("--hall3d");
 
 function findChrome() {
   if (process.env.CHROME_PATH && existsSync(process.env.CHROME_PATH)) return process.env.CHROME_PATH;
@@ -50,7 +54,10 @@ const problems = [];
 let browser;
 try {
   await sleep(2000);
-  browser = await chromium.launch({ executablePath: findChrome() });
+  browser = await chromium.launch({
+    executablePath: findChrome(),
+    ...(hall3d ? { args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] } : {}),
+  });
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
 
   if (seeded) {
@@ -87,6 +94,7 @@ try {
     );
   }
 
+  if (hall3d) await ctx.addInitScript(() => localStorage.setItem("singularity.hall3d.v1", "1"));
   const page = await ctx.newPage();
 
   page.on("console", (m) => {
@@ -140,6 +148,26 @@ try {
   await dismissOverlays();
 
   await page.screenshot({ path: join(OUT, "01-open.png") });
+
+  if (hall3d) {
+    // The spike must actually be the renderer on screen (not a silent 2D fallback),
+    // inside its draw-call budget, and its explore mode must open and close.
+    await sleep(1500);
+    const stats = await page.evaluate(() => window.__HALL3D__?.stats());
+    if (!stats || stats.calls <= 0) throw new Error("SMOKE: the 3D hall did not render (fell back to 2D?)");
+    if (stats.calls > 100) throw new Error(`SMOKE: 3D hall drew ${stats.calls} calls (budget 100)`);
+    // A fresh save shows the launch paywall over everything; close it first.
+    const proClose = page.locator(".pro-close");
+    if ((await proClose.count()) > 0) { await proClose.first().click().catch(() => {}); await sleep(500); }
+    await page.locator(".hall3d-expand").click();
+    await sleep(1500);
+    if ((await page.locator(".hall3d-explore").count()) !== 1) throw new Error("SMOKE: 3D explore mode did not open");
+    await page.screenshot({ path: join(OUT, "03-hall3d-explore.png") });
+    await page.keyboard.press("Escape");
+    await sleep(400);
+    if ((await page.locator(".hall3d-explore").count()) !== 0) throw new Error("SMOKE: 3D explore mode did not close on Escape");
+    console.log(`  Hall 3D: ${stats.calls} draw calls, ${stats.triangles} triangles; explore opened and closed`);
+  }
 
   // Drive the core loop a bit so systems unlock.
   for (let i = 0; i < 60; i++) {
