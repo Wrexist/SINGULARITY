@@ -129,4 +129,16 @@ interface is currently English — honest, and it protects ratings in localized 
 - Every ~2 weeks, read App Store Connect → Analytics → *Search Terms* and swap the lowest-impression
   keywords for terms you're actually being found (or want to be found) for.
 - Ask happy players for ratings via `SKStoreReviewController` at a genuine high point (e.g. just after
-  a satisfying "Ship the Model") — never mid-task.
+  a satisfying "Ship the Model") — never mid-task. **Done (2026-10):** `src/ui/reviewRules.ts` asks as a
+  Ship celebration closes from the 2nd Ship on, never alongside a paywall, at most 3× an install.
+
+## 12. Name, Custom Product Pages, In-App Events (2026-10)
+- **Keep the name.** The brand-first title (`Singularity Inc.: Idle Tycoon`) is already the textbook
+  setup, the owner rule keeps "Singularity Inc." first in every locale, and generic AI-tycoon names are
+  now a crowd. The one test worth running, only with Search Terms data in hand: title
+  `Singularity Inc.: AI Tycoon` (27) + subtitle `Idle Data-Center Empire Sim` (27) — trades the exact
+  "idle tycoon" phrase for "AI tycoon" without dropping a word from the index.
+- **Custom Product Pages with keywords** (three pages, one per search intent) and the **Product Page
+  Optimization** test plan: `appstore/CUSTOM_PRODUCT_PAGES.md`.
+- **In-App Events** (a weekly Sponsor Week challenge + this release's Major Update), paste-ready with
+  media: `appstore/in-app-events/EVENTS.md` (`npm run store:events` regenerates the schedule).

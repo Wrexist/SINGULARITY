@@ -13,6 +13,7 @@
     "sim": "vite-node scripts/balance-sim.ts",
     "shot": "node scripts/screenshot.mjs",
     "validate:store": "node scripts/validate-store-metadata.mjs",
+    "store:events": "vite-node scripts/in-app-events.ts",
     "icons": "node scripts/stamp-icons.mjs",
     "cap:sync": "npm run build && node scripts/ios-prepare.mjs && cap sync ios",
     "cap:sync:dev": "tsc --noEmit && vite build --mode development && node scripts/ios-prepare.mjs && cap sync ios",
