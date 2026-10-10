@@ -1,4 +1,4 @@
-import { contractBoard, contractsBalance, sponsorView } from "../engine/contracts";
+import { campaignView, contractBoard, contractsBalance, isLadderContractId, sponsorView } from "../engine/contracts";
 import { EmptyState } from "./EmptyState";
 import { TargetIcon } from "./Icons";
 import { fmt, fmtFloor } from "./format";
@@ -10,6 +10,8 @@ interface Props {
   onClaim: (id: string, rep: number, title: string) => void;
   /** IDEAS #9 — claim today's sponsor objective (post-ladder daily). */
   onClaimSponsor: () => void;
+  /** Bank this week's met Sponsor Campaign (5 of 7 daily sponsors). */
+  onClaimCampaign: () => void;
   /** Render WITHOUT the panel card + title, for use inside a <Collapsible> (which
    *  already supplies both). Without this the board nested a panel inside a panel
    *  and showed its heading twice. */
@@ -22,13 +24,43 @@ interface Props {
  * contract shows a live progress bar and a Claim button once met. Reputation is
  * a meta-currency, so this never injects in-run cash (curve stays intact).
  */
-export function ContractsPanel({ game, onClaim, onClaimSponsor, bare = false }: Props) {
+export function ContractsPanel({ game, onClaim, onClaimSponsor, onClaimCampaign, bare = false }: Props) {
   const board = contractBoard(game);
   const allDone = board.length === 0;
   // One date-seeded sponsor objective per day (IDEAS #9). Once the finite ladder is
   // cleared it is the whole board; from the first Ship on it also rides ON TOP of the
   // ladder, so a player in their first days has a daily reason to come back.
   const sponsor = sponsorView(game);
+
+  // The week those daily sponsors add up to (AUDIT 2026-08 #5): seven pips, the bonus
+  // for five, and the Sponsor Tier it lifts. A missed day costs one pip, never a streak.
+  const campaign = campaignView(game);
+  const campaignCard = campaign && (
+    <div className={`contract-card campaign-card ${campaign.ready ? "ready" : ""}`}>
+      <div className="contract-main">
+        <span className="contract-title">Sponsor week · {campaign.title}</span>
+        <span className="contract-desc">
+          {campaign.claimed
+            ? `Campaign banked. Sponsor Tier: ${campaign.tierName}.`
+            : `Clear ${campaign.need} of this week's 7 daily sponsors. Banking it lifts you to ${campaign.nextTierName}.`}
+        </span>
+        <div className="campaign-pips" aria-label={`${campaign.done} of ${campaign.need} sponsor days this week`}>
+          {campaign.days.map((d, i) => (
+            <span key={i} className={`campaign-pip${d ? " on" : ""}${i === campaign.today ? " today" : ""}`}>
+              {"MTWTFSS"[i]}
+            </span>
+          ))}
+        </div>
+        <span className="contract-prog">{Math.min(campaign.done, 7)} / {campaign.need} days · Tier: {campaign.tierName}</span>
+      </div>
+      <div className="contract-side">
+        <span className="contract-rep">+{campaign.reward} Rep</span>
+        <button className="contract-claim" disabled={!campaign.ready} onClick={onClaimCampaign}>
+          {campaign.claimed ? "Banked" : campaign.ready ? "Bank it" : `${Math.max(0, campaign.need - campaign.done)} to go`}
+        </button>
+      </div>
+    </div>
+  );
 
   const sponsorCard = sponsor && (
     <div className={`contract-card ${sponsor.ready ? "ready" : ""}`}>
@@ -55,6 +87,7 @@ export function ContractsPanel({ game, onClaim, onClaimSponsor, bare = false }: 
         sponsor ? (
           <div className="list">
             {sponsorCard}
+            {campaignCard}
             <p className="contracts-empty">Daily sponsor objective — a new one calls tomorrow.</p>
           </div>
         ) : (
@@ -86,12 +119,13 @@ export function ContractsPanel({ game, onClaim, onClaimSponsor, bare = false }: 
             </div>
           ))}
           {sponsorCard}
+          {campaignCard}
         </div>
       )}
       <p className="contracts-foot">
         {/* Ladder progress only — sponsor completions (sponsor_*) are the daily
             post-ladder track and would overflow the pool denominator. */}
-        {game.contracts.completed.filter((id) => !id.startsWith("sponsor_")).length} / {contractsBalance.pool.length} contracts complete
+        {game.contracts.completed.filter(isLadderContractId).length} / {contractsBalance.pool.length} contracts complete
         {game.contracts.completed.some((id) => id.startsWith("sponsor_")) &&
           ` · ${game.contracts.completed.filter((id) => id.startsWith("sponsor_")).length} sponsor deals`}
         {" "}· rewards <b>Lab Reputation</b>

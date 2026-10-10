@@ -60,11 +60,20 @@ export function claimContract(state: GameState, id: string): GameState {
  *  Sponsor completions (`sponsor_<dayKey>`) pay the flat sponsor rate. */
 export function contractsReputation(state: GameState): number {
   let pts = 0;
+  let campaigns = 0;
   for (const id of state.contracts.completed) {
     if (SPONSOR_ID_RE.test(id)) pts += C.sponsor.rep;
+    else if (CAMPAIGN_ID_RE.test(id)) campaigns++;
     else pts += DEF_BY_ID.get(id)?.rep ?? 0;
   }
+  // The n-th banked campaign pays its tier's bonus (order-free: only the count matters).
+  for (let n = 0; n < campaigns; n++) pts += campaignRep(n);
   return pts;
+}
+
+/** A ladder contract id (not a daily sponsor or a weekly campaign record). */
+export function isLadderContractId(id: string): boolean {
+  return !SPONSOR_ID_RE.test(id) && !CAMPAIGN_ID_RE.test(id);
 }
 
 // ---------- IDEAS #9 — rotating daily sponsor contracts (post-ladder) ----------
@@ -104,10 +113,12 @@ export function rollSponsor(state: GameState, dayKey: number): GameState {
   // simply didn't open GOALS that day used to lose the Reputation at the rollover.
   // claimSponsor is a same-ref no-op for an unmet or already-claimed sponsor.
   if (!C.enabled || !S.enabled || !open) {
-    return state.sponsor === null ? state : { ...claimSponsor(state), sponsor: null };
+    return state.sponsor === null ? state : { ...bankCampaign(claimSponsor(state)), sponsor: null };
   }
   if (state.sponsor?.dayKey === dayKey) return state;
-  const banked = claimSponsor(state);
+  // Bank today's met sponsor, then — on a new week — the finished week's met campaign.
+  let banked = claimSponsor(state);
+  if (state.sponsor && weekOf(state.sponsor.dayKey) !== weekOf(dayKey)) banked = bankCampaign(banked);
   const h = dayHash(dayKey);
   // Only lanes the player has actually started: a lab with no products yet must not
   // be asked to grow product revenue. A cleared-ladder veteran has every lane > 0,
@@ -124,7 +135,8 @@ export function rollSponsor(state: GameState, dayKey: number): GameState {
   const current = contractMetric(state, lane.metric);
   const mult = S.mults[(h >>> 4) % S.mults.length]!;
   const target = Math.max(lane.floor, Math.ceil(current * mult));
-  const title = S.sponsors[(h >>> 8) % S.sponsors.length]!;
+  // The week's campaign sponsor runs every day of that week (one banner per campaign).
+  const title = campaignSponsor(weekOf(dayKey));
   return {
     ...banked,
     sponsor: {
@@ -181,4 +193,107 @@ export function contractBoard(state: GameState): ContractView[] {
       ready: value >= def.target && !completed.has(def.id),
     };
   });
+}
+
+// ---------- AUDIT 2026-08 #5 — weekly Sponsor Campaigns ----------
+
+/** Banked-campaign id format: campaign_<week number>. */
+export const CAMPAIGN_ID_RE = /^campaign_\d{1,6}$/;
+export const campaignIdFor = (weekKey: number): string => `campaign_${weekKey}`;
+
+/** Monday-to-Sunday weeks over the local day number (day 0 was Thursday 1 Jan 1970,
+ *  so day 4 — the first Monday — opens week 1). */
+export const weekOf = (dayKey: number): number => Math.floor((dayKey + 3) / 7);
+export const weekStartDay = (weekKey: number): number => weekKey * 7 - 3;
+
+/** The sponsor whose banner a week's campaign runs under (deterministic by week). */
+export function campaignSponsor(weekKey: number): string {
+  const S = C.sponsor;
+  return S.sponsors[(((weekKey * 2654435761) >>> 0) >>> 8) % S.sponsors.length]!;
+}
+
+/** Which of a week's seven days (Monday first) have a completed sponsor. */
+export function campaignDays(completed: readonly string[], weekKey: number): boolean[] {
+  const start = weekStartDay(weekKey);
+  const days = [false, false, false, false, false, false, false];
+  for (const id of completed) {
+    if (!SPONSOR_ID_RE.test(id)) continue;
+    const d = Number(id.slice(8)) - start;
+    if (d >= 0 && d < 7) days[d] = true;
+  }
+  return days;
+}
+
+/** Bonus Reputation for the n-th banked campaign (0-based): tier-scaled, capped. */
+export function campaignRep(n: number): number {
+  const K = C.campaign;
+  return K.rep + K.perTier * Math.min(Math.max(0, n), K.tierCap);
+}
+
+/** Campaigns banked so far = the Sponsor Tier. */
+export function sponsorTier(state: GameState): number {
+  let n = 0;
+  for (const id of state.contracts.completed) if (CAMPAIGN_ID_RE.test(id)) n++;
+  return n;
+}
+
+export function sponsorTierName(tier: number): string {
+  const t = C.campaign.tiers;
+  return t[Math.min(Math.max(0, tier), t.length - 1)]!;
+}
+
+export interface CampaignView {
+  weekKey: number;
+  /** The sponsor whose banner the week runs under. */
+  title: string;
+  /** Seven flags, Monday first: a sponsor completed that day. */
+  days: boolean[];
+  /** Today's place in the week (0 = Monday). */
+  today: number;
+  done: number;
+  need: number;
+  /** Met and not yet banked. */
+  ready: boolean;
+  claimed: boolean;
+  /** Current Sponsor Tier (campaigns banked) and its name; the rung a claim reaches. */
+  tier: number;
+  tierName: string;
+  nextTierName: string;
+  /** Reputation this campaign pays when banked. */
+  reward: number;
+}
+
+/** The current week's campaign (keyed off today's rolled sponsor — clockless), or
+ *  null when no sponsor runs. */
+export function campaignView(state: GameState): CampaignView | null {
+  const K = C.campaign;
+  const sp = state.sponsor;
+  if (!C.enabled || !C.sponsor.enabled || !K.enabled || !sp) return null;
+  const weekKey = weekOf(sp.dayKey);
+  const days = campaignDays(state.contracts.completed, weekKey);
+  const done = days.filter(Boolean).length;
+  const claimed = state.contracts.completed.includes(campaignIdFor(weekKey));
+  const tier = sponsorTier(state);
+  return {
+    weekKey,
+    title: campaignSponsor(weekKey),
+    days,
+    today: sp.dayKey - weekStartDay(weekKey),
+    done,
+    need: K.needDays,
+    ready: !claimed && done >= K.needDays,
+    claimed,
+    tier,
+    tierName: sponsorTierName(tier),
+    nextTierName: sponsorTierName(tier + 1),
+    reward: campaignRep(tier),
+  };
+}
+
+/** Bank the current week's met campaign (records `campaign_<week>`; same-ref no-op
+ *  when it isn't met or is already banked). */
+export function bankCampaign(state: GameState): GameState {
+  const v = campaignView(state);
+  if (!v || !v.ready) return state;
+  return { ...state, contracts: { completed: [...state.contracts.completed, campaignIdFor(v.weekKey)] } };
 }

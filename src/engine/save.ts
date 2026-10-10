@@ -3,6 +3,7 @@ import { SAVE_VERSION, createInitialState } from "./state";
 import { initialStats } from "./stats";
 import { products as PRODUCTS, productFeatures, productMilestones } from "./balance/products";
 import { contracts as CONTRACTS } from "./balance/contracts";
+import { campaignDays, CAMPAIGN_ID_RE } from "./contracts";
 import { legacyTree as LEGACY } from "./balance/legacyTree";
 import { reputation as REPUTATION } from "./balance/reputation";
 // Imported rather than re-derived: `endowmentOwed` below already duplicates its
@@ -1048,7 +1049,19 @@ function sanitizeContracts(c: unknown): { completed: string[] } {
       }
     }
   }
-  return { completed: [...known, ...sponsors.slice(-CONTRACTS.sponsor.maxCompleted)] };
+  const keptSponsors = sponsors.slice(-CONTRACTS.sponsor.maxCompleted);
+  // Weekly campaign records (`campaign_<week>`) pay Reputation too, so each is kept
+  // once and ONLY when the sponsors kept above really hold that week's quota — a
+  // crafted record with no sponsor days behind it mints nothing.
+  const campaigns: string[] = [];
+  if (Array.isArray(o.completed)) {
+    for (const x of o.completed) {
+      if (typeof x !== "string" || !CAMPAIGN_ID_RE.test(x) || seen.has(x)) continue;
+      seen.add(x);
+      if (campaignDays(keptSponsors, Number(x.slice(9))).filter(Boolean).length >= CONTRACTS.campaign.needDays) campaigns.push(x);
+    }
+  }
+  return { completed: [...known, ...keptSponsors, ...campaigns.slice(-CONTRACTS.campaign.maxCompleted)] };
 }
 
 /** The offline clock guard's high-water mark: a finite, positive whole ms no later

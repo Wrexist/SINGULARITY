@@ -66,7 +66,7 @@ import { fundChallenge, chooseFork, fundMegaproject, pickMandate } from "../engi
 import { claimObjective } from "../engine/objectives";
 import { applyAutomation, automationUnlockedAny, automationEnabled, toggleAutomation } from "../engine/automation";
 import { automation as AUTOMATION } from "../engine/balance/automation";
-import { claimContract, rollSponsor, claimSponsor, lastSponsorDay } from "../engine/contracts";
+import { claimContract, rollSponsor, claimSponsor, lastSponsorDay, bankCampaign } from "../engine/contracts";
 import { buyPreprint } from "../engine/preprints";
 import { setCharter, lockCharter } from "../engine/charter";
 import { counterRival, placeStake } from "../engine/market";
@@ -185,6 +185,8 @@ interface GameStore {
   /** IDEAS #9 — roll/refresh today's sponsor contract (UI passes the local day number). */
   doRollSponsor: (dayKey: number) => void;
   doClaimSponsor: () => void;
+  /** Bank this week's met Sponsor Campaign (Reputation; lifts the Sponsor Tier). */
+  doClaimCampaign: () => void;
   /** IDEAS #10 — publish a frontier preprint (post-tree repeatable research). */
   doBuyPreprint: () => void;
   doSetCharter: (id: string | null) => void;
@@ -927,6 +929,7 @@ export const useGame = create<GameStore>((set, get) => ({
     return next === s.game ? {} : { game: next };
   }),
   doClaimSponsor: () => set((s) => ({ game: claimSponsor(s.game) })),
+  doClaimCampaign: () => set((s) => ({ game: bankCampaign(s.game) })),
   doBuyPreprint: () => set((s) => ({ game: buyPreprint(s.game) })),
   doSetCharter: (id) => set((s) => ({ game: setCharter(s.game, id) })),
   doLockCharter: () => set((s) => ({ game: lockCharter(s.game) })),
