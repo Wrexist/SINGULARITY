@@ -27,6 +27,43 @@ generating a 3D airport digital twin), Dominik Scholz's three.js agent office
 
 ---
 
+## Round 6 (2026-10-10): the world answers your touch
+
+**Owner:** *"continue making it more detailed and immersive and interactive."*
+
+**Interactive.** Every living thing in the lab now answers a tap. The answer is wordless
+motion, plus a card where there's something to read. Under reduced motion the cards
+still open, with no motion.
+
+- **People:**
+  - A tapped person turns their head to the camera, raises an arm and waves (1.6 s),
+    with a little hop.
+  - Their card opens as before.
+  - In explore the camera glides to them.
+- **Product beams (new target):**
+  - Tapping a beam flares it.
+  - Its card shows the product, version, revenue/s, users and paying users (mods-aware,
+    the same numbers as the Products panel), and "trending now" during buzz.
+- **The ops bot (new target):** it hops and does a full spin, eye flaring. Its card says
+  what the Auto-Train Orchestrator does.
+- **The crowd (new target):** everyone cheers and hops. The card lists the good events
+  drawing them, with each one's bonus and time left.
+- **Picking:**
+  - Bot, crowd and beams are thumb-sized screen-space targets checked before racks and
+    lots, never over a person hit directly.
+  - A beam only wins when it stands in front of what else the ray hit.
+  - A person within reach still beats a beam.
+  - `segDist2` (tap to projected beam column) is pure and tested.
+
+**Detail.** At night each monitor lights its desk: a soft pool in the team's colour
+(product green, research blue) that grows with the dark.
+
+Verified end to end in Playwright, card and explore. A frozen-clock grid scan through
+the pick hook finds each target, a real tap opens the right card (Margaret, Copilot X,
+Ops bot, the crowd), and there are zero console errors.
+
+---
+
 ## Round 5 (2026-10-09): every system shows up in the world
 
 **Owner:** *"continue, make the game better."* With the detail and motion passes done,

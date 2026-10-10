@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { buildScene3D, agentPose, chenPose, trainingWave, rackHeight3D, BAY_DEPTH, botPose, crowdPose, deliveryPose, DELIVERY_MS } from "./layout3d";
+import { buildScene3D, agentPose, chenPose, trainingWave, rackHeight3D, BAY_DEPTH, botPose, crowdPose, deliveryPose, DELIVERY_MS, segDist2 } from "./layout3d";
 import { hall3dEnabled, HALL3D_KEY } from "./flag";
 import { buildHallModel, hallModelSig } from "../render/hallModel";
 import { rackTileOrder } from "../render/hallRenderer";
@@ -238,6 +238,16 @@ describe("3D hall life: ops bot, crowd, delivery", () => {
       expect(p.x).toBeLessThanOrEqual(spec.bay.x1); // on the plinth the whole way
       expect(p.x).toBeGreaterThanOrEqual(spec.bay.x0);
     }
+  });
+});
+
+describe("beam tap geometry", () => {
+  it("measures a tap against the beam's column, clamped to its ends", () => {
+    // A vertical column from (100, 300) up to (100, 100).
+    expect(segDist2(110, 200, 100, 300, 100, 100)).toBeCloseTo(100); // 10 px beside it
+    expect(segDist2(100, 80, 100, 300, 100, 100)).toBeCloseTo(400); // 20 px above the top
+    expect(segDist2(100, 320, 100, 300, 100, 100)).toBeCloseTo(400); // 20 px below the foot
+    expect(segDist2(3, 4, 0, 0, 0, 0)).toBeCloseTo(25); // a degenerate column is a point
   });
 });
 

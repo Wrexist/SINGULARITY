@@ -14,6 +14,9 @@ import { regulatorState } from "../engine/regulator";
 import { balance } from "../engine/balance/config";
 import { products as PRODUCTS_BAL } from "../engine/balance/products";
 import { rackInfo } from "../engine/rackInfo";
+import { derive } from "../engine/derive";
+import { productMetrics } from "../engine/products";
+import { fmtDur, m$, numOf } from "./format";
 import { themeFilter } from "./hallThemes";
 import { hall3dEnabled } from "../render3d/flag";
 import type { Pick3D } from "../render3d/hallScene3d";
@@ -60,6 +63,10 @@ function HallCanvasImpl({ onExpand }: { onExpand: (id: string) => void }) {
   const chenSpotRef = useRef<{ x: number; y: number; s: number } | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<number | null>(null);
   const [chenOpen, setChenOpen] = useState(false);
+  // 3D-only tap targets: a product's revenue beam, the ops bot, the crowd at the lip.
+  const [selectedBeam, setSelectedBeam] = useState<number | null>(null);
+  const [botOpen, setBotOpen] = useState(false);
+  const [crowdOpen, setCrowdOpen] = useState(false);
 
   // Lightweight label state (re-renders only when these change, not per frame).
   const rackCount = useGame(
@@ -116,6 +123,31 @@ function HallCanvasImpl({ onExpand }: { onExpand: (id: string) => void }) {
   }, [selectedAgent, agentInfo]);
   // Chen's live standing (for her tap card).
   const chenInfo = useGame((s) => (chenOpen ? regulatorState(s.game) : null));
+  // The tapped beam's product, live (beams are index-aligned with the live products;
+  // one retired under the card closes it). Mods-aware, like the Products panel.
+  const beamInfo = useGame((s) => {
+    if (selectedBeam === null) return null;
+    const p = s.game.products.active[selectedBeam];
+    if (!p) return null;
+    const me = productMetrics(p, s.game.products.frontier, derive(s.game).productModsById[p.id]);
+    return { name: p.name, version: p.version, users: numOf(p.mau), paid: numOf(p.paid), revenue: m$(me.mrr), trending: p.buzzSec > 0 };
+  });
+  useEffect(() => {
+    if (selectedBeam !== null && beamInfo === null) setSelectedBeam(null);
+  }, [selectedBeam, beamInfo]);
+  // Why there's a crowd: the good events running now (joined into one stable string so
+  // the card re-renders only when a line changes).
+  const crowdLines = useGame((s) =>
+    crowdOpen
+      ? s.game.modifiers
+          .filter((m) => m.tone === "good" && m.remainingSec > 0)
+          .map((m) => `${m.label} · +${Math.round((m.factor - 1) * 100)}% ${m.target === "computeMult" ? "compute" : m.target === "dataMult" ? "data" : "money"} · ${fmtDur(m.remainingSec)} left`)
+          .join("\n")
+      : "",
+  );
+  useEffect(() => {
+    if (crowdOpen && !crowdLines) setCrowdOpen(false);
+  }, [crowdOpen, crowdLines]);
 
   // Cosmetic theme = a CSS filter on the canvas (purely visual; no render change).
   useEffect(() => {
@@ -127,6 +159,9 @@ function HallCanvasImpl({ onExpand }: { onExpand: (id: string) => void }) {
     setSelectedTier(null);
     setSelectedAgent(null);
     setChenOpen(false);
+    setSelectedBeam(null);
+    setBotOpen(false);
+    setCrowdOpen(false);
   }, []);
   const onPick3D = useCallback((p: Pick3D | null, clientX: number, clientY: number) => {
     if (!p) { closeAllCards(); return; }
@@ -143,6 +178,9 @@ function HallCanvasImpl({ onExpand }: { onExpand: (id: string) => void }) {
     closeAllCards();
     if (p.kind === "chen") setChenOpen(true);
     else if (p.kind === "agent") setSelectedAgent(p.index);
+    else if (p.kind === "beam") setSelectedBeam(p.index);
+    else if (p.kind === "bot") setBotOpen(true);
+    else if (p.kind === "crowd") setCrowdOpen(true);
     else setSelectedTier(p.tier);
   }, [closeAllCards]);
   const fallBack2D = useCallback(() => { setExplore(false); setFailed3d(true); }, []);
@@ -488,7 +526,43 @@ function HallCanvasImpl({ onExpand }: { onExpand: (id: string) => void }) {
         <div className="rack-card-stats"><span>Lobbying (Data Market) cools her interest. Shady buys don't.</span></div>
       </div>
     )}
-    {!agentInfo && !chenOpen && selected && selected.owned > 0 && (
+    {beamInfo && (
+      <div className="rack-card" aria-hidden="true" onClick={() => setSelectedBeam(null)}>
+        <div className="rack-card-head">
+          <span className="rack-card-name">{beamInfo.name}</span>
+          <button className="rack-card-x" aria-label="Close" tabIndex={-1} onClick={(e) => { e.stopPropagation(); setSelectedBeam(null); }}>×</button>
+        </div>
+        <p className="rack-card-desc">
+          v{beamInfo.version} · its beam rises with what it earns{beamInfo.trending ? " — trending now" : ""}
+        </p>
+        <div className="rack-card-stats">
+          <span><b>{beamInfo.revenue}</b>/s revenue</span>
+          <span><b>{beamInfo.users}</b> users</span>
+          <span><b>{beamInfo.paid}</b> paying</span>
+        </div>
+      </div>
+    )}
+    {botOpen && (
+      <div className="rack-card" aria-hidden="true" onClick={() => setBotOpen(false)}>
+        <div className="rack-card-head">
+          <span className="rack-card-name">Ops bot</span>
+          <button className="rack-card-x" aria-label="Close" tabIndex={-1} onClick={(e) => { e.stopPropagation(); setBotOpen(false); }}>×</button>
+        </div>
+        <p className="rack-card-desc">Your Auto-Train Orchestrator: it restarts training runs on its own, checking each rack on its rounds.</p>
+      </div>
+    )}
+    {crowdOpen && crowdLines && (
+      <div className="rack-card" aria-hidden="true" onClick={() => setCrowdOpen(false)}>
+        <div className="rack-card-head">
+          <span className="rack-card-name">The buzz is drawing a crowd</span>
+          <button className="rack-card-x" aria-label="Close" tabIndex={-1} onClick={(e) => { e.stopPropagation(); setCrowdOpen(false); }}>×</button>
+        </div>
+        <div className="rack-card-stats">
+          {crowdLines.split("\n").map((l) => <span key={l}>{l}</span>)}
+        </div>
+      </div>
+    )}
+    {!agentInfo && !chenOpen && !beamInfo && !botOpen && !crowdOpen && selected && selected.owned > 0 && (
       // A lightweight popover, not a dialog: the hall is a pointer/touch canvas
       // (aria-hidden), so claiming dialog semantics would promise keyboard/AT
       // access this canvas-only affordance doesn't provide. aria-hidden keeps it

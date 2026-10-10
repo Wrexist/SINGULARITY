@@ -32,6 +32,10 @@ Renderer-only: no engine, save, balance or sim change.*
       (auto-train), crowd at the lip (good events), Rig Bay delivery crate, incident
       storm (overcast, rain, lightning), ready-to-claim LED heartbeat, packet speed
       follows batching
+- [x] Round 6 (owner: "more detailed, immersive and interactive"): the world answers
+      touch — people wave back, beams flare, the bot spins, the crowd cheers; new tap
+      cards for products (live revenue/users), the ops bot, the crowd's events; night
+      monitor light on the desks
 - [ ] Next: device benchmarks on TestFlight (iPhone 11 / SE2 / 12 + iPad) before 3D goes
       beyond opt-in; then "the world fills the screen" layout (§7 #1)
 - [ ] Phase 0 device gate: cold start, p10 fps, thermal, battery on iPhone 11 / SE2 / 12 + iPad

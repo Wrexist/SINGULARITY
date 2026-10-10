@@ -375,6 +375,7 @@ export function HallStage3D({
         const rect = canvas.getBoundingClientRect();
         const hit = s3.pick(ev.clientX - rect.left, ev.clientY - rect.top);
         if (hit?.kind === "rack") tapFlash = { index: hit.index, start: performance.now() };
+        if (hit) s3.react(hit);
         if (hit && explore && hit.kind !== "plot") s3.focus(hit);
         onPickRef.current(hit, ev.clientX, ev.clientY);
       };

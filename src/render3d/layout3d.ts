@@ -212,6 +212,10 @@ export interface AgentPose {
   stride?: number;
   /** 0..1 arms raised overhead (an onlooker cheering). */
   cheer?: number;
+  /** 0..1 one arm raised in a wave (a tapped person answering the tap), and that
+   *  arm's side-to-side swing (radians). */
+  wave?: number;
+  waveSwing?: number;
 }
 
 /** Deterministic per-frame pose for agent `i`: seated at their desk if they have one,
@@ -392,4 +396,13 @@ export function deliveryPose(spec: Scene3DSpec, ms: number): { x: number; z: num
   const x1 = floor.x0 + (floor.x1 - floor.x0) * 0.55;
   const alpha = u < 0.1 ? u / 0.1 : u > 0.8 ? (1 - u) / 0.2 : 1;
   return { x: x0 + (x1 - x0) * e, z, alpha };
+}
+
+/** Squared distance from point (px, py) to the segment (ax, ay)–(bx, by): how close a
+ *  tap (css px) landed to a beam's projected column. */
+export function segDist2(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
+  const dx = bx - ax, dy = by - ay;
+  const l2 = dx * dx + dy * dy;
+  const u = l2 > 0 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / l2)) : 0;
+  return (px - ax - u * dx) ** 2 + (py - ay - u * dy) ** 2;
 }

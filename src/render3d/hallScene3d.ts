@@ -51,7 +51,7 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import type { HallModel } from "../render/hallModel";
 import { lightningFlash, nightFactor, skinTint } from "../render/hallRenderer";
-import { buildScene3D, agentPose, botPose, chenPose, crowdPose, deliveryPose, trainingWave, type AgentPose, type Scene3DSpec, type Rect } from "./layout3d";
+import { buildScene3D, agentPose, botPose, chenPose, crowdPose, deliveryPose, segDist2, trainingWave, type AgentPose, type Scene3DSpec, type Rect } from "./layout3d";
 
 /**
  * The 3D hall (WORLD_3D_PLAN.md) — a "Lab Diorama" in the style of the Ralv agent
@@ -87,7 +87,10 @@ export type Pick3D =
   | { kind: "rack"; index: number; tier: number; incident: string | null }
   | { kind: "agent"; index: number }
   | { kind: "chen" }
-  | { kind: "plot"; id: string };
+  | { kind: "plot"; id: string }
+  | { kind: "beam"; index: number }
+  | { kind: "bot" }
+  | { kind: "crowd" };
 
 export interface HallScene3D {
   /** How many staff the player has already seen on the floor (from an earlier mount):
@@ -97,6 +100,9 @@ export interface HallScene3D {
   frame(f: Scene3DFrame): void;
   resize(cssW: number, cssH: number, dpr: number): void;
   pick(cssX: number, cssY: number): Pick3D | null;
+  /** The world answers a tap (wordless, motion only): a person turns to the camera and
+   *  waves, the ops bot hops and spins, a product's beam flares, the crowd cheers. */
+  react(p: Pick3D): void;
   /** Explore mode: free camera (pan / pinch / orbit within the front quadrant). */
   setExplore(on: boolean): void;
   /** Explore mode: glide the camera toward a picked thing. */
@@ -634,6 +640,7 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
   const headPos = new Float32Array(PEOPLE_CAP * 3);
   const eul = new Euler();
   const armStretch = new Vector3(1, 1.55, 1);
+  const waveStretch = new Vector3(1, 1, 1);
 
   // Desks, chairs, monitors, screens, keyboards — one instanced draw each.
   const desks = inst(own(deskGeometry()), own(new MeshStandardMaterial({ color: col([222, 196, 156]), roughness: 0.75 })), MAX_PEOPLE, true);
@@ -643,6 +650,10 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
   // Screens show scrolling code (the texture scrolls in frame()), tinted by team.
   const screenMat = own(new MeshBasicMaterial({ color: 0xffffff, map: codeTex, toneMapped: false }));
   const screens = inst(screenGeo, screenMat, MAX_PEOPLE);
+  // At night each monitor lights its desk: a soft additive pool in the team's colour.
+  const spillMat = own(new MeshBasicMaterial({ map: glowTex, color: 0xffffff, transparent: true, depthWrite: false, blending: AdditiveBlending, toneMapped: false }));
+  const screenSpill = inst(unitPlane, spillMat, MAX_PEOPLE);
+  screenSpill.renderOrder = 2;
   const mugGeo = own(new CylinderGeometry(0.026, 0.022, 0.055, 12));
   mugGeo.translate(0, 0.0275, 0);
   const mugs = inst(mugGeo, own(new MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 })), MAX_PEOPLE);
@@ -780,6 +791,17 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
   let rainSpots: { x: number; z: number; s: number }[] = [];
   const flashes = inst(own(new SphereGeometry(0.035, 8, 6)), own(new MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: AdditiveBlending, depthWrite: false, toneMapped: false })), MAX_CROWD);
   let crowdKey = -1;
+
+  // Touch reactions: when each target was tapped (performance.now() ms).
+  const REACT_MS = 1600;
+  const BOT_SPIN_MS = 900;
+  const waveAt = new Map<number, number>();
+  const beamTapAt = new Map<number, number>();
+  let botTapAt = -1e9, crowdTapAt = -1e9;
+  // Live pick targets the frame leaves behind for pick()'s screen-space tests.
+  let beamH: number[] = [];
+  let crowdBase = 0, crowdN = 0;
+  const segV0 = new Vector3(), segV1 = new Vector3(), onRay = new Vector3();
 
   // Rig Bay ("Bare Metal") on each rack's left face: a socket per slot — dark and
   // open when empty; fitted parts grow geometry by class (heatsink fins, a spinning
@@ -1403,7 +1425,7 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
     // (camera) side facing −Z; side −1: sitter on the back side facing +Z.
     const n = s.desks.length;
     let nm = 0;
-    desks.count = chairs.count = monitors.count = screens.count = keyboards.count = deskAO.count = n;
+    desks.count = chairs.count = monitors.count = screens.count = keyboards.count = deskAO.count = screenSpill.count = n;
     s.desks.forEach((d, i) => {
       const facing = d.side === 1 ? Math.PI : 0; // sitter's rotY
       dummy.scale.set(1, 1, 1);
@@ -1431,7 +1453,15 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
       dummy.updateMatrix();
       screens.setMatrixAt(i, dummy.matrix);
       const a = m.agents[d.agent];
-      screens.setColorAt(i, setC(c, a?.team === "product" ? [120, 230, 170] : [130, 190, 255]));
+      const glowRgb: RGB = a?.team === "product" ? [120, 230, 170] : [130, 190, 255];
+      screens.setColorAt(i, setC(c, glowRgb));
+      // The screen's light on the desk top (under the keyboard, which occludes it).
+      dummy.rotation.set(0, 0, 0);
+      dummy.position.set(d.x, FLOOR_Y + 0.403, d.z + d.side * 0.02);
+      dummy.scale.set(0.78, 1, 0.66);
+      dummy.updateMatrix();
+      screenSpill.setMatrixAt(i, dummy.matrix);
+      screenSpill.setColorAt(i, setC(c, glowRgb));
       dummy.rotation.set(0, 0, 0);
       dummy.position.set(d.x, FLOOR_Y + 0.405, d.z + d.side * 0.08);
       dummy.scale.set(0.22, 0.012, 0.07);
@@ -1450,8 +1480,8 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
     mugs.count = nm;
     mugs.instanceMatrix.needsUpdate = true;
     if (mugs.instanceColor) mugs.instanceColor.needsUpdate = true;
-    for (const im of [desks, chairs, monitors, screens, keyboards, deskAO]) im.instanceMatrix.needsUpdate = true;
-    for (const im of [screens, chairs]) if (im.instanceColor) im.instanceColor.needsUpdate = true;
+    for (const im of [desks, chairs, monitors, screens, keyboards, deskAO, screenSpill]) im.instanceMatrix.needsUpdate = true;
+    for (const im of [screens, chairs, screenSpill]) if (im.instanceColor) im.instanceColor.needsUpdate = true;
 
     // Leaves along the planter strips.
     let ln = 0;
@@ -1584,11 +1614,17 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
       // Cheering: arms up in a "\o/" and waving (still under RM). Chibi arms are too
       // short to clear the big head, so a cheering arm stretches, toon-style.
       const cheer = p.cheer ?? 0;
+      const waving = k === 0 && (p.wave ?? 0) > 0 ? p.wave! : 0;
+      const rest = p.seated ? -1.05 + type : -swing * sgn * 0.8;
       if (cheer > 0) {
         const wave = rm ? 0 : Math.sin(p.gait * 2.4 + k * 1.4) * 0.2;
         mB.makeRotationFromEuler(eul.set(-2.75, 0, sgn * (0.62 + wave))).scale(armStretch);
+      } else if (waving > 0) {
+        // One arm up and waving, blended in and out of the resting pose.
+        waveStretch.set(1, 1 + 0.55 * waving, 1);
+        mB.makeRotationFromEuler(eul.set(rest + (-2.75 - rest) * waving, 0, sgn * (0.5 + (p.waveSwing ?? 0)) * waving)).scale(waveStretch);
       } else {
-        mB.makeRotationX(p.seated ? -1.05 + type : -swing * sgn * 0.8);
+        mB.makeRotationX(rest);
       }
       mB.setPosition(sgn * 0.113, 0.33, 0);
       mC.multiplyMatrices(mA, mB);
@@ -1697,6 +1733,27 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
     return { x: ((v.x + 1) / 2) * cssW, y: ((1 - v.y) / 2) * cssH };
   };
 
+  /** The person (staff or the inspector) nearest a tap, within ~22 css px. */
+  function nearestPerson(x: number, y: number): { pick: Pick3D; d2: number } | null {
+    if (!model) return null;
+    let best: { pick: Pick3D; d2: number } | null = null;
+    const n = Math.min(MAX_PEOPLE, model.agents.length);
+    for (let i = 0; i < n; i++) {
+      const p = project(tmp.set(headPos[i * 3]!, headPos[i * 3 + 1]! - 0.32, headPos[i * 3 + 2]!));
+      if (!p) continue;
+      const d2 = (p.x - x) ** 2 + (p.y - y) ** 2;
+      if (d2 < 22 * 22 && (!best || d2 < best.d2)) best = { pick: { kind: "agent", index: i }, d2 };
+    }
+    if (chen.visible) {
+      const p = project(tmp.copy(chen.position).setY(chen.position.y + 0.35));
+      if (p) {
+        const d2 = (p.x - x) ** 2 + (p.y - y) ** 2;
+        if (d2 < 22 * 22 && (!best || d2 < best.d2)) best = { pick: { kind: "chen" }, d2 };
+      }
+    }
+    return best;
+  }
+
   const api: HallScene3D = {
     primeAgents(seen) {
       prevAgents = Math.max(0, Math.floor(seen));
@@ -1797,6 +1854,7 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
       rain.count = rn;
       if (rn > 0) rain.instanceMatrix.needsUpdate = true;
       poolMat.opacity = 0.12 + 0.55 * nf;
+      setC(spillMat.color, [255, 255, 255], 0.04 + 0.9 * nf);
       setC(shadeMat.color, mix([238, 226, 206], [255, 214, 150], nf), 1 + 0.6 * nf);
       // Floor lettering: the overview's labels, faded out as the player pinches in.
       const z = api.zoom();
@@ -1876,6 +1934,18 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
             pop = Math.min(1, 0.2 + lt / 260);
           }
         }
+        // Tapped: turn the head to the camera, raise an arm and wave, a little hop.
+        const wt = waveAt.get(i);
+        if (wt !== undefined) {
+          const u = Math.max(0, (t - wt) / REACT_MS);
+          if (rm || u >= 1) waveAt.delete(i);
+          else {
+            const w = Math.min(1, u / 0.15, (1 - u) / 0.25);
+            let dy = Math.atan2(camera.position.x - p.x, camera.position.z - p.z) - p.rotY;
+            dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+            p = { ...p, yaw: Math.max(-1.25, Math.min(1.25, dy)) * w, wave: w, waveSwing: Math.sin(t / 95) * 0.35, lift: p.lift + Math.sin(Math.min(1, u / 0.25) * Math.PI) * 0.06 };
+          }
+        }
         posePerson(i, p, rm, pop);
         dummy.position.set(p.x, FLOOR_Y + 0.012, p.z);
         dummy.rotation.set(0, 0, 0);
@@ -1908,7 +1978,9 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
         // They stand on the ground (or the expansion lot) below the plinth, so they
         // peer over its lip into the lab.
         const p0 = crowdPose(s, k, t, rm);
-        const p = { ...p0, lift: p0.lift + CROWD_Y - FLOOR_Y };
+        const cheered = !rm && t - crowdTapAt < REACT_MS;
+        const hop = cheered ? Math.abs(Math.sin(t / 150 + k * 1.3)) * 0.08 : 0;
+        const p = { ...p0, lift: p0.lift + hop + CROWD_Y - FLOOR_Y, ...(cheered ? { cheer: 1 } : {}) };
         posePerson(i, p, rm);
         dummy.position.set(p.x, CROWD_Y + 0.008, p.z);
         dummy.rotation.set(0, 0, 0);
@@ -1927,6 +1999,8 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
         }
       }
       flashes.count = fn;
+      crowdBase = nAgents;
+      crowdN = nCrowd;
       if (fn > 0) flashes.instanceMatrix.needsUpdate = true;
       blobs.count = blobN;
       for (const im of [bodies, heads, hair, legs, arms, eyes, agentProxy, blobs]) im.instanceMatrix.needsUpdate = true;
@@ -1936,15 +2010,18 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
       bot.visible = botGlow.visible = botBlob.visible = !!bp;
       scanLine.visible = false;
       if (bp) {
-        bot.position.set(bp.x, FLOOR_Y + bp.hover, bp.z);
-        bot.rotation.y = bp.rotY;
+        // Tapped: a hop and a full spin, eye flaring (motion only).
+        const bu = rm ? 1 : (t - botTapAt) / BOT_SPIN_MS;
+        const spun = bu >= 0 && bu < 1;
+        bot.position.set(bp.x, FLOOR_Y + bp.hover + (spun ? Math.sin(bu * Math.PI) * 0.14 : 0), bp.z);
+        bot.rotation.y = bp.rotY + (spun ? easeInOut(bu) * Math.PI * 2 : 0);
         botGlow.position.set(bp.x, FLOOR_Y + 0.016, bp.z);
         botGlow.scale.set(0.72, 1, 0.72);
         setC(botGlowMat.color, MINT, 0.4 + 0.35 * nf + (bp.scan > 0 ? 0.15 : 0));
         botBlob.position.set(bp.x, FLOOR_Y + 0.012, bp.z);
         botBlob.scale.set(0.34, 1, 0.34);
         setC(botTipMat.color, MINT, rm || t % 1400 < 160 ? 1 : 0.22);
-        setC(botEyeMat.color, MINT, bp.scan > 0 ? 1.3 : 0.9);
+        setC(botEyeMat.color, MINT, spun ? 1.8 : bp.scan > 0 ? 1.3 : 0.9);
         const r = bp.rack >= 0 ? s.racks[bp.rack] : undefined;
         if (r && bp.scan > 0) {
           const foot = TIER_FOOT[r.tier] ?? 1;
@@ -1968,11 +2045,21 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
       // Beams + rising pulses (launch buzz surges; batching speeds; monetize gilds).
       // Instanced: brightness stands in for opacity (additive blending).
       let pn = 0;
+      beamH = [];
       s.beams.forEach((b, i) => {
         const buzz = m.beamBuzz[i] ?? 0;
         const inten = Math.min(1.3, (m.beams[i] ?? 0.2) * (1 + 0.45 * buzz) + f.burst * 0.4);
-        const flick = (rm ? 1 : 0.88 + 0.12 * Math.sin(t / 260 + i * 1.3) + buzz * 0.2 * (0.5 + 0.5 * Math.sin(t / 110 + i))) + f.burst * 0.8;
+        // Tapped: the beam flares and fades back (motion only).
+        const ta = beamTapAt.get(i);
+        let flare = 0;
+        if (ta !== undefined) {
+          const u = (t - ta) / 900;
+          if (rm || u >= 1) beamTapAt.delete(i);
+          else flare = 1 - Math.max(0, u);
+        }
+        const flick = (rm ? 1 : 0.88 + 0.12 * Math.sin(t / 260 + i * 1.3) + buzz * 0.2 * (0.5 + 0.5 * Math.sin(t / 110 + i))) + f.burst * 0.8 + flare * 1.1;
         const h = 2.6 + 5.5 * inten;
+        beamH[i] = h;
         const bc = pick(BEAM, i);
         if (beamCores && beamGlows) {
           dummy.position.set(b.x, FLOOR_Y, b.z);
@@ -1981,7 +2068,7 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
           dummy.updateMatrix();
           beamCores.setMatrixAt(i, dummy.matrix);
           beamCores.setColorAt(i, setC(c, bc, 0.8 * flick));
-          dummy.scale.set(1 + buzz * 0.6, h * 0.92, 1 + buzz * 0.6);
+          dummy.scale.set(1 + buzz * 0.6 + flare * 0.8, h * 0.92, 1 + buzz * 0.6 + flare * 0.8);
           dummy.updateMatrix();
           beamGlows.setMatrixAt(i, dummy.matrix);
           beamGlows.setColorAt(i, setC(c, bc, (0.22 + 0.25 * buzz) * flick));
@@ -2258,6 +2345,37 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
       // The people move every frame; their instanced bounds must be current for the ray.
       agentProxy.computeBoundingSphere();
       const hits = ray.intersectObjects([chenProxy, agentProxy, rackBody, ...plotMeshes.map((p) => p.fill)], false);
+      // The ops bot, the crowd and the product beams are thumb targets in screen space,
+      // checked before racks and lots (they stand in front of them) but never over a
+      // person the ray hit directly.
+      const h0 = hits[0];
+      const h0Person = !!h0 && ((h0.object === chenProxy && chen.visible) || (h0.object === agentProxy && h0.instanceId !== undefined));
+      if (!h0Person) {
+        if (bot.visible) {
+          const p = project(tmp.copy(bot.position).setY(bot.position.y + 0.25));
+          if (p && (p.x - x) ** 2 + (p.y - y) ** 2 < 28 * 28) return { kind: "bot" };
+        }
+        for (let k = 0; k < crowdN; k++) {
+          const i = crowdBase + k;
+          const p = project(tmp.set(headPos[i * 3]!, headPos[i * 3 + 1]! - 0.3, headPos[i * 3 + 2]!));
+          if (p && (p.x - x) ** 2 + (p.y - y) ** 2 < 24 * 24) return { kind: "crowd" };
+        }
+        let beam = -1, beamD = 16 * 16;
+        spec.beams.forEach((b, i) => {
+          const a = project(tmp.set(b.x, FLOOR_Y, b.z));
+          const top = project(tmp2.set(b.x, FLOOR_Y + (beamH[i] ?? 3), b.z));
+          if (!a || !top) return;
+          const d = segDist2(x, y, a.x, a.y, top.x, top.y);
+          if (d < beamD) { beamD = d; beam = i; }
+        });
+        const person = nearestPerson(x, y);
+        if (beam >= 0 && !(person && person.d2 < beamD)) {
+          const b = spec.beams[beam]!;
+          ray.ray.distanceSqToSegment(segV0.set(b.x, FLOOR_Y, b.z), segV1.set(b.x, FLOOR_Y + (beamH[beam] ?? 3), b.z), onRay);
+          // Only a beam standing in front of whatever else the ray hit.
+          if (!h0 || ray.ray.origin.distanceTo(onRay) < h0.distance + 0.3) return { kind: "beam", index: beam };
+        }
+      }
       for (const h of hits) {
         if (h.object === chenProxy && chen.visible) return { kind: "chen" };
         if (h.object === agentProxy && h.instanceId !== undefined) return { kind: "agent", index: h.instanceId };
@@ -2272,21 +2390,8 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
         if (plot) return { kind: "plot", id: plot };
       }
       // People are small under a thumb: take the nearest one within ~22 css px of the tap.
-      {
-        let best = -1, bestD = 22 * 22;
-        const n = Math.min(MAX_PEOPLE, model.agents.length);
-        for (let i = 0; i < n; i++) {
-          const p = project(tmp.set(headPos[i * 3]!, headPos[i * 3 + 1]! - 0.32, headPos[i * 3 + 2]!));
-          if (!p) continue;
-          const d = (p.x - x) ** 2 + (p.y - y) ** 2;
-          if (d < bestD) { bestD = d; best = i; }
-        }
-        if (chen.visible) {
-          const p = project(tmp.copy(chen.position).setY(chen.position.y + 0.35));
-          if (p && (p.x - x) ** 2 + (p.y - y) ** 2 < bestD) return { kind: "chen" };
-        }
-        if (best >= 0) return { kind: "agent", index: best };
-      }
+      const person = nearestPerson(x, y);
+      if (person) return person.pick;
       // A tap in the gap between racks lands on the floor: the tile under it belongs to
       // the rack standing there (the 2D hit-test honours the floor tile the same way).
       if (ray.ray.intersectPlane(floorPlane, tmp)) {
@@ -2305,6 +2410,14 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
       if (on) attachControls(); else detachControls();
     },
 
+    react(p) {
+      const now = performance.now();
+      if (p.kind === "agent") waveAt.set(p.index, now);
+      else if (p.kind === "beam") beamTapAt.set(p.index, now);
+      else if (p.kind === "bot") botTapAt = now;
+      else if (p.kind === "crowd") crowdTapAt = now;
+    },
+
     focus(p) {
       if (!controls || !model || !spec) return;
       let at: Vector3 | null = null;
@@ -2314,6 +2427,13 @@ export function createHallScene3D(canvas: HTMLCanvasElement): HallScene3D {
       } else if (p.kind === "agent") {
         at = new Vector3(headPos[p.index * 3]!, FLOOR_Y + 0.4, headPos[p.index * 3 + 2]!);
       } else if (p.kind === "chen") at = chen.position.clone().setY(FLOOR_Y + 0.4);
+      else if (p.kind === "bot" && bot.visible) at = bot.position.clone().setY(FLOOR_Y + 0.4);
+      else if (p.kind === "beam") {
+        const b = spec.beams[p.index];
+        if (b) at = new Vector3(b.x, FLOOR_Y + 0.4, b.z);
+      } else if (p.kind === "crowd" && crowdN > 0) {
+        at = new Vector3((spec.bay.x0 + spec.bay.x1) / 2, FLOOR_Y + 0.4, spec.bay.z1);
+      }
       if (!at) return;
       const d = camera.position.distanceTo(controls.target);
       focusFrom = { t: controls.target.clone(), d, at: performance.now() };

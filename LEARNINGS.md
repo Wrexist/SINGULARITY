@@ -592,6 +592,13 @@ when" balance, dials the whole curve, and the UI cost displays update for free (
   1.8 s effect is over before the second screenshot. `page.clock.install()` before load,
   `pauseAt(now)` right after the trigger, then `runFor(250)` between screenshots, steps
   rAF deterministically and catches every frame.
+- **Testing taps on moving targets: freeze, then scan, then tap — on one frame.** A
+  grid scan through `window.__HALL3D__.pick` finds where each target is, but the bot
+  patrols and walkers walk. Scan before pausing the clock and the coordinates go stale
+  (the "bot" tap lands on a rack). Pause first (`page.clock.pauseAt`), `runFor(100)` to
+  draw the frozen frame, scan, tap. Rescan before every tap, because a tap in explore
+  also moves the camera. Under Playwright's fake clock the rAF timestamp and
+  `performance.now()` agree, so scene timers stamped with either stay consistent.
 - **Things outside the plinth stand on the ground, not the floor.** Anything placed past
   the diorama's edge (onlookers, a crate entering) at `FLOOR_Y` floats 0.3 above the lot.
   Put it at ground height, or keep its whole path on the plinth.
