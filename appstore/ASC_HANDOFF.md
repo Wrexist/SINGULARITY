@@ -131,8 +131,8 @@ The source of truth is `appstore/metadata/<locale>/`. The files there are `name.
   > Sponsor Weeks to climb the Sponsor Tiers. Still no ads. Still no pay-to-win.
 
   Check it's ≤170 characters before saving.
-- **URLs:** support is `https://wrexist.github.io/singularity/support` and the privacy
-  policy is `https://wrexist.github.io/singularity/privacy`. Open both and confirm they
+- **URLs:** support is `https://wrexist.github.io/SINGULARITY/support` and the privacy
+  policy is `https://wrexist.github.io/SINGULARITY/privacy`. Open both and confirm they
   load; report a 404.
 - **Category:** the primary category should be Games → Simulation
   (`METADATA.md` §2). Report it if it differs.

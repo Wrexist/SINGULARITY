@@ -53,9 +53,9 @@ All "Frequency" answers below; everything not listed = **None**.
 
 | Field | Value (host on GitHub Pages — reuse the Silicon setup) |
 |---|---|
-| Privacy Policy URL | `https://wrexist.github.io/singularity/privacy` |
-| Support URL | `https://wrexist.github.io/singularity/support` (or a GitHub Issues link) |
-| Marketing URL *(optional)* | `https://wrexist.github.io/singularity/` |
+| Privacy Policy URL | `https://wrexist.github.io/SINGULARITY/privacy` |
+| Support URL | `https://wrexist.github.io/SINGULARITY/support` (or a GitHub Issues link) |
+| Marketing URL *(optional)* | `https://wrexist.github.io/SINGULARITY/` |
 
 ## 6. In-App Purchase (the Premium unlock)
 - **Type:** Non-Consumable. **Product ID:** `com.wrexist.singularityinc.premium`
