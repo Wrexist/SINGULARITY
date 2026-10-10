@@ -8,6 +8,28 @@ Phase 0–3 history retained below for context.
 
 ---
 
+## Fun + downloads batch (2026-10-10) — `claude/quirky-cray-ym85q8`
+*Owner: "how can we make this more interesting and fun, and should we rename for search?" →
+"yes do all". Verdict on the name: keep it (METADATA.md §12). Built, each its own commit:*
+- [x] **App Store rating prompt** — StoreKit review request as a Ship celebration closes, from
+      the 2nd Ship; never with a paywall; ≤3 per install, 120 days apart (`reviewRules.ts`)
+- [x] **Weekly Sponsor Campaigns** (AUDIT 2026-08 #5) — 5 of 7 daily sponsors banks +20–40 Rep
+      and lifts the Sponsor Tier; derived from existing sponsor ids; sim byte-identical
+- [x] **The Big Red Button** (R3.3) — a cooldown gamble on the hall: surge or small disaster
+      (a workable incident); deterministic; SAVE_VERSION 42
+- [x] **The Rival Cold War** (AUDIT 2026-08 #8) — poach / takedown / pact on your nearest rival;
+      deterministic retaliation landed by the tick; betrayal; SAVE_VERSION 43
+- [x] **Game Center** — in-repo Capacitor 7 GameConnect plugin (`native/game-connect`) + opt-in
+      entitlement step; NOT installed until one Mac/TestFlight build verifies it
+      (GAME_CENTER_SETUP.md)
+- [x] **App Store kit** — In-App Events (weekly Sponsor Week + Major Update) with real-game art,
+      3 keyword custom product pages, a PPO screenshot test plan (`appstore/`)
+- [x] First-15-minutes check — sim: first Ship 29m35s, longest wall 38s; no dead zone for an
+      engaged player. Moving first-Ship timing changes the live curve → owner call
+- [ ] Owner: App Store Connect → Analytics (D1/D7 retention, Search Terms); publish the first
+      In-App Events; create the 3 custom product pages; Game Center steps
+- [ ] Owner call: re-couple the resource triangle (R4.3/R4.4) — changes live balance
+
 ## 3D world spike (2026-10-09) — `claude/quirky-cray-ym85q8`, OFF for every player
 *Owner asked how to make the hall "fully immersive and 3D" like the Ralv agent office /
 AI-generated three.js digital twins. Research + audits + plan in `WORLD_3D_PLAN.md`.
