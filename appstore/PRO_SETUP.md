@@ -8,11 +8,11 @@ have to be done by the account owner. Do them in order; about 25 min total.
 | Plan | Product ID | Price (USD) | Trial |
 |---|---|---|---|
 | **Yearly** (preselected, "Best value") | `com.wrexist.singularityinc.pro.yearly` | **$24.99** | **7 days free** |
-| Weekly | `com.wrexist.singularityinc.pro.weekly` | **$4.99** | none |
+| Weekly | `com.wrexist.singularityinc.pro.weekly` | **$4.99** | **7 days free** (owner kept it, 2026-10-11) |
 | Lifetime (existing Premium) | `com.wrexist.singularityinc.premium` | raise **$6.99 → $39.99** | n/a |
 
 - The paywall shows Yearly as ~$0.48/week next to Weekly at $4.99/week, a 90% saving. That contrast is what pushes most buyers to yearly, and weekly still earns well from people who want Pro for a short burst.
-- Only the yearly plan gets the trial, so the trial also steers people to yearly.
+- Both plans carry the 7-day trial (owner decision, 2026-10-11). The price gap alone does the steering to yearly.
 - Lifetime has to cost more than ~1.5 years of yearly, or it undercuts the subscription. At $6.99 almost everyone would pick it.
 - Weekly plans convert impulse buyers but churn fast and can draw "too expensive" reviews. Watch refunds and ratings for the first two weeks.
 - Idle-game benchmarks: $19.99–$29.99/year and $2.99–$4.99/week. Try $19.99 vs $29.99 yearly later with App Store price tests.

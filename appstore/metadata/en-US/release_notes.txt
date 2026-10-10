@@ -1,21 +1,9 @@
-The biggest update since launch. Your lab now runs far deeper than GPUs and racks:
+Three new ways to stir things up:
 
-• Hire a team: researchers, engineers and more, each with a role, morale and a salary
-• Launch AI products: grow their users and revenue, then ship new versions
-• Rig Bay: fit your racks with parts, fuse better ones, and win trophies from Contracts
-• Grand Challenges and Megaprojects: long-term goals with big payoffs
-• Objectives, Contracts and a daily sponsor give every session a clear goal
-• Automation: a Research Director and autopilots keep the lab working, even while you're away
-• Declare a Stance: pick Safety, Center or Acceleration and unlock that side's Doctrine perks
-• Charter draft: every Ship deals three Lab Charters, including rule-changers like Research Sprint
-• Unplugged Trials: switch Legacy off for one generation and play a real, full run again
-• Personal records: every new power of ten in peak Compute earns Lab Reputation
-• Publish preprints, collect Field Notes and chase new achievements
-• "Save for this": tap research that's out of reach and the lab banks Compute, then buys it for you
-• Calmer news: only real decisions interrupt you; everything else runs on the Newswire
-• Dark mode: choose Light, Dark or Match device in Settings
-• Singularity Pro (optional): offline earnings ×2, a 24-hour offline cap, earlier autopilots and Pro-only themes. Try it free for 7 days
-• Better with VoiceOver, keyboards and Reduce Motion, with bigger tap targets and clearer text
-• Smoother on older iPhones, offline time counted properly, and 150+ fixes
+• The Big Red Button: after your first Ship, press it for a surge (Compute ×3, a viral demo, a dataset that fell off a truck) or a small disaster. It recharges every 10 minutes
+• Rival Cold War: poach a researcher, publish a takedown or sign a compute pact with your nearest rival. Move against them and they answer back
+• Sponsor Weeks: clear 5 of the 7 daily sponsor goals in a week to bank Reputation and climb the Sponsor Tiers, from Unfunded to Sovereign-backed
+• 3D Lab (beta, in Settings): tap anything alive. Staff wave, product beams flare, the ops bot spins and the crowd cheers
+• Smoother, calmer and a little brighter everywhere, plus fixes
 
-Thanks for playing. Tell us what to build next.
+Still no ads. Still no pay-to-win. Thanks for playing. Tell us what to build next.

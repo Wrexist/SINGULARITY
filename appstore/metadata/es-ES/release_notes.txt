@@ -1,11 +1,9 @@
-En esta actualización:
+Tres formas nuevas de liarla:
 
-• Modo oscuro: elige Light, Dark o Match device en Settings.
-• Novedades en cada generación: declara tu postura (Safety, Center o Acceleration) y desbloquea las ventajas de Doctrina de ese bando. Además, cada Ship te reparte tres Cartas del Laboratorio, algunas capaces de cambiar las reglas.
-• Pruebas Unplugged: desactiva el Legacy durante una generación y vuelve a jugar una partida completa. Tus récords de Compute ahora dan Reputación del Laboratorio.
-• Objetivos más claros: ves siempre tu siguiente paso y cuándo compensa de verdad hacer Ship.
-• «Ahorrar para esto»: toca una investigación fuera de alcance y el laboratorio reserva el Compute y la compra por ti.
-• Más calma: solo te interrumpen las decisiones de verdad; lo demás va al teletipo de noticias. Mejor con VoiceOver y con zonas táctiles más grandes.
-• Más fluido en iPhone antiguos, tiempo sin conexión exacto y más de 150 correcciones.
+• El gran botón rojo («Big Red Button»): tras tu primer Ship, púlsalo y llévate un subidón (Compute ×3, una demo viral, un dataset de procedencia dudosa) o un pequeño desastre. Se recarga cada 10 minutos.
+• Guerra Fría entre rivales («Cold War»): róbale un investigador a tu rival más cercano, publica un artículo demoledor contra él o firma un pacto de cómputo. Si mueves ficha, te responde.
+• Semanas de patrocinio («Sponsor Weeks»): cumple 5 de los 7 objetivos diarios de patrocinio en una semana para sumar Reputación y escalar por los niveles de patrocinio («Sponsor Tiers»), de Unfunded a Sovereign-backed.
+• Laboratorio 3D («3D Lab», beta, en Settings): toca todo lo que tenga vida. El personal saluda, los haces de producto destellan, el bot de operaciones gira y el público aplaude.
+• Todo más fluido, más tranquilo y un poco más luminoso, además de correcciones.
 
-Sigue sin anuncios. Sigue sin pay-to-win.
+Sigue sin anuncios. Sigue sin pay-to-win. Gracias por jugar. Cuéntanos qué quieres que construyamos ahora.

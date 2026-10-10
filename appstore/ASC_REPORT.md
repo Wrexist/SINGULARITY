@@ -5,12 +5,26 @@ Session: 2026-10-10/11, working from `appstore/ASC_HANDOFF.md` with the repo at 
 read-only data endpoints), so the numbers are exact as of 2026-10-09 UTC.
 
 App: **Singularity Inc. Idle Tycoon**, Apple ID `6783938767`, SKU `singularity-inc`.
-The live version is **1.1** (Ready for Distribution). No newer version is in
-preparation, so the description, keywords, locales and review notes can't be edited until
-the next build is added.
+The live version is **1.1** (Ready for Distribution).
 
-**Nothing in App Store Connect was changed this session.** Everything below is a reading,
-a draft, or a question for the owner.
+**Round 2 (owner's go, 2026-10-11) — what changed in App Store Connect:**
+
+| Item | Result |
+|---|---|
+| Weekly trial | **Kept** (owner decision). `PRO_SETUP.md` updated. |
+| App Privacy label | **Published**: Purchases → Purchase History; Analytics + App Functionality; not linked to identity; not used for tracking (RevenueCat guidance, anonymous app user ID). Shows on the store as "Data Not Linked to You: Purchases". |
+| Version **1.2** | **Created**, Prepare for Submission. Not submitted, no build attached. |
+| 1.2 locales | **50/50**: name, subtitle, keywords, description, promo text, What's New, support/marketing/privacy URLs, from `appstore/metadata/` (all pass `npm run validate:store`). en-US name untouched (`Singularity Inc. Idle Tycoon`). en-US description restored with its em dashes. |
+| 1.2 What's New / promo | New 1.2 copy (Big Red Button, Rival Cold War, Sponsor Weeks, 3D Lab taps) in all 50 locales. The promo text is set on 1.2 only, so it goes live with that version, not before. |
+| Game Center | Leaderboards **`singularity.ships`** ("Models Shipped") and **`singularity.ascensions`** ("AGI Ascensions") created: Classic, integer, best score, high→low, en-US localization. Not submitted; Game Center **not** attached to any version. The `grp.` prefix is rejected for apps outside a Game Center group, so the ids in `src/ui/gameCenter.ts` and the docs were changed to match. No achievements: there are no 512/1024 images yet. |
+| In-App Events | 3 **drafts** with en-US text: "Major Update: The Big Red Button" (placeholder dates Oct 26 – Nov 9, all 175 territories), "Sponsor Week Oct 12", "Sponsor Week Oct 19" (Europe/Stockholm midnight to 23:59). **No media yet** (see below). |
+| Custom product pages | **Not created** (see below). |
+| App Review notes on 1.2 | **Not set** (see below). |
+
+**Stopped partway:** Claude Code's auto-mode safety check blocked further App Store
+Connect page actions as a "production deploy" partway through the In-App Events. The event
+images, the 3 custom product pages and the 1.2 review notes were left undone rather than
+worked around. They need the owner's own clicks, or an explicit permission in Claude Code.
 
 ---
 
@@ -206,35 +220,24 @@ Chinese"), body "添加中文语言" ("Add Chinese language"). It has no reply.
 
 ## Drafts for the next version (§11)
 
-### What's New (en-US), 625 chars
+### What's New (en-US)
 
-```
-Three new ways to stir up trouble:
+Final copy lives in `appstore/metadata/en-US/release_notes.txt` (and the 49 translations
+next to it) and is already pasted into version 1.2. The App Store rating prompt is left out
+on purpose.
 
-• The Big Red Button: press it for a surge of Compute, or a small fire. You never quite know which
-• Rival Cold War: rival labs now answer back. Escalate, stand down, or out-ship them
-• Sponsor Weeks: clear 5 of 7 daily sponsor goals each week to bank Reputation and climb the Sponsor Tiers
-• 3D Lab (beta, Settings): the hall moves and reacts to your taps, with a roaming ops bot, crowds that come and go, and storms that roll over the roof
-• Smoother, calmer and a little brighter everywhere, plus fixes
-
-Still no ads. Still no pay-to-win. Thanks for playing. Tell us what to build next.
-```
-
-(The App Store rating prompt is left out on purpose.)
-
-### App Review notes (replace the stale ones)
+### App Review notes for 1.2 (paste into App Review Information; not set yet)
 
 ```
 Singularity Inc. is a single-player, offline idle/tycoon game. No account or login is required.
 
 Getting started: it plays immediately on launch. Your data center generates Compute over time; spend it on a Training Run to earn Data and Money, then buy hardware and research. Progress accrues while the app is closed.
 
-In-app purchases (optional, never pay-to-win): Singularity Pro, a subscription group with Pro Yearly ($24.99, 7-day free trial) and Pro Weekly ($4.99), plus Pro Lifetime ($39.99, non-consumable). All three unlock the same perks: 2x offline earnings, a 24-hour offline cap, autopilots one Ship sooner, and Pro-only hall themes and rack skins. The paywall shows on first launch and from Settings > See Pro plans. Restore is on the paywall and in Settings.
+In-app purchases (optional, never pay-to-win): Singularity Pro, a subscription group with Pro Yearly ($24.99) and Pro Weekly ($4.99), each with a 7-day free trial, plus Pro Lifetime ($39.99, non-consumable). All three unlock the same perks: 2x offline earnings, a 24-hour offline cap, autopilots one Ship sooner, and Pro-only hall themes and rack skins. The paywall shows on first launch and from Settings > See Pro plans. Restore is on the paywall and in Settings.
 
 Satire note: the game satirizes the AI industry. The "Data Bazaar / dark web" and the "Big Red Button" are fictional risk/reward mechanics with random in-game outcomes only. No real money is wagered, nothing can be cashed out, and neither can be bought with real money. Neither is gambling.
 ```
 
-(Edit the weekly trial line if the owner removes that trial.)
 
 ---
 
@@ -242,25 +245,37 @@ Satire note: the game satirizes the AI industry. The "Data Bazaar / dark web" an
 
 | Where | Old | New |
 |---|---|---|
+| ASC App Privacy | Data Not Collected | Purchases → Purchase History (not linked, no tracking) — **live now** |
+| ASC version 1.2 | — | created, 50 locales filled (not submitted) |
+| ASC Game Center | nothing | 2 leaderboards (`singularity.ships`, `singularity.ascensions`), not submitted |
+| ASC In-App Events | none | 3 drafts, text only |
+| `src/ui/gameCenter.ts`, `GAME_CENTER_SETUP.md`, `ASC_HANDOFF.md` | `grp.singularity.*` ids | `singularity.*` ids (ASC rejects `grp.` outside a group) |
+| `appstore/metadata/*/release_notes.txt`, `promotional_text.txt` | 1.1 copy | 1.2 copy, 50 locales |
+| `docs/privacy/index.html`, `appstore/privacy-policy.md` | "we collect nothing" | explains RevenueCat purchase verification (anonymous ID, no tracking). **Goes live on GitHub Pages only after this branch is merged to main.** |
+| `appstore/PRO_SETUP.md`, `appstore/METADATA.md` | yearly-only trial; Data Not Collected | weekly trial kept; new privacy label |
 | `appstore/METADATA.md` URLs, `ASC_HANDOFF.md` §4 | `wrexist.github.io/singularity/...` (404) | `wrexist.github.io/SINGULARITY/...` |
 | `appstore/in-app-events/EVENTS.md` | dates from the last run | regenerated (Sponsor Weeks from Oct 12) |
-| App Store Connect | — | **no changes** |
 
 ---
 
 ## Waiting on the owner
 
-- [ ] **Weekly free trial:** keep or remove the 7-day trial on Pro Weekly? The plan says
-      yearly-only.
-- [ ] **Privacy label:** add Purchases → Purchase History (and Identifiers if they apply)
-      for RevenueCat?
-- [ ] **Next version:** add the 49 missing locales, fix the en-US description (em dashes),
-      replace the stale review notes, and paste the What's New draft.
-- [ ] **Drafts to create in ASC:** In-App Event drafts (Big Red Button + Sponsor Weeks),
-      3 custom product page drafts, and Game Center leaderboard records. They're ready to
-      do, but are low-value until the next build ships (see "Recommended next steps").
-- [ ] **After the next build is live:** apply the new promotional text, and publish the
-      Big Red Button event and the upcoming Sponsor Weeks.
+- [ ] **Merge this branch** so the updated privacy policy page goes live (the new label
+      already is; the page should match).
+- [ ] **Build 1.2:** run the TestFlight workflow with `marketing_version` = `1.2`, then
+      attach that build to version 1.2 in ASC.
+- [ ] **1.2 App Review notes:** paste the draft above into App Review Information.
+- [ ] **Event images** (ASC → In-App Events → each draft): `art/update-card.jpg` +
+      `art/update-details.jpg` on "Major Update: The Big Red Button"; `art/sponsor-card.jpg` +
+      `art/sponsor-details.jpg` on both Sponsor Weeks. Set the Big Red Button dates to the real
+      release day (+14 days). The Oct 12/19 Sponsor Weeks will have passed before 1.2 is live;
+      move them to the first two weeks after release instead.
+- [ ] **Custom product pages:** 3 drafts from `CUSTOM_PRODUCT_PAGES.md` (not created; low
+      value at today's traffic).
+- [ ] **When submitting 1.2:** tick both leaderboards into the submission, and turn on
+      Game Center for the version only once the build includes the plugin.
+- [ ] **After 1.2 is live:** publish the events (≤14 days ahead) and post the Hong Kong
+      review reply.
 
 ---
 

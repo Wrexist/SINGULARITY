@@ -1,11 +1,9 @@
-Bu güncellemede:
+Ortalığı karıştırmanın üç yeni yolu:
 
-• Karanlık mod: Settings menüsünden Light, Dark ya da Match device seçeneğini seç.
-• Her nesilde yenilik: duruşunu ilan et (Safety, Center ya da Acceleration) ve o tarafın Doctrine avantajlarının kilidini aç. Her Ship sana ayrıca üç Lab Charter dağıtır; bazıları oyunun kurallarını değiştirir.
-• Unplugged Trials: bir nesil boyunca Legacy'yi kapat ve baştan sona tam bir oyun daha oyna. Compute rekorların artık Lab Reputation kazandırıyor.
-• Daha net hedefler: bir sonraki adımını ve Ship yapmanın gerçekten ne zaman değdiğini hep görürsün.
-• “Bunun için biriktir”: ulaşamadığın bir araştırmaya dokun, laboratuvar Compute'u biriktirip onu senin yerine satın alsın.
-• Daha sakin: seni yalnızca gerçek kararlar böler, gerisi haber bandında akar. VoiceOver desteği daha iyi, dokunma alanları daha büyük.
-• Eski iPhone'larda daha akıcı, doğru çevrimdışı süre ve 150'den fazla hata düzeltmesi.
+• Büyük Kırmızı Düğme (Big Red Button): ilk Ship'inden sonra bas; ya bir sıçrama gelir (Compute ×3, viral bir demo, “kamyondan düşmüş” bir veri seti) ya da küçük bir felaket. Her 10 dakikada bir yeniden dolar
+• Rakiplerle Soğuk Savaş (Cold War): en yakın rakibinin bir araştırmacısını ayart, onu yerden yere vuran bir yazı yayımla ya da onunla bir compute paktı imzala. Onlara karşı hamle yaparsan karşılık verirler
+• Sponsor Haftaları (Sponsor Weeks): bir hafta içinde 7 günlük sponsor hedefinden (her gün bir tane) 5'ini tamamla, Reputation biriktir ve Unfunded'dan Sovereign-backed'e kadar Sponsor Tiers'ta yüksel
+• 3D Lab (beta, Settings içinde): canlı olan her şeye dokun. Çalışanlar el sallar, ürün ışınları parlar, ops botu döner, kalabalık tezahürat yapar
+• Her yerde daha akıcı, daha sakin ve biraz daha aydınlık, artı hata düzeltmeleri
 
-Hâlâ reklam yok. Hâlâ pay-to-win yok.
+Hâlâ reklam yok. Hâlâ pay-to-win yok. Oynadığın için teşekkürler. Sırada ne yapalım, bize yaz.

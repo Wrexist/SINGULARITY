@@ -1,11 +1,9 @@
-În această actualizare:
+Trei moduri noi de a face valuri:
 
-• Mod întunecat: alege Light, Dark sau Match device în meniul Settings.
-• Nou în fiecare generație: alege-ți tabăra (Safety, Center sau Acceleration) și deblochează perk-urile Doctrine ale acesteia. Iar fiecare Ship îți împarte trei Lab Charters, inclusiv unele care schimbă regulile jocului.
-• Unplugged Trials: oprește Legacy pentru o generație și joacă din nou o partidă completă. Recordurile tale de Compute aduc acum Lab Reputation.
-• Obiective mai clare: vezi mereu pasul următor și când merită cu adevărat să faci Ship.
-• „Economisește pentru asta”: atinge o cercetare prea scumpă, iar laboratorul strânge Compute pentru ea și o cumpără în locul tău.
-• Mai multă liniște: te întrerup doar deciziile reale, restul rulează în fluxul de știri. Plus suport mai bun pentru VoiceOver și zone de atingere mai mari.
-• Mai fluid pe iPhone-urile mai vechi, timp offline corect și peste 150 de remedieri.
+• Marele Buton Roșu (Big Red Button): după primul Ship, apasă-l pentru un boost (Compute ×3, un demo viral, un set de date „căzut din camion”) sau pentru un mic dezastru. Se reîncarcă la fiecare 10 minute
+• Războiul Rece cu rivalii (Cold War): racolează un cercetător, publică un articol demolator sau semnează un pact de compute cu cel mai apropiat rival. Dacă îi ataci, îți răspund pe măsură
+• Săptămânile sponsorilor (Sponsor Weeks): bifează 5 din cele 7 obiective zilnice ale sponsorilor într-o săptămână ca să strângi Reputation și să urci în Sponsor Tiers, de la Unfunded la Sovereign-backed
+• 3D Lab (beta, în Settings): atinge orice e viu. Angajații fac cu mâna, fasciculele produselor se aprind, botul de ops se învârte, iar mulțimea aplaudă
+• Totul e mai fluid, mai calm și puțin mai luminos, plus remedieri
 
-În continuare fără reclame. În continuare fără pay-to-win.
+În continuare fără reclame. În continuare fără pay-to-win. Mulțumim că joci. Spune-ne ce să construim mai departe.

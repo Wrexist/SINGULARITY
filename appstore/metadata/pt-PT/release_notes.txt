@@ -1,11 +1,9 @@
-Nesta atualização:
+Três novas formas de agitar as águas:
 
-• Modo escuro: escolha Light, Dark ou Match device em Settings.
-• Novidade em cada geração: declare a sua posição (Safety, Center ou Acceleration) e desbloqueie as vantagens de Doutrina desse lado. E cada Ship distribui-lhe três Cartas do Laboratório, incluindo algumas que mudam as regras.
-• Provas Unplugged: desligue o Legacy durante uma geração e volte a jogar uma partida completa. Os seus recordes de Compute passam a render Reputação do Laboratório.
-• Objetivos mais claros: vê sempre o próximo passo e quando compensa mesmo fazer Ship.
-• «Poupar para isto»: toque numa investigação fora de alcance e o laboratório reserva a Compute e faz a compra por si.
-• Mais calma: só as verdadeiras decisões o interrompem; o resto passa no feed de notícias. Funciona melhor com o VoiceOver, com áreas de toque maiores.
-• Mais fluido em iPhones mais antigos, tempo offline exato e mais de 150 correções.
+• O Grande Botão Vermelho («Big Red Button»): depois do seu primeiro Ship, carregue nele para obter um impulso (Compute ×3, uma demo viral, um dataset de proveniência duvidosa) ou um pequeno desastre. Recarrega a cada 10 minutos.
+• Guerra Fria entre rivais («Cold War»): roube um investigador ao seu rival mais próximo, publique uma crítica arrasadora contra ele ou assine um pacto de computação. Se avançar contra ele, ele responde.
+• Semanas de Patrocínio («Sponsor Weeks»): cumpra 5 dos 7 objetivos diários de patrocínio numa semana para acumular Reputação e subir nos Níveis de Patrocínio («Sponsor Tiers»), de Unfunded a Sovereign-backed.
+• Laboratório 3D («3D Lab», beta, em Settings): toque em tudo o que tem vida. A equipa acena, os feixes de produto acendem-se, o bot de operações gira e o público aplaude.
+• Tudo mais fluido, mais calmo e um pouco mais luminoso, além de correções.
 
-Continua sem anúncios. Continua sem pay-to-win.
+Continua sem anúncios. Continua sem pay-to-win. Obrigado por jogar. Diga-nos o que devemos construir a seguir.

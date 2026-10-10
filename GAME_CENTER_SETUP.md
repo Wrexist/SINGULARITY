@@ -37,9 +37,9 @@ release.
    automatically, and `cap sync ios` links the pod. No manual Xcode step is needed in
    CI. Locally, `npm run cap:sync` does the same.
 2. **App Store Connect → your app → Features → Game Center**, create:
-   - Leaderboard `grp.singularity.ships`: "Models Shipped", integer, best = highest.
-   - Leaderboard `grp.singularity.ascensions`: "AGI Ascensions", integer, best = highest.
-   - Achievements with ids `grp.singularity.ach.<in-game id>` for each achievement you
+   - Leaderboard `singularity.ships`: "Models Shipped", integer, best = highest.
+   - Leaderboard `singularity.ascensions`: "AGI Ascensions", integer, best = highest.
+   - Achievements with ids `singularity.ach.<in-game id>` for each achievement you
      want mirrored. The in-game ids are in `src/engine/achievements.ts`. Unmapped ids
      fail silently, so you can start with a handful (e.g. `first_ship`, `compute_1m`)
      and add more later.

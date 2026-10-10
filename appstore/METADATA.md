@@ -44,8 +44,10 @@ All "Frequency" answers below; everything not listed = **None**.
 - Unrestricted Web Access: **No**.  Contests: **No**.
 
 ## 4. Privacy ("nutrition label") — a selling point
-- The game is **100% local**: no accounts, no servers, no analytics, no tracking, no ads SDKs.
-- App Store Connect → App Privacy → **"Data Not Collected"** (the cleanest possible label).
+- No accounts, no servers of our own, no tracking, no ads SDKs. Game telemetry stays on the device.
+- App Store Connect → App Privacy → **Purchases → Purchase History**: Analytics + App Functionality,
+  not linked to the user, not used for tracking (RevenueCat, anonymous app user ID). Published
+  2026-10-11. Everything else stays undeclared because nothing else leaves the device.
 - A **Privacy Policy URL is still required**. Host `appstore/privacy-policy.md` (e.g. GitHub Pages)
   and point both the App Privacy field and the in-app Settings link at it.
 

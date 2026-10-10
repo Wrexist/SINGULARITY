@@ -1,11 +1,9 @@
-本次更新：
+三種攪局新玩法：
 
-• 深色模式：可在 Settings 中選擇 Light、Dark 或 Match device。
-• 每一代都有新變化：選定立場（Safety / Center / Acceleration），解鎖該陣營的 Doctrine 特權；每次 Ship 還會發三張 Lab Charter 讓你挑，其中不乏改寫規則的牌。
-• Unplugged Trials：關閉 Legacy 一代，原汁原味地再完整玩一輪。刷新 Compute 紀錄，現在還能賺到 Lab Reputation。
-• 目標更清楚：隨時看到下一步，也知道什麼時候 Ship 才真正划算。
-• 「為它存著」：點一下還搆不到的研究，實驗室會自動存夠 Compute 並替你買下。
-• 更安靜：只有真正的抉擇才會打斷你，其餘新聞都在新聞跑馬燈裡播報。VoiceOver 更好用，觸控範圍也更大。
-• 舊款 iPhone 上更流暢，離線時間計算準確，另修正 150 多個問題。
+• 紅色大按鈕（Big Red Button）：第一次 Ship 之後解鎖。按下去，可能是大爆發（Compute ×3、一場爆紅的 Demo、一批「從卡車上掉下來」的資料集），也可能是一場小災難。每 10 分鐘充能一次。
+• 對手冷戰（Rival Cold War）：從離你最近的對手那裡挖角研究員、發文開砲，或簽下 Compute 協定。你一出手，對方一定還擊。
+• 贊助週（Sponsor Weeks）：一週內完成 7 個每日贊助目標中的 5 個，就能存下 Reputation，沿著贊助等級（Sponsor Tiers）一路往上爬——從 Unfunded（沒人投資）到 Sovereign-backed（國家級金主撐腰）。
+• 3D Lab（測試版，位於 Settings）：會動的東西都能點。員工揮手、產品光束閃耀、維運機器人原地轉圈，觀眾齊聲歡呼。
+• 整體更流暢、更安靜，也更亮一點，另有多項修正。
 
-依舊沒有廣告。依舊不逼課金。
+依舊沒有廣告。依舊不逼課金。感謝遊玩，下一步想看我們做什麼，儘管告訴我們。

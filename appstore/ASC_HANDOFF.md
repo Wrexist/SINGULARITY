@@ -205,9 +205,9 @@ The plugin is written (`native/game-connect`) but **not in any build yet**. See
 In App Store Connect → Features → Game Center, you may *create the records*, which is
 harmless until a build uses them:
 
-- Leaderboard `grp.singularity.ships`: "Models Shipped", integer, best = highest.
-- Leaderboard `grp.singularity.ascensions`: "AGI Ascensions", integer, best = highest.
-- Achievements `grp.singularity.ach.<id>` for a starter set. Take the in-game ids from
+- Leaderboard `singularity.ships`: "Models Shipped", integer, best = highest.
+- Leaderboard `singularity.ascensions`: "AGI Ascensions", integer, best = highest.
+- Achievements `singularity.ach.<id>` for a starter set. Take the in-game ids from
   `src/engine/achievements.ts`, e.g. `first_ship`. Each needs a title, descriptions and
   points, and a 512×512 or 1024×1024 image. If there are no images, create the
   leaderboards only and note it.

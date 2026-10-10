@@ -1,11 +1,9 @@
-I denne opdatering:
+Tre nye måder at skabe uro på:
 
-• Mørk tilstand: vælg Light, Dark eller Match device i Settings.
-• Nyt hver generation: tag stilling med en Stance (Safety, Center eller Acceleration), og lås op for den sides Doctrine-fordele. Hvert Ship deler desuden tre Lab Charters ud, og nogle af dem ændrer selve reglerne.
-• Unplugged Trials: slå Legacy fra i én generation, og spil en hel runde fra bunden igen. Dine Compute-rekorder giver nu Lab Reputation.
-• Tydeligere mål: du kan altid se dit næste skridt, og hvornår det rigtig kan betale sig at shippe.
-• "Spar op til det": tryk på forskning uden for rækkevidde, så sparer laboratoriet Compute op og køber den til dig.
-• Mere ro: kun rigtige beslutninger afbryder dig, resten kører på nyhedsbåndet. Bedre VoiceOver-understøttelse og større trykflader.
-• Mere flydende på ældre iPhones, korrekt offlinetid og over 150 fejlrettelser.
+• Den store røde knap (Big Red Button): efter dit første Ship trykker du på den for et boost (Compute ×3, en viral demo, et datasæt, der faldt af en lastbil) eller en lille katastrofe. Den lader op igen hvert 10. minut
+• Kold krig med rivalerne (Cold War): lok en forsker væk, udgiv en sønderlemmende kritik eller indgå en compute-pagt med din nærmeste rival. Går du efter dem, svarer de igen
+• Sponsoruger (Sponsor Weeks): nå 5 af de 7 daglige sponsormål på en uge for at sikre dig Reputation og stige i Sponsor Tiers, fra Unfunded til Sovereign-backed
+• 3D-lab (3D Lab, beta, i Settings): tryk på alt, der lever. Personalet vinker, produktstråler blusser op, driftsrobotten snurrer, og publikum jubler
+• Mere flydende, roligere og en anelse lysere overalt, plus fejlrettelser
 
-Stadig ingen reklamer. Stadig ingen pay-to-win.
+Stadig ingen reklamer. Stadig intet pay-to-win. Tak, fordi du spiller. Fortæl os, hvad vi skal bygge næste gang.

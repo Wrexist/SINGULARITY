@@ -1,11 +1,9 @@
-En aquesta actualització:
+Tres noves maneres d'armar-la:
 
-• Mode fosc: tria Light, Dark o Match device a Settings.
-• Novetats a cada generació: declara la teva postura (Safety, Center o Acceleration) i desbloqueja els avantatges de Doctrina d'aquell bàndol. A més, cada Ship et reparteix tres Cartes del Laboratori, algunes de les quals canvien les regles.
-• Proves Unplugged: desactiva el Llegat durant una generació i torna a jugar una partida completa. Els teus rècords de Compute ara donen Reputació del Laboratori.
-• Objectius més clars: sempre veus el pas següent i quan val de debò la pena fer Ship.
-• «Estalviar per a això»: toca una recerca fora d'abast i el laboratori hi reserva el Compute i te la compra tot sol.
-• Més calma: només t'interrompen les decisions de debò; la resta passa pel teletip de notícies. Funciona millor amb VoiceOver i té zones tàctils més grans.
-• Més fluid als iPhone antics, temps fora de línia exacte i més de 150 correccions.
+• El gran botó vermell («Big Red Button»): després del teu primer Ship, prem-lo per obtenir un impuls (Compute ×3, una demo viral, un dataset de procedència dubtosa) o un petit desastre. Es recarrega cada 10 minuts.
+• Guerra Freda entre rivals («Cold War»): pispa-li un investigador al teu rival més proper, publica un article demolidor contra ell o signa-hi un pacte de còmput. Si li fas una jugada, te la tornarà.
+• Setmanes de patrocini («Sponsor Weeks»): completa 5 dels 7 objectius diaris de patrocini en una setmana per acumular Reputació i pujar pels nivells de patrocini («Sponsor Tiers»), d'Unfunded a Sovereign-backed.
+• Laboratori 3D («3D Lab», beta, a Settings): toca tot el que tingui vida. El personal saluda, els feixos de producte espurnegen, el bot d'operacions gira i el públic aplaudeix.
+• Tot més fluid, més tranquil i una mica més lluminós, a més de correccions.
 
-Encara sense anuncis. Encara sense pay-to-win.
+Encara sense anuncis. Encara sense pay-to-win. Gràcies per jugar. Digues-nos què vols que construïm ara.

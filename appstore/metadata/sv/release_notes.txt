@@ -1,11 +1,9 @@
-I den här uppdateringen:
+Tre nya sätt att röra om i grytan:
 
-• Mörkt läge: välj Light, Dark eller Match device i Settings.
-• Nytt varje generation: ta ställning med en Stance (Safety, Center eller Acceleration) och lås upp den sidans Doctrine-förmåner. Varje Ship delar dessutom ut tre Lab Charters, och vissa av dem ändrar själva reglerna.
-• Unplugged Trials: stäng av Legacy under en generation och spela en hel runda från noll igen. Dina Compute-rekord ger nu Lab Reputation.
-• Tydligare mål: du ser alltid nästa steg, och när det verkligen lönar sig att shippa.
-• ”Spara till det här”: tryck på forskning utom räckhåll så sparar labbet ihop Compute och köper den åt dig.
-• Lugnare: bara riktiga beslut avbryter dig, resten rullar i nyhetsflödet. Bättre stöd för VoiceOver och större tryckytor.
-• Smidigare på äldre iPhone, korrekt offlinetid och över 150 buggfixar.
+• Den stora röda knappen (Big Red Button): efter första Ship trycker du på den för ett lyft (Compute ×3, en viral demo, ett dataset som ramlade av ett lastbilsflak) eller en mindre katastrof. Den laddas om var 10:e minut
+• Kallt krig med rivalerna (Cold War): värva över en forskare, publicera en sågning eller sluta en compute-pakt med din närmaste rival. Ger du dig på dem, slår de tillbaka
+• Sponsorveckor (Sponsor Weeks): klara 5 av de 7 dagliga sponsormålen under en vecka för att säkra Reputation och klättra i Sponsor Tiers, från Unfunded till Sovereign-backed
+• 3D-labb (3D Lab, beta, i Settings): tryck på allt som lever. Personalen vinkar, produktstrålar flammar upp, driftboten snurrar och publiken jublar
+• Smidigare, lugnare och lite ljusare överallt, plus buggfixar
 
-Fortfarande inga annonser. Fortfarande ingen pay-to-win.
+Fortfarande inga annonser. Fortfarande ingen pay-to-win. Tack för att du spelar. Berätta vad vi ska bygga härnäst.
