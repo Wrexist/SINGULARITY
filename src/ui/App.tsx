@@ -26,6 +26,7 @@ import {
 } from "./paywallRules";
 import { loadReviewMemo, markAsked, saveReviewMemo, shouldAskReview } from "./reviewRules";
 import { requestStoreReview } from "./storeReview";
+import { coldWarTarget } from "../engine/coldWar";
 import { themes, rackSkins } from "../engine/cosmetics";
 import { ToastStack, type ToastData } from "./Toast";
 import { StatsPanel } from "./StatsPanel";
@@ -147,7 +148,7 @@ export function App() {
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
     doClaimContract, doClaimSponsor, doClaimCampaign, doBuyPreprint, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
-    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doDeclareStance, doCounterRival, doFundChallenge, doChooseFork, doFundMegaproject, doClaimObjective, doToggleAutomation, doStartTrial, doAbandonTrial, doSetFlagship, doBuyParadigm, doClaimDoctrine, doBuyInstitute, doEndowFellowship, doPickMandate } =
+    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doDeclareStance, doCounterRival, doRunColdWarOp, doFundChallenge, doChooseFork, doFundMegaproject, doClaimObjective, doToggleAutomation, doStartTrial, doAbandonTrial, doSetFlagship, doBuyParadigm, doClaimDoctrine, doBuyInstitute, doEndowFellowship, doPickMandate } =
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
@@ -1208,6 +1209,19 @@ export function App() {
               if (!doCounterRival(name)) return;
               haptics.success(); sound.alert();
               logEvent(`Press blitz lands on ${name} — their comms team scrambles.`, "good");
+            }}
+            onRunColdWarOp={(op) => {
+              const t = coldWarTarget(game);
+              if (!t || !doRunColdWarOp(op)) return;
+              const betrayal = op !== "pact" && t.posture === "pact";
+              if (op === "pact") { haptics.success(); sound.success(); } else { haptics.tap(); sound.alert(); }
+              logEvent(
+                betrayal ? `You broke the pact with ${t.name}. Expect an answer — soon.`
+                  : op === "poach" ? `You poached a senior researcher from ${t.name}. They noticed.`
+                  : op === "takedown" ? `Your takedown of ${t.name}'s benchmark is trending. They noticed.`
+                  : `Compute pact signed with ${t.name}. A truce — for now.`,
+                op === "pact" ? "good" : "neutral",
+              );
             }}
             onPlaceStake={(name) => {
               doPlaceStake(name);

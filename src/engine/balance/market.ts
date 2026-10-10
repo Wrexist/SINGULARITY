@@ -62,6 +62,42 @@ export const market = {
     /** Fallback payout for the smallest rivals (below every tier above). */
     repFloor: 2,
   },
+  /**
+   * AUDIT 2026-08 #8 — THE RIVAL COLD WAR. A second verb for the stretch where the
+   * only verb is "buy": Money-only Operations against your nearest rival (the one just
+   * ahead of you, or the runner-up when you lead). Poach a researcher or publish a
+   * takedown and they turn hostile — and retaliate, on a deterministic delay, with a
+   * short "bad" modifier (a workable incident). Sign a compute pact for a surge and a
+   * truce; move against a pact partner and it's a betrayal (sooner, harsher). Every
+   * effect is a TEMPORARY modifier behind a player tap, and the balance sim never runs
+   * an operation, so the tuned curve cannot move. Resets on prestige.
+   */
+  coldWar: {
+    enabled: true,
+    /** Playtime seconds between operations (any rival): one per news cycle. */
+    cooldownSec: 180,
+    /** A hostile operation is answered after min + (hash % spread) seconds of play. */
+    retaliateMinSec: 60,
+    retaliateSpreadSec: 90,
+    /** Moving against a pact partner is answered this soon. */
+    betrayalSec: 20,
+    /** How long a compute pact's truce holds (playtime seconds). */
+    pactSec: 600,
+    ops: {
+      // Cost = the larger of (rival users × costPerUser) and (your Money × bankShare):
+      // the bank share keeps an operation a real decision all game (a rival-sized fee
+      // alone was pocket change to a lab with a deep bank), never a wall.
+      poach: { costPerUser: 0.004, bankShare: 0.04, target: "dataMult", factor: 1.5, durationSec: 180, hostile: true },
+      takedown: { costPerUser: 0.006, bankShare: 0.06, target: "moneyMult", factor: 1.3, durationSec: 180, hostile: true },
+      pact: { costPerUser: 0.003, bankShare: 0.03, target: "computeMult", factor: 1.35, durationSec: 300, hostile: false },
+    },
+    /** What each kind of retaliation does to you (all temporary, all workable). */
+    retaliation: {
+      poach: { target: "dataMult", factor: 0.75, durationSec: 90, label: "Counter-poached" },
+      takedown: { target: "moneyMult", factor: 0.8, durationSec: 90, label: "Your evals leaked" },
+      betrayal: { target: "computeMult", factor: 0.6, durationSec: 120, label: "Pact betrayed" },
+    },
+  },
   rivals: [
     { name: "Cortex-5", vendor: "ClosedAI", weight: 30, focus: "scaler", blurb: "Three-hour keynotes, one new feature, infinite confidence." },
     { name: "Claudius", vendor: "Anthropos", weight: 25, focus: "safety", blurb: "Ships a 90-page safety card and a model that's annoyingly good." },

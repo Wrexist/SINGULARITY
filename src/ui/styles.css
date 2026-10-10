@@ -3264,6 +3264,28 @@ button.pd-name {
 }
 .market-stake { align-self: flex-start; }
 
+/* The Rival Cold War (AUDIT 2026-08 #8): three operations on your nearest rival. A
+   whole-card tint, never an edge bar; posture chips read hostile / pact. */
+.coldwar {
+  display: flex; flex-direction: column; gap: 6px; padding: 9px 10px;
+  border-radius: var(--radius-2xs);
+  background: color-mix(in srgb, var(--warn, #ff9f0a) 6%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--warn, #ff9f0a) 22%, transparent);
+}
+.coldwar-head { display: flex; align-items: center; gap: 6px; }
+.coldwar-title { font-weight: 800; font-size: var(--fs-sm); color: var(--ink); }
+.coldwar-note { font-size: var(--fs-xs); color: var(--ink-2); font-style: italic; }
+.coldwar-op { display: flex; align-items: center; gap: 10px; }
+.coldwar-op-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.coldwar-op-main b { font-size: var(--fs-sm); color: var(--ink); }
+.coldwar-op-main span { font-size: var(--fs-xs); color: var(--ink-3); }
+.coldwar-op .btn { white-space: nowrap; }
+.market-posture {
+  margin-left: 6px; font-size: var(--fs-2xs); font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase;
+}
+.market-posture.hostile { color: #e5484d; }
+.market-posture.pact { color: var(--money-ink, #0c8047); }
+
 /* ---------- Field Notes (Codex) ---------- */
 .codex-head { display: flex; align-items: center; gap: 8px; width: 100%; background: none; border: none; cursor: pointer; padding: 2px 0; }
 .codex-title { display: flex; align-items: center; gap: 7px; font-weight: 800; font-size: var(--fs-lg); color: var(--ink); }

@@ -4,7 +4,7 @@ import { initialStats } from "./stats";
 import { freshComponents } from "./components";
 import type { GameState } from "./types";
 
-export const SAVE_VERSION = 42;
+export const SAVE_VERSION = 43;
 
 /** A fresh lab: empty closet, a trickle of free Compute, nothing owned. */
 export function createInitialState(): GameState {
@@ -62,6 +62,8 @@ export function createInitialState(): GameState {
     rivalOps: { strikes: {}, lastStrikeSec: null },
     // The Big Red Button: never pressed, ready.
     bigRed: { presses: 0, lastSec: null },
+    // The Rival Cold War: no operations, no pacts, nobody crossed.
+    coldWar: { ops: 0, lastOpSec: null, pacts: {}, crossed: [], pending: [] },
     runPeakCompute: Big.ZERO,
     runPeakMrr: 0,
     lastShipReport: null,

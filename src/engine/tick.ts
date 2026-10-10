@@ -10,6 +10,7 @@ import { applyAutoResearch, autoResearchWaitSec } from "./actions";
 import { autoResearchEnabled } from "./director";
 import { applyAutomation } from "./automation";
 import { rivalsBeaten } from "./market";
+import { applyDueRetaliations, nextRetaliationSec } from "./coldWar";
 import type { Derived, GameState } from "./types";
 
 /** Remaining time below this is float dust from the expiry split, not a live buff. */
@@ -92,6 +93,19 @@ export function tick(state: GameState, elapsedMs: number, pro = false): GameStat
       if (remaining > 0) s = applyAutomation(s, pro);
     }
     return s;
+  }
+
+  // The Rival Cold War: a scheduled retaliation lands at its due playtime second. Split
+  // the window there, so a catch-up applies it at the right moment (and mostly lets it
+  // run out while the player is away) instead of greeting them with it. Early-out when
+  // nothing is pending — the balance sim never runs an operation, so the tuned curve
+  // can't move.
+  if (state.coldWar.pending.length > 0) {
+    const now = state.stats.playtimeSec;
+    const due = nextRetaliationSec(state);
+    if (due <= now + 1e-6) return tick(applyDueRetaliations(state), elapsedMs, pro);
+    const ms = (due - now) * 1000;
+    if (ms < elapsedMs) return tick(tick(state, ms, pro), elapsedMs - ms, pro);
   }
 
   // Segment the window at the next modifier expiry. Otherwise a large frame

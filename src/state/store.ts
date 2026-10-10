@@ -68,6 +68,7 @@ import { applyAutomation, automationUnlockedAny, automationEnabled, toggleAutoma
 import { automation as AUTOMATION } from "../engine/balance/automation";
 import { claimContract, rollSponsor, claimSponsor, lastSponsorDay, bankCampaign } from "../engine/contracts";
 import { bigRedOutcome, pressBigRed } from "../engine/bigRed";
+import { runColdWarOp, type ColdWarOp } from "../engine/coldWar";
 import type { BigRedOutcome } from "../engine/balance/bigRed";
 import { buyPreprint } from "../engine/preprints";
 import { setCharter, lockCharter } from "../engine/charter";
@@ -192,6 +193,8 @@ interface GameStore {
   /** Press the Big Red Button (R3.3). Returns what it rolled, or null when the button
    *  wasn't ready (so the UI only reacts to a real press). */
   doPressBigRed: () => BigRedOutcome | null;
+  /** Run a Cold War operation on your nearest rival; true when it actually ran. */
+  doRunColdWarOp: (op: ColdWarOp) => boolean;
   /** IDEAS #10 — publish a frontier preprint (post-tree repeatable research). */
   doBuyPreprint: () => void;
   doSetCharter: (id: string | null) => void;
@@ -935,6 +938,13 @@ export const useGame = create<GameStore>((set, get) => ({
   }),
   doClaimSponsor: () => set((s) => ({ game: claimSponsor(s.game) })),
   doClaimCampaign: () => set((s) => ({ game: bankCampaign(s.game) })),
+  doRunColdWarOp: (op) => {
+    const before = get().game;
+    const after = runColdWarOp(before, op);
+    if (after === before) return false;
+    set({ game: after });
+    return true;
+  },
   doPressBigRed: () => {
     const before = get().game;
     const outcome = bigRedOutcome(before);

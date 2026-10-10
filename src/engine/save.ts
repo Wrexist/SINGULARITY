@@ -469,6 +469,8 @@ interface SavedShape {
   rivalOps: GameState["rivalOps"];
   /** POST_LAUNCH R3.3 — the Big Red Button's presses + cooldown stamp. v42. */
   bigRed: GameState["bigRed"];
+  /** AUDIT 2026-08 #8 — the Rival Cold War's pacts, grudges and pending retaliations. v43. */
+  coldWar: GameState["coldWar"];
   /** IDEAS #6 — Legacy Wall records. Sanitizer-defaulted ([]), so no v-bump. */
   shipLog: GameState["shipLog"];
   /** IDEAS #9 — today's rolled sponsor objective. Sanitizer-defaulted (null). */
@@ -559,6 +561,7 @@ export function serialize(state: GameState): string {
     components: state.components,
     rivalOps: state.rivalOps,
     bigRed: state.bigRed,
+    coldWar: state.coldWar,
     shipLog: state.shipLog,
     sponsor: state.sponsor,
     clockMark: state.clockMark,
@@ -919,6 +922,7 @@ export function deserialize(json: string): GameState {
     components: sanitizeComponents(raw.components, contracts.completed, achievements, upgrades),
     rivalOps: sanitizeRivalOps(raw.rivalOps, stats.playtimeSec),
     bigRed: sanitizeBigRed(raw.bigRed, stats.playtimeSec),
+    coldWar: sanitizeColdWar(raw.coldWar, stats.playtimeSec),
     // Legacy Wall records are display-only history, but still validated per-entry
     // (sanitizer policy: filter, don't wipe) and capped like prestige() caps them.
     shipLog: sanitizeShipLog(raw.shipLog, stats.totalShips),
@@ -1024,6 +1028,38 @@ function sanitizeBigRed(r: unknown, playtimeSec: number): GameState["bigRed"] {
   const last = o.lastSec;
   const lastSec = typeof last === "number" && Number.isFinite(last) && last >= 0 ? Math.min(last, Math.max(0, playtimeSec)) : null;
   return { presses, lastSec };
+}
+
+/** The Rival Cold War is untrusted: KNOWN rivals only, every stamp bounded to what a
+ *  real run could have scheduled from now (a pact no longer than its truce, a
+ *  retaliation no later than its longest delay), at most one retaliation per rival.
+ *  Anything unreadable is simply peace. */
+function sanitizeColdWar(r: unknown, playtimeSec: number): GameState["coldWar"] {
+  const W = MARKET.coldWar;
+  const now = Math.max(0, playtimeSec);
+  const o = (r ?? {}) as Partial<Record<keyof GameState["coldWar"], unknown>>;
+  const fin = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+  const ops = fin(o.ops) && o.ops > 0 ? Math.min(1e9, Math.floor(o.ops)) : 0;
+  const lastOpSec = fin(o.lastOpSec) && o.lastOpSec >= 0 ? Math.min(o.lastOpSec, now) : null;
+  const pacts: Record<string, number> = {};
+  if (o.pacts && typeof o.pacts === "object") {
+    for (const [name, end] of Object.entries(o.pacts as Record<string, unknown>)) {
+      if (name === "__proto__" || !RIVAL_NAMES.has(name) || !fin(end) || end <= now) continue;
+      pacts[name] = Math.min(end, now + W.pactSec);
+    }
+  }
+  const crossed = Array.isArray(o.crossed) ? [...new Set(o.crossed.filter((n): n is string => typeof n === "string" && RIVAL_NAMES.has(n)))] : [];
+  const kinds = new Set(Object.keys(W.retaliation));
+  const pending: GameState["coldWar"]["pending"] = [];
+  if (Array.isArray(o.pending)) {
+    for (const p of o.pending as { rival?: unknown; kind?: unknown; dueSec?: unknown }[]) {
+      if (!p || typeof p !== "object" || typeof p.rival !== "string" || !RIVAL_NAMES.has(p.rival)) continue;
+      if (typeof p.kind !== "string" || !kinds.has(p.kind) || !fin(p.dueSec) || p.dueSec < 0) continue;
+      if (pending.some((q) => q.rival === p.rival)) continue;
+      pending.push({ rival: p.rival, kind: p.kind as GameState["coldWar"]["pending"][number]["kind"], dueSec: Math.min(p.dueSec, now + W.retaliateMinSec + W.retaliateSpreadSec) });
+    }
+  }
+  return { ops, lastOpSec, pacts, crossed, pending };
 }
 
 /** Rival counterplay is untrusted: KNOWN rival names only, strike counts clamped
@@ -1484,6 +1520,10 @@ export function migrate(raw: any): SavedShape {
   if (s.version === 41) {
     // v41 → v42: the Big Red Button (POST_LAUNCH R3.3). Nobody has pressed it yet.
     s = { ...s, version: 42, bigRed: { presses: 0, lastSec: null } };
+  }
+  if (s.version === 42) {
+    // v42 → v43: the Rival Cold War (AUDIT 2026-08 #8). Peace: no pacts, no grudges.
+    s = { ...s, version: 43, coldWar: { ops: 0, lastOpSec: null, pacts: {}, crossed: [], pending: [] } };
   }
   return s as SavedShape;
 }
