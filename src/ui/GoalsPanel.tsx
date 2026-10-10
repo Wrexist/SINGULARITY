@@ -27,6 +27,7 @@ interface Props {
   onClaimObjective: (id: string, target?: "computeMult" | "dataMult" | "moneyMult", at?: { x: number; y: number }) => void;
   onClaimContract: (id: string, rep: number, title: string) => void;
   onClaimSponsor: () => void;
+  onClaimCampaign: () => void;
   onFundChallenge: (id: string, at?: { x: number; y: number }) => void;
   onChooseFork: (id: string, forkId: string) => void;
   onFundMegaproject: (at?: { x: number; y: number }) => void;
@@ -57,7 +58,7 @@ interface Props {
  */
 export function GoalsPanel({
   game, section, onSection,
-  onClaimObjective, onClaimContract, onClaimSponsor,
+  onClaimObjective, onClaimContract, onClaimSponsor, onClaimCampaign,
   onFundChallenge, onChooseFork, onFundMegaproject, onPickMandate,
   onStartTrial, onAbandonTrial, onClaimDoctrine, onCollectionSeen,
 }: Props) {
@@ -111,7 +112,7 @@ export function GoalsPanel({
           {objectivesUnlocked(game) && <ObjectivesPanel game={game} onClaim={onClaimObjective} />}
           {showContracts && (
             <Collapsible title="Contracts" defaultOpen={counts.contracts > 0} badge={counts.contracts > 0 ? `${counts.contracts} ready` : undefined}>
-              <ContractsPanel bare game={game} onClaim={onClaimContract} onClaimSponsor={onClaimSponsor} />
+              <ContractsPanel bare game={game} onClaim={onClaimContract} onClaimSponsor={onClaimSponsor} onClaimCampaign={onClaimCampaign} />
             </Collapsible>
           )}
         </>

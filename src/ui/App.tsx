@@ -24,6 +24,9 @@ import {
   loadMemo, saveMemo, shouldAutoShow, markShown, armShip, placementFor, shouldOfferExit, markExitShown,
   type PaywallTrigger, type PaywallPlacement,
 } from "./paywallRules";
+import { loadReviewMemo, markAsked, saveReviewMemo, shouldAskReview } from "./reviewRules";
+import { requestStoreReview } from "./storeReview";
+import { coldWarTarget } from "../engine/coldWar";
 import { themes, rackSkins } from "../engine/cosmetics";
 import { ToastStack, type ToastData } from "./Toast";
 import { StatsPanel } from "./StatsPanel";
@@ -144,8 +147,8 @@ export function App() {
   const { doStartRun, doClaim, doBuyUpgrade, doBuyUpgradeBulk, doBuyOfficePerk, doBuyReputationPerk, doBuyEndowment, doFoundWing, doPickDirective, doRespecDirective, doPlaceStake, doBuyLegacyPerk, doResearch, doBuyData, doPrestige, setComputeFocus,
     doRecruit, doRefreshCandidates, doCloseRecruit, doHireCandidate, doTrainEmployee, doAssignEmployeeToProduct, doFireEmployee,
     doLaunchDraft, doStartUpgrade, doSetProductPrice, doSetProductMarketing, doSetEnterprise, doSetEnterprisePrice, doSetChannelMix, doBuyFeature, doRenameProduct, doRetireProduct,
-    doClaimContract, doClaimSponsor, doBuyPreprint, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
-    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doDeclareStance, doCounterRival, doFundChallenge, doChooseFork, doFundMegaproject, doClaimObjective, doToggleAutomation, doStartTrial, doAbandonTrial, doSetFlagship, doBuyParadigm, doClaimDoctrine, doBuyInstitute, doEndowFellowship, doPickMandate } =
+    doClaimContract, doClaimSponsor, doClaimCampaign, doBuyPreprint, doSetCharter, doLobby, dismissOffline, dismissWorldEvent, chooseWorldEvent, doClaimDaily, hardReset,
+    doBuyComponent, doEquipComponent, doFuseComponents, doLockCharter, doDeclareStance, doCounterRival, doRunColdWarOp, doFundChallenge, doChooseFork, doFundMegaproject, doClaimObjective, doToggleAutomation, doStartTrial, doAbandonTrial, doSetFlagship, doBuyParadigm, doClaimDoctrine, doBuyInstitute, doEndowFellowship, doPickMandate } =
     useGame.getState();
 
   const d = useMemo(() => derive(game), [game]);
@@ -207,6 +210,9 @@ export function App() {
   // trigger waiting for a clear stage (see paywallRules for when it may show).
   const [showPaywall, setShowPaywall] = useState(false);
   const [paywallPending, setPaywallPending] = useState<PaywallTrigger | null>(null);
+  // The App Store rating request: raised as a Ship celebration closes (reviewRules says
+  // when it may), asked once the stage is clear — never alongside a paywall.
+  const [reviewPending, setReviewPending] = useState(false);
   // RevenueCat's own paywall when the current offering opts in (iap.presentNativePaywall);
   // otherwise ours. True while either is being decided or the native one is up.
   const [nativePaywall, setNativePaywall] = useState(false);
@@ -652,6 +658,21 @@ export function App() {
     }, 700);
     return () => window.clearTimeout(t);
   }, [paywallPending, paywallStageClear, openPaywall]);
+
+  // The rating request waits for the same clear stage (and no paywall up or queued),
+  // then a calm beat. Re-checked at the moment of asking; recorded only when the
+  // device actually made the request (a web build never burns one).
+  useEffect(() => {
+    if (!reviewPending || !paywallStageClear || showPaywall || nativePaywall || paywallPending) return;
+    const t = window.setTimeout(() => {
+      setReviewPending(false);
+      const memo = loadReviewMemo();
+      const now = Date.now();
+      if (!shouldAskReview(memo, { now, ships: useGame.getState().game.prestige.ships, lastPaywallAt: loadMemo().lastAutoAt, paywallThisClose: false })) return;
+      void requestStoreReview().then((asked) => { if (asked) saveReviewMemo(markAsked(memo, now)); });
+    }, 1200);
+    return () => window.clearTimeout(t);
+  }, [reviewPending, paywallStageClear, showPaywall, nativePaywall, paywallPending]);
 
   // Pro cosmetics follow Pro: when it lapses, a Pro-only theme or skin still selected
   // falls back to Classic (earned-by-play ones are untouched). Waits for hydration.
@@ -1155,6 +1176,7 @@ export function App() {
             onClaimObjective={onClaimObjective}
             onClaimContract={onClaimContract}
             onClaimSponsor={() => { haptics.success(); sound.success(); doClaimSponsor(); }}
+            onClaimCampaign={() => { haptics.celebrate(); sound.success(); doClaimCampaign(); }}
             onFundChallenge={onFundChallenge}
             onChooseFork={(id, forkId) => { haptics.celebrate(); sound.purchase(); doChooseFork(id, forkId); }}
             onFundMegaproject={(at) => { const done = doFundMegaproject(); if (done) { haptics.epic(); sound.megaproject(); if (at) fxBurst(at.x, at.y, { count: 26, power: 1.4, colors: [...FX_PALETTES.epic] }); } else { haptics.tap(); sound.tap(); } }}
@@ -1187,6 +1209,19 @@ export function App() {
               if (!doCounterRival(name)) return;
               haptics.success(); sound.alert();
               logEvent(`Press blitz lands on ${name} — their comms team scrambles.`, "good");
+            }}
+            onRunColdWarOp={(op) => {
+              const t = coldWarTarget(game);
+              if (!t || !doRunColdWarOp(op)) return;
+              const betrayal = op !== "pact" && t.posture === "pact";
+              if (op === "pact") { haptics.success(); sound.success(); } else { haptics.tap(); sound.alert(); }
+              logEvent(
+                betrayal ? `You broke the pact with ${t.name}. Expect an answer — soon.`
+                  : op === "poach" ? `You poached a senior researcher from ${t.name}. They noticed.`
+                  : op === "takedown" ? `Your takedown of ${t.name}'s benchmark is trending. They noticed.`
+                  : `Compute pact signed with ${t.name}. A truce — for now.`,
+                op === "pact" ? "good" : "neutral",
+              );
             }}
             onPlaceStake={(name) => {
               doPlaceStake(name);
@@ -1382,7 +1417,10 @@ export function App() {
             if (game.prestige.ships >= 1) {
               let memo = loadMemo();
               if (game.prestige.ships === 1 && !memo.shipArmed) { memo = armShip(memo); saveMemo(memo); }
-              if (memo.shipArmed && !memo.shipShown) setPaywallPending("ship");
+              const paywallThisClose = memo.shipArmed && !memo.shipShown;
+              if (paywallThisClose) setPaywallPending("ship");
+              // A happy moment to ask for a rating — unless this close is the paywall's.
+              else if (shouldAskReview(loadReviewMemo(), { now: Date.now(), ships: game.prestige.ships, lastPaywallAt: memo.lastAutoAt, paywallThisClose })) setReviewPending(true);
             }
             // A fresh run starts at the hall — don't leave the Lab parked on HQ.
             setLabSection("build");

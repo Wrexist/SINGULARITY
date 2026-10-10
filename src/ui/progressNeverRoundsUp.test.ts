@@ -65,7 +65,7 @@ describe("progress counters never read as met while short", () => {
     s.contracts = { completed: CONTRACTS.pool.filter((c) => c.id !== "megacluster").map((c) => c.id) };
     s.stats.peakComputePerSec = Big.of(999_600);
     expect(contractBoard(s)[0]!.ready).toBe(false);
-    const html = renderToStaticMarkup(createElement(ContractsPanel, { game: s, onClaim: noop, onClaimSponsor: noop }));
+    const html = renderToStaticMarkup(createElement(ContractsPanel, { game: s, onClaim: noop, onClaimSponsor: noop, onClaimCampaign: noop }));
     expect(html).toContain("999K / 1M");
   });
 

@@ -13,12 +13,14 @@
     "sim": "vite-node scripts/balance-sim.ts",
     "shot": "node scripts/screenshot.mjs",
     "validate:store": "node scripts/validate-store-metadata.mjs",
+    "store:events": "vite-node scripts/in-app-events.ts",
     "icons": "node scripts/stamp-icons.mjs",
     "cap:sync": "npm run build && node scripts/ios-prepare.mjs && cap sync ios",
     "cap:sync:dev": "tsc --noEmit && vite build --mode development && node scripts/ios-prepare.mjs && cap sync ios",
     "trailer:score": "node scripts/trailer/score.mjs"
   },
   "dependencies": {
+    "@capacitor-community/in-app-review": "7.1.0",
     "@capacitor/cli": "^7.6.9",
     "@capacitor/core": "^7.6.9",
     "@capacitor/haptics": "^7.0.5",
@@ -31,12 +33,14 @@
     "cordova-plugin-purchase": "^13.17.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "three": "0.186.1",
     "zustand": "^4.5.5"
   },
   "devDependencies": {
     "@types/node": "^22.20.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@types/three": "0.186.0",
     "@vitejs/plugin-react": "^4.3.4",
     "playwright": "^1.49.1",
     "typescript": "^5.7.2",

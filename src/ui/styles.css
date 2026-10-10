@@ -1644,6 +1644,230 @@ svg { vertical-align: middle; }
 .rack-card-stats { display: flex; flex-direction: column; gap: 3px; font-size: var(--fs-sm); color: rgba(255, 255, 255, 0.82); }
 .rack-card-stats b { color: #fff; font-weight: 750; }
 
+/* ---------- 3D hall spike (opt-in flag; WORLD_3D_PLAN.md) ---------- */
+.hall3d-stage { position: absolute; inset: 0; }
+.hall3d-stage .hall-canvas { touch-action: pan-y; opacity: 0; transition: opacity 0.45s ease; }
+/* The lab fades in on its first frame, and dips softly while a wing / era swaps. */
+.hall3d-stage.ready .hall-canvas { opacity: 1; }
+.hall3d-stage.ready.dip .hall-canvas { animation: hall3d-dip 0.42s ease; }
+@keyframes hall3d-dip { 0% { opacity: 1; } 35% { opacity: 0.18; } 100% { opacity: 1; } }
+.hall3d-expand {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 2;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(10, 14, 28, 0.62);
+  color: rgba(255, 255, 255, 0.86);
+  cursor: pointer;
+}
+.hall3d-expand:active { transform: scale(0.94); }
+
+/* The Big Red Button (R3.3): a glossy dome bottom-left of the hall, a ring that fills as
+   it recharges, a soft glow when ready. Pressed, it sinks. */
+.hall-bigred {
+  position: absolute; left: 10px; bottom: 10px; z-index: 2;
+  width: 44px; height: 44px; padding: 0; border: none; border-radius: 999px;
+  background: rgba(10, 14, 28, 0.62); display: grid; place-items: center; cursor: pointer;
+}
+.hall-bigred:disabled { cursor: default; }
+.hall-bigred-ring { position: absolute; inset: 0; width: 44px; height: 44px; transform: rotate(-90deg); }
+.hall-bigred-ring circle { fill: none; stroke-width: 3; }
+.hall-bigred-ring .track { stroke: rgba(255, 255, 255, 0.14); }
+.hall-bigred-ring .fill { stroke: #ff5a4e; stroke-linecap: round; transition: stroke-dashoffset 0.6s var(--ease-out); }
+.hall-bigred-cap {
+  width: 26px; height: 26px; border-radius: 999px;
+  background: radial-gradient(circle at 35% 30%, #ffb3ab 0%, #ff4b3e 38%, #b3150c 100%);
+  box-shadow: 0 2px 0 #6e0c06, 0 3px 6px rgba(0, 0, 0, 0.35);
+  transition: transform 0.12s ease, filter 0.3s ease, box-shadow 0.12s ease;
+}
+.hall-bigred:disabled .hall-bigred-cap { filter: saturate(0.25) brightness(0.7); }
+.hall-bigred.ready .hall-bigred-cap { animation: bigred-glow 2.4s ease-in-out infinite; }
+.hall-bigred:active:not(:disabled) .hall-bigred-cap { transform: translateY(2px); box-shadow: 0 0 0 #6e0c06, 0 1px 3px rgba(0, 0, 0, 0.35); }
+@keyframes bigred-glow {
+  0%, 100% { box-shadow: 0 2px 0 #6e0c06, 0 3px 6px rgba(0, 0, 0, 0.35), 0 0 0 0 rgba(255, 75, 62, 0); }
+  50% { box-shadow: 0 2px 0 #6e0c06, 0 3px 6px rgba(0, 0, 0, 0.35), 0 0 14px 3px rgba(255, 75, 62, 0.55); }
+}
+.reduce-motion .hall-bigred.ready .hall-bigred-cap { animation: none; box-shadow: 0 2px 0 #6e0c06, 0 0 10px 2px rgba(255, 75, 62, 0.45); }
+.reduce-motion .hall-bigred-ring .fill { transition: none; }
+/* Its answer: a whole-card tint by outcome (never an edge bar). */
+.rack-card.bigred-card.good { border-color: rgba(22, 179, 100, 0.55); }
+.rack-card.bigred-card.bad { border-color: rgba(255, 90, 78, 0.6); }
+.hall3d-explore {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: #141826;
+  animation: hall3d-in 0.24s var(--ease-out) both;
+}
+@keyframes hall3d-in { from { opacity: 0; } to { opacity: 1; } }
+.hall3d-explore .hall3d-stage .hall-canvas { touch-action: none; }
+.hall3d-explore .rack-card {
+  right: 12px;
+  bottom: calc(16px + var(--sab, env(safe-area-inset-bottom, 0px)));
+}
+.hall3d-close {
+  position: absolute;
+  top: calc(12px + var(--sat, env(safe-area-inset-top, 0px)));
+  right: 12px;
+  z-index: 4;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(10, 14, 28, 0.7);
+  color: #fff;
+  font-size: var(--fs-xl);
+  line-height: 1;
+  cursor: pointer;
+}
+/* People labels: dark, near-opaque pills projected over each head (Ralv-style). They
+   exist only in explore mode and fade in only once the player has zoomed in. */
+.hall3d-labels { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.18s ease; z-index: 1; }
+.hall3d-labels.on { opacity: 1; }
+.hall3d-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  min-width: 96px;
+  padding: 6px 9px 7px;
+  border-radius: 10px;
+  background: rgba(14, 10, 20, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.25;
+  white-space: nowrap;
+  will-change: transform, opacity;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+.hall3d-label-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.hall3d-label-head b { font-size: 12px; font-weight: 700; }
+.hall3d-label-line { display: block; margin-top: 2px; color: rgba(255, 255, 255, 0.6); font-size: 10.5px; }
+/* Status chip: a dot + word (Ralv's "Working" pill). */
+.hall3d-chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 6px 1px 5px; border-radius: 999px; font-size: 9.5px; font-weight: 700; background: rgba(255, 255, 255, 0.08); }
+.hall3d-chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.hall3d-chip.work { color: #4ade80; }
+.hall3d-chip.train { color: #fbbf24; }
+.hall3d-chip.idle { color: rgba(255, 255, 255, 0.6); }
+
+/* Explore HUD: one glass strip — where you are and what the lab makes. */
+.hall3d-hud {
+  position: absolute;
+  top: calc(12px + var(--sat, env(safe-area-inset-top, 0px)));
+  left: 12px;
+  z-index: 3;
+  padding: 9px 12px 10px;
+  border-radius: 14px;
+  background: rgba(16, 14, 28, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  pointer-events: none;
+}
+.hall3d-hud-title { display: flex; align-items: baseline; gap: 8px; font-size: 14px; font-weight: 750; }
+.hall3d-hud-sub { font-size: 11px; font-weight: 600; color: rgba(255, 255, 255, 0.55); }
+.hall3d-hud-rates { display: flex; gap: 12px; margin-top: 5px; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.hall3d-hud-rates span { display: inline-flex; align-items: center; gap: 4px; }
+
+/* The training run, pinned in the world above the racks (Acme-style callout). */
+.hall3d-anchor { position: absolute; left: 0; top: 0; z-index: 2; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; will-change: transform; }
+.hall3d-anchor.on { opacity: 1; }
+.hall3d-anchor.on .hall3d-callout { pointer-events: auto; transform: none; }
+.hall3d-anchor .hall3d-callout { transform: translateY(8px) scale(0.94); transform-origin: 50% 100%; transition: transform 0.34s cubic-bezier(0.2, 1.35, 0.4, 1); }
+.hall3d-callout {
+  position: relative;
+  width: 214px;
+  margin-bottom: 12px;
+  padding: 10px 12px 12px;
+  border-radius: 16px;
+  background: rgba(16, 14, 28, 0.84);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+  color: #fff;
+}
+.hall3d-callout::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -12px;
+  width: 2px;
+  height: 12px;
+  margin-left: -1px;
+  background: linear-gradient(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0));
+}
+.hall3d-callout-head { display: flex; align-items: center; gap: 10px; }
+.hall3d-callout-text { display: flex; flex-direction: column; min-width: 0; }
+.hall3d-callout-text b { font-size: 13px; }
+.hall3d-callout-text span { font-size: 11px; color: rgba(255, 255, 255, 0.62); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hall3d-ring { flex: none; transform: rotate(-90deg); }
+.hall3d-ring text { transform: rotate(90deg); transform-origin: 20px 20px; fill: #fff; font-size: 9.5px; font-weight: 750; }
+.hall3d-ring-track { fill: none; stroke: rgba(255, 255, 255, 0.14); stroke-width: 4; }
+.hall3d-ring-fill { fill: none; stroke: #a78bfa; stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 0.3s ease; }
+.hall3d-callout.ready .hall3d-ring-fill { stroke: #4ade80; }
+.hall3d-steps { display: flex; margin: 10px 0 0; padding: 0; list-style: none; }
+.hall3d-steps li { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 10px; color: rgba(255, 255, 255, 0.5); }
+.hall3d-steps li::before { content: ""; position: absolute; top: 4px; left: -50%; right: 50%; height: 1px; background: rgba(255, 255, 255, 0.18); }
+.hall3d-steps li:first-child::before { display: none; }
+.hall3d-steps i { position: relative; z-index: 1; width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid rgba(255, 255, 255, 0.35); background: #141826; }
+.hall3d-steps li.done { color: rgba(255, 255, 255, 0.8); }
+.hall3d-steps li.done i { background: #a78bfa; border-color: #a78bfa; }
+.hall3d-steps li.now { color: #fff; font-weight: 700; }
+.hall3d-steps li.now i { border-color: #a78bfa; box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.25); }
+.hall3d-cta {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.hall3d-callout.ready .hall3d-cta { background: linear-gradient(135deg, #059669, #22c55e); }
+.hall3d-cta[aria-disabled="true"] { opacity: 0.45; cursor: default; }
+.hall3d-cta:active { transform: scale(0.98); }
+.reduce-motion .hall3d-explore { animation: none; }
+.reduce-motion .hall3d-labels { transition: none; }
+.reduce-motion .hall3d-anchor, .reduce-motion .hall3d-ring-fill, .reduce-motion .hall3d-label,
+.reduce-motion .hall3d-stage .hall-canvas, .reduce-motion .hall3d-anchor .hall3d-callout { transition: none; }
+.reduce-motion .hall3d-stage.dip .hall-canvas { animation: none; }
+
+/* One-time gesture hint in explore: a quiet pill that leaves on the first touch. */
+.hall3d-hint {
+  position: absolute;
+  left: 50%;
+  bottom: calc(22px + var(--sab, env(safe-area-inset-bottom, 0px)));
+  z-index: 3;
+  transform: translateX(-50%);
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(16, 14, 28, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: hall3d-hint 4.2s ease forwards;
+}
+@keyframes hall3d-hint { 0% { opacity: 0; transform: translate(-50%, 6px); } 10%, 82% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, 0); } }
+.reduce-motion .hall3d-hint { animation: hall3d-hint-still 4.2s step-end forwards; }
+@keyframes hall3d-hint-still { 0% { opacity: 1; } 100% { opacity: 0; } }
+
 /* ---------- Lab Stats (collapsible) ---------- */
 .stats { padding-top: 4px; padding-bottom: 4px; }
 .stats.open { padding-bottom: 16px; }
@@ -2648,6 +2872,16 @@ button.modchip.workable:active { transform: scale(0.94); }
 .contracts-empty { font-size: var(--fs-md); color: var(--ink-2); padding: 6px 2px; }
 .contracts-foot { font-size: var(--fs-xs); color: var(--ink-3); margin-top: 10px; }
 
+/* Sponsor week (AUDIT 2026-08 #5): seven day pips, Monday first — filled for a cleared
+   sponsor, ringed for today. Wordless progress; no streak, no countdown. */
+.campaign-pips { display: flex; gap: 5px; }
+.campaign-pip {
+  width: 22px; height: 22px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 800; color: var(--ink-3); background: rgba(var(--shade-rgb), 0.06);
+}
+.campaign-pip.on { color: #fff; background: linear-gradient(135deg, #2f7bf6, #16b364); }
+.campaign-pip.today { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 60%, transparent); }
+
 /* ---------- Lab Charters (Phase 4 / R6.1) ---------- */
 .charter-intro { font-size: var(--fs-sm); color: var(--ink-2); margin: 2px 0 8px; }
 .charter-card {
@@ -3029,6 +3263,28 @@ button.pd-name {
   color: var(--accent-text);
 }
 .market-stake { align-self: flex-start; }
+
+/* The Rival Cold War (AUDIT 2026-08 #8): three operations on your nearest rival. A
+   whole-card tint, never an edge bar; posture chips read hostile / pact. */
+.coldwar {
+  display: flex; flex-direction: column; gap: 6px; padding: 9px 10px;
+  border-radius: var(--radius-2xs);
+  background: color-mix(in srgb, var(--warn, #ff9f0a) 6%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--warn, #ff9f0a) 22%, transparent);
+}
+.coldwar-head { display: flex; align-items: center; gap: 6px; }
+.coldwar-title { font-weight: 800; font-size: var(--fs-sm); color: var(--ink); }
+.coldwar-note { font-size: var(--fs-xs); color: var(--ink-2); font-style: italic; }
+.coldwar-op { display: flex; align-items: center; gap: 10px; }
+.coldwar-op-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.coldwar-op-main b { font-size: var(--fs-sm); color: var(--ink); }
+.coldwar-op-main span { font-size: var(--fs-xs); color: var(--ink-3); }
+.coldwar-op .btn { white-space: nowrap; }
+.market-posture {
+  margin-left: 6px; font-size: var(--fs-2xs); font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase;
+}
+.market-posture.hostile { color: #e5484d; }
+.market-posture.pact { color: var(--money-ink, #0c8047); }
 
 /* ---------- Field Notes (Codex) ---------- */
 .codex-head { display: flex; align-items: center; gap: 8px; width: 100%; background: none; border: none; cursor: pointer; padding: 2px 0; }

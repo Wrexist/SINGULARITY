@@ -3,11 +3,12 @@ import type { GameState, Derived } from "../engine/types";
 import { products as B, type ProductTypeId } from "../engine/balance/products";
 import { marketLeaderboard, playerMarketRank, canCounterRival, counterCost, counterCooldownRemaining, stakePayout } from "../engine/market";
 import { market as MKT } from "../engine/balance/market";
+import { canRunColdWarOp, COLD_WAR_OPS, coldWarCooldown, coldWarCost, coldWarTarget, rivalPosture, type ColdWarOp } from "../engine/coldWar";
 import {
   typeDef, productMetrics, canLaunchDraft, canStartUpgrade,
   upgradeProgress, upgradeWallSec, maxActiveProducts,
 } from "../engine/products";
-import { m$, numOf as num, fmtDur } from "./format";
+import { m$, numOf as num, fmtDur, fmtMoney } from "./format";
 import { ProductDetail, TYPE_GLYPH } from "./ProductDetail";
 import { EditableName } from "./EditableName";
 import { EasedNumber } from "./EasedNumber";
@@ -40,11 +41,20 @@ interface Props {
   onCounterRival: (name: string) => void;
   /** Frontier Race stake (depth batch): wager you'll outrank this rival by ship. */
   onPlaceStake?: (name: string) => void;
+  /** The Rival Cold War (AUDIT 2026-08 #8): an operation on your nearest rival. */
+  onRunColdWarOp?: (op: ColdWarOp) => void;
 }
+
+/** The Cold War's three operations: what each is called and what it does. */
+const OP_COPY: Record<ColdWarOp, { name: string; effect: string }> = {
+  poach: { name: "Poach a researcher", effect: "Data ×1.5 for 3 min — they will answer" },
+  takedown: { name: "Publish a takedown", effect: "Money ×1.3 for 3 min — they will answer" },
+  pact: { name: "Sign a compute pact", effect: "Compute ×1.35 for 5 min and a 10-min truce" },
+};
 
 /** Phase 3 — the Products tab: commercialise the models you ship, market them, set
  *  pricing, research new versions over time, and watch the dashboard. */
-export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onSetChannelMix, onBuyFeature, onRename, onRetire, onSetFlagship, onCounterRival, onPlaceStake }: Props) {
+export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, onSetPrice, onSetMarketing, onSetEnterprise, onSetEnterprisePrice, onSetChannelMix, onBuyFeature, onRename, onRetire, onSetFlagship, onCounterRival, onPlaceStake, onRunColdWarOp }: Props) {
   // Which draft (by id) is currently showing the type-picker, if any.
   const [picking, setPicking] = useState<string | null>(null);
   // Which product's deep-management screen is open, if any. If that product
@@ -244,6 +254,40 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
                 Staked vs {game.rivalStake} — outrank them by your next ship for <b>+{stakePayout(game.rivalStake)} Rep</b>.
               </div>
             )}
+            {/* The Rival Cold War: three Money-only operations on your nearest rival.
+                Hostile ones get answered (a short incident); a pact buys a truce. */}
+            {onRunColdWarOp && (() => {
+              const t = coldWarTarget(game);
+              if (!t) return null;
+              const cd = Math.ceil(coldWarCooldown(game));
+              const planning = game.coldWar.pending.map((p) => p.rival);
+              return (
+                <div className="coldwar">
+                  <div className="coldwar-head">
+                    <span className="coldwar-title">Cold war · {t.name}</span>
+                    {t.posture !== "neutral" && <span className={`market-posture ${t.posture}`}>{t.posture}</span>}
+                  </div>
+                  {planning.length > 0 && (
+                    <span className="coldwar-note">{planning.join(" and ")} {planning.length > 1 ? "are" : "is"} planning something.</span>
+                  )}
+                  {COLD_WAR_OPS.map((op) => {
+                    const allied = op === "pact" && t.posture === "pact";
+                    const betrayal = op !== "pact" && t.posture === "pact";
+                    return (
+                      <div className="coldwar-op" key={op}>
+                        <div className="coldwar-op-main">
+                          <b>{OP_COPY[op].name}</b>
+                          <span>{betrayal ? "Breaks your pact — they will answer fast and hard" : OP_COPY[op].effect}</span>
+                        </div>
+                        <button className="btn btn-ghost btn-sm" disabled={!canRunColdWarOp(game, op)} onClick={() => onRunColdWarOp(op)}>
+                          {allied ? "Pact holds" : cd > 0 ? `Ready in ${cd}s` : fmtMoney(coldWarCost(op, t.users, game.resources.money))}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
             {board.map((e, i) => {
               // Counterplay (IMPROVEMENTS #8): rivals AHEAD of you can be hit
               // with a press blitz — money for race position, nothing else.
@@ -261,6 +305,7 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
                 && game.products.active.length > 0 && e.users > myBest;
               // A player's product may share a rival's name: only a rival row is staked.
               const staked = !e.isYou && game.rivalStake === e.name;
+              const posture = e.isYou ? "neutral" : rivalPosture(game, e.name);
               return (
                 <div className={`market-row ${e.isYou ? "you" : ""}`} key={`${e.name}-${i}`}>
                   <span className="market-rank">
@@ -273,7 +318,7 @@ export function ProductsPanel({ game, derived, onLaunchDraft, onStartUpgrade, on
                   </span>
                   <div className="market-main">
                     <div className="market-top">
-                      <span className="market-name">{e.name}{strikes > 0 && <span className="market-struck" title="Press blitzes landed this run"><BoltIcon size={11} />×{strikes}</span>}{staked && <span className="market-staked">staked</span>}</span>
+                      <span className="market-name">{e.name}{strikes > 0 && <span className="market-struck" title="Press blitzes landed this run"><BoltIcon size={11} />×{strikes}</span>}{staked && <span className="market-staked">staked</span>}{posture !== "neutral" && <span className={`market-posture ${posture}`}>{posture}</span>}</span>
                       <span className="market-share">{(e.share * 100).toFixed(e.share < 0.01 ? 2 : 1)}%</span>
                     </div>
                     <div className="market-bar"><div className="market-bar-fill" style={{ width: `${Math.min(100, e.share * 100)}%` }} /></div>

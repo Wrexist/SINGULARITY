@@ -49,7 +49,7 @@ describe("a fold and the need that opens it", () => {
     const base = createInitialState();
     const noop = () => {};
     const panel = (game: ReturnType<typeof createInitialState>) => hookHost().render(GoalsPanel, {
-      game, section: "now", onSection: noop, onClaimObjective: noop, onClaimContract: noop, onClaimSponsor: noop,
+      game, section: "now", onSection: noop, onClaimObjective: noop, onClaimContract: noop, onClaimSponsor: noop, onClaimCampaign: noop,
       onFundChallenge: noop, onChooseFork: noop, onFundMegaproject: noop, onPickMandate: noop,
       onStartTrial: noop, onAbandonTrial: noop, onClaimDoctrine: noop, onCollectionSeen: noop,
     });

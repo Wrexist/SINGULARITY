@@ -10,7 +10,7 @@ screenshots/*.png
 
 # Capacitor iOS native project — regenerated in CI (`cap add ios`) since there's
 # no Mac locally. Commit it later if/when you add custom native code.
-ios/
+/ios/
 
 # iOS build artifacts (never commit these)
 *.ipa

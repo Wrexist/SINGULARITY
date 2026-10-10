@@ -277,7 +277,7 @@ function renderViolations(): string[] {
   html("CharterPanel", CharterPanel, { game: g, onSet: noop, onLock: noop, onStance: noop });
   html("TrialsPanel", TrialsPanel, { game: g, onStart: noop, onAbandon: noop });
   html("DoctrinePanel", DoctrinePanel, { game: g, onClaim: noop });
-  html("ContractsPanel", ContractsPanel, { game: g, onClaim: noop, onClaimSponsor: noop });
+  html("ContractsPanel", ContractsPanel, { game: g, onClaim: noop, onClaimSponsor: noop, onClaimCampaign: noop });
   html("ObjectivesPanel", ObjectivesPanel, { game: g, onClaim: noop });
   html("GrandChallengesPanel", GrandChallengesPanel, { game: g, onFund: noop, onChooseFork: noop, onFundMegaproject: noop, onPickMandate: noop });
   html("AutomationPanel", AutomationPanel, { game: g, onToggle: noop });
@@ -291,7 +291,7 @@ function renderViolations(): string[] {
     html(`ProductDetail ${p.id}`, ProductDetail, { game: g, productId: p.id, mods: d.productModsById[p.id], onClose: noop, onStartUpgrade: noop, onSetPrice: noop, onSetMarketing: noop, onSetEnterprise: noop, onSetEnterprisePrice: noop, onSetChannelMix: noop, onBuyFeature: noop, onRename: noop, onRetire: noop, onSetFlagship: noop });
   }
   for (const section of ["now", "long", "collection"] as const) {
-    html(`GoalsPanel ${section}`, GoalsPanel, { game: g, section, onSection: noop, onClaimObjective: noop, onClaimContract: noop, onClaimSponsor: noop, onFundChallenge: noop, onChooseFork: noop, onFundMegaproject: noop, onPickMandate: noop, onStartTrial: noop, onAbandonTrial: noop, onClaimDoctrine: noop, onCollectionSeen: noop });
+    html(`GoalsPanel ${section}`, GoalsPanel, { game: g, section, onSection: noop, onClaimObjective: noop, onClaimContract: noop, onClaimSponsor: noop, onClaimCampaign: noop, onFundChallenge: noop, onChooseFork: noop, onFundMegaproject: noop, onPickMandate: noop, onStartTrial: noop, onAbandonTrial: noop, onClaimDoctrine: noop, onCollectionSeen: noop });
   }
   html("StatsPanel", StatsPanel, { game: g, derived: d });
   html("RigBayPanel", RigBayPanel, { game: g, onBuy: noop, onEquip: noop, onFuse: noop });

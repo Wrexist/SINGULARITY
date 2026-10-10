@@ -8,6 +8,62 @@ Phase 0–3 history retained below for context.
 
 ---
 
+## Fun + downloads batch (2026-10-10) — `claude/quirky-cray-ym85q8`
+*Owner: "how can we make this more interesting and fun, and should we rename for search?" →
+"yes do all". Verdict on the name: keep it (METADATA.md §12). Built, each its own commit:*
+- [x] **App Store rating prompt** — StoreKit review request as a Ship celebration closes, from
+      the 2nd Ship; never with a paywall; ≤3 per install, 120 days apart (`reviewRules.ts`)
+- [x] **Weekly Sponsor Campaigns** (AUDIT 2026-08 #5) — 5 of 7 daily sponsors banks +20–40 Rep
+      and lifts the Sponsor Tier; derived from existing sponsor ids; sim byte-identical
+- [x] **The Big Red Button** (R3.3) — a cooldown gamble on the hall: surge or small disaster
+      (a workable incident); deterministic; SAVE_VERSION 42
+- [x] **The Rival Cold War** (AUDIT 2026-08 #8) — poach / takedown / pact on your nearest rival;
+      deterministic retaliation landed by the tick; betrayal; SAVE_VERSION 43
+- [x] **Game Center** — in-repo Capacitor 7 GameConnect plugin (`native/game-connect`) + opt-in
+      entitlement step; NOT installed until one Mac/TestFlight build verifies it
+      (GAME_CENTER_SETUP.md)
+- [x] **App Store kit** — In-App Events (weekly Sponsor Week + Major Update) with real-game art,
+      3 keyword custom product pages, a PPO screenshot test plan (`appstore/`)
+- [x] First-15-minutes check — sim: first Ship 29m35s, longest wall 38s; no dead zone for an
+      engaged player. Moving first-Ship timing changes the live curve → owner call
+- [ ] Owner: App Store Connect → Analytics (D1/D7 retention, Search Terms); publish the first
+      In-App Events; create the 3 custom product pages; Game Center steps
+- [ ] Owner call: re-couple the resource triangle (R4.3/R4.4) — changes live balance
+
+## 3D world spike (2026-10-09) — `claude/quirky-cray-ym85q8`, OFF for every player
+*Owner asked how to make the hall "fully immersive and 3D" like the Ralv agent office /
+AI-generated three.js digital twins. Research + audits + plan in `WORLD_3D_PLAN.md`.
+Renderer-only: no engine, save, balance or sim change.*
+- [x] `three@0.186.1` (exact pin), code-split: 150 KB gzip chunk loads only with the flag
+- [x] `layout3d.ts` (pure, tested) + `hallScene3d.ts` (procedural, instanced, frozen shadows)
+- [x] `HallStage3D` loop (30 fps cap, off-screen pause, reduce-motion, context watchdog → 2D)
+- [x] Explore mode: full screen, pan/pinch/orbit, tap-to-focus, culled name labels
+- [x] `hallModelSig` shared by both loops (verbatim extraction); smoke `--hall3d`
+- [x] Round 2 "Lab Diorama" (owner: "make it look like the ones I sent"): perspective
+      camera, plinth, rugs, paired desks + planters, plants/lamp, limbs, wall decor,
+      explore HUD + training callout, Ralv status cards, floor lettering
+- [x] Settings → "3D Lab (beta)" (default off, sanitized, live switch, any 3D error → 2D)
+- [x] Round 3 (owner: "do what's best, free or coded"): assets = 100% code-built; eras as
+      architecture (garage → halo), Rig Bay parts on the racks, decor batching (84 → 65
+      draw calls), battery guards (adaptive DPR, still lab under reduced motion)
+- [x] Round 4 (owner: "more detailed, smooth, clean; add motion and animation"):
+      faces, mugs, rack vents, scrolling code monitors, out-of-phase LEDs; rack drop-in +
+      dust + power-on, hire walk-ins, eased walkers + glances, claim burst, training
+      packets; camera glides, explore fly-in, 60 fps only while moving, fade-ins, hint
+- [x] Round 5 (owner: "continue, make the game better"): 3D parity complete — ops bot
+      (auto-train), crowd at the lip (good events), Rig Bay delivery crate, incident
+      storm (overcast, rain, lightning), ready-to-claim LED heartbeat, packet speed
+      follows batching
+- [x] Round 6 (owner: "more detailed, immersive and interactive"): the world answers
+      touch — people wave back, beams flare, the bot spins, the crowd cheers; new tap
+      cards for products (live revenue/users), the ops bot, the crowd's events; night
+      monitor light on the desks
+- [ ] Next: device benchmarks on TestFlight (iPhone 11 / SE2 / 12 + iPad) before 3D goes
+      beyond opt-in; then "the world fills the screen" layout (§7 #1)
+- [ ] Phase 0 device gate: cold start, p10 fps, thermal, battery on iPhone 11 / SE2 / 12 + iPad
+
+---
+
 ## Depth batch (2026-08-21, from the parallel-audit wave) — uncommitted on `master-agentic-development`
 *The gameplay-depth audit's top curve-safe proposals, shipped. Every new path is
 gated behind a player-only action the sim never takes (stake/respec/charter/trial),

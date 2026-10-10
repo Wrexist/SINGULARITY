@@ -44,3 +44,31 @@ function patch(path, re, replacement) {
 
 patch(PODFILE, /platform :ios, '[\d.]+'/g, `platform :ios, '${MIN}'`);
 patch(PBXPROJ, /IPHONEOS_DEPLOYMENT_TARGET = [\d.]+;/g, `IPHONEOS_DEPLOYMENT_TARGET = ${MIN};`);
+
+// Game Center (GAME_CENTER_SETUP.md): OPT-IN. Only when the in-repo GameConnect plugin
+// (native/game-connect) is installed does the app need the Game Center entitlement —
+// so a build without it is exactly what it was. With it: write (or extend) the App
+// target's entitlements file and point the target at it. Idempotent.
+if (existsSync("node_modules/@singularity/capacitor-game-connect")) {
+  const ENT = "ios/App/App/App.entitlements";
+  const KEY = "<key>com.apple.developer.game-center</key>";
+  if (!existsSync(ENT)) {
+    writeFileSync(
+      ENT,
+      `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n\t${KEY}\n\t<true/>\n</dict>\n</plist>\n`,
+    );
+  } else {
+    const ent = readFileSync(ENT, "utf8");
+    if (!ent.includes(KEY)) writeFileSync(ENT, ent.replace("<dict>", `<dict>\n\t${KEY}\n\t<true/>`));
+  }
+  const proj = readFileSync(PBXPROJ, "utf8");
+  if (!proj.includes("CODE_SIGN_ENTITLEMENTS")) {
+    const anchor = /INFOPLIST_FILE = App\/Info\.plist;/g;
+    if (!anchor.test(proj)) {
+      console.error("ios-prepare: Game Center plugin installed but the App target's INFOPLIST_FILE line wasn't found.");
+      process.exit(1);
+    }
+    writeFileSync(PBXPROJ, proj.replace(anchor, "CODE_SIGN_ENTITLEMENTS = App/App.entitlements;\n\t\t\t\tINFOPLIST_FILE = App/Info.plist;"));
+  }
+  console.log("ios-prepare: Game Center entitlement on");
+}

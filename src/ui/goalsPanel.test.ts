@@ -20,7 +20,7 @@ function renderNow(game: GameState): string {
       onSection: noop,
       onClaimObjective: noop,
       onClaimContract: noop,
-      onClaimSponsor: noop,
+      onClaimSponsor: noop, onClaimCampaign: noop,
       onFundChallenge: noop,
       onChooseFork: noop,
       onFundMegaproject: noop,

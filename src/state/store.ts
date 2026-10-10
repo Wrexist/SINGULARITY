@@ -66,7 +66,10 @@ import { fundChallenge, chooseFork, fundMegaproject, pickMandate } from "../engi
 import { claimObjective } from "../engine/objectives";
 import { applyAutomation, automationUnlockedAny, automationEnabled, toggleAutomation } from "../engine/automation";
 import { automation as AUTOMATION } from "../engine/balance/automation";
-import { claimContract, rollSponsor, claimSponsor, lastSponsorDay } from "../engine/contracts";
+import { claimContract, rollSponsor, claimSponsor, lastSponsorDay, bankCampaign } from "../engine/contracts";
+import { bigRedOutcome, pressBigRed } from "../engine/bigRed";
+import { runColdWarOp, type ColdWarOp } from "../engine/coldWar";
+import type { BigRedOutcome } from "../engine/balance/bigRed";
 import { buyPreprint } from "../engine/preprints";
 import { setCharter, lockCharter } from "../engine/charter";
 import { counterRival, placeStake } from "../engine/market";
@@ -185,6 +188,13 @@ interface GameStore {
   /** IDEAS #9 — roll/refresh today's sponsor contract (UI passes the local day number). */
   doRollSponsor: (dayKey: number) => void;
   doClaimSponsor: () => void;
+  /** Bank this week's met Sponsor Campaign (Reputation; lifts the Sponsor Tier). */
+  doClaimCampaign: () => void;
+  /** Press the Big Red Button (R3.3). Returns what it rolled, or null when the button
+   *  wasn't ready (so the UI only reacts to a real press). */
+  doPressBigRed: () => BigRedOutcome | null;
+  /** Run a Cold War operation on your nearest rival; true when it actually ran. */
+  doRunColdWarOp: (op: ColdWarOp) => boolean;
   /** IDEAS #10 — publish a frontier preprint (post-tree repeatable research). */
   doBuyPreprint: () => void;
   doSetCharter: (id: string | null) => void;
@@ -927,6 +937,22 @@ export const useGame = create<GameStore>((set, get) => ({
     return next === s.game ? {} : { game: next };
   }),
   doClaimSponsor: () => set((s) => ({ game: claimSponsor(s.game) })),
+  doClaimCampaign: () => set((s) => ({ game: bankCampaign(s.game) })),
+  doRunColdWarOp: (op) => {
+    const before = get().game;
+    const after = runColdWarOp(before, op);
+    if (after === before) return false;
+    set({ game: after });
+    return true;
+  },
+  doPressBigRed: () => {
+    const before = get().game;
+    const outcome = bigRedOutcome(before);
+    const after = pressBigRed(before);
+    if (after === before) return null;
+    set({ game: after });
+    return outcome;
+  },
   doBuyPreprint: () => set((s) => ({ game: buyPreprint(s.game) })),
   doSetCharter: (id) => set((s) => ({ game: setCharter(s.game, id) })),
   doLockCharter: () => set((s) => ({ game: lockCharter(s.game) })),

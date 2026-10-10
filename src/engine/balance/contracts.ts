@@ -129,4 +129,27 @@ export const contracts = {
       "The Enterprise Procurement Gauntlet",
     ],
   },
+
+  /**
+   * AUDIT 2026-08 #5 — SPONSOR CAMPAIGNS. Each Monday-to-Sunday week the daily
+   * sponsors run under one sponsor's banner; complete `needDays` of the seven to bank
+   * a campaign bonus, and every banked campaign lifts your Sponsor Tier (which lifts
+   * the next bonus). Honest by design: a missed day costs one tick, never a streak;
+   * a met campaign the player forgot to claim is banked at the week's rollover. The
+   * bonus is Reputation behind a claim → curve-safe like the rest of the board.
+   */
+  campaign: {
+    enabled: true,
+    /** Sponsor days (of seven) that complete a week's campaign. */
+    needDays: 5,
+    /** Bonus Reputation for a campaign, plus `perTier` for each campaign banked
+     *  before it, up to `tierCap` tiers (20 → 40). */
+    rep: 20,
+    perTier: 4,
+    tierCap: 5,
+    /** The Sponsor Tier ladder, one rung per banked campaign (the last one holds). */
+    tiers: ["Unfunded", "Pre-seed", "Seed", "Series A", "Series B", "Series C", "Pre-IPO", "Sovereign-backed"],
+    /** Kept campaign ids are bounded against crafted saves (ten years of weeks). */
+    maxCompleted: 530,
+  },
 };

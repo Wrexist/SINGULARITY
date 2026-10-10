@@ -210,7 +210,7 @@ function hslToRgb(h: number, s: number, l: number): RGB {
   return [hue(h + 1 / 3) * 255, hue(h) * 255, hue(h - 1 / 3) * 255];
 }
 
-function skinTint(base: RGB, skinId?: string): RGB {
+export function skinTint(base: RGB, skinId?: string): RGB {
   const t = skinId ? SKIN_TINTS[skinId] : undefined;
   if (!t) return base; // classic / unknown → identity
   const [h, s, l] = rgbToHsl(base);

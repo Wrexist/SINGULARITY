@@ -1,5 +1,6 @@
 import { objectives as O, objectiveRewardLabel, objectiveRewardOptions, type Objective, type ObjectiveMetric, type ObjectiveReward } from "./balance/objectives";
 import { totalRacks } from "./hall";
+import { isLadderContractId } from "./contracts";
 import type { GameState } from "./types";
 
 /**
@@ -37,7 +38,7 @@ export function objectiveMetric(state: GameState, metric: ObjectiveMetric): numb
     case "mau": return state.stats.peakMau;
     case "mrr": return state.stats.peakMrr;
     case "events": return state.stats.worldEventsResolved;
-    case "contracts": return state.contracts.completed.filter((id) => !id.startsWith("sponsor_")).length;
+    case "contracts": return state.contracts.completed.filter(isLadderContractId).length;
   }
 }
 

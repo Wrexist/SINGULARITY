@@ -558,3 +558,54 @@ when" balance, dials the whole curve, and the UI cost displays update for free (
 - **The bot can't click "unstable" elements.** Playwright refuses to click buttons in the middle of
   a CSS animation (e.g. the first-run `nudge`) and times out quietly inside `.catch(() => {})`. Pass
   `force: true` for play-throughs, or the "player" never presses the button.
+- **three.js r186 removed `PCFSoftShadowMap`.** Using it logs a runtime warning (it silently
+  becomes `PCFShadowMap`), which trips the zero-console-errors smoke. Use `PCFShadowMap` +
+  `shadow.radius`. three ships breaking changes most releases: pin exactly, read the
+  migration guide on every bump.
+- **Headless Chrome (M139+) no longer falls back to SwiftShader for WebGL.** Without
+  `--use-angle=swiftshader --enable-unsafe-swiftshader` the 3D hall silently fails over to
+  2D in Playwright. `scripts/smoke.mjs --hall3d` passes them and asserts the 3D stats hook.
+- **iOS drops the WebGL context on every backgrounding, sometimes without an event.**
+  `preventDefault()` the loss so WebGLRenderer can restore, re-render frozen shadow maps on
+  restore, and poll `isContextLost()`; only fall back when it STAYS lost. Falling back on the
+  first loss would turn 3D off every time the player switched apps.
+- **Iso 3D picking needs the floor tile, not just the mesh.** Racks are 0.66 tiles wide, so a
+  third of taps pass between them; map a floor-plane hit to the tile's rack (the 2D hit-test
+  already honours the tile the same way).
+- **three.js `mergeGeometries` refuses a mix of indexed and non-indexed parts.**
+  `RoundedBoxGeometry` is non-indexed, `BoxGeometry` is indexed: de-index first
+  (`g.index ? g.toNonIndexed() : g`), or the merge returns null and logs an error.
+- **Stacked floor planes z-fight under a perspective camera.** Millimetre offsets that
+  were fine in orthographic stripe at distance. Use `polygonOffset` per layer and scale
+  `camera.near` with the framing distance (near = 4% of it), not a fixed 0.1.
+- **An exception inside the rAF loop kills the loop silently and surfaces as a pageerror.**
+  The 3D stage wraps building and drawing each frame in try/catch and falls back to the
+  2D hall: a renderer bug must never take the lab off the screen.
+- **Additive blending needs a WHITE glow texture.** A dark-centred "shadow blob" map under
+  `AdditiveBlending` adds black, which is nothing: the lamp pools and beam nodes were
+  invisible for two rounds. Shadows multiply; glows add — keep one texture for each.
+- **Under SwiftShader, page time runs far ahead of the test's clock.** The first explore
+  frame (a second WebGL context compiling shaders) blocks the main thread for seconds, so
+  a "check at 600 ms" from Playwright actually lands after a 4.3 s UI timer has fired.
+  Measure inside the page (`performance.now()`) before calling a timer bug a bug.
+- **Capture sub-second animations with Playwright's fake clock.** Under SwiftShader a
+  1.8 s effect is over before the second screenshot. `page.clock.install()` before load,
+  `pauseAt(now)` right after the trigger, then `runFor(250)` between screenshots, steps
+  rAF deterministically and catches every frame.
+- **Testing taps on moving targets: freeze, then scan, then tap — on one frame.** A
+  grid scan through `window.__HALL3D__.pick` finds where each target is, but the bot
+  patrols and walkers walk. Scan before pausing the clock and the coordinates go stale
+  (the "bot" tap lands on a rack). Pause first (`page.clock.pauseAt`), `runFor(100)` to
+  draw the frozen frame, scan, tap. Rescan before every tap, because a tap in explore
+  also moves the camera. Under Playwright's fake clock the rAF timestamp and
+  `performance.now()` agree, so scene timers stamped with either stay consistent.
+- **Things outside the plinth stand on the ground, not the floor.** Anything placed past
+  the diorama's edge (onlookers, a crate entering) at `FLOOR_Y` floats 0.3 above the lot.
+  Put it at ground height, or keep its whole path on the plinth.
+- **Chibi arms can't clear a chibi head.** A big head hides arms raised straight up.
+  Spread them into a "\o/" and stretch them along their length (toon-style), or the
+  cheer reads as arms at the sides.
+- **Animate the camera toward a goal, don't set it.** `fitCamera` now writes a goal
+  (target, distance, polar) and the card camera eases there (`1 - exp(-dt/240)`), so a
+  new floor or era glides in. Snap only on the first fit and on resize, or the view
+  drifts across a layout change.

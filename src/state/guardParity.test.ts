@@ -884,7 +884,7 @@ describe("guard parity — every control against the store action it fires", () 
         same("abandon", tp, /trial-abandon/, /^Trial: abandon/);
       }
       if (doctrineUnlocked(g)) same("doctrine", html(DoctrinePanel, { game: g, onClaim: noop }), /doctrine-perk/, /^Doctrine: /);
-      same("contracts", html(ContractsPanel, { game: g, onClaim: noop, onClaimSponsor: noop }), /contract-claim/, /^Contract: /);
+      same("contracts", html(ContractsPanel, { game: g, onClaim: noop, onClaimSponsor: noop, onClaimCampaign: noop }), /contract-claim/, /^Contract: /);
       if (objectivesUnlocked(g)) same("objectives", html(ObjectivesPanel, { game: g, onClaim: noop }), /objective-lane/, /^Objective: /);
       if (challengesUnlocked(g)) {
         const gc = html(GrandChallengesPanel, { game: g, onFund: noop, onChooseFork: noop, onFundMegaproject: noop, onPickMandate: noop });

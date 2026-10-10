@@ -8,11 +8,11 @@ import type { GameState } from "../engine/types";
  * signIn / submitScore / unlockAchievement / showLeaderboard) and every call is
  * a silent no-op until such a plugin is actually installed in the native shell.
  *
- * WHY NO DEPENDENCY YET: the only maintained plugin (@openforge/
- * capacitor-game-connect 5.x) peers on Capacitor 5; this app is on Capacitor 6,
- * and an untestable native mismatch is exactly what breaks TestFlight builds.
- * Owner steps to light this up live in GAME_CENTER_SETUP.md — no code changes
- * needed here when the plugin lands.
+ * THE PLUGIN: no maintained npm plugin supports Capacitor 7 (this app's), so a
+ * small GameKit wrapper lives in-repo at native/game-connect. It is installed by one
+ * package.json line once a Mac/TestFlight build has verified it (Swift can't be
+ * compiled where it was written). Owner steps live in GAME_CENTER_SETUP.md; no code
+ * changes are needed here when it lands.
  *
  * Privacy: Game Center is Apple's own service, invoked only through the OS —
  * the app still sends nothing anywhere itself ("Data Not Collected" holds for

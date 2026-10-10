@@ -45,7 +45,7 @@ function fmtPlaytime(sec: number): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-type ToggleKey = "sound" | "music" | "haptics" | "hapticsLight" | "reducedMotion" | "scientificNotation";
+type ToggleKey = "sound" | "music" | "haptics" | "hapticsLight" | "reducedMotion" | "scientificNotation" | "lab3d";
 
 interface RowProps {
   label: string;
@@ -97,7 +97,7 @@ function fmtDate(ms: number): string {
 
 /** iOS-style bottom sheet for feel preferences (clean-to-play, GAMEPLAN §8). */
 export function SettingsSheet({ onClose, onReset, onOpenPro }: Props) {
-  const { sound, music, haptics, hapticsLight, reducedMotion, scientificNotation, notifyReminders, hallTheme, rackSkin, appearance, toggle, setHallTheme, setRackSkin, setNotifyReminders, setAppearance } = useSettings();
+  const { sound, music, haptics, hapticsLight, reducedMotion, scientificNotation, notifyReminders, hallTheme, rackSkin, appearance, lab3d, toggle, setHallTheme, setRackSkin, setNotifyReminders, setAppearance } = useSettings();
   // Live device Reduce Motion (one listener, shared with motion.ts via settings.ts).
   const osReduced = useSyncExternalStore((fn) => onOsReduceMotionChange(() => fn()), osReduceMotionNow, osReduceMotionNow);
   const motionRow = rowState(reducedMotion, osReduced);
@@ -108,6 +108,7 @@ export function SettingsSheet({ onClose, onReset, onOpenPro }: Props) {
     { key: "hapticsLight", label: "Lighter haptics", hint: "Same rhythm, half the buzz", value: hapticsLight, hidden: !haptics },
     { key: "reducedMotion", label: "Reduced motion", hint: motionRow.locked ? "On in your device settings" : "Calm the animations", value: motionRow.value, locked: motionRow.locked },
     { key: "scientificNotation", label: "Scientific notation", hint: "1.23e9 instead of 1.23B — for the endgame", value: scientificNotation },
+    { key: "lab3d", label: "3D Lab (beta)", hint: "Your lab as a living 3D diorama you can explore", value: lab3d },
   ];
 
   const sheetRef = useRef<HTMLDivElement>(null);
