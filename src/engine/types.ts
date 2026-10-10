@@ -180,6 +180,11 @@ export interface GameState {
    *  Pure sidecar — affects only the market race, never incomes. Resets on
    *  prestige (the board reshuffles when the lab ships). */
   rivalOps: { strikes: Record<string, number>; lastStrikeSec: number | null };
+  /** POST_LAUNCH R3.3 — the Big Red Button: presses this run (feeds its deterministic
+   *  roll) and the playtime stamp of the last press (null = never) for the cooldown.
+   *  Effects are temporary modifiers only. Resets on prestige (a fresh run starts
+   *  ready). v42. */
+  bigRed: { presses: number; lastSec: number | null };
   /** Peak Compute/sec achieved since the last ship (generation-scoped; reset by
    *  prestige). Feeds the Generation Report so it shows THIS run's high-water mark,
    *  not the all-time career peak. Not persisted — a mid-run reload simply re-accrues. */

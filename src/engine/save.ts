@@ -467,6 +467,8 @@ interface SavedShape {
   legacyInvestments: string[];
   components: ComponentsState;
   rivalOps: GameState["rivalOps"];
+  /** POST_LAUNCH R3.3 — the Big Red Button's presses + cooldown stamp. v42. */
+  bigRed: GameState["bigRed"];
   /** IDEAS #6 — Legacy Wall records. Sanitizer-defaulted ([]), so no v-bump. */
   shipLog: GameState["shipLog"];
   /** IDEAS #9 — today's rolled sponsor objective. Sanitizer-defaulted (null). */
@@ -556,6 +558,7 @@ export function serialize(state: GameState): string {
     legacyInvestments: state.legacyInvestments,
     components: state.components,
     rivalOps: state.rivalOps,
+    bigRed: state.bigRed,
     shipLog: state.shipLog,
     sponsor: state.sponsor,
     clockMark: state.clockMark,
@@ -915,6 +918,7 @@ export function deserialize(json: string): GameState {
     legacyInvestments: dedupeKnownIds(raw.legacyInvestments, LEGACY_IDS),
     components: sanitizeComponents(raw.components, contracts.completed, achievements, upgrades),
     rivalOps: sanitizeRivalOps(raw.rivalOps, stats.playtimeSec),
+    bigRed: sanitizeBigRed(raw.bigRed, stats.playtimeSec),
     // Legacy Wall records are display-only history, but still validated per-entry
     // (sanitizer policy: filter, don't wipe) and capped like prestige() caps them.
     shipLog: sanitizeShipLog(raw.shipLog, stats.totalShips),
@@ -1008,6 +1012,18 @@ function sanitizeShipLog(raw: unknown, totalShips: number): GameState["shipLog"]
       };
     })
     .slice(-keep);
+}
+
+/** The Big Red Button is untrusted: a whole, bounded press count and a cooldown stamp
+ *  no later than the playtime it was taken at (one past it read as a cooldown of
+ *  years). Anything unreadable is "never pressed" — the button is simply ready. */
+function sanitizeBigRed(r: unknown, playtimeSec: number): GameState["bigRed"] {
+  const o = (r ?? {}) as Partial<GameState["bigRed"]>;
+  const p = o.presses;
+  const presses = typeof p === "number" && Number.isFinite(p) && p > 0 ? Math.min(1e9, Math.floor(p)) : 0;
+  const last = o.lastSec;
+  const lastSec = typeof last === "number" && Number.isFinite(last) && last >= 0 ? Math.min(last, Math.max(0, playtimeSec)) : null;
+  return { presses, lastSec };
 }
 
 /** Rival counterplay is untrusted: KNOWN rival names only, strike counts clamped
@@ -1464,6 +1480,10 @@ export function migrate(raw: any): SavedShape {
     // never held it: 0 ("never") here, and on the launch that loads a pre-v41 save
     // the store imports the old key's claim, so updating never re-opens a claimed boost.
     s = { ...s, version: 41, dailyDay: 0 };
+  }
+  if (s.version === 41) {
+    // v41 → v42: the Big Red Button (POST_LAUNCH R3.3). Nobody has pressed it yet.
+    s = { ...s, version: 42, bigRed: { presses: 0, lastSec: null } };
   }
   return s as SavedShape;
 }

@@ -17,6 +17,8 @@ import { rackInfo } from "../engine/rackInfo";
 import { derive } from "../engine/derive";
 import { productMetrics } from "../engine/products";
 import { fmtDur, m$, numOf } from "./format";
+import { bigRedBalance, bigRedCooldown, bigRedOpen } from "../engine/bigRed";
+import type { BigRedOutcome } from "../engine/balance/bigRed";
 import { themeFilter } from "./hallThemes";
 import { hall3dEnabled } from "../render3d/flag";
 import type { Pick3D } from "../render3d/hallScene3d";
@@ -67,6 +69,10 @@ function HallCanvasImpl({ onExpand }: { onExpand: (id: string) => void }) {
   const [selectedBeam, setSelectedBeam] = useState<number | null>(null);
   const [botOpen, setBotOpen] = useState(false);
   const [crowdOpen, setCrowdOpen] = useState(false);
+  // The Big Red Button (R3.3): whole seconds until it's ready (-1 = not unlocked), and
+  // what the last press rolled (its card).
+  const bigRedLeft = useGame((s) => (bigRedOpen(s.game) ? Math.ceil(bigRedCooldown(s.game)) : -1));
+  const [bigRedResult, setBigRedResult] = useState<BigRedOutcome | null>(null);
 
   // Lightweight label state (re-renders only when these change, not per frame).
   const rackCount = useGame(
@@ -162,7 +168,16 @@ function HallCanvasImpl({ onExpand }: { onExpand: (id: string) => void }) {
     setSelectedBeam(null);
     setBotOpen(false);
     setCrowdOpen(false);
+    setBigRedResult(null);
   }, []);
+  const onPressBigRed = useCallback(() => {
+    const o = useGame.getState().doPressBigRed();
+    if (!o) return;
+    const bad = o.factor < 1;
+    if (bad) { haptics.warn(); sound.alert(); } else { haptics.celebrate(); sound.success(); }
+    closeAllCards();
+    setBigRedResult(o);
+  }, [closeAllCards]);
   const onPick3D = useCallback((p: Pick3D | null, clientX: number, clientY: number) => {
     if (!p) { closeAllCards(); return; }
     sound.tap();
@@ -562,7 +577,17 @@ function HallCanvasImpl({ onExpand }: { onExpand: (id: string) => void }) {
         </div>
       </div>
     )}
-    {!agentInfo && !chenOpen && !beamInfo && !botOpen && !crowdOpen && selected && selected.owned > 0 && (
+    {bigRedResult && (
+      // A real button's answer, so it is announced (unlike the canvas-echo cards).
+      <div className={`rack-card bigred-card ${bigRedResult.factor < 1 ? "bad" : "good"}`} role="status" onClick={() => setBigRedResult(null)}>
+        <div className="rack-card-head">
+          <span className="rack-card-name">{bigRedResult.headline}</span>
+          <button className="rack-card-x" aria-label="Close" onClick={(e) => { e.stopPropagation(); setBigRedResult(null); }}>×</button>
+        </div>
+        <p className="rack-card-desc">{bigRedResult.body}</p>
+      </div>
+    )}
+    {!agentInfo && !chenOpen && !beamInfo && !botOpen && !crowdOpen && !bigRedResult && selected && selected.owned > 0 && (
       // A lightweight popover, not a dialog: the hall is a pointer/touch canvas
       // (aria-hidden), so claiming dialog semantics would promise keyboard/AT
       // access this canvas-only affordance doesn't provide. aria-hidden keeps it
@@ -590,6 +615,23 @@ function HallCanvasImpl({ onExpand }: { onExpand: (id: string) => void }) {
         <canvas ref={canvasRef} className="hall-canvas" aria-hidden="true" />
       ) : (
         <HallStage3D wingRef={wingRef} explore={false} paused={explore} filter={themeFilter(hallTheme)} onPick={onPick3D} onFail={fallBack2D} />
+      )}
+      {bigRedLeft >= 0 && (
+        // The Big Red Button: a gamble you start (a surge, or a small disaster). The
+        // ring fills as it recharges; ready, it glows. No label — the dome says it.
+        <button
+          className={`hall-bigred${bigRedLeft === 0 ? " ready" : ""}`}
+          disabled={bigRedLeft > 0}
+          onClick={onPressBigRed}
+          aria-label={bigRedLeft === 0 ? "Press the Big Red Button: a gamble — a surge, or a small disaster" : `Big Red Button recharging, ${fmtDur(bigRedLeft)}`}
+          title={bigRedLeft === 0 ? "Press the Big Red Button" : `Recharging · ${fmtDur(bigRedLeft)}`}
+        >
+          <svg className="hall-bigred-ring" viewBox="0 0 44 44" aria-hidden="true">
+            <circle cx="22" cy="22" r="20" className="track" />
+            <circle cx="22" cy="22" r="20" className="fill" strokeDasharray={BIGRED_C} strokeDashoffset={BIGRED_C * Math.min(1, bigRedLeft / bigRedBalance.cooldownSec)} />
+          </svg>
+          <span className="hall-bigred-cap" aria-hidden="true" />
+        </button>
       )}
       <div className="hall-tag">
         <span className="hall-era">{eraName(era)}</span>
@@ -674,6 +716,9 @@ function Explore3D({
     </Portal>
   );
 }
+
+/** Circumference of the Big Red Button's recharge ring (r = 20). */
+const BIGRED_C = 2 * Math.PI * 20;
 
 /** Memoised: App re-renders at 10Hz, and this component's props are stable (it reads
  *  the store itself where it needs live state), so those renders were pure waste. */

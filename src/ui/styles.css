@@ -1667,6 +1667,37 @@ svg { vertical-align: middle; }
   cursor: pointer;
 }
 .hall3d-expand:active { transform: scale(0.94); }
+
+/* The Big Red Button (R3.3): a glossy dome bottom-left of the hall, a ring that fills as
+   it recharges, a soft glow when ready. Pressed, it sinks. */
+.hall-bigred {
+  position: absolute; left: 10px; bottom: 10px; z-index: 2;
+  width: 44px; height: 44px; padding: 0; border: none; border-radius: 999px;
+  background: rgba(10, 14, 28, 0.62); display: grid; place-items: center; cursor: pointer;
+}
+.hall-bigred:disabled { cursor: default; }
+.hall-bigred-ring { position: absolute; inset: 0; width: 44px; height: 44px; transform: rotate(-90deg); }
+.hall-bigred-ring circle { fill: none; stroke-width: 3; }
+.hall-bigred-ring .track { stroke: rgba(255, 255, 255, 0.14); }
+.hall-bigred-ring .fill { stroke: #ff5a4e; stroke-linecap: round; transition: stroke-dashoffset 0.6s var(--ease-out); }
+.hall-bigred-cap {
+  width: 26px; height: 26px; border-radius: 999px;
+  background: radial-gradient(circle at 35% 30%, #ffb3ab 0%, #ff4b3e 38%, #b3150c 100%);
+  box-shadow: 0 2px 0 #6e0c06, 0 3px 6px rgba(0, 0, 0, 0.35);
+  transition: transform 0.12s ease, filter 0.3s ease, box-shadow 0.12s ease;
+}
+.hall-bigred:disabled .hall-bigred-cap { filter: saturate(0.25) brightness(0.7); }
+.hall-bigred.ready .hall-bigred-cap { animation: bigred-glow 2.4s ease-in-out infinite; }
+.hall-bigred:active:not(:disabled) .hall-bigred-cap { transform: translateY(2px); box-shadow: 0 0 0 #6e0c06, 0 1px 3px rgba(0, 0, 0, 0.35); }
+@keyframes bigred-glow {
+  0%, 100% { box-shadow: 0 2px 0 #6e0c06, 0 3px 6px rgba(0, 0, 0, 0.35), 0 0 0 0 rgba(255, 75, 62, 0); }
+  50% { box-shadow: 0 2px 0 #6e0c06, 0 3px 6px rgba(0, 0, 0, 0.35), 0 0 14px 3px rgba(255, 75, 62, 0.55); }
+}
+.reduce-motion .hall-bigred.ready .hall-bigred-cap { animation: none; box-shadow: 0 2px 0 #6e0c06, 0 0 10px 2px rgba(255, 75, 62, 0.45); }
+.reduce-motion .hall-bigred-ring .fill { transition: none; }
+/* Its answer: a whole-card tint by outcome (never an edge bar). */
+.rack-card.bigred-card.good { border-color: rgba(22, 179, 100, 0.55); }
+.rack-card.bigred-card.bad { border-color: rgba(255, 90, 78, 0.6); }
 .hall3d-explore {
   position: fixed;
   inset: 0;
