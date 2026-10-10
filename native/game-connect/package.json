@@ -1,0 +1,14 @@
+{
+  "name": "@singularity/capacitor-game-connect",
+  "version": "1.0.0",
+  "description": "Game Center (GameKit) for Singularity Inc. — the GameConnect plugin the app's bridge (src/ui/gameCenter.ts) targets: signIn, submitScore, unlockAchievement, showLeaderboard.",
+  "private": true,
+  "license": "UNLICENSED",
+  "files": ["ios/Sources", "SingularityCapacitorGameConnect.podspec", "Package.swift"],
+  "capacitor": {
+    "ios": { "src": "ios" }
+  },
+  "peerDependencies": {
+    "@capacitor/core": "^7.0.0"
+  }
+}
