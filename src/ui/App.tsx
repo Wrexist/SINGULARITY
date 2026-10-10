@@ -24,6 +24,8 @@ import {
   loadMemo, saveMemo, shouldAutoShow, markShown, armShip, placementFor, shouldOfferExit, markExitShown,
   type PaywallTrigger, type PaywallPlacement,
 } from "./paywallRules";
+import { loadReviewMemo, markAsked, saveReviewMemo, shouldAskReview } from "./reviewRules";
+import { requestStoreReview } from "./storeReview";
 import { themes, rackSkins } from "../engine/cosmetics";
 import { ToastStack, type ToastData } from "./Toast";
 import { StatsPanel } from "./StatsPanel";
@@ -207,6 +209,9 @@ export function App() {
   // trigger waiting for a clear stage (see paywallRules for when it may show).
   const [showPaywall, setShowPaywall] = useState(false);
   const [paywallPending, setPaywallPending] = useState<PaywallTrigger | null>(null);
+  // The App Store rating request: raised as a Ship celebration closes (reviewRules says
+  // when it may), asked once the stage is clear — never alongside a paywall.
+  const [reviewPending, setReviewPending] = useState(false);
   // RevenueCat's own paywall when the current offering opts in (iap.presentNativePaywall);
   // otherwise ours. True while either is being decided or the native one is up.
   const [nativePaywall, setNativePaywall] = useState(false);
@@ -652,6 +657,21 @@ export function App() {
     }, 700);
     return () => window.clearTimeout(t);
   }, [paywallPending, paywallStageClear, openPaywall]);
+
+  // The rating request waits for the same clear stage (and no paywall up or queued),
+  // then a calm beat. Re-checked at the moment of asking; recorded only when the
+  // device actually made the request (a web build never burns one).
+  useEffect(() => {
+    if (!reviewPending || !paywallStageClear || showPaywall || nativePaywall || paywallPending) return;
+    const t = window.setTimeout(() => {
+      setReviewPending(false);
+      const memo = loadReviewMemo();
+      const now = Date.now();
+      if (!shouldAskReview(memo, { now, ships: useGame.getState().game.prestige.ships, lastPaywallAt: loadMemo().lastAutoAt, paywallThisClose: false })) return;
+      void requestStoreReview().then((asked) => { if (asked) saveReviewMemo(markAsked(memo, now)); });
+    }, 1200);
+    return () => window.clearTimeout(t);
+  }, [reviewPending, paywallStageClear, showPaywall, nativePaywall, paywallPending]);
 
   // Pro cosmetics follow Pro: when it lapses, a Pro-only theme or skin still selected
   // falls back to Classic (earned-by-play ones are untouched). Waits for hydration.
@@ -1382,7 +1402,10 @@ export function App() {
             if (game.prestige.ships >= 1) {
               let memo = loadMemo();
               if (game.prestige.ships === 1 && !memo.shipArmed) { memo = armShip(memo); saveMemo(memo); }
-              if (memo.shipArmed && !memo.shipShown) setPaywallPending("ship");
+              const paywallThisClose = memo.shipArmed && !memo.shipShown;
+              if (paywallThisClose) setPaywallPending("ship");
+              // A happy moment to ask for a rating — unless this close is the paywall's.
+              else if (shouldAskReview(loadReviewMemo(), { now: Date.now(), ships: game.prestige.ships, lastPaywallAt: memo.lastAutoAt, paywallThisClose })) setReviewPending(true);
             }
             // A fresh run starts at the hall — don't leave the Lab parked on HQ.
             setLabSection("build");
