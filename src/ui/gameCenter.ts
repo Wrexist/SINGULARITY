@@ -21,10 +21,10 @@ import type { GameState } from "../engine/types";
 
 /** App Store Connect identifiers (create these EXACT ids — see the setup doc). */
 export const GC_IDS = {
-  leaderboardShips: "grp.singularity.ships",
-  leaderboardAscensions: "grp.singularity.ascensions",
+  leaderboardShips: "singularity.ships",
+  leaderboardAscensions: "singularity.ascensions",
   /** Game Center achievement id for an in-game achievement id. */
-  achievement: (id: string) => `grp.singularity.ach.${id}`,
+  achievement: (id: string) => `singularity.ach.${id}`,
 };
 
 interface GameConnectPlugin {

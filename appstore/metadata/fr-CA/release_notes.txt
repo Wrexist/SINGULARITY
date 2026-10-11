@@ -1,11 +1,9 @@
-Dans cette mise à jour :
+Trois nouvelles façons de brasser la cage :
 
-• Mode sombre : choisissez Light, Dark ou Match device dans Settings.
-• Nouveau à chaque génération : choisissez votre camp (Safety, Center ou Acceleration) et débloquez ses avantages de Doctrine. Chaque Ship vous distribue aussi trois chartes de labo, dont certaines changent les règles du jeu.
-• Épreuves Unplugged : désactivez le Legacy le temps d'une génération et refaites une partie complète. Vos records de Compute rapportent maintenant de la Réputation de labo.
-• Des objectifs plus clairs : voyez toujours votre prochaine étape, et le moment où shipper en vaut vraiment la peine.
-• « Économiser pour ça » : touchez une recherche hors de portée, le labo met le Compute de côté et la débloque pour vous.
-• Plus de calme : seules les vraies décisions vous interrompent, le reste passe sur le fil de nouvelles. Fonctionne mieux avec VoiceOver, avec des zones tactiles plus grandes.
-• Plus fluide sur les iPhone plus anciens, temps hors ligne exact et plus de 150 correctifs.
+• Le gros bouton rouge (« Big Red Button ») : après votre premier Ship, appuyez dessus pour une poussée (Compute ×3, une démo virale, un dataset tombé d'un camion) ou un petit désastre. Il se recharge aux 10 minutes.
+• Guerre froide entre rivaux (« Cold War ») : recrutez un chercheur chez votre plus proche rival, publiez une charge contre lui ou signez avec lui un pacte de calcul. Attaquez-le, il va répliquer.
+• Semaines commanditaires (« Sponsor Weeks ») : remplissez 5 des 7 objectifs quotidiens de commanditaires dans la semaine pour accumuler de la Réputation et monter dans les paliers de commandite (« Sponsor Tiers »), d'Unfunded à Sovereign-backed.
+• Labo 3D (« 3D Lab », bêta, dans Settings) : touchez tout ce qui est vivant. L'équipe vous salue, les faisceaux de produits s'allument, le bot des opérations tourne sur lui-même et la foule applaudit.
+• Plus fluide, plus calme et un brin plus lumineux partout, en plus de correctifs.
 
-Toujours zéro pub. Toujours zéro pay-to-win.
+Toujours zéro pub. Toujours zéro pay-to-win. Merci de jouer. Dites-nous quoi bâtir ensuite.

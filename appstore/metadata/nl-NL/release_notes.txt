@@ -1,11 +1,9 @@
-In deze update:
+Drie nieuwe manieren om de boel op te schudden:
 
-• Donkere modus: kies Light, Dark of Match device in Settings.
-• Nieuw in elke generatie: kies je kant (Safety, Center of Acceleration) en ontgrendel de Doctrine-perks die daarbij horen. En elke keer dat je shipt, krijg je drie Lab Charters uitgedeeld, waaronder een paar die de regels omgooien.
-• Unplugged Trials: zet Legacy één generatie uit en speel weer een volledige run. Je Compute-records leveren nu Lab Reputation op.
-• Duidelijkere doelen: je ziet altijd je volgende stap, en wanneer shippen echt de moeite waard is.
-• 'Hiervoor sparen': tik op onderzoek dat buiten bereik is, dan spaart het lab de Compute ervoor en koopt het voor je.
-• Meer rust: alleen echte beslissingen onderbreken je, de rest loopt via de nieuwsticker. Werkt beter met VoiceOver, met grotere tikvlakken.
-• Soepeler op oudere iPhones, kloppende offline tijd en meer dan 150 bugfixes.
+• De grote rode knop (Big Red Button): druk er na je eerste Ship op voor een boost (Compute ×3, een virale demo, een dataset die van een vrachtwagen viel) of een kleine ramp. Hij laadt elke 10 minuten opnieuw op
+• Koude oorlog met rivalen (Cold War): werf een onderzoeker weg, publiceer een vernietigend stuk of sluit een compute-pact met je naaste rivaal. Kom je aan ze, dan slaan ze terug
+• Sponsorweken (Sponsor Weeks): haal in een week 5 van de 7 dagelijkse sponsordoelen om Reputation op te bouwen en door de Sponsor Tiers te klimmen, van Unfunded tot Sovereign-backed
+• 3D-lab (3D Lab, bèta, in Settings): tik op alles wat leeft. Personeel zwaait, productstralen lichten op, de ops-bot draait rondjes en het publiek juicht
+• Overal soepeler, rustiger en een tikje helderder, plus bugfixes
 
-Nog steeds geen advertenties. Nog steeds geen pay-to-win.
+Nog steeds geen advertenties. Nog steeds geen pay-to-win. Bedankt voor het spelen. Laat ons weten wat we hierna moeten bouwen.

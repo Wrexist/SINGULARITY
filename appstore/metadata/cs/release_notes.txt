@@ -1,11 +1,9 @@
-V této aktualizaci:
+Tři nové způsoby, jak to pořádně rozčeřit:
 
-• Tmavý režim: v nabídce Settings zvolte Light, Dark nebo Match device.
-• Nově v každé generaci: zvolte si Stance (Safety, Center nebo Acceleration) a odemkněte perky Doctrine dané strany. Každý Ship navíc rozdá tři karty Lab Charter, včetně takových, které mění samotná pravidla.
-• Unplugged Trials: vypněte na jednu generaci Legacy a projděte si znovu celou hru od nuly. Vaše rekordy v Compute teď přinášejí Lab Reputation.
-• Jasnější cíle: vždy vidíte další krok a kdy se Ship opravdu vyplatí.
-• „Šetřit na tohle“: klepněte na nedosažitelný výzkum a laboratoř na něj sama našetří Compute a koupí ho za vás.
-• Víc klidu: vyrušují vás jen skutečná rozhodnutí, zbytek běží ve zpravodajském pásu. Lepší podpora funkce VoiceOver a větší dotykové plochy.
-• Plynulejší chod na starších iPhonech, přesný čas offline a přes 150 oprav chyb.
+• Velké červené tlačítko (Big Red Button): po prvním Shipu ho zmáčkněte a získejte boost (Compute ×3, virální demo, dataset, který spadl z náklaďáku), nebo malou katastrofu. Dobíjí se každých 10 minut
+• Studená válka s rivaly (Cold War): přetáhněte výzkumníka, zveřejněte zdrcující kritiku nebo uzavřete pakt o Compute s nejbližším rivalem. Když na ně zaútočíte, oplatí vám to
+• Sponzorské týdny (Sponsor Weeks): splňte během týdne 5 ze 7 denních cílů sponzora, získejte Reputation a stoupejte v Sponsor Tiers od Unfunded až po Sovereign-backed
+• 3D laboratoř (3D Lab, beta, v Settings): klepněte na cokoli živého. Zaměstnanci mávají, paprsky produktů zazáří, provozní bot se roztočí a dav jásá
+• Všude plynulejší, klidnější a o kousek jasnější, k tomu opravy chyb
 
-Pořád bez reklam. Pořád bez pay-to-win.
+Pořád bez reklam. Pořád bez pay-to-win. Díky, že hrajete. Napište nám, co máme postavit dál.

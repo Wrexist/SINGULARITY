@@ -131,8 +131,8 @@ The source of truth is `appstore/metadata/<locale>/`. The files there are `name.
   > Sponsor Weeks to climb the Sponsor Tiers. Still no ads. Still no pay-to-win.
 
   Check it's ≤170 characters before saving.
-- **URLs:** support is `https://wrexist.github.io/singularity/support` and the privacy
-  policy is `https://wrexist.github.io/singularity/privacy`. Open both and confirm they
+- **URLs:** support is `https://wrexist.github.io/SINGULARITY/support` and the privacy
+  policy is `https://wrexist.github.io/SINGULARITY/privacy`. Open both and confirm they
   load; report a 404.
 - **Category:** the primary category should be Games → Simulation
   (`METADATA.md` §2). Report it if it differs.
@@ -205,9 +205,9 @@ The plugin is written (`native/game-connect`) but **not in any build yet**. See
 In App Store Connect → Features → Game Center, you may *create the records*, which is
 harmless until a build uses them:
 
-- Leaderboard `grp.singularity.ships`: "Models Shipped", integer, best = highest.
-- Leaderboard `grp.singularity.ascensions`: "AGI Ascensions", integer, best = highest.
-- Achievements `grp.singularity.ach.<id>` for a starter set. Take the in-game ids from
+- Leaderboard `singularity.ships`: "Models Shipped", integer, best = highest.
+- Leaderboard `singularity.ascensions`: "AGI Ascensions", integer, best = highest.
+- Achievements `singularity.ach.<id>` for a starter set. Take the in-game ids from
   `src/engine/achievements.ts`, e.g. `first_ship`. Each needs a title, descriptions and
   points, and a 512×512 or 1024×1024 image. If there are no images, create the
   leaderboards only and note it.

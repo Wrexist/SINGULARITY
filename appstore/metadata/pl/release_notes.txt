@@ -1,11 +1,9 @@
-W tej aktualizacji:
+Trzy nowe sposoby, żeby namieszać:
 
-• Tryb ciemny: w menu Settings wybierz Light, Dark lub Match device.
-• Nowość w każdej generacji: zadeklaruj Stance (Safety, Center lub Acceleration) i odblokuj perki Doctrine tej strony. Każdy Ship rozdaje też trzy karty Lab Charter, w tym takie, które zmieniają zasady gry.
-• Unplugged Trials: wyłącz Legacy na jedną generację i znów zagraj pełną rozgrywkę od zera. Twoje rekordy Compute dają teraz Lab Reputation.
-• Czytelniejsze cele: zawsze widzisz kolejny krok i moment, w którym Ship naprawdę się opłaca.
-• „Odkładaj na to”: stuknij badanie poza zasięgiem, a laboratorium samo odłoży na nie Compute i kupi je za ciebie.
-• Więcej spokoju: przerywają ci tylko prawdziwe decyzje, reszta leci na pasku wiadomości. Lepsza obsługa VoiceOver i większe przyciski.
-• Płynniej na starszych iPhone’ach, dokładny czas offline i ponad 150 poprawek błędów.
+• Wielki Czerwony Przycisk (Big Red Button): po pierwszym Shipie wciśnij go po zastrzyk mocy (Compute ×3, wiralowe demo, zbiór danych, który spadł z ciężarówki) albo małą katastrofę. Ładuje się ponownie co 10 minut
+• Zimna wojna z rywalami (Cold War): podkradnij badacza, opublikuj miażdżącą krytykę albo podpisz pakt o Compute z najbliższym rywalem. Zaatakuj ich, a odpowiedzą
+• Tygodnie sponsorskie (Sponsor Weeks): zalicz w tygodniu 5 z 7 dziennych celów sponsora, by zgarnąć Reputation i wspinać się po Sponsor Tiers, od Unfunded do Sovereign-backed
+• Laboratorium 3D (3D Lab, beta, w Settings): stuknij wszystko, co żyje. Pracownicy machają, wiązki produktów rozbłyskują, bot operacyjny się kręci, a tłum wiwatuje
+• Wszędzie płynniej, spokojniej i odrobinę jaśniej, do tego poprawki błędów
 
-Nadal bez reklam. Nadal bez pay-to-win.
+Nadal bez reklam. Nadal bez pay-to-win. Dzięki za grę. Napisz nam, co mamy zbudować dalej.

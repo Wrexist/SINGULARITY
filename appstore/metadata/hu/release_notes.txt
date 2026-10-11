@@ -1,11 +1,9 @@
-Ebben a frissítésben:
+Három új módja, hogy felkavard az állóvizet:
 
-• Sötét mód: a Settings menüben válaszd a Light, Dark vagy Match device lehetőséget.
-• Újdonság minden generációban: válassz Stance-et (Safety, Center vagy Acceleration), és oldd fel az adott oldal Doctrine-előnyeit. Minden Ship ráadásul három Lab Chartert oszt le, köztük olyanokat is, amelyek magukat a szabályokat írják át.
-• Unplugged Trials: kapcsold ki egy generációra a Legacyt, és játssz végig újra egy teljes kört a nulláról. A Compute-rekordjaid mostantól Lab Reputationt hoznak.
-• Világosabb célok: mindig látod a következő lépést, és azt is, mikor éri meg igazán a Ship.
-• „Spórolj erre”: koppints egy elérhetetlen kutatásra, és a labor magától félreteszi rá a Compute-ot, majd meg is veszi helyetted.
-• Nagyobb nyugalom: csak a valódi döntések szakítanak félbe, minden más a hírszalagon fut. Jobban működik VoiceOverrel, és nagyobbak a koppintható felületek.
-• Gördülékenyebb a régebbi iPhone-okon, pontos offline idő és több mint 150 hibajavítás.
+• A nagy piros gomb (Big Red Button): az első Ship után megnyomhatod, és vagy jön egy löket (Compute ×3, egy virális demó, egy adatkészlet, ami „leesett a teherautóról”), vagy egy kisebb katasztrófa. 10 percenként töltődik újra
+• Hidegháború a riválisokkal (Cold War): csábíts el egy kutatót a legközelebbi riválisodtól, publikálj ellene egy lehúzó cikket, vagy köss vele compute-paktumot. Ha lépsz ellenük, ők is visszavágnak
+• Szponzorhetek (Sponsor Weeks): egy héten belül teljesíts 5-öt a 7 napi szponzori célból, gyűjts Reputationt, és lépj feljebb a Sponsor Tiers szintjein, az Unfunded szinttől egészen a Sovereign-backedig
+• 3D Lab (béta, a Settingsben): koppints bármire, ami él. A munkatársak integetnek, a termékfények felvillannak, az ops-robot pörög, a tömeg pedig ujjong
+• Mindenhol gördülékenyebb, nyugodtabb és egy kicsit világosabb, plusz hibajavítások
 
-Továbbra sincs reklám. Továbbra sincs pay-to-win.
+Továbbra sincs reklám. Továbbra sincs pay-to-win. Köszönjük, hogy játszol. Írd meg, mit építsünk legközelebb.

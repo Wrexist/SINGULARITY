@@ -1,14 +1,9 @@
-A big update — more to decide every generation:
+Three new ways to stir things up:
 
-• Dark mode: choose Light, Dark or Match device in Settings
-• Declare a Stance: pick Safety, Center or Acceleration at the start of a run and unlock the Doctrine perks for that side
-• Charter draft: every Ship deals three Lab Charters, including rule-changers like Research Sprint and Product Company
-• Unplugged Trials: veterans can switch Legacy off for one generation and play a real, full run again
-• Personal records: every new power of ten in your peak Compute earns Lab Reputation
-• Always know what's next: the goal bar tracks your road to the first Ship, and shows when shipping is actually worth it
-• "Save for this": tap research that's out of reach and the lab banks Compute for it, then buys it for you
-• Calmer news: only real decisions interrupt you; everything else runs on the Newswire
-• Works better with VoiceOver and keyboards, with bigger tap targets and clearer text
-• Smoother on older iPhones, offline time counted properly, and 150+ fixes, including a rare freeze when a boost expired
+• The Big Red Button: after your first Ship, press it for a surge (Compute ×3, a viral demo, a dataset that fell off the back of a lorry) or a small disaster. It recharges every 10 minutes
+• Rival Cold War: poach a researcher, publish a takedown or sign a compute pact with your nearest rival. Move against them and they answer back
+• Sponsor Weeks: clear 5 of the 7 daily sponsor goals in a week to bank Reputation and climb the Sponsor Tiers, from Unfunded to Sovereign-backed
+• 3D Lab (beta, in Settings): tap anything alive. Staff wave, product beams flare, the ops bot spins and the crowd cheers
+• Smoother, calmer and a little brighter everywhere, plus fixes
 
-Thanks for playing. Tell us what to build next.
+Still no ads. Still no pay-to-win. Thanks for playing. Tell us what to build next.
