@@ -120,6 +120,14 @@ jobs:
           # this YES (Capacitor's template already has it; pin it so it can't drift).
           /usr/libexec/PlistBuddy -c "Set :UIViewControllerBasedStatusBarAppearance true" "$PLIST" \
             || /usr/libexec/PlistBuddy -c "Add :UIViewControllerBasedStatusBarAppearance bool true" "$PLIST"
+          # URL scheme singularityinc:// so App Store In-App Events have a deep link
+          # that opens the app (ASC requires one). Opening it just launches the game.
+          /usr/libexec/PlistBuddy -c "Delete :CFBundleURLTypes" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes array" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0 dict" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLName string com.wrexist.singularityinc" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string singularityinc" "$PLIST"
           # Build number (CFBundleVersion): the run number — always unique + rising.
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${RUN_NUMBER}" "$PLIST"
           # Marketing version (CFBundleShortVersionString): MUST exceed the last

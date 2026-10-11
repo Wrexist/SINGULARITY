@@ -17,9 +17,11 @@ The live version is **1.1** (Ready for Distribution).
 | 1.2 locales | **50/50**: name, subtitle, keywords, description, promo text, What's New, support/marketing/privacy URLs, from `appstore/metadata/` (all pass `npm run validate:store`). en-US name untouched (`Singularity Inc. Idle Tycoon`). en-US description restored with its em dashes. |
 | 1.2 What's New / promo | New 1.2 copy (Big Red Button, Rival Cold War, Sponsor Weeks, 3D Lab taps) in all 50 locales. The promo text is set on 1.2 only, so it goes live with that version, not before. |
 | Game Center | Leaderboards **`singularity.ships`** ("Models Shipped") and **`singularity.ascensions`** ("AGI Ascensions") created: Classic, integer, best score, high→low, en-US localization. Not submitted; Game Center **not** attached to any version. The `grp.` prefix is rejected for apps outside a Game Center group, so the ids in `src/ui/gameCenter.ts` and the docs were changed to match. No achievements: there are no 512/1024 images yet. |
-| In-App Events | 3 **drafts** with en-US text: "Major Update: The Big Red Button" (placeholder dates Oct 26 – Nov 9, all 175 territories), "Sponsor Week Oct 12", "Sponsor Week Oct 19" (Europe/Stockholm midnight to 23:59). **No media yet** (see below). |
+| In-App Events | 3 **drafts** with en-US text: "Major Update: The Big Red Button" (Oct 15 10:00 – Oct 29, Stockholm time), "Sponsor Week Oct 19", "Sponsor Week Oct 26" (Stockholm midnight to Sunday 23:59). All 175 territories, visible from Oct 15. **No images yet.** |
 | Custom product pages | **Not created** (see below). |
 | App Review notes on 1.2 | **Not set** (see below). |
+
+**Round 3 (2026-10-11):** PR #50 merged to main (privacy policy page live after Pages redeploys). Build **1.2 (28)** built by the TestFlight workflow and uploaded with no errors (delivery `d74793f9-d9ce-449b-b30c-8e93f8ec9ff1`).
 
 **Stopped partway:** Claude Code's auto-mode safety check blocked further App Store
 Connect page actions as a "production deploy" partway through the In-App Events. The event
@@ -260,16 +262,11 @@ Satire note: the game satirizes the AI industry. The "Data Bazaar / dark web" an
 
 ## Waiting on the owner
 
-- [ ] **Merge this branch** so the updated privacy policy page goes live (the new label
-      already is; the page should match).
-- [ ] **Build 1.2:** run the TestFlight workflow with `marketing_version` = `1.2`, then
-      attach that build to version 1.2 in ASC.
+- [ ] **Attach build 1.2 (28)** to version 1.2 once it finishes processing; choose "Automatically release this version"; Add for Review with the 3 events.
 - [ ] **1.2 App Review notes:** paste the draft above into App Review Information.
 - [ ] **Event images** (ASC → In-App Events → each draft): `art/update-card.jpg` +
       `art/update-details.jpg` on "Major Update: The Big Red Button"; `art/sponsor-card.jpg` +
-      `art/sponsor-details.jpg` on both Sponsor Weeks. Set the Big Red Button dates to the real
-      release day (+14 days). The Oct 12/19 Sponsor Weeks will have passed before 1.2 is live;
-      move them to the first two weeks after release instead.
+      `art/sponsor-details.jpg` on both Sponsor Weeks. Dates are already set (Oct 15 – Nov 1).
 - [ ] **Custom product pages:** 3 drafts from `CUSTOM_PRODUCT_PAGES.md` (not created; low
       value at today's traffic).
 - [ ] **When submitting 1.2:** tick both leaderboards into the submission, and turn on
